@@ -1,7 +1,4 @@
-/**
- * Sanitizes an error value before passing to console.error or throwing.
- * Prevents loglevel/_formatMsg from crashing on null or bare DOMException objects.
- */
+
 function _safeErr(err) {
   if (err === null || err === undefined) return new Error('Unknown error (null)');
   if (err instanceof Error) return err;
@@ -1557,15 +1554,15 @@ console.warn('_writeCookie failed:', e);
 }
 }
 function _generateUUID() {
-  // Produces a standard UUID v4 with 'dev' prefix so it:
-  // 1. Passes validateUUID() checks throughout the app
-  // 2. Works as a valid Firestore document ID (no slashes)
-  // 3. Can be reliably stored and re-read from all storage layers
+  
+  
+  
+  
   const buf = new Uint8Array(16);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     crypto.getRandomValues(buf);
   } else {
-    // Fallback PRNG using xorshift — only used when WebCrypto unavailable
+    
     let s0 = (Date.now() ^ 0xdeadbeef) >>> 0;
     let s1 = ((Date.now() / 1000) ^ 0xcafebabe) >>> 0;
     for (let i = 0; i < 16; i++) {
@@ -1575,11 +1572,11 @@ function _generateUUID() {
       buf[i] = s0 & 0xff;
     }
   }
-  buf[6] = (buf[6] & 0x0f) | 0x40; // version 4
-  buf[8] = (buf[8] & 0x3f) | 0x80; // variant bits
+  buf[6] = (buf[6] & 0x0f) | 0x40; 
+  buf[8] = (buf[8] & 0x3f) | 0x80; 
   const hex = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
   const core = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
-  return 'dev-' + core; // 'dev' prefix keeps dashes → passes validateUUID prefixedRegex
+  return 'dev-' + core; 
 }
 async function _readCacheAnchor() {
 try {
@@ -1823,7 +1820,7 @@ idbBatch.push(['assignedManager', persistedManager]);
 }
 await idb.setBatch(idbBatch);
 }
-// Only set registeredAt on first registration (not on subsequent heartbeat calls)
+
 const isFirstRegistration = !existingDoc.exists;
 await deviceRef.set({
 deviceId: deviceId,
@@ -2072,15 +2069,7 @@ const _MODE_CODES = {
   'factory':    '3',
   'userrole':   '4',
 };
-const _MODE_CODES_HEX = {
-  'admin':      '00',
-  'rep':        '01',
-  'production': '02',
-  'factory':    '03',
-  'userrole':   '04',
-};
 const _MODE_LABELS = { '0':'admin', '1':'rep', '2':'production', '3':'factory', '4':'userrole' };
-const _MODE_LABELS_HEX = { '00':'admin', '01':'rep', '02':'production', '03':'factory', '04':'userrole' };
 let _uuidLastMs = 0;
 let _uuidSeq    = 0;
 function _deriveDeviceShard(did) {
@@ -2088,7 +2077,7 @@ function _deriveDeviceShard(did) {
   let h = 0x811c9dc5;
   for (let i = 0; i < did.length; i++) {
     h ^= did.charCodeAt(i);
-    h = (h * 0x01000193) >>> 0; 
+    h = (h * 0x01000193) >>> 0;
   }
   return (h & 0xffff).toString(16).padStart(4, '0');
 }
@@ -2111,7 +2100,7 @@ function _randomBytes(n) {
 function _nextSeq(nowMs) {
   if (nowMs > _uuidLastMs) {
     _uuidLastMs = nowMs;
-    _uuidSeq    = _randomBytes(1)[0]; 
+    _uuidSeq    = _randomBytes(1)[0];
     return { ts: _uuidLastMs, seq: _uuidSeq };
   }
   _uuidSeq = (_uuidSeq + 1) & 0xff;
@@ -2135,32 +2124,31 @@ async function initDeviceShard() {
 }
 function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverride = null) {
   const MAX_RETRIES = 3;
-  const rnd  = _randomBytes(5); 
+  const rnd = _randomBytes(5);
   const nowMs = tsMs != null ? tsMs : Date.now();
   const { ts, seq } = _nextSeq(nowMs);
-  const tsHi32 = Math.floor(ts / 0x10000);   
-  const tsLo16 = ts & 0xffff;                
-  const p1 = tsHi32.toString(16).padStart(8, '0');  
-  const p2 = tsLo16.toString(16).padStart(4, '0');  
+  const tsHi32 = Math.floor(ts / 0x10000);
+  const tsLo16 = ts & 0xffff;
+  const p1 = tsHi32.toString(16).padStart(8, '0');
+  const p2 = tsLo16.toString(16).padStart(4, '0');
   const modeNib = modeOverride != null
     ? (parseInt(modeOverride, 16) & 0xf).toString(16)
     : _encodeModeTag();
   const p3 = '4'
     + ((seq >>> 4) & 0xf).toString(16)
     + (seq         & 0xf).toString(16)
-    + modeNib;                                        
-  const varNib = ((rnd[4] & 0x3) | 0x8).toString(16);
-  const p4r    = rnd[4].toString(16).padStart(2, '0');
+    + modeNib;
+  const varNib   = ((rnd[4] & 0x3) | 0x8).toString(16);
   const extraRnd = _randomBytes(1)[0];
   const p4 = varNib
     + ((rnd[4] >>> 4) & 0xf).toString(16)
     + (extraRnd & 0xf).toString(16)
-    + ((extraRnd >>> 4) & 0xf).toString(16);          
+    + ((extraRnd >>> 4) & 0xf).toString(16);
   const nodeRand = rnd[0].toString(16).padStart(2, '0')
                  + rnd[1].toString(16).padStart(2, '0')
                  + rnd[2].toString(16).padStart(2, '0')
                  + rnd[3].toString(16).padStart(2, '0');
-  const node = (_cachedDeviceShard || '0000') + nodeRand; 
+  const node = (_cachedDeviceShard || '0000') + nodeRand;
   const uuid = `${p1}-${p2}-${p3}-${p4}-${node}`;
   const finalUUID = prefix ? `${prefix}-${uuid}` : uuid;
   if (retryCount < MAX_RETRIES && !validateUUID(finalUUID)) {
@@ -2171,26 +2159,22 @@ function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverride = n
 function validateUUID(uuid) {
   if (!uuid || typeof uuid !== 'string') return false;
   const standardRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  // Prefix may contain hyphens (e.g. 'pay-partial', 'rep-partial') — must start with alphanumeric
   const prefixedRegex = /^[a-z0-9][a-z0-9_-]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return standardRegex.test(uuid) || prefixedRegex.test(uuid);
 }
 function extractUUIDMeta(uuid) {
   if (!validateUUID(uuid)) return null;
   const allParts = uuid.split('-');
-  const coreParts = allParts.slice(allParts.length - 5); 
+  const coreParts = allParts.slice(allParts.length - 5);
   const [cp1, cp2, cp3, , node] = coreParts;
-  const modeNib    = cp3[3];                     
+  const modeNib    = cp3[3];
   const appModeNew = _MODE_LABELS[modeNib] || null;
   if (appModeNew !== null) {
     const tsHi = parseInt(cp1, 16);
     const tsLo = parseInt(cp2, 16);
-    const tsMs = tsHi * 0x10000 + tsLo;         
-    // Guard: only accept as v2 if the embedded timestamp is in a realistic app range
-    // (2020-01-01 to 2099-12-31). Random UUIDv4s with a matching mode nibble would
-    // produce timestamps far outside this range (~0.28% false-positive rate without this guard).
-    const _V2_TS_MIN = 1577836800000; // 2020-01-01
-    const _V2_TS_MAX = 4102358400000; // 2099-12-31
+    const tsMs = tsHi * 0x10000 + tsLo;
+    const _V2_TS_MIN = 1577836800000;
+    const _V2_TS_MAX = 4102358400000;
     if (tsMs >= _V2_TS_MIN && tsMs <= _V2_TS_MAX) {
       const seq = (parseInt(cp3[1], 16) << 4) | parseInt(cp3[2], 16);
       const deviceShard = node.slice(0, 4);
@@ -2203,167 +2187,13 @@ function extractUUIDMeta(uuid) {
         version: 2,
       };
     }
-    // Timestamp out of range — fall through to legacy detection
+    return null;
   }
-  const legacyModeTag   = node.slice(10, 12);
-  const appModeLegacy   = _MODE_LABELS_HEX[legacyModeTag] || null;
-  const isLegacyEnriched = appModeLegacy !== null;
-  let timestamp = null;
-  if (isLegacyEnriched) {
-    const secsFrag = parseInt(node.slice(4, 10), 16);
-    const nowSecs  = Math.floor(Date.now() / 1000);
-    const highBits = nowSecs & ~0xffffff;
-    let secs       = highBits | secsFrag;
-    if (secs > nowSecs + 86400) secs -= 0x1000000;
-    timestamp = new Date(secs * 1000);
-  }
-  return {
-    deviceShard: node.slice(0, 4),
-    timestamp,
-    appMode: appModeLegacy || 'unknown',
-    sequence: null,
-    isEnriched: isLegacyEnriched,
-    version: isLegacyEnriched ? 1 : 0,
-  };
+  return null;
 }
-function migrateUUID(oldUUID, createdAtMs, modeOverride = 'admin') {
-  if (!validateUUID(oldUUID)) return oldUUID; 
-  const meta = extractUUIDMeta(oldUUID);
-  if (meta && meta.isEnriched && meta.version === 2) return oldUUID; 
-  const parts = oldUUID.split('-');
-  let prefix = '';
-  let coreUUID = oldUUID;
-  if (parts.length > 5) {
-    prefix = parts.slice(0, parts.length - 5).join('-');
-    coreUUID = parts.slice(parts.length - 5).join('-');
-  }
-  const modeCode = _MODE_CODES[modeOverride] || '0'; 
-  const newUUID  = generateUUID(prefix, 0, createdAtMs, modeCode);
-  return newUUID;
-}
-async function migrateAllUUIDs() {
-  const DATA_STORES = [
-    'mfg_pro_pkr', 'customer_sales', 'noman_history', 'rep_sales',
-    'rep_customers', 'sales_customers', 'payment_transactions',
-    'payment_entities', 'factory_inventory_data',
-    'factory_production_history', 'expenses', 'stock_returns',
-  ];
-  const idMap = new Map(); 
-  const storeData = {};
-  for (const store of DATA_STORES) {
-    const records = await idb.get(store, []);
-    storeData[store] = Array.isArray(records) ? records : [];
-  }
-  let totalMigrated = 0;
-  for (const store of DATA_STORES) {
-    for (const rec of storeData[store]) {
-      if (!rec || !rec.id) continue;
-      const meta = extractUUIDMeta(rec.id);
-      if (meta && meta.isEnriched && meta.version === 2) continue; 
-      let recMode = 'admin';
-      if (rec.isRepModeEntry === true) recMode = 'rep';
-      else if (store === 'mfg_pro_pkr') recMode = 'production';
-      else if (store === 'factory_production_history') recMode = 'factory';
-      const ts  = rec.createdAt || rec.timestamp || Date.now();
-      const newId = migrateUUID(rec.id, ts, recMode);
-      if (newId !== rec.id) {
-        idMap.set(rec.id, newId);
-        totalMigrated++;
-      }
-    }
-  }
-  if (idMap.size === 0) {
-    console.log('[UUID Migration] All records already enriched — nothing to do.');
-    return { migrated: 0, stores: DATA_STORES.length };
-  }
-  for (const store of DATA_STORES) {
-    let changed = false;
-    for (const rec of storeData[store]) {
-      if (!rec) continue;
-      if (idMap.has(rec.id)) {
-        rec.id = idMap.get(rec.id);
-        changed = true;
-      }
-      const fkFields = ['entityId', 'supplierId', 'expenseId', 'materialId', 'relatedId'];
-      for (const fk of fkFields) {
-        if (rec[fk] && idMap.has(rec[fk])) {
-          rec[fk] = idMap.get(rec[fk]);
-          changed = true;
-        }
-      }
-    }
-    if (changed) {
-      await idb.set(store, storeData[store]);
-    }
-  }
-  try {
-    let deletionRecs = await idb.get('deletion_records', []);
-    let drChanged = false;
-    for (const dr of deletionRecs) {
-      if (!dr) continue;
-      if (idMap.has(dr.id)) { dr.id = idMap.get(dr.id); drChanged = true; }
-      if (idMap.has(dr.recordId)) { dr.recordId = idMap.get(dr.recordId); drChanged = true; }
-    }
-    const newDeletedIds = new Set(Array.from(deletedRecordIds).map(id => idMap.get(id) || id));
-    deletedRecordIds.clear();
-    newDeletedIds.forEach(id => deletedRecordIds.add(id));
-    if (drChanged) {
-      await idb.set('deletion_records', deletionRecs);
-      await idb.set('deleted_records', Array.from(deletedRecordIds));
-    }
-  } catch(e) { console.warn('[UUID Migration] deletion_records patch failed:', e); }
-  const liveArrays = {
-    'mfg_pro_pkr':               () => db,
-    'customer_sales':            () => customerSales,
-    'noman_history':             () => salesHistory,
-    'rep_sales':                 () => repSales,
-    'rep_customers':             () => repCustomers,
-    'sales_customers':           () => salesCustomers,
-    'payment_transactions':      () => paymentTransactions,
-    'payment_entities':          () => paymentEntities,
-    'factory_inventory_data':    () => factoryInventoryData,
-    'factory_production_history':() => factoryProductionHistory,
-    'expenses':                  () => expenseRecords,
-    'stock_returns':             () => stockReturns,
-  };
-  for (const [store, getArr] of Object.entries(liveArrays)) {
-    try {
-      const arr = getArr();
-      if (!Array.isArray(arr)) continue;
-      for (const rec of arr) {
-        if (!rec) continue;
-        if (idMap.has(rec.id)) rec.id = idMap.get(rec.id);
-        const fkFields = ['entityId', 'supplierId', 'expenseId', 'materialId', 'relatedId'];
-        for (const fk of fkFields) {
-          if (rec[fk] && idMap.has(rec[fk])) rec[fk] = idMap.get(rec[fk]);
-        }
-      }
-    } catch(e) {}
-  }
-  console.log(`[UUID Migration] Complete — ${totalMigrated} records migrated.`);
-  return { migrated: totalMigrated, stores: DATA_STORES.length, idMap };
-}
-window.generateUUID   = generateUUID;
-window.validateUUID   = validateUUID;
+window.generateUUID    = generateUUID;
+window.validateUUID    = validateUUID;
 window.extractUUIDMeta = extractUUIDMeta;
-window.migrateUUID    = migrateUUID;
-window.migrateAllUUIDs = migrateAllUUIDs;
-
-/**
- * compareRecordVersions(a, b) -- canonical UUID-v2-aware conflict resolver.
- *
- * Every transaction UUID encodes: creation timestamp (ms) + monotonic sequence
- * + device shard, making it a globally-unique logical clock.
- *
- * Resolution order:
- *  1. Both UUIDs are v2 -> compare UUID-embedded timestamp (ms)
- *                       -> tie: compare sequence number (higher = later within same ms)
- *                       -> tie: deviceShard lexicographic (deterministic cross-device)
- *  2. Only one is v2    -> v2 record wins (properly versioned)
- *  3. Neither is v2     -> fall back to record field timestamps (updatedAt/timestamp/createdAt)
- *
- * Returns: > 0 if a wins (a is newer), < 0 if b wins, 0 if equal.
- */
 function compareRecordVersions(a, b) {
   if (!a && !b) return 0;
   if (!a) return -1;

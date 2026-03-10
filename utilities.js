@@ -310,6 +310,11 @@ setData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 }
 await userRef.collection(collection).doc(docId).set(setData, { merge: true });
 trackFirestoreWrite(1);
+// Mark as uploaded so batch sync (_uploadChanges) won't re-upload this record
+if (typeof DeltaSync !== 'undefined') {
+  DeltaSync.markUploaded(collection, docId);
+  await DeltaSync.setLastSyncTimestamp(collection);
+}
 break;
 }
 case 'update':
@@ -4131,7 +4136,7 @@ firestoreUsageChart.update();
 }
 const originalOpenDataMenu = window.openDataMenu;
 window.openDataMenu = function() {
-// Refresh sync button state every time the menu is opened
+
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof originalOpenDataMenu === 'function') {
 originalOpenDataMenu();
@@ -5677,7 +5682,7 @@ expenses: expenseRecords,
 stockReturns: stockReturns,
 settings: await idb.get('naswar_default_settings', defaultSettings),
 deleted_records: Array.from(deletedRecordIds),
-_meta: { encryptedFor: currentUser.email, createdAt: Date.now(), version: 3, syncScheme: 'uuid-v2' }
+_meta: { encryptedFor: currentUser.email, createdAt: Date.now(), version: 3 }
 };
 const encEmail = currentUser.email;
 const encPassword = await promptVerifiedBackupPassword({ inputId: 'enc_bkp_pwd' });
@@ -5833,104 +5838,20 @@ showToast("Error reading file: " + err.message, 'error');
 }
 }
 }
-function migrateBackupSchema(data) {
+
+
+
+function normaliseBackupFields(data) {
   if (!data || typeof data !== 'object') return data;
-  const metaVersion = (data._meta && data._meta.version) ? Number(data._meta.version) : null;
-  const bkpVersion  = (data.backupMetadata && data.backupMetadata.version)
-                      ? String(data.backupMetadata.version)
-                      : null;
-  let version = 0;
-  if (metaVersion !== null && !isNaN(metaVersion)) {
-    version = metaVersion;
-  } else if (bkpVersion !== null) {
-    version = parseInt(bkpVersion, 10) || 0;
-  }
-  if (version < 2) {
-    if (!data.mfg && data.mfg_pro_pkr) {
-      data.mfg = data.mfg_pro_pkr;
-    }
-    if (!data.sales && data.noman_history) {
-      data.sales = data.noman_history;
-    }
-    if (!data.customerSales && data.customer_sales) {
-      data.customerSales = data.customer_sales;
-    }
-    if (!data.repSales && data.rep_sales) {
-      data.repSales = data.rep_sales;
-    }
-    if (!data.repCustomers && data.rep_customers) {
-      data.repCustomers = data.rep_customers;
-    }
-    if (!data.salesCustomers && data.sales_customers) {
-      data.salesCustomers = data.sales_customers;
-    }
-    if (!data.stockReturns && data.stock_returns) {
-      data.stockReturns = data.stock_returns;
-    }
-    if (!data.paymentTransactions && data.payment_transactions) {
-      data.paymentTransactions = data.payment_transactions;
-    }
-    if (!data.paymentEntities && data.payment_entities) {
-      data.paymentEntities = data.payment_entities;
-    }
-    if (!data.factoryInventoryData && data.factory_inventory_data) {
-      data.factoryInventoryData = data.factory_inventory_data;
-    }
-    if (!data.factoryProductionHistory && data.factory_production_history) {
-      data.factoryProductionHistory = data.factory_production_history;
-    }
-    if (!data.settings && data.naswar_default_settings) {
-      data.settings = data.naswar_default_settings;
-    }
-  }
-  if (data.mfg && !data.mfg_pro_pkr)       data.mfg_pro_pkr   = data.mfg;
-  if (data.mfg_pro_pkr && !data.mfg)       data.mfg           = data.mfg_pro_pkr;
-  if (data.sales && !data.noman_history)    data.noman_history = data.sales;
-  if (data.noman_history && !data.sales)    data.sales         = data.noman_history;
-  if (!data._migrated) {
-    data._migrated = { fromVersion: version, toVersion: 3, at: Date.now() };
-  }
+  if (data.mfg && !data.mfg_pro_pkr)    data.mfg_pro_pkr   = data.mfg;
+  if (data.mfg_pro_pkr && !data.mfg)    data.mfg           = data.mfg_pro_pkr;
+  if (data.sales && !data.noman_history) data.noman_history = data.sales;
+  if (data.noman_history && !data.sales) data.sales         = data.noman_history;
   return data;
 }
 async function _doRestoreMerge(data) {
 showToast('Analyzing backup file...', 'info', 5000);
-data = migrateBackupSchema(data);
-// --- UUID v2 intelligence: migrate any non-v2 UUIDs in the backup so that
-//     records which already exist locally under their v2 UUID are correctly
-//     identified as duplicates and are NOT re-uploaded to cloud. ---
-const _backupSyncScheme = (data._meta && data._meta.syncScheme) || '';
-if (_backupSyncScheme !== 'uuid-v2') {
-  const _collectionsToMigrate = [
-    { key: 'mfg_pro_pkr',               mode: 'production' },
-    { key: 'noman_history',              mode: 'admin'      },
-    { key: 'customerSales',              mode: 'admin'      },
-    { key: 'repSales',                   mode: 'rep'        },
-    { key: 'repCustomers',               mode: 'rep'        },
-    { key: 'salesCustomers',             mode: 'admin'      },
-    { key: 'factoryInventoryData',       mode: 'factory'    },
-    { key: 'factoryProductionHistory',   mode: 'factory'    },
-    { key: 'stockReturns',               mode: 'admin'      },
-    { key: 'paymentTransactions',        mode: 'admin'      },
-    { key: 'paymentEntities',            mode: 'admin'      },
-    { key: 'expenses',                   mode: 'admin'      },
-  ];
-  let _migratedCount = 0;
-  for (const { key, mode } of _collectionsToMigrate) {
-    if (!Array.isArray(data[key])) continue;
-    for (const rec of data[key]) {
-      if (!rec || !rec.id) continue;
-      const _meta = (typeof extractUUIDMeta === 'function') ? extractUUIDMeta(rec.id) : null;
-      if (_meta && _meta.isEnriched && _meta.version === 2) continue;
-      const _recMode = rec.isRepModeEntry === true ? 'rep' : mode;
-      const _ts = rec.createdAt || rec.timestamp || Date.now();
-      const _newId = (typeof migrateUUID === 'function') ? migrateUUID(rec.id, _ts, _recMode) : rec.id;
-      if (_newId !== rec.id) { rec.id = _newId; _migratedCount++; }
-    }
-  }
-  if (_migratedCount > 0) console.log('[Restore] Migrated', _migratedCount, 'UUIDs to v2 format before merge.');
-  // Mark backup as v2 now so downstream logic treats it correctly
-  if (data._meta) data._meta.syncScheme = 'uuid-v2';
-}
+data = normaliseBackupFields(data);
 const getTimestampValue = (record) => {
 if (!record) return 0;
 let ts = record.updatedAt || record.timestamp || record.createdAt || 0;
@@ -6069,7 +5990,7 @@ localArray.forEach(item => {
     DeltaSync.markDownloaded(firestoreCollection, sid);
   }
 });
-// Ensure every merged record has UUID integrity before writing to IDB
+
 mergedData[key] = merged.map(item => {
   if (!item) return item;
   if (!item.id || !validateUUID(String(item.id))) return ensureRecordIntegrity(item, false, true);
@@ -6247,7 +6168,7 @@ const syncMessage = cloudSyncSuccess ? ' and new/updated records uploaded to clo
 showToast(`Restore complete${syncMessage}! ${statsMessage}`, 'success', 5000);
 }
 async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
-  data = migrateBackupSchema(data);
+  data = normaliseBackupFields(data);
   showToast('↩ Reversing financial year close — replacing data...', 'info', 5000);
   const isAlive = honourPostCloseDeletions
     ? (item) => item && item.id && !deletedRecordIds.has(item.id)
@@ -8562,16 +8483,6 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   }); 
   scheduleAutomaticCleanup();
   setTimeout(() => validateAllDataOnStartup(), 5000);
-  setTimeout(async () => {
-    try {
-      const result = await migrateAllUUIDs();
-      if (result && result.migrated > 0) {
-        console.log(`[UUID Migration] Migrated ${result.migrated} records to enriched format.`);
-      }
-    } catch(e) {
-      console.warn('[UUID Migration] Migration error (non-fatal):', e);
-    }
-  }, 8000);
   if (window._connectionCheckInterval) clearInterval(window._connectionCheckInterval);
   window._connectionCheckInterval = setInterval(() => {
     if (isConnectionStale()) {
@@ -11320,8 +11231,8 @@ const adminSection = document.getElementById('admin-controls-section');
 if (adminSection) {
 adminSection.style.display = 'block';
 }
-// Always refresh sync button state when menu opens so it reflects
-// the current auth state, not a stale state from an earlier render.
+
+
 if (typeof updateSyncButton === 'function') updateSyncButton();
 requestAnimationFrame(() => {
 document.body.style.overflow = 'hidden';
@@ -11800,7 +11711,7 @@ expenses: await idb.get('expenses', []),
 stockReturns: stockReturns,
 settings: await idb.get('naswar_default_settings', defaultSettings),
 deleted_records: Array.from(deletedRecordIds),
-_meta: { encryptedFor: currentUser.email, createdAt: Date.now(), version: 3, syncScheme: 'uuid-v2' },
+_meta: { encryptedFor: currentUser.email, createdAt: Date.now(), version: 3 },
 backupMetadata: {
 version: '3.0',
 timestamp: Date.now(),

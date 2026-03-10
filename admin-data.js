@@ -2851,7 +2851,7 @@ return 0;
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
 async function runUnifiedCleanup() {
 if (!(await showGlassConfirm(
-  'Clean all duplicate records?\n\n\u2022 Scans every collection in IndexedDB\n\u2022 Removes duplicates using UUID v2 as the authoritative version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
+  'Clean all duplicate records?\n\n\u2022 Scans every collection in IndexedDB\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }
 ))) return;
 
@@ -2891,7 +2891,7 @@ try {
   let totalDuplicates = 0;
   const dirtyCollections = [];
 
-  // Step 1: Deduplicate every IDB collection using UUID v2 as conflict resolver
+  
   for (const col of COLLECTIONS) {
     const records = await idb.get(col.idb, []);
     if (!Array.isArray(records) || records.length === 0) continue;
@@ -2905,7 +2905,7 @@ try {
 
       if (seen.has(rec.id)) {
         dupsInCol++;
-        // UUID v2 is the authoritative resolver: timestamp -> sequence -> deviceShard
+        
         const cmp = (typeof compareRecordVersions === 'function')
           ? compareRecordVersions(rec, seen.get(rec.id))
           : ((rec.updatedAt || 0) - (seen.get(rec.id).updatedAt || 0));
@@ -2931,20 +2931,20 @@ try {
 
   showToast(`Found ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''}. Removing from Firestore\u2026`, 'info', 5000);
 
-  // Step 2: For each dirty collection, delete the losing Firestore docs then re-upload winners
+  
   if (firebaseDB && currentUser) {
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 
     for (const col of dirtyCollections) {
       try {
-        // Fetch all Firestore doc IDs in this collection
+        
         const snapshot = await userRef.collection(col.firestore).get();
         if (snapshot.empty) continue;
 
-        // Build set of canonical (winning) IDs from deduplicated IDB data
+        
         const canonicalIds = new Set(col.cleaned.map(r => String(r.id)));
 
-        // Delete any Firestore doc whose ID is not in the canonical set
+        
         const docsToDelete = snapshot.docs.filter(d => !canonicalIds.has(d.id));
         if (docsToDelete.length > 0) {
           const delBatches = [firebaseDB.batch()];
@@ -2958,7 +2958,7 @@ try {
           for (const b of delBatches) await b.commit();
         }
 
-        // Re-upload the winning records to ensure Firestore matches IDB exactly
+        
         const upBatches = [firebaseDB.batch()];
         let upOps = 0;
         for (const rec of col.cleaned) {
@@ -2995,7 +2995,7 @@ try {
     );
   }
 
-  // Step 3: Refresh UI
+  
   try { await refreshAllDisplays(); } catch(e) {}
 
 } catch (err) {
