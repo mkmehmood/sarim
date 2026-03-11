@@ -591,7 +591,7 @@ try {
 let _bfSalesChanged = false;
 const _bfSalesMap = new Map((Array.isArray(salesCustomers) ? salesCustomers : []).map(c => [c.name.toLowerCase(), c]));
 (Array.isArray(customerSales) ? customerSales : []).forEach(s => {
-if (s && (s.salesRep !== 'NONE')) return;
+if (s.salesRep !== 'NONE') return;
 const _bfName = s && s.customerName;
 if (_bfName && _bfName.trim() && !_bfSalesMap.has(_bfName.toLowerCase())) {
 const _bfC = { id: generateUUID('cust'), name: _bfName, phone: s.customerPhone || '', address: '', oldDebit: 0, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
@@ -612,7 +612,7 @@ const _bfRepMap = new Map(
 );
 (Array.isArray(repSales) ? repSales : []).forEach(s => {
 const _bfRName = s && s.customerName;
-const _bfRRep = s && s.salesRep;
+const _bfRRep = s.salesRep;
 if (_bfRName && _bfRName.trim() && _bfRRep && _bfRRep.trim()) {
 const _bfKey = `${_bfRRep.toLowerCase()}::${_bfRName.toLowerCase()}`;
 if (!_bfRepMap.has(_bfKey)) {
@@ -3612,6 +3612,7 @@ quantity: quantity,
 supplyStore: store,
 paymentType: paymentType,
 salesRep: salesRep,
+currentRepProfile: 'admin',
 totalCost: totalCost,
 totalValue: totalValue,
 profit: profit,
@@ -4675,7 +4676,7 @@ if (Array.isArray(salesHistory)) {
   salesHistory.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(id => reconciledCustomerIds.add(id)); });
 }
 const pendingCreditQty = (Array.isArray(customerSales) ? customerSales : [])
-  .filter(s => s.salesRep === seller && s.paymentType === 'CREDIT' && !s.creditReceived && !reconciledCustomerIds.has(s.id) && s.transactionType !== 'OLD_DEBT')
+  .filter(s => s.currentRepProfile === 'admin' && s.customerName === seller && s.paymentType === 'CREDIT' && !s.creditReceived && !reconciledCustomerIds.has(s.id) && s.transactionType !== 'OLD_DEBT')
   .reduce((sum, s) => sum + (s.quantity || 0), 0);
 const linkedIds = await markSalesEntriesAsReceived(seller, pendingCreditQty);
 entry.linkedSalesIds = linkedIds;
@@ -4904,7 +4905,8 @@ const linkedIds = [];
 let remainingQty = quantityToMark;
 const pendingSales = customerSales
 .filter(sale =>
-sale.salesRep === seller &&
+sale.currentRepProfile === 'admin' &&
+sale.customerName === seller &&
 sale.paymentType === 'CREDIT' &&
 !sale.creditReceived
 )
@@ -8125,7 +8127,8 @@ if (Array.isArray(salesHistory)) {
 }
 let totalSold = 0;
 (Array.isArray(customerSales) ? customerSales : []).forEach(sale => {
-  if (sale.salesRep === seller &&
+  if (sale.currentRepProfile === 'admin' &&
+      sale.customerName === seller &&
       sale.paymentType === 'CREDIT' &&
       !sale.creditReceived &&
       !reconciledSalesIds.has(sale.id) &&
@@ -12954,8 +12957,8 @@ const phoneContainerId = isRep ? 'rep-new-customer-phone-container' : 'new-custo
 const phoneContainer = document.getElementById(phoneContainerId);
 if (!phoneContainer) return;
 const allSales = isRep ?
-(Array.isArray(repSales) ? repSales : []).filter(s => s && s.salesRep === currentRepProfile) :
-(Array.isArray(customerSales) ? customerSales : []).filter(s => s);
+(Array.isArray(repSales) ? repSales : []).filter(s => s.salesRep === currentRepProfile) :
+(Array.isArray(customerSales) ? customerSales : []).filter(s => s && s.currentRepProfile === 'admin');
 const allRegistryNames = !isRep && Array.isArray(salesCustomers)
 ? salesCustomers.filter(c => c && c.name).map(c => String(c.name).trim().toLowerCase())
 : Array.isArray(repCustomers)
@@ -13001,7 +13004,7 @@ const _salesRegMap = new Map((_freshSalesReg).filter(c => c && c.id).map(c => [c
 if (Array.isArray(salesCustomers)) salesCustomers.forEach(c => { if (c && c.id && !_salesRegMap.has(c.id)) _salesRegMap.set(c.id, c); });
 const _mergedSalesReg = Array.from(_salesRegMap.values());
 const _custNamesFromSales = customerSales
-.filter(s => s)
+.filter(s => s && s.currentRepProfile === 'admin')
 .map(s => s.customerName)
 .filter(n => n && typeof n === 'string');
 const _custNamesFromRegistry = _mergedSalesReg
@@ -13089,7 +13092,7 @@ const _repRegMap = new Map((_freshRepReg).filter(c => c && c.id).map(c => [c.id,
 if (Array.isArray(repCustomers)) repCustomers.forEach(c => { if (c && c.id && !_repRegMap.has(c.id)) _repRegMap.set(c.id, c); });
 const _mergedRepReg = Array.from(_repRegMap.values());
 const _repNamesFromSales = repSales
-.filter(s => s && s.salesRep === currentRepProfile)
+.filter(s => s.salesRep === currentRepProfile)
 .map(s => s.customerName)
 .filter(n => n && typeof n === 'string');
 const _repNamesFromRegistry = _mergedRepReg

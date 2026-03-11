@@ -1991,7 +1991,7 @@ const AppState = Object.seal({
   auth:                     null,
   isSyncing:                false,
   appMode:                  'admin',
-  currentRepProfile:        'NORAN SHAH',
+  currentRepProfile:        'admin',
   salesRepsList:            ['NORAN SHAH', 'NOMAN SHAH'],
   userRolesList:            [],
   db:                       [],

@@ -15,7 +15,7 @@ window._selectCustomerBase = selectCustomer;
 async function calculateCustomerStatsForDisplay(name) {
 if (!name) return;
 const sales = customerSales.filter(s =>
-s && s.customerName && s.customerName.toLowerCase() === name.toLowerCase()
+s && s.currentRepProfile === 'admin' && s.customerName && s.customerName.toLowerCase() === name.toLowerCase()
 );
 if (sales.length === 0) {
 document.getElementById('customer-info-display').classList.add('hidden');
@@ -25,7 +25,7 @@ let totalCredit = 0;
 let totalQty = 0;
 sales.forEach(s => {
 totalQty += (s.quantity || 0);
-const isRepLinked = s.salesRep && s.salesRep !== 'NONE';
+const isRepLinked = s.salesRep !== 'NONE';
 if (s.transactionType === 'OLD_DEBT') {
 if (!s.creditReceived) {
 const partialPaid = s.partialPaymentReceived || 0;
@@ -103,6 +103,7 @@ const customerStats = {};
 customerSales.forEach(sale => {
 const name = sale.customerName;
 if (!name || name.trim() === '') return;
+if (sale.currentRepProfile !== 'admin') return;
 const isRepLinked = sale.salesRep && sale.salesRep !== 'NONE';
 if (!customerStats[name]) {
 customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
@@ -156,7 +157,7 @@ if (Array.isArray(salesCustomers)) {
 const statsNames = new Set(sortedCustomers.map(c => c.name.toLowerCase()));
 const directSalesNames = new Set(
 (Array.isArray(customerSales) ? customerSales : [])
-.filter(s => s.customerName)
+.filter(s => s.customerName && s.currentRepProfile === 'admin')
 .map(s => s.customerName.toLowerCase())
 );
 salesCustomers.forEach(sc => {
@@ -354,18 +355,18 @@ recordMap.set(s.id, s);
 }
 customerSales = Array.from(recordMap.values());
 transactions = customerSales.filter(s =>
-s && s.customerName === name
+s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 } else {
 transactions = customerSales.filter(s =>
-s && s.customerName === name
+s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 }
 } catch (error) {
 console.error('Customer data operation failed.', _safeErr(error));
 showToast('Customer data operation failed.', 'error');
 transactions = customerSales.filter(s =>
-s && s.customerName === name
+s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 }
 const rangeSelect = document.getElementById('customerPdfRange');

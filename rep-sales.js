@@ -587,7 +587,7 @@ if (Array.isArray(repCustomers)) {
 const custMapNames = new Set(Object.keys(custMap).map(n => n.toLowerCase()));
 const profileRepNames = new Set(
 repSales
-.filter(s => s && s.salesRep === currentRepProfile && s.customerName)
+.filter(s => s.salesRep === currentRepProfile && s.customerName)
 .map(s => s.customerName.toLowerCase())
 );
 repCustomers.forEach(rc => {
@@ -720,7 +720,7 @@ if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 async function deleteCurrentRepCustomer() {
 if (!currentManagingRepCustomer) return;
 const name = currentManagingRepCustomer;
-const txs = repSales.filter(s => s && s.customerName === name && s.salesRep === currentRepProfile);
+const txs = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 const totalDebt = txs
 .filter(s => s.paymentType === 'CREDIT' && !s.creditReceived)
 .reduce((sum, s) => sum + (s.totalValue || 0) - (s.partialPaymentReceived || 0), 0);
@@ -914,9 +914,9 @@ nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
 const contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && c.salesRep === currentRepProfile)
   || repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && !c.salesRep);
-const saleRecord = repSales.find(s => s && s.customerName === customerName && s.salesRep === currentRepProfile && s.customerPhone);
+const saleRecord = repSales.find(s => s.customerName === customerName && s.salesRep === currentRepProfile && s.customerPhone);
 const existingOldDebtTx = repSales.find(s =>
-s && s.customerName && s.customerName.toLowerCase() === customerName.toLowerCase() &&
+s.customerName && s.customerName.toLowerCase() === customerName.toLowerCase() &&
 s.transactionType === 'OLD_DEBT' &&
 s.salesRep === currentRepProfile
 );
@@ -980,13 +980,13 @@ salesArray = Array.from(mSales.values());
 const renamedRecords = [];
 if (nameChanged) {
 salesArray.forEach(s => {
-if (s && s.customerName && s.customerName.toLowerCase() === originalName.toLowerCase() && s.salesRep === currentRepProfile) {
+if (s.customerName && s.customerName.toLowerCase() === originalName.toLowerCase() && s.salesRep === currentRepProfile) {
 s.customerName = name;
 renamedRecords.push(s);
 }
 });
 }
-const oldDebtIdx = salesArray.findIndex(s => s && s.customerName === name &&
+const oldDebtIdx = salesArray.findIndex(s => s.customerName === name &&
 s.transactionType === 'OLD_DEBT' && s.salesRep === currentRepProfile);
 let oldDebtModified = false, oldDebtRecord = null, deletedOldDebtId = null;
 if (oldDebit > 0) {
@@ -1131,7 +1131,7 @@ await new Promise(r => setTimeout(r, 200));
 }
 if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Failed to load PDF library. Please refresh and try again.');
 let transactions = repSales.filter(s =>
-s && s.customerName === customerName && s.salesRep === currentRepProfile
+s.customerName === customerName && s.salesRep === currentRepProfile
 );
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
