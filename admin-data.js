@@ -1,7 +1,7 @@
 async function updateDeltaSyncStatsDisplay() {
   try {
     const modal = document.getElementById('delta-stats-modal');
-    if (!modal) return; 
+    if (!modal) return;
     const statsRows = modal.querySelectorAll('[data-sync-stat]');
     if (statsRows.length > 0 && typeof DeltaSync !== 'undefined') {
       const stats = await DeltaSync.getSyncStats();
@@ -44,7 +44,7 @@ document.body.appendChild(loadingModal);
 try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const [
-productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
+productionSnap, salesSnap, customerSalesLegacySnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
 salesCustomersSnap,
 transactionsSnap, entitiesSnap, inventorySnap, factoryHistorySnap,
 returnsSnap, expensesSnap, deletionsSnap,
@@ -52,6 +52,7 @@ settingsDoc, factorySettingsDoc, expenseCategoriesDoc, teamDoc
 ] = await Promise.all([
 userRef.collection('production').get(),
 userRef.collection('sales').get(),
+userRef.collection('customer_sales').get(),
 userRef.collection('calculator_history').get(),
 userRef.collection('rep_sales').get(),
 userRef.collection('rep_customers').get(),
@@ -69,20 +70,23 @@ userRef.collection('expenseCategories').doc('categories').get(),
 userRef.collection('settings').doc('team').get()
 ]);
 const stats = await DeltaSync.getSyncStats();
+const uuidStats = (typeof UUIDSyncRegistry !== 'undefined') ? UUIDSyncRegistry.stats() : {};
+const myDeviceShard = uuidStats._myDeviceShard || '—';
 const collections = [
-{ name: 'production', snap: productionSnap, icon: '', description: 'Production records (db)' },
-{ name: 'sales', snap: salesSnap, icon: '', description: 'Customer sales (customerSales)' },
-{ name: 'rep_sales', snap: repSalesSnap, icon: '', description: 'Representative sales (repSales)' },
-{ name: 'rep_customers', snap: repCustomersSnap, icon: '', description: 'Rep customers with contacts (repCustomers)' },
-{ name: 'sales_customers', snap: salesCustomersSnap, icon: '', description: 'Sales customers with contacts (salesCustomers)' },
-{ name: 'calculator_history', snap: calcHistorySnap, icon: '', description: 'Calculator history (salesHistory)' },
-{ name: 'transactions', snap: transactionsSnap, icon: '', description: 'Payment transactions (paymentTransactions)' },
-{ name: 'entities', snap: entitiesSnap, icon: '', description: 'Payment entities (paymentEntities)' },
-{ name: 'inventory', snap: inventorySnap, icon: '', description: 'Factory inventory (factoryInventoryData)' },
-{ name: 'factory_history', snap: factoryHistorySnap,icon: '', description: 'Factory history (factoryProductionHistory)' },
-{ name: 'returns', snap: returnsSnap, icon: '', description: 'Stock returns (stockReturns)' },
-{ name: 'expenses', snap: expensesSnap, icon: '', description: 'Expense records (expenseRecords)' },
-{ name: 'deletions', snap: deletionsSnap, icon: '', description: 'Tombstones (deletedRecordIds)' }
+{ name: 'production',         snap: productionSnap,            idbKey: 'mfg_pro_pkr',               jsVar: 'db',                       description: 'Factory production records' },
+{ name: 'sales',              snap: salesSnap,                  idbKey: 'customer_sales',             jsVar: 'customerSales',            description: 'Direct customer sales (isRepModeEntry:false)' },
+{ name: 'customer_sales',     snap: customerSalesLegacySnap,    idbKey: 'customer_sales',             jsVar: 'customerSales',            description: 'Legacy alias for sales collection (placeholder only)' },
+{ name: 'rep_sales',          snap: repSalesSnap,               idbKey: 'rep_sales',                  jsVar: 'repSales',                 description: 'Rep sales to customers (isRepModeEntry:true)' },
+{ name: 'rep_customers',      snap: repCustomersSnap,           idbKey: 'rep_customers',              jsVar: 'repCustomers',             description: 'Rep customer contact registry' },
+{ name: 'sales_customers',    snap: salesCustomersSnap,         idbKey: 'sales_customers',            jsVar: 'salesCustomers',           description: 'Sales tab customer contact registry' },
+{ name: 'calculator_history', snap: calcHistorySnap,            idbKey: 'noman_history',              jsVar: 'salesHistory',             description: 'Calculator / daily ledger entries' },
+{ name: 'transactions',       snap: transactionsSnap,           idbKey: 'payment_transactions',       jsVar: 'paymentTransactions',      description: 'Cash & entity payment transactions' },
+{ name: 'entities',           snap: entitiesSnap,               idbKey: 'payment_entities',           jsVar: 'paymentEntities',          description: 'Payment entity accounts' },
+{ name: 'inventory',          snap: inventorySnap,              idbKey: 'factory_inventory_data',     jsVar: 'factoryInventoryData',     description: 'Factory raw material inventory' },
+{ name: 'factory_history',    snap: factoryHistorySnap,         idbKey: 'factory_production_history', jsVar: 'factoryProductionHistory', description: 'Factory batch production history' },
+{ name: 'returns',            snap: returnsSnap,                idbKey: 'stock_returns',              jsVar: 'stockReturns',             description: 'Stock return records' },
+{ name: 'expenses',           snap: expensesSnap,               idbKey: 'expenses',                   jsVar: 'expenseRecords',           description: 'Expense entries' },
+{ name: 'deletions',          snap: deletionsSnap,              idbKey: 'deletion_records',           jsVar: 'deletedRecordIds',         description: 'Tombstone records for deleted IDs' }
 ];
 const documents = [
 {
@@ -147,28 +151,38 @@ const count = col.snap.size;
 totalDocs += count;
 const stat = stats[col.name] || { syncCount: 0, totalReads: 0, totalWrites: 0, lastSync: null };
 const lastSync = stat.lastSync ? new Date(stat.lastSync).toLocaleString() : 'Never';
-const hasListener = col.name !== 'deletions';
+const hasListener = col.name !== 'deletions' && col.name !== 'customer_sales';
+const uuidColStat = uuidStats[col.name] || {};
+const uploadedCount = uuidColStat.uploaded || 0;
+const downloadedCount = uuidColStat.downloaded || 0;
+const isDirty = DeltaSync.isDirty(col.name);
+const isLegacy = col.name === 'customer_sales';
 html += `
-<div style="margin-bottom: 10px; padding: 12px; background: var(--input-bg); border-radius: 16px; border: 1px solid var(--glass-border);">
+<div style="margin-bottom: 10px; padding: 12px; background: var(--input-bg); border-radius: 16px; border: 1px solid ${isLegacy ? 'rgba(255,159,10,0.3)' : 'var(--glass-border)'};">
 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-<div>
-<div style="font-weight: 600; font-size: 0.85rem; color: var(--text);">
-${col.icon} ${col.name}
+<div style="flex:1; min-width:0;">
+<div style="font-weight: 600; font-size: 0.85rem; color: ${isLegacy ? 'var(--warning)' : 'var(--text)'}; font-family:'Geist Mono','Courier New',monospace;">
+${col.name}${isLegacy ? ' ⚠ legacy' : ''}
 </div>
-<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">
-${col.description}
+<div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 3px;">${col.description}</div>
+<div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; font-family:'Geist Mono','Courier New',monospace;">
+IDB: <span style="color:var(--accent)">${col.idbKey}</span> → JS: <span style="color:var(--accent)">${col.jsVar}</span>
 </div>
 </div>
-<div style="text-align: right;">
+<div style="text-align: right; flex-shrink:0; margin-left:8px;">
 <div style="font-size: 0.75rem; font-weight: 600; color: var(--accent);">
 ${count} docs
 </div>
 ${hasListener ? '<div style="font-size: 0.65rem; color: #30d158;">● Live</div>' : '<div style="font-size: 0.65rem; color: var(--text-muted);">○ Polling</div>'}
 </div>
 </div>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.65rem; color: var(--text-muted);">
-<div>Syncs: ${stat.syncCount || 0}</div>
-<div>Last: ${lastSync}</div>
+<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 0.65rem; color: var(--text-muted);">
+<div title="Times this collection was synced">Syncs: ${stat.syncCount || 0}</div>
+<div title="Last sync timestamp">Last: ${lastSync}</div>
+<div title="Pending local changes" style="color:${isDirty ? '#f59e0b' : 'inherit'}">${isDirty ? '⚠ pending' : '✔ clean'}</div>
+<div title="UUIDs confirmed uploaded this session (UUID-v2 gate)">↑ ${uploadedCount} uploaded</div>
+<div title="UUIDs confirmed downloaded this session (UUID-v2 gate)">↓ ${downloadedCount} downloaded</div>
+<div title="This device shard encoded in UUIDs created here" style="font-family:monospace">shard: ${myDeviceShard}</div>
 </div>
 </div>
 `;
@@ -813,7 +827,7 @@ if (!valid) {
     confirmBtn.onclick = verifyAndExecuteCloseYear;
   }
   if (inp) { inp.value = ''; inp.focus(); }
-  validateCloseYearInput(''); 
+  validateCloseYearInput('');
   return;
 }
 _fyVerifiedPassword = pwd;
@@ -1143,7 +1157,7 @@ async function restoreFromBackup(backupTimestamp) {
               });
               if (deleteCount > 0) {
                 await batch.commit();
-                await new Promise(r => setTimeout(r, 0)); 
+                await new Promise(r => setTimeout(r, 0));
               }
             } catch (colErr) {
               console.warn(`Firebase rollback warning for ${col.name}:`, colErr);
@@ -1268,7 +1282,7 @@ try {
   try {
     encPassword = _fyVerifiedPassword || null;
   } finally {
-    _fyVerifiedPassword = null; 
+    _fyVerifiedPassword = null;
   }
   if (encPassword) {
     try {
@@ -1594,7 +1608,7 @@ for (const [store, items] of Object.entries(storeGroups)) {
   mergedRecords.push(mergedRecord);
 }
 const sellerReturnGroups = {};
-const sellerReturnTotals = {}; 
+const sellerReturnTotals = {};
 returnItems.forEach(item => {
   const seller = item.returnedBy || item.seller || 'Unknown';
   const store  = item.store      || 'UNKNOWN';
@@ -1638,14 +1652,14 @@ for (const [, grp] of Object.entries(sellerReturnGroups)) {
     isReturn:      true,
     returnedBy:    seller,
     returnNote:    `Merged returns by ${seller} → ${store}`,
-    returnsByStore: returnsByStoreForThisSeller, 
+    returnsByStore: returnsByStoreForThisSeller,
     mergedRecordCount: items.length,
     mergedSummary: {
       dateRange:   { from: allDates[0] || nowISODate, to: allDates.slice(-1)[0] || nowISODate },
       recordCount: items.length,
       store,
       seller,
-      returnsByStore: returnsByStoreForThisSeller 
+      returnsByStore: returnsByStoreForThisSeller
     }
   }), false, true);
   mergedRecords.push(mergedReturn);
@@ -1678,10 +1692,10 @@ const nowISODate = nowDate.toISOString().split('T')[0];
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 const mergedRecords = [];
-const customerBuckets = {};  
+const customerBuckets = {};
 customerSales.forEach(item => {
   if (item.isMerged === true) return;
-  if (isRepSale(item)) return;  
+  if (isRepSale(item)) return;
   const name = item.customerName || 'Unknown';
   if (!customerBuckets[name]) {
     customerBuckets[name] = {
@@ -1726,9 +1740,9 @@ for (const [customer, b] of Object.entries(customerBuckets)) {
     totalCost   += (item.totalCost  || 0);
     totalProfit += (item.profit     || 0);
     if (item.paymentType === 'CREDIT' && !item.creditReceived) {
-      unrealizedProfit += (item.profit || 0);  
+      unrealizedProfit += (item.profit || 0);
     } else {
-      realizedProfit += (item.profit || 0);    
+      realizedProfit += (item.profit || 0);
     }
     if (item.paymentType === 'CASH' || (item.paymentType === 'CREDIT' && item.creditReceived)) {
       cashValue += (item.totalValue || 0);
@@ -1792,7 +1806,7 @@ for (const [customer, b] of Object.entries(customerBuckets)) {
         to:   allDates.slice(-1)[0] || nowISODate
       },
       recordCount,
-      originalRecordIds:   originalRecordIds  
+      originalRecordIds:   originalRecordIds
     }
   }), false, true);
   mergedRecords.push(mergedRecord);
@@ -1943,7 +1957,7 @@ for (const [entityId, items] of Object.entries(entityGroups)) {
   const netBalance = parseFloat((totals.in - totals.out).toFixed(2));
   const SIGNIFICANT_BALANCE_THRESHOLD = 0.01;
   if (Math.abs(netBalance) < SIGNIFICANT_BALANCE_THRESHOLD) {
-    continue;  
+    continue;
   }
   const mergedId = generateUUID('pay-merged');
   const datesSorted = items.map(i => i.date).filter(Boolean).sort();
@@ -1958,7 +1972,7 @@ for (const [entityId, items] of Object.entries(entityGroups)) {
     description: netBalance > 0
       ? `Opening balance (receivable) — carried from previous year (${items.length} txns)`
       : `Opening balance (payable) — carried from previous year (${items.length} txns)`,
-    isPayable: netBalance < 0,   
+    isPayable: netBalance < 0,
     isExpense: false,
     mergedRecordCount: items.length,
     mergedSummary: {
@@ -2068,7 +2082,7 @@ const mergedRecords = [];
 const repBuckets = {};
 repSales.forEach(item => {
   if (item.isMerged === true) return;
-  if (!isRepSale(item)) return;  
+  if (!isRepSale(item)) return;
   const name = item.customerName || 'Unknown';
   const rep  = item.salesRep     || 'NONE';
   const key  = `${name}::${rep}`;
@@ -2115,9 +2129,9 @@ for (const [, b] of Object.entries(repBuckets)) {
     totalCost   += (item.totalCost  || 0);
     totalProfit += (item.profit     || 0);
     if (item.paymentType === 'CREDIT' && !item.creditReceived) {
-      unrealizedProfit += (item.profit || 0);  
+      unrealizedProfit += (item.profit || 0);
     } else {
-      realizedProfit += (item.profit || 0);    
+      realizedProfit += (item.profit || 0);
     }
     if (item.paymentType === 'CASH' || (item.paymentType === 'CREDIT' && item.creditReceived)) {
       cashValue += (item.totalValue || 0);
@@ -2180,7 +2194,7 @@ for (const [, b] of Object.entries(repBuckets)) {
         to:   allDates.slice(-1)[0] || nowISODate
       },
       recordCount,
-      originalRecordIds:   originalRecordIds  
+      originalRecordIds:   originalRecordIds
     }
   }), false, true);
   mergedRecords.push(mergedRecord);
@@ -2277,7 +2291,7 @@ const nowDate    = new Date();
 const nowISODate = nowDate.toISOString().split('T')[0];
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
-const storeGroups = {};  
+const storeGroups = {};
 stockReturns.forEach(ret => {
   if (ret.isMerged === true) return;
   const store = ret.store || 'UNKNOWN';
@@ -2309,7 +2323,7 @@ for (const [, grp] of Object.entries(storeGroups)) {
   const base = _buildMergedBase(mergedId, mergeEpoch, nowISODate, nowTime, {});
   const mergedRecord = ensureRecordIntegrity({
     ...base,
-    date,          
+    date,
     store,
     quantity:      parseFloat(totalQty.toFixed(4)),
     seller:        sellers.join(', ') || 'Multiple',
@@ -2891,7 +2905,6 @@ try {
   let totalDuplicates = 0;
   const dirtyCollections = [];
 
-  
   for (const col of COLLECTIONS) {
     const records = await idb.get(col.idb, []);
     if (!Array.isArray(records) || records.length === 0) continue;
@@ -2905,7 +2918,7 @@ try {
 
       if (seen.has(rec.id)) {
         dupsInCol++;
-        
+
         const cmp = (typeof compareRecordVersions === 'function')
           ? compareRecordVersions(rec, seen.get(rec.id))
           : ((rec.updatedAt || 0) - (seen.get(rec.id).updatedAt || 0));
@@ -2931,20 +2944,17 @@ try {
 
   showToast(`Found ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''}. Removing from Firestore\u2026`, 'info', 5000);
 
-  
   if (firebaseDB && currentUser) {
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 
     for (const col of dirtyCollections) {
       try {
-        
+
         const snapshot = await userRef.collection(col.firestore).get();
         if (snapshot.empty) continue;
 
-        
         const canonicalIds = new Set(col.cleaned.map(r => String(r.id)));
 
-        
         const docsToDelete = snapshot.docs.filter(d => !canonicalIds.has(d.id));
         if (docsToDelete.length > 0) {
           const delBatches = [firebaseDB.batch()];
@@ -2958,7 +2968,6 @@ try {
           for (const b of delBatches) await b.commit();
         }
 
-        
         const upBatches = [firebaseDB.batch()];
         let upOps = 0;
         for (const rec of col.cleaned) {
@@ -2995,7 +3004,6 @@ try {
     );
   }
 
-  
   try { await refreshAllDisplays(); } catch(e) {}
 
 } catch (err) {
@@ -3007,3 +3015,4 @@ window.runUnifiedCleanup = runUnifiedCleanup;
 window._showDeltaSyncDetails = showDeltaSyncDetails;
 window._runUnifiedCleanup = runUnifiedCleanup;
 window._showCloseFinancialYearDialog = showCloseFinancialYearDialog;
+

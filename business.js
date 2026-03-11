@@ -1,4 +1,3 @@
-
 function _safeErr(err) {
   if (err === null || err === undefined) return new Error('Unknown error (null)');
   if (err instanceof Error) return err;
@@ -18,7 +17,7 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-const esc = escapeHtml; 
+const esc = escapeHtml;
 function _triggerFileDownload(blob, filename) {
   if (typeof window.navigator.msSaveBlob === 'function') {
     window.navigator.msSaveBlob(blob, filename);
@@ -59,8 +58,8 @@ function _readFileAsText(file) {
   });
 }
 const GNDVirtualScroll = (() => {
-  const OVERSCAN   = 5;   
-  const FALLBACK_H = 44;  
+  const OVERSCAN   = 5;
+  const FALLBACK_H = 44;
   const _instances = new Map();
   function _makeSpacerRow(colSpan) {
     const tr = document.createElement('tr');
@@ -170,7 +169,7 @@ const GNDVirtualScroll = (() => {
     scroller.addEventListener('scroll', inst.scrollHandler, { passive: true });
     if (typeof ResizeObserver !== 'undefined') {
       inst.resizeObs = new ResizeObserver(() => {
-        inst.renderedFirst = -1; 
+        inst.renderedFirst = -1;
         inst.renderedLast  = -1;
         _measureRowHeight(inst);
         _render(inst);
@@ -411,11 +410,11 @@ const IDBCrypto = (() => {
   let _preWarmPromise = null;
   const PBKDF2_ITERS = 100000;
   const DB_NAME = 'GZND_SecureStorage';
-  const DB_VERSION = 3; 
+  const DB_VERSION = 3;
   const KEY_STORE = 'encryptedKeys';
   const ENTROPY_STORE = 'deviceEntropy';
-  const SESSION_STORE = 'userSession';     
-  const WRAPKEY_CACHE_STORE = 'wrapKeyCache'; 
+  const SESSION_STORE = 'userSession';
+  const WRAPKEY_CACHE_STORE = 'wrapKeyCache';
   const IDB_KDF_SALT = new Uint8Array([
     0x47,0x5A,0x4E,0x44,0x49,0x44,0x42,0x4B,
     0x45,0x59,0x53,0x41,0x4C,0x54,0x76,0x31,
@@ -424,7 +423,7 @@ const IDBCrypto = (() => {
   ]);
   const IV_LEN = 12;
   const ENC_PREFIX = 'GZND_ENC_';
-  const KEY_VERSION = '3'; 
+  const KEY_VERSION = '3';
   const LEGACY_LS_KEY = '_gznd_idbk_v2';
   const LEGACY_LS_SECRET = '_gznd_wksec_v2';
   const LEGACY_LS_EMAIL = '_gznd_key_email';
@@ -554,18 +553,18 @@ const IDBCrypto = (() => {
   async function deriveSessionKey(email, password) {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
-      'raw', 
+      'raw',
       enc.encode(email.toLowerCase().trim() + ':' + password),
-      'PBKDF2', 
-      false, 
+      'PBKDF2',
+      false,
       ['deriveKey']
     );
     return crypto.subtle.deriveKey(
-      { 
-        name: 'PBKDF2', 
-        salt: IDB_KDF_SALT, 
-        iterations: PBKDF2_ITERS, 
-        hash: 'SHA-256' 
+      {
+        name: 'PBKDF2',
+        salt: IDB_KDF_SALT,
+        iterations: PBKDF2_ITERS,
+        hash: 'SHA-256'
       },
       keyMaterial,
       { name: 'AES-GCM', length: 256 },
@@ -608,7 +607,7 @@ const IDBCrypto = (() => {
       },
       keyMaterial,
       { name: 'AES-KW', length: 256 },
-      true,                          
+      true,
       ['wrapKey', 'unwrapKey']
     );
     try {
@@ -740,7 +739,7 @@ const IDBCrypto = (() => {
       const enc = new TextEncoder();
       const wkMaterial = await crypto.subtle.importKey('raw', enc.encode(wrapSecret), 'PBKDF2', false, ['deriveKey']);
       const wrapKey = await crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt: wrapSalt, iterations: APP_CONFIG.PBKDF2_ITERATIONS_LEGACY, hash: 'SHA-256' }, 
+        { name: 'PBKDF2', salt: wrapSalt, iterations: APP_CONFIG.PBKDF2_ITERATIONS_LEGACY, hash: 'SHA-256' },
         wkMaterial,
         { name: 'AES-KW', length: 256 },
         false,
@@ -797,7 +796,7 @@ const IDBCrypto = (() => {
       await _persistKey(_sessionKey, email);
       _keyEmail = email;
       await _idbSessionSet('login', {
-        uid: null, 
+        uid: null,
         email,
         lastLogin: new Date().toISOString()
       });
@@ -1534,10 +1533,13 @@ if (!IDBCrypto.isReady()) {
     }
   }
 }
+if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllUploadedIds === 'function') {
+  DeltaSync.loadAllUploadedIds().catch(() => {});
+}
 }
 const DEVICE_ID_COOKIE = 'gz_did';
 const INSTALL_TOKEN_COOKIE = 'gz_itk';
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 3650; 
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 3650;
 const _CACHE_DEVICE_KEY = 'gz_device_anchor';
 const _CACHE_STORE_NAME = 'gz-device-anchor-v1';
 function _readCookie(name) {
@@ -1554,15 +1556,12 @@ console.warn('_writeCookie failed:', e);
 }
 }
 function _generateUUID() {
-  
-  
-  
-  
+
   const buf = new Uint8Array(16);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     crypto.getRandomValues(buf);
   } else {
-    
+
     let s0 = (Date.now() ^ 0xdeadbeef) >>> 0;
     let s1 = ((Date.now() / 1000) ^ 0xcafebabe) >>> 0;
     for (let i = 0; i < 16; i++) {
@@ -1572,11 +1571,11 @@ function _generateUUID() {
       buf[i] = s0 & 0xff;
     }
   }
-  buf[6] = (buf[6] & 0x0f) | 0x40; 
-  buf[8] = (buf[8] & 0x3f) | 0x80; 
+  buf[6] = (buf[6] & 0x0f) | 0x40;
+  buf[8] = (buf[8] & 0x3f) | 0x80;
   const hex = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
   const core = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
-  return 'dev-' + core; 
+  return 'dev-' + core;
 }
 async function _readCacheAnchor() {
 try {
@@ -1970,7 +1969,7 @@ const AppState = Object.seal({
   currentRepProfile:        'NORAN SHAH',
   salesRepsList:            ['NORAN SHAH', 'NOMAN SHAH'],
   userRolesList:            [],
-  db:                       [],    
+  db:                       [],
   salesHistory:             [],
   customerSales:            [],
   repSales:                 [],
@@ -1981,7 +1980,7 @@ const AppState = Object.seal({
   expenseCategories:        [],
   deletedRecordIds:         new Set(),
   deletionRecordsArray:     [],
-  deletionRecords:          [],    
+  deletionRecords:          [],
   paymentEntities:          [],
   paymentTransactions:      [],
   factoryInventoryData:     [],
@@ -2058,7 +2057,7 @@ Object.defineProperties(window, Object.fromEntries(
     get: desc.get,
     set: desc.set,
     enumerable: true,
-    configurable: false   
+    configurable: false
   }])
 ));
 let _cachedDeviceShard = null;
@@ -2120,6 +2119,9 @@ async function initDeviceShard() {
     _cachedDeviceShard = _deriveDeviceShard(did);
   } catch (e) {
     _cachedDeviceShard = '0000';
+  }
+  if (typeof UUIDSyncRegistry !== 'undefined') {
+    UUIDSyncRegistry.setDeviceShard(_cachedDeviceShard);
   }
 }
 function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverride = null) {

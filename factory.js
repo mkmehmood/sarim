@@ -1199,7 +1199,7 @@ const validatedRecord = ensureRecordIntegrity(productionRecord);
 factoryProductionHistory.unshift(validatedRecord);
 await Promise.all([
 saveWithTracking('factory_inventory_data', factoryInventoryData),
-saveWithTracking('factory_production_history', factoryProductionHistory)
+saveWithTracking('factory_production_history', factoryProductionHistory, validatedRecord)
 ]);
 notifyDataChange('factory');
 emitSyncUpdate({
@@ -1647,3 +1647,4 @@ showToast(" Failed to delete entry. Please try again.", "error");
 }
 }
 }
+

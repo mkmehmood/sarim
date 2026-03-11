@@ -132,7 +132,7 @@ if (_repTV) _repTV.innerText = "" + fmtAmt(safeNumber(debt - inputAmt, 0));
 function calculateRepSalePreview() {
 if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
-const salePrice = getSalePriceForStore('STORE_A'); 
+const salePrice = getSalePriceForStore('STORE_A');
 const _repTVS = document.getElementById('rep-total-value');
 if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
@@ -170,8 +170,8 @@ showToast('An unexpected error occurred.', 'error');
 }
 const now = new Date();
 const timeString = now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
-const costPerKg = getCostPriceForStore('STORE_A'); 
-const salePrice = getSalePriceForStore('STORE_A'); 
+const costPerKg = getCostPriceForStore('STORE_A');
+const salePrice = getSalePriceForStore('STORE_A');
 let transactionRecord = {};
 if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
@@ -247,7 +247,7 @@ syncedAt: new Date().toISOString()
 transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 }
 repSales.push(transactionRecord);
-await saveWithTracking('rep_sales', repSales);
+await saveWithTracking('rep_sales', repSales, transactionRecord);
 try {
 const _rcName = transactionRecord.customerName;
 const _rcPhone = transactionRecord.customerPhone || '';
@@ -257,7 +257,7 @@ if (!existsInRepRegistry) {
 const _rcContact = { id: generateUUID('rep_cust'), name: _rcName, phone: _rcPhone, address: '', oldDebit: 0, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 if (!Array.isArray(repCustomers)) repCustomers = [];
 repCustomers.push(_rcContact);
-await saveWithTracking('rep_customers', repCustomers);
+await saveWithTracking('rep_customers', repCustomers, _rcContact);
 saveRecordToFirestore('rep_customers', _rcContact).catch(e => {});
 }
 }
@@ -515,7 +515,7 @@ collections += sale.totalValue || 0;
 cashSales += sale.totalValue || 0;
 } else if (sale.paymentType === 'CREDIT') {
 if (sale.creditReceived) {
-cashSales += sale.totalValue || 0; 
+cashSales += sale.totalValue || 0;
 } else {
 creditSales += (sale.totalValue || 0) - (sale.partialPaymentReceived || 0);
 }
@@ -537,10 +537,10 @@ return;
 try {
 const freshRepSales = await idb.get('rep_sales', []);
 if (Array.isArray(freshRepSales)) {
-const recordMap = new Map(freshRepSales.map(s => [s.id, s]));
+const recordMap = new Map(freshRepSales.filter(s => s && s.isRepModeEntry === true).map(s => [s.id, s]));
 if (Array.isArray(repSales)) {
 repSales.forEach(s => {
-if (!recordMap.has(s.id)) {
+if (s && s.isRepModeEntry === true && !recordMap.has(s.id)) {
 recordMap.set(s.id, s);
 }
 });
@@ -768,12 +768,12 @@ let transactions = [];
 try {
 const dbSales = await idb.get('rep_sales', []);
 if (Array.isArray(dbSales)) {
-const recordMap = new Map(dbSales.map(s => [s.id, s]));
-if (Array.isArray(repSales)) repSales.forEach(s => { if (!recordMap.has(s.id)) recordMap.set(s.id, s); });
+const recordMap = new Map(dbSales.filter(s => s && s.isRepModeEntry === true).map(s => [s.id, s]));
+if (Array.isArray(repSales)) repSales.forEach(s => { if (s && s.isRepModeEntry === true && !recordMap.has(s.id)) recordMap.set(s.id, s); });
 repSales = Array.from(recordMap.values());
 transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 } else {
-transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile && s.isRepModeEntry === true);
 }
 } catch (e) {
 console.error('Rep sales operation failed.', _safeErr(e));
@@ -970,7 +970,7 @@ contact = { id: generateUUID('rep_cust'), name, phone, address, oldDebit, salesR
 createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 repCustomers.push(contact);
 }
-await saveWithTracking('rep_customers', repCustomers);
+await saveWithTracking('rep_customers', repCustomers, contact);
 await saveRecordToFirestore('rep_customers', contact);
 let salesArray = await idb.get('rep_sales', []);
 if (!Array.isArray(salesArray)) salesArray = [];
@@ -1020,7 +1020,7 @@ let phoneUpdated = false;
 salesArray.forEach(s => { if (s && s.customerName === name && s.customerPhone !== phone) { s.customerPhone = phone; phoneUpdated = true; } });
 repSales.length = 0; repSales.push(...salesArray);
 if (nameChanged || oldDebtModified || phoneUpdated) {
-await saveWithTracking('rep_sales', salesArray);
+await saveWithTracking('rep_sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
 if (oldDebtRecord) await saveRecordToFirestore('rep_sales', oldDebtRecord);
 if (deletedOldDebtId) {
 await registerDeletion(deletedOldDebtId, 'rep_sales');
@@ -1472,3 +1472,4 @@ setTimeout(updateRepLiveMap, 200);
 }
 }
 }
+

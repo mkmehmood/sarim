@@ -1206,6 +1206,7 @@ No records found
 <input type="number" id="totalSold" readonly style="background:rgba(37, 99, 235, 0.1); color:var(--text-main); font-weight:800; border:1px solid var(--accent);" onclick="handleTripleTap(this, 'sales')">
 </div>
 <div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
+<div class="field"><label>Expired Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
 <label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group" style="margin-top: 8px;">
@@ -1214,6 +1215,12 @@ No records found
 </div>
 <div class="u-field-hint" >
 * This will increase the store's stock level without creating a new production record.
+</div>
+</div>
+<div id="expiredSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(220, 38, 38, 0.08); border-radius: 10px; border: 1px solid var(--danger, #dc2626);">
+<label style="color: var(--danger, #dc2626); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">⚠ Expired Stock — Added to CHORA Raw Material:</label>
+<div class="u-field-hint" style="margin-top: 6px;">
+* Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
 </div>
 </div>
 </div>

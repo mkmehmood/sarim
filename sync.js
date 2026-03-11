@@ -1,9 +1,14 @@
-async function saveWithTracking(key, data, skipDirtyMark = false) {
+async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await idb.set(key, data);
-if (!skipDirtyMark) {
-  const collectionEntry = IndexedDBToFirestoreMap[key];
-  if (collectionEntry) {
-    DeltaSync.trackCollection(collectionEntry.collection);
+const collectionEntry = IndexedDBToFirestoreMap[key];
+if (collectionEntry) {
+  const col = collectionEntry.collection;
+  if (specificRecord && specificRecord.id) {
+    DeltaSync.trackId(col, specificRecord.id);
+  } else if (Array.isArray(specificIds) && specificIds.length > 0) {
+    specificIds.forEach(id => DeltaSync.trackId(col, id));
+  } else {
+    DeltaSync.trackCollection(col);
   }
 }
 return result;
@@ -85,14 +90,19 @@ if (!record.isMerged) sanitized.updatedAt = firebase.firestore.FieldValue.server
 await docRef.set(sanitized, { merge: true });
 trackFirestoreWrite(1);
 await DeltaSync.setLastSyncTimestamp(collectionName);
-DeltaSync.markUploaded(collectionName, record.id);
+
+if (typeof UUIDSyncRegistry !== 'undefined') {
+  UUIDSyncRegistry.markUploaded(collectionName, record.id);
+} else {
+  DeltaSync.markUploaded(collectionName, record.id);
+}
 return true;
 } catch (error) {
 if (typeof OfflineQueue !== 'undefined') {
 const now = Date.now();
 const fallbackRecord = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
 if (!fallbackRecord.createdAt) fallbackRecord.createdAt = now;
-if (!record.isMerged) fallbackRecord.updatedAt = now; 
+if (!record.isMerged) fallbackRecord.updatedAt = now;
 await OfflineQueue.add({
 action: 'set',
 collection: collectionName,
@@ -164,16 +174,12 @@ return false;
 }
 async function unifiedSave(idbKey, dataArray, specificRecord = null) {
 if (specificRecord && specificRecord.id) {
-  // Persist to IDB without marking the whole collection dirty —
-  // we track only this specific record's ID below.
-  await saveWithTracking(idbKey, dataArray, /* skipDirtyMark= */ true);
+  await saveWithTracking(idbKey, dataArray, specificRecord);
   const collectionName = getFirestoreCollection(idbKey);
-  if (collectionName) DeltaSync.trackId(collectionName, specificRecord.id);
   try {
     const saved = await saveRecordToFirestore(idbKey, specificRecord);
     if (!saved && typeof OfflineQueue !== 'undefined') {
-      // Record couldn't reach Firestore — queue it and mark as "pending upload"
-      // so _uploadChanges won't attempt a redundant second write.
+
       const now = Date.now();
       const fallback = sanitizeForFirestore({ ...specificRecord, syncedAt: new Date().toISOString() });
       if (!fallback.createdAt) fallback.createdAt = now;
@@ -184,8 +190,7 @@ if (specificRecord && specificRecord.id) {
         docId: String(specificRecord.id),
         data: fallback
       });
-      // Flag as "queued for upload" so batch sync won't re-attempt until
-      // the OfflineQueue processes it and the record is confirmed written.
+
       DeltaSync.markUploaded(collectionName, specificRecord.id);
     }
   } catch (e) {
@@ -200,13 +205,12 @@ if (specificRecord && specificRecord.id) {
         docId: String(specificRecord.id),
         data: fallback
       });
-      // Same: queued for delivery — suppress redundant batch upload.
+
       DeltaSync.markUploaded(collectionName, specificRecord.id);
     }
   }
 } else {
-  // Bulk save with no specific record — mark whole collection dirty
-  // so _uploadChanges picks up whatever changed.
+
   await saveWithTracking(idbKey, dataArray);
 }
 triggerAutoSync();
@@ -267,6 +271,8 @@ return results;
 async function resetDeltaSync() {
 await DeltaSync.clearAllTimestamps();
 await idb.remove('deltaSyncStats');
+
+if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
 showToast('Delta sync reset - next sync will download all data', 'info');
 }
 window.verifyDeltaSyncSystem = verifyDeltaSyncSystem;
@@ -314,6 +320,8 @@ uid: user.uid,
 email: user.email,
 displayName: user.displayName
 };
+
+updateSyncButton();
 try {
   const loginData = {
     uid: user.uid,
@@ -388,7 +396,13 @@ if (typeof refreshDeviceIdAnchors === 'function') {
 setTimeout(() => { refreshDeviceIdAnchors().catch(() => {}); }, 1500);
 }
 if (typeof initDeviceShard === 'function') {
-setTimeout(() => { initDeviceShard().catch(() => {}); }, 200);
+setTimeout(async () => {
+  await initDeviceShard().catch(() => {});
+
+  if (typeof UUIDSyncRegistry !== 'undefined') {
+    await UUIDSyncRegistry.loadAll().catch(() => {});
+  }
+}, 200);
 }
 setTimeout(async () => {
 try {
@@ -602,15 +616,7 @@ createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Sales collection initialized'
 });
-const customerSalesPlaceholder = this.userRef.collection('customer_sales').doc('_placeholder_');
-await customerSalesPlaceholder.set({
-_placeholder: true,
-createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-type: 'placeholder',
-message: 'Customer sales collection initialized'
-});
 this.results.success.push('sales');
-this.results.success.push('customer_sales');
 } catch (error) {
 this.results.errors.push({ collection: 'sales', error: error.message });
 }
@@ -845,7 +851,7 @@ try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const requiredCollections = [
 'devices', 'account', 'activityLog', 'production', 'sales',
-'customer_sales', 'rep_sales', 'rep_customers',
+'rep_sales', 'rep_customers',
 'sales_customers',
 'transactions', 'entities', 'inventory', 'factory_history', 'expenses', 'returns',
 'calculator_history', 'settings', 'factorySettings', 'expenseCategories',
@@ -887,7 +893,7 @@ const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const batch = firebaseDB.batch();
 const collections = [
 'devices', 'account', 'activityLog',
-'production', 'sales', 'customer_sales',
+'production', 'sales',
 'rep_sales', 'rep_customers',
 'sales_customers',
 'transactions', 'entities',
@@ -925,7 +931,7 @@ return false;
 function retryFirebaseInit(attempts = 0, maxAttempts = APP_CONFIG.FIREBASE_INIT_RETRY_MAX) {
 initializeFirebaseSystem();
 if (firebaseDB) {
-return; 
+return;
 }
 if (attempts < maxAttempts) {
 const delay = Math.min(1000 * Math.pow(2, attempts), 5000);
@@ -942,10 +948,6 @@ showToast(' Cloud sync unavailable. App will work offline.', 'warning');
 }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYNC QUEUE  –  replaces the bare isSyncing boolean so no sync request is
-// ever silently dropped.  Every caller awaits _syncQueue.run(fn).
-// ─────────────────────────────────────────────────────────────────────────────
 const _syncQueue = (() => {
   let _chain = Promise.resolve();
   return {
@@ -958,10 +960,6 @@ const _syncQueue = (() => {
   };
 })();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COLLECTION REGISTRY  –  single source of truth for every synced collection.
-// Eliminates all the copy-pasted handler boilerplate.
-// ─────────────────────────────────────────────────────────────────────────────
 const SYNC_COLLECTIONS = [
   {
     firestoreId:  'production',
@@ -1049,7 +1047,6 @@ const SYNC_COLLECTIONS = [
   },
 ];
 
-// Helper: read/write a collection's in-memory variable by name
 function _getVar(varName) {
   switch (varName) {
     case 'db':                      return db;
@@ -1084,9 +1081,6 @@ function _setVar(varName, value) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GENERIC SNAPSHOT HANDLER  –  replaces 12 identical _handleXxxSnapshot fns
-// ─────────────────────────────────────────────────────────────────────────────
 function _makeSnapshotHandler(col) {
   return async function handleSnapshot(snapshot) {
     try {
@@ -1106,16 +1100,14 @@ function _makeSnapshotHandler(col) {
           const docData = { id: change.doc.id, ...change.doc.data() };
           if (change.type === 'added' || change.type === 'modified') {
             deletedRecordIds.delete(change.doc.id);
-            // Mark downloaded BEFORE _updateArray so the de-dup guard inside
-            // _updateArray sees the flag and won't double-apply the same record
-            // if a concurrent pull or batch sync runs at the same moment.
+
             DeltaSync.markDownloaded(col.firestoreId, change.doc.id);
             arr = _updateArray(arr, docData, col.firestoreId);
             hasChanges = true;
           } else if (change.type === 'removed') {
             deletedRecordIds.add(change.doc.id);
             DeltaSync.markDownloaded(col.firestoreId, change.doc.id);
-            // Write tombstone locally so pull won't re-surface the record
+
             _ensureLocalTombstone(change.doc.id, col.firestoreId);
             arr = arr.filter(item => item.id !== change.doc.id);
             hasChanges = true;
@@ -1143,8 +1135,6 @@ function _makeSnapshotHandler(col) {
   };
 }
 
-// Write a local tombstone when a realtime 'removed' event arrives, so that
-// subsequent pullDataFromCloud calls won't re-surface the deleted record.
 function _ensureLocalTombstone(recordId, collectionName) {
   try {
     const sid = String(recordId);
@@ -1165,20 +1155,29 @@ function _ensureLocalTombstone(recordId, collectionName) {
       idb.set('deletion_records', deletionRecords).catch(() => {});
       idb.set('deleted_records', Array.from(deletedRecordIds)).catch(() => {});
     }
-  } catch (e) { /* non-fatal */ }
+  } catch (e) {  }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// updateArray helper (was inline inside subscribeToRealtime)
-// ─────────────────────────────────────────────────────────────────────────────
 function _updateArray(array, docData, collectionName) {
   if (docData._placeholder || docData.id === '_placeholder_') return array;
+  if (collectionName === 'rep_sales' && docData.isRepModeEntry !== true) return array;
   if (!docData.id || !validateUUID(String(docData.id))) {
     docData = ensureRecordIntegrity(docData, false, true);
   }
   docData = ensureRecordIntegrity(docData, false, true);
   const sid = String(docData.id);
-  if (collectionName && DeltaSync.wasDownloaded(collectionName, sid)) return array;
+
+  if (typeof UUIDSyncRegistry !== 'undefined') {
+    if (UUIDSyncRegistry.skipDownload(collectionName, sid)) {
+
+      const existingIdx = array.findIndex(item => item && item.id === docData.id);
+      const localRecord = existingIdx !== -1 ? array[existingIdx] : null;
+      if (!UUIDSyncRegistry.shouldApplyCloud(docData, localRecord)) return array;
+
+    }
+  } else {
+    if (collectionName && DeltaSync.wasDownloaded(collectionName, sid)) return array;
+  }
 
   const _getMs = (rec) => {
     if (!rec) return 0;
@@ -1207,13 +1206,17 @@ function _updateArray(array, docData, collectionName) {
       array[existingIdx] = docData;
     }
   }
-  if (collectionName) DeltaSync.markDownloaded(collectionName, sid);
+  if (collectionName) {
+
+    if (typeof UUIDSyncRegistry !== 'undefined') {
+      UUIDSyncRegistry.markDownloaded(collectionName, sid);
+    } else {
+      DeltaSync.markDownloaded(collectionName, sid);
+    }
+  }
   return array;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Realtime listener infra (reconnect, signal, broadcast channel)
-// ─────────────────────────────────────────────────────────────────────────────
 let realtimeRefs = [];
 let socketReconnectTimer = null;
 let pendingSocketUpdate = false;
@@ -1278,7 +1281,7 @@ try {
           const data = await idb.get(collectionName);
           switch (collectionName) {
             case 'mfg_pro_pkr':                db                      = data || []; break;
-            case 'customer_sales':             customerSales           = data || []; break;
+            case 'customer_sales':             customerSales           = (data || []).filter(r => !r || r.isRepModeEntry !== true); break;
             case 'rep_sales':                  repSales                = data || []; break;
             case 'rep_customers':              repCustomers            = data || []; break;
             case 'sales_customers':            salesCustomers          = data || []; break;
@@ -1408,13 +1411,9 @@ function isConnectionStale() {
   return (Date.now() - lastSuccessfulConnection) > 5 * 60 * 1000;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// subscribeToRealtime  –  registers one generic listener per collection
-// ─────────────────────────────────────────────────────────────────────────────
 async function subscribeToRealtime() {
   if (!firebaseDB || !currentUser) return;
 
-  // Handle pending year-close before re-subscribing
   if (!pendingFirestoreYearClose) {
     const storedFlag = await idb.get('pendingFirestoreYearClose');
     if (storedFlag === true) pendingFirestoreYearClose = true;
@@ -1424,7 +1423,7 @@ async function subscribeToRealtime() {
       const userRef = firebaseDB.collection('users').doc(currentUser.uid);
       const yearCloseCollections = [
         { name: 'production',         data: db,                      filter: d => !d.isMerged },
-        { name: 'sales',              data: customerSales,           filter: d => !d.isMerged },
+        { name: 'sales',              data: customerSales.filter(d => d.isRepModeEntry !== true), filter: d => !d.isMerged },
         { name: 'rep_sales',          data: repSales,                filter: d => !d.isMerged },
         { name: 'calculator_history', data: salesHistory,            filter: d => !d.isMerged },
         { name: 'transactions',       data: paymentTransactions,     filter: d => !d.isMerged },
@@ -1458,7 +1457,7 @@ async function subscribeToRealtime() {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 
   try {
-    // ── Generic data collections ──────────────────────────────────────────
+
     for (const col of SYNC_COLLECTIONS) {
       const handler = _makeSnapshotHandler(col);
       let query = userRef.collection(col.firestoreId);
@@ -1475,7 +1474,6 @@ async function subscribeToRealtime() {
       realtimeRefs.push(unsub);
     }
 
-    // ── Settings ──────────────────────────────────────────────────────────
     const _handleSettingsSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1531,7 +1529,6 @@ async function subscribeToRealtime() {
     }, _e => { updateSignalUI('error'); scheduleListenerReconnect(); });
     realtimeRefs.push(settingsUnsub);
 
-    // ── Factory settings ──────────────────────────────────────────────────
     const _handleFactorySettingsSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1620,7 +1617,6 @@ async function subscribeToRealtime() {
     }, _e => { updateSignalUI('error'); scheduleListenerReconnect(); });
     realtimeRefs.push(factorySettingsUnsub);
 
-    // ── Expense categories ────────────────────────────────────────────────
     const _handleExpenseCategoriesSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1629,7 +1625,7 @@ async function subscribeToRealtime() {
         const cloud = doc.data();
         if (!cloud || !Array.isArray(cloud.categories)) return;
         const local = await idb.get('expense_categories') || [];
-        // Sort before comparing to avoid false positives from array-order differences
+
         const cloudSorted = [...cloud.categories].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         const localSorted = [...local].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         if (JSON.stringify(cloudSorted) !== JSON.stringify(localSorted)) {
@@ -1650,7 +1646,6 @@ async function subscribeToRealtime() {
     }, _e => { updateSignalUI('error'); scheduleListenerReconnect(); });
     realtimeRefs.push(expenseCategoriesUnsub);
 
-    // ── Deletions ─────────────────────────────────────────────────────────
     function _dedupDeletionRecords(arr) {
       if (!Array.isArray(arr)) return [];
       const seen = new Map();
@@ -1707,7 +1702,6 @@ async function subscribeToRealtime() {
               if (existingIndex === -1) deletionRecords.push(normalizedDoc);
               else deletionRecords[existingIndex] = normalizedDoc;
 
-              // Apply deletion to the relevant local array
               try {
                 const rt = docData.recordType;
                 const rid = docData.recordId;
@@ -1754,7 +1748,6 @@ async function subscribeToRealtime() {
     }, _e => { updateSignalUI('error'); scheduleListenerReconnect(); });
     realtimeRefs.push(deletionsUnsub);
 
-    // ── Team settings ─────────────────────────────────────────────────────
     const _handleTeamSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1809,9 +1802,6 @@ async function subscribeToRealtime() {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// executeSmartPull / scheduleSocketReconnect / initFirebase
-// ─────────────────────────────────────────────────────────────────────────────
 async function executeSmartPull() {
   await pullDataFromCloud(true);
   if (pendingSocketUpdate) {
@@ -1843,10 +1833,6 @@ function initFirebase() {
   } catch (e) { console.warn('Failed to pull data from cloud.', e); }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// _toMs / mergeDatasets / sanitizeForFirestore / _commitMergedBatch / mergeArrays
-// (kept verbatim — logic unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
 function _toMs(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
@@ -1994,40 +1980,68 @@ async function _commitMergedBatch(userRef, collectionName, mergedRecords, delete
   return { ok: batchesFailed === 0, batchesTotal, batchesFailed, error: firstError || null };
 }
 
-function mergeArrays(localArray, cloudArray) {
+function mergeArrays(localArray, cloudArray, collectionName) {
   const merged = [...localArray];
-  const localIds = new Set(localArray.map(item => item.id));
-  let downloadedCount = 0, fixedCount = 0;
+
+  const idxMap = new Map();
+  for (let i = 0; i < merged.length; i++) {
+    if (merged[i] && merged[i].id) idxMap.set(String(merged[i].id), i);
+  }
+  const localIds = new Set(idxMap.keys());
+  let downloadedCount = 0, fixedCount = 0, skippedCount = 0;
+  const useUUIDGate = typeof UUIDSyncRegistry !== 'undefined' && !!collectionName;
+
   for (let cloudItem of cloudArray) {
     if (!cloudItem.id || cloudItem.id === '_placeholder_' || cloudItem._placeholder) continue;
     if (!validateUUID(cloudItem.id)) { cloudItem = ensureRecordIntegrity(cloudItem, false, true); fixedCount++; }
-    if (!localIds.has(cloudItem.id)) {
+    const sid = String(cloudItem.id);
+
+    if (!localIds.has(sid)) {
+
+      if (useUUIDGate && UUIDSyncRegistry.skipDownload(collectionName, sid)) {
+        skippedCount++;
+        continue;
+      }
       cloudItem = ensureRecordIntegrity(cloudItem, false, true);
-      localIds.add(cloudItem.id);
       merged.push(cloudItem);
+      idxMap.set(sid, merged.length - 1);
+      localIds.add(sid);
       downloadedCount++;
+      if (useUUIDGate) UUIDSyncRegistry.markDownloaded(collectionName, sid);
+      else if (collectionName) DeltaSync.markDownloaded(collectionName, sid);
     } else {
-      const idx = merged.findIndex(r => r.id === cloudItem.id);
+
+      const idx = idxMap.get(sid);
       const localRecord = merged[idx];
-      const localTs = _toMs(localRecord?.updatedAt || localRecord?.timestamp);
-      const cloudTs  = _toMs(cloudItem.updatedAt   || cloudItem.timestamp);
+
+      if (useUUIDGate && UUIDSyncRegistry.skipDownload(collectionName, sid)) {
+
+        if (!UUIDSyncRegistry.shouldApplyCloud(cloudItem, localRecord)) {
+          skippedCount++;
+          continue;
+        }
+
+      }
+
       const cloudWins = (typeof compareRecordVersions === 'function')
         ? compareRecordVersions(cloudItem, localRecord) > 0
-        : cloudTs > localTs || (cloudTs === localTs && cloudTs > 0);
-      if (cloudWins) { merged[idx] = ensureRecordIntegrity(cloudItem, false, true); downloadedCount++; }
+        : _toMs(cloudItem.updatedAt || cloudItem.timestamp) > _toMs(localRecord?.updatedAt || localRecord?.timestamp);
+
+      if (cloudWins) {
+        merged[idx] = ensureRecordIntegrity(cloudItem, false, true);
+        downloadedCount++;
+        if (useUUIDGate) UUIDSyncRegistry.markDownloaded(collectionName, sid);
+        else if (collectionName) DeltaSync.markDownloaded(collectionName, sid);
+      }
     }
   }
+
   return merged.map(item => {
     if (!item.id || !validateUUID(item.id)) { fixedCount++; return ensureRecordIntegrity(item, false, true); }
     return item;
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYNC PIPELINE HELPERS  –  break performOneClickSync into composable steps
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Step 1 – Detect whether this is a new / existing / returning user */
 async function _detectUserType(userRef) {
   const hasInitialized = await idb.get('firestore_initialized');
   const idbArrays = await Promise.all([
@@ -2056,7 +2070,6 @@ async function _detectUserType(userRef) {
   }
 }
 
-/** Step 2 – Download all cloud deltas, returns a cloudData map */
 async function _downloadDeltas(userRef, userType) {
   const buildQuery = async (collection, collectionName) => {
     if (userType === 'existing') return collection.get();
@@ -2115,9 +2128,8 @@ async function _downloadDeltas(userRef, userType) {
   };
 }
 
-/** Step 3 – Merge cloud data into local arrays and persist to IDB */
 async function _mergeAndPersist(cloudData) {
-  // Refresh deletions
+
   try {
     const deletionsSnap = await firebaseDB
       .collection('users').doc(currentUser.uid)
@@ -2161,23 +2173,31 @@ async function _mergeAndPersist(cloudData) {
     console.warn('[Sync] Failed to refresh deletions:', _delErr);
   }
 
-  // Merge each collection
   const { data } = cloudData;
-  db                      = mergeArrays(db || [], data.mfg_pro_pkr || []);
-  customerSales           = mergeArrays(customerSales || [], data.customer_sales || []);
-  salesHistory            = mergeArrays(salesHistory || [], data.noman_history || []);
-  repSales                = mergeArrays(repSales || [], data.rep_sales || []);
-  repCustomers            = mergeArrays(repCustomers || [], data.rep_customers || []);
-  salesCustomers          = mergeArrays(salesCustomers || [], data.sales_customers || []);
-  paymentTransactions     = mergeArrays(paymentTransactions || [], data.payment_transactions || []);
-  paymentEntities         = mergeArrays(paymentEntities || [], data.payment_entities || []);
-  factoryInventoryData    = mergeArrays(factoryInventoryData || [], data.factory_inventory_data || []);
-  factoryProductionHistory= mergeArrays(factoryProductionHistory || [], data.factory_production_history || []);
-  stockReturns            = mergeArrays(stockReturns || [], data.stock_returns || []);
-  expenseRecords          = mergeArrays(expenseRecords || [], data.expenses || []);
+  db                      = mergeArrays(db || [], data.mfg_pro_pkr || [],               'production');
+  customerSales           = mergeArrays(customerSales || [], (data.customer_sales || []).filter(r => !r || r.isRepModeEntry !== true),  'sales');
+  salesHistory            = mergeArrays(salesHistory || [], data.noman_history || [],    'calculator_history');
+  repSales                = mergeArrays(repSales || [], (data.rep_sales || []).filter(r => r && r.isRepModeEntry === true), 'rep_sales');
+  repCustomers            = mergeArrays(repCustomers || [], data.rep_customers || [],    'rep_customers');
+  salesCustomers          = mergeArrays(salesCustomers || [], data.sales_customers || [],'sales_customers');
+  paymentTransactions     = mergeArrays(paymentTransactions || [], data.payment_transactions || [], 'transactions');
+  paymentEntities         = mergeArrays(paymentEntities || [], data.payment_entities || [], 'entities');
+  factoryInventoryData    = mergeArrays(factoryInventoryData || [], data.factory_inventory_data || [], 'inventory');
+  factoryProductionHistory= mergeArrays(factoryProductionHistory || [], data.factory_production_history || [], 'factory_history');
+  stockReturns            = mergeArrays(stockReturns || [], data.stock_returns || [],   'returns');
+  expenseRecords          = mergeArrays(expenseRecords || [], data.expenses || [],       'expenses');
 
-  // Mark all downloaded IDs
-  const _mark = (col, arr) => { if (Array.isArray(arr)) arr.forEach(i => { if (i && i.id) DeltaSync.markDownloaded(col, i.id); }); };
+  const _mark = (col, arr) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(i => {
+      if (!i || !i.id) return;
+      if (typeof UUIDSyncRegistry !== 'undefined') {
+        UUIDSyncRegistry.markDownloaded(col, i.id);
+      } else {
+        DeltaSync.markDownloaded(col, i.id);
+      }
+    });
+  };
   _mark('production', data.mfg_pro_pkr);       _mark('sales', data.customer_sales);
   _mark('calculator_history', data.noman_history); _mark('rep_sales', data.rep_sales);
   _mark('rep_customers', data.rep_customers);   _mark('sales_customers', data.sales_customers);
@@ -2185,7 +2205,6 @@ async function _mergeAndPersist(cloudData) {
   _mark('inventory', data.factory_inventory_data); _mark('factory_history', data.factory_production_history);
   _mark('returns', data.stock_returns);         _mark('expenses', data.expenses);
 
-  // Filter out deleted records
   const _notDeleted = item => !deletedRecordIds.has(item.id);
   db = db.filter(_notDeleted); customerSales = customerSales.filter(_notDeleted);
   salesHistory = salesHistory.filter(_notDeleted); repSales = repSales.filter(_notDeleted);
@@ -2196,7 +2215,6 @@ async function _mergeAndPersist(cloudData) {
   factoryProductionHistory = factoryProductionHistory.filter(_notDeleted);
   stockReturns = stockReturns.filter(_notDeleted); expenseRecords = expenseRecords.filter(_notDeleted);
 
-  // Persist everything
   await Promise.all([
     idb.set('mfg_pro_pkr', db), idb.set('customer_sales', customerSales),
     idb.set('noman_history', salesHistory), idb.set('factory_inventory_data', factoryInventoryData),
@@ -2209,14 +2227,24 @@ async function _mergeAndPersist(cloudData) {
     idb.set('last_synced', new Date().toISOString()),
   ]);
 
-  // Update sync timestamps
-  for (const col of ['production','sales','calculator_history','transactions','entities',
-      'inventory','factory_history','returns','expenses','rep_sales','rep_customers','sales_customers','deletions']) {
-    await DeltaSync.setLastSyncTimestamp(col);
+  const _colMap = {
+    production: data.mfg_pro_pkr, sales: data.customer_sales,
+    calculator_history: data.noman_history, transactions: data.payment_transactions,
+    entities: data.payment_entities, inventory: data.factory_inventory_data,
+    factory_history: data.factory_production_history, returns: data.stock_returns,
+    expenses: data.expenses, rep_sales: data.rep_sales,
+    rep_customers: data.rep_customers, sales_customers: data.sales_customers,
+  };
+  for (const [col, arr] of Object.entries(_colMap)) {
+    if (Array.isArray(arr) && arr.length > 0) {
+      await DeltaSync.setLastSyncTimestamp(col);
+
+    }
   }
+
+  await DeltaSync.setLastSyncTimestamp('deletions');
 }
 
-/** Step 4 – Apply settings from cloud data */
 async function _syncSettings(cloudData) {
   const { settings: settingsSnap, factorySettings: factorySettingsSnap, expenseCategories: expCatSnap } = cloudData;
 
@@ -2262,13 +2290,12 @@ async function _syncSettings(cloudData) {
   }
 }
 
-/** Step 5 – Upload local changes to Firestore */
 async function _uploadChanges(userRef) {
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
   const collections = {
     production:          db.filter(isRealRecord),
-    sales:               customerSales.filter(isRealRecord),
-    rep_sales:           repSales.filter(isRealRecord),
+    sales:               customerSales.filter(item => isRealRecord(item) && item.isRepModeEntry !== true),
+    rep_sales:           repSales.filter(item => isRealRecord(item) && item.isRepModeEntry === true),
     rep_customers:       repCustomers.filter(isRealRecord),
     sales_customers:     salesCustomers.filter(isRealRecord),
     calculator_history:  salesHistory.filter(isRealRecord),
@@ -2293,13 +2320,17 @@ async function _uploadChanges(userRef) {
   };
 
   let totalItemsToWrite = 0;
+  const collectionsUploaded = new Set();
   for (const [collectionName, dataArray] of Object.entries(collections)) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) continue;
     const changedItems = await DeltaSync.getChangedItems(collectionName, dataArray);
     if (changedItems.length === 0) continue;
     for (const item of changedItems) {
       if (!item || !item.id) continue;
-      if (DeltaSync.wasUploaded(collectionName, item.id)) continue;
+
+      if (typeof UUIDSyncRegistry !== 'undefined'
+            ? UUIDSyncRegistry.skipUpload(collectionName, item.id)
+            : DeltaSync.wasUploaded(collectionName, item.id)) continue;
       if (!validateUUID(String(item.id))) {
         console.warn('[uploadChanges] Skipping upload: invalid UUID', item.id);
         continue;
@@ -2314,43 +2345,72 @@ async function _uploadChanges(userRef) {
       operationCount++;
       totalItemsToWrite++;
       trackFirestoreWrite(1);
-      DeltaSync.markUploaded(collectionName, item.id);
+
+      if (typeof UUIDSyncRegistry !== 'undefined') {
+        UUIDSyncRegistry.markUploaded(collectionName, item.id);
+      } else {
+        DeltaSync.markUploaded(collectionName, item.id);
+      }
+      collectionsUploaded.add(collectionName);
     }
   }
 
-  // Settings / factory settings / expense categories
   const configBatch = getOrNewBatch();
   const localFormulaTs = await idb.get('factory_default_formulas_timestamp');
   const localCostsTs   = await idb.get('factory_additional_costs_timestamp');
   const localFactorTs  = await idb.get('factory_cost_adjustment_factor_timestamp');
   const localPricesTs  = await idb.get('factory_sale_prices_timestamp');
-  if (localFormulaTs || localCostsTs || localFactorTs || localPricesTs) {
+  const localUnitTs    = await idb.get('factory_unit_tracking_timestamp');
+
+  const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factorySettings');
+  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localPricesTs, localUnitTs]
+    .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
+  if (factorySettingsDirty) {
     const fsPayload = {
-      default_formulas: factoryDefaultFormulas || { standard: [], asaan: [] },
-      additional_costs: factoryAdditionalCosts || { standard: 0, asaan: 0 },
-      sale_prices: factorySalePrices || { standard: 0, asaan: 0 },
+      default_formulas:                factoryDefaultFormulas        || { standard: [], asaan: [] },
+      additional_costs:                factoryAdditionalCosts        || { standard: 0, asaan: 0 },
+      sale_prices:                     factorySalePrices             || { standard: 0, asaan: 0 },
+      cost_adjustment_factor:          factoryCostAdjustmentFactor   || { standard: 1, asaan: 1 },
+      unit_tracking:                   factoryUnitTracking           || {
+        standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
+        asaan:    { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
+      },
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
+    collectionsUploaded.add('factorySettings');
   }
-  configBatch.set(
-    userRef.collection('settings').doc('config'),
-    sanitizeForFirestore({ naswar_default_settings: defaultSettings || {} }),
-    { merge: true }
-  );
-  configBatch.set(
-    userRef.collection('expenseCategories').doc('categories'),
-    sanitizeForFirestore({ categories: expenseCategories || [] }),
-    { merge: true }
-  );
-  operationCount += 2;
+
+  const localSettingsTs = await idb.get('naswar_default_settings_timestamp');
+  const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
+  if (localSettingsTs && (!lastSettingsSync || localSettingsTs > lastSettingsSync)) {
+    configBatch.set(
+      userRef.collection('settings').doc('config'),
+      sanitizeForFirestore({ naswar_default_settings: defaultSettings || {} }),
+      { merge: true }
+    );
+    operationCount++;
+    collectionsUploaded.add('settings');
+  }
+
+  const localExpCatTs = await idb.get('expense_categories_timestamp');
+  const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('expenseCategories');
+  if (localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
+    configBatch.set(
+      userRef.collection('expenseCategories').doc('categories'),
+      sanitizeForFirestore({ categories: expenseCategories || [] }),
+      { merge: true }
+    );
+    operationCount++;
+    collectionsUploaded.add('expenseCategories');
+  }
 
   batches.push(currentBatch);
   for (const batch of batches) {
     await batch.commit();
   }
 
-  for (const col of Object.keys(collections)) {
+  for (const col of collectionsUploaded) {
     await DeltaSync.setLastSyncTimestamp(col);
     DeltaSync.clearDirty(col);
   }
@@ -2358,9 +2418,6 @@ async function _uploadChanges(userRef) {
   return totalItemsToWrite;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// performOneClickSync  –  orchestrates the pipeline via _syncQueue
-// ─────────────────────────────────────────────────────────────────────────────
 function performOneClickSync(silent = false) {
   return _syncQueue.run(() => _doOneClickSync(silent));
 }
@@ -2371,7 +2428,11 @@ async function _doOneClickSync(silent = false) {
     return;
   }
   if (!currentUser) {
-    if (!silent) showToast('Please log in to sync data', 'warning');
+    if (!silent) {
+      showToast('Please log in to sync data', 'warning');
+
+      showAuthOverlay();
+    }
     return;
   }
 
@@ -2384,7 +2445,6 @@ async function _doOneClickSync(silent = false) {
   try {
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 
-    // Step 1 – detect user type
     const userType = await _detectUserType(userRef);
 
     if (userType === 'new') {
@@ -2394,25 +2454,27 @@ async function _doOneClickSync(silent = false) {
       return;
     }
 
-    // Step 2 – download
     const cloudData = await _downloadDeltas(userRef, userType);
     const totalCloudChanges = Object.values(cloudData.data).reduce((s, a) => s + (a?.length || 0), 0);
 
-    // Step 3 – merge & persist
     if (totalCloudChanges > 0) {
       await _mergeAndPersist(cloudData);
     }
 
-    // Step 4 – settings
     await _syncSettings(cloudData);
 
-    // Early return for existing users (full restore done)
     if (userType === 'existing') {
       await idb.set('firestore_initialized', true);
       await idb.set('user_state', { type: 'existing', hasRealData: true, lastChecked: Date.now(), initialized: true, restoredItems: totalCloudChanges });
+
+      const totalItemsToWrite = await _uploadChanges(userRef);
+
       setTimeout(() => { if (typeof refreshAllDisplays === 'function') refreshAllDisplays(); }, 100);
       if (!silent) {
-        showToast(`Data fully restored — ${totalCloudChanges} records downloaded`, 'success');
+        const msg = totalItemsToWrite > 0
+          ? `Restored ${totalCloudChanges} records, uploaded ${totalItemsToWrite} local changes`
+          : `Data fully restored — ${totalCloudChanges} records downloaded`;
+        showToast(msg, 'success');
         if (typeof closeDataMenu === 'function') closeDataMenu();
       }
       setTimeout(async () => {
@@ -2422,7 +2484,6 @@ async function _doOneClickSync(silent = false) {
       return;
     }
 
-    // Step 5 – upload
     const totalItemsToWrite = await _uploadChanges(userRef);
 
     setTimeout(() => { if (typeof refreshAllDisplays === 'function') refreshAllDisplays(); }, 100);
@@ -2455,9 +2516,6 @@ async function _doOneClickSync(silent = false) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// pushDataToCloud – upload-only, also via _syncQueue
-// ─────────────────────────────────────────────────────────────────────────────
 function pushDataToCloud(silent = false) {
   return _syncQueue.run(() => _doPushDataToCloud(silent));
 }
@@ -2488,7 +2546,6 @@ async function _doPushDataToCloud(silent = false) {
 
     await idb.init();
 
-    // Read fresh data from IDB
     const dataKeys = [
       'mfg_pro_pkr','customer_sales','rep_sales','rep_customers','noman_history',
       'factory_inventory_data','factory_production_history','payment_entities',
@@ -2525,7 +2582,6 @@ async function _doPushDataToCloud(silent = false) {
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     const operationCount = await _uploadChanges(userRef);
 
-    // Sync unsynced deletion tombstones
     const deletionRecordsLocal = await idb.get('deletion_records', []);
     const unsyncedDeletions = deletionRecordsLocal.filter(r => !r.syncedToCloud);
     if (unsyncedDeletions.length > 0) {
@@ -2547,7 +2603,7 @@ async function _doPushDataToCloud(silent = false) {
           dOps++;
         }
         dr.syncedToCloud = true;
-        if (dOps >= 450) break; // safety
+        if (dOps >= 450) break;
       }
       await dBatch.commit();
       await idb.set('deletion_records', deletionRecordsLocal);
@@ -2575,9 +2631,6 @@ async function _doPushDataToCloud(silent = false) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// pullDataFromCloud  –  download-only, also via _syncQueue
-// ─────────────────────────────────────────────────────────────────────────────
 function pullDataFromCloud(silent = false, forceDownload = false) {
   return _syncQueue.run(() => _doPullDataFromCloud(silent, forceDownload));
 }
@@ -2607,7 +2660,6 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
     await _mergeAndPersist(cloudData);
     await _syncSettings(cloudData);
 
-    // Handle forceDownload factory settings override
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
       if (fsData && typeof fsData === 'object') {
@@ -2620,7 +2672,6 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
       }
     }
 
-    // Guard factory settings defaults
     if (!factoryDefaultFormulas || !('standard' in factoryDefaultFormulas)) factoryDefaultFormulas = { standard: [], asaan: [] };
     if (!factoryAdditionalCosts || !('standard' in factoryAdditionalCosts)) factoryAdditionalCosts = { standard: 0, asaan: 0 };
     if (!factoryCostAdjustmentFactor || !('standard' in factoryCostAdjustmentFactor)) factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
@@ -2638,7 +2689,6 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
       idb.set('current_rep_profile', currentRepProfile),
     ]);
 
-    // Update DeltaSync stats async
     const statsCols = ['production','sales','rep_sales','rep_customers','calculator_history',
       'transactions','entities','inventory','factory_history','returns','expenses','sales_customers'];
     Promise.all(statsCols.map(c => DeltaSync.updateSyncStats(c))).catch(() => {});
@@ -2655,9 +2705,6 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SYNC HEALTH MONITOR  –  surfaces verifyDeltaSyncSystem to the UI
-// ─────────────────────────────────────────────────────────────────────────────
 function showSyncHealthPanel() {
   verifyDeltaSyncSystem().then(results => {
     const lastSync = localStorage.getItem('lastSync') || 'Unknown';
@@ -2723,7 +2770,7 @@ window.deviceHeartbeatInterval = null;
 }
 }
 const AUTO_BACKUP_INTERVAL = 180000;
-// Auto-backup fires every 3 min, but only when DeltaSync reports pending changes.
+
 function scheduleAutoBackup() {
 clearAutoBackup();
 if (!currentUser) return;
@@ -3155,6 +3202,7 @@ IDBCrypto.clearSessionKey();
 idb.clearUserPrefix();
 try { sessionStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_key_backup'); localStorage.removeItem('persistentLogin'); } catch(e) {}
 DeltaSync.clearAllTimestamps().catch(e => console.warn("[DeltaSync] clearAllTimestamps on signout:", e));
+if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
 showToast(' Signed out successfully', 'success');
 } else {
 currentUser = null;
@@ -3162,6 +3210,7 @@ IDBCrypto.clearSessionKey();
 idb.clearUserPrefix();
 try { sessionStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_key_backup'); localStorage.removeItem('persistentLogin'); } catch(e) {}
 DeltaSync.clearAllTimestamps().catch(e => console.warn("[DeltaSync] clearAllTimestamps on signout:", e));
+if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
 showToast(' Signed out', 'success');
 }
 setTimeout(() => {
@@ -3197,3 +3246,4 @@ syncBtn.style.color = '#fff';
 }
 
 }
+

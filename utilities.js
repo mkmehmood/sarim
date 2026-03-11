@@ -310,7 +310,7 @@ setData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
 }
 await userRef.collection(collection).doc(docId).set(setData, { merge: true });
 trackFirestoreWrite(1);
-// Mark as uploaded so batch sync (_uploadChanges) won't re-upload this record
+
 if (typeof DeltaSync !== 'undefined') {
   DeltaSync.markUploaded(collection, docId);
   await DeltaSync.setLastSyncTimestamp(collection);
@@ -548,8 +548,8 @@ const keys = [
 const results = await idb.getBatch(keys);
 db = ensureArray(results.get('mfg_pro_pkr'));
 salesHistory = ensureArray(results.get('noman_history'));
-customerSales = ensureArray(results.get('customer_sales'));
-repSales = ensureArray(results.get('rep_sales'));
+customerSales = ensureArray(results.get('customer_sales')).filter(r => !r || r.isRepModeEntry !== true);
+repSales = ensureArray(results.get('rep_sales')).filter(r => r && r.isRepModeEntry === true);
 repCustomers = ensureArray(results.get('rep_customers'));
 salesCustomers = ensureArray(results.get('sales_customers'));
 stockReturns = ensureArray(results.get('stock_returns'));
@@ -994,7 +994,9 @@ const dataMap = await idb.getBatch([
 const freshRepSales = dataMap.get('rep_sales');
 if (Array.isArray(freshRepSales)) {
 let fixed = 0;
-const validated = freshRepSales.map(record => {
+const validated = freshRepSales
+  .filter(record => record && record.isRepModeEntry === true)
+  .map(record => {
 try {
 if (!record.id || !validateUUID(record.id) ||
 !record.createdAt || !validateTimestamp(record.createdAt) ||
@@ -1011,7 +1013,7 @@ await idb.set('rep_sales', validated);
 validated.sort((a, b) => compareTimestamps(getRecordTimestamp(b), getRecordTimestamp(a)));
 const map = new Map((repSales || []).filter(r => r && r.id).map(r => [r.id, r]));
 validated.forEach(r => { if (!map.has(r.id)) map.set(r.id, r); });
-repSales = Array.from(map.values()).filter(r => !deletedRecordIds.has(r.id));
+repSales = Array.from(map.values()).filter(r => !deletedRecordIds.has(r.id) && r.isRepModeEntry === true);
 }
 const freshRepCustomers = dataMap.get('rep_customers');
 if (Array.isArray(freshRepCustomers)) {
@@ -1224,9 +1226,9 @@ let formulaStore = 'standard';
 let salePrice = 0;
 if (store === 'STORE_C') {
 formulaStore = 'asaan';
-salePrice = getSalePriceForStore('STORE_C'); 
+salePrice = getSalePriceForStore('STORE_C');
 } else {
-salePrice = getSalePriceForStore(store); 
+salePrice = getSalePriceForStore(store);
 }
 const validation = validateFormulaAvailability(store, formulaUnits);
 if (!validation.sufficient) {
@@ -1352,8 +1354,8 @@ const now = getTimestamp();
 const _snapshot = _captureRecordSnapshot(id, collectionName);
 const deletionRecord = {
 id: id,
-recordId: id,        
-recordType: collectionName, 
+recordId: id,
+recordType: collectionName,
 deletedAt: now,
 collection: collectionName,
 syncedToCloud: false,
@@ -1967,7 +1969,7 @@ paymentEntities[entityIdx].isArchived = true;
 paymentEntities[entityIdx].archivedAt = getTimestamp();
 paymentEntities[entityIdx].updatedAt = getTimestamp();
 paymentEntities[entityIdx] = ensureRecordIntegrity(paymentEntities[entityIdx], true);
-await saveWithTracking('payment_entities', paymentEntities);
+await saveWithTracking('payment_entities', paymentEntities, paymentEntities[entityIdx]);
 await saveRecordToFirestore('payment_entities', paymentEntities[entityIdx]);
 }
 for (const trans of _entityTxs) {
@@ -1980,7 +1982,7 @@ ensureRecordIntegrity(trans, true);
 }
 }
 if (_entityTxs.length > 0) {
-await saveWithTracking('payment_transactions', paymentTransactions);
+await saveWithTracking('payment_transactions', paymentTransactions, null, _entityTxs.map(t => t.id));
 for (const trans of _entityTxs) {
 await saveRecordToFirestore('payment_transactions', trans);
 }
@@ -2058,9 +2060,9 @@ function _pdfDrawMergedSectionHeader(doc, yPos, pageW, label) {
   doc.setTextColor(80, 80, 80);
   return yPos + 16;
 }
-const PDF_MERGED_HDR_COLOR  = [126, 34, 206];   
-const PDF_MERGED_ROW_COLOR  = [245, 235, 255];   
-const PDF_MERGED_TEXT_COLOR = [126, 34, 206];    
+const PDF_MERGED_HDR_COLOR  = [126, 34, 206];
+const PDF_MERGED_ROW_COLOR  = [245, 235, 255];
+const PDF_MERGED_TEXT_COLOR = [126, 34, 206];
 async function exportEntityToPDF() {
 if (!currentEntityId) {
 showToast("No entity selected", "warning");
@@ -2749,7 +2751,7 @@ function loadChartJs() {
     for (const url of _CHARTJS_URLS) {
       try {
         await loadScript(url);
-        if (window.Chart) return; 
+        if (window.Chart) return;
       } catch (e) {
         console.warn('Chart.js CDN failed, trying next:', url, e.message);
       }
@@ -2809,7 +2811,7 @@ paymentsOut: 0,
 expenses: 0
 };
 db.forEach(item => {
-if (item.isReturn) return; 
+if (item.isReturn) return;
 const itemDate = new Date(item.date);
 if (itemDate >= startDate && itemDate <= endDate) {
 rawData.totalProductionValue += item.totalSale || 0;
@@ -2819,7 +2821,7 @@ rawData.totalProductionQuantity += item.net || 0;
 customerSales.forEach(sale => {
 const saleDate = new Date(sale.date);
 if (saleDate >= startDate && saleDate <= endDate) {
-if (!isDirectSale(sale)) return; 
+if (!isDirectSale(sale)) return;
 if (sale.isMerged && sale.mergedSummary) {
 const ms = sale.mergedSummary;
 rawData.salesCash    += (ms.cashSales    || 0);
@@ -2863,7 +2865,7 @@ rawData.paymentsOut += transaction.amount;
 });
 if (Array.isArray(expenseRecords)) {
 expenseRecords.forEach(exp => {
-if (exp.isMerged !== true) return; 
+if (exp.isMerged !== true) return;
 if (exp.category !== 'operating') return;
 const expDate = new Date(exp.date);
 if (expDate >= startDate && expDate <= endDate) {
@@ -3207,12 +3209,12 @@ paymentsIn: 0,
 paymentsOut: 0
 };
 db.forEach(item => {
-if (item.isReturn) return; 
+if (item.isReturn) return;
 rawData.totalProductionValue += item.totalSale || 0;
 rawData.totalProductionQuantity += item.net || 0;
 });
 customerSales.forEach(sale => {
-if (!isDirectSale(sale)) return; 
+if (!isDirectSale(sale)) return;
 if (sale.isMerged && sale.mergedSummary) {
 const ms = sale.mergedSummary;
 rawData.salesCash    += (ms.cashSales    || 0);
@@ -3250,7 +3252,7 @@ rawData.paymentsOut += trans.amount;
 });
 if (Array.isArray(expenseRecords)) {
 expenseRecords.forEach(exp => {
-if (exp.isMerged !== true) return; 
+if (exp.isMerged !== true) return;
 if (exp.category === 'operating') {
 totalExpenses += (parseFloat(exp.amount) || 0);
 }
@@ -3349,7 +3351,7 @@ CurrentLiabilities.accountsPayable.otherPayables.operating += trans.amount;
 });
 if (Array.isArray(expenseRecords)) {
 expenseRecords.forEach(exp => {
-if (exp.isMerged !== true) return; 
+if (exp.isMerged !== true) return;
 if (exp.category === 'operating') {
 CurrentLiabilities.accountsPayable.otherPayables.operating += (parseFloat(exp.amount) || 0);
 }
@@ -3517,7 +3519,7 @@ storeSpecificProduction += production.net || 0;
 });
 let storeSpecificSales = 0;
 customerSales.forEach(sale => {
-if (!isDirectSale(sale)) return; 
+if (!isDirectSale(sale)) return;
 if (sale.date === date && sale.supplyStore === store) {
 storeSpecificSales += sale.quantity || 0;
 }
@@ -3615,13 +3617,13 @@ profit: profit,
 unitPrice: _effectiveSalePrice,
 creditReceived: paymentType === 'CASH' ? true : false,
 syncedAt: new Date().toISOString(),
-isRepModeEntry: false
+isSellerEntry: salesRep !== 'NONE'
 };
 const validatedRecord = ensureRecordIntegrity(saleRecord);
 const salesSnapshot = [...customerSales];
 try {
 customerSales.push(validatedRecord);
-await saveWithTracking('customer_sales', customerSales);
+await saveWithTracking('customer_sales', customerSales, validatedRecord);
 await saveRecordToFirestore('customer_sales', validatedRecord);
 try {
 const _scName = validatedRecord.customerName;
@@ -3632,7 +3634,7 @@ if (_scIdx === -1) {
 const _scContact = { id: generateUUID('cust'), name: _scName, phone: _scPhone, address: '', oldDebit: 0, customSalePrice: 0, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 if (!Array.isArray(salesCustomers)) salesCustomers = [];
 salesCustomers.push(_scContact);
-await saveWithTracking('sales_customers', salesCustomers);
+await saveWithTracking('sales_customers', salesCustomers, _scContact);
 await saveRecordToFirestore('sales_customers', _scContact);
 } else {
 }
@@ -3694,12 +3696,12 @@ if (store === 'STORE_C') {
 const formulaCost = getCostPerUnit('asaan');
 const adjustmentFactor = factoryCostAdjustmentFactor.asaan || 1;
 costPerKg = adjustmentFactor > 0 ? formulaCost / adjustmentFactor : formulaCost;
-			salePricePerKg = getSalePriceForStore('STORE_C'); 
+			salePricePerKg = getSalePriceForStore('STORE_C');
 } else {
 const formulaCost = getCostPerUnit('standard');
 const adjustmentFactor = factoryCostAdjustmentFactor.standard || 1;
 costPerKg = adjustmentFactor > 0 ? formulaCost / adjustmentFactor : formulaCost;
-salePricePerKg = getSalePriceForStore('STORE_A'); 
+salePricePerKg = getSalePriceForStore('STORE_A');
 }
 const totalCost = quantity * costPerKg;
 const totalValue = quantity * salePricePerKg;
@@ -3891,14 +3893,15 @@ showToast(" Failed to delete sale. Please try again.", "error");
 }
 function calculateSales() {
 const seller = document.getElementById('sellerSelect').value;
-const costPerKg = getCostPriceForStore('STORE_A'); 
-const salePrice = getSalePriceForStore('STORE_A'); 
+const costPerKg = getCostPriceForStore('STORE_A');
+const salePrice = getSalePriceForStore('STORE_A');
 const sold = parseFloat(document.getElementById('totalSold').value) || 0;
 const ret = parseFloat(document.getElementById('returnedQuantity').value) || 0;
+const exp = parseFloat(document.getElementById('expiredQuantity').value) || 0;
 const cred = parseFloat(document.getElementById('creditSales').value) || 0;
 const prev = parseFloat(document.getElementById('prevCreditReceived').value) || 0;
 const rec = parseFloat(document.getElementById('receivedCash').value) || 0;
-const netSold = Math.max(0, sold - ret);
+const netSold = Math.max(0, sold - ret - exp);
 const cashQty = Math.max(0, netSold - cred);
 const expected = (cashQty * salePrice) + prev;
 document.getElementById('totalExpectedCash').textContent = fmtAmt(safeValue(expected));
@@ -4189,6 +4192,31 @@ markUploaded(collection, id) {
   if (!this._uploaded.has(collection)) this._uploaded.set(collection, new Set());
   this._uploaded.get(collection).add(sid);
   if (this._dirty.has(collection)) this._dirty.get(collection).delete(sid);
+
+  idb.get(`uploadedIds_${collection}`, []).then(existing => {
+    const arr = Array.isArray(existing) ? existing : [];
+    if (!arr.includes(sid)) {
+      arr.push(sid);
+
+      const trimmed = arr.length > 5000 ? arr.slice(arr.length - 5000) : arr;
+      idb.set(`uploadedIds_${collection}`, trimmed).catch(() => {});
+    }
+  }).catch(() => {});
+},
+async loadUploadedIds(collection) {
+  try {
+    const arr = await idb.get(`uploadedIds_${collection}`, []);
+    if (Array.isArray(arr) && arr.length > 0) {
+      if (!this._uploaded.has(collection)) this._uploaded.set(collection, new Set());
+      arr.forEach(id => this._uploaded.get(collection).add(String(id)));
+    }
+  } catch (_e) {}
+},
+async loadAllUploadedIds() {
+  const cols = ['production','sales','calculator_history','rep_sales','rep_customers',
+    'sales_customers','transactions','entities','inventory','factory_history',
+    'returns','expenses'];
+  await Promise.all(cols.map(c => this.loadUploadedIds(c)));
 },
 markDownloaded(collection, id) {
   const sid = String(id);
@@ -4230,7 +4258,7 @@ async setLastSyncTimestamp(collection, explicitMs) {
   const key = `lastSync_${collection}`;
   const ts = explicitMs ? new Date(explicitMs).toISOString() : new Date().toISOString();
   this._cacheSet(key, ts);
-  this.clearDirty(collection);
+
   await idb.set(key, ts);
 },
 async getLastLocalModification(collection) {
@@ -4296,6 +4324,7 @@ async clearAllTimestamps() {
     this._downloaded.delete(col);
     await idb.remove(lsKey);
     await idb.remove(lmKey);
+    await idb.remove(`uploadedIds_${col}`);
     localStorage.removeItem(lsKey);
     localStorage.removeItem(lmKey);
   }
@@ -4384,6 +4413,136 @@ return true;
 }
 return false;
 }
+
+const UUIDSyncRegistry = (() => {
+  const MAX_IDS_PER_COL = 10000;
+  const ALL_COLLECTIONS = [
+    'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
+    'sales_customers', 'transactions', 'entities', 'inventory',
+    'factory_history', 'returns', 'expenses',
+  ];
+
+  const _uploaded   = new Map();
+  const _downloaded = new Map();
+  let   _myDeviceShard = null;
+
+  function _set(map, col) {
+    if (!map.has(col)) map.set(col, new Set());
+    return map.get(col);
+  }
+
+  function _shardOf(id) {
+    if (!id || typeof id !== 'string') return null;
+    try {
+      const meta = (typeof extractUUIDMeta === 'function') ? extractUUIDMeta(id) : null;
+      return (meta && meta.deviceShard) ? String(meta.deviceShard).toLowerCase() : null;
+    } catch (_) { return null; }
+  }
+
+  function _isLocalOrigin(id) {
+    if (!_myDeviceShard) return false;
+    const shard = _shardOf(id);
+    return shard !== null && shard === _myDeviceShard;
+  }
+
+  function setDeviceShard(shard) {
+    _myDeviceShard = shard ? String(shard).toLowerCase() : null;
+  }
+
+  function markUploaded(col, id) {
+    const sid = String(id);
+
+    _set(_uploaded, col).add(sid);
+
+    DeltaSync.markUploaded(col, sid);
+  }
+
+  function skipUpload(col, id) {
+    const sid = String(id);
+
+    const up = _uploaded.get(col);
+    if (up && up.has(sid)) return true;
+
+    if (_isLocalOrigin(sid)) return false;
+
+    return DeltaSync.wasUploaded(col, sid);
+  }
+
+  function markDownloaded(col, id) {
+    const sid = String(id);
+    _set(_downloaded, col).add(sid);
+    DeltaSync.markDownloaded(col, sid);
+  }
+
+  function skipDownload(col, id) {
+    const sid = String(id);
+
+    const dn = _downloaded.get(col);
+    if (dn && dn.has(sid)) return true;
+
+    if (_isLocalOrigin(sid)) return true;
+    return false;
+  }
+
+  function shouldApplyCloud(cloudRecord, localRecord) {
+    if (!localRecord) return true;
+    if (!cloudRecord) return false;
+    try {
+      return (typeof compareRecordVersions === 'function')
+        ? compareRecordVersions(cloudRecord, localRecord) > 0
+        : false;
+    } catch (_) { return false; }
+  }
+
+  function stats() {
+    const out = { _myDeviceShard };
+    for (const [col, s] of _uploaded)   out[col] = { ...(out[col] || {}), uploaded:   s.size };
+    for (const [col, s] of _downloaded) out[col] = { ...(out[col] || {}), downloaded: s.size };
+    return out;
+  }
+
+  async function loadCollection(col) {
+    try {
+      const arr = await idb.get(`uploadedIds_${col}`, []);
+      if (Array.isArray(arr) && arr.length > 0) {
+        const s = _set(_uploaded, col);
+        arr.forEach(id => s.add(String(id)));
+
+      }
+    } catch (_) {}
+  }
+
+  async function loadAll() {
+    await Promise.all(ALL_COLLECTIONS.map(c => loadCollection(c)));
+  }
+
+  async function clearAll() {
+    _uploaded.clear();
+    _downloaded.clear();
+    await Promise.all(ALL_COLLECTIONS.flatMap(c => [
+      idb.remove(`uploadedIds_${c}`).catch(() => {}),
+    ]));
+  }
+
+  return {
+    setDeviceShard,
+    markUploaded,
+    skipUpload,
+    markDownloaded,
+    skipDownload,
+    shouldApplyCloud,
+    stats,
+    loadCollection,
+    loadAll,
+    clearAll,
+
+    isLocalOrigin: _isLocalOrigin,
+    shardOf: _shardOf,
+  };
+})();
+
+window.UUIDSyncRegistry = UUIDSyncRegistry;
+
 updateSyncButton();
 function addSignOutButton() {
 removeSignOutButton();
@@ -4409,6 +4568,16 @@ section.classList.add('hidden');
 }
 if (typeof calculateSales === 'function') calculateSales();
 }
+function handleExpiredQtyInput() {
+const expQty = parseFloat(document.getElementById('expiredQuantity').value) || 0;
+const section = document.getElementById('expiredSection');
+if (expQty > 0) {
+section.classList.remove('hidden');
+} else {
+section.classList.add('hidden');
+}
+if (typeof calculateSales === 'function') calculateSales();
+}
 function handleTripleTap(el, targetTab) {
 const now = Date.now();
 const TAP_WINDOW = 600;
@@ -4425,6 +4594,7 @@ const seller = document.getElementById('sellerSelect').value;
 const date = document.getElementById('sale-date').value;
 const sold = parseFloat(document.getElementById('totalSold').value) || 0;
 const ret = parseFloat(document.getElementById('returnedQuantity').value) || 0;
+const exp = parseFloat(document.getElementById('expiredQuantity').value) || 0;
 const cred = parseFloat(document.getElementById('creditSales').value) || 0;
 const prev = parseFloat(document.getElementById('prevCreditReceived').value) || 0;
 const rec = parseFloat(document.getElementById('receivedCash').value) || 0;
@@ -4436,12 +4606,14 @@ return;
 }
 selectedStore = { value: window._returnStore };
 }
-const costPerKg = getCostPriceForStore('STORE_A') || 0; 
-const salePrice = getSalePriceForStore('STORE_A'); 
+const costPerKg = getCostPriceForStore('STORE_A') || 0;
+const salePrice = getSalePriceForStore('STORE_A');
 if(!date) return showToast('Please select a date', 'warning', 3000);
 if(salePrice <= 0) return showToast('Please set a sale price in Factory Formulas first', 'warning', 3000);
 if(ret > sold) return showToast('Returned quantity cannot exceed total sold', 'warning', 3000);
-const netSold = Math.max(0, sold - ret);
+if(exp < 0) return showToast('Expired quantity cannot be negative', 'warning', 3000);
+if((ret + exp) > sold) return showToast('Combined returned + expired quantity cannot exceed total sold', 'warning', 3000);
+const netSold = Math.max(0, sold - ret - exp);
 const cashQty = Math.max(0, netSold - cred);
 const creditValue = cred * salePrice;
 const revenue = netSold * salePrice;
@@ -4463,6 +4635,9 @@ statusClass = "result-box discrepancy-ok";
 if (ret > 0 && selectedStore) {
 await processReturnToProduction(selectedStore.value, ret, date, seller);
 }
+if (exp > 0) {
+await processExpiredToChora(exp, date, seller);
+}
 let calcId = generateUUID('calc');
 if (!validateUUID(calcId)) {
 calcId = generateUUID('calc');
@@ -4483,6 +4658,7 @@ totalCost: Number(safeNumber(totalCost, 0).toFixed(2)),
 totalSold: Number(safeNumber(sold, 0).toFixed(2)),
 returned: Number(safeNumber(ret, 0).toFixed(2)),
 returnStore: selectedStore ? selectedStore.value : null,
+expired: Number(safeNumber(exp, 0).toFixed(2)),
 creditQty: Number(safeNumber(cred, 0).toFixed(2)),
 cashQty: Number(safeNumber(cashQty, 0).toFixed(2)),
 creditValue: Number(safeNumber(creditValue, 0).toFixed(2)),
@@ -4513,15 +4689,20 @@ salesHistory.push(entry);
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 document.getElementById('totalSold').value = '';
 document.getElementById('returnedQuantity').value = '';
+document.getElementById('expiredQuantity').value = '';
 document.getElementById('creditSales').value = '';
 document.getElementById('prevCreditReceived').value = '';
 document.getElementById('receivedCash').value = '';
 document.getElementById('returnStoreSection').classList.add('hidden');
+document.getElementById('expiredSection').classList.add('hidden');
 showToast(`Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');
 await loadSalesData(currentCompMode);
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);
 if (entry.returned > 0 && entry.returnStore) {
 if (typeof refreshUI === 'function') await refreshUI();
+}
+if (entry.expired > 0) {
+if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 }
 } catch (error) {
 showToast('Failed to save transaction. Please try again.', 'error', 4000);
@@ -4742,7 +4923,7 @@ break;
 }
 }
 if (linkedIds.length > 0) {
-await saveWithTracking('customer_sales', customerSales);
+await saveWithTracking('customer_sales', customerSales, null, linkedIds);
 const modifiedSales = customerSales.filter(s => linkedIds.includes(s.id));
 for (const sale of modifiedSales) {
 await saveRecordToFirestore('customer_sales', sale);
@@ -4770,7 +4951,7 @@ async function markRepSalesEntriesAsUsed(seller, date, calcId) {
     }
   });
   if (linkedRepIds.length > 0) {
-    await saveWithTracking('rep_sales', repSales);
+    await saveWithTracking('rep_sales', repSales, null, linkedRepIds);
     const modifiedSales = repSales.filter(s => linkedRepIds.includes(s.id));
     for (const sale of modifiedSales) {
       await saveRecordToFirestore('rep_sales', sale);
@@ -4791,7 +4972,7 @@ async function revertRepSalesEntries(repSaleIds) {
     }
   });
   if (revertedCount > 0) {
-    await saveWithTracking('rep_sales', repSales);
+    await saveWithTracking('rep_sales', repSales, null, repSaleIds);
     const revertedSales = repSales.filter(s => repSaleIds.includes(s.id));
     for (const sale of revertedSales) {
       await saveRecordToFirestore('rep_sales', sale);
@@ -5199,7 +5380,7 @@ return b.timestamp - a.timestamp;
 });
 sortedDb.forEach(item => {
 if(!item.date) return;
-if(item.isReturn) return; 
+if(item.isReturn) return;
 const [rowYear, rowMonth, rowDay] = item.date.split('-').map(Number);
 const rowDateObj = new Date(rowYear, rowMonth - 1, rowDay);
 rowDateObj.setHours(0,0,0,0);
@@ -5774,8 +5955,8 @@ const _ycEstItems = [
   ...(data.stockReturns || []), ...(data.paymentTransactions || []),
   ...(data.paymentEntities || []), ...(data.expenses || [])
 ];
-const _ycEstReads  = _ycEstItems.length + 24; 
-const _ycEstWrites = _ycEstItems.length * 2;  
+const _ycEstReads  = _ycEstItems.length + 24;
+const _ycEstWrites = _ycEstItems.length * 2;
 const _ycCostNote  = (typeof buildFirestoreCostEstimate === 'function')
   ? '\n\n' + buildFirestoreCostEstimate(_ycEstReads, _ycEstWrites) : '';
 const _ycRestoreMsg = `This backup was created by Close Financial Year on ${closedDate}.\n\nRestoring it will:\n \u2022 REPLACE all current data with the pre-close snapshot\n \u2022 Remove all merged opening-balance records\n \u2022 Reverse the financial year close counter\n \u2022 Upload the reversed data to cloud\n\n\u26a0\ufe0f This is a full reversal — your current year's data will be overwritten.\n\nOnly proceed if you want to completely undo the financial year close.` + _ycCostNote;
@@ -5800,7 +5981,7 @@ const _allBackupItems = [
 const _postCloseDeletions = _allBackupItems.filter(
   item => item && item.id && deletedRecordIds.has(item.id)
 );
-let _honourDeletions = true; 
+let _honourDeletions = true;
 if (_postCloseDeletions.length > 0) {
   const _delMsg = `${_postCloseDeletions.length} record${_postCloseDeletions.length !== 1 ? 's' : ''} in this backup `
     + `${_postCloseDeletions.length !== 1 ? 'were' : 'was'} deleted after the year-close backup was taken.\n\n`
@@ -5838,8 +6019,6 @@ showToast("Error reading file: " + err.message, 'error');
 }
 }
 }
-
-
 
 function normaliseBackupFields(data) {
   if (!data || typeof data !== 'object') return data;
@@ -5928,19 +6107,33 @@ const _localUUIDSets = {};
 for (const [key, arr] of Object.entries(currentLocalData)) {
 _localUUIDSets[key] = new Set(arr.filter(i => i && i.id).map(i => String(i.id)));
 }
+const _rawCustomerSales = ensureArray(data.customerSales).filter(isAlive);
+const _rawRepSales      = ensureArray(data.repSales).filter(isAlive);
+const _misplacedRepInCS = _rawCustomerSales.filter(s => s && s.isRepModeEntry === true);
+const _cleanCustomerSales = _rawCustomerSales.filter(s => !s || s.isRepModeEntry !== true);
+if (_misplacedRepInCS.length > 0) {
+  console.warn('[Restore] Found', _misplacedRepInCS.length, 'rep-mode record(s) in customerSales — moving to rep_sales.');
+  showToast('Correcting ' + _misplacedRepInCS.length + ' misplaced rep record(s) → rep sales.', 'warning', 4000);
+}
+const _repSalesMap = new Map(_rawRepSales.map(r => [r.id, r]));
+_misplacedRepInCS.forEach(r => {
+  if (!_repSalesMap.has(r.id) || getTimestampValue(r) > getTimestampValue(_repSalesMap.get(r.id))) {
+    _repSalesMap.set(r.id, r);
+  }
+});
 const cleanBackupData = {
 mfg_pro_pkr:                ensureArray(data.mfg || data.mfg_pro_pkr).filter(isAlive),
 noman_history:              ensureArray(data.sales || data.noman_history).filter(isAlive),
-customer_sales:             ensureArray(data.customerSales).filter(isAlive),
-rep_sales:                  ensureArray(data.repSales).filter(isAlive),
-rep_customers:              ensureArray(data.repCustomers).filter(isAlive),
-sales_customers:            ensureArray(data.salesCustomers).filter(isAlive),
+customer_sales:             _cleanCustomerSales,
+rep_sales:                  Array.from(_repSalesMap.values()),
+rep_customers:              mergeDatasets(ensureArray(data.repCustomers).filter(isAlive), ensureArray(currentLocalData.rep_customers || []).filter(isAlive)),
+sales_customers:            mergeDatasets(ensureArray(data.salesCustomers).filter(isAlive), ensureArray(currentLocalData.sales_customers || []).filter(isAlive)),
 factory_inventory_data:     ensureArray(data.factoryInventoryData).filter(isAlive),
 factory_production_history: ensureArray(data.factoryProductionHistory).filter(isAlive),
 stock_returns:              ensureArray(data.stockReturns).filter(isAlive),
 payment_transactions:       ensureArray(data.paymentTransactions).filter(isAlive),
 payment_entities:           ensureArray(data.paymentEntities).filter(isAlive),
-expenses:                   ensureArray(data.expenses).filter(isAlive)
+expenses:                   mergeDatasets(ensureArray(data.expenses).filter(isAlive), ensureArray(currentLocalData.expenses || []).filter(isAlive))
 };
 let totalAdded = 0;
 let totalUpdated = 0;
@@ -5961,6 +6154,7 @@ const firestoreCollection = _idbToFirestore[key];
 const merged = mergeArrays(localArray, backupArray);
 backupArray.forEach(backupItem => {
   if (!backupItem || !backupItem.id) return;
+  if (firestoreCollection === 'sales' && backupItem.isRepModeEntry === true) return;
   const sid = String(backupItem.id);
   if (!localIds.has(sid)) {
     totalAdded++;
@@ -5996,6 +6190,26 @@ mergedData[key] = merged.map(item => {
   if (!item.id || !validateUUID(String(item.id))) return ensureRecordIntegrity(item, false, true);
   return item;
 });
+if (key === 'customer_sales') {
+  const _leaked = mergedData[key].filter(r => r && r.isRepModeEntry === true);
+  if (_leaked.length > 0) {
+    console.warn('[Restore] Stripping', _leaked.length, 'rep-mode record(s) leaked from local IDB customer_sales');
+    mergedData[key] = mergedData[key].filter(r => !r || r.isRepModeEntry !== true);
+    if (!mergedData._leakedRepRecords) mergedData._leakedRepRecords = [];
+    mergedData._leakedRepRecords.push(..._leaked);
+  }
+}
+}
+if (mergedData._leakedRepRecords && mergedData._leakedRepRecords.length > 0) {
+  const _repMap = new Map((mergedData.rep_sales || []).filter(r => r && r.id).map(r => [r.id, r]));
+  mergedData._leakedRepRecords.forEach(r => {
+    if (!_repMap.has(r.id) || getTimestampValue(r) > getTimestampValue(_repMap.get(r.id))) {
+      _repMap.set(r.id, r);
+      DeltaSync.trackId('rep_sales', r.id);
+    }
+  });
+  mergedData.rep_sales = Array.from(_repMap.values());
+  delete mergedData._leakedRepRecords;
 }
 await Promise.all([
 idb.set('mfg_pro_pkr',                mergedData.mfg_pro_pkr),
@@ -6020,30 +6234,45 @@ factoryUnitTracking:          await idb.get('factory_unit_tracking'),
 naswarDefaultSettings:        await idb.get('naswar_default_settings')
 };
 const settingsTimestamp = Date.now();
-if (data.factoryDefaultFormulas && JSON.stringify(data.factoryDefaultFormulas) !== JSON.stringify(currentSettings.factoryDefaultFormulas)) {
-await idb.set('factory_default_formulas', data.factoryDefaultFormulas);
+const _stripFsMeta = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const { id: _id, createdAt: _ca, updatedAt: _ua, timestamp: _ts, syncedAt: _sa, ...clean } = obj;
+  return clean;
+};
+const _cleanFormulas = data.factoryDefaultFormulas ? _stripFsMeta(data.factoryDefaultFormulas) : null;
+const _cleanCosts    = data.factoryAdditionalCosts ? _stripFsMeta(data.factoryAdditionalCosts) : null;
+const _cleanFactor   = data.factoryCostAdjustmentFactor ? _stripFsMeta(data.factoryCostAdjustmentFactor) : null;
+const _cleanPrices   = data.factorySalePrices ? _stripFsMeta(data.factorySalePrices) : null;
+const _cleanTracking = data.factoryUnitTracking ? _stripFsMeta(data.factoryUnitTracking) : null;
+if (_cleanFormulas && ('standard' in _cleanFormulas) && ('asaan' in _cleanFormulas) &&
+    JSON.stringify(_cleanFormulas) !== JSON.stringify(currentSettings.factoryDefaultFormulas)) {
+await idb.set('factory_default_formulas', _cleanFormulas);
 await idb.set('factory_default_formulas_timestamp', settingsTimestamp);
-factoryDefaultFormulas = data.factoryDefaultFormulas;
+factoryDefaultFormulas = _cleanFormulas;
 }
-if (data.factoryAdditionalCosts && JSON.stringify(data.factoryAdditionalCosts) !== JSON.stringify(currentSettings.factoryAdditionalCosts)) {
-await idb.set('factory_additional_costs', data.factoryAdditionalCosts);
+if (_cleanCosts && ('standard' in _cleanCosts) && ('asaan' in _cleanCosts) &&
+    JSON.stringify(_cleanCosts) !== JSON.stringify(currentSettings.factoryAdditionalCosts)) {
+await idb.set('factory_additional_costs', _cleanCosts);
 await idb.set('factory_additional_costs_timestamp', settingsTimestamp);
-factoryAdditionalCosts = data.factoryAdditionalCosts;
+factoryAdditionalCosts = _cleanCosts;
 }
-if (data.factoryCostAdjustmentFactor && JSON.stringify(data.factoryCostAdjustmentFactor) !== JSON.stringify(currentSettings.factoryCostAdjustmentFactor)) {
-await idb.set('factory_cost_adjustment_factor', data.factoryCostAdjustmentFactor);
+if (_cleanFactor && ('standard' in _cleanFactor) && ('asaan' in _cleanFactor) &&
+    JSON.stringify(_cleanFactor) !== JSON.stringify(currentSettings.factoryCostAdjustmentFactor)) {
+await idb.set('factory_cost_adjustment_factor', _cleanFactor);
 await idb.set('factory_cost_adjustment_factor_timestamp', settingsTimestamp);
-factoryCostAdjustmentFactor = data.factoryCostAdjustmentFactor;
+factoryCostAdjustmentFactor = _cleanFactor;
 }
-if (data.factorySalePrices && JSON.stringify(data.factorySalePrices) !== JSON.stringify(currentSettings.factorySalePrices)) {
-await idb.set('factory_sale_prices', data.factorySalePrices);
+if (_cleanPrices && ('standard' in _cleanPrices) && ('asaan' in _cleanPrices) &&
+    JSON.stringify(_cleanPrices) !== JSON.stringify(currentSettings.factorySalePrices)) {
+await idb.set('factory_sale_prices', _cleanPrices);
 await idb.set('factory_sale_prices_timestamp', settingsTimestamp);
-factorySalePrices = data.factorySalePrices;
+factorySalePrices = _cleanPrices;
 }
-if (data.factoryUnitTracking && JSON.stringify(data.factoryUnitTracking) !== JSON.stringify(currentSettings.factoryUnitTracking)) {
-await idb.set('factory_unit_tracking', data.factoryUnitTracking);
+if (_cleanTracking && ('standard' in _cleanTracking) && ('asaan' in _cleanTracking) &&
+    JSON.stringify(_cleanTracking) !== JSON.stringify(currentSettings.factoryUnitTracking)) {
+await idb.set('factory_unit_tracking', _cleanTracking);
 await idb.set('factory_unit_tracking_timestamp', settingsTimestamp);
-factoryUnitTracking = data.factoryUnitTracking;
+factoryUnitTracking = _cleanTracking;
 }
 if (data.settings && JSON.stringify(data.settings) !== JSON.stringify(currentSettings.naswarDefaultSettings)) {
 await idb.set('naswar_default_settings', data.settings);
@@ -6060,7 +6289,7 @@ try {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const collectionMapping = {
     'production':         { data: ensureArray(mergedData.mfg_pro_pkr),                deltaName: 'production' },
-    'sales':              { data: ensureArray(mergedData.customer_sales),              deltaName: 'sales' },
+    'sales':              { data: ensureArray(mergedData.customer_sales).filter(s => s && s.isRepModeEntry !== true), deltaName: 'sales' },
     'calculator_history': { data: ensureArray(mergedData.noman_history),              deltaName: 'calculator_history' },
     'rep_sales':          { data: ensureArray(mergedData.rep_sales),                  deltaName: 'rep_sales' },
     'rep_customers':      { data: ensureArray(mergedData.rep_customers),              deltaName: 'rep_customers' },
@@ -6146,8 +6375,14 @@ try {
     for (const [cloudName, config] of Object.entries(collectionMapping)) {
       if (itemsToUpload[cloudName] && itemsToUpload[cloudName].length > 0) {
         await DeltaSync.setLastSyncTimestamp(config.deltaName);
+        DeltaSync.clearDirty(config.deltaName);
       }
     }
+    const _allDeltaNames = Object.values(collectionMapping).map(c => c.deltaName);
+    for (const _dn of _allDeltaNames) {
+      await DeltaSync.setLastSyncTimestamp(_dn);
+    }
+    await idb.set('firestore_initialized', true);
     cloudSyncSuccess = true;
     const message = totalToUpload > 0
       ? ` Successfully restored & uploaded ${totalToUpload} new/updated records + factory settings to cloud!`
@@ -6172,20 +6407,20 @@ async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
   showToast('↩ Reversing financial year close — replacing data...', 'info', 5000);
   const isAlive = honourPostCloseDeletions
     ? (item) => item && item.id && !deletedRecordIds.has(item.id)
-    : (item) => item && item.id; 
+    : (item) => item && item.id;
   const replaceData = {
     mfg_pro_pkr:                ensureArray(data.mfg || data.mfg_pro_pkr).filter(isAlive),
     noman_history:              ensureArray(data.sales || data.noman_history).filter(isAlive),
     customer_sales:             ensureArray(data.customerSales).filter(isAlive),
     rep_sales:                  ensureArray(data.repSales).filter(isAlive),
-    rep_customers:              ensureArray(data.repCustomers).filter(isAlive),
-    sales_customers:            ensureArray(data.salesCustomers).filter(isAlive),
+    rep_customers:              mergeDatasets(ensureArray(data.repCustomers).filter(isAlive), ensureArray(repCustomers || []).filter(isAlive)),
+    sales_customers:            mergeDatasets(ensureArray(data.salesCustomers).filter(isAlive), ensureArray(salesCustomers || []).filter(isAlive)),
     factory_inventory_data:     ensureArray(data.factoryInventoryData).filter(isAlive),
     factory_production_history: ensureArray(data.factoryProductionHistory).filter(isAlive),
     stock_returns:              ensureArray(data.stockReturns).filter(isAlive),
     payment_transactions:       ensureArray(data.paymentTransactions).filter(isAlive),
     payment_entities:           ensureArray(data.paymentEntities).filter(isAlive),
-    expenses:                   ensureArray(data.expenses).filter(isAlive)
+    expenses:                   mergeDatasets(ensureArray(data.expenses).filter(isAlive), ensureArray(expenseRecords || []).filter(isAlive))
   };
   await Promise.all([
     idb.set('mfg_pro_pkr',                replaceData.mfg_pro_pkr),
@@ -6221,8 +6456,8 @@ async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
     if (firebaseDB && currentUser) {
       try {
         await firebaseDB.collection('users').doc(currentUser.uid)
-          .collection('settings').doc('naswar_default_settings')
-          .set({ fyCloseCount: currentSettings.fyCloseCount, lastYearClosedAt: currentSettings.lastYearClosedAt, lastYearClosedDate: currentSettings.lastYearClosedDate }, { merge: true });
+          .collection('settings').doc('config')
+          .set({ naswar_default_settings: { fyCloseCount: currentSettings.fyCloseCount, lastYearClosedAt: currentSettings.lastYearClosedAt, lastYearClosedDate: currentSettings.lastYearClosedDate } }, { merge: true });
       } catch(e) { console.warn('Cloud FY meta reversal failed:', e); }
     }
   } catch(metaErr) { console.warn('Could not reverse FY metadata:', metaErr); }
@@ -6275,7 +6510,7 @@ async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
             wrOps++; trackFirestoreWrite(1);
           }
           if (wrOps > 0) await Promise.all(wrBatches.map(b => b.commit()));
-          const _fsColName = colName; 
+          const _fsColName = colName;
           records.forEach(record => {
             if (!record || !record.id) return;
             DeltaSync.markUploaded(_fsColName, record.id);
@@ -6881,7 +7116,7 @@ return entryDate >= weekStart && entryDate <= selectedDate;
 }
 if (mode === 'monthly') return entryDate.getMonth() === selectedMonth && entryDate.getFullYear() === selectedYear;
 if (mode === 'yearly') return entryDate.getFullYear() === selectedYear;
-return true; 
+return true;
 }
 const allTimeRecomp = { standard: { produced: 0, consumed: 0 }, asaan: { produced: 0, consumed: 0 } };
 factoryProductionHistory.forEach(entry => {
@@ -7181,8 +7416,8 @@ storeData.sold = soldQty;
 					const storeReturnFromMerged = h.returnsByStore[store] || 0;
 					calcTabStoreReturns += storeReturnFromMerged;
 				} else {
-					const returnEntries = db.filter(item => 
-						item.isReturn === true && 
+					const returnEntries = db.filter(item =>
+						item.isReturn === true &&
 						item.returnedBy === h.seller &&
 						item.store === store &&
 						item.date === h.date
@@ -7312,7 +7547,7 @@ const dateStr = d.toISOString().split('T')[0];
 labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
 let dayCash = 0, dayCredit = 0;
 customerSales.forEach(item => {
-if (isRepSale(item)) return; 
+if (isRepSale(item)) return;
 if(item.date === dateStr) {
 if (item.isMerged && item.mergedSummary) {
 const ms = item.mergedSummary;
@@ -7334,7 +7569,7 @@ labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
 cashData = new Array(daysInMonth).fill(0);
 creditData = new Array(daysInMonth).fill(0);
 customerSales.forEach(item => {
-if (isRepSale(item)) return; 
+if (isRepSale(item)) return;
 const d = new Date(item.date);
 if(d.getMonth() === selectedMonth && d.getFullYear() === selectedYear) {
 if (item.isMerged && item.mergedSummary) {
@@ -7354,7 +7589,7 @@ labels = months;
 cashData = new Array(12).fill(0);
 creditData = new Array(12).fill(0);
 customerSales.forEach(item => {
-if (isRepSale(item)) return; 
+if (isRepSale(item)) return;
 const d = new Date(item.date);
 if(d.getFullYear() === selectedYear) {
 if (item.isMerged && item.mergedSummary) {
@@ -7371,7 +7606,7 @@ creditData[d.getMonth()] += item.totalValue;
 } else if (currentCustomerChartMode === 'all') {
 const monthData = {};
 customerSales.forEach(item => {
-if (isRepSale(item)) return; 
+if (isRepSale(item)) return;
 const d = new Date(item.date);
 const monthYear = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const monthLabel = `${d.toLocaleDateString('en-US', {month:'short'})} ${d.getFullYear()}`;
@@ -7795,7 +8030,7 @@ const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
 let history; history = await idb.get('noman_history', []);
 const comp = {};
-salesRepsList.forEach(rep => { comp[rep] = {prof:0, rev:0, sold:0, ret:0, cred:0, cash:0, coll:0, giv:0, cost:0}; });
+salesRepsList.forEach(rep => { comp[rep] = {prof:0, rev:0, sold:0, ret:0, exp:0, cred:0, cash:0, coll:0, giv:0, cost:0}; });
 history.forEach(h => {
 const hDate = new Date(h.date);
 const hYear = hDate.getFullYear();
@@ -7816,6 +8051,7 @@ comp[h.seller].rev += h.revenue;
 comp[h.seller].cost += (h.totalCost || 0);
 comp[h.seller].sold += h.totalSold;
 comp[h.seller].ret += h.returned;
+comp[h.seller].exp += (h.expired || 0);
 comp[h.seller].cred += h.creditQty;
 comp[h.seller].cash += h.cashQty;
 comp[h.seller].coll += h.prevColl;
@@ -7853,6 +8089,7 @@ const dateAttr = (isHistory && data._rawDate) ? ` data-date="${data._rawDate}"` 
 let html = `<div class="card liquid-card ${highlightClass}"${dateAttr}>${badge}<h4>${esc(title)}${mergedBadge}</h4>
 <p><span>Total Sold:</span> <span class="qty-val">${safeValue(data.sold).toFixed(2)}</span></p>
 <p><span>Returned:</span> <span class="qty-val">${safeValue(data.ret).toFixed(2)}</span></p>
+${safeValue(data.expired) > 0 ? `<p><span>Expired (→ CHORA):</span> <span class="cost-val">${safeValue(data.expired).toFixed(2)}</span></p>` : ''}
 <p><span>Cash Qty:</span> <span class="qty-val">${safeValue(data.cash).toFixed(2)}</span></p>
 <p><span>Credit Qty:</span> <span class="qty-val">${safeValue(data.cred).toFixed(2)}</span></p>
 <hr>
@@ -7982,11 +8219,11 @@ if (a.date !== searchDate && b.date === searchDate) return 1;
 return b.timestamp - a.timestamp;
 });
 const ranges = {
-d: { sold:0, ret:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-w: { sold:0, ret:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-m: { sold:0, ret:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-y: { sold:0, ret:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-a: { sold:0, ret:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 }
+d: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
+w: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
+m: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
+y: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
+a: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 }
 };
 const list = document.getElementById('historyList');
 list.innerHTML = '';
@@ -7998,6 +8235,7 @@ dateTitle,
 {
 sold: h.totalSold,
 ret: h.returned,
+expired: h.expired,
 cash: h.cashQty,
 cred: h.creditQty,
 revenue: h.revenue,
@@ -8066,6 +8304,7 @@ return `<th id="th-rep-${r.replace(/\s+/g,'-')}">${firstName}</th>`;
 const metrics = [
 { label: 'Qty Sold', key: 'sold', cls: null },
 { label: 'Returns', key: 'ret', cls: null },
+{ label: 'Expired (→ CHORA)', key: 'exp', cls: 'cost-val' },
 { label: 'Total Cost', key: 'cost', cls: 'cost-val' },
 { label: 'Gross Revenue', key: 'rev', cls: 'rev-val' },
 { label: 'Net Profit', key: 'prof', cls: 'profit-val', winner: true },
@@ -8089,6 +8328,7 @@ await updateIndChart();
 function addToRange(range, h) {
 range.sold += h.totalSold;
 range.ret += h.returned;
+range.expired = (range.expired || 0) + (h.expired || 0);
 range.cash += h.cashQty;
 range.cred += h.creditQty;
 range.creditVal += h.creditValue;
@@ -8217,8 +8457,8 @@ hours = hours % 12;
 hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
 const formulaStore = storeKey === 'STORE_C' ? 'asaan' : 'standard';
-const salePrice = getSalePriceForStore(storeKey); 
-const costPerKg = getCostPriceForStore(storeKey); 
+const salePrice = getSalePriceForStore(storeKey);
+const costPerKg = getCostPriceForStore(storeKey);
 const totalCost = quantity * costPerKg;
 const totalSale = quantity * salePrice;
 const profit = totalSale - totalCost;
@@ -8289,6 +8529,53 @@ if (returnLogEntry) {
 stockReturns = stockReturns.filter(r => r.id !== returnLogEntry.id);
 await unifiedDelete('stock_returns', stockReturns, returnLogEntry.id, { strict: true });
 }
+}
+const CHORA_MATERIAL_NAME = 'CHORA';
+async function processExpiredToChora(quantity, date, seller) {
+if (!quantity || quantity <= 0) return;
+let choraMaterial = factoryInventoryData.find(m => m.name && m.name.toUpperCase() === CHORA_MATERIAL_NAME);
+if (!choraMaterial) {
+const reloadedData = await idb.get('factory_inventory_data', []);
+if (Array.isArray(reloadedData)) {
+factoryInventoryData = reloadedData;
+choraMaterial = factoryInventoryData.find(m => m.name && m.name.toUpperCase() === CHORA_MATERIAL_NAME);
+}
+}
+if (!choraMaterial) {
+showToast(`⚠ CHORA material not found in factory inventory. Expired qty (${quantity}) was recorded but not added to raw materials.`, 'warning', 5000);
+return;
+}
+choraMaterial.quantity = (choraMaterial.quantity || 0) + quantity;
+choraMaterial.totalValue = choraMaterial.quantity * (choraMaterial.cost || 0);
+choraMaterial.updatedAt = getTimestamp();
+choraMaterial.lastExpiredAddedAt = date;
+choraMaterial.lastExpiredAddedBy = seller;
+ensureRecordIntegrity(choraMaterial, true);
+await unifiedSave('factory_inventory_data', factoryInventoryData, choraMaterial);
+emitSyncUpdate({ factory_inventory_data: factoryInventoryData });
+notifyDataChange('factory');
+}
+async function reverseExpiredFromChora(quantity, date) {
+if (!quantity || quantity <= 0) return;
+let choraMaterial = factoryInventoryData.find(m => m.name && m.name.toUpperCase() === CHORA_MATERIAL_NAME);
+if (!choraMaterial) {
+const reloadedData = await idb.get('factory_inventory_data', []);
+if (Array.isArray(reloadedData)) {
+factoryInventoryData = reloadedData;
+choraMaterial = factoryInventoryData.find(m => m.name && m.name.toUpperCase() === CHORA_MATERIAL_NAME);
+}
+}
+if (!choraMaterial) {
+showToast(`⚠ CHORA material not found. Could not reverse expired qty (${quantity}).`, 'warning', 5000);
+return;
+}
+choraMaterial.quantity = Math.max(0, (choraMaterial.quantity || 0) - quantity);
+choraMaterial.totalValue = choraMaterial.quantity * (choraMaterial.cost || 0);
+choraMaterial.updatedAt = getTimestamp();
+ensureRecordIntegrity(choraMaterial, true);
+await unifiedSave('factory_inventory_data', factoryInventoryData, choraMaterial);
+emitSyncUpdate({ factory_inventory_data: factoryInventoryData });
+notifyDataChange('factory');
 }
 async function formatCurrency(num) {
 if (typeof num !== 'number') num = parseFloat(num) || 0;
@@ -8480,7 +8767,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
       if (expIdEl) { const id2 = generateUUID('exp'); expIdEl.textContent = 'ID: ' + id2.split('-').slice(0,2).join('-') + '\u2026'; expIdEl.title = id2; }
     }
   }, 400);
-  }); 
+  });
   scheduleAutomaticCleanup();
   setTimeout(() => validateAllDataOnStartup(), 5000);
   if (window._connectionCheckInterval) clearInterval(window._connectionCheckInterval);
@@ -8632,12 +8919,13 @@ confirmMsg += `\nDate: ${entryToDelete.date}`;
 confirmMsg += `\nTotal Sold: ${entryToDelete.sold || 0} kg`;
 confirmMsg += `\nCash Received: ${(entryToDelete.received||0)}`;
 if (entryToDelete.credit) confirmMsg += `\nCredit Recovered: ${entryToDelete.credit}`;
-const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore);
+const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore) || entryToDelete.expired > 0;
 if (_dsHasImpact) {
-confirmMsg += `\n\n\u26a0 The following cascading changes will occur:`;
-if (linkedCount > 0) confirmMsg += `\n \u2022 ${linkedCount} linked sale${linkedCount !== 1 ? 's' : ''} will REVERT to "Pending Credit" status.`;
-if (linkedRepCount > 0) confirmMsg += `\n \u2022 ${linkedRepCount} rep sale${linkedRepCount !== 1 ? 's' : ''} will be RESTORED to calculator fields.`;
-if (entryToDelete.returned > 0 && entryToDelete.returnStore) confirmMsg += `\n \u2022 ${entryToDelete.returned} kg will be REMOVED from ${getStoreLabel(entryToDelete.returnStore)} inventory (return reversal).`;
+confirmMsg += `\n\n⚠ The following cascading changes will occur:`;
+if (linkedCount > 0) confirmMsg += `\n • ${linkedCount} linked sale${linkedCount !== 1 ? 's' : ''} will REVERT to "Pending Credit" status.`;
+if (linkedRepCount > 0) confirmMsg += `\n • ${linkedRepCount} rep sale${linkedRepCount !== 1 ? 's' : ''} will be RESTORED to calculator fields.`;
+if (entryToDelete.returned > 0 && entryToDelete.returnStore) confirmMsg += `\n • ${entryToDelete.returned} kg will be REMOVED from ${getStoreLabel(entryToDelete.returnStore)} inventory (return reversal).`;
+if (entryToDelete.expired > 0) confirmMsg += `\n • ${entryToDelete.expired} kg will be REMOVED from CHORA raw material (expired reversal).`;
 }
 if (await showGlassConfirm(confirmMsg, { title: `Delete ${entryToDelete.seller || "Sales"} Record`, confirmText: "Delete", danger: true })) {
 let revertedSalesCount = 0;
@@ -8653,6 +8941,9 @@ if (entryToDelete.returned > 0 && entryToDelete.returnStore) {
 reversedReturnQty = entryToDelete.returned;
 await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date);
 }
+if (entryToDelete.expired > 0) {
+await reverseExpiredFromChora(entryToDelete.expired, entryToDelete.date);
+}
 const newHistory = history.filter(h => h.id !== id);
 await unifiedDelete('noman_history', newHistory, id, { strict: true });
 if (Array.isArray(salesHistory)) {
@@ -8663,6 +8954,9 @@ refreshAllCalculations();
 await loadSalesData(currentCompMode);
 await refreshCustomerSales();
 if (typeof refreshUI === 'function') await refreshUI();
+if (entryToDelete.expired > 0) {
+if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
+}
 updateAllStoresOverview(currentOverviewMode);
 notifyDataChange('calculator');
 let successMsg = ' Record deleted successfully!';
@@ -8674,6 +8968,9 @@ successMsg += ` ${revertedRepSalesCount} rep sales restored to calculator fields
 }
 if (reversedReturnQty > 0) {
 successMsg += ` ${reversedReturnQty} kg return removed from inventory.`;
+}
+if (entryToDelete.expired > 0) {
+successMsg += ` ${entryToDelete.expired} kg expired removed from CHORA.`;
 }
 showToast(successMsg, 'success');
 }
@@ -8701,7 +8998,7 @@ revertedCount++;
 }
 });
 if (revertedCount > 0) {
-await saveWithTracking('customer_sales', customerSales);
+await saveWithTracking('customer_sales', customerSales, null, saleIds);
 const revertedSales = customerSales.filter(s => saleIds.includes(s.id));
 for (const sale of revertedSales) {
 await saveRecordToFirestore('customer_sales', sale);
@@ -8954,7 +9251,7 @@ await idb.set('expenses', freshExpenses);
 }
 }
 expenses = freshExpenses;
-expenseRecords = freshExpenses; 
+expenseRecords = freshExpenses;
 }
 if (paymentDataMap.get('payment_entities')) {
 let freshEntities = paymentDataMap.get('payment_entities') || [];
@@ -11232,7 +11529,6 @@ if (adminSection) {
 adminSection.style.display = 'block';
 }
 
-
 if (typeof updateSyncButton === 'function') updateSyncButton();
 requestAnimationFrame(() => {
 document.body.style.overflow = 'hidden';
@@ -11307,7 +11603,7 @@ async function purgeRecoveredId(id, collectionName, cleanRecord, newId) {
             ? sanitizeForFirestore({ ...cleanRecord, syncedAt: new Date().toISOString() })
             : { ...cleanRecord, syncedAt: new Date().toISOString() };
           sanitized.id = newSid;
-          delete sanitized.originalId; 
+          delete sanitized.originalId;
           sanitized.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
           batch.set(
             userRef.collection(collectionName).doc(newSid),
@@ -11331,7 +11627,7 @@ async function purgeRecoveredId(id, collectionName, cleanRecord, newId) {
               ? sanitizeForFirestore({ ...cleanRecord, syncedAt: new Date().toISOString() })
               : { ...cleanRecord, syncedAt: new Date().toISOString() };
             queuedRecord.id = newSid;
-            delete queuedRecord.originalId; 
+            delete queuedRecord.originalId;
             await OfflineQueue.add({
               action: 'set',
               collection: collectionName,
@@ -11391,8 +11687,8 @@ async function recoverRecord(deletedId, collectionName) {
       : String(deletedId);
     const oldId = String(deletedId);
     if (cleanRecord) {
-      cleanRecord.id = newId; 
-      delete cleanRecord.originalId; 
+      cleanRecord.id = newId;
+      delete cleanRecord.originalId;
     }
     await purgeRecoveredId(oldId, collectionName, cleanRecord, newId);
     if (cleanRecord && idbKey) {
@@ -11518,7 +11814,7 @@ async function renderRecycleBin(filterCollection = 'all') {
         });
       } catch(e) {   }
     }
-    const _seen = new Map(); 
+    const _seen = new Map();
     deletionRecords.forEach(r => {
       const key = String(r.id || r.recordId);
       const existing = _seen.get(key);
@@ -11817,7 +12113,9 @@ return collection.get();
 };
 const [
 prodSnap, salesSnap, calcSnap, repSnap, transSnap, entSnap,
-invSnap, factSnap, retSnap, settingsSnap, factorySettingsSnap,
+invSnap, factSnap, retSnap,
+repCustomersSnap, salesCustomersSnap, expensesSnap,
+settingsSnap, factorySettingsSnap,
 expenseCategoriesSnap, deletionsSnap
 ] = await Promise.all([
 buildDeltaQuery(userRef.collection('production'), 'production'),
@@ -11829,6 +12127,9 @@ buildDeltaQuery(userRef.collection('entities'), 'entities'),
 buildDeltaQuery(userRef.collection('inventory'), 'inventory'),
 buildDeltaQuery(userRef.collection('factory_history'), 'factory_history'),
 buildDeltaQuery(userRef.collection('returns'), 'returns'),
+buildDeltaQuery(userRef.collection('rep_customers'), 'rep_customers'),
+buildDeltaQuery(userRef.collection('sales_customers'), 'sales_customers'),
+buildDeltaQuery(userRef.collection('expenses'), 'expenses'),
 userRef.collection('settings').doc('config').get(),
 userRef.collection('factorySettings').doc('config').get(),
 userRef.collection('expenseCategories').doc('categories').get(),
@@ -11843,7 +12144,10 @@ payment_transactions: transSnap.docs.filter(doc => doc.id !== '_placeholder_' &&
 payment_entities: entSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
 factory_inventory_data: invSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
 factory_production_history: factSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
-stock_returns: retSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() }))
+stock_returns: retSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
+rep_customers:  repCustomersSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
+sales_customers: salesCustomersSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
+expenses: expensesSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() }))
 };
 if (factorySettingsSnap && factorySettingsSnap.exists) {
 const factoryData = factorySettingsSnap.data();
@@ -12014,7 +12318,7 @@ return currentBatch;
 };
 const collections = {
 'production': merged.mfg_pro_pkr,
-'sales': merged.customer_sales,
+'sales': (merged.customer_sales || []).filter(s => s && s.isRepModeEntry !== true),
 'rep_sales': merged.rep_sales,
 'calculator_history': merged.noman_history,
 'inventory': merged.factory_inventory_data,
@@ -12098,7 +12402,7 @@ for (let _bi = 0; _bi < batches.length; _bi++) {
 	if (batches.length > 1) {
 		showToast('Uploading... ' + (_bi + 1) + ' / ' + batches.length + ' batches', 'info');
 	}
-	await new Promise(r => setTimeout(r, 0)); 
+	await new Promise(r => setTimeout(r, 0));
 }
 const counts = {
 production: normalized.mfg_pro_pkr.length,
@@ -13112,7 +13416,7 @@ const pill = document.createElement('div');
 pill.id = 'pull-refresh-pill';
 pill.innerHTML = `
 <div class="ptr-icon-wrap" id="ptr-icon-wrap">
-<svg class="ptr-svg" id="ptr-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg class="ptr-svg" id="ptr-svg" viewBox="0 0 32 32" fill="none" xmlns="http:
 <circle class="ptr-track" cx="16" cy="16" r="12" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
 <circle class="ptr-arc u-hidden" id="ptr-arc" cx="16" cy="16" r="12"
 stroke="#4da6ff" stroke-width="2" stroke-linecap="round"
@@ -13253,7 +13557,7 @@ if (typeof renderExpenseTable === 'function') {
 if (typeof renderRepCustomerTable === 'function') {
 }
 })();
-var ThemeManager = { 
+var ThemeManager = {
 currentTheme: 'dark',
 observers: new Set(),
 init() {
@@ -13404,7 +13708,7 @@ listeners.forEach(cb => cb(newState, oldState));
 }
 }
 }
-var PerformanceMonitor = { 
+var PerformanceMonitor = {
 metrics: {
 renderTime: [],
 queryTime: [],
@@ -14459,3 +14763,4 @@ window._teamUnsubscribe = null;
 }
 window.listenForTeamChanges = listenForTeamChanges;
 window.applyRemoteModeChange = applyRemoteModeChange;
+

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'naswar-dealer-v13'; 
+const CACHE_NAME = 'naswar-dealer-v13';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -137,3 +137,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+

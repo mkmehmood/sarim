@@ -779,8 +779,9 @@ syncedAt: new Date().toISOString(), isRepModeEntry: false
 }, false, false));
 }
 if (updatedCount > 0 || partialPaymentMade) {
-await saveWithTracking('customer_sales', customerSales);
 const changedIds = new Set(pending.map(s => s.id));
+if (collId) changedIds.add(collId);
+await saveWithTracking('customer_sales', customerSales, null, Array.from(changedIds));
 for (const sale of customerSales) {
 if (changedIds.has(sale.id) || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'COLLECTION') {
 await saveRecordToFirestore('customer_sales', sale);
@@ -865,8 +866,9 @@ syncedAt: new Date().toISOString(), isRepModeEntry: true
 }, false, false));
 }
 if (updatedCount > 0 || partialPaymentMade) {
-await saveWithTracking('rep_sales', repSales);
 const changedIds = new Set(pending.map(s => s.id));
+if (collId) changedIds.add(collId);
+await saveWithTracking('rep_sales', repSales, null, Array.from(changedIds));
 for (const sale of repSales) {
 if (changedIds.has(sale.id) || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'COLLECTION') {
 await saveRecordToFirestore('rep_sales', sale);
@@ -1091,7 +1093,7 @@ contact = { id: generateUUID('cust'), name, phone, address, oldDebit, customSale
 createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 salesCustomers.push(contact);
 }
-await saveWithTracking('sales_customers', salesCustomers);
+await saveWithTracking('sales_customers', salesCustomers, contact);
 await saveRecordToFirestore('sales_customers', contact);
 notifyDataChange('sales');
 let salesArray = await idb.get('customer_sales', []);
@@ -1145,7 +1147,7 @@ let phoneUpdated = false;
 salesArray.forEach(s => { if (s && s.customerName === name && s.customerPhone !== phone) { s.customerPhone = phone; phoneUpdated = true; } });
 customerSales.length = 0; customerSales.push(...salesArray);
 if (nameChanged || oldDebtModified || phoneUpdated) {
-await saveWithTracking('customer_sales', salesArray);
+await saveWithTracking('customer_sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
 if (oldDebtRecord) await saveRecordToFirestore('customer_sales', oldDebtRecord);
 if (deletedOldDebtId) {
 await registerDeletion(deletedOldDebtId, 'sales');
@@ -1261,3 +1263,4 @@ statusDiv.style.color = "var(--danger)";
 if(btn) btn.disabled = false;
 }, gpsOptions);
 }
+
