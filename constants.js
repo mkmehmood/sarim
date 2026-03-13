@@ -1,3 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// GOOGLE SIGN-IN SETUP
+// Set this to your Firebase project's OAuth 2.0 Web Client ID.
+// Find it in: Firebase Console → Project Settings → General → Your apps
+//   → Web app → OAuth 2.0 Client ID
+//   OR Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
+//
+// Format: XXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com
+// ─────────────────────────────────────────────────────────────────────────────
+window._GOOGLE_CLIENT_ID = '124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com';
+
 const APP_CONFIG = Object.freeze({
   CACHE_VERSION: 'naswar-dealer-v13',
   // PBKDF2 iteration counts — OWASP 2023 recommendation for PBKDF2-HMAC-SHA-512
