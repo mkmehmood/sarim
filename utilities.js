@@ -14281,7 +14281,7 @@ return `
 }).join('');
 }
 function switchManageTeamTab(tab) {
-['rep', 'userrole'].forEach(t => {
+['rep', 'userrole', 'accounts'].forEach(t => {
 const btn = document.getElementById('team-tab-' + t);
 const panel = document.getElementById('team-panel-' + t);
 if (btn) btn.classList.toggle('active', t === tab);
@@ -14289,6 +14289,7 @@ if (panel) panel.style.display = t === tab ? '' : 'none';
 });
 if (tab === 'userrole') renderUserRoleList();
 if (tab === 'rep') renderManageRepsList();
+if (tab === 'accounts' && typeof loadAccountsList === 'function') loadAccountsList();
 }
 async function addNewUserRole() {
 const input = document.getElementById('new-userrole-name-input');
