@@ -210,20 +210,19 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
   window.setHTML = (el, html) => { el.innerHTML = html; };
 }
 const CryptoEngine = (() => {
-// V2 magic: legacy files (no UID binding, SHA-256, 100k iters)
+
 const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);
-// V4 magic: current (UID-bound, SHA-512, 210k iters, versioned header)
+
 const MAGIC_V4 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x34]);
 const SALT_LEN = 32;
 const IV_LEN = 12;
-const UID_HASH_LEN = 32; // SHA-256 of uid, stored for binding check
-const PBKDF2_ITERS_V4 = 210000; // OWASP 2023 recommendation for PBKDF2-HMAC-SHA-512
-const PBKDF2_ITERS_V2 = 100000; // legacy
+const UID_HASH_LEN = 32;
+const PBKDF2_ITERS_V4 = 210000;
+const PBKDF2_ITERS_V2 = 100000;
 
-// Derive AES-256-GCM key from email + password + uid using PBKDF2-SHA-512
 async function deriveKeyV4(email, password, uid, salt) {
   const enc = new TextEncoder();
-  // Key material binds email, password AND the Firebase UID
+
   const ikm = enc.encode(email.toLowerCase().trim() + ':' + password + ':' + (uid || ''));
   const keyMaterial = await crypto.subtle.importKey('raw', ikm, 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
@@ -232,7 +231,6 @@ async function deriveKeyV4(email, password, uid, salt) {
   );
 }
 
-// Legacy V2 key derivation (email:password only, SHA-256) — for decrypting old backups
 async function deriveKeyV2(email, password, salt) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -244,13 +242,11 @@ async function deriveKeyV2(email, password, salt) {
   );
 }
 
-// Hash UID for storage in backup header (for binding check without exposing raw UID)
 async function _hashUID(uid) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(uid || ''));
   return new Uint8Array(buf);
 }
 
-// Hash credentials with a RANDOM per-user salt — caller must store and pass back the salt
 async function deriveKeyHashV4(email, password, salt) {
   const enc = new TextEncoder();
   const ikm = enc.encode(email.toLowerCase().trim() + ':' + password);
@@ -265,7 +261,7 @@ async function deriveKeyHashV4(email, password, salt) {
 }
 
 return {
-  // Encrypt dataObj with email + password + uid (uid binds backup to this account)
+
   async encrypt(dataObj, email, password, uid) {
     const _uid = uid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.email || '') : '');
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
@@ -275,7 +271,7 @@ return {
     const plaintext = new TextEncoder().encode(JSON.stringify(dataObj));
     const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
     const ctBytes = new Uint8Array(ciphertext);
-    // Layout: MAGIC_V4(11) | UID_HASH(32) | SALT(32) | IV(12) | CIPHERTEXT
+
     const out = new Uint8Array(MAGIC_V4.length + UID_HASH_LEN + SALT_LEN + IV_LEN + ctBytes.length);
     let offset = 0;
     out.set(MAGIC_V4, offset); offset += MAGIC_V4.length;
@@ -286,19 +282,17 @@ return {
     return new Blob([out], { type: 'application/octet-stream' });
   },
 
-  // Decrypt — handles both V4 (current) and V2 (legacy) backup files
   async decrypt(arrayBuffer, email, password, uid) {
     const bytes = new Uint8Array(arrayBuffer);
     const magicLen = MAGIC_V4.length;
 
-    // Detect format version by magic bytes
     const isV4 = bytes.length >= magicLen && MAGIC_V4.every((b, i) => bytes[i] === b);
     const isV2 = !isV4 && bytes.length >= magicLen && MAGIC_V2.every((b, i) => bytes[i] === b);
     if (!isV4 && !isV2) throw new Error('INVALID_FORMAT');
 
     let offset = magicLen;
     if (isV4) {
-      // V4: verify UID binding before attempting decryption
+
       const storedUidHash = bytes.slice(offset, offset + UID_HASH_LEN); offset += UID_HASH_LEN;
       const _uid = uid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.email || '') : '');
       const actualUidHash = await _hashUID(_uid);
@@ -313,7 +307,7 @@ return {
         return JSON.parse(new TextDecoder().decode(plaintext));
       } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
     } else {
-      // V2 legacy path — no UID binding check
+
       const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
       const iv  = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
       const ciphertext = bytes.slice(offset);
@@ -325,7 +319,6 @@ return {
     }
   },
 
-  // Hash credentials for offline auth. Returns { hash, saltHex } — caller stores saltHex.
   async hashCredentials(email, password, existingSaltHex) {
     let salt;
     if (existingSaltHex) {
@@ -353,12 +346,12 @@ req.onerror = e => rej(e.target.error || new Error('OfflineAuth: IDB open failed
 });
 },
 async saveCredentials(email, password) {
-// Generate a fresh random salt each time credentials are saved
+
 const { hash, saltHex } = await CryptoEngine.hashCredentials(email, password);
 const db = await this._getDB();
 return new Promise((res, rej) => {
 const tx = db.transaction(this.STORE, 'readwrite');
-// Store the salt alongside the hash so verification can reproduce the same derivation
+
 tx.objectStore(this.STORE).put({ hash, saltHex, email, savedAt: Date.now(), version: 4 }, 'active');
 tx.oncomplete = () => res(true);
 tx.onerror = e => rej(e.target.error || new Error('OfflineAuth: saveCredentials failed'));
@@ -375,11 +368,11 @@ req.onerror = e => rej(e.target.error || new Error('OfflineAuth: verifyCredentia
 if (!record) return false;
 if (record.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
 if (!record.saltHex) {
-// Legacy record (v2/v3) — no salt stored, treat as invalid and force re-login
+
 console.warn('OfflineAuth: legacy credential record found, re-authentication required');
 return false;
 }
-// Re-derive using the stored salt so the hash is deterministic and unique per save
+
 const { hash } = await CryptoEngine.hashCredentials(email, password, record.saltHex);
 return hash === record.hash;
 },
@@ -466,20 +459,20 @@ req.onerror = () => resolve(false);
 const IDBCrypto = (() => {
   let _sessionKey = null;
   let _keyEmail = null;
-  let _keyUid = null;      // Firebase UID bound to current session key
+  let _keyUid = null;
   let _db = null;
   let _initPromise = null;
   let _preWarmPromise = null;
-  // In-memory wrap-key cache — never written to disk (clears on logout/reload)
+
   const _wrapKeyMemCache = new Map();
-  const PBKDF2_ITERS = 210000; // OWASP 2023: PBKDF2-HMAC-SHA-512
+  const PBKDF2_ITERS = 210000;
   const PBKDF2_HASH  = 'SHA-512';
   const DB_NAME = 'GZND_SecureStorage';
-  const DB_VERSION = 4; // bumped: adds per-user kdfSalt, removes wrapKeyCache store
+  const DB_VERSION = 4;
   const KEY_STORE = 'encryptedKeys';
   const ENTROPY_STORE = 'deviceEntropy';
   const SESSION_STORE = 'userSession';
-  // WRAPKEY_CACHE_STORE intentionally removed — cached in memory only
+
   const IV_LEN = 12;
   const ENC_PREFIX = 'GZND_ENC_';
   const KEY_VERSION = '4';
@@ -501,7 +494,7 @@ const IDBCrypto = (() => {
       };
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        // Create required stores if absent
+
         if (!db.objectStoreNames.contains(KEY_STORE)) {
           const keyStore = db.createObjectStore(KEY_STORE, { keyPath: 'id' });
           keyStore.createIndex('email', 'email', { unique: false });
@@ -513,7 +506,7 @@ const IDBCrypto = (() => {
         if (!db.objectStoreNames.contains(SESSION_STORE)) {
           db.createObjectStore(SESSION_STORE, { keyPath: 'id' });
         }
-        // v4 migration: drop the old wrapKeyCache store — keys are now memory-cached only
+
         if (db.objectStoreNames.contains('wrapKeyCache')) {
           db.deleteObjectStore('wrapKeyCache');
         }
@@ -552,8 +545,7 @@ const IDBCrypto = (() => {
       request.onerror = () => reject(request.error || new Error("IDB request failed"));
     });
   }
-  // Wrap-key cache is intentionally memory-only: no disk persistence of unwrapped key bytes.
-  // Cache key: saltHex — cache value: CryptoKey object (non-exportable after import).
+
   function _getCachedWrapKey(saltHex) {
     return _wrapKeyMemCache.get(saltHex) || null;
   }
@@ -599,12 +591,10 @@ const IDBCrypto = (() => {
       });
     } catch(e) {}
   }
-  // Derive the IDB session key. kdfSalt must be a random 32-byte Uint8Array generated
-  // once per user and stored alongside the wrapped key record. This ensures the same
-  // email+password produces different key material for each user account.
+
   async function deriveSessionKey(email, password, kdfSalt) {
     const enc = new TextEncoder();
-    // Bind to email + password; the per-user kdfSalt makes this unique per account
+
     const ikm = enc.encode(email.toLowerCase().trim() + ':' + password);
     const keyMaterial = await crypto.subtle.importKey('raw', ikm, 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey(
@@ -616,39 +606,36 @@ const IDBCrypto = (() => {
     );
   }
 
-  // Derive the AES-KW wrapping key from device entropy + wrap salt + UID.
-  // Binding the UID means the wrapping key is account-specific, not just device-specific.
   async function deriveWrappingKey(wrapSalt, uid) {
     const saltHex = Array.from(wrapSalt).map(b => b.toString(16).padStart(2, '0')).join('');
     const cacheKey = saltHex + ':' + (uid || '');
-    // Check in-memory cache first (never touches disk)
+
     const cached = _getCachedWrapKey(cacheKey);
     if (cached) return cached;
 
     const deviceEntropy = await _getDeviceEntropy();
     const enc = new TextEncoder();
     const uidBytes = enc.encode(uid || '');
-    // IKM = device entropy | wrap salt | UID bytes — all three factors must match
+
     const combined = new Uint8Array(deviceEntropy.length + wrapSalt.length + uidBytes.length);
     combined.set(deviceEntropy, 0);
     combined.set(wrapSalt, deviceEntropy.length);
     combined.set(uidBytes, deviceEntropy.length + wrapSalt.length);
-    // Use a stable, app-specific PBKDF2 salt for the wrapping key derivation
+
     const wkSalt = enc.encode('GZND_WK_SALT_v4:' + (uid || 'anon'));
     const keyMaterial = await crypto.subtle.importKey('raw', combined, 'PBKDF2', false, ['deriveKey']);
     const wrapKey = await crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt: wkSalt, iterations: PBKDF2_ITERS, hash: PBKDF2_HASH },
       keyMaterial,
       { name: 'AES-KW', length: 256 },
-      false, // non-exportable: prevents raw key bytes from ever leaving SubtleCrypto
+      false,
       ['wrapKey', 'unwrapKey']
     );
-    // Cache the CryptoKey object in memory only (non-exportable, safe to hold in RAM)
+
     _setCachedWrapKey(cacheKey, wrapKey);
     return wrapKey;
   }
-  // Persist the session key, wrapped with a key derived from device entropy + UID.
-  // kdfSalt: the per-user random salt used during deriveSessionKey (stored for re-derivation).
+
   async function _persistKey(key, email, uid, kdfSalt) {
     try {
       const db = await _initDB();
@@ -658,7 +645,7 @@ const IDBCrypto = (() => {
       const wrappedBytes = new Uint8Array(wrapped);
       const wrapSaltHex = Array.from(wrapSalt).map(b => b.toString(16).padStart(2, '0')).join('');
       const keyHex = Array.from(wrappedBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      // kdfSaltHex: the per-user random salt for PBKDF2 key derivation (needed to re-derive on next login)
+
       const kdfSaltHex = kdfSalt
         ? Array.from(kdfSalt).map(b => b.toString(16).padStart(2, '0')).join('')
         : null;
@@ -669,8 +656,8 @@ const IDBCrypto = (() => {
           id: 'primary',
           email,
           uid: uid || null,
-          salt: wrapSaltHex,      // wrap salt (for unwrapping the wrapped key)
-          kdfSalt: kdfSaltHex,    // per-user KDF salt (for re-deriving the session key on login)
+          salt: wrapSaltHex,
+          kdfSalt: kdfSaltHex,
           wrappedKey: keyHex,
           version: KEY_VERSION,
           createdAt: Date.now()
@@ -678,11 +665,11 @@ const IDBCrypto = (() => {
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error || new Error("IDB request failed"));
       });
-      // Session backup in IDB SESSION_STORE only — no localStorage copy of key material
+
       try {
         const keyBackup = { email, uid: uid || null, salt: wrapSaltHex, kdfSalt: kdfSaltHex, wrappedKey: keyHex, version: KEY_VERSION, ts: Date.now() };
         await _idbSessionSet('keyBackup', keyBackup);
-        // Do NOT write keyBackup to localStorage/sessionStorage — keep key material off disk
+
       } catch (e) {}
       _keyEmail = email;
       _keyUid   = uid || null;
@@ -716,11 +703,11 @@ const IDBCrypto = (() => {
           _keyUid   = uid;
           return key;
         } catch(unwrapErr) {
-          // Wrapping key mismatch — device entropy may have changed; fall through to legacy
+
           console.warn('IDBCrypto: Primary key unwrap failed, trying backup', unwrapErr);
         }
       }
-      // IDB session backup (no localStorage fallback for key material in v4)
+
       const idbBackup = await _idbSessionGet('keyBackup');
       if (idbBackup && idbBackup.salt && idbBackup.wrappedKey) {
         const wrapSalt     = new Uint8Array(idbBackup.salt.match(/.{2}/g).map(h => parseInt(h, 16)));
@@ -815,10 +802,10 @@ const IDBCrypto = (() => {
       }
       return _preWarmPromise;
     },
-    // Call this after successful login. uid = Firebase UID (pass null for offline-only accounts).
+
     async setSessionKey(email, password, uid) {
       const _uid = uid || null;
-      // Generate a fresh random per-user KDF salt each time credentials are set
+
       const kdfSalt = crypto.getRandomValues(new Uint8Array(32));
       _sessionKey = await deriveSessionKey(email, password, kdfSalt);
       await _persistKey(_sessionKey, email, _uid, kdfSalt);
@@ -846,12 +833,11 @@ const IDBCrypto = (() => {
       }
       return this._restorePromise;
     },
-    // Re-derive the session key using the stored per-user kdfSalt (if available).
-    // Called when Firebase fires onAuthStateChanged but no key is in memory.
+
     async rederiveKey(email, password, uid) {
       try {
         const _uid = uid || _keyUid || null;
-        // Try to reload the stored kdfSalt so we re-derive the exact same key
+
         let kdfSalt = null;
         try {
           const db = await _initDB();
@@ -865,7 +851,7 @@ const IDBCrypto = (() => {
             kdfSalt = new Uint8Array(stored.kdfSalt.match(/.{2}/g).map(h => parseInt(h, 16)));
           }
         } catch(e) {}
-        // If no stored kdfSalt (e.g. first time or after clear), generate a new one
+
         if (!kdfSalt) kdfSalt = crypto.getRandomValues(new Uint8Array(32));
         _sessionKey = await deriveSessionKey(email, password, kdfSalt);
         await _persistKey(_sessionKey, email, _uid, kdfSalt);
@@ -883,7 +869,7 @@ const IDBCrypto = (() => {
       _sessionKey = null;
       _keyEmail   = null;
       _keyUid     = null;
-      _wrapKeyMemCache.clear(); // wipe in-memory wrap-key cache
+      _wrapKeyMemCache.clear();
       _initDB().then(db => {
         const stores = [KEY_STORE, ENTROPY_STORE, SESSION_STORE].filter(s => db.objectStoreNames.contains(s));
         if (stores.length === 0) return;
@@ -896,7 +882,7 @@ const IDBCrypto = (() => {
         sessionStorage.removeItem('_gznd_session_active');
         localStorage.removeItem('_gznd_session_active');
         localStorage.removeItem('persistentLogin');
-        // No key backup in localStorage/sessionStorage in v4 — nothing to remove there
+
       } catch (e) {}
       _clearLegacyStorage();
     },
@@ -1180,7 +1166,7 @@ try {
 const isPlaintext = this._PLAINTEXT_KEYS && this._PLAINTEXT_KEYS.has(key);
 if (isPlaintext) {
 if (typeof rawData === 'string' && rawData.startsWith('GZND_ENC_')) {
-// Stale encrypted value for a now-plaintext key — clear it and return default
+
 this.remove(key).catch(() => {});
 resolve(defaultValue);
 return;
@@ -1359,12 +1345,10 @@ if (rawData === null || rawData === undefined) { results.set(key, null); return;
 try {
 const isPlaintext = this._PLAINTEXT_KEYS && this._PLAINTEXT_KEYS.has(key);
 if (isPlaintext) {
-// Plaintext keys: parse directly, no decryption needed.
-// If a stale encrypted value exists (GZND_ENC_ prefix), treat as missing
-// so it gets written fresh (unencrypted) on next save.
+
 if (typeof rawData === 'string' && rawData.startsWith('GZND_ENC_')) {
 results.set(key, null);
-// Schedule async deletion of stale encrypted value
+
 this.remove(key).catch(() => {});
 return;
 }
@@ -2008,9 +1992,7 @@ language: navigator.language || 'en',
 theme: document.documentElement.getAttribute('data-theme') || 'dark'
 }, { merge: true });
 startDeviceHeartbeat(deviceRef);
-// Defer the device command listener by one tick to ensure the Firestore SDK
-// has fully settled after the preceding .set() writes — avoids the
-// "INTERNAL ASSERTION FAILED: Unexpected state" error on cold start.
+
 setTimeout(() => {
 listenForDeviceCommands().catch(e => console.warn('Device command listener failed.', e));
 }, 2000);

@@ -3744,18 +3744,18 @@ showToast('UI refresh failed.', 'error');
 showToast(' Failed to save sale. Please try again.', 'error');
 }
 }
-// ── Sales tab: Sale / Collection mode ────────────────────────────────────
+
 let custTransactionMode = 'sale';
 function setSaleMode(mode) {
 custTransactionMode = mode;
 const isSale = mode === 'sale';
 const _el = id => document.getElementById(id);
-// toggle buttons
+
 const btnSale = _el('btn-cust-mode-sale');
 const btnColl = _el('btn-cust-mode-coll');
 if (btnSale) btnSale.className = `toggle-opt${isSale ? ' active' : ''}`;
 if (btnColl) btnColl.className = `toggle-opt${!isSale ? ' active' : ''}`;
-// show/hide input sections
+
 const saleIn  = _el('cust-sale-inputs');
 const collIn  = _el('cust-coll-inputs');
 const supPay  = _el('cust-sale-supply-payment');
@@ -3764,13 +3764,13 @@ if (saleIn)  isSale ? saleIn.classList.remove('hidden')  : saleIn.classList.add(
 if (collIn)  isSale ? collIn.classList.add('hidden')     : collIn.classList.remove('hidden');
 if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
 if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
-// qty row in customer-info-display
+
 const qtyRow = _el('customer-qty-row');
 if (qtyRow) { qtyRow.style.display = isSale ? '' : 'none'; }
-// button label
+
 const btn = _el('btn-save-cust-transaction');
 if (btn) btn.textContent = isSale ? 'Save Transaction' : 'Save Collection';
-// reset collection amount and update preview
+
 if (!isSale) {
 const amtEl = _el('cust-amount-collected');
 if (amtEl) amtEl.value = '';
@@ -3867,7 +3867,7 @@ triggerAutoSync();
 if (typeof calculateCashTracker === 'function') calculateCashTracker();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 emitSyncUpdate({ customer_sales: customerSales });
-// keep name so user can collect again; refresh credit display
+
 const savedName = name;
 if (amountEl) amountEl.value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
@@ -3894,7 +3894,7 @@ await saveCustomerCollection();
 await saveCustomerSale();
 }
 }
-// ── End Sales tab collection mode ─────────────────────────────────────────
+
 function getStoreLabel(storeCode) {
 switch(storeCode) {
 case 'STORE_A': return 'ZUBAIR';
@@ -4152,8 +4152,6 @@ if (_discEl) _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 }
 }
 
-// Firebase config assembled at runtime from split parts — avoids a single
-// plaintext block that credential-scraping tools can trivially extract.
 const firebaseConfig = (() => {
   const _p = ['AIzaSyDYjG', 'QILtrcG2nf', 'KACSfsVtfIPZOAgbr_s'];
   const _d = ['calculator-fabd3', '.firebaseapp.com'];
@@ -8123,7 +8121,7 @@ const rowMonth = rowDate.getMonth();
 const rowDay = rowDate.getDate();
 const updatePeriod = (period) => {
 if (isAdminCollection) {
-// Admin collections don't add to quantity/value/profit totals — they just clear credit
+
 return;
 }
 period.q += item.quantity;
@@ -8153,7 +8151,7 @@ updatePeriod(stats.all);
 const displayData = sortedSales.filter(item => {
 const _isRepLinked = item.salesRep && item.salesRep !== 'NONE';
 const _isAdminColl = !_isRepLinked && item.paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
-if (_isAdminColl) return true; // always show admin collections
+if (_isAdminColl) return true;
 return item.paymentType !== 'PARTIAL_PAYMENT' && item.paymentType !== 'COLLECTION';
 });
 const pageData = displayData;
@@ -14987,7 +14985,7 @@ showToast('Failed to save data locally.', 'error');
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
 async function listenForDeviceCommands() {
 if (!firebaseDB || !currentUser) return;
-// Unsubscribe any existing listener first to avoid duplicates
+
 if (typeof window.deviceCommandsUnsubscribe === 'function') {
 try { window.deviceCommandsUnsubscribe(); } catch (_) {}
 window.deviceCommandsUnsubscribe = null;
@@ -15025,7 +15023,7 @@ console.warn('Device command snapshot handler error:', snapErr);
 }
 }, (error) => {
 console.warn('Device command listener error — will retry in 15s:', error);
-// Retry listener after a delay if it fails due to transient Firestore state
+
 window.deviceCommandsUnsubscribe = null;
 setTimeout(() => {
 if (firebaseDB && currentUser) listenForDeviceCommands();

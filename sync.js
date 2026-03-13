@@ -312,8 +312,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 })
 .catch((error) => {
 });
-// Check for a pending Google redirect result (from signInWithRedirect on mobile/PWA).
-// Must run after auth + Firestore are initialised so the user-doc write succeeds.
+
 _checkGoogleRedirectResult();
 auth.onAuthStateChanged(async (user) => {
 if (user) {
@@ -2892,11 +2891,14 @@ background: linear-gradient(135deg, rgba(240, 248, 255, 0.95) 0%, rgba(230, 240,
 z-index: 99999; display: flex; align-items: center; justify-content: center;
 animation: auth-fade-in 0.25s ease;
 `;
-// Inject keyframes once
+
 if (!document.getElementById('auth-overlay-style')) {
 const s = document.createElement('style');
 s.id = 'auth-overlay-style';
-s.textContent = '@keyframes auth-fade-in{from{opacity:0;transform:scale(1.015)}to{opacity:1;transform:scale(1)}}@keyframes auth-fade-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.97)}}';
+s.textContent = '@keyframes auth-fade-in{from{opacity:0;transform:scale(1.015)}to{opacity:1;transform:scale(1)}}@keyframes auth-fade-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.97)}}' +
+'body.dark-mode #auth-google-btn{background:#303030!important;border-color:#555!important;color:#e8eaed!important;}' +
+'body.dark-mode #auth-google-btn:hover{border-color:#8ab4f8!important;box-shadow:0 2px 8px rgba(138,180,248,0.22)!important;}' +
+'#auth-google-btn:disabled{cursor:not-allowed;}';
 document.head.appendChild(s);
 }
 if (document.body.classList.contains('dark-mode')) {
@@ -2915,11 +2917,30 @@ GULL AND ZUBAIR NASWAR DEALER'S
 Your account protects your data with enterprise-grade encryption.
 </p>
 
-<!-- ── GSI renders the real Google button here ── -->
-<div id="gsi-btn-container" style="display:flex;justify-content:center;margin-bottom:6px;min-height:44px;"></div>
+<button id="auth-google-btn" type="button" onclick="_handleGoogleBtnClick()" aria-label="Sign in with Google" style="
+  display:inline-flex;align-items:center;justify-content:center;
+  width:52px;height:52px;border-radius:50%;
+  border:1.5px solid #dadce0;
+  background:#fff;
+  cursor:pointer;
+  box-shadow:0 1px 3px rgba(0,0,0,0.10);
+  margin-bottom:16px;
+  transition:box-shadow 0.15s,border-color 0.15s,transform 0.12s,opacity 0.15s;
+  -webkit-tap-highlight-color:transparent;
+  padding:0;
+" onmouseover="this.style.boxShadow='0 3px 10px rgba(66,133,244,0.28)';this.style.borderColor='#4285F4';this.style.transform='scale(1.08)';"
+   onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.10)';this.style.borderColor='#dadce0';this.style.transform='scale(1)';">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  </svg>
+</button>
+<div id="gsi-btn-container" style="display:none;"></div>
 
 <!-- ── Divider ── -->
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;margin-top:14px;">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
   <div style="flex:1;height:1px;background:var(--glass-border);"></div>
   <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500;white-space:nowrap;">or sign in with email</span>
   <div style="flex:1;height:1px;background:var(--glass-border);"></div>
@@ -2947,17 +2968,23 @@ Sign Up
 </div>
 </form>
 <div id="auth-message" style="font-size: 0.8rem; margin-top: 15px; min-height: 20px;"></div>
-<div style="margin-top:18px;padding:10px 14px;background:var(--input-bg);border-radius:10px;border:1px solid var(--glass-border);">
-<div style="font-size:0.65rem;color:var(--text-muted);line-height:1.6;">
-<strong style="color:var(--text-main)">AES-256-GCM</strong> encrypted backups &nbsp;·&nbsp;
-<strong style="color:var(--text-main)"></strong> &nbsp;·&nbsp;
-<strong style="color:var(--text-main)"></strong>
+<div style="margin-top:16px;padding:10px 14px;background:var(--input-bg);border-radius:10px;border:1px solid var(--glass-border);">
+<div style="font-size:0.63rem;color:var(--text-muted);line-height:1.8;display:flex;flex-wrap:wrap;justify-content:center;gap:0 10px;">
+  <span><strong style="color:var(--text-main)">AES-256-GCM</strong> encryption</span>
+  <span style="opacity:0.35;">·</span>
+  <span><strong style="color:var(--text-main)">PBKDF2-SHA-512</strong> · 210 000 iters</span>
+  <span style="opacity:0.35;">·</span>
+  <span><strong style="color:var(--text-main)">UID-bound</strong> keys</span>
+  <span style="opacity:0.35;">·</span>
+  <span><strong style="color:var(--text-main)">Per-user</strong> random salt</span>
+  <span style="opacity:0.35;">·</span>
+  <span>Crypto <strong style="color:var(--text-main)">v4</strong></span>
 </div>
 </div>
 </div>
 `;
 document.body.appendChild(overlay);
-// Initialize GSI immediately so the button renders without any click required
+
 _initGSIInOverlay();
 const form = document.getElementById('auth-form');
 if(form) form.addEventListener('submit', handleSignIn);
@@ -2966,7 +2993,7 @@ if(signupBtn) signupBtn.addEventListener('click', (e) => {
 e.preventDefault();
 handleSignUp();
 });
-// GSI button is rendered directly — no custom button listener needed
+
 OfflineAuth.getSavedEmail().then(email => {
 if (email) {
 const emailInput = document.getElementById('auth-email');
@@ -2975,12 +3002,9 @@ if (emailInput) { emailInput.value = email; }
 }).catch(() => {});
 }
 function showAuthOverlay() {
-let overlay = document.getElementById('auth-overlay');
-if (!overlay) {
+const existing = document.getElementById('auth-overlay');
+if (existing) existing.remove();
 createAuthOverlay();
-} else {
-overlay.style.display = 'flex';
-}
 document.body.style.overflow = 'hidden';
 }
 function hideAuthOverlay() {
@@ -3034,20 +3058,9 @@ try { sessionStorage.removeItem(KEY_ATTEMPTS); sessionStorage.removeItem(KEY_LOC
 },
 };
 })();
-// ═══════════════════════════════════════════════════════════════════════════
-// GOOGLE SIGN-IN — Google Identity Services (GSI) One Tap + FedCM
-// Uses accounts.google.com/gsi/client (no popup window, no redirect,
-// no Firebase authDomain dependency). Shows all device-signed-in Google
-// accounts natively. Firebase receives the ID token via signInWithCredential.
-//
-// SETUP: Set GOOGLE_CLIENT_ID below to your Firebase project's OAuth 2.0
-// web client ID (Firebase Console → Project settings → General →
-// Your apps → Web app → OAuth 2.0 client ID, or Google Cloud Console →
-// APIs & Services → Credentials).
-// ═══════════════════════════════════════════════════════════════════════════
+
 const GOOGLE_CLIENT_ID = window._GOOGLE_CLIENT_ID || '';
 
-// ── Shared post-Google-auth setup ────────────────────────────────────────────
 async function _applyGoogleUser(user) {
 const _googleKeyMaterial = user.uid;
 currentUser = {
@@ -3073,7 +3086,7 @@ await userRef.set({ email: user.email, displayName: user.displayName || '', crea
 } catch(e) { console.warn('Google auth: Firestore user-doc write failed', e); }
 }
 try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) { console.warn('Post-Google-login data load failed:', e); }
-// Hide the auth overlay immediately — do not wait for onAuthStateChanged
+
 hideAuthOverlay();
 setTimeout(() => {
 if (typeof refreshAllDisplays === 'function') refreshAllDisplays();
@@ -3081,19 +3094,17 @@ if (typeof performOneClickSync === 'function') performOneClickSync();
 }, 300);
 }
 
-// Called by the no-op hook left in initializeFirebaseSystem (safe to keep as noop)
 async function _checkGoogleRedirectResult() {}
 
-// ── GSI credential callback — fired when user taps a Google account ──────────
 async function _onGoogleCredential(response) {
 const messageDiv = document.getElementById('auth-message');
 if (!response || !response.credential) {
 if (messageDiv) { messageDiv.textContent = 'Google sign-in cancelled.'; messageDiv.style.color = 'var(--danger)'; }
 return;
 }
-// Show feedback directly in the auth overlay — no intermediate overlay
+
 if (messageDiv) { messageDiv.textContent = 'Signing in…'; messageDiv.style.color = 'var(--accent)'; }
-// Disable the GSI container so accidental double-taps are ignored
+
 const container = document.getElementById('gsi-btn-container');
 if (container) container.style.pointerEvents = 'none';
 try {
@@ -3117,43 +3128,66 @@ else if (error.code === 'auth/network-request-failed')
 else msg = 'Google sign-in failed: ' + (error.message || error.code || '');
 if (messageDiv) { messageDiv.textContent = msg; messageDiv.style.color = 'var(--danger)'; }
 if (container) container.style.pointerEvents = '';
+const btn = document.getElementById('auth-google-btn');
+if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
 }
 }
-// Must be global — GSI calls this as a plain function reference
+
 window._onGoogleCredential = _onGoogleCredential;
 
-// ── Render the GSI button directly into #gsi-btn-container in the auth overlay ─
-// Retries until the GSI SDK has loaded (it loads async)
+let _gsiInitialized = false;
+
 function _initGSIInOverlay() {
+if (_gsiInitialized) return;
 if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
 setTimeout(_initGSIInOverlay, 300);
 return;
 }
-if (!GOOGLE_CLIENT_ID) {
-const c = document.getElementById('gsi-btn-container');
-if (c) c.innerHTML = '<p style="color:var(--danger);font-size:0.78rem;padding:8px 0;">Google Client ID not set.<br>Add it in constants.js.</p>';
+if (!GOOGLE_CLIENT_ID) return;
+google.accounts.id.initialize({
+client_id:             GOOGLE_CLIENT_ID,
+callback:              window._onGoogleCredential,
+auto_select:           false,
+cancel_on_tap_outside: true,
+use_fedcm_for_prompt:  true,
+itp_support:           true,
+});
+_gsiInitialized = true;
+}
+
+function _handleGoogleBtnClick() {
+const btn = document.getElementById('auth-google-btn');
+const msg = document.getElementById('auth-message');
+if (!navigator.onLine) {
+if (msg) { msg.textContent = 'Google sign-in requires internet.'; msg.style.color = 'var(--danger)'; }
 return;
 }
-google.accounts.id.initialize({
-client_id:            GOOGLE_CLIENT_ID,
-callback:             window._onGoogleCredential,
-auto_select:          false,
-cancel_on_tap_outside: false,
-use_fedcm_for_prompt: true,
-});
-const container = document.getElementById('gsi-btn-container');
-if (container) {
-google.accounts.id.renderButton(container, {
-  type:           'standard',
-  theme:          document.body.classList.contains('dark-mode') ? 'filled_black' : 'outline',
-  size:           'large',
-  text:           'signin_with',
-  shape:          'pill',
-  logo_alignment: 'left',
-  width:          300,
+if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+if (msg) { msg.textContent = ''; }
+
+function doPrompt() {
+if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+  setTimeout(doPrompt, 300);
+  return;
+}
+if (!_gsiInitialized) _initGSIInOverlay();
+google.accounts.id.prompt(notification => {
+  const mom = notification.getMomentType ? notification.getMomentType() : '';
+  if (notification.isSkippedMoment && notification.isSkippedMoment()) {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (msg) {
+      msg.style.color = 'var(--text-muted)';
+      msg.textContent = 'No Google accounts detected. Sign into Google in your browser first, then try again.';
+    }
+  } else if (notification.isDismissedMoment && notification.isDismissedMoment()) {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (msg) { msg.textContent = ''; }
+  }
 });
 }
+doPrompt();
 }
+window._handleGoogleBtnClick = _handleGoogleBtnClick;
 
 async function handleSignIn(e) {
 if(e) e.preventDefault();
@@ -3258,12 +3292,8 @@ try {
   if (typeof loadAllData === 'function') await loadAllData();
 } catch(e) { console.warn('Post-offline-login data reload failed:', e); }
 setTimeout(() => {
-if (currentUser) {
-const overlay = document.getElementById('auth-overlay');
-if (overlay) { overlay.style.display = 'none'; }
-document.body.style.overflow = '';
+hideAuthOverlay();
 if (typeof refreshAllDisplays === 'function') refreshAllDisplays();
-}
 }, 300);
 }
 } catch (error) {
@@ -3283,7 +3313,7 @@ try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem(
 try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) {}
 messageDiv.textContent = '✓ Offline Login (Network unavailable)';
 messageDiv.style.color = 'var(--accent-emerald)';
-setTimeout(() => { if(currentUser){const o=document.getElementById('auth-overlay');if(o)o.style.display='none';document.body.style.overflow='';if(typeof refreshAllDisplays==='function')refreshAllDisplays();} }, 300);
+setTimeout(() => { hideAuthOverlay(); if(typeof refreshAllDisplays==='function')refreshAllDisplays(); }, 300);
 return;
 }
 errorMessage = 'Network error. If you have logged in before, ensure correct credentials for offline access.';
