@@ -1,3 +1,8 @@
+// ─── SHARED FIXED UID ────────────────────────────────────────────────────────
+// All users (new or existing) read/write to this single Firestore document.
+const FIXED_UID = 'whGJCpQBIkb0LTxebI1H3j5Gzk83';
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await idb.set(key, data);
 const collectionEntry = IndexedDBToFirestoreMap[key];
@@ -81,7 +86,7 @@ data: queuedRecord
 return true;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(FIXED_UID);
 const docRef = userRef.collection(collectionName).doc(String(record.id));
 const now = Date.now();
 const sanitized = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
@@ -140,7 +145,7 @@ data: null
 return true;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(FIXED_UID);
 const batch = firebaseDB.batch();
 batch.delete(userRef.collection(collectionName).doc(String(recordId)));
 batch.set(userRef.collection('deletions').doc(String(recordId)), {
@@ -281,10 +286,6 @@ window.getFirestoreCollection = getFirestoreCollection;
 window.getIndexedDBKey = getIndexedDBKey;
 window.saveRecordToFirestore = saveRecordToFirestore;
 window.deleteRecordFromFirestore = deleteRecordFromFirestore;
-// Set to true by _applyGoogleUser so onAuthStateChanged skips duplicate
-// loadAllData/refreshAllDisplays when Google login just ran in this session.
-let _googleLoginHandled = false;
-
 function initializeFirebaseSystem() {
 const indicator = document.getElementById('connection-indicator');
 if (typeof firebase === 'undefined') {
@@ -316,18 +317,8 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 })
 .catch((error) => {
 });
-
-_checkGoogleRedirectResult();
 auth.onAuthStateChanged(async (user) => {
 if (user) {
-// If _applyGoogleUser is currently running (flag set before signInWithCredential),
-// let it handle currentUser, key setup, loadAllData, and UI. We only update the
-// sync button here and bail — _applyGoogleUser will do the rest.
-if (_googleLoginHandled) {
-  currentUser = { id: user.uid, uid: user.uid, email: user.email, displayName: user.displayName };
-  updateSyncButton();
-  return;
-}
 currentUser = {
 id: user.uid,
 uid: user.uid,
@@ -355,12 +346,7 @@ hideAuthOverlay();
 showToast(`Welcome back, ${user.email.split('@')[0]}`, 'success');
 idb.setUserPrefix(user.uid);
 await IDBCrypto.initialize();
-// If the key is already in memory (set moments ago by _applyGoogleUser or a
-// concurrent login flow), skip the IDB storage restore entirely — the persist
-// write may not have landed yet, causing a false "keyRestored = false" and
-// incorrectly booting the user back to the auth overlay.
-const _keyAlreadyReady = IDBCrypto.isReady();
-const keyRestored = _keyAlreadyReady || await IDBCrypto.restoreSessionKeyFromStorage();
+const keyRestored = await IDBCrypto.restoreSessionKeyFromStorage();
 if (!keyRestored) {
 const hasStoredCreds = await OfflineAuth.hasStoredCredentials();
 if (hasStoredCreds) {
@@ -381,23 +367,8 @@ updateSyncButton();
 return;
 }
 }
-// No stored credentials either — still prompt for password so the user can
-// re-derive the encryption key (rederiveKey path).  Silent degradation here
-// means all encrypted IDB data stays invisible with no recovery path offered.
-console.warn('Auth: Could not restore encryption key and no stored creds — prompting for password');
-showToast('Please re-enter your password to restore data access.', 'warning');
-setTimeout(() => {
-  showAuthOverlay();
-  const messageDiv = document.getElementById('auth-message');
-  if (messageDiv) {
-    messageDiv.textContent = 'Please enter your password to restore encrypted data access';
-    messageDiv.style.color = 'var(--warning)';
-  }
-  const emailInput = document.getElementById('auth-email');
-  if (emailInput) emailInput.value = user.email;
-}, 1000);
-updateSyncButton();
-return;
+console.warn('Auth: Could not restore encryption key - user may need to log in again');
+showToast('Session restored but encryption key missing. Some features may be limited.', 'warning');
 } else {
 const isKeyValid = await IDBCrypto.validateKey();
 if (!isKeyValid) {
@@ -500,7 +471,7 @@ if (!this.firebaseDB || !this.currentUser) {
 throw new Error('Firebase DB and Current User are required');
 }
 if (!silent) showToast('Setting up complete cloud database...', 'info');
-this.userRef = this.firebaseDB.collection('users').doc(this.currentUser.uid);
+this.userRef = this.firebaseDB.collection('users').doc(FIXED_UID);
 try {
 await this.createUserDocument();
 await this.createDevicesCollection();
@@ -538,7 +509,7 @@ results: this.results
 async createUserDocument() {
 try {
 await this.userRef.set({
-uid: this.currentUser.uid,
+uid: FIXED_UID,
 email: this.currentUser.email || 'unknown@example.com',
 displayName: this.currentUser.displayName || '',
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -882,7 +853,7 @@ return await initializer.initialize(silent);
 async function isCompleteDatabaseInitialized() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(FIXED_UID);
 const requiredCollections = [
 'devices', 'account', 'activityLog', 'production', 'sales',
 'rep_sales', 'rep_customers',
@@ -923,7 +894,7 @@ return await initializeCompleteFirestoreDatabase(silent);
 async function cleanupPlaceholders() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(FIXED_UID);
 const batch = firebaseDB.batch();
 const collections = [
 'devices', 'account', 'activityLog',
@@ -1407,7 +1378,7 @@ function startSyncUpdatesCleanup() {
     if (!firebaseDB || !currentUser) return;
     try {
       const syncSnapshot = await firebaseDB
-        .collection('users').doc(currentUser.uid)
+        .collection('users').doc(FIXED_UID)
         .collection('sync_updates')
         .orderBy('timestamp', 'desc')
         .get();
@@ -1459,7 +1430,7 @@ async function subscribeToRealtime() {
   }
   if (pendingFirestoreYearClose && !closeYearInProgress) {
     try {
-      const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const userRef = firebaseDB.collection('users').doc(FIXED_UID);
       const yearCloseCollections = [
         { name: 'production',         data: db,                      filter: d => !d.isMerged },
         { name: 'sales',              data: customerSales,                   filter: d => !d.isMerged },
@@ -1493,7 +1464,7 @@ async function subscribeToRealtime() {
   });
   realtimeRefs = [];
 
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(FIXED_UID);
 
   try {
 
@@ -2182,7 +2153,7 @@ async function _mergeAndPersist(cloudData) {
 
   try {
     const deletionsSnap = await firebaseDB
-      .collection('users').doc(currentUser.uid)
+      .collection('users').doc(FIXED_UID)
       .collection('deletions').get();
     const threeMonthsAgo = Date.now() - APP_CONFIG.TOMBSTONE_EXPIRY_MS;
     const cloudDels = deletionsSnap.docs
@@ -2510,7 +2481,7 @@ async function _doOneClickSync(silent = false) {
   if (!silent) showToast('Syncing....', 'info');
 
   try {
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(FIXED_UID);
 
     const userType = await _detectUserType(userRef);
 
@@ -2646,7 +2617,7 @@ async function _doPushDataToCloud(silent = false) {
     if (freshDataMap.get('naswar_default_settings'))    defaultSettings         = freshDataMap.get('naswar_default_settings');
     if (freshDataMap.get('deleted_records'))            deletedRecordIds        = new Set(freshDataMap.get('deleted_records'));
 
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(FIXED_UID);
     const operationCount = await _uploadChanges(userRef);
 
     const deletionRecordsLocal = await idb.get('deletion_records', []);
@@ -2713,7 +2684,7 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
     if (!silent) showToast('Downloading cloud data...', 'info');
     await idb.init();
 
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(FIXED_UID);
     const cloudData = await _downloadDeltas(userRef, 'returning');
 
     const hasData = Object.values(cloudData.data).some(a => a.length > 0)
@@ -2860,7 +2831,7 @@ autoSaveTimer = null;
 async function wakeUpDatabase() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const wakeUpPromise = firebaseDB.collection('users').doc(currentUser.uid)
+const wakeUpPromise = firebaseDB.collection('users').doc(FIXED_UID)
 .collection('settings').doc('config').get();
 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 45000));
 await Promise.race([wakeUpPromise, timeoutPromise]);
@@ -2921,18 +2892,7 @@ overlay.style.cssText = `
 position: fixed; inset: 0;
 background: linear-gradient(135deg, rgba(240, 248, 255, 0.95) 0%, rgba(230, 240, 255, 0.95) 100%);
 z-index: 99999; display: flex; align-items: center; justify-content: center;
-animation: auth-fade-in 0.25s ease;
 `;
-
-if (!document.getElementById('auth-overlay-style')) {
-const s = document.createElement('style');
-s.id = 'auth-overlay-style';
-s.textContent = '@keyframes auth-fade-in{from{opacity:0;transform:scale(1.015)}to{opacity:1;transform:scale(1)}}@keyframes auth-fade-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.97)}}' +
-'body.dark-mode #auth-google-btn{background:#303030!important;border-color:#555!important;color:#e8eaed!important;}' +
-'body.dark-mode #auth-google-btn:hover{border-color:#8ab4f8!important;box-shadow:0 2px 8px rgba(138,180,248,0.22)!important;}' +
-'#auth-google-btn:disabled{cursor:not-allowed;}';
-document.head.appendChild(s);
-}
 if (document.body.classList.contains('dark-mode')) {
 overlay.style.background = 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)';
 }
@@ -2945,40 +2905,9 @@ GULL AND ZUBAIR NASWAR DEALER'S
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1de9b6" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
 <span style="font-size:0.7rem;color:var(--accent);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">Login Required</span>
 </div>
-<p style="color: var(--text-muted); margin-bottom: 22px; font-size: 0.82rem; line-height: 1.5;">
-Your account protects your data with enterprise-grade encryption.
+<p style="color: var(--text-muted); margin-bottom: 26px; font-size: 0.82rem; line-height: 1.5;">
+Your account protects your data with enterprise-grade encryption.<br><strong style="color:var(--text-main)"></strong>.
 </p>
-
-<button id="auth-google-btn" type="button" onclick="_handleGoogleBtnClick()" aria-label="Sign in with Google" style="
-  display:inline-flex;align-items:center;justify-content:center;
-  width:52px;height:52px;border-radius:50%;
-  border:1.5px solid #dadce0;
-  background:#fff;
-  cursor:pointer;
-  box-shadow:0 1px 3px rgba(0,0,0,0.10);
-  margin-bottom:16px;
-  transition:box-shadow 0.15s,border-color 0.15s,transform 0.12s,opacity 0.15s;
-  -webkit-tap-highlight-color:transparent;
-  padding:0;
-" onmouseover="this.style.boxShadow='0 3px 10px rgba(66,133,244,0.28)';this.style.borderColor='#4285F4';this.style.transform='scale(1.08)';"
-   onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.10)';this.style.borderColor='#dadce0';this.style.transform='scale(1)';">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26">
-    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-  </svg>
-</button>
-<div id="gsi-btn-container" style="display:none;"></div>
-
-<!-- ── Divider ── -->
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-  <div style="flex:1;height:1px;background:var(--glass-border);"></div>
-  <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500;white-space:nowrap;">or sign in with email</span>
-  <div style="flex:1;height:1px;background:var(--glass-border);"></div>
-</div>
-
-<!-- ── Email / Password Form ── -->
 <form id="auth-form" style="display: flex; flex-direction: column; gap: 13px;">
 <input type="email" id="auth-email" placeholder="Email Address" required autocomplete="username"
 style="width: 100%; padding: 13px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; box-sizing: border-box; color: var(--text-main); font-size:0.9rem;">
@@ -3000,24 +2929,16 @@ Sign Up
 </div>
 </form>
 <div id="auth-message" style="font-size: 0.8rem; margin-top: 15px; min-height: 20px;"></div>
-<div style="margin-top:16px;padding:10px 14px;background:var(--input-bg);border-radius:10px;border:1px solid var(--glass-border);">
-<div style="font-size:0.63rem;color:var(--text-muted);line-height:1.8;display:flex;flex-wrap:wrap;justify-content:center;gap:0 10px;">
-  <span><strong style="color:var(--text-main)">AES-256-GCM</strong> encryption</span>
-  <span style="opacity:0.35;">·</span>
-  <span><strong style="color:var(--text-main)">PBKDF2-SHA-512</strong> · 210 000 iters</span>
-  <span style="opacity:0.35;">·</span>
-  <span><strong style="color:var(--text-main)">UID-bound</strong> keys</span>
-  <span style="opacity:0.35;">·</span>
-  <span><strong style="color:var(--text-main)">Per-user</strong> random salt</span>
-  <span style="opacity:0.35;">·</span>
-  <span>Crypto <strong style="color:var(--text-main)">v4</strong></span>
+<div style="margin-top:18px;padding:10px 14px;background:var(--input-bg);border-radius:10px;border:1px solid var(--glass-border);">
+<div style="font-size:0.65rem;color:var(--text-muted);line-height:1.6;">
+<strong style="color:var(--text-main)">AES-256-GCM</strong> encrypted backups &nbsp;·&nbsp;
+<strong style="color:var(--text-main)"></strong> &nbsp;·&nbsp;
+<strong style="color:var(--text-main)"></strong>
 </div>
 </div>
 </div>
 `;
 document.body.appendChild(overlay);
-
-_initGSIInOverlay();
 const form = document.getElementById('auth-form');
 if(form) form.addEventListener('submit', handleSignIn);
 const signupBtn = document.getElementById('auth-signup-btn');
@@ -3025,7 +2946,6 @@ if(signupBtn) signupBtn.addEventListener('click', (e) => {
 e.preventDefault();
 handleSignUp();
 });
-
 OfflineAuth.getSavedEmail().then(email => {
 if (email) {
 const emailInput = document.getElementById('auth-email');
@@ -3034,18 +2954,19 @@ if (emailInput) { emailInput.value = email; }
 }).catch(() => {});
 }
 function showAuthOverlay() {
-const existing = document.getElementById('auth-overlay');
-if (existing) existing.remove();
+let overlay = document.getElementById('auth-overlay');
+if (!overlay) {
 createAuthOverlay();
+} else {
+overlay.style.display = 'flex';
+}
 document.body.style.overflow = 'hidden';
 }
 function hideAuthOverlay() {
+if (!currentUser) return;
 const overlay = document.getElementById('auth-overlay');
 if (overlay) {
-overlay.style.animation = 'auth-fade-out 0.22s ease forwards';
-setTimeout(() => {
-  if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-}, 230);
+overlay.style.display = 'none';
 }
 document.body.style.overflow = '';
 }
@@ -3090,145 +3011,6 @@ try { sessionStorage.removeItem(KEY_ATTEMPTS); sessionStorage.removeItem(KEY_LOC
 },
 };
 })();
-
-const GOOGLE_CLIENT_ID = window._GOOGLE_CLIENT_ID || '';
-
-async function _applyGoogleUser(user) {
-// Mark that we're handling everything here so onAuthStateChanged won't
-// duplicate the loadAllData / refreshAllDisplays calls.
-_googleLoginHandled = true;
-const _googleKeyMaterial = user.uid;
-currentUser = {
-id: user.uid, uid: user.uid,
-email: user.email, displayName: user.displayName || '',
-photoURL: user.photoURL || null, googleAuth: true
-};
-idb.setUserPrefix(user.uid);
-await IDBCrypto.setSessionKey(user.email, _googleKeyMaterial, user.uid);
-await IDBCrypto.sessionSet('login', {
-uid: user.uid, email: user.email,
-displayName: user.displayName || '', googleAuth: true,
-lastLogin: new Date().toISOString()
-});
-try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
-if (typeof database !== 'undefined' && database) {
-try {
-const userRef = firebaseDB.collection('users').doc(user.uid);
-const snap = await userRef.get();
-if (!snap.exists) {
-await userRef.set({ email: user.email, displayName: user.displayName || '', createdAt: Date.now(), role: 'admin', authProvider: 'google' });
-}
-} catch(e) { console.warn('Google auth: Firestore user-doc write failed', e); }
-}
-try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) { console.warn('Post-Google-login data load failed:', e); }
-
-hideAuthOverlay();
-setTimeout(() => {
-if (typeof refreshAllDisplays === 'function') refreshAllDisplays();
-if (typeof performOneClickSync === 'function') performOneClickSync();
-}, 300);
-}
-
-async function _checkGoogleRedirectResult() {}
-
-async function _onGoogleCredential(response) {
-const messageDiv = document.getElementById('auth-message');
-if (!response || !response.credential) {
-if (messageDiv) { messageDiv.textContent = 'Google sign-in cancelled.'; messageDiv.style.color = 'var(--danger)'; }
-return;
-}
-
-if (messageDiv) { messageDiv.textContent = 'Signing in…'; messageDiv.style.color = 'var(--accent)'; }
-
-const container = document.getElementById('gsi-btn-container');
-if (container) container.style.pointerEvents = 'none';
-try {
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const _gAuth = (typeof auth !== 'undefined' && auth) ? auth : firebase.auth();
-const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
-// Signal before signInWithCredential so onAuthStateChanged (which fires
-// synchronously with the credential resolution) sees the flag and skips its
-// duplicate key-restore / loadAllData / logout path.
-_googleLoginHandled = true;
-const result = await _gAuth.signInWithCredential(credential);
-if (messageDiv) { messageDiv.textContent = 'Signed in! Opening app…'; messageDiv.style.color = 'var(--accent-emerald)'; }
-await _applyGoogleUser(result.user);
-} catch(error) {
-_googleLoginHandled = false; // reset on failure so normal auth flow works
-console.error('Google credential sign-in failed:', _safeErr(error));
-let msg = 'Google sign-in failed.';
-if (error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-id-token')
-  msg = 'Google token invalid. Please try again.';
-else if (error.code === 'auth/operation-not-allowed')
-  msg = 'Google sign-in is not enabled. Contact the administrator.';
-else if (error.code === 'auth/account-exists-with-different-credential')
-  msg = 'This email is registered with a different sign-in method.';
-else if (error.code === 'auth/network-request-failed')
-  msg = 'Network error. Check your connection and try again.';
-else msg = 'Google sign-in failed: ' + (error.message || error.code || '');
-if (messageDiv) { messageDiv.textContent = msg; messageDiv.style.color = 'var(--danger)'; }
-if (container) container.style.pointerEvents = '';
-const btn = document.getElementById('auth-google-btn');
-if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-}
-}
-
-window._onGoogleCredential = _onGoogleCredential;
-
-let _gsiInitialized = false;
-
-function _initGSIInOverlay() {
-if (_gsiInitialized) return;
-if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-setTimeout(_initGSIInOverlay, 300);
-return;
-}
-if (!GOOGLE_CLIENT_ID) return;
-google.accounts.id.initialize({
-client_id:             GOOGLE_CLIENT_ID,
-callback:              window._onGoogleCredential,
-auto_select:           false,
-cancel_on_tap_outside: true,
-use_fedcm_for_prompt:  true,
-itp_support:           true,
-});
-_gsiInitialized = true;
-}
-
-function _handleGoogleBtnClick() {
-const btn = document.getElementById('auth-google-btn');
-const msg = document.getElementById('auth-message');
-if (!navigator.onLine) {
-if (msg) { msg.textContent = 'Google sign-in requires internet.'; msg.style.color = 'var(--danger)'; }
-return;
-}
-if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
-if (msg) { msg.textContent = ''; }
-
-function doPrompt() {
-if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-  setTimeout(doPrompt, 300);
-  return;
-}
-if (!_gsiInitialized) _initGSIInOverlay();
-google.accounts.id.prompt(notification => {
-  const mom = notification.getMomentType ? notification.getMomentType() : '';
-  if (notification.isSkippedMoment && notification.isSkippedMoment()) {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    if (msg) {
-      msg.style.color = 'var(--text-muted)';
-      msg.textContent = 'No Google accounts detected. Sign into Google in your browser first, then try again.';
-    }
-  } else if (notification.isDismissedMoment && notification.isDismissedMoment()) {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    if (msg) { msg.textContent = ''; }
-  }
-});
-}
-doPrompt();
-}
-window._handleGoogleBtnClick = _handleGoogleBtnClick;
-
 async function handleSignIn(e) {
 if(e) e.preventDefault();
 const emailInput = document.getElementById('auth-email');
@@ -3284,7 +3066,7 @@ const firebaseAuth = auth || firebase.auth();
 const _signInCred = await firebaseAuth.signInWithEmailAndPassword(email, password);
 await OfflineAuth.saveCredentials(email, password);
 idb.setUserPrefix(_signInCred.user.uid);
-await IDBCrypto.setSessionKey(email, password, _signInCred.user.uid);
+await IDBCrypto.setSessionKey(email, password);
 await IDBCrypto.sessionSet('login', {
   uid: _signInCred.user.uid,
   email,
@@ -3323,7 +3105,7 @@ email: email,
 offlineMode: true
 };
 idb.setUserPrefix(currentUser.uid);
-await IDBCrypto.setSessionKey(email, password, currentUser.uid);
+await IDBCrypto.setSessionKey(email, password);
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = '✓ Offline Login Successful';
@@ -3332,8 +3114,12 @@ try {
   if (typeof loadAllData === 'function') await loadAllData();
 } catch(e) { console.warn('Post-offline-login data reload failed:', e); }
 setTimeout(() => {
-hideAuthOverlay();
+if (currentUser) {
+const overlay = document.getElementById('auth-overlay');
+if (overlay) { overlay.style.display = 'none'; }
+document.body.style.overflow = '';
 if (typeof refreshAllDisplays === 'function') refreshAllDisplays();
+}
 }, 300);
 }
 } catch (error) {
@@ -3348,12 +3134,12 @@ const valid = await OfflineAuth.verifyCredentials(email, password).catch(() => f
 if (valid) {
 currentUser = { id: email.replace(/[^a-zA-Z0-9]/g, '_'), uid: email.replace(/[^a-zA-Z0-9]/g, '_'), email, offlineMode: true };
 idb.setUserPrefix(currentUser.uid);
-await IDBCrypto.setSessionKey(email, password, currentUser.uid);
+await IDBCrypto.setSessionKey(email, password);
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
 try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) {}
 messageDiv.textContent = '✓ Offline Login (Network unavailable)';
 messageDiv.style.color = 'var(--accent-emerald)';
-setTimeout(() => { hideAuthOverlay(); if(typeof refreshAllDisplays==='function')refreshAllDisplays(); }, 300);
+setTimeout(() => { if(currentUser){const o=document.getElementById('auth-overlay');if(o)o.style.display='none';document.body.style.overflow='';if(typeof refreshAllDisplays==='function')refreshAllDisplays();} }, 300);
 return;
 }
 errorMessage = 'Network error. If you have logged in before, ensure correct credentials for offline access.';
@@ -3400,10 +3186,10 @@ displayName: userCredential.user.displayName
 };
 await OfflineAuth.saveCredentials(email, password);
 idb.setUserPrefix(currentUser.uid);
-await IDBCrypto.setSessionKey(email, password, userCredential.user.uid);
+await IDBCrypto.setSessionKey(email, password);
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
 if (database) {
-await firebaseDB.collection('users').doc(currentUser.uid).set({
+await firebaseDB.collection('users').doc(FIXED_UID).set({
 email: email,
 createdAt: Date.now(),
 role: 'admin'
