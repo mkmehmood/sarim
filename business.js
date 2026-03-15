@@ -1490,6 +1490,54 @@ request.onsuccess = () => resolve(request.result);
 request.onerror = () => reject(request.error || new Error("IDB request failed"));
 }
 });
+},
+async clearUserData() {
+try {
+await this.init();
+const prefix = this._prefix;
+await new Promise((resolve, reject) => {
+const transaction = this.db.transaction(IDB_CONFIG.store, 'readwrite');
+const store = transaction.objectStore(IDB_CONFIG.store);
+const req = store.openCursor();
+const toDelete = [];
+req.onsuccess = (e) => {
+const cursor = e.target.result;
+if (cursor) {
+const key = cursor.key;
+if (prefix ? key.startsWith(prefix) : true) toDelete.push(key);
+cursor.continue();
+} else {
+let done = 0;
+if (toDelete.length === 0) { resolve(); return; }
+toDelete.forEach(k => {
+const r = store.delete(k);
+r.onsuccess = () => { if (++done === toDelete.length) resolve(); };
+r.onerror  = () => { if (++done === toDelete.length) resolve(); };
+});
+}
+};
+req.onerror = () => resolve();
+transaction.onerror  = () => resolve();
+transaction.onabort  = () => resolve();
+});
+} catch(e) {
+console.warn('idb.clearUserData failed:', e);
+}
+},
+async clearAllIDB() {
+try {
+await this.init();
+await new Promise((resolve) => {
+const transaction = this.db.transaction(IDB_CONFIG.store, 'readwrite');
+transaction.objectStore(IDB_CONFIG.store).clear().onsuccess = () => resolve();
+transaction.onerror = () => resolve();
+});
+this.db.close();
+this.db = null;
+this._initPromise = null;
+} catch(e) {
+console.warn('idb.clearAllIDB failed:', e);
+}
 }
 };
 function ensureArray(value) {
@@ -1529,6 +1577,11 @@ const batchResults = await idb.getBatch(dataKeys);
 db = ensureArray(batchResults.get('mfg_pro_pkr'));
 salesHistory = ensureArray(batchResults.get('noman_history'));
 customerSales = ensureArray(batchResults.get('customer_sales'));
+customerSales.forEach(s => {
+if (s && s.transactionType === 'OLD_DEBT' && !s.currentRepProfile) {
+s.currentRepProfile = 'admin';
+}
+});
 repSales = ensureArray(batchResults.get('rep_sales'));
 repCustomers = ensureArray(batchResults.get('rep_customers'));
 salesCustomers = ensureArray(batchResults.get('sales_customers'));

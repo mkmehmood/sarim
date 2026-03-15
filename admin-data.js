@@ -307,6 +307,10 @@ Reset Sync History
 style="width: 100%; padding: 10px; margin-bottom: 10px; background: rgba(175, 82, 222, 0.1); border: 1px solid rgba(175, 82, 222, 0.3); border-radius: 16px; color: #af52de; cursor: pointer; font-size: 0.75rem;">
 Close Financial Year
 </button>
+<button onclick="(async()=>{ document.getElementById('delta-stats-modal').remove(); setTimeout(async () => { if(typeof signOut === 'function') await signOut(); }, 200); })()"
+style="width: 100%; padding: 10px; margin-bottom: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 16px; color: #ef4444; cursor: pointer; font-size: 0.75rem;">
+Log Out
+</button>
 <button onclick="document.getElementById('delta-stats-modal').remove();"
 style="width: 100%; padding: 10px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 16px; color: var(--text); cursor: pointer; font-size: 0.75rem;">
 Close

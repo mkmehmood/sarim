@@ -13736,148 +13736,45 @@ updateConnectionStatus();
 }
 };
 (function() {
-const body = document.body;
-const threshold = 150;
+const threshold = 80;
 let startY = 0;
 let isPulling = false;
-const ptrStyle = document.createElement('style');
-ptrStyle.innerHTML = `
-@keyframes ptrSpinArc { to { stroke-dashoffset: -138; } }
-@keyframes ptrSuccessScale {
-0% { transform: scale(0) rotate(-45deg); opacity: 0; }
-70% { transform: scale(1.25) rotate(5deg); opacity: 1; }
-100% { transform: scale(1) rotate(0deg); opacity: 1; }
-}
-`;
-document.head.appendChild(ptrStyle);
-const pill = document.createElement('div');
-pill.id = 'pull-refresh-pill';
-pill.innerHTML = `
-<div class="ptr-icon-wrap" id="ptr-icon-wrap">
-<svg class="ptr-svg" id="ptr-svg" viewBox="0 0 32 32" fill="none" xmlns="http:
-<circle class="ptr-track" cx="16" cy="16" r="12" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
-<circle class="ptr-arc u-hidden" id="ptr-arc" cx="16" cy="16" r="12"
-stroke="#4da6ff" stroke-width="2" stroke-linecap="round"
-stroke-dasharray="75.4" stroke-dashoffset="75.4"
-transform="rotate(-90 16 16)" />
-<g class="ptr-arrow-g" id="ptr-arrow-g">
-<line x1="16" y1="9" x2="16" y2="21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-<polyline points="11,17 16,22 21,17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-</g>
-<g class="ptr-check-g" id="ptr-check-g" style="display:none; transform-origin: 50% 50%;">
-<polyline points="9,16 14,21 23,11" stroke="#2ddf7a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-</g>
-</svg>
-</div>
-<div class="ptr-text-wrap">
-<span class="ptr-label" id="ptr-label">Pull to sync</span>
-<span class="ptr-sublabel" id="ptr-sublabel"></span>
-</div>
-<div class="ptr-dots" id="ptr-dots">
-<span></span><span></span><span></span>
-</div>
-`;
-document.body.appendChild(pill);
-const iconWrap = pill.querySelector('#ptr-icon-wrap');
-const arrowG = pill.querySelector('#ptr-arrow-g');
-const checkG = pill.querySelector('#ptr-check-g');
-const arc = pill.querySelector('#ptr-arc');
-const label = pill.querySelector('#ptr-label');
-const sublabel = pill.querySelector('#ptr-sublabel');
-const dots = pill.querySelector('#ptr-dots');
-const setState = (state) => {
-pill.className = 'ptr-' + state;
-pill.dataset.state = state;
-arrowG.style.display = 'none';
-arc.style.display = 'none';
-checkG.style.display = 'none';
-dots.classList.remove('visible');
-sublabel.textContent = '';
-if (state === 'idle') {
-arrowG.style.display = 'block';
-arrowG.style.color = 'rgba(255,255,255,0.50)';
-label.textContent = 'Pull to sync';
-label.style.color = 'rgba(255,255,255,0.55)';
-} else if (state === 'pull') {
-arrowG.style.display = 'block';
-arrowG.style.color = '#4da6ff';
-label.textContent = 'Pull to sync';
-label.style.color = 'rgba(255,255,255,0.80)';
-} else if (state === 'ready') {
-arrowG.style.display = 'block';
-arrowG.style.color = '#2ddf7a';
-arrowG.style.transform = 'rotate(180deg)';
-label.textContent = 'Release to sync';
-label.style.color = '#2ddf7a';
-sublabel.textContent = 'Let go';
-} else if (state === 'syncing') {
-arc.style.display = 'block';
-arc.style.animation = 'ptrSpinArc 0.9s linear infinite';
-dots.classList.add('visible');
-label.textContent = 'Syncing…';
-label.style.color = '#4da6ff';
-sublabel.textContent = 'Fetching latest data';
-} else if (state === 'done') {
-checkG.style.display = 'block';
-checkG.style.animation = 'ptrSuccessScale 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards';
-label.textContent = 'Up to date';
-label.style.color = '#2ddf7a';
-}
-if (state !== 'ready') arrowG.style.transform = '';
-};
-const showPill = (y) => {
-const progress = Math.min(y / threshold, 1);
-const eased = 1 - Math.pow(1 - progress, 2.2);
-const top = -8 + eased * 56;
-pill.style.top = Math.max(-8, top) + 'px';
-const scale = 0.82 + eased * 0.18;
-pill.style.transform = `translateX(-50%) scale(${scale.toFixed(3)})`;
-};
-const hidePill = () => {
-pill.style.top = '-88px';
-pill.style.transform = 'translateX(-50%) scale(0.88)';
-};
+const _anyOverlayOpen = () =>
+document.querySelector('.factory-overlay[style*="flex"], .factory-overlay[style*="block"], .settings-overlay.active') !== null;
 window._ptrTouchStart = (e) => {
-const anyOverlayOpen = document.querySelector('.factory-overlay[style*="flex"], .factory-overlay[style*="block"], .settings-overlay.active') !== null;
-if (anyOverlayOpen) { isPulling = false; return; }
-if (window.scrollY === 0) {
-startY = e.touches[0].clientY;
-isPulling = true;
-setState('pull');
-} else { isPulling = false; }
+if (_anyOverlayOpen()) { isPulling = false; return; }
+if (window.scrollY === 0) { startY = e.touches[0].clientY; isPulling = true; }
 };
 window._ptrTouchMove = (e) => {
 if (!isPulling) return;
-const anyOverlayOpen = document.querySelector('.factory-overlay[style*="flex"], .factory-overlay[style*="block"], .settings-overlay.active') !== null;
-if (anyOverlayOpen) { isPulling = false; return; }
+if (_anyOverlayOpen()) { isPulling = false; return; }
 const diff = e.touches[0].clientY - startY;
-if (diff > 0 && window.scrollY === 0) {
-e.preventDefault();
-showPill(diff);
-setState(diff > threshold ? 'ready' : 'pull');
-}
+if (diff > 0 && window.scrollY === 0) e.preventDefault();
 };
 window._ptrTouchEnd = async (e) => {
 if (!isPulling) return;
-const anyOverlayOpen = document.querySelector('.factory-overlay[style*="flex"], .factory-overlay[style*="block"], .settings-overlay.active') !== null;
-if (anyOverlayOpen) { isPulling = false; hidePill(); return; }
-const diff = e.changedTouches[0].clientY - startY;
-if (diff > threshold && window.scrollY === 0) {
-setState('syncing');
-pill.style.top = '20px';
-pill.style.transform = 'translateX(-50%) scale(1)';
-if (navigator.vibrate) navigator.vibrate([12, 8, 20]);
-await performOneClickSync(false);
-setState('done');
-if (navigator.vibrate) navigator.vibrate(18);
-setTimeout(() => {
-setState('idle');
-setTimeout(hidePill, 350);
-}, 1200);
-} else {
-hidePill();
-}
 isPulling = false;
+if (_anyOverlayOpen()) return;
+const diff = e.changedTouches[0].clientY - startY;
+if (diff < threshold || window.scrollY !== 0) return;
+if (navigator.vibrate) navigator.vibrate([12, 8, 20]);
+showToast('↻ Syncing…', 'info', 12000);
+const result = await performOneClickSync(true);
+if (navigator.vibrate) navigator.vibrate(18);
+const down = (result && result.down) || 0;
+const up   = (result && result.up)   || 0;
+const err  = result && result.error;
+if (err) {
+showToast('Sync error — will retry when online', 'warning', 3000);
+} else if (down > 0 && up > 0) {
+showToast('↓' + down + ' ↑' + up + ' synced', 'success', 2500);
+} else if (down > 0) {
+showToast('↓ ' + down + ' update' + (down !== 1 ? 's' : '') + ' downloaded', 'success', 2500);
+} else if (up > 0) {
+showToast('↑ ' + up + ' change' + (up !== 1 ? 's' : '') + ' uploaded', 'success', 2500);
+} else {
+showToast('✓ Up to date', 'success', 1500);
+}
 };
 document.addEventListener('touchstart', window._ptrTouchStart, { passive: true });
 document.addEventListener('touchmove', window._ptrTouchMove, { passive: false });

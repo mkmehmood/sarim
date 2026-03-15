@@ -1472,6 +1472,26 @@ async function subscribeToRealtime() {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 
   try {
+    const userDocUnsub = userRef.onSnapshot(async (snap) => {
+      if (!snap.exists) return;
+      const data = snap.data() || {};
+      if (data.forceLogout && data.forceLogout.at) {
+        const sessionStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
+        if (data.forceLogout.at > sessionStart) {
+          showToast('Your account access has been revoked. Signing out…', 'error', 5000);
+          setTimeout(async () => {
+            if (typeof signOut === 'function') await signOut();
+          }, 1500);
+        }
+      }
+      if (data.approved === false) {
+        showToast('Your account has been suspended. Signing out…', 'error', 5000);
+        setTimeout(async () => {
+          if (typeof signOut === 'function') await signOut();
+        }, 1500);
+      }
+    }, () => {});
+    realtimeRefs.push(userDocUnsub);
 
     for (const col of SYNC_COLLECTIONS) {
       const handler = _makeSnapshotHandler(col);
@@ -2549,9 +2569,12 @@ async function _doOneClickSync(silent = false) {
       catch (e) { console.error('Data validation error:', _safeErr(e)); }
     }, 2000);
 
+    return { down: totalCloudChanges, up: totalItemsToWrite };
+
   } catch (e) {
     console.error('[OneClickSync] error:', _safeErr(e));
     if (!silent) showToast(' Sync error - will retry automatically', 'warning');
+    return { down: 0, up: 0, error: true };
   } finally {
     isSyncing = false;
     if (!silent && btn) btn.innerHTML = originalText;
@@ -3111,7 +3134,7 @@ uid: user.uid, email: user.email,
 displayName: user.displayName || '', googleAuth: true,
 lastLogin: new Date().toISOString()
 });
-try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
+try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); localStorage.setItem('_gznd_session_start', String(Date.now())); } catch(e) {}
 if (typeof database !== 'undefined' && database) {
 try {
 const userRef = firebaseDB.collection('users').doc(user.uid);
@@ -3346,7 +3369,7 @@ await IDBCrypto.sessionSet('login', {
   displayName: _signInCred.user.displayName || '',
   lastLogin: new Date().toISOString()
 });
-try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
+try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); localStorage.setItem('_gznd_session_start', String(Date.now())); } catch(e) {}
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = 'Success! Loading...';
 messageDiv.style.color = 'var(--accent-emerald)';
@@ -3579,7 +3602,11 @@ const confirmed = await showGlassConfirm(
 );
 if (!confirmed) return;
 try {
-await firebaseDB.collection('users').doc(uid).update({ approved: !currentlyApproved }).catch(() => {});
+const _toggleUpdate = { approved: !currentlyApproved };
+if (currentlyApproved) {
+_toggleUpdate.forceLogout = { at: Date.now(), by: currentUser.email };
+}
+await firebaseDB.collection('users').doc(uid).update(_toggleUpdate).catch(() => {});
 const accounts = await _readAccountsIndex();
 const updated = accounts.map(a => a.uid === uid ? { ...a, approved: !currentlyApproved } : a);
 await _writeAccountsIndex(updated);
@@ -3599,7 +3626,7 @@ const confirmed = await showGlassConfirm(
 );
 if (!confirmed) return;
 try {
-await firebaseDB.collection('users').doc(uid).update({ approved: false, removedAt: Date.now(), removedBy: currentUser.email }).catch(() => {});
+await firebaseDB.collection('users').doc(uid).update({ approved: false, removedAt: Date.now(), removedBy: currentUser.email, forceLogout: { at: Date.now(), by: currentUser.email } }).catch(() => {});
 const accounts = await _readAccountsIndex();
 const updated = accounts.map(a => a.uid === uid ? { ...a, approved: false } : a);
 await _writeAccountsIndex(updated);
@@ -3633,17 +3660,57 @@ if (auth) {
 await auth.signOut();
 currentUser = null;
 IDBCrypto.clearSessionKey();
+await idb.clearUserData().catch(() => {});
+await OfflineAuth.clearCredentials().catch(() => {});
+try {
+const keysToRemove = ['_gznd_session_active','_gznd_session_start','_gznd_session_key_backup',
+'persistentLogin','firestoreStats','_gznd_login_attempts','_gznd_login_lockout'];
+keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
+sessionStorage.clear();
+} catch(e) {}
+try {
+const _staticDbs = ['NaswarDealersDB','GZND_SecureStorage','GZND_AuthDB'];
+for (const name of _staticDbs) {
+await new Promise(r => { const req = indexedDB.deleteDatabase(name); req.onsuccess = r; req.onerror = r; req.onblocked = r; });
+}
+if (indexedDB.databases) {
+const _allDbs = await indexedDB.databases().catch(() => []);
+const _fbDbs = _allDbs.filter(d => d.name && (d.name.includes('firebaseLocalStorage') || d.name.includes('firebase-installations')));
+for (const db of _fbDbs) {
+await new Promise(r => { const req = indexedDB.deleteDatabase(db.name); req.onsuccess = r; req.onerror = r; req.onblocked = r; });
+}
+}
+} catch(e) {}
 idb.clearUserPrefix();
-try { sessionStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_key_backup'); localStorage.removeItem('persistentLogin'); } catch(e) {}
-DeltaSync.clearAllTimestamps().catch(e => console.warn("[DeltaSync] clearAllTimestamps on signout:", e));
+DeltaSync.clearAllTimestamps().catch(() => {});
 if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
 showToast(' Signed out successfully', 'success');
 } else {
 currentUser = null;
 IDBCrypto.clearSessionKey();
+await idb.clearUserData().catch(() => {});
+await OfflineAuth.clearCredentials().catch(() => {});
+try {
+const keysToRemove = ['_gznd_session_active','_gznd_session_start','_gznd_session_key_backup',
+'persistentLogin','firestoreStats','_gznd_login_attempts','_gznd_login_lockout'];
+keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
+sessionStorage.clear();
+} catch(e) {}
+try {
+const _staticDbs = ['NaswarDealersDB','GZND_SecureStorage','GZND_AuthDB'];
+for (const name of _staticDbs) {
+await new Promise(r => { const req = indexedDB.deleteDatabase(name); req.onsuccess = r; req.onerror = r; req.onblocked = r; });
+}
+if (indexedDB.databases) {
+const _allDbs = await indexedDB.databases().catch(() => []);
+const _fbDbs = _allDbs.filter(d => d.name && (d.name.includes('firebaseLocalStorage') || d.name.includes('firebase-installations')));
+for (const db of _fbDbs) {
+await new Promise(r => { const req = indexedDB.deleteDatabase(db.name); req.onsuccess = r; req.onerror = r; req.onblocked = r; });
+}
+}
+} catch(e) {}
 idb.clearUserPrefix();
-try { sessionStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_active'); localStorage.removeItem('_gznd_session_key_backup'); localStorage.removeItem('persistentLogin'); } catch(e) {}
-DeltaSync.clearAllTimestamps().catch(e => console.warn("[DeltaSync] clearAllTimestamps on signout:", e));
+DeltaSync.clearAllTimestamps().catch(() => {});
 if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
 showToast(' Signed out', 'success');
 }

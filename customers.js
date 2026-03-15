@@ -1160,6 +1160,7 @@ if (!validateUUID(String(tx.id || ''))) { tx.id = generateUUID('old_debt'); }
 const amountChanged = tx.totalValue !== oldDebit;
 tx.totalValue = oldDebit; tx.customerPhone = phone; tx.timestamp = getTimestamp();
 tx.updatedAt = getTimestamp();
+tx.currentRepProfile = 'admin';
 if (amountChanged) { tx.creditReceived = false; tx.partialPaymentReceived = 0; }
 if (!tx.time) tx.time = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 ensureRecordIntegrity(tx, true);
@@ -1168,6 +1169,7 @@ oldDebtModified = true; oldDebtRecord = tx;
 const tx = { id: generateUUID('old_debt'), date: new Date().toISOString().split('T')[0],
 customerName: name, customerPhone: phone, salesRep: 'ADMIN', quantity: 0,
 supplyStore: 'N/A', paymentType: 'CREDIT', transactionType: 'OLD_DEBT',
+currentRepProfile: 'admin',
 totalValue: oldDebit, creditReceived: false, partialPaymentReceived: 0,
 time: new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}),
 timestamp: getTimestamp(), createdAt: getTimestamp(), updatedAt: getTimestamp(),
