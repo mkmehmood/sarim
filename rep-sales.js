@@ -13,8 +13,8 @@ showToast("Setup failed: " + e.message, "error");
 async function disableBiometricLock() {
 const _bioMsg = `Remove the biometric (fingerprint / Face ID) lock from this app?\n\nAfter removal:\n • Anyone with access to this device can open the app without biometric verification\n • To re-enable, go to Security Settings and set up biometrics again\n\nYour data will not be affected.`;
 if (await showGlassConfirm(_bioMsg, { title: "Remove Biometric Lock", confirmText: "Remove Lock", danger: true })) {
-await idb.remove('bio_enabled');
-await idb.remove('bio_cred_id');
+await sqliteStore.remove('bio_enabled');
+await sqliteStore.remove('bio_cred_id');
 showToast("Biometric Lock Removed", "info");
 const _bioBtnD = document.getElementById('bio-toggle-btn');
 if (_bioBtnD) _bioBtnD.innerText = "Enable Biometric Lock ";
@@ -22,7 +22,7 @@ document.getElementById('bio-toggle-btn').onclick = enableBiometricLock;
 }
 }
 async function checkBiometricLock() {
-const isEnabled = await idb.get('bio_enabled');
+const isEnabled = await sqliteStore.get('bio_enabled');
 if (isEnabled === 'true' || isEnabled === true) {
 const lockScreen = document.createElement('div');
 lockScreen.id = 'app-lock-screen';
@@ -259,7 +259,7 @@ await saveWithTracking('rep_customers', repCustomers, _rcContact);
 saveRecordToFirestore('rep_customers', _rcContact).catch(e => {});
 }
 }
-} catch (_rcErr) { console.warn('Auto-register rep customer failed:', _rcErr); }
+} catch (_rcErr) { console.warn('Auto-register rep customer failed:', _safeErr(_rcErr)); }
 if (firebaseDB && currentUser) {
 saveRecordToFirestore('rep_sales', transactionRecord).catch(e => {
 });
@@ -550,7 +550,7 @@ if (!tbody) {
 return;
 }
 try {
-const freshRepSales = await idb.get('rep_sales', []);
+const freshRepSales = await sqliteStore.get('rep_sales', []);
 if (Array.isArray(freshRepSales)) {
 const recordMap = new Map(freshRepSales.filter(s => s && s.id).map(s => [s.id, s]));
 if (Array.isArray(repSales)) {
@@ -567,7 +567,7 @@ console.error('Rep sales operation failed.', _safeErr(error));
 showToast('Rep sales operation failed.', 'error');
 }
 try {
-const freshRepCustomersList = await idb.get('rep_customers', []);
+const freshRepCustomersList = await sqliteStore.get('rep_customers', []);
 if (Array.isArray(freshRepCustomersList) && freshRepCustomersList.length > 0) {
 const repRegMap = new Map(freshRepCustomersList.map(c => [c.id, c]));
 if (Array.isArray(repCustomers)) {
@@ -576,7 +576,7 @@ repCustomers.forEach(c => { if (c && c.id && !repRegMap.has(c.id)) repRegMap.set
 repCustomers = Array.from(repRegMap.values());
 }
 } catch (repRegError) {
-console.warn('Rep registry refresh failed, using in-memory:', repRegError);
+console.warn('Rep registry refresh failed, using in-memory:', _safeErr(repRegError));
 }
 const filterInput = document.getElementById('rep-filter');
 const filter = filterInput ? filterInput.value.toLowerCase() : '';
@@ -726,7 +726,7 @@ document.getElementById('repCustomerManagementOverlay').style.display = 'none';
 currentManagingRepCustomer = null;
 setTimeout(async () => {
 try {
-const freshRepSales = await idb.get('rep_sales', []);
+const freshRepSales = await sqliteStore.get('rep_sales', []);
 if (Array.isArray(freshRepSales)) {
 const m = new Map(freshRepSales.map(s => [s.id, s]));
 if (Array.isArray(repSales)) repSales.forEach(s => { if (!m.has(s.id)) m.set(s.id, s); });
@@ -734,7 +734,7 @@ repSales = Array.from(m.values());
 }
 } catch(e) {
 showToast('Rep sales operation failed.', 'error');
-console.warn('closeRepCustomerManagement IDB error', e);
+console.warn('closeRepCustomerManagement SQLite error', _safeErr(e));
 }
 if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 }, 100);
@@ -762,7 +762,7 @@ const contactId = contactRecord.id;
 await registerDeletion(contactId, 'rep_customers', contactRecord);
 repCustomers.splice(contactIdx, 1);
 await saveWithTracking('rep_customers', repCustomers);
-await deleteRecordFromFirestore('rep_customers', contactId);
+deleteRecordFromFirestore('rep_customers', contactId).catch(() => {});
 }
 const idsToDelete = txs.map(s => s.id);
 
@@ -772,9 +772,7 @@ for (const tx of repTxsToDelete) {
 await registerDeletion(tx.id, 'rep_sales', tx);
 }
 await saveWithTracking('rep_sales', repSales);
-for (const id of idsToDelete) {
-await deleteRecordFromFirestore('rep_sales', id);
-}
+void Promise.all(idsToDelete.map(id => deleteRecordFromFirestore('rep_sales', id).catch(() => {})));
 notifyDataChange('rep');
 triggerAutoSync();
 closeRepCustomerManagement();
@@ -788,7 +786,7 @@ const list = document.getElementById('repCustomerManagementHistoryList');
 if (!list) return;
 let transactions = [];
 try {
-const dbSales = await idb.get('rep_sales', []);
+const dbSales = await sqliteStore.get('rep_sales', []);
 if (Array.isArray(dbSales)) {
 const recordMap = new Map(dbSales.filter(s => s && s.id).map(s => [s.id, s]));
 if (Array.isArray(repSales)) repSales.forEach(s => { if (s && s.id && !recordMap.has(s.id)) recordMap.set(s.id, s); });
@@ -973,7 +971,7 @@ const oldDebit = parseFloat(document.getElementById('rep-edit-cust-old-debit').v
 if (!name) { showToast('Customer name is required', 'error'); return; }
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
-const freshRepContacts = await idb.get('rep_customers', []);
+const freshRepContacts = await sqliteStore.get('rep_customers', []);
 if (Array.isArray(freshRepContacts)) {
 const m = new Map(freshRepContacts.map(c => [c.id, c]));
 if (Array.isArray(repCustomers)) repCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
@@ -995,8 +993,8 @@ createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() 
 repCustomers.push(contact);
 }
 await saveWithTracking('rep_customers', repCustomers, contact);
-await saveRecordToFirestore('rep_customers', contact);
-let salesArray = await idb.get('rep_sales', []);
+saveRecordToFirestore('rep_customers', contact).catch(() => {});
+let salesArray = await sqliteStore.get('rep_sales', []);
 if (!Array.isArray(salesArray)) salesArray = [];
 if (Array.isArray(repSales) && repSales.length > 0) {
 const mSales = new Map(salesArray.map(s => [s.id, s]));
@@ -1047,11 +1045,11 @@ salesArray.forEach(s => { if (s && s.customerName === name && s.customerPhone !=
 repSales.length = 0; repSales.push(...salesArray);
 if (nameChanged || oldDebtModified || phoneUpdated) {
 await saveWithTracking('rep_sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
-if (oldDebtRecord) await saveRecordToFirestore('rep_sales', oldDebtRecord);
+if (oldDebtRecord) saveRecordToFirestore('rep_sales', oldDebtRecord).catch(() => {});
 if (deletedOldDebtId) {
 await registerDeletion(deletedOldDebtId, 'rep_sales', window._repOldDebtRecordForDeletion || null);
 window._repOldDebtRecordForDeletion = null;
-await deleteRecordFromFirestore('rep_sales', deletedOldDebtId);
+deleteRecordFromFirestore('rep_sales', deletedOldDebtId).catch(() => {});
 }
 if (nameChanged && renamedRecords.length > 0) {
 const cloudPushes = renamedRecords.map(r => saveRecordToFirestore('rep_sales', r));
@@ -1437,10 +1435,10 @@ tableHTML += `
 list.innerHTML = tableHTML;
 }
 async function refreshRepUI(force = false) {
-if (idb && idb.getBatch) {
+if (sqliteStore && sqliteStore.getBatch) {
 try {
 const repKeys = ['rep_sales', 'rep_customers'];
-const repDataMap = await idb.getBatch(repKeys);
+const repDataMap = await sqliteStore.getBatch(repKeys);
 if (repDataMap.get('rep_sales') !== undefined && repDataMap.get('rep_sales') !== null) {
 let freshRepSales = repDataMap.get('rep_sales') || [];
 let fixedCount = 0;
@@ -1455,7 +1453,7 @@ fixedCount++;
 return record;
 });
 if (fixedCount > 0) {
-await idb.set('rep_sales', freshRepSales);
+await sqliteStore.set('rep_sales', freshRepSales);
 }
 freshRepSales = freshRepSales.filter(r => !deletedRecordIds.has(r.id));
 freshRepSales.sort((a, b) => compareTimestamps(getRecordTimestamp(b), getRecordTimestamp(a)));
@@ -1476,7 +1474,7 @@ fixedCount++;
 return record;
 });
 if (fixedCount > 0) {
-await idb.set('rep_customers', freshRepCustomers);
+await sqliteStore.set('rep_customers', freshRepCustomers);
 }
 }
 repCustomers = freshRepCustomers;

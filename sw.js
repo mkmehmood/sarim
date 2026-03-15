@@ -1,4 +1,4 @@
-const BUILD_HASH = 'naswar-dealer-v1';
+const BUILD_HASH = 'naswar-dealer-v7';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -15,25 +15,26 @@ const ASSETS_TO_CACHE = [
   './admin-data.js',
   './manifest.json',
   './192.png',
-  './512.png'
+  './512.png',
+
+  './sql-wasm.js',
+  './sql-wasm.wasm',
+  './sql.js'
 ];
 const FIREBASE_CDN_URLS = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
-  'https://accounts.google.com/gsi/client'
+  'https://accounts.google.com/gsi/client',
+  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm',
+  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql.js'
 ];
 
 self.addEventListener('install', (event) => {
+  // Cache only local assets — Firebase CDN files are always fetched fresh.
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      Promise.all([
-        cache.addAll(ASSETS_TO_CACHE),
-        ...FIREBASE_CDN_URLS.map(url =>
-          cache.add(new Request(url, { mode: 'no-cors' })).catch(() => {})
-        )
-      ])
-    )
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
 });
 
@@ -65,18 +66,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Do NOT cache Firebase CDN files — always fetch fresh so version updates apply.
   if (FIREBASE_CDN_URLS.includes(url.href)) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
-        caches.open(CACHE_NAME).then((c) => c.put(event.request, res.clone()));
-        return res;
-      }))
-    );
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
 
   const isLocal = url.pathname.endsWith('.js') || url.pathname.endsWith('.css') ||
-    url.pathname.endsWith('.json') || url.pathname.endsWith('.png') || url.pathname.endsWith('.webp');
+    url.pathname.endsWith('.json') || url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.webp') || url.pathname.endsWith('.wasm');
 
   if (isLocal) {
     event.respondWith(

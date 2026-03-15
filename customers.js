@@ -40,14 +40,15 @@ const partialPaid = s.partialPaymentReceived || 0;
 totalCredit += (getSaleTransactionValue(s) - partialPaid);
 }
 } else if (isRepLinked) {
-
-if (s.paymentType === 'CASH' || s.creditReceived) {
-totalCredit += (s.totalValue || 0);
+if (s.paymentType === 'CREDIT' && !s.creditReceived) {
+const partialPaid = s.partialPaymentReceived || 0;
+totalCredit += (getSaleTransactionValue(s) - partialPaid);
 } else if (s.paymentType === 'COLLECTION') {
 totalCredit -= (s.totalValue || 0);
 } else if (s.paymentType === 'PARTIAL_PAYMENT') {
 totalCredit -= (s.totalValue || 0);
 }
+// CASH or creditReceived=true: already received, no impact on outstanding debt
 } else {
 
 if (s.paymentType === 'COLLECTION') {
@@ -72,7 +73,7 @@ if (!tbody) {
 return;
 }
 try {
-const freshSales = await idb.get('customer_sales', []);
+const freshSales = await sqliteStore.get('customer_sales', []);
 if (Array.isArray(freshSales)) {
 const recordMap = new Map(freshSales.map(s => [s.id, s]));
 if (Array.isArray(customerSales)) {
@@ -89,7 +90,7 @@ console.error('UI refresh failed.', _safeErr(error));
 showToast('UI refresh failed.', 'error');
 }
 try {
-const freshSalesCustomers = await idb.get('sales_customers', []);
+const freshSalesCustomers = await sqliteStore.get('sales_customers', []);
 if (Array.isArray(freshSalesCustomers) && freshSalesCustomers.length > 0) {
 const regMap = new Map(freshSalesCustomers.map(c => [c.id, c]));
 if (Array.isArray(salesCustomers)) {
@@ -98,7 +99,7 @@ salesCustomers.forEach(c => { if (c && c.id && !regMap.has(c.id)) regMap.set(c.i
 salesCustomers = Array.from(regMap.values());
 }
 } catch (regError) {
-console.warn('Registry refresh failed, using in-memory:', regError);
+console.warn('Registry refresh failed, using in-memory:', _safeErr(regError));
 }
 const filterInput = document.getElementById('customer-filter');
 const filterValue = filterInput ? filterInput.value.toLowerCase() : '';
@@ -124,14 +125,15 @@ const partialPaid = sale.partialPaymentReceived || 0;
 customerStats[name].credit += (getSaleTransactionValue(sale) - partialPaid);
 }
 } else if (isRepLinked) {
-
-if (sale.paymentType === 'CASH' || sale.creditReceived) {
-customerStats[name].credit += (sale.totalValue || 0);
+if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
+const partialPaid = sale.partialPaymentReceived || 0;
+customerStats[name].credit += (getSaleTransactionValue(sale) - partialPaid);
 } else if (sale.paymentType === 'COLLECTION') {
 customerStats[name].credit -= (sale.totalValue || 0);
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 customerStats[name].credit -= (sale.totalValue || 0);
 }
+// CASH or creditReceived=true: already received, no impact on outstanding debt
 } else {
 
 if (sale.paymentType === 'COLLECTION') {
@@ -231,7 +233,7 @@ s.customerPhone
 );
 phone = contact?.phone || customerSaleData?.customerPhone || '-';
 } catch (phoneError) {
-console.warn('Customer data operation failed.', phoneError);
+console.warn('Customer data operation failed.', _safeErr(phoneError));
 }
 const creditStyle = c.credit > 0 ? 'color:var(--warning); font-weight:700;' : 'color:var(--accent-emerald); font-weight:700;';
 const row = document.createElement('tr');
@@ -248,7 +250,7 @@ row.innerHTML = `
 </td>`;
 return row;
 } catch (rowError) {
-console.warn('An unexpected error occurred.', rowError);
+console.warn('An unexpected error occurred.', _safeErr(rowError));
 return null;
 }
 }
@@ -282,13 +284,13 @@ document.getElementById('customerManagementOverlay').style.display = 'none';
 currentManagingCustomer = null;
 setTimeout(async () => {
 try {
-const freshSales = await idb.get('customer_sales', []);
+const freshSales = await sqliteStore.get('customer_sales', []);
 if (Array.isArray(freshSales)) {
 const m = new Map(freshSales.map(s => [s.id, s]));
 if (Array.isArray(customerSales)) customerSales.forEach(s => { if (!m.has(s.id)) m.set(s.id, s); });
 customerSales = Array.from(m.values());
 }
-const freshContacts = await idb.get('sales_customers', []);
+const freshContacts = await sqliteStore.get('sales_customers', []);
 if (Array.isArray(freshContacts)) {
 const m = new Map(freshContacts.map(c => [c.id, c]));
 if (Array.isArray(salesCustomers)) salesCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
@@ -296,7 +298,7 @@ salesCustomers = Array.from(m.values());
 }
 } catch(e) {
 showToast('Customer data operation failed.', 'error');
-console.warn('closeCustomerManagement IDB error', e);
+console.warn('closeCustomerManagement SQLite error', _safeErr(e));
 }
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 }, 100);
@@ -326,7 +328,7 @@ const contactId = contactRecord.id;
 await registerDeletion(contactId, 'sales_customers', contactRecord);
 salesCustomers.splice(contactIdx, 1);
 await saveWithTracking('sales_customers', salesCustomers);
-await deleteRecordFromFirestore('sales_customers', contactId);
+deleteRecordFromFirestore('sales_customers', contactId).catch(() => {});
 }
 const idsToDelete = txs.map(s => s.id);
 
@@ -336,9 +338,7 @@ for (const tx of txsToDelete) {
 await registerDeletion(tx.id, 'sales', tx);
 }
 await saveWithTracking('customer_sales', customerSales);
-for (const id of idsToDelete) {
-await deleteRecordFromFirestore('customer_sales', id);
-}
+void Promise.all(idsToDelete.map(id => deleteRecordFromFirestore('customer_sales', id).catch(() => {})));
 notifyDataChange('sales');
 triggerAutoSync();
 closeCustomerManagement();
@@ -352,7 +352,7 @@ const list = document.getElementById('customerManagementHistoryList');
 if (!list) return;
 let transactions = [];
 try {
-const dbSales = await idb.get('customer_sales', []);
+const dbSales = await sqliteStore.get('customer_sales', []);
 if (Array.isArray(dbSales)) {
 const recordMap = new Map(dbSales.map(s => [s.id, s]));
 if (Array.isArray(customerSales)) {
@@ -362,7 +362,12 @@ recordMap.set(s.id, s);
 }
 });
 }
-customerSales = Array.from(recordMap.values());
+customerSales = Array.from(recordMap.values()).map(s => {
+if (s && !s.currentRepProfile && (!s.salesRep || s.salesRep === 'NONE' || s.salesRep === 'ADMIN')) {
+return { ...s, currentRepProfile: 'admin' };
+}
+return s;
+});
 transactions = customerSales.filter(s =>
 s && s.currentRepProfile === 'admin' && s.customerName === name
 );
@@ -422,9 +427,20 @@ ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `| ◆ ${esc(address)
 `;
 let currentDebt = 0;
 transactions.forEach(t => {
+const _tRepLinked = t.salesRep && t.salesRep !== 'NONE';
 if (t.transactionType === 'OLD_DEBT' && !t.creditReceived) {
 const partialPaid = t.partialPaymentReceived || 0;
 currentDebt += getSaleTransactionValue(t) - partialPaid;
+} else if (_tRepLinked) {
+// Rep-linked: only unpaid CREDIT adds to debt; COLLECTION/PARTIAL_PAYMENT reduce it; CASH does nothing
+if (t.paymentType === 'CREDIT' && !t.creditReceived) {
+const partialPaid = t.partialPaymentReceived || 0;
+currentDebt += (getSaleTransactionValue(t) - partialPaid);
+} else if (t.paymentType === 'COLLECTION') {
+currentDebt -= (t.totalValue || 0);
+} else if (t.paymentType === 'PARTIAL_PAYMENT') {
+currentDebt -= (t.totalValue || 0);
+}
 } else if (t.paymentType === 'CREDIT' && !t.creditReceived) {
 if (t.isMerged && typeof t.creditValue === 'number') {
 currentDebt += t.creditValue;
@@ -563,7 +579,7 @@ refreshAllCalculations();
 }
 } catch (e) {
 customerSales.length = 0; customerSales.push(...snapshot);
-await idb.set('customer_sales', customerSales).catch(() => {});
+await sqliteStore.set('customer_sales', customerSales).catch(() => {});
 showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
@@ -587,7 +603,7 @@ renderRepCustomerTransactions(currentManagingRepCustomer);
 }
 } catch (e) {
 repSales.length = 0; repSales.push(...snapshot);
-await idb.set('rep_sales', repSales).catch(() => {});
+await sqliteStore.set('rep_sales', repSales).catch(() => {});
 showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
@@ -793,6 +809,7 @@ id: partialId, timestamp: nowEpoch, createdAt: nowEpoch, updatedAt: nowEpoch,
 date: nowISODate, time: nowTime,
 customerName: currentManagingCustomer, customerPhone: sale.customerPhone || '', quantity: 0,
 supplyStore: sale.supplyStore || 'STORE_A', paymentType: 'PARTIAL_PAYMENT', salesRep: 'NONE',
+currentRepProfile: 'admin',
 totalCost: 0, totalValue: remaining, profit: 0, creditReceived: true,
 relatedSaleId: sale.id, syncedAt: new Date().toISOString()
 }, false, false));
@@ -808,6 +825,7 @@ id: collId, timestamp: nowEpoch, createdAt: nowEpoch, updatedAt: nowEpoch,
 date: nowISODate, time: nowTime,
 customerName: currentManagingCustomer, customerPhone: ls?.customerPhone || '', quantity: 0,
 supplyStore: ls?.supplyStore || 'STORE_A', paymentType: 'COLLECTION', salesRep: 'NONE',
+currentRepProfile: 'admin',
 totalCost: 0, totalValue: remaining, profit: 0, creditReceived: true,
 syncedAt: new Date().toISOString()
 }, false, false));
@@ -816,11 +834,11 @@ if (updatedCount > 0 || partialPaymentMade) {
 const changedIds = new Set(pending.map(s => s.id));
 if (collId) changedIds.add(collId);
 await saveWithTracking('customer_sales', customerSales, null, Array.from(changedIds));
-for (const sale of customerSales) {
-if (changedIds.has(sale.id) || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'COLLECTION') {
-await saveRecordToFirestore('customer_sales', sale);
-}
-}
+void Promise.all(
+  customerSales
+    .filter(sale => changedIds.has(sale.id) || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'COLLECTION')
+    .map(sale => saveRecordToFirestore('customer_sales', sale).catch(() => {}))
+).catch(() => {});
 notifyDataChange('sales'); triggerAutoSync();
 let msg = `Payment of ${fmtAmt(amount)} processed successfully. `;
 msg += partialPaymentMade ? 'Partial payment applied.' : remaining === 0 ? `${updatedCount} transaction(s) fully cleared.` : `${updatedCount} cleared, ${fmtAmt(remaining)} extra.`;
@@ -831,7 +849,7 @@ refreshAllCalculations();
 } else { showToast('No changes made.', 'info', 2500); }
 } catch (e) {
 customerSales.length = 0; customerSales.push(...snapshot);
-await idb.set('customer_sales', customerSales).catch(() => {});
+await sqliteStore.set('customer_sales', customerSales).catch(() => {});
 showToast('Failed to process bulk payment. Please try again.', 'error');
 }
 }
@@ -904,11 +922,11 @@ if (updatedCount > 0 || partialPaymentMade) {
 const changedIds = new Set(pending.map(s => s.id));
 if (collId) changedIds.add(collId);
 await saveWithTracking('rep_sales', repSales, null, Array.from(changedIds));
-for (const sale of repSales) {
-if (changedIds.has(sale.id) || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'COLLECTION') {
-await saveRecordToFirestore('rep_sales', sale);
-}
-}
+void Promise.all(
+  repSales
+    .filter(sale => changedIds.has(sale.id) || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'COLLECTION')
+    .map(sale => saveRecordToFirestore('rep_sales', sale).catch(() => {}))
+).catch(() => {});
 notifyDataChange('rep'); triggerAutoSync();
 let msg = `Payment of ${fmtAmt(amount)} processed successfully. `;
 msg += partialPaymentMade ? 'Partial payment applied.' : remaining === 0 ? `${updatedCount} transaction(s) fully cleared.` : `${updatedCount} cleared, ${fmtAmt(remaining)} extra.`;
@@ -919,7 +937,7 @@ renderRepCustomerTable();
 } else { showToast('No changes made.', 'info', 2500); }
 } catch (e) {
 repSales.length = 0; repSales.push(...snapshot);
-await idb.set('rep_sales', repSales).catch(() => {});
+await sqliteStore.set('rep_sales', repSales).catch(() => {});
 showToast('Failed to process bulk payment. Please try again.', 'error');
 }
 }
@@ -1111,7 +1129,7 @@ const customSalePrice = parseFloat(document.getElementById('edit-cust-custom-pri
 if (!name) { showToast('Customer name is required', 'error'); return; }
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
-const freshContacts = await idb.get('sales_customers', []);
+const freshContacts = await sqliteStore.get('sales_customers', []);
 if (Array.isArray(freshContacts)) {
 const m = new Map(freshContacts.map(c => [c.id, c]));
 if (Array.isArray(salesCustomers)) salesCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
@@ -1130,9 +1148,9 @@ createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() 
 salesCustomers.push(contact);
 }
 await saveWithTracking('sales_customers', salesCustomers, contact);
-await saveRecordToFirestore('sales_customers', contact);
+saveRecordToFirestore('sales_customers', contact).catch(() => {});
 notifyDataChange('sales');
-let salesArray = await idb.get('customer_sales', []);
+let salesArray = await sqliteStore.get('customer_sales', []);
 if (!Array.isArray(salesArray)) salesArray = [];
 if (Array.isArray(customerSales) && customerSales.length > 0) {
 const mSales = new Map(salesArray.map(s => [s.id, s]));
@@ -1187,11 +1205,11 @@ salesArray.forEach(s => { if (s && s.customerName === name && s.customerPhone !=
 customerSales.length = 0; customerSales.push(...salesArray);
 if (nameChanged || oldDebtModified || phoneUpdated) {
 await saveWithTracking('customer_sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
-if (oldDebtRecord) await saveRecordToFirestore('customer_sales', oldDebtRecord);
+if (oldDebtRecord) saveRecordToFirestore('customer_sales', oldDebtRecord).catch(() => {});
 if (deletedOldDebtId) {
 await registerDeletion(deletedOldDebtId, 'sales', window._oldDebtRecordForDeletion || null);
 window._oldDebtRecordForDeletion = null;
-await deleteRecordFromFirestore('customer_sales', deletedOldDebtId);
+deleteRecordFromFirestore('customer_sales', deletedOldDebtId).catch(() => {});
 }
 if (nameChanged && renamedRecords.length > 0) {
 const cloudPushes = renamedRecords.map(r => saveRecordToFirestore('customer_sales', r));

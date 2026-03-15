@@ -1,3 +1,4 @@
+// Returns the cost per unit for a given store type using live formula data
 function getCostPerUnit(storeType) {
 const formula = factoryDefaultFormulas[storeType];
 const additionalCost = factoryAdditionalCosts[storeType] || 0;
@@ -21,12 +22,12 @@ return totalUnits > 0 ? totalWeightedCost / totalUnits : 0;
 }
 return 0;
 }
+
+// Calculates total factory inventory value including raw materials and formula units
 function calculateFactoryInventoryValue() {
 let totalValue = 0;
 if (factoryInventoryData && factoryInventoryData.length > 0) {
-factoryInventoryData.forEach(item => {
-totalValue += (item.quantity * item.cost) || 0;
-});
+factoryInventoryData.forEach(item => { totalValue += (item.quantity * item.cost) || 0; });
 }
 const stdTracking = factoryUnitTracking?.standard || { available: 0 };
 const asaanTracking = factoryUnitTracking?.asaan || { available: 0 };
@@ -36,24 +37,25 @@ totalValue += (stdTracking.available * stdCostPerUnit);
 totalValue += (asaanTracking.available * asaanCostPerUnit);
 return totalValue;
 }
+
+// Updates the factory inventory display with raw material and formula unit values
 function updateFactoryInventoryDisplay() {
 let rawMaterialsValue = 0;
 if (factoryInventoryData && factoryInventoryData.length > 0) {
-factoryInventoryData.forEach(item => {
-rawMaterialsValue += (item.quantity * item.cost) || 0;
-});
+factoryInventoryData.forEach(item => { rawMaterialsValue += (item.quantity * item.cost) || 0; });
 }
 const stdTracking = factoryUnitTracking?.standard || { available: 0 };
 const asaanTracking = factoryUnitTracking?.asaan || { available: 0 };
 const stdCostPerUnit = getCostPerUnit('standard');
 const asaanCostPerUnit = getCostPerUnit('asaan');
-const formulaUnitsValue = (stdTracking.available * stdCostPerUnit) +
-(asaanTracking.available * asaanCostPerUnit);
+const formulaUnitsValue = (stdTracking.available * stdCostPerUnit) + (asaanTracking.available * asaanCostPerUnit);
 const rawMaterialsEl = document.getElementById('formulaRawMaterials');
 const unitsValueEl = document.getElementById('formulaUnitsValue');
 if (rawMaterialsEl) rawMaterialsEl.textContent = `${fmtAmt(safeValue(rawMaterialsValue))}`;
 if (unitsValueEl) unitsValueEl.textContent = `${fmtAmt(safeValue(formulaUnitsValue))}`;
 }
+
+// Calculates and renders payment summaries for day, week, month, and year
 function calculatePaymentSummaries() {
 const today = new Date().toISOString().split('T')[0];
 const todayObj = new Date();
@@ -72,7 +74,6 @@ paymentTransactions.forEach(transaction => {
 const transDate = new Date(transaction.date);
 const transYear = transDate.getFullYear();
 const transMonth = transDate.getMonth();
-const transDay = transDate.getDate();
 if (transaction.date === today) {
 if (transaction.type === 'IN') summaries.day.in += transaction.amount;
 else summaries.day.out += transaction.amount;
@@ -109,64 +110,29 @@ updateSummary('payments-week', summaries.week);
 updateSummary('payments-month', summaries.month);
 updateSummary('payments-year', summaries.year);
 }
+
+// Opens factory settings overlay and loads saved configuration from SQLite
 async function openFactorySettings() {
 try {
-const [
-loadedFormulas,
-loadedCosts,
-loadedFactor,
-loadedPrices,
-loadedTracking
-] = await Promise.all([
-idb.get('factory_default_formulas'),
-idb.get('factory_additional_costs'),
-idb.get('factory_cost_adjustment_factor'),
-idb.get('factory_sale_prices'),
-idb.get('factory_unit_tracking')
+const [loadedFormulas, loadedCosts, loadedFactor, loadedPrices, loadedTracking] = await Promise.all([
+sqliteStore.get('factory_default_formulas'),
+sqliteStore.get('factory_additional_costs'),
+sqliteStore.get('factory_cost_adjustment_factor'),
+sqliteStore.get('factory_sale_prices'),
+sqliteStore.get('factory_unit_tracking')
 ]);
-if (loadedFormulas && typeof loadedFormulas === 'object' &&
-('standard' in loadedFormulas) && ('asaan' in loadedFormulas)) {
-factoryDefaultFormulas = loadedFormulas;
-} else {
-factoryDefaultFormulas = { standard: [], asaan: [] };
-}
-if (loadedCosts && typeof loadedCosts === 'object' &&
-('standard' in loadedCosts) && ('asaan' in loadedCosts)) {
-factoryAdditionalCosts = loadedCosts;
-} else {
-factoryAdditionalCosts = { standard: 0, asaan: 0 };
-}
-if (loadedFactor && typeof loadedFactor === 'object' &&
-('standard' in loadedFactor) && ('asaan' in loadedFactor)) {
-factoryCostAdjustmentFactor = loadedFactor;
-} else {
-factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
-}
-if (loadedPrices && typeof loadedPrices === 'object' &&
-('standard' in loadedPrices) && ('asaan' in loadedPrices)) {
-factorySalePrices = loadedPrices;
-} else {
-factorySalePrices = { standard: 0, asaan: 0 };
-}
-if (loadedTracking && typeof loadedTracking === 'object' &&
-('standard' in loadedTracking) && ('asaan' in loadedTracking)) {
-factoryUnitTracking = loadedTracking;
-} else {
-factoryUnitTracking = {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-};
-}
+factoryDefaultFormulas = (loadedFormulas && 'standard' in loadedFormulas && 'asaan' in loadedFormulas) ? loadedFormulas : { standard: [], asaan: [] };
+factoryAdditionalCosts = (loadedCosts && 'standard' in loadedCosts && 'asaan' in loadedCosts) ? loadedCosts : { standard: 0, asaan: 0 };
+factoryCostAdjustmentFactor = (loadedFactor && 'standard' in loadedFactor && 'asaan' in loadedFactor) ? loadedFactor : { standard: 1, asaan: 1 };
+factorySalePrices = (loadedPrices && 'standard' in loadedPrices && 'asaan' in loadedPrices) ? loadedPrices : { standard: 0, asaan: 0 };
+factoryUnitTracking = (loadedTracking && 'standard' in loadedTracking && 'asaan' in loadedTracking) ? loadedTracking : { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } };
 } catch (error) {
 showToast('Error loading factory settings. Using defaults.', 'warning');
 factoryDefaultFormulas = { standard: [], asaan: [] };
 factoryAdditionalCosts = { standard: 0, asaan: 0 };
 factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
 factorySalePrices = { standard: 0, asaan: 0 };
-factoryUnitTracking = {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-};
+factoryUnitTracking = { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } };
 }
 requestAnimationFrame(() => {
 document.body.style.overflow = 'hidden';
@@ -180,6 +146,8 @@ if (_fsOv) _fsOv.style.display = 'flex';
 });
 await renderFactorySettingsRows();
 }
+
+// Closes the factory settings overlay and restores scroll
 function closeFactorySettings() {
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
@@ -187,22 +155,23 @@ document.documentElement.style.overflow = '';
 document.getElementById('factorySettingsOverlay').style.display = 'none';
 });
 }
+
+// Switches active store in settings and re-renders formula rows
 function selectFactoryStore(store, el) {
 currentFactorySettingsStore = store;
 document.querySelectorAll('#factorySettingsOverlay .factory-store-opt').forEach(o => o.classList.remove('active'));
-if(el) el.classList.add('active');
+if (el) el.classList.add('active');
 const container = document.getElementById('factoryRawMaterialsContainer');
 if (container) container.style.opacity = '0.35';
 renderFactorySettingsRows().then(() => {
-requestAnimationFrame(() => {
-if (container) container.style.opacity = '1';
-});
+requestAnimationFrame(() => { if (container) container.style.opacity = '1'; });
 });
 }
+
+// Re-renders settings overlay if open, preserving any unsaved row state
 async function refreshFactorySettingsOverlay() {
 const overlay = document.getElementById('factorySettingsOverlay');
 if (overlay && overlay.style.display === 'flex') {
-
 const container = document.getElementById('factoryRawMaterialsContainer');
 const liveRows = container ? Array.from(container.querySelectorAll('.factory-formula-grid')) : [];
 const liveState = liveRows.map(row => ({
@@ -211,7 +180,6 @@ qty: row.querySelector('.factory-mat-qty')?.value || ''
 }));
 const hasUnsavedWork = liveState.some(r => r.id !== '');
 await renderFactorySettingsRows();
-
 if (hasUnsavedWork) {
 const newRows = container ? Array.from(container.querySelectorAll('.factory-formula-grid')) : [];
 liveState.forEach((state, idx) => {
@@ -220,66 +188,39 @@ const row = newRows[idx];
 if (!row) return;
 const sel = row.querySelector('.factory-mat-select');
 const qty = row.querySelector('.factory-mat-qty');
-if (sel && state.id) {
-sel.value = state.id;
-updateFactoryRowCost(sel);
-}
+if (sel && state.id) { sel.value = state.id; updateFactoryRowCost(sel); }
 if (qty && state.qty) qty.value = state.qty;
 });
 }
 }
 }
+
+// Loads latest saved settings from SQLite and renders formula ingredient rows
 async function renderFactorySettingsRows() {
 const container = document.getElementById('factoryRawMaterialsContainer');
 try {
-const [
-savedFormulas,
-savedAdditionalCosts,
-savedCostAdjustmentFactor,
-savedSalePrices,
-savedUnitTracking
-] = await Promise.all([
-idb.get('factory_default_formulas'),
-idb.get('factory_additional_costs'),
-idb.get('factory_cost_adjustment_factor'),
-idb.get('factory_sale_prices'),
-idb.get('factory_unit_tracking')
+const [savedFormulas, savedAdditionalCosts, savedCostAdjustmentFactor, savedSalePrices, savedUnitTracking] = await Promise.all([
+sqliteStore.get('factory_default_formulas'),
+sqliteStore.get('factory_additional_costs'),
+sqliteStore.get('factory_cost_adjustment_factor'),
+sqliteStore.get('factory_sale_prices'),
+sqliteStore.get('factory_unit_tracking')
 ]);
-if (savedFormulas && typeof savedFormulas === 'object' &&
-('standard' in savedFormulas) && ('asaan' in savedFormulas)) {
-factoryDefaultFormulas = savedFormulas;
-}
-if (savedAdditionalCosts && typeof savedAdditionalCosts === 'object' &&
-('standard' in savedAdditionalCosts) && ('asaan' in savedAdditionalCosts)) {
-factoryAdditionalCosts = savedAdditionalCosts;
-}
-if (savedCostAdjustmentFactor && typeof savedCostAdjustmentFactor === 'object' &&
-('standard' in savedCostAdjustmentFactor) && ('asaan' in savedCostAdjustmentFactor)) {
-factoryCostAdjustmentFactor = savedCostAdjustmentFactor;
-}
-if (savedSalePrices && typeof savedSalePrices === 'object' &&
-('standard' in savedSalePrices) && ('asaan' in savedSalePrices)) {
-factorySalePrices = savedSalePrices;
-}
-if (savedUnitTracking && typeof savedUnitTracking === 'object' &&
-('standard' in savedUnitTracking) && ('asaan' in savedUnitTracking)) {
-factoryUnitTracking = savedUnitTracking;
-}
+if (savedFormulas && 'standard' in savedFormulas && 'asaan' in savedFormulas) factoryDefaultFormulas = savedFormulas;
+if (savedAdditionalCosts && 'standard' in savedAdditionalCosts && 'asaan' in savedAdditionalCosts) factoryAdditionalCosts = savedAdditionalCosts;
+if (savedCostAdjustmentFactor && 'standard' in savedCostAdjustmentFactor && 'asaan' in savedCostAdjustmentFactor) factoryCostAdjustmentFactor = savedCostAdjustmentFactor;
+if (savedSalePrices && 'standard' in savedSalePrices && 'asaan' in savedSalePrices) factorySalePrices = savedSalePrices;
+if (savedUnitTracking && 'standard' in savedUnitTracking && 'asaan' in savedUnitTracking) factoryUnitTracking = savedUnitTracking;
 } catch (e) {
 console.error('An unexpected error occurred.', _safeErr(e));
 showToast('An unexpected error occurred.', 'error');
 }
-if (!factoryDefaultFormulas || typeof factoryDefaultFormulas !== 'object') {
-factoryDefaultFormulas = { standard: [], asaan: [] };
-}
-const formula = factoryDefaultFormulas[currentFactorySettingsStore];
-if (!formula || !Array.isArray(formula)) {
-factoryDefaultFormulas[currentFactorySettingsStore] = [];
-}
+if (!factoryDefaultFormulas || typeof factoryDefaultFormulas !== 'object') factoryDefaultFormulas = { standard: [], asaan: [] };
+if (!factoryDefaultFormulas[currentFactorySettingsStore]) factoryDefaultFormulas[currentFactorySettingsStore] = [];
 let totalRawCost = 0, totalWeight = 0;
 const _fsFrag = document.createDocumentFragment();
 const safeFormula = factoryDefaultFormulas[currentFactorySettingsStore] || [];
-if(safeFormula.length > 0) {
+if (safeFormula.length > 0) {
 safeFormula.forEach(ing => {
 totalRawCost += (ing.cost * ing.quantity);
 totalWeight += ing.quantity;
@@ -287,30 +228,17 @@ createFactorySettingRow(_fsFrag, ing.id, ing.quantity);
 });
 }
 container.replaceChildren(_fsFrag);
-if (!factoryUnitTracking || typeof factoryUnitTracking !== 'object') {
-factoryUnitTracking = {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-};
-}
+if (!factoryUnitTracking || typeof factoryUnitTracking !== 'object') factoryUnitTracking = { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } };
 const available = factoryUnitTracking[currentFactorySettingsStore]?.available || 0;
-if (!factoryAdditionalCosts || typeof factoryAdditionalCosts !== 'object') {
-factoryAdditionalCosts = { standard: 0, asaan: 0 };
-}
+if (!factoryAdditionalCosts || typeof factoryAdditionalCosts !== 'object') factoryAdditionalCosts = { standard: 0, asaan: 0 };
 const additionalCost = factoryAdditionalCosts[currentFactorySettingsStore] || 0;
 document.getElementById('additional-cost-per-unit').value = additionalCost;
-if (!factoryCostAdjustmentFactor || typeof factoryCostAdjustmentFactor !== 'object') {
-factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
-}
+if (!factoryCostAdjustmentFactor || typeof factoryCostAdjustmentFactor !== 'object') factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
 const adjustmentFactor = factoryCostAdjustmentFactor[currentFactorySettingsStore] || 1;
 document.getElementById('cost-adjustment-factor').value = adjustmentFactor;
-if (!factorySalePrices || typeof factorySalePrices !== 'object') {
-factorySalePrices = { standard: 0, asaan: 0 };
-}
-const salePriceStandard = factorySalePrices.standard || 0;
-const salePriceAsaan = factorySalePrices.asaan || 0;
-document.getElementById('sale-price-standard').value = salePriceStandard;
-document.getElementById('sale-price-asaan').value = salePriceAsaan;
+if (!factorySalePrices || typeof factorySalePrices !== 'object') factorySalePrices = { standard: 0, asaan: 0 };
+document.getElementById('sale-price-standard').value = factorySalePrices.standard || 0;
+document.getElementById('sale-price-asaan').value = factorySalePrices.asaan || 0;
 const perUnitCost = totalRawCost + additionalCost;
 const salesCostPerKg = adjustmentFactor > 0 ? perUnitCost / adjustmentFactor : perUnitCost;
 const safeTotalWeight = parseFloat(totalWeight) || 0;
@@ -321,34 +249,37 @@ _setFS1('factorySettingsPerUnit', await formatCurrency(perUnitCost));
 _setFS1('factorySettingsAvailableUnits', available);
 _setFS1('factorySettingsSalesCostPerKg', await formatCurrency(salesCostPerKg));
 }
+
+// Creates a single formula ingredient row with material selector and quantity input
 function createFactorySettingRow(container, selectedId = '', qtyVal = '') {
 const div = document.createElement('div');
 div.className = 'factory-formula-grid';
 let options = '<option value="">Select Material</option>';
-factoryInventoryData.forEach((i, index) => {
+factoryInventoryData.forEach(i => {
 options += `<option value="${esc(String(i.id))}" ${String(i.id) === String(selectedId) ? 'selected' : ''} data-cost="${i.cost}">${esc(i.name)}</option>`;
 });
 let currentCost = 0;
-if(selectedId) {
+if (selectedId) {
 const m = factoryInventoryData.find(i => i.id == selectedId);
-if(m) currentCost = m.cost;
+if (m) currentCost = m.cost;
 }
 div.innerHTML = `
-<div class="u-flex-col" >
-<label style="font-size:0.6rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Material</label>
+<div class="u-flex-col">
+<label style="font-size:0.6rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</label>
 <select class="factory-mat-select" onchange="updateFactoryRowCost(this)">${options}</select>
 </div>
-<div class="u-flex-col" >
-<label style="font-size:0.6rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Cost (Per Unit)</label>
-<input type="number" class="factory-mat-cost" value="${currentCost}" readonly style="background:rgba(0,0,0,0.05); color:var(--text-muted);">
+<div class="u-flex-col">
+<label style="font-size:0.6rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Cost (Per Unit)</label>
+<input type="number" class="factory-mat-cost" value="${currentCost}" readonly style="background:rgba(0,0,0,0.05);color:var(--text-muted);">
 </div>
-<div class="u-flex-col" >
-<label style="font-size:0.6rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Qty (kg)</label>
+<div class="u-flex-col">
+<label style="font-size:0.6rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Qty (kg)</label>
 <input type="number" class="factory-mat-qty" value="${esc(String(qtyVal))}" placeholder="0">
-</div>
-`;
+</div>`;
 container.appendChild(div);
 }
+
+// Generates a spreadsheet-style column label from a zero-based index
 function getColumnLabel(index) {
 let label = '';
 let num = index;
@@ -358,17 +289,22 @@ num = Math.floor(num / 26) - 1;
 }
 return label;
 }
+
+// Appends a blank formula ingredient row to the settings container
 function addFactoryMaterialRow() {
 const container = document.getElementById('factoryRawMaterialsContainer');
 createFactorySettingRow(container);
 }
+
+// Syncs the cost input of a formula row when the material dropdown changes
 function updateFactoryRowCost(selectEl) {
 const costInput = selectEl.closest('.factory-formula-grid').querySelector('.factory-mat-cost');
 const selectedOption = selectEl.options[selectEl.selectedIndex];
-const cost = selectedOption.getAttribute('data-cost');
-costInput.value = cost || 0;
+costInput.value = selectedOption.getAttribute('data-cost') || 0;
 updateFactoryFormulasSummary();
 }
+
+// Recalculates and displays formula cost summary from current row inputs
 async function updateFactoryFormulasSummary() {
 const container = document.getElementById('factoryRawMaterialsContainer');
 const rows = container.querySelectorAll('.factory-formula-grid');
@@ -377,7 +313,7 @@ rows.forEach(row => {
 const sel = row.querySelector('.factory-mat-select');
 const qtyIn = row.querySelector('.factory-mat-qty');
 const costIn = row.querySelector('.factory-mat-cost');
-if(sel && sel.value && qtyIn.value > 0 && costIn.value > 0) {
+if (sel && sel.value && qtyIn.value > 0 && costIn.value > 0) {
 totalRawCost += (parseFloat(costIn.value) * parseFloat(qtyIn.value));
 totalWeight += parseFloat(qtyIn.value);
 }
@@ -395,6 +331,8 @@ _setFS('factorySettingsPerUnit', await formatCurrency(perUnitCost));
 _setFS('factorySettingsAvailableUnits', available);
 _setFS('factorySettingsSalesCostPerKg', await formatCurrency(salesCostPerKg));
 }
+
+// Saves formula settings to SQLite then pushes to Firestore or offline queue
 async function saveFactoryFormulas() {
 const container = document.getElementById('factoryRawMaterialsContainer');
 const rows = container.querySelectorAll('.factory-formula-grid');
@@ -403,30 +341,20 @@ rows.forEach(row => {
 const sel = row.querySelector('.factory-mat-select');
 const qtyIn = row.querySelector('.factory-mat-qty');
 const costIn = row.querySelector('.factory-mat-cost');
-if(sel && sel.value && qtyIn.value > 0 && costIn.value > 0) {
+if (sel && sel.value && qtyIn.value > 0 && costIn.value > 0) {
 const item = factoryInventoryData.find(i => i.id == sel.value);
-if(item) {
-newFormula.push({
-id: item.id,
-name: item.name,
-cost: parseFloat(costIn.value),
-quantity: parseFloat(qtyIn.value)
-});
-}
+if (item) newFormula.push({ id: item.id, name: item.name, cost: parseFloat(costIn.value), quantity: parseFloat(qtyIn.value) });
 }
 });
 factoryDefaultFormulas[currentFactorySettingsStore] = newFormula;
-const additionalCost = parseFloat(document.getElementById('additional-cost-per-unit').value) || 0;
-factoryAdditionalCosts[currentFactorySettingsStore] = additionalCost;
-const adjustmentFactor = parseFloat(document.getElementById('cost-adjustment-factor').value) || 1;
-factoryCostAdjustmentFactor[currentFactorySettingsStore] = adjustmentFactor;
-const salePriceStandard = parseFloat(document.getElementById('sale-price-standard').value) || 0;
-const salePriceAsaan = parseFloat(document.getElementById('sale-price-asaan').value) || 0;
-factorySalePrices.standard = salePriceStandard;
-factorySalePrices.asaan = salePriceAsaan;
+factoryAdditionalCosts[currentFactorySettingsStore] = parseFloat(document.getElementById('additional-cost-per-unit').value) || 0;
+factoryCostAdjustmentFactor[currentFactorySettingsStore] = parseFloat(document.getElementById('cost-adjustment-factor').value) || 1;
+factorySalePrices.standard = parseFloat(document.getElementById('sale-price-standard').value) || 0;
+factorySalePrices.asaan = parseFloat(document.getElementById('sale-price-asaan').value) || 0;
+// Persist all formula settings to SQLite atomically
 try {
 const timestamp = getTimestamp();
-await idb.setBatch([
+await sqliteStore.setBatch([
 ['factory_default_formulas', factoryDefaultFormulas],
 ['factory_default_formulas_timestamp', timestamp],
 ['factory_additional_costs', factoryAdditionalCosts],
@@ -441,6 +369,7 @@ showToast('Failed to save settings. Please try again.', 'error', 4000);
 return;
 }
 notifyDataChange('all');
+// Sync to Firestore if online, otherwise queue for later
 if (database && currentUser) {
 if (window._firestoreNetworkDisabled || !navigator.onLine) {
 const timestamp = getTimestamp();
@@ -456,12 +385,7 @@ sale_prices_timestamp: timestamp,
 last_synced: new Date().toISOString()
 });
 if (typeof OfflineQueue !== 'undefined') {
-await OfflineQueue.add({
-action: 'set-doc',
-collection: 'factorySettings',
-docId: 'config',
-data: factorySettingsPayload
-});
+await OfflineQueue.add({ action: 'set-doc', collection: 'factorySettings', docId: 'config', data: factorySettingsPayload });
 }
 showToast('Settings saved locally — will sync when online', 'warning');
 } else {
@@ -474,6 +398,7 @@ factory_additional_costs: factoryAdditionalCosts,
 factory_cost_adjustment_factor: factoryCostAdjustmentFactor
 });
 } catch (error) {
+// Cloud push failed — queue for retry
 const timestamp = getTimestamp();
 if (typeof OfflineQueue !== 'undefined') {
 await OfflineQueue.add({
@@ -503,6 +428,8 @@ updateAllTabsWithFactoryCosts();
 closeFactorySettings();
 showToast('Formula saved successfully!', 'success', 3000);
 }
+
+// Opens the factory inventory modal for adding a new material
 function openFactoryInventoryModal() {
 requestAnimationFrame(() => {
 document.body.style.overflow = 'hidden';
@@ -514,10 +441,13 @@ const _fiOv = document.getElementById('factoryInventoryOverlay');
 if (_fiOv) _fiOv.style.display = 'flex';
 });
 });
-const _facInvT1 = document.getElementById('factoryInventoryModalTitle'); if (_facInvT1) _facInvT1.innerText = 'Add Raw Material';
-const _delBtnHide = document.getElementById('deleteFactoryInventoryBtn'); if (_delBtnHide) _delBtnHide.style.display = 'none';
+const _facInvT1 = document.getElementById('factoryInventoryModalTitle');
+if (_facInvT1) _facInvT1.innerText = 'Add Raw Material';
+const _delBtnHide = document.getElementById('deleteFactoryInventoryBtn');
+if (_delBtnHide) _delBtnHide.style.display = 'none';
 clearFactoryInventoryForm();
 editingFactoryInventoryId = null;
+// Attach live conversion calculation listeners
 const qtyInput = document.getElementById('factoryMaterialQuantity');
 const conversionInput = document.getElementById('factoryMaterialConversionFactor');
 const costInput = document.getElementById('factoryMaterialCost');
@@ -530,6 +460,8 @@ conversionInput.addEventListener('input', updateFactoryKgCalculation);
 costInput.addEventListener('input', updateFactoryKgCalculation);
 }
 }
+
+// Closes the factory inventory modal and restores scroll
 function closeFactoryInventoryModal() {
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
@@ -537,6 +469,8 @@ document.documentElement.style.overflow = '';
 document.getElementById('factoryInventoryOverlay').style.display = 'none';
 });
 }
+
+// Resets all inventory form fields to their defaults
 function clearFactoryInventoryForm() {
 document.getElementById('factoryMaterialName').value = '';
 document.getElementById('factoryMaterialQuantity').value = '';
@@ -545,11 +479,14 @@ document.getElementById('factoryMaterialUnitName').value = '';
 document.getElementById('factoryMaterialCost').value = '';
 updateFactoryKgCalculation();
 }
+
+// Populates the inventory modal with an existing material's data for editing
 function editFactoryInventoryItem(id) {
 const item = factoryInventoryData.find(i => i.id === id);
-if(item) {
+if (!item) return;
 openFactoryInventoryModal();
-const _facInvT2 = document.getElementById('factoryInventoryModalTitle'); if (_facInvT2) _facInvT2.innerText = 'Edit Material';
+const _facInvT2 = document.getElementById('factoryInventoryModalTitle');
+if (_facInvT2) _facInvT2.innerText = 'Edit Material';
 const _delBtn = document.getElementById('deleteFactoryInventoryBtn');
 if (_delBtn) _delBtn.style.display = '';
 document.getElementById('factoryMaterialName').value = item.name;
@@ -586,7 +523,8 @@ newSupplierSection.classList.add('hidden');
 }
 editingFactoryInventoryId = id;
 }
-}
+
+// Updates the kg and total amount display when quantity, conversion, or cost changes
 function updateFactoryKgCalculation() {
 const qty = parseFloat(document.getElementById('factoryMaterialQuantity').value) || 0;
 const conversionFactor = parseFloat(document.getElementById('factoryMaterialConversionFactor').value) || 1;
@@ -595,45 +533,35 @@ const totalKg = qty * conversionFactor;
 const totalAmount = qty * cost;
 const kgDisplayElement = document.getElementById('factoryCalculatedKg');
 const amountDisplayElement = document.getElementById('factoryCalculatedAmount');
-if (kgDisplayElement) {
-kgDisplayElement.textContent = safeNumber(totalKg, 0).toFixed(2) + ' kg';
+if (kgDisplayElement) kgDisplayElement.textContent = safeNumber(totalKg, 0).toFixed(2) + ' kg';
+if (amountDisplayElement) amountDisplayElement.textContent = fmtAmt(totalAmount);
 }
-if (amountDisplayElement) {
-amountDisplayElement.textContent = fmtAmt(totalAmount);
-}
-}
+
+// Injects an unlink button into the supplier section for existing linked suppliers
 function showSupplierUnlinkOption(material) {
 const existingSupplierSection = document.getElementById('existingSupplierSection');
 let unlinkButton = existingSupplierSection.querySelector('.unlink-supplier-btn');
 if (!unlinkButton) {
 unlinkButton = document.createElement('button');
 unlinkButton.className = 'btn btn-danger unlink-supplier-btn';
-unlinkButton.style.cssText = 'width: 100%; margin-top: 10px; font-size: 0.8rem;';
+unlinkButton.style.cssText = 'width:100%;margin-top:10px;font-size:0.8rem;';
 unlinkButton.innerHTML = ' Unlink Supplier & Reverse Transactions';
-unlinkButton.onclick = function(e) {
-e.preventDefault();
-unlinkSupplierConfirmation(material);
-};
+unlinkButton.onclick = function(e) { e.preventDefault(); unlinkSupplierConfirmation(material); };
 existingSupplierSection.appendChild(unlinkButton);
 }
 }
+
+// Shows a confirmation dialog before unlinking a supplier from a material
 async function unlinkSupplierConfirmation(material) {
-const linkedTransactions = paymentTransactions.filter(t =>
-t.materialId === material.id &&
-t.entityId === material.supplierId &&
-t.isPayable === true
-);
+const linkedTransactions = paymentTransactions.filter(t => t.materialId === material.id && t.entityId === material.supplierId && t.isPayable === true);
 let confirmMsg = ` Unlink ${material.supplierName} from ${material.name}?\n\n`;
-confirmMsg += `This will:\n`;
-confirmMsg += ` Remove supplier association\n`;
-confirmMsg += ` Reset payment status to 'pending'\n`;
+confirmMsg += `This will:\n Remove supplier association\n Reset payment status to 'pending'\n`;
 if (linkedTransactions.length > 0) {
 const totalReversed = linkedTransactions.reduce((sum, t) => sum + t.amount, 0);
 confirmMsg += ` Reverse ${linkedTransactions.length} payment transaction(s) totaling ${fmtAmt(safeNumber(totalReversed, 0))}\n`;
 }
-confirmMsg += `\nThe material will be ready to link with a different supplier.`;
-confirmMsg += `\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: "Unlink", danger: true })) {
+confirmMsg += `\nThe material will be ready to link with a different supplier.\n\nThis cannot be undone.`;
+if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: 'Unlink', danger: true })) {
 await unlinkSupplierFromMaterial(material, true);
 closeFactoryInventoryModal();
 setTimeout(() => editFactoryInventoryItem(material.id), 100);
@@ -642,6 +570,8 @@ calculateNetCash();
 renderFactoryInventory();
 }
 }
+
+// Saves or updates a raw material in inventory with supplier linking support
 async function saveFactoryInventoryItem() {
 const name = document.getElementById('factoryMaterialName').value;
 const qty = parseFloat(document.getElementById('factoryMaterialQuantity').value) || 0;
@@ -649,73 +579,45 @@ const cost = parseFloat(document.getElementById('factoryMaterialCost').value) ||
 const conversionFactor = parseFloat(document.getElementById('factoryMaterialConversionFactor').value) || 1;
 const unitName = document.getElementById('factoryMaterialUnitName').value.trim() || '';
 const supplierType = document.getElementById('factoryMaterialSupplierType').value;
-if(!name) return showToast("Name required", 'warning');
+if (!name) return showToast('Name required', 'warning');
 try {
 const quantityInKg = qty * conversionFactor;
 const costPerKg = conversionFactor > 0 ? cost / conversionFactor : cost;
 const totalValue = qty * cost;
 let materialId = editingFactoryInventoryId || generateUUID('mat');
 if (!validateUUID(materialId)) materialId = generateUUID('mat');
-let existingMaterial = null;
-if(editingFactoryInventoryId) {
+// Update existing material fields if editing
+if (editingFactoryInventoryId) {
 const idx = factoryInventoryData.findIndex(i => i.id === editingFactoryInventoryId);
-if(idx !== -1) {
-existingMaterial = factoryInventoryData[idx];
+if (idx !== -1) {
+const existingMaterial = factoryInventoryData[idx];
 const oldSupplierId = existingMaterial.supplierId;
 const supplierInput = document.getElementById('factoryExistingSupplier');
 const newSupplierId = (supplierInput && (supplierInput.getAttribute('data-supplier-id') || supplierInput.value)) || '';
 const isSupplierSame = supplierType === 'existing' && oldSupplierId && newSupplierId && String(oldSupplierId) === String(newSupplierId);
 const isSupplierChanging = !isSupplierSame && (
-  (supplierType === 'none' && oldSupplierId) ||
-  (supplierType === 'existing' && oldSupplierId && newSupplierId && String(oldSupplierId) !== String(newSupplierId))
+(supplierType === 'none' && oldSupplierId) ||
+(supplierType === 'existing' && oldSupplierId && newSupplierId && String(oldSupplierId) !== String(newSupplierId))
 );
-if (isSupplierChanging) {
-await unlinkSupplierFromMaterial(existingMaterial, false, true);
-}
-factoryInventoryData[idx] = ensureRecordIntegrity({
-...factoryInventoryData[idx],
-name,
-quantity: quantityInKg,
-cost: costPerKg,
-unit: 'kg',
-totalValue,
-purchaseQuantity: qty,
-purchaseCost: cost,
-conversionFactor: conversionFactor,
-purchaseUnitName: unitName,
-updatedAt: getTimestamp()
-}, true);
+if (isSupplierChanging) await unlinkSupplierFromMaterial(existingMaterial, false, true);
+factoryInventoryData[idx] = ensureRecordIntegrity({ ...factoryInventoryData[idx], name, quantity: quantityInKg, cost: costPerKg, unit: 'kg', totalValue, purchaseQuantity: qty, purchaseCost: cost, conversionFactor, purchaseUnitName: unitName, updatedAt: getTimestamp() }, true);
 }
 }
-const _supplierUnchanged = editingFactoryInventoryId && supplierType === 'existing' &&
-(() => {
+// Check if supplier selection is unchanged to avoid unnecessary re-linking
+const _supplierUnchanged = editingFactoryInventoryId && supplierType === 'existing' && (() => {
 const _m = factoryInventoryData.find(m => m.id === materialId);
 const _inp = document.getElementById('factoryExistingSupplier');
 const _newId = _inp && (_inp.getAttribute('data-supplier-id') || _inp.value);
 return _m && _m.supplierId && _newId && String(_m.supplierId) === String(_newId);
 })();
+// Build new material object if this is a fresh addition
 if (!editingFactoryInventoryId) {
 const _matNow = getTimestamp();
-let _newMaterial = {
-id: materialId,
-name,
-quantity: quantityInKg,
-cost: costPerKg,
-unit: 'kg',
-totalValue,
-paymentStatus: 'pending',
-syncedAt: new Date().toISOString(),
-purchaseQuantity: qty,
-purchaseCost: cost,
-conversionFactor: conversionFactor,
-purchaseUnitName: unitName,
-createdAt: _matNow,
-updatedAt: _matNow,
-timestamp: _matNow
-};
+let _newMaterial = { id: materialId, name, quantity: quantityInKg, cost: costPerKg, unit: 'kg', totalValue, paymentStatus: 'pending', syncedAt: new Date().toISOString(), purchaseQuantity: qty, purchaseCost: cost, conversionFactor, purchaseUnitName: unitName, createdAt: _matNow, updatedAt: _matNow, timestamp: _matNow };
 _newMaterial = ensureRecordIntegrity(_newMaterial, false);
 factoryInventoryData.push(_newMaterial);
 }
+// Apply supplier relationship based on selected type
 if (supplierType === 'none') {
 const material = factoryInventoryData.find(m => m.id === materialId);
 if (material) {
@@ -726,30 +628,18 @@ delete material.supplierType;
 material.paymentStatus = 'pending';
 delete material.totalPayable;
 }
-}
-else if (supplierType === 'existing') {
+} else if (supplierType === 'existing') {
 if (!_supplierUnchanged) {
 const supplierInput = document.getElementById('factoryExistingSupplier');
 const existingSupplierId = supplierInput.getAttribute('data-supplier-id') || supplierInput.value;
-if (existingSupplierId) {
-await linkMaterialToSupplier(materialId, existingSupplierId, totalValue, true);
+if (existingSupplierId) await linkMaterialToSupplier(materialId, existingSupplierId, totalValue, true);
 }
-}
-}
-else if (supplierType === 'new') {
+} else if (supplierType === 'new') {
 const supplierName = document.getElementById('factorySupplierName').value.trim();
 const supplierPhone = document.getElementById('factorySupplierPhone').value.trim();
 if (supplierName) {
-const newSupplier = await createSupplierFromMaterial({
-name: supplierName,
-phone: supplierPhone,
-materialId: materialId,
-materialName: name,
-materialTotal: totalValue
-});
-if (newSupplier && newSupplier.id) {
-await linkMaterialToSupplier(materialId, newSupplier.id, totalValue, true);
-}
+const newSupplier = await createSupplierFromMaterial({ name: supplierName, phone: supplierPhone, materialId, materialName: name, materialTotal: totalValue });
+if (newSupplier && newSupplier.id) await linkMaterialToSupplier(materialId, newSupplier.id, totalValue, true);
 }
 }
 const savedMaterial = factoryInventoryData.find(m => m.id === materialId);
@@ -759,40 +649,29 @@ emitSyncUpdate({ factory_inventory_data: factoryInventoryData });
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 closeFactoryInventoryModal();
 if (typeof calculateNetCash === 'function') calculateNetCash();
-showToast("Material saved successfully!", 'success');
+showToast('Material saved successfully!', 'success');
 } catch (error) {
 showToast('Failed to save material. Please try again.', 'error');
 }
 }
-async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false) {
-if (!material) {
-showToast('Invalid material data', 'error');
-return;
-}
-if (!material.supplierId) {
-if (showToastOnNoSupplier) {
-showToast('No supplier to unlink', 'info');
-}
-return;
-}
-const supplierId = material.supplierId;
-const materialId = material.id;
-const supplierName = material.supplierName || 'Unknown Supplier';
-const linkedTransactions = paymentTransactions.filter(t =>
-t.materialId === materialId &&
-t.entityId === supplierId &&
-t.isPayable === true
-);
-if (linkedTransactions.length > 0) {
 
+// Removes supplier link from a material and reverses related payable transactions
+async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false) {
+if (!material) { showToast('Invalid material data', 'error'); return; }
+if (!material.supplierId) {
+if (showToastOnNoSupplier) showToast('No supplier to unlink', 'info');
+return;
+}
+const materialId = material.id;
+const linkedTransactions = paymentTransactions.filter(t => t.materialId === materialId && t.entityId === material.supplierId && t.isPayable === true);
+if (linkedTransactions.length > 0) {
 const removedTransactions = linkedTransactions.slice();
 const removedIds = new Set(removedTransactions.map(t => t.id));
 paymentTransactions = paymentTransactions.filter(t => !removedIds.has(t.id));
 await saveWithTracking('payment_transactions', paymentTransactions);
-for (const removedTx of removedTransactions) {
-await registerDeletion(removedTx.id, 'transactions', removedTx);
-await deleteRecordFromFirestore('payment_transactions', removedTx.id);
-}
+await Promise.all(removedTransactions.map(tx => registerDeletion(tx.id, 'transactions', tx)));
+// Fire-and-forget Firestore deletes — errors are non-fatal
+void Promise.all(removedTransactions.map(tx => deleteRecordFromFirestore('payment_transactions', tx.id).catch(() => {})));
 }
 delete material.supplierId;
 delete material.supplierName;
@@ -813,46 +692,34 @@ calculateNetCash();
 showToast(`Unlinked from ${esc(material.name)}`, 'success');
 }
 }
+
+// Creates a new supplier entity and saves it, returning the new entity object
 async function createSupplierFromMaterial(supplierData) {
-const existingSupplier = paymentEntities.find(e =>
-e && e.name && supplierData && supplierData.name && e.name.toLowerCase() === supplierData.name.toLowerCase() && e.type === 'payee'
-);
-if (existingSupplier) {
-return existingSupplier;
-}
+const existingSupplier = paymentEntities.find(e => e && e.name && supplierData && supplierData.name && e.name.toLowerCase() === supplierData.name.toLowerCase() && e.type === 'payee');
+if (existingSupplier) return existingSupplier;
 let suppId = generateUUID('supp');
-if (!validateUUID(suppId)) {
-suppId = generateUUID('supp');
-}
+if (!validateUUID(suppId)) suppId = generateUUID('supp');
 const suppCreatedAt = getTimestamp();
-let supplierEntity = {
-id: suppId,
-name: supplierData.name,
-type: 'payee',
-phone: supplierData.phone || '',
-wallet: '',
-createdAt: suppCreatedAt,
-updatedAt: suppCreatedAt,
-timestamp: suppCreatedAt,
-isSupplier: true,
-supplierCategory: 'raw_materials'
-};
-supplierEntity = ensureRecordIntegrity(supplierEntity, false);
+let supplierEntity = ensureRecordIntegrity({ id: suppId, name: supplierData.name, type: 'payee', phone: supplierData.phone || '', wallet: '', createdAt: suppCreatedAt, updatedAt: suppCreatedAt, timestamp: suppCreatedAt, isSupplier: true, supplierCategory: 'raw_materials' }, false);
 paymentEntities.push(supplierEntity);
 await unifiedSave('payment_entities', paymentEntities, supplierEntity);
+saveRecordToFirestore('payment_entities', supplierEntity).catch(() => {});
 notifyDataChange('entities');
 triggerAutoSync();
 if (typeof renderFactoryInventory === 'function') await renderFactoryInventory();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 return supplierEntity;
 }
+
+// Renders the factory inventory table with quantity, cost, supplier, and edit controls
 async function renderFactoryInventory() {
 const tbody = document.getElementById('factoryInventoryTableBody');
 let totalVal = 0;
 if (factoryInventoryData.length === 0) {
-tbody.innerHTML = '<tr><td class="u-empty-state-md" colspan="5" >No items in inventory</td></tr>';
+tbody.innerHTML = '<tr><td class="u-empty-state-md" colspan="5">No items in inventory</td></tr>';
 GNDVirtualScroll.destroy('vs-scroller-factory-inventory');
-const _invEl = document.getElementById('factoryTotalInventoryValue'); if (_invEl) _invEl.innerText = await formatCurrency(0);
+const _invEl = document.getElementById('factoryTotalInventoryValue');
+if (_invEl) _invEl.innerText = await formatCurrency(0);
 return;
 }
 const prebuiltRows = [];
@@ -861,178 +728,78 @@ const itemTotalValue = (item.quantity * item.cost) || 0;
 totalVal += itemTotalValue;
 let supplierHtml = '';
 if (item.supplierName) {
-const originalAmount = item.totalValue || (item.purchaseCost && item.purchaseQuantity ? item.purchaseCost * item.purchaseQuantity : item.quantity * item.cost) || 0;
 const remainingPayable = item.totalPayable || 0;
 const isFullyPaid = item.paymentStatus === 'paid' || remainingPayable <= 0;
-const payableDisplay = isFullyPaid
-? `<span class="u-text-emerald" >0.00</span>`
-: `<span style="font-weight:600; color:var(--accent);">${safeNumber(remainingPayable, 0).toFixed(2)}</span>`;
-supplierHtml = `
-<div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px;">
-<div style="background:rgba(0, 122, 255, 0.1); color:var(--accent); padding:3px 8px; border-radius:4px; display:inline-block; margin-bottom:3px; font-weight:600;">
-${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}
-</div>
-<div style="margin-top:3px; font-size:0.7rem;">
-${payableDisplay}
-</div>
-</div>
-`;
+const payableDisplay = isFullyPaid ? `<span class="u-text-emerald">0.00</span>` : `<span style="font-weight:600;color:var(--accent);">${safeNumber(remainingPayable, 0).toFixed(2)}</span>`;
+supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;"><div style="background:rgba(0,122,255,0.1);color:var(--accent);padding:3px 8px;border-radius:4px;display:inline-block;margin-bottom:3px;font-weight:600;">${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</div><div style="margin-top:3px;font-size:0.7rem;">${payableDisplay}</div></div>`;
 } else {
-supplierHtml = `
-<div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; font-style:italic; opacity:0.6;">
-No supplier linked
-</div>
-`;
+supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;font-style:italic;opacity:0.6;">No supplier linked</div>`;
 }
 let quantityHtml = '';
 if (item.purchaseQuantity && item.purchaseUnitName && item.conversionFactor && item.conversionFactor !== 1) {
-quantityHtml = `
-<div class="u-text-center" >
-<div class="u-fs-sm3 u-text-main u-fw-600" >
-${(item.purchaseQuantity || 0).toFixed(2)}
-</div>
-<div class="u-fs-sm u-text-muted" >
-${esc(item.purchaseUnitName)}
-</div>
-<div style="font-size:0.65rem; color:var(--text-muted); margin-top:2px;">
-(${(item.quantity || 0).toFixed(2)})
-</div>
-</div>
-`;
+quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${(item.purchaseQuantity || 0).toFixed(2)}</div><div class="u-fs-sm u-text-muted">${esc(item.purchaseUnitName)}</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">(${(item.quantity || 0).toFixed(2)})</div></div>`;
 } else if (item.purchaseQuantity && item.conversionFactor && item.conversionFactor !== 1) {
-quantityHtml = `
-<div class="u-text-center" >
-<div class="u-fs-sm3 u-text-main u-fw-600" >
-${(item.purchaseQuantity || 0).toFixed(2)}
-</div>
-<div class="u-fs-sm u-text-muted" >
-units
-</div>
-<div style="font-size:0.65rem; color:var(--text-muted); margin-top:2px;">
-(${(item.quantity || 0).toFixed(2)})
-</div>
-</div>
-`;
+quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${(item.purchaseQuantity || 0).toFixed(2)}</div><div class="u-fs-sm u-text-muted">units</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">(${(item.quantity || 0).toFixed(2)})</div></div>`;
 } else {
-quantityHtml = `
-<div class="u-text-center" >
-<div class="u-fs-sm3 u-text-main u-fw-600" >
-${(item.quantity || 0).toFixed(2)}
-</div>
-<div class="u-fs-sm u-text-muted" >
-kg
-</div>
-</div>
-`;
+quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${(item.quantity || 0).toFixed(2)}</div><div class="u-fs-sm u-text-muted">kg</div></div>`;
 }
 let costHtml = '';
 if (item.purchaseCost && item.purchaseUnitName && item.conversionFactor && item.conversionFactor !== 1) {
-costHtml = `
-<div class="u-text-center" >
-<div class="u-fs-sm2 u-text-main" >
-${await formatCurrency(item.purchaseCost)}
-</div>
-<div class="u-fs-sm u-text-muted" >
-${esc(item.purchaseUnitName)}
-</div>
-</div>
-`;
+costHtml = `<div class="u-text-center"><div class="u-fs-sm2 u-text-main">${await formatCurrency(item.purchaseCost)}</div><div class="u-fs-sm u-text-muted">${esc(item.purchaseUnitName)}</div></div>`;
 } else if (item.purchaseCost && item.conversionFactor && item.conversionFactor !== 1) {
-costHtml = `
-<div class="u-text-center" >
-<div class="u-fs-sm2 u-text-main" >
-${await formatCurrency(item.purchaseCost)}
-</div>
-<div class="u-fs-sm u-text-muted" >
-unit
-</div>
-</div>
-`;
+costHtml = `<div class="u-text-center"><div class="u-fs-sm2 u-text-main">${await formatCurrency(item.purchaseCost)}</div><div class="u-fs-sm u-text-muted">unit</div></div>`;
 } else {
-costHtml = `
-<div class="u-text-center" >
-<div class="u-fs-sm2 u-text-main" >
-${await formatCurrency(item.cost)}
-</div>
-<div class="u-fs-sm u-text-muted" >
-kg
-</div>
-</div>
-`;
+costHtml = `<div class="u-text-center"><div class="u-fs-sm2 u-text-main">${await formatCurrency(item.cost)}</div><div class="u-fs-sm u-text-muted">kg</div></div>`;
 }
 const totalValueStr = await formatCurrency(itemTotalValue);
 const itemId = esc(item.id);
 const itemName = esc(item.name);
 const tr = document.createElement('tr');
 tr.style.borderBottom = '1px solid var(--glass-border)';
-tr.innerHTML = `
-<td style="padding: 8px 2px;">
-<div style="font-weight:600; font-size:0.8rem; color:var(--text-main);">${itemName}</div>
-${supplierHtml}
-</td>
-<td style="text-align:center; padding: 8px 2px;">
-${quantityHtml}
-</td>
-<td style="text-align:right; padding: 8px 2px; font-size:0.75rem; color:var(--text-muted);">${costHtml}</td>
-<td style="text-align:right; padding: 8px 2px; font-size:0.8rem; font-weight:700; color:var(--accent);">${totalValueStr}</td>
-<td style="text-align:center; padding: 6px 2px;">
-<button class="tbl-action-btn" onclick="editFactoryInventoryItem('${itemId}')">Edit</button>
-</td>
-`;
+tr.innerHTML = `<td style="padding:8px 2px;"><div style="font-weight:600;font-size:0.8rem;color:var(--text-main);">${itemName}</div>${supplierHtml}</td><td style="text-align:center;padding:8px 2px;">${quantityHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.75rem;color:var(--text-muted);">${costHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.8rem;font-weight:700;color:var(--accent);">${totalValueStr}</td><td style="text-align:center;padding:6px 2px;"><button class="tbl-action-btn" onclick="editFactoryInventoryItem('${itemId}')">Edit</button></td>`;
 prebuiltRows.push(tr);
 }
 GNDVirtualScroll.mount('vs-scroller-factory-inventory', prebuiltRows, function(el) { return el; }, tbody);
-const _invEl = document.getElementById('factoryTotalInventoryValue'); if (_invEl) _invEl.innerText = await formatCurrency(totalVal);
+const _invEl = document.getElementById('factoryTotalInventoryValue');
+if (_invEl) _invEl.innerText = await formatCurrency(totalVal);
 }
+
+// Prompts confirmation and then unlinks supplier from material found by ID
 async function unlinkSupplierFromMaterialById(materialId) {
 let material = factoryInventoryData.find(m => m.id === materialId);
 if (!material) {
-const reloadedData = await idb.get('factory_inventory_data');
+const reloadedData = await sqliteStore.get('factory_inventory_data');
 if (Array.isArray(reloadedData)) {
 factoryInventoryData = reloadedData;
 material = factoryInventoryData.find(m => m.id === materialId);
 }
 }
-if (!material) {
-showToast("Material not found", 'error');
-return;
-}
-if (!material.supplierId) {
-showToast("No supplier linked", 'warning');
-return;
-}
-const linkedTransactions = paymentTransactions.filter(t =>
-t.materialId === materialId &&
-t.entityId === material.supplierId &&
-t.isPayable === true
-);
-const _us2Total = linkedTransactions.reduce((sum, t) => sum + (parseFloat(t.amount)||0), 0);
+if (!material) { showToast('Material not found', 'error'); return; }
+if (!material.supplierId) { showToast('No supplier linked', 'warning'); return; }
+const linkedTransactions = paymentTransactions.filter(t => t.materialId === materialId && t.entityId === material.supplierId && t.isPayable === true);
+const _us2Total = linkedTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 let confirmMsg = `Unlink ${material.supplierName} from "${material.name}"?`;
-confirmMsg += `\nCurrent Stock: ${(material.quantity||0).toFixed(2)} kg`;
-if (material.totalPayable) confirmMsg += `\nOutstanding Payable: ${fmtAmt(material.totalPayable||0)}`;
-if (linkedTransactions.length > 0) {
-confirmMsg += `\n\n\u21a9 ${linkedTransactions.length} payment transaction${linkedTransactions.length !== 1 ? 's' : ''} totaling ${fmtAmt(_us2Total)} will be reversed and the material reverted to "Pending Payable" status.`;
-}
-confirmMsg += `\n\nThe material will be available to link with a different supplier.`;
-confirmMsg += `\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: "Unlink", danger: true })) {
+confirmMsg += `\nCurrent Stock: ${(material.quantity || 0).toFixed(2)} kg`;
+if (material.totalPayable) confirmMsg += `\nOutstanding Payable: ${fmtAmt(material.totalPayable || 0)}`;
+if (linkedTransactions.length > 0) confirmMsg += `\n\n↩ ${linkedTransactions.length} payment transaction${linkedTransactions.length !== 1 ? 's' : ''} totaling ${fmtAmt(_us2Total)} will be reversed and the material reverted to "Pending Payable" status.`;
+confirmMsg += `\n\nThe material will be available to link with a different supplier.\n\nThis cannot be undone.`;
+if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: 'Unlink', danger: true })) {
 await unlinkSupplierFromMaterial(material, true);
 }
 }
+
+// Toggles visibility of existing/new supplier form sections based on dropdown selection
 function toggleSupplierFields() {
 const supplierType = document.getElementById('factoryMaterialSupplierType').value;
 const existingSection = document.getElementById('existingSupplierSection');
 const newSection = document.getElementById('newSupplierSection');
 if (existingSection) existingSection.classList.add('hidden');
 if (newSection) newSection.classList.add('hidden');
-if (supplierType === 'existing') {
-if (existingSection) {
-existingSection.classList.remove('hidden');
+if (supplierType === 'existing') { if (existingSection) existingSection.classList.remove('hidden'); }
+else if (supplierType === 'new') { if (newSection) newSection.classList.remove('hidden'); }
 }
-} else if (supplierType === 'new') {
-if (newSection) newSection.classList.remove('hidden');
-}
-}
+
+// Populates the existing supplier dropdown from current paymentEntities
 function loadExistingSuppliers() {
 const selectElement = document.getElementById('factoryExistingSupplier');
 if (!selectElement) return;
@@ -1046,48 +813,36 @@ selectElement.appendChild(option);
 });
 if (suppliers.length === 0) {
 const option = document.createElement('option');
-option.value = "";
-option.textContent = "No suppliers found. Create a new one.";
+option.value = '';
+option.textContent = 'No suppliers found. Create a new one.';
 option.disabled = true;
 selectElement.appendChild(option);
 }
 }
+
+// Links a raw material to a supplier and creates a payable transaction record
 async function linkMaterialToSupplier(materialId, supplierId, totalCost, skipSideEffects = false) {
 let material = factoryInventoryData.find(m => m.id === materialId);
 if (!material) {
-const reloadedData = await idb.get('factory_inventory_data');
+const reloadedData = await sqliteStore.get('factory_inventory_data');
 if (Array.isArray(reloadedData)) {
 factoryInventoryData = reloadedData;
 material = factoryInventoryData.find(m => m.id === materialId);
 }
 }
-if (!material) {
-showToast('Material not found. Try refreshing.', 'error');
-return;
-}
-const supplierIdToMatch = supplierId;
-let supplier = paymentEntities.find(e =>
-e.id === supplierIdToMatch ||
-String(e.id) === String(supplierIdToMatch)
-);
+if (!material) { showToast('Material not found. Try refreshing.', 'error'); return; }
+let supplier = paymentEntities.find(e => e.id === supplierId || String(e.id) === String(supplierId));
 if (!supplier) {
-const supplierTransaction = paymentTransactions.find(t =>
-t.entityId === supplierIdToMatch ||
-String(t.entityId) === String(supplierIdToMatch)
-);
+// Try to recover supplier from existing transaction references
+const supplierTransaction = paymentTransactions.find(t => t.entityId === supplierId || String(t.entityId) === String(supplierId));
 if (supplierTransaction) {
-supplier = {
-id: supplierIdToMatch,
-name: supplierTransaction.entityName || 'Supplier',
-type: 'payee',
-phone: ''
-};
+supplier = { id: supplierId, name: supplierTransaction.entityName || 'Supplier', type: 'payee', phone: '' };
 } else {
 showToast('Supplier not found. Please refresh and try again.', 'error');
 return;
 }
 }
-if (material.supplierId && String(material.supplierId) !== String(supplierIdToMatch)) {
+if (material.supplierId && String(material.supplierId) !== String(supplierId)) {
 await unlinkSupplierFromMaterial(material, false, true);
 }
 material.supplierId = supplier.id;
@@ -1108,28 +863,32 @@ calculateNetCash();
 showToast(`Linked to ${esc(supplier.name)}`, 'success');
 }
 }
+
+// Switches the active store for production entry and recalculates costs
 function selectFactoryEntryStore(store, el) {
 currentFactoryEntryStore = store;
 document.querySelectorAll('.factory-store-selector .factory-store-opt').forEach(o => o.classList.remove('active'));
-if(el) el.classList.add('active');
+if (el) el.classList.add('active');
 calculateFactoryProduction();
 }
+
+// Returns the configured sale price for a given store type
 function getSalePriceForStore(store) {
-	if (!store) return 0;
-	if (store === 'STORE_C') {
-		return factorySalePrices.asaan || 0;
-	}
-	return factorySalePrices.standard || 0;
+if (!store) return 0;
+if (store === 'STORE_C') return factorySalePrices.asaan || 0;
+return factorySalePrices.standard || 0;
 }
+
+// Returns the effective sale price for a customer, respecting custom pricing
 function getEffectiveSalePriceForCustomer(customerName, store) {
 if (customerName) {
-const _reg = Array.isArray(salesCustomers)
-? salesCustomers.find(c => c && c.name && c.name.toLowerCase() === String(customerName).toLowerCase())
-: null;
+const _reg = Array.isArray(salesCustomers) ? salesCustomers.find(c => c && c.name && c.name.toLowerCase() === String(customerName).toLowerCase()) : null;
 if (_reg && _reg.customSalePrice > 0) return _reg.customSalePrice;
 }
 return getSalePriceForStore(store);
 }
+
+// Returns the value of a sales transaction accounting for merged and partial records
 function getSaleTransactionValue(t) {
 if (!t) return 0;
 if (t.isMerged) return parseFloat(t.totalValue) || 0;
@@ -1138,57 +897,57 @@ if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT') return parseFloat(t.totalVa
 if (t.transactionType === 'OLD_DEBT') return parseFloat(t.totalValue) || 0;
 const qty = parseFloat(t.quantity) || 0;
 if (qty <= 0) return parseFloat(t.totalValue) || 0;
-const effectivePrice = getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || 'STORE_A');
-return qty * effectivePrice;
+return qty * getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || 'STORE_A');
 }
+
+// Returns the cost price per kg for a given store
 function getCostPriceForStore(store) {
-	if (!store) return 0;
-	const formulaStore = (store === 'STORE_C') ? 'asaan' : 'standard';
-	return calculateSalesCostPerKg(formulaStore);
+if (!store) return 0;
+return calculateSalesCostPerKg(store === 'STORE_C' ? 'asaan' : 'standard');
 }
+
+// Returns both sale and cost price for a store in a single object
 function getStorePricing(store) {
-	return {
-		salePrice: getSalePriceForStore(store),
-		costPrice: getCostPriceForStore(store)
-	};
+return { salePrice: getSalePriceForStore(store), costPrice: getCostPriceForStore(store) };
 }
+
+// Renders the formula cost breakdown for the current factory entry form
 async function calculateFactoryProduction() {
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 1;
 const settings = factoryDefaultFormulas[currentFactoryEntryStore];
 const additionalCost = factoryAdditionalCosts[currentFactoryEntryStore] || 0;
 let baseCost = 0;
 let rawMaterialsUsed = 0;
-let html = `<h4 style="margin:0 0 5px 0; font-size:0.9rem;">${currentFactoryEntryStore.toUpperCase()} Formula (${units} Units)</h4>`;
+let html = `<h4 style="margin:0 0 5px 0;font-size:0.9rem;">${currentFactoryEntryStore.toUpperCase()} Formula (${units} Units)</h4>`;
 if (settings && settings.length > 0) {
 for (const i of settings) {
 const lineTotal = i.cost * i.quantity * units;
 baseCost += lineTotal;
 rawMaterialsUsed += i.quantity * units;
-html += `<div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
-<span>${i.name} (${i.quantity * units} kg)</span>
-<span>${await formatCurrency(lineTotal)}</span>
-</div>`;
+html += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;"><span>${i.name} (${i.quantity * units} kg)</span><span>${await formatCurrency(lineTotal)}</span></div>`;
 }
 const totalAdditionalCost = additionalCost * units;
 if (totalAdditionalCost > 0) {
-html += `<div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px; color:var(--danger);">
-<span>Additional Cost (${additionalCost} per unit)</span>
-<span>${await formatCurrency(totalAdditionalCost)}</span>
-</div>`;
+html += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;color:var(--danger);"><span>Additional Cost (${additionalCost} per unit)</span><span>${await formatCurrency(totalAdditionalCost)}</span></div>`;
 baseCost += totalAdditionalCost;
 }
 } else {
-html += `<div class="u-text-muted" >No formula set.</div>`;
+html += `<div class="u-text-muted">No formula set.</div>`;
 }
 document.getElementById('factoryFormulaDisplay').innerHTML = html;
-const _prodCostEl = document.getElementById('factoryTotalProductionCostDisplay'); if (_prodCostEl) _prodCostEl.innerText = await formatCurrency(baseCost);
+const _prodCostEl = document.getElementById('factoryTotalProductionCostDisplay');
+if (_prodCostEl) _prodCostEl.innerText = await formatCurrency(baseCost);
 }
+
+// Validates inputs, deducts inventory, saves production entry, and syncs to Firestore
 async function saveFactoryProductionEntry() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
-showToast('Access Denied — Factory not in your assigned tabs', 'warning', 3000); return;
+showToast('Access Denied — Factory not in your assigned tabs', 'warning', 3000);
+return;
 }
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
-if(units <= 0) return showToast('Invalid units', 'warning', 3000);
+if (units <= 0) return showToast('Invalid units', 'warning', 3000);
+// Take snapshots for rollback if save fails
 const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
 try {
@@ -1196,19 +955,19 @@ const settings = factoryDefaultFormulas[currentFactoryEntryStore];
 const additionalCost = factoryAdditionalCosts[currentFactoryEntryStore] || 0;
 let baseCost = 0;
 let rawMat = 0;
-if(settings) {
+if (settings) {
 baseCost = settings.reduce((acc, cur) => acc + (cur.cost * cur.quantity), 0) * units;
 rawMat = settings.reduce((acc, cur) => acc + cur.quantity, 0) * units;
 }
-const totalAdditionalCost = additionalCost * units;
-const totalCost = baseCost + totalAdditionalCost;
+const totalCost = baseCost + (additionalCost * units);
+// Deduct raw material quantities from inventory
 let inventoryUpdated = false;
-if(settings && settings.length > 0) {
+if (settings && settings.length > 0) {
 settings.forEach(item => {
 const materialUsed = item.quantity * units;
 const inventoryItem = factoryInventoryData.find(i => i.id === item.id);
-if(inventoryItem) {
-if(inventoryItem.quantity >= materialUsed) {
+if (inventoryItem) {
+if (inventoryItem.quantity >= materialUsed) {
 inventoryItem.quantity -= materialUsed;
 inventoryItem.totalValue = inventoryItem.quantity * inventoryItem.cost;
 inventoryUpdated = true;
@@ -1219,19 +978,17 @@ throw new Error(`Insufficient ${inventoryItem.name} in inventory! Available: ${i
 });
 }
 let factProdId = generateUUID('fprod');
-if (!validateUUID(factProdId)) {
-factProdId = generateUUID('fprod');
-}
+if (!validateUUID(factProdId)) factProdId = generateUUID('fprod');
 const factProdCreatedAt = getTimestamp();
 const productionRecord = {
 id: factProdId,
 date: new Date().toISOString().split('T')[0],
-time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 store: currentFactoryEntryStore,
 units,
 totalCost,
 materialsCost: baseCost,
-additionalCost: totalAdditionalCost,
+additionalCost: additionalCost * units,
 rawMaterialsUsed: rawMat,
 createdAt: factProdCreatedAt,
 updatedAt: factProdCreatedAt,
@@ -1242,39 +999,35 @@ createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._ass
 };
 const validatedRecord = ensureRecordIntegrity(productionRecord);
 factoryProductionHistory.unshift(validatedRecord);
+// Save both inventory and history atomically to SQLite
 await Promise.all([
 saveWithTracking('factory_inventory_data', factoryInventoryData),
 saveWithTracking('factory_production_history', factoryProductionHistory, validatedRecord)
 ]);
 notifyDataChange('factory');
-emitSyncUpdate({
-factory_inventory_data: factoryInventoryData,
-factory_production_history: factoryProductionHistory
-});
+emitSyncUpdate({ factory_inventory_data: factoryInventoryData, factory_production_history: factoryProductionHistory });
 await syncFactoryProductionStats();
 await refreshFactoryTab();
 calculateNetCash();
 calculateCashTracker();
 document.getElementById('factoryProductionUnits').value = '1';
-showToast("Production saved successfully!", "success");
-const cloudWrites = [
-saveRecordToFirestore('factory_production_history', validatedRecord)
-];
+showToast('Production saved successfully!', 'success');
+// Push new records to Firestore in background — never block UI on network
+const cloudWrites = [saveRecordToFirestore('factory_production_history', validatedRecord)];
 if (inventoryUpdated) {
-for (const item of factoryInventoryData) {
-cloudWrites.push(saveRecordToFirestore('factory_inventory_data', item));
+for (const item of factoryInventoryData) cloudWrites.push(saveRecordToFirestore('factory_inventory_data', item));
 }
-}
-Promise.all(cloudWrites)
+void Promise.all(cloudWrites)
 .then(() => triggerAutoSync())
-.catch(err => console.warn(' Background Firestore sync failed (will retry):', err));
+.catch(err => console.warn(' Background Firestore sync failed (will retry):', _safeErr(err)));
 } catch (error) {
+// Rollback in-memory state and re-persist original data on failure
 factoryInventoryData.length = 0;
 factoryInventoryData.push(...inventorySnapshot);
 factoryProductionHistory.length = 0;
 factoryProductionHistory.push(...historySnapshot);
 try {
-await idb.setBatch([
+await sqliteStore.setBatch([
 ['factory_inventory_data', factoryInventoryData],
 ['factory_production_history', factoryProductionHistory]
 ]);
@@ -1285,32 +1038,35 @@ showToast('Failed to save data locally.', 'error');
 showToast(error.message || 'Failed to save production data. Please try again.', 'error', 4000);
 }
 }
+
+// Switches the history view filter mode and updates the summary card
 function setFactorySummaryMode(mode, el) {
 currentFactorySummaryMode = mode;
 document.querySelectorAll('#tab-factory .toggle-group .toggle-opt').forEach(opt => opt.classList.remove('active'));
-if(el) el.classList.add('active');
+if (el) el.classList.add('active');
 updateFactorySummaryCard();
 _filterFactoryHistoryByMode(mode);
 }
+
+// Switches the available units display between standard and asaan stores
 function setFactoryAvailableStore(store, el) {
 document.getElementById('factoryAvailStatsStandard').classList.add('hidden');
 document.getElementById('factoryAvailStatsStandard').style.display = 'none';
 document.getElementById('factoryAvailStatsAsaan').style.display = 'none';
 const statsElement = document.getElementById('factoryAvailStats' + (store === 'standard' ? 'Standard' : 'Asaan'));
-if (statsElement) {
-statsElement.classList.remove('hidden');
-statsElement.style.display = 'grid';
-}
+if (statsElement) { statsElement.classList.remove('hidden'); statsElement.style.display = 'grid'; }
 const parent = el.parentElement;
 parent.querySelectorAll('.toggle-opt').forEach(t => t.classList.remove('active'));
 el.classList.add('active');
 updateFactoryUnitsAvailableStats();
 }
+
+// Renders sorted factory production history cards with costs and delete controls
 async function renderFactoryHistory() {
 const list = document.getElementById('factoryHistoryList');
 if (!list) return;
 if (factoryProductionHistory.length === 0) {
-list.replaceChildren(Object.assign(document.createElement('div'), {className:'u-empty-state-sm',textContent:'No recent activity'}));
+list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No recent activity' }));
 return;
 }
 const _fhFrag = document.createDocumentFragment();
@@ -1321,12 +1077,10 @@ return timeB - timeA;
 });
 for (const entry of recent) {
 const dateObj = new Date(entry.date);
-const dateStr = (() => {
 const month = dateObj.toLocaleDateString('en-US', { month: 'short' });
 const day = String(dateObj.getDate()).padStart(2, '0');
 const year = String(dateObj.getFullYear()).slice(-2);
-return `${month} ${day} ${year} ${esc(entry.time || '')}`;
-})();
+const dateStr = `${month} ${day} ${year} ${esc(entry.time || '')}`;
 const badgeClass = entry.store === 'standard' ? 'factory-badge-std' : 'factory-badge-asn';
 const storeLabel = entry.store === 'standard' ? 'STD' : 'ASN';
 const perUnitCost = entry.units > 0 ? entry.totalCost / entry.units : 0;
@@ -1336,86 +1090,55 @@ const div = document.createElement('div');
 div.className = 'factory-history-item';
 if (entry.date) div.setAttribute('data-date', entry.date);
 div.innerHTML = `
-<div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">
-<span class="u-fs-sm2 u-text-muted" >${dateStr}</span>
-<div style="display:flex; gap:6px; align-items:center;">
+<div style="display:flex;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid var(--glass-border);padding-bottom:5px;">
+<span class="u-fs-sm2 u-text-muted">${dateStr}</span>
+<div style="display:flex;gap:6px;align-items:center;">
 ${_mergedBadgeHtml(entry)}
 <span class="factory-badge ${badgeClass}">${esc(storeLabel)}</span>
 </div>
 </div>
 ${entry.managedBy ? `<div style="margin-bottom:8px;"><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;font-size:0.65rem;font-weight:700;letter-spacing:0.04em;color:var(--accent-purple);background:rgba(206,147,216,0.10);border:1px solid rgba(206,147,216,0.28);border-radius:999px;">${esc(entry.managedBy)}</span></div>` : ''}
-${entry.createdBy ? `<div style="margin-bottom:8px;">${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(entry) : ''}</div>` : ''}
-<div class="factory-summary-row">
-<span class="factory-summary-label">Units Produced</span>
-<span class="qty-val">${entry.units}</span>
-</div>
-<div class="factory-summary-row">
-<span class="factory-summary-label">Material Cost</span>
-<span class="cost-val">${await formatCurrency(entry.materialsCost || 0)}</span>
-</div>
-${totalAdditionalCost > 0 ? `<div class="factory-summary-row">
-<span class="factory-summary-label">Additional Cost</span>
-<span class="cost-val">${await formatCurrency(totalAdditionalCost)}</span>
-</div>` : ''}
-<div class="factory-summary-row">
-<span class="factory-summary-label">Per Unit Cost</span>
-<span class="cost-val">${await formatCurrency(perUnitCost)}</span>
-</div>
-<div class="factory-summary-row">
-<span class="factory-summary-label">Total Cost</span>
-<span class="rev-val">${await formatCurrency(entry.totalCost)}</span>
-</div>
-<div class="factory-summary-row">
-<span class="factory-summary-label">Raw Materials Used</span>
-<span class="qty-val">${safeNumber(entry.rawMaterialsUsed, 0).toFixed(2)} kg</span>
-</div>
-${entry.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteFactoryEntry('${entry.id}')">Delete & Restore Inventory</button>`}
-`;
+${entry.createdBy ? `<div style="margin-bottom:8px;">${typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}</div>` : ''}
+<div class="factory-summary-row"><span class="factory-summary-label">Units Produced</span><span class="qty-val">${entry.units}</span></div>
+<div class="factory-summary-row"><span class="factory-summary-label">Material Cost</span><span class="cost-val">${await formatCurrency(entry.materialsCost || 0)}</span></div>
+${totalAdditionalCost > 0 ? `<div class="factory-summary-row"><span class="factory-summary-label">Additional Cost</span><span class="cost-val">${await formatCurrency(totalAdditionalCost)}</span></div>` : ''}
+<div class="factory-summary-row"><span class="factory-summary-label">Per Unit Cost</span><span class="cost-val">${await formatCurrency(perUnitCost)}</span></div>
+<div class="factory-summary-row"><span class="factory-summary-label">Total Cost</span><span class="rev-val">${await formatCurrency(entry.totalCost)}</span></div>
+<div class="factory-summary-row"><span class="factory-summary-label">Raw Materials Used</span><span class="qty-val">${safeNumber(entry.rawMaterialsUsed, 0).toFixed(2)} kg</span></div>
+${entry.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteFactoryEntry('${entry.id}')">Delete & Restore Inventory</button>`}`;
 _fhFrag.appendChild(div);
 }
 list.replaceChildren(_fhFrag);
 _filterFactoryHistoryByMode(currentFactorySummaryMode || 'all');
 }
+
+// Confirms and deletes a factory production entry, restoring raw material quantities
 async function deleteFactoryEntry(id) {
-if (!id || !validateUUID(id)) {
-showToast('Invalid factory entry ID', 'error');
-return;
-}
+if (!id || !validateUUID(id)) { showToast('Invalid factory entry ID', 'error'); return; }
 const entryIndex = factoryProductionHistory.findIndex(e => e.id === id);
-if (entryIndex === -1) {
-await refreshFactoryTab();
-return;
-}
+if (entryIndex === -1) { await refreshFactoryTab(); return; }
 const entry = factoryProductionHistory[entryIndex];
-if (entry.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
-return;
-}
+if (entry.isMerged) { showToast('Merged opening balance records cannot be deleted', 'warning'); return; }
 const _feStoreLabel = getStoreLabel(entry.store) || entry.store;
 const _feFormula = factoryDefaultFormulas[entry.store] || [];
 const _feMatsDetail = _feFormula.length > 0
-? _feFormula.map(f => { const inv = factoryInventoryData.find(i => i.id === f.id); return ` 2022 ${inv?.name || 'Material'}: ${(f.quantity * entry.units).toFixed(2)} kg restored`; }).join('\n')
+? _feFormula.map(f => { const inv = factoryInventoryData.find(i => i.id === f.id); return ` • ${inv?.name || 'Material'}: ${(f.quantity * entry.units).toFixed(2)} kg restored`; }).join('\n')
 : '';
 let _feMsg = `Delete this factory production batch permanently?`;
-_feMsg += `\nStore: ${_feStoreLabel}`;
-_feMsg += `\nDate: ${entry.date}`;
-_feMsg += `\nUnits Produced: ${entry.units}`;
-if (entry.totalCost) _feMsg += `\nTotal Cost: ${fmtAmt(entry.totalCost||0)}`;
-if (_feMatsDetail) _feMsg += `\n\n21a9 Raw materials restored to inventory:\n${_feMatsDetail}`;
-else _feMsg += `\n\n21a9 Raw materials used in this batch will be restored to inventory.`;
-_feMsg += `\n\n26a0 Sales already made from this batch will NOT be reversed 2014 but available stock will change.`;
-_feMsg += `\n\nThis cannot be undone.`;
-if (await showGlassConfirm(_feMsg, { title: "Delete Factory Production", confirmText: "Delete", danger: true })) {
+_feMsg += `\nStore: ${_feStoreLabel}\nDate: ${entry.date}\nUnits Produced: ${entry.units}`;
+if (entry.totalCost) _feMsg += `\nTotal Cost: ${fmtAmt(entry.totalCost || 0)}`;
+_feMsg += _feMatsDetail ? `\n\n↩ Raw materials restored to inventory:\n${_feMatsDetail}` : `\n\n↩ Raw materials used in this batch will be restored to inventory.`;
+_feMsg += `\n\n⚠ Sales already made from this batch will NOT be reversed — but available stock will change.\n\nThis cannot be undone.`;
+if (await showGlassConfirm(_feMsg, { title: 'Delete Factory Production', confirmText: 'Delete', danger: true })) {
 try {
-if (entry) {
+// Stamp deletion metadata before removing
 entry.deletedAt = getTimestamp();
 entry.updatedAt = getTimestamp();
 ensureRecordIntegrity(entry, true);
-}
+// Restore raw material quantities to inventory
 let restoredMaterials = [];
 const formula = factoryDefaultFormulas[entry.store];
 if (formula && formula.length > 0) {
-let inventoryUpdated = false;
 formula.forEach(formulaItem => {
 const materialToRestore = formulaItem.quantity * entry.units;
 const inventoryItem = factoryInventoryData.find(i => i.id === formulaItem.id);
@@ -1424,15 +1147,12 @@ inventoryItem.quantity += materialToRestore;
 inventoryItem.totalValue = inventoryItem.quantity * inventoryItem.cost;
 inventoryItem.updatedAt = getTimestamp();
 ensureRecordIntegrity(inventoryItem, true);
-inventoryUpdated = true;
-restoredMaterials.push({
-name: inventoryItem.name || 'Unknown',
-quantity: materialToRestore
-});
+restoredMaterials.push({ name: inventoryItem.name || 'Unknown', quantity: materialToRestore });
 }
 });
 }
 factoryProductionHistory.splice(entryIndex, 1);
+// Save deletion and restored inventory atomically to SQLite
 await Promise.all([
 unifiedDelete('factory_production_history', factoryProductionHistory, id, { strict: true }, entry),
 saveWithTracking('factory_inventory_data', factoryInventoryData)
@@ -1442,80 +1162,61 @@ calculateNetCash();
 calculateCashTracker();
 notifyDataChange('factory');
 if (restoredMaterials.length > 0) {
-const materialsList = restoredMaterials.map(m => `${m.name}: +${safeToFixed(m.quantity, 2)} kg`).join(', ');
-showToast(` Entry deleted! Raw materials restored: ${materialsList}`, "success");
+showToast(` Entry deleted! Raw materials restored: ${restoredMaterials.map(m => `${m.name}: +${safeToFixed(m.quantity, 2)} kg`).join(', ')}`, 'success');
 } else {
-showToast(" Entry deleted and inventory restored.", "success");
+showToast(' Entry deleted and inventory restored.', 'success');
 }
-const cloudWrites = factoryInventoryData
-.filter(item => item && item.id)
-.map(item => saveRecordToFirestore('factory_inventory_data', item));
-Promise.all(cloudWrites)
+// Push restored inventory to Firestore in background — fire-and-forget
+void Promise.all(factoryInventoryData.filter(item => item && item.id).map(item => saveRecordToFirestore('factory_inventory_data', item)))
 .then(() => triggerAutoSync())
-.catch(err => console.warn(' Background Firestore sync failed on delete (will retry):', err));
+.catch(err => console.warn(' Background Firestore sync failed on delete (will retry):', _safeErr(err)));
 } catch (error) {
-showToast(" Failed to delete entry. Please try again.", "error");
+showToast(' Failed to delete entry. Please try again.', 'error');
 }
 }
 }
+
+// Returns dynamic cost breakdown for a production record given store, units, and net weight
 function calculateDynamicCost(storeType, formulaUnits, netWeight) {
 let formulaStore = 'standard';
 if (storeType === 'STORE_C' || storeType === 'asaan') {
 formulaStore = 'asaan';
 } else if (storeType !== 'STORE_A' && storeType !== 'STORE_B' && storeType !== 'standard') {
-return {
-costPerUnit: 0,
-totalFormulaCost: 0,
-dynamicCostPerKg: 0,
-formulaStore: storeType,
-rawMaterialCost: 0
-};
+return { costPerUnit: 0, totalFormulaCost: 0, dynamicCostPerKg: 0, formulaStore: storeType, rawMaterialCost: 0 };
 }
 const formula = factoryDefaultFormulas[formulaStore];
 if (!formula || formula.length === 0 || netWeight <= 0) {
-return {
-costPerUnit: 0,
-totalFormulaCost: 0,
-dynamicCostPerKg: 0,
-formulaStore: formulaStore,
-rawMaterialCost: 0
-};
+return { costPerUnit: 0, totalFormulaCost: 0, dynamicCostPerKg: 0, formulaStore, rawMaterialCost: 0 };
 }
 let totalMaterialCost = 0;
 let totalWeight = 0;
-formula.forEach(item => {
-totalMaterialCost += (item.cost * item.quantity);
-totalWeight += item.quantity;
-});
+formula.forEach(item => { totalMaterialCost += (item.cost * item.quantity); totalWeight += item.quantity; });
 const additionalCost = factoryAdditionalCosts[formulaStore] || 0;
 const costPerUnit = totalMaterialCost + additionalCost;
-const dynamicCostPerKg = formulaUnits > 0 ? (costPerUnit * formulaUnits) / netWeight : 0;
 return {
-costPerUnit: costPerUnit,
-totalMaterialCost: totalMaterialCost,
-additionalCost: additionalCost,
+costPerUnit,
+totalMaterialCost,
+additionalCost,
 totalFormulaCost: costPerUnit * formulaUnits,
-dynamicCostPerKg: dynamicCostPerKg,
-formulaStore: formulaStore,
+dynamicCostPerKg: formulaUnits > 0 ? (costPerUnit * formulaUnits) / netWeight : 0,
+formulaStore,
 rawMaterialCost: totalMaterialCost,
 unitWeight: totalWeight
 };
 }
+
+// Calculates raw material cost per kg for sales pricing based on formula and adjustment factor
 function calculateSalesCostPerKg(formulaStore) {
 const formula = factoryDefaultFormulas[formulaStore];
-if (!formula || formula.length === 0) {
-return 0;
-}
+if (!formula || formula.length === 0) return 0;
 let rawMaterialCost = 0;
-formula.forEach(item => {
-rawMaterialCost += (item.cost * item.quantity);
-});
+formula.forEach(item => { rawMaterialCost += (item.cost * item.quantity); });
 const additionalCost = factoryAdditionalCosts[formulaStore] || 0;
-const totalCostPerUnit = rawMaterialCost + additionalCost;
 const adjustmentFactor = factoryCostAdjustmentFactor[formulaStore] || 1;
-const costPerKgForSales = adjustmentFactor > 0 ? totalCostPerUnit / adjustmentFactor : totalCostPerUnit;
-return costPerKgForSales;
+return adjustmentFactor > 0 ? (rawMaterialCost + additionalCost) / adjustmentFactor : rawMaterialCost + additionalCost;
 }
+
+// Recalculates formula unit tracking (produced, consumed, available) and persists to SQLite
 async function updateFormulaInventory() {
 const tracking = {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
@@ -1525,31 +1226,24 @@ factoryProductionHistory.forEach(entry => {
 if (entry.store && entry.units > 0) {
 tracking[entry.store].produced += entry.units;
 if (entry.totalCost && entry.units > 0) {
-tracking[entry.store].unitCostHistory.push({
-date: entry.date,
-costPerUnit: entry.totalCost / entry.units,
-units: entry.units
-});
+tracking[entry.store].unitCostHistory.push({ date: entry.date, costPerUnit: entry.totalCost / entry.units, units: entry.units });
 }
 }
 });
 db.forEach(entry => {
-let formulaStore = 'standard';
-if (entry.store === 'STORE_C') {
-formulaStore = 'asaan';
-}
-if (entry.formulaUnits) {
-tracking[formulaStore].consumed += entry.formulaUnits;
-}
+const formulaStore = entry.store === 'STORE_C' ? 'asaan' : 'standard';
+if (entry.formulaUnits) tracking[formulaStore].consumed += entry.formulaUnits;
 });
 tracking.standard.available = Math.max(0, tracking.standard.produced - tracking.standard.consumed);
 tracking.asaan.available = Math.max(0, tracking.asaan.produced - tracking.asaan.consumed);
 factoryUnitTracking = tracking;
 const timestamp = Date.now();
-await idb.set('factory_unit_tracking', factoryUnitTracking);
-await idb.set('factory_unit_tracking_timestamp', timestamp);
+await sqliteStore.set('factory_unit_tracking', factoryUnitTracking);
+await sqliteStore.set('factory_unit_tracking_timestamp', timestamp);
 return tracking;
 }
+
+// Updates formula inventory tracking and refreshes all related UI indicators
 async function syncFactoryProductionStats() {
 const tracking = await updateFormulaInventory();
 updateUnitsAvailableIndicator();
@@ -1557,47 +1251,33 @@ updateFactoryUnitsAvailableStats();
 updateFactorySummaryCard();
 return tracking;
 }
+
+// Returns availability info for a given store type and requested unit count
 function validateFormulaAvailability(storeType, requestedUnits) {
-let formulaStore = 'standard';
-if (storeType === 'STORE_C' || storeType === 'asaan') {
-formulaStore = 'asaan';
-}
+const formulaStore = (storeType === 'STORE_C' || storeType === 'asaan') ? 'asaan' : 'standard';
 const available = factoryUnitTracking[formulaStore]?.available || 0;
-return {
-available: available,
-sufficient: available >= requestedUnits,
-deficit: Math.max(0, requestedUnits - available)
-};
+return { available, sufficient: available >= requestedUnits, deficit: Math.max(0, requestedUnits - available) };
 }
+
+// Updates the units-available indicator badge on the production entry form
 function updateUnitsAvailableIndicator() {
 const store = document.getElementById('storeSelector').value;
-let formulaStore = 'standard';
-if (store === 'STORE_C') {
-formulaStore = 'asaan';
-}
+const formulaStore = store === 'STORE_C' ? 'asaan' : 'standard';
 const available = factoryUnitTracking[formulaStore]?.available || 0;
 const indicator = document.getElementById('currentUnitsAvailable');
 const warning = document.getElementById('insufficientUnitsWarning');
 let indicatorClass = 'units-available-good';
-if (available < 10) {
-indicatorClass = 'units-available-warning';
-}
-if (available <= 0) {
-indicatorClass = 'units-available-danger';
-}
-if (indicator) {
-indicator.className = `units-available-indicator ${indicatorClass}`;
-indicator.textContent = `${(available || 0).toFixed(2)} units available`;
-}
+if (available < 10) indicatorClass = 'units-available-warning';
+if (available <= 0) indicatorClass = 'units-available-danger';
+if (indicator) { indicator.className = `units-available-indicator ${indicatorClass}`; indicator.textContent = `${(available || 0).toFixed(2)} units available`; }
 const requestedUnits = parseFloat(document.getElementById('formula-units')?.value) || 0;
 if (warning) {
-if (requestedUnits > available) {
-warning.classList.remove('hidden');
-} else {
-warning.classList.add('hidden');
+if (requestedUnits > available) warning.classList.remove('hidden');
+else warning.classList.add('hidden');
 }
 }
-}
+
+// Recalculates dynamic production cost and sale price displays from current form inputs
 function calculateDynamicProductionCost() {
 const net = parseFloat(document.getElementById('net-wt').value) || 0;
 const store = document.getElementById('storeSelector').value;
@@ -1611,12 +1291,12 @@ _setProd('dynamic-cost-per-kg', `${safeValue(costData.dynamicCostPerKg).toFixed(
 _setProd('factory-cost-price', `${safeValue(costData.dynamicCostPerKg).toFixed(2)}/kg`);
 _setProd('production-sale-price-display', `${safeValue(salePrice).toFixed(2)}/kg`);
 _setProd('profit-sale-price', `${safeValue(salePrice).toFixed(2)}/kg`);
-const totalCost = net * costData.dynamicCostPerKg;
-_setProd('display-cost-value', `${fmtAmt(safeValue(totalCost))}`);
-const profitPerKg = salePrice - costData.dynamicCostPerKg;
-_setProd('profit-per-kg', `${fmtAmt(safeValue(profitPerKg))}`);
+_setProd('display-cost-value', `${fmtAmt(safeValue(net * costData.dynamicCostPerKg))}`);
+_setProd('profit-per-kg', `${fmtAmt(safeValue(salePrice - costData.dynamicCostPerKg))}`);
 updateUnitsAvailableIndicator();
 }
+
+// Responds to store change in production form and refreshes all cost displays
 function updateProductionCostOnStoreChange() {
 const store = document.getElementById('storeSelector').value;
 currentStore = store;
@@ -1628,70 +1308,58 @@ calculateDynamicProductionCost();
 updatePaymentStatusVisibility();
 if (typeof refreshUI === 'function') refreshUI();
 }
+
+// Calculates and updates the net weight field from gross minus container weight
 function calcNet() {
 const g = parseFloat(document.getElementById('gross-wt').value) || 0;
 const c = parseFloat(document.getElementById('cont-wt').value) || 0;
-const net = Math.max(0, g - c);
-document.getElementById('net-wt').value = safeNumber(net, 0).toFixed(2);
+document.getElementById('net-wt').value = safeNumber(Math.max(0, g - c), 0).toFixed(2);
 calculateDynamicProductionCost();
 }
+
+// Confirms and deletes a production or return record from the main db array
 async function deleteProdEntry(id) {
-if (!id || !validateUUID(id)) {
-showToast('Invalid production record ID', 'error');
-return;
-}
+if (!id || !validateUUID(id)) { showToast('Invalid production record ID', 'error'); return; }
 const entryToDelete = db.find(item => item.id === id);
 if (!entryToDelete) return;
-if (entryToDelete.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
-return;
-}
+if (entryToDelete.isMerged) { showToast('Merged opening balance records cannot be deleted', 'warning'); return; }
 const isReturn = entryToDelete.isReturn === true;
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
 const _dpSalesOnDate = (typeof customerSales !== 'undefined' ? customerSales : []).filter(s => s.date === entryToDelete.date && s.store === entryToDelete.store).length;
 let confirmMsg;
 if (isReturn) {
 confirmMsg = `Remove this stock return record?`;
-confirmMsg += `\nStore: ${_dpStoreLabel}`;
-confirmMsg += `\nDate: ${entryToDelete.date}`;
-confirmMsg += `\nQty Returned: ${entryToDelete.net} kg`;
-confirmMsg += `\n\n\u21a9 This will DECREASE available stock by ${entryToDelete.net} kg on ${entryToDelete.date}.`;
+confirmMsg += `\nStore: ${_dpStoreLabel}\nDate: ${entryToDelete.date}\nQty Returned: ${entryToDelete.net} kg`;
+confirmMsg += `\n\n↩ This will DECREASE available stock by ${entryToDelete.net} kg on ${entryToDelete.date}.`;
 if (_dpSalesOnDate > 0) confirmMsg += ` ${_dpSalesOnDate} sale${_dpSalesOnDate !== 1 ? 's' : ''} exist on this date — those records may be affected.`;
 } else {
 confirmMsg = `Permanently delete this production record?`;
-confirmMsg += `\nStore: ${_dpStoreLabel}`;
-confirmMsg += `\nDate: ${entryToDelete.date}`;
-confirmMsg += `\nNet Qty: ${entryToDelete.net} kg`;
-if (entryToDelete.gross) confirmMsg += `\nGross / Tare: ${entryToDelete.gross} / ${((entryToDelete.gross||0) - (entryToDelete.net||0)).toFixed(2)} kg`;
-confirmMsg += `\n\n\u21a9 ${entryToDelete.net} kg will be removed from ${entryToDelete.date} inventory.`;
-if (_dpSalesOnDate > 0) confirmMsg += `\n\n\u26a0 ${_dpSalesOnDate} sale${_dpSalesOnDate !== 1 ? 's' : ''} on this date for ${_dpStoreLabel} will remain on record, but available stock will drop.`;
+confirmMsg += `\nStore: ${_dpStoreLabel}\nDate: ${entryToDelete.date}\nNet Qty: ${entryToDelete.net} kg`;
+if (entryToDelete.gross) confirmMsg += `\nGross / Tare: ${entryToDelete.gross} / ${((entryToDelete.gross || 0) - (entryToDelete.net || 0)).toFixed(2)} kg`;
+confirmMsg += `\n\n↩ ${entryToDelete.net} kg will be removed from ${entryToDelete.date} inventory.`;
+if (_dpSalesOnDate > 0) confirmMsg += `\n\n⚠ ${_dpSalesOnDate} sale${_dpSalesOnDate !== 1 ? 's' : ''} on this date for ${_dpStoreLabel} will remain on record, but available stock will drop.`;
 }
 confirmMsg += `\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: isReturn ? "Remove Return" : "Delete Production", confirmText: isReturn ? "Remove" : "Delete", danger: true })) {
+if (await showGlassConfirm(confirmMsg, { title: isReturn ? 'Remove Return' : 'Delete Production', confirmText: isReturn ? 'Remove' : 'Delete', danger: true })) {
 try {
-const deletedDate = entryToDelete.date;
-const deletedStore = entryToDelete.store;
-const deletedQuantity = entryToDelete.net || 0;
 const record = db.find(item => item.id === id);
-if (record) {
-record.deletedAt = getTimestamp();
-record.updatedAt = getTimestamp();
-ensureRecordIntegrity(record, true);
-}
+if (record) { record.deletedAt = getTimestamp(); record.updatedAt = getTimestamp(); ensureRecordIntegrity(record, true); }
 db = db.filter(item => item.id !== id);
 await unifiedDelete('mfg_pro_pkr', db, id, { strict: true }, record || null);
 notifyDataChange('production');
-syncFactoryProductionStats();
+// Fire-and-forget stats update — not critical path
+void syncFactoryProductionStats().catch(() => {});
 await refreshUI();
 calculateNetCash();
 calculateCashTracker();
+const deletedQuantity = entryToDelete.net || 0;
 if (isReturn) {
-showToast(` Return record removed. ${deletedQuantity} kg removed from ${deletedDate} stock.`, "success");
+showToast(` Return record removed. ${deletedQuantity} kg removed from ${entryToDelete.date} stock.`, 'success');
 } else {
-showToast(` Production deleted. ${deletedQuantity} kg removed from ${deletedDate} inventory. Sales on this date may be affected.`, "success");
+showToast(` Production deleted. ${deletedQuantity} kg removed from ${entryToDelete.date} inventory. Sales on this date may be affected.`, 'success');
 }
 } catch (error) {
-showToast(" Failed to delete entry. Please try again.", "error");
+showToast(' Failed to delete entry. Please try again.', 'error');
 }
 }
 }

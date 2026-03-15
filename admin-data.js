@@ -72,19 +72,19 @@ const stats = await DeltaSync.getSyncStats();
 const uuidStats = (typeof UUIDSyncRegistry !== 'undefined') ? UUIDSyncRegistry.stats() : {};
 const myDeviceShard = uuidStats._myDeviceShard ? uuidStats._myDeviceShard.toUpperCase() : '—';
 const collections = [
-{ name: 'production',         snap: productionSnap,            idbKey: 'mfg_pro_pkr',               jsVar: 'db',                       description: 'Factory production records' },
-{ name: 'sales',              snap: salesSnap,                  idbKey: 'customer_sales',             jsVar: 'customerSales',            description: 'Direct customer sales' },
-{ name: 'rep_sales',          snap: repSalesSnap,               idbKey: 'rep_sales',                  jsVar: 'repSales',                 description: 'Rep sales to customers' },
-{ name: 'rep_customers',      snap: repCustomersSnap,           idbKey: 'rep_customers',              jsVar: 'repCustomers',             description: 'Rep customer contact registry' },
-{ name: 'sales_customers',    snap: salesCustomersSnap,         idbKey: 'sales_customers',            jsVar: 'salesCustomers',           description: 'Sales tab customer contact registry' },
-{ name: 'calculator_history', snap: calcHistorySnap,            idbKey: 'noman_history',              jsVar: 'salesHistory',             description: 'Calculator / daily ledger entries' },
-{ name: 'transactions',       snap: transactionsSnap,           idbKey: 'payment_transactions',       jsVar: 'paymentTransactions',      description: 'Cash & entity payment transactions' },
-{ name: 'entities',           snap: entitiesSnap,               idbKey: 'payment_entities',           jsVar: 'paymentEntities',          description: 'Payment entity accounts' },
-{ name: 'inventory',          snap: inventorySnap,              idbKey: 'factory_inventory_data',     jsVar: 'factoryInventoryData',     description: 'Factory raw material inventory' },
-{ name: 'factory_history',    snap: factoryHistorySnap,         idbKey: 'factory_production_history', jsVar: 'factoryProductionHistory', description: 'Factory batch production history' },
-{ name: 'returns',            snap: returnsSnap,                idbKey: 'stock_returns',              jsVar: 'stockReturns',             description: 'Stock return records' },
-{ name: 'expenses',           snap: expensesSnap,               idbKey: 'expenses',                   jsVar: 'expenseRecords',           description: 'Expense entries' },
-{ name: 'deletions',          snap: deletionsSnap,              idbKey: 'deletion_records',           jsVar: 'deletedRecordIds',         description: 'Tombstone records for deleted IDs' }
+{ name: 'production',         snap: productionSnap,            sqliteKey: 'mfg_pro_pkr',               jsVar: 'db',                       description: 'Factory production records' },
+{ name: 'sales',              snap: salesSnap,                  sqliteKey: 'customer_sales',             jsVar: 'customerSales',            description: 'Direct customer sales' },
+{ name: 'rep_sales',          snap: repSalesSnap,               sqliteKey: 'rep_sales',                  jsVar: 'repSales',                 description: 'Rep sales to customers' },
+{ name: 'rep_customers',      snap: repCustomersSnap,           sqliteKey: 'rep_customers',              jsVar: 'repCustomers',             description: 'Rep customer contact registry' },
+{ name: 'sales_customers',    snap: salesCustomersSnap,         sqliteKey: 'sales_customers',            jsVar: 'salesCustomers',           description: 'Sales tab customer contact registry' },
+{ name: 'calculator_history', snap: calcHistorySnap,            sqliteKey: 'noman_history',              jsVar: 'salesHistory',             description: 'Calculator / daily ledger entries' },
+{ name: 'transactions',       snap: transactionsSnap,           sqliteKey: 'payment_transactions',       jsVar: 'paymentTransactions',      description: 'Cash & entity payment transactions' },
+{ name: 'entities',           snap: entitiesSnap,               sqliteKey: 'payment_entities',           jsVar: 'paymentEntities',          description: 'Payment entity accounts' },
+{ name: 'inventory',          snap: inventorySnap,              sqliteKey: 'factory_inventory_data',     jsVar: 'factoryInventoryData',     description: 'Factory raw material inventory' },
+{ name: 'factory_history',    snap: factoryHistorySnap,         sqliteKey: 'factory_production_history', jsVar: 'factoryProductionHistory', description: 'Factory batch production history' },
+{ name: 'returns',            snap: returnsSnap,                sqliteKey: 'stock_returns',              jsVar: 'stockReturns',             description: 'Stock return records' },
+{ name: 'expenses',           snap: expensesSnap,               sqliteKey: 'expenses',                   jsVar: 'expenseRecords',           description: 'Expense entries' },
+{ name: 'deletions',          snap: deletionsSnap,              sqliteKey: 'deletion_records',           jsVar: 'deletedRecordIds',         description: 'Tombstone records for deleted IDs' }
 ];
 const documents = [
 {
@@ -168,7 +168,7 @@ html += `
 <div style="font-weight: 600; font-size: 0.85rem; color: var(--text); font-family:'Geist Mono','Courier New',monospace;">${col.name}</div>
 <div style="font-size: 0.68rem; color: var(--text-muted); margin-top: 3px;">${col.description}</div>
 <div style="font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; font-family:'Geist Mono','Courier New',monospace;">
-IDB: <span style="color:var(--accent)">${col.idbKey}</span> → JS: <span style="color:var(--accent)">${col.jsVar}</span>
+SQLite: <span style="color:var(--accent)">${col.sqliteKey}</span> → JS: <span style="color:var(--accent)">${col.jsVar}</span>
 </div>
 </div>
 <div style="text-align: right; flex-shrink:0; margin-left:8px;">
@@ -1104,7 +1104,7 @@ async function createMergeBackup() {
     date: new Date().toISOString()
   };
   try {
-    await idb.set('close_year_backup_' + backup.timestamp, backup);
+    await sqliteStore.set('close_year_backup_' + backup.timestamp, backup);
     return backup.timestamp;
   } catch (e) {
     console.error('Failed to create merge backup:', _safeErr(e));
@@ -1113,7 +1113,7 @@ async function createMergeBackup() {
 }
 async function restoreFromBackup(backupTimestamp) {
   try {
-    const backup = await idb.get('close_year_backup_' + backupTimestamp);
+    const backup = await sqliteStore.get('close_year_backup_' + backupTimestamp);
     if (!backup) {
       throw new Error('Backup not found: ' + backupTimestamp);
     }
@@ -1125,14 +1125,14 @@ async function restoreFromBackup(backupTimestamp) {
     repSales = backup.repSales;
     expenseRecords = backup.expenseRecords;
     stockReturns = backup.stockReturns;
-    await idb.set('mfg_pro_pkr', db);
-    await idb.set('customer_sales', customerSales);
-    await idb.set('noman_history', salesHistory);
-    await idb.set('payment_transactions', paymentTransactions);
-    await idb.set('factory_production_history', factoryProductionHistory);
-    await idb.set('rep_sales', repSales);
-    await idb.set('expenses', expenseRecords);
-    await idb.set('stock_returns', stockReturns);
+    await sqliteStore.set('mfg_pro_pkr', db);
+    await sqliteStore.set('customer_sales', customerSales);
+    await sqliteStore.set('noman_history', salesHistory);
+    await sqliteStore.set('payment_transactions', paymentTransactions);
+    await sqliteStore.set('factory_production_history', factoryProductionHistory);
+    await sqliteStore.set('rep_sales', repSales);
+    await sqliteStore.set('expenses', expenseRecords);
+    await sqliteStore.set('stock_returns', stockReturns);
     if (firebaseDB && currentUser) {
       Promise.resolve().then(async () => {
         try {
@@ -1166,11 +1166,11 @@ async function restoreFromBackup(backupTimestamp) {
                 await new Promise(r => setTimeout(r, 0));
               }
             } catch (colErr) {
-              console.warn(`Firebase rollback warning for ${col.name}:`, colErr);
+              console.warn(`Firebase rollback warning for ${col.name}:`, _safeErr(colErr));
             }
           }
         } catch (fbErr) {
-          console.warn('Firebase rollback warning:', fbErr);
+          console.warn('Firebase rollback warning:', _safeErr(fbErr));
         }
       }).catch(() => {});
     }
@@ -1246,15 +1246,15 @@ try {
     await pushDataToCloud();
     showToast('☁️ Cloud backup uploaded', 'success', 2500);
   } catch (cloudErr) {
-    console.warn('Cloud backup warning (proceeding):', cloudErr);
+    console.warn('Cloud backup warning (proceeding):', _safeErr(cloudErr));
     showToast('Cloud backup skipped (offline?) — local backup will still be created', 'warning', 3500);
   }
   updateCloseYearProgress('Preparing encrypted local backup...', 10);
-  const _settingsSnapshot = await idb.get('naswar_default_settings', defaultSettings);
+  const _settingsSnapshot = await sqliteStore.get('naswar_default_settings', defaultSettings);
   const backupData = {
     mfg: db,
-    sales: await idb.get('noman_history', []),
-    customerSales: await idb.get('customer_sales', []),
+    sales: await sqliteStore.get('noman_history', []),
+    customerSales: await sqliteStore.get('customer_sales', []),
     repSales: repSales,
     repCustomers: repCustomers,
     salesCustomers: salesCustomers,
@@ -1397,7 +1397,7 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
     throw new Error(`Data consistency check failed: ${consistencyCheck.errors.join('; ')}`);
   }
 try {
-  const fyMeta = await idb.get('naswar_default_settings', {});
+  const fyMeta = await sqliteStore.get('naswar_default_settings', {});
   fyMeta.lastYearClosedAt   = Date.now();
   fyMeta.lastYearClosedDate = new Date().toISOString();
   fyMeta.fyCloseCount       = (fyMeta.fyCloseCount || 0) + 1;
@@ -1406,19 +1406,19 @@ try {
   if (hasSyncWarning) {
     fyMeta.pendingFirestoreYearClose = true;
     pendingFirestoreYearClose = true;
-    await idb.set('pendingFirestoreYearClose', true);
+    await sqliteStore.set('pendingFirestoreYearClose', true);
   } else {
     fyMeta.pendingFirestoreYearClose = false;
     pendingFirestoreYearClose = false;
-    await idb.set('pendingFirestoreYearClose', false);
+    await sqliteStore.set('pendingFirestoreYearClose', false);
   }
-  await idb.set('naswar_default_settings', fyMeta);
+  await sqliteStore.set('naswar_default_settings', fyMeta);
   if (firebaseDB && currentUser) {
     await firebaseDB.collection('users').doc(currentUser.uid)
       .collection('settings').doc('naswar_default_settings')
       .set({ lastYearClosedAt: fyMeta.lastYearClosedAt, lastYearClosedDate: fyMeta.lastYearClosedDate, fyCloseCount: fyMeta.fyCloseCount }, { merge: true });
   }
-} catch (metaErr) { console.warn('Could not save FY close metadata:', metaErr); }
+} catch (metaErr) { console.warn('Could not save FY close metadata:', _safeErr(metaErr)); }
 if (phaseBadge) {
   phaseBadge.textContent = 'DONE';
   phaseBadge.style.background = 'rgba(52,217,116,0.15)';
@@ -1685,7 +1685,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMerged = db.filter(item => item.isMerged === true);
 db = [...existingMerged, ...mergedRecords];
-await idb.set('mfg_pro_pkr', db);
+await sqliteStore.set('mfg_pro_pkr', db);
 emitSyncUpdate({ mfg_pro_pkr: db });
 updateCloseYearProgress('Production Data Merged', 20);
 }
@@ -1826,7 +1826,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMerged = customerSales.filter(i => i.isMerged === true);
 customerSales = [...existingMerged, ...mergedRecords];
-await idb.set('customer_sales', customerSales);
+await sqliteStore.set('customer_sales', customerSales);
 emitSyncUpdate({ customer_sales: customerSales });
 updateCloseYearProgress('Sales Data Merged', 40);
 }
@@ -1926,7 +1926,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMergedCalc = salesHistory.filter(item => item.isMerged === true);
 salesHistory = [...existingMergedCalc, ...mergedRecords];
-await idb.set('noman_history', salesHistory);
+await sqliteStore.set('noman_history', salesHistory);
 emitSyncUpdate({ noman_history: salesHistory });
 updateCloseYearProgress('Calculator Data Merged', 60);
 }
@@ -2001,7 +2001,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMergedPay = paymentTransactions.filter(item => item.isMerged === true);
 paymentTransactions = [...existingMergedPay, ...mergedRecords];
-await idb.set('payment_transactions', paymentTransactions);
+await sqliteStore.set('payment_transactions', paymentTransactions);
 emitSyncUpdate({ payment_transactions: paymentTransactions });
 updateCloseYearProgress('Payment Data Merged', 80);
 }
@@ -2070,7 +2070,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMergedFactory = factoryProductionHistory.filter(item => item.isMerged === true);
 factoryProductionHistory = [...existingMergedFactory, ...mergedRecords];
-await idb.set('factory_production_history', factoryProductionHistory);
+await sqliteStore.set('factory_production_history', factoryProductionHistory);
 emitSyncUpdate({ factory_production_history: factoryProductionHistory });
 updateCloseYearProgress('Factory Data Merged', 90);
 }
@@ -2213,7 +2213,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMergedRep = repSales.filter(item => item.isMerged === true);
 repSales = [...existingMergedRep, ...mergedRecords];
-await idb.set('rep_sales', repSales);
+await sqliteStore.set('rep_sales', repSales);
 emitSyncUpdate({ rep_sales: repSales });
 updateCloseYearProgress('Rep Sales Data Merged', 92);
 }
@@ -2279,7 +2279,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMerged = expenseRecords.filter(e => e.isMerged === true);
 expenseRecords = [...existingMerged, ...mergedRecords];
-await idb.set('expenses', expenseRecords);
+await sqliteStore.set('expenses', expenseRecords);
 emitSyncUpdate({ expenses: expenseRecords });
 updateCloseYearProgress('Expenses Merged', 97);
 }
@@ -2353,7 +2353,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMerged = stockReturns.filter(r => r.isMerged === true);
 stockReturns = [...existingMerged, ...mergedRecords];
-await idb.set('stock_returns', stockReturns);
+await sqliteStore.set('stock_returns', stockReturns);
 emitSyncUpdate({ stock_returns: stockReturns });
 updateCloseYearProgress('Stock Returns Merged', 100);
 }
@@ -2439,7 +2439,7 @@ const collections = [
 { name: 'expenses', label: 'Expenses', variable: 'expenseRecords' }
 ];
 for (const collection of collections) {
-const data = await idb.get(collection.name, []);
+const data = await sqliteStore.get(collection.name, []);
 let collectionChanged = false;
 report.collections[collection.name] = { label: collection.label, count: data.length, withTimestamps: 0, withoutTimestamps: 0 };
 report.summary.totalRecords += data.length;
@@ -2454,7 +2454,7 @@ report.collections[collection.name].withoutTimestamps++;
 }
 });
 if (collectionChanged) {
-await idb.set(collection.name, data);
+await sqliteStore.set(collection.name, data);
 if (collection.variable === 'db') db = data;
 else if (collection.variable === 'customerSales') customerSales = data;
 else if (collection.variable === 'repSales') repSales = data;
@@ -2473,10 +2473,10 @@ const settingsKeys = [
 'factory_unit_tracking', 'naswar_default_settings'
 ];
 for (const key of settingsKeys) {
-const timestamp = await idb.get(`${key}_timestamp`);
+const timestamp = await sqliteStore.get(`${key}_timestamp`);
 if (!timestamp) {
 const now = Date.now();
-await idb.set(`${key}_timestamp`, now);
+await sqliteStore.set(`${key}_timestamp`, now);
 report.issues.push({ type: 'MISSING_SETTING_TIMESTAMP', setting: key, message: 'Timestamp created' });
 report.fixed.settingTimestamps++;
 }
@@ -2576,7 +2576,7 @@ const collections = [
 { key: 'expenses', label: 'Expenses', variable: 'expenseRecords' }
 ];
 for (const collection of collections) {
-const data = await idb.get(collection.key, []);
+const data = await sqliteStore.get(collection.key, []);
 const before = data.length;
 results.totalRecordsBefore += before;
 const { cleaned, duplicates } = deduplicateArray(data);
@@ -2590,7 +2590,7 @@ duplicates: duplicates
 };
 results.totalDuplicates += duplicates;
 if (duplicates > 0) {
-await idb.set(collection.key, cleaned);
+await sqliteStore.set(collection.key, cleaned);
 if (collection.variable === 'db') db = cleaned;
 else if (collection.variable === 'customerSales') customerSales = cleaned;
 else if (collection.variable === 'repSales') repSales = cleaned;
@@ -2622,7 +2622,7 @@ window.deduplicateAllData = deduplicateAllData;
 async function verifyCompleteTimestampConsistency() {
 const report = {
 tabs: {},
-indexedDB: {},
+sqlite: {},
 deltaSync: {},
 compatibility: {},
 issues: [],
@@ -2635,12 +2635,12 @@ firestoreCompatible: true
 }
 };
 const tabs = [
-{ name: 'Production', idbKey: 'mfg_pro_pkr', variable: 'db', tab: 'prod' },
-{ name: 'Sales', idbKey: 'customer_sales', variable: 'customerSales', tab: 'sales' },
-{ name: 'Calculator', idbKey: 'noman_history', variable: null, tab: 'calc' },
-{ name: 'Factory', idbKeys: ['factory_inventory_data', 'factory_production_history'], tab: 'factory' },
-{ name: 'Payments', idbKeys: ['payment_transactions', 'payment_entities'], tab: 'payments' },
-{ name: 'Rep Sales', idbKey: 'rep_sales', variable: 'repSales', tab: 'rep' }
+{ name: 'Production', sqliteKey: 'mfg_pro_pkr', variable: 'db', tab: 'prod' },
+{ name: 'Sales', sqliteKey: 'customer_sales', variable: 'customerSales', tab: 'sales' },
+{ name: 'Calculator', sqliteKey: 'noman_history', variable: null, tab: 'calc' },
+{ name: 'Factory', sqliteKeys: ['factory_inventory_data', 'factory_production_history'], tab: 'factory' },
+{ name: 'Payments', sqliteKeys: ['payment_transactions', 'payment_entities'], tab: 'payments' },
+{ name: 'Rep Sales', sqliteKey: 'rep_sales', variable: 'repSales', tab: 'rep' }
 ];
 for (const tab of tabs) {
 const tabReport = {
@@ -2650,9 +2650,9 @@ totalRecords: 0,
 validTimestamps: 0,
 issues: 0
 };
-const keys = tab.idbKeys || [tab.idbKey];
+const keys = tab.sqliteKeys || [tab.sqliteKey];
 for (const key of keys) {
-const data = await idb.get(key, []);
+const data = await sqliteStore.get(key, []);
 tabReport.totalRecords += data.length;
 let valid = 0;
 let invalid = 0;
@@ -2690,15 +2690,15 @@ report.summary.totalRecords += tabReport.totalRecords;
 report.summary.recordsWithValidTimestamps += tabReport.validTimestamps;
 report.summary.recordsWithIssues += tabReport.issues;
 }
-const idbCollections = [
+const sqliteCollections = [
 'mfg_pro_pkr', 'noman_history', 'customer_sales', 'rep_sales', 'rep_customers',
 'factory_inventory_data', 'factory_production_history', 'stock_returns',
 'payment_transactions', 'payment_entities', 'expenses'
 ];
-for (const collectionName of idbCollections) {
-const data = await idb.get(collectionName, []);
+for (const collectionName of sqliteCollections) {
+const data = await sqliteStore.get(collectionName, []);
 if (data.length === 0) {
-report.indexedDB[collectionName] = { status: 'empty', count: 0 };
+report.sqlite[collectionName] = { status: 'empty', count: 0 };
 continue;
 }
 const formats = {
@@ -2728,7 +2728,7 @@ formats.dict++;
 formats.invalid++;
 }
 }
-report.indexedDB[collectionName] = {
+report.sqlite[collectionName] = {
 status: 'ok',
 count: data.length,
 formats: formats
@@ -2736,20 +2736,20 @@ formats: formats
 const validCount = formats.number + formats.string + formats.date + formats.firestore + formats.dict;
 }
 const deltaSyncCollections = [
-{ name: 'production', idbKey: 'mfg_pro_pkr' },
-{ name: 'sales', idbKey: 'customer_sales' },
-{ name: 'calculator_history', idbKey: 'noman_history' },
-{ name: 'rep_sales', idbKey: 'rep_sales' },
-{ name: 'rep_customers', idbKey: 'rep_customers' },
-{ name: 'transactions', idbKey: 'payment_transactions' },
-{ name: 'entities', idbKey: 'payment_entities' },
-{ name: 'inventory', idbKey: 'factory_inventory_data' },
-{ name: 'factory_history', idbKey: 'factory_production_history' },
-{ name: 'returns', idbKey: 'stock_returns' },
-{ name: 'expenses', idbKey: 'expenses' }
+{ name: 'production', sqliteKey: 'mfg_pro_pkr' },
+{ name: 'sales', sqliteKey: 'customer_sales' },
+{ name: 'calculator_history', sqliteKey: 'noman_history' },
+{ name: 'rep_sales', sqliteKey: 'rep_sales' },
+{ name: 'rep_customers', sqliteKey: 'rep_customers' },
+{ name: 'transactions', sqliteKey: 'payment_transactions' },
+{ name: 'entities', sqliteKey: 'payment_entities' },
+{ name: 'inventory', sqliteKey: 'factory_inventory_data' },
+{ name: 'factory_history', sqliteKey: 'factory_production_history' },
+{ name: 'returns', sqliteKey: 'stock_returns' },
+{ name: 'expenses', sqliteKey: 'expenses' }
 ];
 for (const collection of deltaSyncCollections) {
-const data = await idb.get(collection.idbKey, []);
+const data = await sqliteStore.get(collection.sqliteKey, []);
 if (data.length === 0) {
 report.deltaSync[collection.name] = { status: 'empty', compatible: true };
 continue;
@@ -2780,8 +2780,8 @@ report.summary.deltaSyncCompatible = false;
 }
 const statusIcon = compatible ? '' : '';
 }
-for (const collectionName of idbCollections) {
-const data = await idb.get(collectionName, []);
+for (const collectionName of sqliteCollections) {
+const data = await sqliteStore.get(collectionName, []);
 if (data.length === 0) {
 report.compatibility[collectionName] = { firestore: 'empty' };
 continue;
@@ -2868,25 +2868,25 @@ return 0;
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
 async function runUnifiedCleanup() {
 if (!(await showGlassConfirm(
-  'Clean all duplicate records?\n\n\u2022 Scans every collection in IndexedDB\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
+  'Clean all duplicate records?\n\n\u2022 Scans every collection in SQLite\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }
 ))) return;
 
 showToast('Scanning for duplicates\u2026', 'info', 4000);
 
 const COLLECTIONS = [
-  { idb: 'mfg_pro_pkr',                firestore: 'production',         label: 'Production',           liveVar: 'db'                       },
-  { idb: 'noman_history',              firestore: 'calculator_history',  label: 'Calculator History',   liveVar: 'salesHistory'             },
-  { idb: 'customer_sales',             firestore: 'sales',               label: 'Customer Sales',       liveVar: 'customerSales'            },
-  { idb: 'rep_sales',                  firestore: 'rep_sales',           label: 'Rep Sales',            liveVar: 'repSales'                 },
-  { idb: 'rep_customers',              firestore: 'rep_customers',       label: 'Rep Customers',        liveVar: 'repCustomers'             },
-  { idb: 'sales_customers',            firestore: 'sales_customers',     label: 'Sales Customers',      liveVar: 'salesCustomers'           },
-  { idb: 'factory_inventory_data',     firestore: 'inventory',           label: 'Factory Inventory',    liveVar: 'factoryInventoryData'     },
-  { idb: 'factory_production_history', firestore: 'factory_history',     label: 'Factory History',      liveVar: 'factoryProductionHistory' },
-  { idb: 'stock_returns',              firestore: 'returns',             label: 'Stock Returns',        liveVar: 'stockReturns'             },
-  { idb: 'payment_transactions',       firestore: 'transactions',        label: 'Payment Transactions', liveVar: 'paymentTransactions'      },
-  { idb: 'payment_entities',           firestore: 'entities',            label: 'Payment Entities',     liveVar: 'paymentEntities'          },
-  { idb: 'expenses',                   firestore: 'expenses',            label: 'Expenses',             liveVar: 'expenseRecords'           },
+  { sqliteKey: 'mfg_pro_pkr',                firestore: 'production',         label: 'Production',           liveVar: 'db'                       },
+  { sqliteKey: 'noman_history',              firestore: 'calculator_history',  label: 'Calculator History',   liveVar: 'salesHistory'             },
+  { sqliteKey: 'customer_sales',             firestore: 'sales',               label: 'Customer Sales',       liveVar: 'customerSales'            },
+  { sqliteKey: 'rep_sales',                  firestore: 'rep_sales',           label: 'Rep Sales',            liveVar: 'repSales'                 },
+  { sqliteKey: 'rep_customers',              firestore: 'rep_customers',       label: 'Rep Customers',        liveVar: 'repCustomers'             },
+  { sqliteKey: 'sales_customers',            firestore: 'sales_customers',     label: 'Sales Customers',      liveVar: 'salesCustomers'           },
+  { sqliteKey: 'factory_inventory_data',     firestore: 'inventory',           label: 'Factory Inventory',    liveVar: 'factoryInventoryData'     },
+  { sqliteKey: 'factory_production_history', firestore: 'factory_history',     label: 'Factory History',      liveVar: 'factoryProductionHistory' },
+  { sqliteKey: 'stock_returns',              firestore: 'returns',             label: 'Stock Returns',        liveVar: 'stockReturns'             },
+  { sqliteKey: 'payment_transactions',       firestore: 'transactions',        label: 'Payment Transactions', liveVar: 'paymentTransactions'      },
+  { sqliteKey: 'payment_entities',           firestore: 'entities',            label: 'Payment Entities',     liveVar: 'paymentEntities'          },
+  { sqliteKey: 'expenses',                   firestore: 'expenses',            label: 'Expenses',             liveVar: 'expenseRecords'           },
 ];
 
 const _setLive = (liveVar, cleaned) => {
@@ -2909,7 +2909,7 @@ try {
   const dirtyCollections = [];
 
   for (const col of COLLECTIONS) {
-    const records = await idb.get(col.idb, []);
+    const records = await sqliteStore.get(col.sqliteKey, []);
     if (!Array.isArray(records) || records.length === 0) continue;
 
     const seen = new Map();
@@ -2933,7 +2933,7 @@ try {
 
     if (dupsInCol > 0) {
       const cleaned = Array.from(seen.values());
-      await idb.set(col.idb, cleaned);
+      await sqliteStore.set(col.sqliteKey, cleaned);
       _setLive(col.liveVar, cleaned);
       dirtyCollections.push({ ...col, cleaned, dupCount: dupsInCol });
       totalDuplicates += dupsInCol;
@@ -2997,7 +2997,7 @@ try {
     }
 
     showToast(
-      `\u2714 Removed ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''} from IndexedDB and Firestore. Canonical records re-uploaded.`,
+      `\u2714 Removed ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''} from SQLite and Firestore. Canonical records re-uploaded.`,
       'success', 6000
     );
   } else {
