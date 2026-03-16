@@ -72,7 +72,6 @@ const queuedRecord = sanitizeForFirestore({
 syncedAt: new Date().toISOString()
 });
 if (!queuedRecord.createdAt) queuedRecord.createdAt = now;
-// Store as ISO string so Firestore timestamp comparison works on restore
 if (!record.isMerged) queuedRecord.updatedAt = new Date(now).toISOString();
 await OfflineQueue.add({
 action: 'set',
@@ -179,9 +178,7 @@ return false;
 /** Saves to SQLite immediately and pushes to Firestore in the background. */
 async function unifiedSave(sqliteKey, dataArray, specificRecord = null) {
 if (specificRecord && specificRecord.id) {
-  // 1. Write to SQLite immediately — this is the source of truth.
   await saveWithTracking(sqliteKey, dataArray, specificRecord);
-  // 2. Push to Firestore in background — never block the UI on network latency.
   const collectionName = getFirestoreCollection(sqliteKey);
   (async () => {
     try {
@@ -287,7 +284,7 @@ window.getFirestoreCollection = getFirestoreCollection;
 window.getSQLiteKey = getSQLiteKey;
 window.saveRecordToFirestore = saveRecordToFirestore;
 window.deleteRecordFromFirestore = deleteRecordFromFirestore;
-function initializeFirebaseSystem() {
+async function initializeFirebaseSystem() {
 const indicator = document.getElementById('connection-indicator');
 if (typeof firebase === 'undefined') {
 if (indicator) {
@@ -301,20 +298,12 @@ try {
 if (!firebase.apps.length) {
 firebase.initializeApp(firebaseConfig);
 }
-// Silence both the app-level and Firestore-specific internal loggers.
 if (typeof firebase.setLogLevel === 'function') firebase.setLogLevel('silent');
 if (firebase.firestore && typeof firebase.firestore.setLogLevel === 'function') {
 firebase.firestore.setLogLevel('silent');
 }
-// Re-apply console patch — Firebase wires its log handlers at init time,
-// potentially capturing the pre-patch console references.
 if (typeof window._reapplyConsolePatch === 'function') window._reapplyConsolePatch();
-// Configure Firestore BEFORE first use — settings must be applied early.
-// experimentalForceLongPolling swaps XHR (which throws DOMException on network
-// failure) for long-polling, eliminating the flood of DOMException {} in the console.
 try {
-// Use autoDetectLongPolling so Firestore gracefully handles CORS/network restrictions
-// that would otherwise throw DOMException from XHR transport.
 firebase.firestore().settings({
 experimentalAutoDetectLongPolling: true,
 experimentalForceLongPolling: false,
@@ -323,8 +312,6 @@ merge: true
 } catch (_fsPre) { /* already configured — safe to ignore */ }
 database = firebase.firestore();
 firebaseDB = database;
-// Disable Firestore network immediately at startup — only enable when user is logged in.
-// This prevents the flood of DOMException from failed connection attempts on startup.
 try { database.disableNetwork().catch(() => {}); } catch(_dnErr) {}
 window._firestoreNetworkDisabled = true;
 auth = firebase.auth();
@@ -407,13 +394,10 @@ showAuthOverlay();
 return;
 }
 }
-// Re-enable Firestore network now that the user is authenticated.
-// We disabled it at startup to prevent DOMException from unauthenticated connection attempts.
 if (typeof firebaseDB !== 'undefined' && firebaseDB && window._firestoreNetworkDisabled) {
   try {
     await firebaseDB.enableNetwork();
     window._firestoreNetworkDisabled = false;
-    // Drain any records queued while network was disabled at startup.
     if (typeof OfflineQueue !== 'undefined' && navigator.onLine) {
       OfflineQueue.processQueue().catch(() => {});
     }
@@ -1008,204 +992,164 @@ const SYNC_COLLECTIONS = [
   {
     firestoreId:  'production',
     sqliteKey:       'mfg_pro_pkr',
-    varName:      'db',
     tabSyncFn:    'syncProductionTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'sales',
     sqliteKey:       'customer_sales',
-    varName:      'customerSales',
     tabSyncFn:    'syncSalesTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'rep_sales',
     sqliteKey:       'rep_sales',
-    varName:      'repSales',
     tabSyncFn:    'syncRepTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'rep_customers',
     sqliteKey:       'rep_customers',
-    varName:      'repCustomers',
     tabSyncFn:    'syncRepTab',
     lockOnClose:  false,
   },
   {
     firestoreId:  'sales_customers',
     sqliteKey:       'sales_customers',
-    varName:      'salesCustomers',
     tabSyncFn:    null,
     lockOnClose:  false,
   },
   {
     firestoreId:  'transactions',
     sqliteKey:       'payment_transactions',
-    varName:      'paymentTransactions',
     tabSyncFn:    'syncPaymentsTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'entities',
     sqliteKey:       'payment_entities',
-    varName:      'paymentEntities',
     tabSyncFn:    'refreshPaymentTab',
     lockOnClose:  false,
   },
   {
     firestoreId:  'inventory',
     sqliteKey:       'factory_inventory_data',
-    varName:      'factoryInventoryData',
     tabSyncFn:    'syncFactoryTab',
     lockOnClose:  false,
   },
   {
     firestoreId:  'factory_history',
     sqliteKey:       'factory_production_history',
-    varName:      'factoryProductionHistory',
     tabSyncFn:    'syncFactoryTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'returns',
     sqliteKey:       'stock_returns',
-    varName:      'stockReturns',
     tabSyncFn:    'syncProductionTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'expenses',
     sqliteKey:       'expenses',
-    varName:      'expenseRecords',
     tabSyncFn:    'refreshPaymentTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'calculator_history',
     sqliteKey:       'noman_history',
-    varName:      'salesHistory',
     tabSyncFn:    'syncCalculatorTab',
     lockOnClose:  true,
   },
 ];
 
-function _getVar(varName) {
-  switch (varName) {
-    case 'db':                      return db;
-    case 'customerSales':           return customerSales;
-    case 'repSales':                return repSales;
-    case 'repCustomers':            return repCustomers;
-    case 'salesCustomers':          return salesCustomers;
-    case 'paymentTransactions':     return paymentTransactions;
-    case 'paymentEntities':         return paymentEntities;
-    case 'factoryInventoryData':    return factoryInventoryData;
-    case 'factoryProductionHistory':return factoryProductionHistory;
-    case 'stockReturns':            return stockReturns;
-    case 'expenseRecords':          return expenseRecords;
-    case 'salesHistory':            return salesHistory;
-    default:                        return [];
-  }
+async function _getColData(sqliteKey) {
+return ensureArray(await sqliteStore.get(sqliteKey));
 }
-function _setVar(varName, value) {
-  switch (varName) {
-    case 'db':                      db                      = value; break;
-    case 'customerSales':           customerSales           = value; break;
-    case 'repSales':                repSales                = value; break;
-    case 'repCustomers':            repCustomers            = value; break;
-    case 'salesCustomers':          salesCustomers          = value; break;
-    case 'paymentTransactions':     paymentTransactions     = value; break;
-    case 'paymentEntities':         paymentEntities         = value; break;
-    case 'factoryInventoryData':    factoryInventoryData    = value; break;
-    case 'factoryProductionHistory':factoryProductionHistory= value; break;
-    case 'stockReturns':            stockReturns            = value; break;
-    case 'expenseRecords':          expenseRecords          = value; break;
-    case 'salesHistory':            salesHistory            = value; break;
-  }
+async function _setColData(sqliteKey, value) {
+await sqliteStore.set(sqliteKey, value);
 }
 
 function _makeSnapshotHandler(col) {
-  return async function handleSnapshot(snapshot) {
-    try {
-      if (snapshot.metadata.hasPendingWrites) return;
-      if (snapshot.metadata.fromCache) return;
-      if (col.lockOnClose && closeYearInProgress) return;
-
-      const changes = snapshot.docChanges();
-      trackFirestoreRead(changes.length);
-      if (changes.length === 0) return;
-
-      let arr = _getVar(col.varName);
-      let hasChanges = false;
-
-      for (const change of changes) {
-        try {
-          const docData = { id: change.doc.id, ...change.doc.data() };
-          if (change.type === 'added' || change.type === 'modified') {
-            deletedRecordIds.delete(change.doc.id);
-            if (typeof UUIDSyncRegistry !== 'undefined') {
-              UUIDSyncRegistry.markDownloaded(col.firestoreId, change.doc.id);
-            } else {
-              DeltaSync.markDownloaded(col.firestoreId, change.doc.id);
-            }
-            arr = _updateArray(arr, docData, col.firestoreId);
-            hasChanges = true;
-          } else if (change.type === 'removed') {
-            deletedRecordIds.add(change.doc.id);
-            if (typeof UUIDSyncRegistry !== 'undefined') {
-              UUIDSyncRegistry.markDownloaded(col.firestoreId, change.doc.id);
-            } else {
-              DeltaSync.markDownloaded(col.firestoreId, change.doc.id);
-            }
-            _ensureLocalTombstone(change.doc.id, col.firestoreId);
-            arr = arr.filter(item => item.id !== change.doc.id);
-            hasChanges = true;
-          }
-        } catch (docErr) {
-          console.warn(`[Snapshot:${col.firestoreId}] doc error`, _safeErr(docErr));
-        }
-      }
-
-      if (hasChanges) {
-        _setVar(col.varName, arr);
-        await sqliteStore.set(col.sqliteKey, arr);
-        await DeltaSync.setLastSyncTimestamp(col.firestoreId);
-        emitSyncUpdate({ [col.sqliteKey]: arr });
-        if (col.tabSyncFn && typeof window[col.tabSyncFn] === 'function') {
-          window[col.tabSyncFn]();
-        }
-        flashLivePulse();
-      }
-      recordSuccessfulConnection();
-    } catch (err) {
-      console.error(`[Snapshot:${col.firestoreId}] error`, _safeErr(err));
-      showToast('Failed to save data locally.', 'error');
-    }
-  };
+return async function handleSnapshot(snapshot) {
+try {
+if (snapshot.metadata.hasPendingWrites) return;
+if (snapshot.metadata.fromCache) return;
+if (col.lockOnClose && closeYearInProgress) return;
+const changes = snapshot.docChanges();
+trackFirestoreRead(changes.length);
+if (changes.length === 0) return;
+let arr = await _getColData(col.sqliteKey);
+let hasChanges = false;
+for (const change of changes) {
+try {
+const docData = { id: change.doc.id, ...change.doc.data() };
+if (change.type === 'added' || change.type === 'modified') {
+const deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+const deletedSet = new Set(deletedArr);
+deletedSet.delete(change.doc.id);
+await sqliteStore.set('deleted_records', Array.from(deletedSet));
+if (typeof UUIDSyncRegistry !== 'undefined') {
+UUIDSyncRegistry.markDownloaded(col.firestoreId, change.doc.id);
+} else {
+DeltaSync.markDownloaded(col.firestoreId, change.doc.id);
+}
+arr = _updateArray(arr, docData, col.firestoreId);
+hasChanges = true;
+} else if (change.type === 'removed') {
+const deletedArr2 = ensureArray(await sqliteStore.get('deleted_records'));
+const deletedSet2 = new Set(deletedArr2);
+deletedSet2.add(change.doc.id);
+await sqliteStore.set('deleted_records', Array.from(deletedSet2));
+if (typeof UUIDSyncRegistry !== 'undefined') {
+UUIDSyncRegistry.markDownloaded(col.firestoreId, change.doc.id);
+} else {
+DeltaSync.markDownloaded(col.firestoreId, change.doc.id);
+}
+_ensureLocalTombstone(change.doc.id, col.firestoreId);
+arr = arr.filter(item => item.id !== change.doc.id);
+hasChanges = true;
+}
+} catch (docErr) {
+console.warn(`[Snapshot:${col.firestoreId}] doc error`, _safeErr(docErr));
+}
+}
+if (hasChanges) {
+await _setColData(col.sqliteKey, arr);
+await DeltaSync.setLastSyncTimestamp(col.firestoreId);
+emitSyncUpdate({ [col.sqliteKey]: null});
+if (col.tabSyncFn === 'syncFactoryTab' && typeof renderFactoryInventory === 'function') {
+renderFactoryInventory();
+} else if ((col.tabSyncFn === 'syncPaymentsTab' || col.tabSyncFn === 'refreshPaymentTab') && typeof renderUnifiedTable === 'function') {
+renderUnifiedTable();
+} else if (col.tabSyncFn && typeof window[col.tabSyncFn] === 'function') {
+window[col.tabSyncFn]();
+}
+flashLivePulse();
+}
+recordSuccessfulConnection();
+} catch (err) {
+console.error(`[Snapshot:${col.firestoreId}] error`, _safeErr(err));
+showToast('Failed to save data locally.', 'error');
+}
+};
 }
 
 function _ensureLocalTombstone(recordId, collectionName) {
-  try {
-    const sid = String(recordId);
-    deletedRecordIds.add(sid);
-    if (!Array.isArray(deletionRecords)) return;
-    const exists = deletionRecords.some(
-      r => String(r.id) === sid || String(r.recordId) === sid
-    );
-    if (!exists) {
-      deletionRecords.push({
-        id: sid,
-        recordId: sid,
-        collection: collectionName,
-        recordType: collectionName,
-        deletedAt: Date.now(),
-        syncedToCloud: true,
-      });
-      sqliteStore.set('deletion_records', deletionRecords).catch(() => {});
-      sqliteStore.set('deleted_records', Array.from(deletedRecordIds)).catch(() => {});
-    }
-  } catch (e) {  }
+const sid = String(recordId);
+sqliteStore.get('deletion_records').then(existing => {
+const arr = ensureArray(existing);
+const already = arr.some(r => String(r.id) === sid || String(r.recordId) === sid);
+if (!already) {
+arr.push({ id: sid, recordId: sid, collection: collectionName, recordType: collectionName, deletedAt: Date.now(), syncedToCloud: true });
+sqliteStore.set('deletion_records', arr).catch(() => {});
+}
+}).catch(() => {});
+sqliteStore.get('deleted_records').then(existing => {
+const set = new Set(ensureArray(existing));
+set.add(sid);
+sqliteStore.set('deleted_records', Array.from(set)).catch(() => {});
+}).catch(() => {});
 }
 
 function _updateArray(array, docData, collectionName) {
@@ -1216,8 +1160,6 @@ function _updateArray(array, docData, collectionName) {
   docData = ensureRecordIntegrity(docData, false, true);
   const sid = String(docData.id);
 
-  // Always do a timestamp-based comparison — never skip on wasDownloaded alone,
-  // because a record can be updated after it was first downloaded.
   const existingIdx_pre = array.findIndex(item => item && item.id === docData.id);
   if (existingIdx_pre !== -1) {
     const localRecord = array[existingIdx_pre];
@@ -1226,7 +1168,6 @@ function _updateArray(array, docData, collectionName) {
         if (!UUIDSyncRegistry.shouldApplyCloud(docData, localRecord)) return array;
       }
     }
-    // Already exists locally — only apply cloud version if it is strictly newer
     const _getMs_pre = (rec) => {
       if (!rec) return 0;
       const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
@@ -1242,7 +1183,7 @@ function _updateArray(array, docData, collectionName) {
     };
     const cloudMs = _getMs_pre(docData);
     const localMs = _getMs_pre(localRecord);
-    if (cloudMs > 0 && cloudMs <= localMs) return array; // local is same age or newer — skip
+    if (cloudMs > 0 && cloudMs <= localMs) return array;
   }
 
   const _getMs = (rec) => {
@@ -1290,7 +1231,7 @@ let socketDebounceTimer = null;
 let dbWakeUpAttempted = false;
 let heartbeatInterval = null;
 let autoSaveTimer = null;
-let broadcastQueue = [];
+
 let listenerRetryAttempts = 0;
 const MAX_RETRY_ATTEMPTS = 5;
 const BASE_RETRY_DELAY = 5000;
@@ -1335,68 +1276,6 @@ function updateSignalUI(status) {
   }
 }
 
-let syncChannel = null;
-try {
-  syncChannel = new BroadcastChannel('data-sync-channel');
-  syncChannel.onmessage = async (event) => {
-    const { type, collections, timestamp, senderId } = event.data;
-    if (senderId && senderId === window._selfSenderId) return;
-    if (type === 'data-update' && collections) {
-      for (const collectionName of collections) {
-        try {
-          const data = await sqliteStore.get(collectionName);
-          switch (collectionName) {
-            case 'mfg_pro_pkr':                db                      = data || []; break;
-            case 'customer_sales':             customerSales           = data || []; break;
-            case 'rep_sales':                  repSales                = data || []; break;
-            case 'rep_customers':              repCustomers            = data || []; break;
-            case 'sales_customers':            salesCustomers          = data || []; break;
-            case 'noman_history':              salesHistory            = data || []; break;
-            case 'factory_inventory_data':     factoryInventoryData    = data || []; break;
-            case 'factory_production_history': factoryProductionHistory= data || []; break;
-            case 'payment_entities':           paymentEntities         = data || []; break;
-            case 'payment_transactions':       paymentTransactions     = data || []; break;
-            case 'expenses':                   expenseRecords          = data || []; break;
-            case 'stock_returns':              stockReturns            = data || []; break;
-            case 'settings': {
-              const settingsData = await sqliteStore.get('naswar_default_settings');
-              if (settingsData !== undefined && settingsData !== null) defaultSettings = settingsData;
-              break;
-            }
-            case 'factorySettings': {
-              const fs = await sqliteStore.get('factory_default_formulas');
-              if (fs !== undefined && fs !== null) factoryDefaultFormulas = fs;
-              const ac = await sqliteStore.get('factory_additional_costs');
-              if (ac !== undefined && ac !== null) factoryAdditionalCosts = ac;
-              const caf = await sqliteStore.get('factory_cost_adjustment_factor');
-              if (caf !== undefined && caf !== null) factoryCostAdjustmentFactor = caf;
-              const sp = await sqliteStore.get('factory_sale_prices');
-              if (sp !== undefined && sp !== null) factorySalePrices = sp;
-              const ut = await sqliteStore.get('factory_unit_tracking');
-              if (ut !== undefined && ut !== null) factoryUnitTracking = ut;
-              break;
-            }
-            case 'expenseCategories': {
-              const cats = await sqliteStore.get('expense_categories');
-              if (Array.isArray(cats)) expenseCategories = cats;
-              break;
-            }
-          }
-        } catch (error) {
-          console.error('Failed to save data locally.', _safeErr(error));
-          showToast('Failed to save data locally.', 'error');
-        }
-      }
-      if (typeof invalidateAllCaches === 'function') await invalidateAllCaches();
-      if (typeof refreshAllDisplays === 'function') await refreshAllDisplays();
-      flashLivePulse();
-      showToast('Data synced from another device', 'success');
-    }
-  };
-} catch (e) {
-  console.warn('BroadcastChannel not supported or failed to initialize:', _safeErr(e));
-}
-
 function flashLivePulse() {
   const dot = document.getElementById('connection-indicator');
   if (!dot) return;
@@ -1406,43 +1285,23 @@ function flashLivePulse() {
 }
 
 async function emitSyncUpdate(payload) {
-  if (!firebaseDB || !currentUser) return;
-  flashLivePulse();
-  if (payload && typeof payload === 'object') {
-    const changedKeys = Object.keys(payload);
-    // ── Same-device tab broadcast ───────────────────────────────────────────
-    if (syncChannel) {
-      try {
-        if (!window._selfSenderId) {
-          window._selfSenderId = (typeof generateUUID === 'function')
-            ? generateUUID('tab')
-            : Date.now().toString(36) + Math.random().toString(36).slice(2);
-        }
-        syncChannel.postMessage({
-          type: 'data-update',
-          collections: changedKeys,
-          timestamp: Date.now(),
-          senderId: window._selfSenderId,
-        });
-      } catch (e) { console.warn('BroadcastChannel postMessage failed', _safeErr(e)); }
-    }
-    // ── Cross-device ping via Firestore user doc ────────────────────────────
-    // Write a lightweight 'lastWrite' field so other devices' userDoc onSnapshot
-    // fires and they call pullDataFromCloud to get the fresh records.
-    try {
-      const _now = Date.now();
-      // Throttle: at most one ping per 2 seconds per device
-      if (!window._lastEmitPingAt || (_now - window._lastEmitPingAt) > 2000) {
-        window._lastEmitPingAt = _now;
-        firebaseDB.collection('users').doc(currentUser.uid).set({
-          lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: changedKeys }
-        }, { merge: true }).catch(() => {});
-      }
-    } catch (_pe) {}
-  }
+if (!firebaseDB || !currentUser) return;
+flashLivePulse();
+if (payload && typeof payload === 'object') {
+const changedKeys = Object.keys(payload);
+try {
+const _now = Date.now();
+if (!window._lastEmitPingAt || (_now - window._lastEmitPingAt) > 2000) {
+window._lastEmitPingAt = _now;
+firebaseDB.collection('users').doc(currentUser.uid).set({
+lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: changedKeys }
+}, { merge: true }).catch(() => {});
+}
+} catch (_pe) {}
+}
 }
 
-function startSyncUpdatesCleanup() {
+async function startSyncUpdatesCleanup() {
   if (!firebaseDB || !currentUser) return;
   const runCleanup = async () => {
     if (!firebaseDB || !currentUser) return;
@@ -1493,11 +1352,7 @@ function isConnectionStale() {
 
 async function subscribeToRealtime() {
   if (!firebaseDB || !currentUser) return;
-  // Do not attempt to set up listeners while Firestore network is disabled —
-  // this prevents DOMException from unauthenticated or pre-auth connection attempts.
   if (window._firestoreNetworkDisabled) return;
-  // Guard the SQLite read — OPFS can throw DOMException (quota/security)
-  // which would escape as an unhandled rejection if not caught here.
   try {
     if (!pendingFirestoreYearClose) {
       const storedFlag = await sqliteStore.get('pendingFirestoreYearClose');
@@ -1507,15 +1362,21 @@ async function subscribeToRealtime() {
   if (pendingFirestoreYearClose && !closeYearInProgress) {
     try {
       const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
+        sqliteStore.get('mfg_pro_pkr',[]), sqliteStore.get('customer_sales',[]),
+        sqliteStore.get('rep_sales',[]), sqliteStore.get('noman_history',[]),
+        sqliteStore.get('payment_transactions',[]), sqliteStore.get('factory_production_history',[]),
+        sqliteStore.get('expenses',[]), sqliteStore.get('stock_returns',[]),
+      ]);
       const yearCloseCollections = [
-        { name: 'production',         data: db,                      filter: d => !d.isMerged },
-        { name: 'sales',              data: customerSales,                   filter: d => !d.isMerged },
-        { name: 'rep_sales',          data: repSales,                filter: d => !d.isMerged },
-        { name: 'calculator_history', data: salesHistory,            filter: d => !d.isMerged },
-        { name: 'transactions',       data: paymentTransactions,     filter: d => !d.isMerged },
-        { name: 'factory_history',    data: factoryProductionHistory,filter: d => !d.isMerged },
-        { name: 'expenses',           data: expenseRecords,          filter: d => !d.isMerged },
-        { name: 'returns',            data: stockReturns,            filter: d => !d.isMerged },
+        { name: 'production',         data: ensureArray(_db),   filter: d => !d.isMerged },
+        { name: 'sales',              data: ensureArray(_cs),   filter: d => !d.isMerged },
+        { name: 'rep_sales',          data: ensureArray(_rs),   filter: d => !d.isMerged },
+        { name: 'calculator_history', data: ensureArray(_sh),   filter: d => !d.isMerged },
+        { name: 'transactions',       data: ensureArray(_pt),   filter: d => !d.isMerged },
+        { name: 'factory_history',    data: ensureArray(_fph),  filter: d => !d.isMerged },
+        { name: 'expenses',           data: ensureArray(_er),   filter: d => !d.isMerged },
+        { name: 'returns',            data: ensureArray(_sr),   filter: d => !d.isMerged },
       ];
       let allOk = true;
       for (const col of yearCloseCollections) {
@@ -1561,16 +1422,13 @@ async function subscribeToRealtime() {
           if (typeof signOut === 'function') await signOut();
         }, 1500);
       }
-      // Cross-device sync ping: another device wrote new data
       if (!snap.metadata.hasPendingWrites && !snap.metadata.fromCache && data.lastWrite) {
         const pingTs = data.lastWrite.ts && data.lastWrite.ts.toMillis
           ? data.lastWrite.ts.toMillis()
           : (typeof data.lastWrite.ts === 'number' ? data.lastWrite.ts : 0);
         const lastSeenPing = window._lastSeenPingTs || 0;
-        // Only react if this is a NEW ping (not our own write, not a stale one)
         if (pingTs > lastSeenPing + 1000) {
           window._lastSeenPingTs = pingTs;
-          // Avoid reacting to our own writes
           if (!window._lastEmitPingAt || Math.abs(pingTs - window._lastEmitPingAt) > 3000) {
             setTimeout(() => {
               if (typeof pullDataFromCloud === 'function') pullDataFromCloud(true).catch(() => {});
@@ -1638,7 +1496,7 @@ async function subscribeToRealtime() {
           }
         }
         if (cloudSettings.last_synced) await sqliteStore.set('last_synced', cloudSettings.last_synced);
-        emitSyncUpdate({ settings: cloudSettings });
+        emitSyncUpdate({ settings: null});
         flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
@@ -1670,7 +1528,7 @@ async function subscribeToRealtime() {
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
 
-        const _applyFactorySetting = async (cloudObj, cloudTs, localTsKey, localKey, localVar, transform) => {
+        const _applyFactorySetting = async (cloudObj, cloudTs, localTsKey, localKey, transform) => {
           if (!cloudObj || typeof cloudObj !== 'object') return;
           if (!(('standard' in cloudObj) && ('asaan' in cloudObj))) return;
           const lt = (await sqliteStore.get(localTsKey)) || 0;
@@ -1685,48 +1543,38 @@ async function subscribeToRealtime() {
         const newFormulas = await _applyFactorySetting(
           cfs.default_formulas, cfs.default_formulas_timestamp,
           'factory_default_formulas_timestamp', 'factory_default_formulas',
-          factoryDefaultFormulas,
           o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] })
         );
-        if (newFormulas) factoryDefaultFormulas = newFormulas;
 
         const newCosts = await _applyFactorySetting(
           cfs.additional_costs, cfs.additional_costs_timestamp,
           'factory_additional_costs_timestamp', 'factory_additional_costs',
-          factoryAdditionalCosts,
           o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
         );
-        if (newCosts) factoryAdditionalCosts = newCosts;
 
         const newFactor = await _applyFactorySetting(
           cfs.cost_adjustment_factor, cfs.cost_adjustment_factor_timestamp,
           'factory_cost_adjustment_factor_timestamp', 'factory_cost_adjustment_factor',
-          factoryCostAdjustmentFactor,
           o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 })
         );
-        if (newFactor) factoryCostAdjustmentFactor = newFactor;
 
         const newPrices = await _applyFactorySetting(
           cfs.sale_prices, cfs.sale_prices_timestamp,
           'factory_sale_prices_timestamp', 'factory_sale_prices',
-          factorySalePrices,
           o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
         );
-        if (newPrices) factorySalePrices = newPrices;
 
         const newTracking = await _applyFactorySetting(
           cfs.unit_tracking, cfs.unit_tracking_timestamp,
           'factory_unit_tracking_timestamp', 'factory_unit_tracking',
-          factoryUnitTracking,
           o => ({
             standard: o.standard || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
             asaan:    o.asaan    || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
           })
         );
-        if (newTracking) factoryUnitTracking = newTracking;
 
         refreshFactorySettingsOverlay();
-        emitSyncUpdate({ factorySettings: cfs });
+        emitSyncUpdate({ factorySettings: null});
         flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
@@ -1752,9 +1600,8 @@ async function subscribeToRealtime() {
         const cloudSorted = [...cloud.categories].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         const localSorted = [...local].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         if (JSON.stringify(cloudSorted) !== JSON.stringify(localSorted)) {
-          expenseCategories = cloud.categories;
-          await sqliteStore.set('expense_categories', expenseCategories);
-          emitSyncUpdate({ expenseCategories: cloud });
+          await sqliteStore.set('expense_categories', cloud.categories);
+          emitSyncUpdate({ expenseCategories: null});
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -1796,7 +1643,9 @@ async function subscribeToRealtime() {
         const changes = snapshot.docChanges();
         if (changes.length === 0) return;
         let hasChanges = false;
-
+        let deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
+        const deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+        const deletedSet = new Set(deletedArr);
         for (const change of changes) {
           try {
             const docData = { id: change.doc.id, ...change.doc.data() };
@@ -1805,7 +1654,7 @@ async function subscribeToRealtime() {
                 const _rid = docData.recordId || docData.id;
                 const _recoveredSet = typeof _recoveredThisSession !== 'undefined' ? _recoveredThisSession : null;
                 if (_recoveredSet && (_recoveredSet.has(_rid) || _recoveredSet.has(docData.id))) continue;
-                deletedRecordIds.add(_rid);
+                deletedSet.add(_rid);
               }
               const _docSid = String(docData.id || change.doc.id);
               const _docRid = String(docData.recordId || docData.id || change.doc.id);
@@ -1834,39 +1683,36 @@ async function subscribeToRealtime() {
                   snapshot:      normalizedDoc.snapshot      || existing.snapshot      || null,
                 };
               }
-
               try {
                 const rt = docData.recordType;
                 const rid = docData.recordId;
-                if (rt === 'production' && rid)          { db = db.filter(i => i.id !== rid); await sqliteStore.set('mfg_pro_pkr', db); }
-                else if ((rt === 'sale' || rt === 'sales') && rid) { customerSales = customerSales.filter(i => i.id !== rid); await sqliteStore.set('customer_sales', customerSales); }
-                else if ((rt === 'expenses' || rt === 'expense') && rid) { expenseRecords = expenseRecords.filter(i => i.id !== rid); await sqliteStore.set('expenses', expenseRecords); }
-                else if ((rt === 'transactions' || rt === 'transaction') && rid) { paymentTransactions = paymentTransactions.filter(i => i.id !== rid); await sqliteStore.set('payment_transactions', paymentTransactions); }
-                else if ((rt === 'rep_sales' || rt === 'rep_sale') && rid) { repSales = repSales.filter(i => i.id !== rid); await sqliteStore.set('rep_sales', repSales); }
-                else if (rt === 'rep_customers' && rid)  { repCustomers = repCustomers.filter(i => i.id !== rid); await sqliteStore.set('rep_customers', repCustomers); }
-                else if (rt === 'inventory' && rid)       { factoryInventoryData = factoryInventoryData.filter(i => i.id !== rid); await sqliteStore.set('factory_inventory_data', factoryInventoryData); }
-                else if (rt === 'factory_history' && rid) { factoryProductionHistory = factoryProductionHistory.filter(i => i.id !== rid); await sqliteStore.set('factory_production_history', factoryProductionHistory); }
-                else if (rt === 'returns' && rid)         { stockReturns = stockReturns.filter(i => i.id !== rid); await sqliteStore.set('stock_returns', stockReturns); }
-                else if (rt === 'calculator_history' && rid) { salesHistory = salesHistory.filter(i => i.id !== rid); await sqliteStore.set('noman_history', salesHistory); }
-                else if (rt === 'entities' && rid)        { paymentEntities = paymentEntities.filter(i => i.id !== rid); await sqliteStore.set('payment_entities', paymentEntities); }
+                const _filterOut = (key) => sqliteStore.get(key, []).then(arr => sqliteStore.set(key, ensureArray(arr).filter(i => i.id !== rid)));
+                if (rt === 'production' && rid)                                    await _filterOut('mfg_pro_pkr');
+                else if ((rt === 'sale' || rt === 'sales') && rid)                 await _filterOut('customer_sales');
+                else if ((rt === 'expenses' || rt === 'expense') && rid)           await _filterOut('expenses');
+                else if ((rt === 'transactions' || rt === 'transaction') && rid)   await _filterOut('payment_transactions');
+                else if ((rt === 'rep_sales' || rt === 'rep_sale') && rid)         await _filterOut('rep_sales');
+                else if (rt === 'rep_customers' && rid)                            await _filterOut('rep_customers');
+                else if (rt === 'inventory' && rid)                                await _filterOut('factory_inventory_data');
+                else if (rt === 'factory_history' && rid)                          await _filterOut('factory_production_history');
+                else if (rt === 'returns' && rid)                                  await _filterOut('stock_returns');
+                else if (rt === 'calculator_history' && rid)                       await _filterOut('noman_history');
+                else if (rt === 'entities' && rid)                                 await _filterOut('payment_entities');
               } catch (collectionError) { console.warn('Failed to apply deletion to collection', _safeErr(collectionError)); }
               hasChanges = true;
-
             } else if (change.type === 'removed') {
               const _removedRecordId = change.doc.data()?.recordId || change.doc.id;
-              deletionRecords = deletionRecords.filter(item => item.id !== change.doc.id && item.id !== _removedRecordId);
-              deletedRecordIds.delete(_removedRecordId);
-              deletedRecordIds.delete(change.doc.id);
-              try { await sqliteStore.set('deleted_records', Array.from(deletedRecordIds)); } catch (_e) {}
+              deletedSet.delete(_removedRecordId);
+              deletedSet.delete(change.doc.id);
               hasChanges = true;
             }
           } catch (docError) { console.warn('Failed to save data locally.', _safeErr(docError)); }
         }
-
         if (hasChanges) {
           deletionRecords = _dedupDeletionRecords(deletionRecords);
           await sqliteStore.set('deletion_records', deletionRecords);
-          emitSyncUpdate({ deletion_records: deletionRecords });
+          await sqliteStore.set('deleted_records', Array.from(deletedSet));
+          emitSyncUpdate({ deletion_records: null});
           flashLivePulse();
           recordSuccessfulConnection();
         }
@@ -1948,7 +1794,7 @@ function scheduleSocketReconnect() {
   if (socketReconnectTimer) clearTimeout(socketReconnectTimer);
   socketReconnectTimer = setTimeout(() => { subscribeToRealtime().catch(e => console.warn('subscribeToRealtime socket retry failed:', _safeErr(e))); }, 5000);
 }
-function initFirebase() {
+async function initFirebase() {
   if (window._firebaseListenersRegistered) return;
   window._firebaseListenersRegistered = true;
   try {
@@ -1974,19 +1820,19 @@ function _toMs(v) {
   return new Date(v).getTime() || 0;
 }
 
-function mergeDatasets(localArray, cloudArray) {
+function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
   if (!Array.isArray(localArray)) localArray = [];
   if (!Array.isArray(cloudArray)) cloudArray = [];
   const mergedMap = new Map();
   cloudArray.forEach(item => {
     if (item && item.id) {
-      if (deletedRecordIds.has(item.id)) return;
+      if (deletedSet.has(item.id)) return;
       mergedMap.set(item.id, item);
     }
   });
   localArray.forEach(localItem => {
     if (!localItem || !localItem.id) return;
-    if (deletedRecordIds.has(localItem.id)) return;
+    if (deletedSet.has(localItem.id)) return;
     const cloudItem = mergedMap.get(localItem.id);
     if (!cloudItem) { mergedMap.set(localItem.id, localItem); return; }
     const isFinancialRecord = (localItem.totalSold !== undefined || localItem.revenue !== undefined);
@@ -2157,7 +2003,6 @@ function mergeArrays(localArray, cloudArray, collectionName) {
 
       }
 
-      // Always compare by timestamp — never skip updates based on download history alone
       const cloudWins = (typeof compareRecordVersions === 'function')
         ? compareRecordVersions(cloudItem, localRecord) > 0
         : _toMs(cloudItem.updatedAt || cloudItem.timestamp) > _toMs(localRecord?.updatedAt || localRecord?.timestamp);
@@ -2168,7 +2013,6 @@ function mergeArrays(localArray, cloudArray, collectionName) {
         if (useUUIDGate) UUIDSyncRegistry.markDownloaded(collectionName, sid);
         else if (collectionName) DeltaSync.markDownloaded(collectionName, sid);
       }
-      // If local wins, still mark as downloaded so we don't re-process the same record
       else if (collectionName) {
         if (useUUIDGate) UUIDSyncRegistry.markDownloaded(collectionName, sid);
         else DeltaSync.markDownloaded(collectionName, sid);
@@ -2320,40 +2164,50 @@ async function _mergeAndPersist(cloudData) {
       ? mergedDels.filter(r => !_rSet.has(String(r.id)) && !_rSet.has(String(r.recordId)))
       : mergedDels
     ).filter(r => r.deletedAt > threeMonthsAgo);
-    const deduped = window._dedupDeletionRecords ? window._dedupDeletionRecords(safeDels) : safeDels;
-    await sqliteStore.set('deletion_records', deduped);
-    deletedRecordIds.clear();
-    deduped.forEach(r => deletedRecordIds.add(r.id));
-    await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
-    trackFirestoreRead(deletionsSnap.docs.length);
+  const deduped = window._dedupDeletionRecords ? window._dedupDeletionRecords(safeDels) : safeDels;
+  await sqliteStore.set('deletion_records', deduped);
+  const _deletedSet = new Set(deduped.map(r => r.id));
+  await sqliteStore.set('deleted_records', Array.from(_deletedSet));
+  trackFirestoreRead(deletionsSnap.docs.length);
   } catch (_delErr) {
-    console.warn('[Sync] Failed to refresh deletions:', _safeErr(_delErr));
+  console.warn('[Sync] Failed to refresh deletions:', _safeErr(_delErr));
   }
 
   const { data } = cloudData;
-  db                      = mergeArrays(db || [], data.mfg_pro_pkr || [],               'production');
-  customerSales           = mergeArrays(customerSales || [], data.customer_sales || [],  'sales');
-  salesHistory            = mergeArrays(salesHistory || [], data.noman_history || [],    'calculator_history');
-  repSales                = mergeArrays(repSales || [], data.rep_sales || [], 'rep_sales');
-  repCustomers            = mergeArrays(repCustomers || [], data.rep_customers || [],    'rep_customers');
-  salesCustomers          = mergeArrays(salesCustomers || [], data.sales_customers || [],'sales_customers');
-  paymentTransactions     = mergeArrays(paymentTransactions || [], data.payment_transactions || [], 'transactions');
-  paymentEntities         = mergeArrays(paymentEntities || [], data.payment_entities || [], 'entities');
-  factoryInventoryData    = mergeArrays(factoryInventoryData || [], data.factory_inventory_data || [], 'inventory');
-  factoryProductionHistory= mergeArrays(factoryProductionHistory || [], data.factory_production_history || [], 'factory_history');
-  stockReturns            = mergeArrays(stockReturns || [], data.stock_returns || [],   'returns');
-  expenseRecords          = mergeArrays(expenseRecords || [], data.expenses || [],       'expenses');
+  const _localKeys = [
+  'mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
+  'sales_customers','payment_transactions','payment_entities',
+  'factory_inventory_data','factory_production_history','stock_returns','expenses',
+  ];
+  const _localBatch = await sqliteStore.getBatch(_localKeys);
+  const _deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+  const _notDeleted = item => !_deletedArr.includes(item.id);
+  const _m = (key, col, cloudKey) => mergeArrays(ensureArray(_localBatch.get(key)), data[cloudKey] || [], col).filter(_notDeleted);
+  const _merged = {
+  mfg_pro_pkr:                _m('mfg_pro_pkr',                'production',       'mfg_pro_pkr'),
+  customer_sales:             _m('customer_sales',             'sales',             'customer_sales'),
+  noman_history:              _m('noman_history',              'calculator_history','noman_history'),
+  rep_sales:                  _m('rep_sales',                  'rep_sales',         'rep_sales'),
+  rep_customers:              _m('rep_customers',              'rep_customers',     'rep_customers'),
+  sales_customers:            _m('sales_customers',            'sales_customers',   'sales_customers'),
+  payment_transactions:       _m('payment_transactions',       'transactions',      'payment_transactions'),
+  payment_entities:           _m('payment_entities',           'entities',          'payment_entities'),
+  factory_inventory_data:     _m('factory_inventory_data',     'inventory',         'factory_inventory_data'),
+  factory_production_history: _m('factory_production_history', 'factory_history',   'factory_production_history'),
+  stock_returns:              _m('stock_returns',              'returns',           'stock_returns'),
+  expenses:                   _m('expenses',                   'expenses',          'expenses'),
+  };
 
   const _mark = (col, arr) => {
-    if (!Array.isArray(arr)) return;
-    arr.forEach(i => {
-      if (!i || !i.id) return;
-      if (typeof UUIDSyncRegistry !== 'undefined') {
-        UUIDSyncRegistry.markDownloaded(col, i.id);
-      } else {
-        DeltaSync.markDownloaded(col, i.id);
-      }
-    });
+  if (!Array.isArray(arr)) return;
+  arr.forEach(i => {
+  if (!i || !i.id) return;
+  if (typeof UUIDSyncRegistry !== 'undefined') {
+  UUIDSyncRegistry.markDownloaded(col, i.id);
+  } else {
+  DeltaSync.markDownloaded(col, i.id);
+  }
+  });
   };
   _mark('production', data.mfg_pro_pkr);       _mark('sales', data.customer_sales);
   _mark('calculator_history', data.noman_history); _mark('rep_sales', data.rep_sales);
@@ -2362,45 +2216,22 @@ async function _mergeAndPersist(cloudData) {
   _mark('inventory', data.factory_inventory_data); _mark('factory_history', data.factory_production_history);
   _mark('returns', data.stock_returns);         _mark('expenses', data.expenses);
 
-  const _notDeleted = item => !deletedRecordIds.has(item.id);
-  db = db.filter(_notDeleted); customerSales = customerSales.filter(_notDeleted);
-  salesHistory = salesHistory.filter(_notDeleted); repSales = repSales.filter(_notDeleted);
-  repCustomers = repCustomers.filter(_notDeleted); salesCustomers = salesCustomers.filter(_notDeleted);
-  paymentTransactions = paymentTransactions.filter(_notDeleted);
-  paymentEntities = paymentEntities.filter(_notDeleted);
-  factoryInventoryData = factoryInventoryData.filter(_notDeleted);
-  factoryProductionHistory = factoryProductionHistory.filter(_notDeleted);
-  stockReturns = stockReturns.filter(_notDeleted); expenseRecords = expenseRecords.filter(_notDeleted);
-
   await Promise.all([
-    sqliteStore.set('mfg_pro_pkr', db), sqliteStore.set('customer_sales', customerSales),
-    sqliteStore.set('noman_history', salesHistory), sqliteStore.set('factory_inventory_data', factoryInventoryData),
-    sqliteStore.set('factory_production_history', factoryProductionHistory),
-    sqliteStore.set('payment_entities', paymentEntities), sqliteStore.set('payment_transactions', paymentTransactions),
-    sqliteStore.set('expenses', expenseRecords), sqliteStore.set('stock_returns', stockReturns),
-    sqliteStore.set('rep_sales', repSales), sqliteStore.set('rep_customers', repCustomers),
-    sqliteStore.set('sales_customers', salesCustomers),
-    sqliteStore.set('deleted_records', Array.from(deletedRecordIds)),
-    sqliteStore.set('last_synced', new Date().toISOString()),
+  ...Object.entries(_merged).map(([k, v]) => sqliteStore.set(k, v)),
+  sqliteStore.set('last_synced', new Date().toISOString()),
   ]);
 
   const _colMap = {
-    production: data.mfg_pro_pkr, sales: data.customer_sales,
-    calculator_history: data.noman_history, transactions: data.payment_transactions,
-    entities: data.payment_entities, inventory: data.factory_inventory_data,
-    factory_history: data.factory_production_history, returns: data.stock_returns,
-    expenses: data.expenses, rep_sales: data.rep_sales,
-    rep_customers: data.rep_customers, sales_customers: data.sales_customers,
+  production: data.mfg_pro_pkr, sales: data.customer_sales,
+  calculator_history: data.noman_history, transactions: data.payment_transactions,
+  entities: data.payment_entities, inventory: data.factory_inventory_data,
+  factory_history: data.factory_production_history, returns: data.stock_returns,
+  expenses: data.expenses, rep_sales: data.rep_sales,
+  rep_customers: data.rep_customers, sales_customers: data.sales_customers,
   };
-  // Always update the sync timestamp for every collection that was queried,
-  // even if 0 records came back — prevents re-downloading the same empty
-  // collection on the next delta sync.
   for (const [col, arr] of Object.entries(_colMap)) {
-    if (Array.isArray(arr)) {
-      await DeltaSync.setLastSyncTimestamp(col);
-    }
+  if (Array.isArray(arr)) await DeltaSync.setLastSyncTimestamp(col);
   }
-
   await DeltaSync.setLastSyncTimestamp('deletions');
 }
 
@@ -2425,17 +2256,17 @@ async function _syncSettings(cloudData) {
       };
       const newFormulas = await _applyFs(fsData.default_formulas, 'factory_default_formulas_timestamp', 'factory_default_formulas',
         o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] }));
-      if (newFormulas) { factoryDefaultFormulas = newFormulas; await sqliteStore.setBatch([['factory_default_formulas', newFormulas], ['factory_default_formulas_timestamp', fsData.default_formulas_timestamp || ts]]); }
+      if (newFormulas) { await sqliteStore.setBatch([['factory_default_formulas', newFormulas], ['factory_default_formulas_timestamp', fsData.default_formulas_timestamp || ts]]); }
       const newCosts = await _applyFs(fsData.additional_costs, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
-      if (newCosts) { factoryAdditionalCosts = newCosts; await sqliteStore.setBatch([['factory_additional_costs', newCosts], ['factory_additional_costs_timestamp', fsData.additional_costs_timestamp || ts]]); }
+      if (newCosts) { await sqliteStore.setBatch([['factory_additional_costs', newCosts], ['factory_additional_costs_timestamp', fsData.additional_costs_timestamp || ts]]); }
       const newFactor = await _applyFs(fsData.cost_adjustment_factor, null, null, o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 }));
-      if (newFactor) { factoryCostAdjustmentFactor = newFactor; await sqliteStore.setBatch([['factory_cost_adjustment_factor', newFactor], ['factory_cost_adjustment_factor_timestamp', fsData.cost_adjustment_factor_timestamp || ts]]); }
+      if (newFactor) { await sqliteStore.setBatch([['factory_cost_adjustment_factor', newFactor], ['factory_cost_adjustment_factor_timestamp', fsData.cost_adjustment_factor_timestamp || ts]]); }
       const newPrices = await _applyFs(fsData.sale_prices, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
-      if (newPrices) { factorySalePrices = newPrices; await sqliteStore.setBatch([['factory_sale_prices', newPrices], ['factory_sale_prices_timestamp', fsData.sale_prices_timestamp || ts]]); }
+      if (newPrices) { await sqliteStore.setBatch([['factory_sale_prices', newPrices], ['factory_sale_prices_timestamp', fsData.sale_prices_timestamp || ts]]); }
       if (fsData.unit_tracking && ('standard' in fsData.unit_tracking) && ('asaan' in fsData.unit_tracking)) {
         const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-        factoryUnitTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
-        await sqliteStore.setBatch([['factory_unit_tracking', factoryUnitTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || ts]]);
+        const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
+        await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || ts]]);
       }
       refreshFactorySettingsOverlay();
     }
@@ -2443,27 +2274,32 @@ async function _syncSettings(cloudData) {
   if (expCatSnap && expCatSnap.exists) {
     const ecd = expCatSnap.data();
     if (ecd && Array.isArray(ecd.categories)) {
-      expenseCategories = ecd.categories;
-      await sqliteStore.set('expense_categories', expenseCategories);
+      await sqliteStore.set('expense_categories', ecd.categories);
     }
   }
 }
 
 async function _uploadChanges(userRef) {
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
+  const _keys = [
+  'mfg_pro_pkr','customer_sales','rep_sales','rep_customers','sales_customers',
+  'noman_history','factory_inventory_data','factory_production_history',
+  'payment_entities','payment_transactions','expenses','stock_returns',
+  ];
+  const _batch = await sqliteStore.getBatch(_keys);
   const collections = {
-    production:          db.filter(isRealRecord),
-    sales:               customerSales.filter(isRealRecord),
-    rep_sales:           repSales.filter(isRealRecord),
-    rep_customers:       repCustomers.filter(isRealRecord),
-    sales_customers:     salesCustomers.filter(isRealRecord),
-    calculator_history:  salesHistory.filter(isRealRecord),
-    inventory:           factoryInventoryData.filter(isRealRecord),
-    factory_history:     factoryProductionHistory.filter(isRealRecord),
-    entities:            paymentEntities.filter(isRealRecord),
-    transactions:        paymentTransactions.filter(isRealRecord),
-    expenses:            expenseRecords.filter(isRealRecord),
-    returns:             stockReturns.filter(isRealRecord),
+  production:         ensureArray(_batch.get('mfg_pro_pkr')).filter(isRealRecord),
+  sales:              ensureArray(_batch.get('customer_sales')).filter(isRealRecord),
+  rep_sales:          ensureArray(_batch.get('rep_sales')).filter(isRealRecord),
+  rep_customers:      ensureArray(_batch.get('rep_customers')).filter(isRealRecord),
+  sales_customers:    ensureArray(_batch.get('sales_customers')).filter(isRealRecord),
+  calculator_history: ensureArray(_batch.get('noman_history')).filter(isRealRecord),
+  inventory:          ensureArray(_batch.get('factory_inventory_data')).filter(isRealRecord),
+  factory_history:    ensureArray(_batch.get('factory_production_history')).filter(isRealRecord),
+  entities:           ensureArray(_batch.get('payment_entities')).filter(isRealRecord),
+  transactions:       ensureArray(_batch.get('payment_transactions')).filter(isRealRecord),
+  expenses:           ensureArray(_batch.get('expenses')).filter(isRealRecord),
+  returns:            ensureArray(_batch.get('stock_returns')).filter(isRealRecord),
   };
 
   const batches = [];
@@ -2525,15 +2361,19 @@ async function _uploadChanges(userRef) {
   const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localPricesTs, localUnitTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
+    const [_fdf, _fac, _fsp, _fcaf, _fut] = await Promise.all([
+      sqliteStore.get('factory_default_formulas'),
+      sqliteStore.get('factory_additional_costs'),
+      sqliteStore.get('factory_sale_prices'),
+      sqliteStore.get('factory_cost_adjustment_factor'),
+      sqliteStore.get('factory_unit_tracking'),
+    ]);
     const fsPayload = {
-      default_formulas:                factoryDefaultFormulas        || { standard: [], asaan: [] },
-      additional_costs:                factoryAdditionalCosts        || { standard: 0, asaan: 0 },
-      sale_prices:                     factorySalePrices             || { standard: 0, asaan: 0 },
-      cost_adjustment_factor:          factoryCostAdjustmentFactor   || { standard: 1, asaan: 1 },
-      unit_tracking:                   factoryUnitTracking           || {
-        standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-        asaan:    { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-      },
+      default_formulas:       _fdf  || { standard: [], asaan: [] },
+      additional_costs:       _fac  || { standard: 0, asaan: 0 },
+      sale_prices:            _fsp  || { standard: 0, asaan: 0 },
+      cost_adjustment_factor: _fcaf || { standard: 1, asaan: 1 },
+      unit_tracking:          _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -2543,9 +2383,10 @@ async function _uploadChanges(userRef) {
   const localSettingsTs = await sqliteStore.get('naswar_default_settings_timestamp');
   const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
   if (localSettingsTs && (!lastSettingsSync || localSettingsTs > lastSettingsSync)) {
+    const _ds = await sqliteStore.get('naswar_default_settings');
     configBatch.set(
       userRef.collection('settings').doc('config'),
-      sanitizeForFirestore({ naswar_default_settings: defaultSettings || {} }),
+      sanitizeForFirestore({ naswar_default_settings: _ds || {} }),
       { merge: true }
     );
     operationCount++;
@@ -2555,16 +2396,16 @@ async function _uploadChanges(userRef) {
   const localExpCatTs = await sqliteStore.get('expense_categories_timestamp');
   const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('expenseCategories');
   if (localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
+    const _ec = await sqliteStore.get('expense_categories');
     configBatch.set(
       userRef.collection('expenseCategories').doc('categories'),
-      sanitizeForFirestore({ categories: expenseCategories || [] }),
+      sanitizeForFirestore({ categories: _ec || [] }),
       { merge: true }
     );
     operationCount++;
     collectionsUploaded.add('expenseCategories');
   }
 
-  // Only push final batch if it has pending operations.
   if (operationCount > 0) batches.push(currentBatch);
   for (const batch of batches) {
     await batch.commit();
@@ -2575,7 +2416,6 @@ async function _uploadChanges(userRef) {
     DeltaSync.clearDirty(col);
   }
 
-  // Include config item writes in the total count for accurate reporting.
   const configItemCount = (collectionsUploaded.has('factorySettings') ? 1 : 0)
     + (collectionsUploaded.has('settings') ? 1 : 0)
     + (collectionsUploaded.has('expenseCategories') ? 1 : 0);
@@ -2714,39 +2554,6 @@ async function _doPushDataToCloud(silent = false) {
     await sqliteStore.init();
     await sqliteStore.flush();
 
-    const dataKeys = [
-      'mfg_pro_pkr','customer_sales','rep_sales','rep_customers','noman_history',
-      'factory_inventory_data','factory_production_history','payment_entities',
-      'payment_transactions','stock_returns','expenses','sales_customers',
-      'factory_default_formulas','factory_additional_costs','factory_cost_adjustment_factor',
-      'factory_sale_prices','factory_unit_tracking','naswar_default_settings','deleted_records',
-    ];
-    const freshDataMap = sqliteStore.getBatch ? await sqliteStore.getBatch(dataKeys) : await (async () => {
-      const m = new Map();
-      for (const k of dataKeys) { const v = await sqliteStore.get(k); if (v !== null) m.set(k, v); }
-      return m;
-    })();
-
-    if (freshDataMap.get('mfg_pro_pkr'))               db                      = freshDataMap.get('mfg_pro_pkr');
-    if (freshDataMap.get('customer_sales'))             customerSales           = freshDataMap.get('customer_sales');
-    if (freshDataMap.get('rep_sales'))                  repSales                = freshDataMap.get('rep_sales');
-    if (freshDataMap.get('rep_customers'))              repCustomers            = freshDataMap.get('rep_customers');
-    if (freshDataMap.get('noman_history'))              salesHistory            = freshDataMap.get('noman_history');
-    if (freshDataMap.get('factory_inventory_data'))     factoryInventoryData    = freshDataMap.get('factory_inventory_data');
-    if (freshDataMap.get('factory_production_history')) factoryProductionHistory= freshDataMap.get('factory_production_history');
-    if (freshDataMap.get('payment_entities'))           paymentEntities         = freshDataMap.get('payment_entities');
-    if (freshDataMap.get('payment_transactions'))       paymentTransactions     = freshDataMap.get('payment_transactions');
-    if (freshDataMap.get('stock_returns'))              stockReturns            = freshDataMap.get('stock_returns');
-    if (freshDataMap.get('expenses'))                   expenseRecords          = freshDataMap.get('expenses');
-    if (freshDataMap.get('sales_customers'))            salesCustomers          = freshDataMap.get('sales_customers');
-    if (freshDataMap.get('factory_default_formulas'))   factoryDefaultFormulas  = freshDataMap.get('factory_default_formulas');
-    if (freshDataMap.get('factory_additional_costs'))   factoryAdditionalCosts  = freshDataMap.get('factory_additional_costs');
-    if (freshDataMap.get('factory_cost_adjustment_factor')) factoryCostAdjustmentFactor = freshDataMap.get('factory_cost_adjustment_factor');
-    if (freshDataMap.get('factory_sale_prices'))        factorySalePrices       = freshDataMap.get('factory_sale_prices');
-    if (freshDataMap.get('factory_unit_tracking'))      factoryUnitTracking     = freshDataMap.get('factory_unit_tracking');
-    if (freshDataMap.get('naswar_default_settings'))    defaultSettings         = freshDataMap.get('naswar_default_settings');
-    if (freshDataMap.get('deleted_records'))            deletedRecordIds        = new Set(freshDataMap.get('deleted_records'));
-
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     const operationCount = await _uploadChanges(userRef);
 
@@ -2834,25 +2641,26 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
       if (fsData && typeof fsData === 'object') {
         if (fsData.unit_tracking && ('standard' in fsData.unit_tracking) && ('asaan' in fsData.unit_tracking)) {
           const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-          factoryUnitTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
-          await sqliteStore.setBatch([['factory_unit_tracking', factoryUnitTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || Date.now()]]);
+          const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
+          await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || Date.now()]]);
           refreshFactorySettingsOverlay();
         }
       }
     }
 
-    if (!factoryDefaultFormulas || !('standard' in factoryDefaultFormulas)) factoryDefaultFormulas = { standard: [], asaan: [] };
-    if (!factoryAdditionalCosts || !('standard' in factoryAdditionalCosts)) factoryAdditionalCosts = { standard: 0, asaan: 0 };
-    if (!factoryCostAdjustmentFactor || !('standard' in factoryCostAdjustmentFactor)) factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
-    if (!factorySalePrices || !('standard' in factorySalePrices)) factorySalePrices = { standard: 0, asaan: 0 };
-    if (!factoryUnitTracking || !('standard' in factoryUnitTracking)) factoryUnitTracking = { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } };
-
+    const [_fdf, _fac, _fcaf, _fsp, _fut] = await Promise.all([
+      sqliteStore.get('factory_default_formulas'),
+      sqliteStore.get('factory_additional_costs'),
+      sqliteStore.get('factory_cost_adjustment_factor'),
+      sqliteStore.get('factory_sale_prices'),
+      sqliteStore.get('factory_unit_tracking'),
+    ]);
     await Promise.all([
-      sqliteStore.set('factory_default_formulas', factoryDefaultFormulas),
-      sqliteStore.set('factory_additional_costs', factoryAdditionalCosts),
-      sqliteStore.set('factory_cost_adjustment_factor', factoryCostAdjustmentFactor),
-      sqliteStore.set('factory_sale_prices', factorySalePrices),
-      sqliteStore.set('factory_unit_tracking', factoryUnitTracking),
+      sqliteStore.set('factory_default_formulas', (_fdf && 'standard' in _fdf) ? _fdf : { standard: [], asaan: [] }),
+      sqliteStore.set('factory_additional_costs', (_fac && 'standard' in _fac) ? _fac : { standard: 0, asaan: 0 }),
+      sqliteStore.set('factory_cost_adjustment_factor', (_fcaf && 'standard' in _fcaf) ? _fcaf : { standard: 1, asaan: 1 }),
+      sqliteStore.set('factory_sale_prices', (_fsp && 'standard' in _fsp) ? _fsp : { standard: 0, asaan: 0 }),
+      sqliteStore.set('factory_unit_tracking', (_fut && 'standard' in _fut) ? _fut : { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } }),
       sqliteStore.set('naswar_default_settings', defaultSettings),
       sqliteStore.set('appMode', appMode),
       sqliteStore.set('current_rep_profile', currentRepProfile),
@@ -2922,7 +2730,7 @@ function showSyncHealthPanel() {
 window.showSyncHealthPanel = showSyncHealthPanel;
 let seamlessBackupTimer = null;
 const SEAMLESS_DELAY_MS = 5000;
-function triggerSeamlessBackup() {
+async function triggerSeamlessBackup() {
 if (seamlessBackupTimer) {
 clearTimeout(seamlessBackupTimer);
 }
@@ -2940,7 +2748,7 @@ window.deviceHeartbeatInterval = null;
 }
 const AUTO_BACKUP_INTERVAL = 180000;
 
-function scheduleAutoBackup() {
+async function scheduleAutoBackup() {
 clearAutoBackup();
 if (!currentUser) return;
 autoSaveTimer = setInterval(async () => {
@@ -3466,7 +3274,6 @@ const _linkedProviders = (_signInCred.user.providerData || []).map(p => p && p.p
 const _hasGoogleLinked = _linkedProviders.includes('google.com');
 const _encKeyMaterial  = _hasGoogleLinked ? _signInCred.user.uid : password;
 await SQLiteCrypto.setSessionKey(email, _encKeyMaterial, _signInCred.user.uid);
-// Re-encrypt any plaintext records written before login
 sqliteStore.reEncryptAll().catch(() => {});
 await SQLiteCrypto.sessionSet('login', {
   uid: _signInCred.user.uid,
@@ -3507,7 +3314,6 @@ offlineMode: true
 };
 sqliteStore.setUserPrefix(currentUser.uid);
 await SQLiteCrypto.setSessionKey(email, password, currentUser.uid);
-// Re-encrypt any plaintext records written before login
 sqliteStore.reEncryptAll().catch(() => {});
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
 LoginRateLimiter.recordSuccess();
@@ -3779,7 +3585,6 @@ try {
 
 await sqliteStore.clearAll().catch(() => {});
 
-// Remove all OPFS files (SQLite db + SQLiteCrypto OPFS files)
 try {
   if (navigator.storage && navigator.storage.getDirectory) {
     const root = await navigator.storage.getDirectory();
@@ -3792,7 +3597,6 @@ try {
   }
 } catch(_) {}
 
-// Clear localStorage blobs and session data
 try {
   const lsCleanup = [
     '_gznd_sqlite_db', '_gznd_sqlite_db_bak',
@@ -3821,7 +3625,6 @@ try {
 
 await sqliteStore.clearAll().catch(() => {});
 
-// Remove all OPFS files (SQLite db + SQLiteCrypto OPFS files)
 try {
   if (navigator.storage && navigator.storage.getDirectory) {
     const root = await navigator.storage.getDirectory();
@@ -3834,7 +3637,6 @@ try {
   }
 } catch(_) {}
 
-// Clear localStorage blobs and session data
 try {
   const lsCleanup = [
     '_gznd_sqlite_db', '_gznd_sqlite_db_bak',

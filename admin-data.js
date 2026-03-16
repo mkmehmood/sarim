@@ -1,4 +1,14 @@
 async function updateDeltaSyncStatsDisplay() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
   try {
     const modal = document.getElementById('delta-stats-modal');
     if (!modal) return;
@@ -24,6 +34,16 @@ async function updateDeltaSyncStatsDisplay() {
   }
 }
 async function showDeltaSyncDetails() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 if (!firebaseDB || !currentUser) {
 showToast('Please log in to view Firestore structure', 'warning', 3000);
 return;
@@ -351,6 +371,14 @@ function _storeCodeToLabel(c) {
   return c;
 }
 async function showCloseFinancialYearDialog() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 if (closeYearInProgress) {
 showToast('Close Financial Year is already in progress', 'warning');
 return;
@@ -807,6 +835,14 @@ if (value.trim().length > 0) {
 if (errEl) errEl.style.display = 'none';
 }
 async function verifyAndExecuteCloseYear() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const confirmBtn = document.getElementById('close-year-confirm-btn');
 const inp = document.getElementById('close-year-confirm-input');
 const errEl = document.getElementById('close-year-pwd-error');
@@ -901,6 +937,20 @@ if (procSubtitle && procSubtitle.textContent.includes('will be compacted')) {
 }
 }
 async function generateCloseYearSummary() {
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
+const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const S = {
   production:   { total:0, nonMerged:0, stores: new Set(), returnCount:0, sellerReturns: new Set(), sellerStoreCards: new Set() },
   sales:        { total:0, nonMerged:0, customers: new Set(), settledCount:0, creditCount:0 },
@@ -1091,6 +1141,14 @@ const html = '<div style="display:grid;gap:4px;">' + rows + '</div>';
 return { html, rowsHtml, summary: S };
 }
 async function createMergeBackup() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
   const backup = {
     db: Array.isArray(db) ? [...db] : [],
     customerSales: Array.isArray(customerSales) ? [...customerSales] : [],
@@ -1117,22 +1175,14 @@ async function restoreFromBackup(backupTimestamp) {
     if (!backup) {
       throw new Error('Backup not found: ' + backupTimestamp);
     }
-    db = backup.db;
-    customerSales = backup.customerSales;
-    salesHistory = backup.salesHistory;
-    paymentTransactions = backup.paymentTransactions;
-    factoryProductionHistory = backup.factoryProductionHistory;
-    repSales = backup.repSales;
-    expenseRecords = backup.expenseRecords;
-    stockReturns = backup.stockReturns;
-    await sqliteStore.set('mfg_pro_pkr', db);
-    await sqliteStore.set('customer_sales', customerSales);
-    await sqliteStore.set('noman_history', salesHistory);
-    await sqliteStore.set('payment_transactions', paymentTransactions);
-    await sqliteStore.set('factory_production_history', factoryProductionHistory);
-    await sqliteStore.set('rep_sales', repSales);
-    await sqliteStore.set('expenses', expenseRecords);
-    await sqliteStore.set('stock_returns', stockReturns);
+    await sqliteStore.set('mfg_pro_pkr', backup.db);
+    await sqliteStore.set('customer_sales', backup.customerSales);
+    await sqliteStore.set('noman_history', backup.salesHistory);
+    await sqliteStore.set('payment_transactions', backup.paymentTransactions);
+    await sqliteStore.set('factory_production_history', backup.factoryProductionHistory);
+    await sqliteStore.set('rep_sales', backup.repSales);
+    await sqliteStore.set('expenses', backup.expenseRecords);
+    await sqliteStore.set('stock_returns', backup.stockReturns);
     if (firebaseDB && currentUser) {
       Promise.resolve().then(async () => {
         try {
@@ -1181,6 +1231,9 @@ async function restoreFromBackup(backupTimestamp) {
   }
 }
 async function verifyMergeConsistency(snap) {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
   const errors = [];
   const warnings = [];
   if (Array.isArray(db)) {
@@ -1232,6 +1285,24 @@ async function verifyMergeConsistency(snap) {
   };
 }
 async function executeCloseFinancialYear() {
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
+const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 if (closeYearInProgress) return;
 closeYearInProgress = true;
 const inputSection  = document.getElementById('close-year-input-section');
@@ -1560,6 +1631,7 @@ return {
 };
 }
 async function mergeProductionData(signal) {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 updateCloseYearProgress('Merging Production Data...', 10);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(db) || db.length === 0) return;
@@ -1684,12 +1756,14 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMerged = db.filter(item => item.isMerged === true);
-db = [...existingMerged, ...mergedRecords];
-await sqliteStore.set('mfg_pro_pkr', db);
-emitSyncUpdate({ mfg_pro_pkr: db });
+const mergedDb = [...existingMerged, ...mergedRecords];
+await sqliteStore.set('mfg_pro_pkr', mergedDb);
+emitSyncUpdate({ mfg_pro_pkr: null});
 updateCloseYearProgress('Production Data Merged', 20);
 }
 async function mergeSalesData(signal) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 updateCloseYearProgress('Merging Sales Data...', 30);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(customerSales) || customerSales.length === 0) return;
@@ -1825,12 +1899,13 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMerged = customerSales.filter(i => i.isMerged === true);
-customerSales = [...existingMerged, ...mergedRecords];
-await sqliteStore.set('customer_sales', customerSales);
-emitSyncUpdate({ customer_sales: customerSales });
+const mergedSales = [...existingMerged, ...mergedRecords];
+await sqliteStore.set('customer_sales', mergedSales);
+emitSyncUpdate({ customer_sales: null});
 updateCloseYearProgress('Sales Data Merged', 40);
 }
 async function mergeCalculatorData(signal) {
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 updateCloseYearProgress('Merging Calculator Data...', 50);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(salesHistory) || salesHistory.length === 0) return;
@@ -1925,12 +2000,16 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMergedCalc = salesHistory.filter(item => item.isMerged === true);
-salesHistory = [...existingMergedCalc, ...mergedRecords];
+const mergedHistory = [...existingMergedCalc, ...mergedRecords];
+await sqliteStore.set('noman_history', mergedHistory);
+emitSyncUpdate({ noman_history: null});
 await sqliteStore.set('noman_history', salesHistory);
-emitSyncUpdate({ noman_history: salesHistory });
+emitSyncUpdate({ noman_history: null});
 updateCloseYearProgress('Calculator Data Merged', 60);
 }
 async function mergePaymentData(signal) {
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 updateCloseYearProgress('Merging Payment Data...', 70);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(paymentTransactions) || paymentTransactions.length === 0) return;
@@ -2000,12 +2079,14 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMergedPay = paymentTransactions.filter(item => item.isMerged === true);
-paymentTransactions = [...existingMergedPay, ...mergedRecords];
-await sqliteStore.set('payment_transactions', paymentTransactions);
-emitSyncUpdate({ payment_transactions: paymentTransactions });
+const mergedPayTx = [...existingMergedPay, ...mergedRecords];
+await sqliteStore.set('payment_transactions', mergedPayTx);
+emitSyncUpdate({ payment_transactions: null});
 updateCloseYearProgress('Payment Data Merged', 80);
 }
 async function mergeFactoryData(signal) {
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 updateCloseYearProgress('Merging Factory Data...', 85);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(factoryProductionHistory) || factoryProductionHistory.length === 0) return;
@@ -2069,12 +2150,16 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMergedFactory = factoryProductionHistory.filter(item => item.isMerged === true);
-factoryProductionHistory = [...existingMergedFactory, ...mergedRecords];
+const mergedFph = [...existingMergedFactory, ...mergedRecords];
+await sqliteStore.set('factory_production_history', mergedFph);
+emitSyncUpdate({ factory_production_history: null});
 await sqliteStore.set('factory_production_history', factoryProductionHistory);
-emitSyncUpdate({ factory_production_history: factoryProductionHistory });
+emitSyncUpdate({ factory_production_history: null});
 updateCloseYearProgress('Factory Data Merged', 90);
 }
 async function mergeRepSalesData(signal) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 updateCloseYearProgress('Merging Rep Sales Data...', 88);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(repSales) || repSales.length === 0) return;
@@ -2212,12 +2297,14 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMergedRep = repSales.filter(item => item.isMerged === true);
-repSales = [...existingMergedRep, ...mergedRecords];
-await sqliteStore.set('rep_sales', repSales);
-emitSyncUpdate({ rep_sales: repSales });
+const mergedRepSales = [...existingMergedRep, ...mergedRecords];
+await sqliteStore.set('rep_sales', mergedRepSales);
+emitSyncUpdate({ rep_sales: null});
 updateCloseYearProgress('Rep Sales Data Merged', 92);
 }
 async function mergeExpensesData(signal) {
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
 updateCloseYearProgress('Merging Expenses...', 94);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(expenseRecords) || expenseRecords.length === 0) {
@@ -2278,12 +2365,13 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMerged = expenseRecords.filter(e => e.isMerged === true);
-expenseRecords = [...existingMerged, ...mergedRecords];
+const mergedExpenses = [...existingMerged, ...mergedRecords];
 await sqliteStore.set('expenses', expenseRecords);
-emitSyncUpdate({ expenses: expenseRecords });
+emitSyncUpdate({ expenses: null});
 updateCloseYearProgress('Expenses Merged', 97);
 }
 async function mergeStockReturnsData(signal) {
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 updateCloseYearProgress('Merging Stock Returns...', 98);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(stockReturns) || stockReturns.length === 0) {
@@ -2352,12 +2440,21 @@ if (firebaseDB && currentUser) {
   }
 }
 const existingMerged = stockReturns.filter(r => r.isMerged === true);
-stockReturns = [...existingMerged, ...mergedRecords];
+const mergedReturns = [...existingMerged, ...mergedRecords];
 await sqliteStore.set('stock_returns', stockReturns);
-emitSyncUpdate({ stock_returns: stockReturns });
+emitSyncUpdate({ stock_returns: null});
 updateCloseYearProgress('Stock Returns Merged', 100);
 }
 async function verifyTimestampConsistency() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const report = {
 collections: {},
 settings: {},
@@ -2455,16 +2552,6 @@ report.collections[collection.name].withoutTimestamps++;
 });
 if (collectionChanged) {
 await sqliteStore.set(collection.name, data);
-if (collection.variable === 'db') db = data;
-else if (collection.variable === 'customerSales') customerSales = data;
-else if (collection.variable === 'repSales') repSales = data;
-else if (collection.variable === 'repCustomers') repCustomers = data;
-else if (collection.variable === 'factoryInventoryData') factoryInventoryData = data;
-else if (collection.variable === 'factoryProductionHistory') factoryProductionHistory = data;
-else if (collection.variable === 'stockReturns') stockReturns = data;
-else if (collection.variable === 'paymentTransactions') paymentTransactions = data;
-else if (collection.variable === 'paymentEntities') paymentEntities = data;
-else if (collection.variable === 'expenseRecords') expenseRecords = data;
 }
 }
 const settingsKeys = [
@@ -2491,6 +2578,19 @@ showToast('Timestamp consistency check passed — all records healthy.', 'succes
 return report;
 }
 async function deduplicateAllData() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _ddMsg = `Run a full deduplication scan?\n\nThis will:\n • Scan all records across every collection\n • Remove exact duplicate entries (keeping the newest version)\n • Sync cleaned data to the cloud\n\n\u26a0 This operation may take 30–60 seconds depending on data volume. Do not close the app while it runs.\n\nThis cannot be undone — but your data will only be improved, not deleted.`;
 if (!(await showGlassConfirm(_ddMsg, { title: 'Deduplicate All Data', confirmText: 'Run Cleanup', cancelText: 'Cancel', danger: true }))) {
 return;
@@ -2591,16 +2691,6 @@ duplicates: duplicates
 results.totalDuplicates += duplicates;
 if (duplicates > 0) {
 await sqliteStore.set(collection.key, cleaned);
-if (collection.variable === 'db') db = cleaned;
-else if (collection.variable === 'customerSales') customerSales = cleaned;
-else if (collection.variable === 'repSales') repSales = cleaned;
-else if (collection.variable === 'repCustomers') repCustomers = cleaned;
-else if (collection.variable === 'factoryInventoryData') factoryInventoryData = cleaned;
-else if (collection.variable === 'factoryProductionHistory') factoryProductionHistory = cleaned;
-else if (collection.variable === 'stockReturns') stockReturns = cleaned;
-else if (collection.variable === 'paymentTransactions') paymentTransactions = cleaned;
-else if (collection.variable === 'paymentEntities') paymentEntities = cleaned;
-else if (collection.variable === 'expenseRecords') expenseRecords = cleaned;
 }
 }
 if (results.totalDuplicates > 0) {
@@ -2620,6 +2710,18 @@ window.showDeltaSyncDetails = showDeltaSyncDetails;
 window.verifyTimestampConsistency = verifyTimestampConsistency;
 window.deduplicateAllData = deduplicateAllData;
 async function verifyCompleteTimestampConsistency() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const report = {
 tabs: {},
 sqlite: {},
@@ -2867,6 +2969,19 @@ return 0;
 }
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
 async function runUnifiedCleanup() {
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 if (!(await showGlassConfirm(
   'Clean all duplicate records?\n\n\u2022 Scans every collection in SQLite\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }
@@ -2888,21 +3003,6 @@ const COLLECTIONS = [
   { sqliteKey: 'payment_entities',           firestore: 'entities',            label: 'Payment Entities',     liveVar: 'paymentEntities'          },
   { sqliteKey: 'expenses',                   firestore: 'expenses',            label: 'Expenses',             liveVar: 'expenseRecords'           },
 ];
-
-const _setLive = (liveVar, cleaned) => {
-  if      (liveVar === 'db')                       db                       = cleaned;
-  else if (liveVar === 'salesHistory')             salesHistory             = cleaned;
-  else if (liveVar === 'customerSales')            customerSales            = cleaned;
-  else if (liveVar === 'repSales')                 repSales                 = cleaned;
-  else if (liveVar === 'repCustomers')             repCustomers             = cleaned;
-  else if (liveVar === 'salesCustomers')           salesCustomers           = cleaned;
-  else if (liveVar === 'factoryInventoryData')     factoryInventoryData     = cleaned;
-  else if (liveVar === 'factoryProductionHistory') factoryProductionHistory = cleaned;
-  else if (liveVar === 'stockReturns')             stockReturns             = cleaned;
-  else if (liveVar === 'paymentTransactions')      paymentTransactions      = cleaned;
-  else if (liveVar === 'paymentEntities')          paymentEntities          = cleaned;
-  else if (liveVar === 'expenseRecords')           expenseRecords           = cleaned;
-};
 
 try {
   let totalDuplicates = 0;
@@ -2934,7 +3034,6 @@ try {
     if (dupsInCol > 0) {
       const cleaned = Array.from(seen.values());
       await sqliteStore.set(col.sqliteKey, cleaned);
-      _setLive(col.liveVar, cleaned);
       dirtyCollections.push({ ...col, cleaned, dupCount: dupsInCol });
       totalDuplicates += dupsInCol;
     }

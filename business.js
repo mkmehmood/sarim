@@ -114,7 +114,6 @@ const GNDVirtualScroll = (() => {
       }
       tbody.insertBefore(frag, botSpacer);
     } catch (_domErr) {
-      // DOM was modified externally (tab hidden/shown) — skip this render cycle.
       if (_domErr instanceof DOMException) return;
       throw _domErr;
     }
@@ -351,7 +350,6 @@ return {
   }
 };
 })();
-// ── OPFS-backed JSON store (for SQLiteCrypto & OfflineAuth) ──
 const _OPFSStore = (() => {
   const _SUPPORTED = typeof navigator !== 'undefined' &&
                      !!navigator.storage &&
@@ -422,7 +420,6 @@ const OfflineAuth = {
     return true;
   }
 };
-// Firebase session checks use localStorage/sessionStorage only
 async function _checkFirebaseSessionExists() {
 try {
 const sessionFlag = sessionStorage.getItem('_gznd_session_active');
@@ -451,7 +448,6 @@ const SQLiteCrypto = (() => {
   const PBKDF2_ITERS = 210000;
   const PBKDF2_HASH  = 'SHA-512';
 
-  // OPFS files (localStorage as fallback)
   const _KEY_FILE      = 'gznd_keystore.json';
   const _KEY_LS        = '_gznd_keystore';
   const _ENTROPY_FILE  = 'gznd_entropy.json';
@@ -463,7 +459,6 @@ const SQLiteCrypto = (() => {
   const ENC_PREFIX = 'GZND_ENC_';
   const KEY_VERSION = '4';
 
-  // ── OPFS helpers ──────────────────────────────────────────────────────────
   async function _getDeviceEntropy() {
     const stored = await _OPFSStore.read(_ENTROPY_FILE, _ENTROPY_LS);
     if (stored && stored.entropy) {
@@ -504,7 +499,6 @@ const SQLiteCrypto = (() => {
     } catch(e) {}
   }
 
-  // ── Crypto helpers (unchanged) ────────────────────────────────────────────
   function _getCachedWrapKey(saltHex) { return _wrapKeyMemCache.get(saltHex) || null; }
   function _setCachedWrapKey(saltHex, cryptoKey) { _wrapKeyMemCache.set(saltHex, cryptoKey); }
 
@@ -613,7 +607,7 @@ const SQLiteCrypto = (() => {
           console.warn('SQLiteCrypto: Backup key unwrap failed', _safeErr(e));
         }
       }
-      return null; // No restorable key found
+      return null;
     } catch (e) {
       console.error('SQLiteCrypto: Failed to restore key:', _safeErr(e));
       return null;
@@ -692,7 +686,6 @@ const SQLiteCrypto = (() => {
       _keyEmail   = null;
       _keyUid     = null;
       _wrapKeyMemCache.clear();
-      // Wipe OPFS session data (key & session stores cleared on logout)
       _OPFSStore.remove(_KEY_FILE, _KEY_LS).catch(() => {});
       _OPFSStore.remove(_ENTROPY_FILE, _ENTROPY_LS).catch(() => {});
       _OPFSStore.remove(_SESSION_FILE, _SESSION_LS).catch(() => {});
@@ -705,7 +698,6 @@ const SQLiteCrypto = (() => {
     isReady() { return _sessionKey !== null; },
     async encrypt(plainValue) {
       if (!_sessionKey) {
-        // No session key yet (pre-login) — store plaintext; will be encrypted after login
         return plainValue;
       }
       try {
@@ -763,7 +755,6 @@ const SQLiteCrypto = (() => {
 
 SQLiteCrypto.preWarm();
 
-let currentActiveTab = 'prod';
 const USE_IDB_ONLY = true;
 function safeNumber(value, defaultValue = 0) {
 const num = Number(value);
@@ -801,14 +792,13 @@ return safeString(value).replace(searchValue, replaceValue);
 }
 
 const SQLITE_DB_NAME      = 'naswar_dealers.sqlite';
-// SQLite constants removed — OPFS/localStorage persistence only
 
 const SQLITE_JS_LOCAL      = './sql-wasm.js';
 const SQLITE_WASM_LOCAL    = './sql-wasm.wasm';
 const SQLITE_ASMJS_LOCAL   = './sql.js';
-const SQLITE_CDN           = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js';
-const SQLITE_WASM_CDN      = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm';
-const SQLITE_ASMJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql.js';
+const SQLITE_CDN           = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js';
+const SQLITE_WASM_CDN      = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.wasm';
+const SQLITE_ASMJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql.js';
 const SQLITE_MAGIC        = 'SQLite format 3\0';
 const SQLITE_SCHEMA_VERSION = 2;
 
@@ -846,6 +836,7 @@ const sqliteStore = (() => {
     'assignedManager', 'assignedUserTabs',
     'device_name', 'theme',
     'last_synced', 'firestore_initialized', 'firestore_init_timestamp',
+    'ui_state',
   ]);
 
   const _IDB_KEY_TO_COLLECTION = {
@@ -871,6 +862,7 @@ const sqliteStore = (() => {
     'factory_unit_tracking', 'naswar_default_settings',
     'expense_categories', 'sales_reps_list', 'user_roles_list',
     'offline_operation_queue', 'offline_dead_letter_queue',
+    'ui_state',
   ]);
 
   function _rowType(key) {
@@ -964,7 +956,6 @@ const sqliteStore = (() => {
     await _opfsWrite(SQLITE_DB_NAME, data);
   }
 
-  // ── OPFS-primary persistence for SQLite blob ──────────────────────────────
   const _LS_BLOB_KEY     = '_gznd_sqlite_db';
   const _LS_BLOB_KEY_BAK = '_gznd_sqlite_db_bak';
 
@@ -1046,7 +1037,6 @@ const sqliteStore = (() => {
       sources.push({ name: 'OPFS primary', load: () => _opfsRead(SQLITE_DB_NAME) });
       sources.push({ name: 'OPFS backup',  load: () => _opfsRead(SQLITE_DB_NAME + '.bak') });
     } else {
-      // localStorage fallback (no OPFS available)
       sources.push({ name: 'localStorage primary', load: async () => _lsBlobRead(_LS_BLOB_KEY)     });
       sources.push({ name: 'localStorage backup',  load: async () => _lsBlobRead(_LS_BLOB_KEY_BAK) });
     }
@@ -1320,8 +1310,6 @@ const sqliteStore = (() => {
         if (op.action === 'set' || op.action === 'set-doc') {
           const ref = userRef.collection(op.collection).doc(op.doc_id);
           const drainData = { ...(op.data || {}) };
-          // Ensure updatedAt is a server timestamp so the realtime listener
-          // .where('updatedAt', '>', lastSync) query works on receiving devices
           if (typeof firebase !== 'undefined' && firebase.firestore && !drainData.isMerged) {
             drainData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
           }
@@ -1357,7 +1345,6 @@ const sqliteStore = (() => {
           DeltaSync._dirty = new Map();
           DeltaSync._uploaded = new Map();
           DeltaSync._downloaded = new Map();
-          // Reload pending sync queue for the new user after prefix is set
           if (typeof DeltaSync.loadAllPendingIds === 'function') {
             setTimeout(() => DeltaSync.loadAllPendingIds().catch(() => {}), 100);
           }
@@ -1420,7 +1407,6 @@ const sqliteStore = (() => {
               if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
               try {
                 const data = _sqlDB.export();
-                // Best-effort synchronous-style persist via localStorage (OPFS is async)
                 _lsBlobWrite(_LS_BLOB_KEY, data).catch(() => {});
                 if (_hasOPFS) {
                   _opfsShadowWrite(data).catch(() => {});
@@ -1456,12 +1442,14 @@ const sqliteStore = (() => {
 
     async set(key, value) {
       await this.init();
-      // Ensure key restoration has been attempted before first write
       if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
-      if (Array.isArray(value)) {
-        value = value.map(r => (typeof r === 'object' && r !== null) ? ensureRecordIntegrity(r) : r);
-      } else if (typeof value === 'object' && value !== null) {
-        value = ensureRecordIntegrity(value);
+      const _rt = _rowType(key);
+      if (_rt === 'collection') {
+        if (Array.isArray(value)) {
+          value = value.map(r => (typeof r === 'object' && r !== null) ? ensureRecordIntegrity(r) : r);
+        } else if (typeof value === 'object' && value !== null) {
+          value = ensureRecordIntegrity(value);
+        }
       }
       const serialized = typeof value === 'string' ? value : JSON.stringify(value);
       const isPlain    = _PLAINTEXT_KEYS.has(key);
@@ -1482,13 +1470,14 @@ const sqliteStore = (() => {
 
     async setBatch(entries) {
       await this.init();
-      // Ensure key restoration has been attempted before batch write
       if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
       const validated = entries.map(([key, value]) => {
-        if (Array.isArray(value)) {
-          value = value.map(r => (typeof r === 'object' && r !== null) ? ensureRecordIntegrity(r) : r);
-        } else if (typeof value === 'object' && value !== null) {
-          value = ensureRecordIntegrity(value);
+        if (_rowType(key) === 'collection') {
+          if (Array.isArray(value)) {
+            value = value.map(r => (typeof r === 'object' && r !== null) ? ensureRecordIntegrity(r) : r);
+          } else if (typeof value === 'object' && value !== null) {
+            value = ensureRecordIntegrity(value);
+          }
         }
         return [key, value];
       });
@@ -1603,7 +1592,6 @@ const sqliteStore = (() => {
     },
 
     async reEncryptAll() {
-      // Re-encrypt any rows stored as plaintext (pre-login writes) using the now-available key
       if (!SQLiteCrypto.isReady() || !_sqlDB) return;
       try {
         const rows = _sqlDB.exec(
@@ -1613,7 +1601,7 @@ const sqliteStore = (() => {
         let updated = 0;
         for (const [fk, uk, rawVal] of rows[0].values) {
           if (!rawVal || typeof rawVal !== 'string') continue;
-          if (rawVal.startsWith('GZND_ENC_')) continue; // already encrypted
+          if (rawVal.startsWith('GZND_ENC_')) continue;
           try {
             const enc = await SQLiteCrypto.encrypt(rawVal);
             if (enc !== rawVal) {
@@ -1799,69 +1787,18 @@ return [];
 return [];
 }
 async function loadAllData() {
-const dataKeys = [
-'mfg_pro_pkr', 'noman_history', 'customer_sales', 'rep_sales', 'rep_customers',
-'sales_customers',
-'factory_inventory_data', 'factory_production_history',
-'payment_entities', 'payment_transactions', 'expenses',
-'stock_returns', 'deletion_records', 'deleted_records',
-'factory_default_formulas', 'factory_additional_costs',
-'factory_sale_prices', 'factory_cost_adjustment_factor',
-'factory_unit_tracking', 'naswar_default_settings',
-'appMode', 'repProfile', 'expense_categories', 'sales_reps_list',
-'assignedManager', 'assignedUserTabs',
-'factory_default_formulas_timestamp', 'factory_additional_costs_timestamp',
-'factory_sale_prices_timestamp', 'factory_cost_adjustment_factor_timestamp',
-'factory_unit_tracking_timestamp', 'naswar_default_settings_timestamp',
+if (typeof loadUIState === 'function') await loadUIState();
+const configKeys = [
+'naswar_default_settings', 'appMode', 'repProfile', 'expense_categories',
+'sales_reps_list', 'assignedManager', 'assignedUserTabs',
 'appMode_timestamp', 'repProfile_timestamp'
 ];
-const batchResults = await sqliteStore.getBatch(dataKeys);
-db = ensureArray(batchResults.get('mfg_pro_pkr'));
-salesHistory = ensureArray(batchResults.get('noman_history'));
-customerSales = ensureArray(batchResults.get('customer_sales'));
-customerSales.forEach(s => {
-if (s && s.transactionType === 'OLD_DEBT' && !s.currentRepProfile) {
-s.currentRepProfile = 'admin';
-}
-});
-repSales = ensureArray(batchResults.get('rep_sales'));
-repCustomers = ensureArray(batchResults.get('rep_customers'));
-salesCustomers = ensureArray(batchResults.get('sales_customers'));
-stockReturns = ensureArray(batchResults.get('stock_returns'));
-factoryInventoryData = ensureArray(batchResults.get('factory_inventory_data'));
-factoryProductionHistory = ensureArray(batchResults.get('factory_production_history'));
-paymentEntities = ensureArray(batchResults.get('payment_entities'));
-paymentTransactions = ensureArray(batchResults.get('payment_transactions'));
-expenseRecords = ensureArray(batchResults.get('expenses'));
-deletionRecordsArray = ensureArray(batchResults.get('deletion_records'));
-deletionRecords = deletionRecordsArray;
-const deletedRecordsArray = ensureArray(batchResults.get('deleted_records'));
-deletedRecordIds = new Set(deletedRecordsArray);
-const loadedFormulas = batchResults.get('factory_default_formulas');
-if (loadedFormulas && typeof loadedFormulas === 'object' && 'standard' in loadedFormulas && 'asaan' in loadedFormulas) {
-factoryDefaultFormulas = loadedFormulas;
-}
-const loadedAdditionalCosts = batchResults.get('factory_additional_costs');
-if (loadedAdditionalCosts && typeof loadedAdditionalCosts === 'object' && 'standard' in loadedAdditionalCosts && 'asaan' in loadedAdditionalCosts) {
-factoryAdditionalCosts = loadedAdditionalCosts;
-}
-const loadedSalePrices = batchResults.get('factory_sale_prices');
-if (loadedSalePrices && typeof loadedSalePrices === 'object' && 'standard' in loadedSalePrices && 'asaan' in loadedSalePrices) {
-factorySalePrices = loadedSalePrices;
-}
-const loadedAdjustmentFactor = batchResults.get('factory_cost_adjustment_factor');
-if (loadedAdjustmentFactor && typeof loadedAdjustmentFactor === 'object' && 'standard' in loadedAdjustmentFactor && 'asaan' in loadedAdjustmentFactor) {
-factoryCostAdjustmentFactor = loadedAdjustmentFactor;
-}
-const loadedUnitTracking = batchResults.get('factory_unit_tracking');
-if (loadedUnitTracking && typeof loadedUnitTracking === 'object') {
-factoryUnitTracking = loadedUnitTracking;
-}
+const batchResults = await sqliteStore.getBatch(configKeys);
+const _notFailed = v => v !== null && v !== undefined && v !== sqliteStore.DECRYPT_FAILED;
 const loadedDefaultSettings = batchResults.get('naswar_default_settings');
 if (loadedDefaultSettings && typeof loadedDefaultSettings === 'object') {
 defaultSettings = loadedDefaultSettings;
 }
-const _notFailed = v => v !== null && v !== undefined && v !== sqliteStore.DECRYPT_FAILED;
 const loadedAppMode = batchResults.get('appMode');
 if (_notFailed(loadedAppMode) && typeof loadedAppMode === 'string') {
 appMode = loadedAppMode;
@@ -1869,12 +1806,9 @@ appMode = loadedAppMode;
 const loadedRepProfile = batchResults.get('repProfile');
 if (_notFailed(loadedRepProfile) && typeof loadedRepProfile === 'string') {
 currentRepProfile = loadedRepProfile;
-} else if (loadedRepProfile === sqliteStore.DECRYPT_FAILED) {
-console.warn('loadAllData: repProfile decryption failed — will re-acquire from Firestore on registerDevice');
 }
 const loadedExpenseCategories = batchResults.get('expense_categories');
 if (_notFailed(loadedExpenseCategories) && Array.isArray(loadedExpenseCategories)) {
-expenseCategories = loadedExpenseCategories;
 }
 const loadedSalesRepsList = batchResults.get('sales_reps_list');
 if (_notFailed(loadedSalesRepsList) && Array.isArray(loadedSalesRepsList) && loadedSalesRepsList.length > 0) {
@@ -1890,40 +1824,25 @@ window._assignedUserTabs = loadedAssignedUserTabs;
 window._userRoleAllowedTabs = loadedAssignedUserTabs;
 }
 const CRITICAL_KEYS = [
-  'mfg_pro_pkr', 'customer_sales', 'payment_transactions', 'payment_entities',
-  'noman_history', 'expenses'
+'mfg_pro_pkr', 'customer_sales', 'payment_transactions', 'payment_entities',
+'noman_history', 'expenses'
 ];
-const failedKeys = CRITICAL_KEYS.filter(
-  k => batchResults.get(k) === sqliteStore.DECRYPT_FAILED
-);
-if (failedKeys.length > 0) {
-  const keyReady = SQLiteCrypto.isReady();
-  if (keyReady) {
-
-    const reason = 'Decryption failed — data may be corrupted or the encryption key has changed.';
-    console.error('loadAllData: decryption failure on critical keys:', failedKeys);
-    const err = new Error(reason);
-    err.code = 'DECRYPT_FAILED';
-    err.failedKeys = failedKeys;
-    throw err;
-  } else {
-  }
+const criticalResults = await sqliteStore.getBatch(CRITICAL_KEYS);
+const failedKeys = CRITICAL_KEYS.filter(k => criticalResults.get(k) === sqliteStore.DECRYPT_FAILED);
+if (failedKeys.length > 0 && SQLiteCrypto.isReady()) {
+const err = new Error('Decryption failed — data may be corrupted or the encryption key has changed.');
+err.code = 'DECRYPT_FAILED';
+err.failedKeys = failedKeys;
+throw err;
 }
 if (!SQLiteCrypto.isReady()) {
-  const criticalEmpty = [db, customerSales, paymentTransactions, paymentEntities]
-    .every(arr => arr.length === 0);
-  if (criticalEmpty) {
-    console.warn('loadAllData: session key not ready and all critical collections empty — possible key loss');
-    if (typeof showToast === 'function') {
-      showToast(
-        'Encryption key unavailable — if you have existing data, please log in again.',
-        'warning', 6000
-      );
-    }
-  }
+const criticalEmpty = CRITICAL_KEYS.every(k => ensureArray(criticalResults.get(k)).length === 0);
+if (criticalEmpty && typeof showToast === 'function') {
+showToast('Encryption key unavailable — if you have existing data, please log in again.', 'warning', 6000);
+}
 }
 if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllUploadedIds === 'function') {
-  DeltaSync.loadAllUploadedIds().catch(() => {});
+DeltaSync.loadAllUploadedIds().catch(() => {});
 }
 }
 const DEVICE_ID_COOKIE = 'gz_did';
@@ -2375,107 +2294,16 @@ showToast('Device command listener failed.', 'error');
 await cleanupOldDeletions();
 }
 window.initializeDeviceListeners = initializeDeviceListeners;
-const AppState = Object.seal({
-  currentUser:              null,
-  firebaseDB:               null,
-  database:                 null,
-  auth:                     null,
-  isSyncing:                false,
-  appMode:                  'admin',
-  currentRepProfile:        'admin',
-  salesRepsList:            ['NORAN SHAH', 'NOMAN SHAH'],
-  userRolesList:            [],
-  db:                       [],
-  salesHistory:             [],
-  customerSales:            [],
-  repSales:                 [],
-  repCustomers:             [],
-  salesCustomers:           [],
-  stockReturns:             [],
-  expenseRecords:           [],
-  expenseCategories:        [],
-  deletedRecordIds:         new Set(),
-  deletionRecordsArray:     [],
-  deletionRecords:          [],
-  paymentEntities:          [],
-  paymentTransactions:      [],
-  factoryInventoryData:     [],
-  factoryProductionHistory: [],
-  factoryDefaultFormulas:   { standard: [], asaan: [] },
-  factoryAdditionalCosts:   { standard: 0,  asaan: 0  },
-  factorySalePrices:        { standard: 0,  asaan: 0  },
-  factoryCostAdjustmentFactor: { standard: 1, asaan: 1 },
-  factoryUnitTracking: {
-    standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-    asaan:    { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-  },
-});
+window.currentUser = null;
+window.firebaseDB = null;
+window.database = null;
+window.auth = null;
+window.isSyncing = false;
+window.appMode = 'admin';
+window.currentRepProfile = 'admin';
+window.salesRepsList = ['NORAN SHAH', 'NOMAN SHAH'];
+window.userRolesList = [];
 const _VALID_APP_MODES = new Set(['admin','rep','production','factory','userrole']);
-const _AppStateDescriptors = {
-  isSyncing: {
-    get() { return AppState.isSyncing; },
-    set(v) {
-      if (typeof v !== 'boolean') {
-        console.warn('[AppState] isSyncing must be boolean, got:', typeof v, v);
-        return;
-      }
-      AppState.isSyncing = v;
-    }
-  },
-  appMode: {
-    get() { return AppState.appMode; },
-    set(v) {
-      if (!_VALID_APP_MODES.has(v)) {
-        console.warn('[AppState] Invalid appMode value:', v, '— must be one of', [..._VALID_APP_MODES]);
-        return;
-      }
-      AppState.appMode = v;
-    }
-  },
-  currentUser: {
-    get() { return AppState.currentUser; },
-    set(v) {
-      if (v !== null && typeof v !== 'object') {
-        console.warn('[AppState] currentUser must be object or null, got:', typeof v);
-        return;
-      }
-      AppState.currentUser = v;
-    }
-  },
-  firebaseDB: {
-    get() { return AppState.firebaseDB; },
-    set(v) {
-      if (v !== null && typeof v !== 'object') {
-        console.warn('[AppState] firebaseDB must be object or null, got:', typeof v);
-        return;
-      }
-      AppState.firebaseDB = v;
-    }
-  },
-};
-const _plain = (key) => ({
-  get() { return AppState[key]; },
-  set(v) { AppState[key] = v; }
-});
-[
-  'database','auth',
-  'currentRepProfile','salesRepsList','userRolesList',
-  'db','salesHistory','customerSales','repSales','repCustomers','salesCustomers',
-  'stockReturns','expenseRecords','expenseCategories','deletedRecordIds',
-  'deletionRecordsArray','deletionRecords',
-  'paymentEntities','paymentTransactions',
-  'factoryInventoryData','factoryProductionHistory','factoryDefaultFormulas',
-  'factoryAdditionalCosts','factorySalePrices','factoryCostAdjustmentFactor',
-  'factoryUnitTracking',
-].forEach(key => { _AppStateDescriptors[key] = _plain(key); });
-Object.defineProperties(window, Object.fromEntries(
-  Object.entries(_AppStateDescriptors).map(([k, desc]) => [k, {
-    get: desc.get,
-    set: desc.set,
-    enumerable: true,
-    configurable: false
-  }])
-));
 
 const _MODE_CODES = {
   'admin':      '0',

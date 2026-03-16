@@ -57,7 +57,6 @@ showToast("Biometric Error: " + e.message, "error");
 setTimeout(() => window.triggerUnlock(), 500);
 }
 }
-let repTransactionMode = 'sale';
 async function setRepMode(mode) {
 repTransactionMode = mode;
 const _setRep = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -85,10 +84,14 @@ document.getElementById('rep-customer-search-results').classList.add('hidden');
 calculateRepCustomerStats(name);
 }
 window._selectRepCustomerBase = selectRepCustomer;
-function calculateRepCustomerStatsForDisplay(name) {
+async function calculateRepCustomerStatsForDisplay(name) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 calculateRepCustomerStats(name);
 }
-function calculateRepCustomerStats(name) {
+async function calculateRepCustomerStats(name) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if(salesRepsList.includes(name)) {
 document.getElementById('rep-customer-info-display').classList.add('hidden');
 showToast("Cannot create transaction with representative name", "warning");
@@ -129,7 +132,8 @@ const _repTV = document.getElementById('rep-total-value');
 if (_repTV) _repTV.innerText = "" + fmtAmt(safeNumber(debt - inputAmt, 0));
 }
 }
-function calculateRepSalePreview() {
+async function calculateRepSalePreview() {
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
 const salePrice = getSalePriceForStore('STORE_A');
@@ -138,12 +142,16 @@ if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
 }
 async function saveRepTransaction() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const submitBtn = document.querySelector('#rep-new-transaction-card .btn-main');
 if (submitBtn) {
 if (submitBtn.disabled) return;
 submitBtn.disabled = true;
 }
-function restoreBtn() {
+async function restoreBtn() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (submitBtn) submitBtn.disabled = false;
 }
 try {
@@ -266,7 +274,7 @@ saveRecordToFirestore('rep_sales', transactionRecord).catch(e => {
 }
 notifyDataChange('rep');
 if (navigator.onLine) {
-emitSyncUpdate({ rep_sales: repSales }).catch(e => {
+emitSyncUpdate({ rep_sales: null}).catch(e => {
 });
 }
 if (gpsCoords) {
@@ -311,6 +319,8 @@ function deg2rad(deg) {
 return deg * (Math.PI / 180);
 }
 async function autoUpdateCustomerLocation(customerName, currentGps) {
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (!currentGps || !currentGps.lat || !currentGps.lng) return;
 const contactIndex = repCustomers.findIndex(
 c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase()
@@ -395,7 +405,8 @@ repMap.invalidateSize();
 }
 }, 100);
 }
-function updateRepLiveMap() {
+async function updateRepLiveMap() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (typeof L === 'undefined') return;
 const container = document.getElementById('rep-map-container');
 if (!container || container.offsetParent === null) return;
@@ -480,7 +491,6 @@ if(typeof showToast === 'function') {
 showToast(`Viewing dashboard for ${newProfile}`, 'info');
 }
 }
-let currentRepAnalyticsMode = 'day';
 function setRepAnalyticsMode(mode) {
 currentRepAnalyticsMode = mode;
 document.querySelectorAll('#admin-rep-analytics .toggle-group .toggle-opt').forEach(opt => {
@@ -489,7 +499,9 @@ opt.classList.remove('active');
 document.getElementById(`rep-analytics-${mode}-btn`).classList.add('active');
 calculateRepAnalytics();
 }
-function calculateRepAnalytics() {
+async function calculateRepAnalytics() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (appMode !== 'admin') return;
 const adminDateInput = document.getElementById('admin-rep-date');
 const selectedDate = (adminDateInput && adminDateInput.value) || new Date().toISOString().split('T')[0];
@@ -545,6 +557,8 @@ if (cashSalesEl) cashSalesEl.textContent = `${fmtAmt(cashSales)}`;
 if (creditSalesEl) creditSalesEl.textContent = `${fmtAmt(creditSales)}`;
 }
 async function renderRepCustomerTable(page = 1) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const tbody = document.getElementById('rep-customers-table-body');
 if (!tbody) {
 return;
@@ -560,7 +574,7 @@ recordMap.set(s.id, s);
 }
 });
 }
-repSales = Array.from(recordMap.values());
+const mergedRepSales = Array.from(recordMap.values());
 }
 } catch (error) {
 console.error('Rep sales operation failed.', _safeErr(error));
@@ -573,7 +587,7 @@ const repRegMap = new Map(freshRepCustomersList.map(c => [c.id, c]));
 if (Array.isArray(repCustomers)) {
 repCustomers.forEach(c => { if (c && c.id && !repRegMap.has(c.id)) repRegMap.set(c.id, c); });
 }
-repCustomers = Array.from(repRegMap.values());
+const mergedRepCustomers = Array.from(repRegMap.values());
 }
 } catch (repRegError) {
 console.warn('Rep registry refresh failed, using in-memory:', _safeErr(repRegError));
@@ -632,7 +646,9 @@ pageCustomers,
 custMap,
 totalItems,
 totalPages,
-validPage
+validPage,
+repSales,
+repCustomers
 };
 if (repCustomersData && repCustomersData.pageCustomers) {
 renderRepCustomersFromCache(repCustomersData, tbody);
@@ -654,12 +670,12 @@ _setRepH('rep-customers-total-credit', fmtAmt(totalOutstanding));
 _setRepH('rep-customers-total-credit-sales', fmtAmt(repTotalCreditSales));
 _setRepH('rep-customers-total-collections', fmtAmt(repTotalCollections));
 }
-function renderRepCustomersFromCache(data, tbody) {
+async function renderRepCustomersFromCache(data, tbody) {
 if (!data) {
 tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger);">Error loading customers</td></tr>`;
 return;
 }
-const { pageCustomers, custMap, totalItems, totalPages, validPage } = data;
+const { pageCustomers, custMap, totalItems, totalPages, validPage, repSales, repCustomers } = data;
 if (!pageCustomers || !Array.isArray(pageCustomers) || !custMap) {
 tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger);">Invalid customer data</td></tr>`;
 return;
@@ -702,6 +718,8 @@ return tr;
 GNDVirtualScroll.mount('vs-scroller-rep-customers', pageCustomers, buildRepCustomerRow, tbody);
 }
 async function openRepCustomerManagement(customerName) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 currentManagingRepCustomer = customerName;
 const _repMCT = document.getElementById('repManageCustomerTitle'); if (_repMCT) _repMCT.innerText = customerName;
 const _repBulk = document.getElementById('repBulkPaymentAmount'); if (_repBulk) _repBulk.value = '';
@@ -717,7 +735,8 @@ if (_rcmOverlay) _rcmOverlay.style.display = 'flex';
 });
 await renderRepCustomerTransactions(customerName);
 }
-function closeRepCustomerManagement() {
+async function closeRepCustomerManagement() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
 document.documentElement.style.overflow = '';
@@ -730,7 +749,8 @@ const freshRepSales = await sqliteStore.get('rep_sales', []);
 if (Array.isArray(freshRepSales)) {
 const m = new Map(freshRepSales.map(s => [s.id, s]));
 if (Array.isArray(repSales)) repSales.forEach(s => { if (!m.has(s.id)) m.set(s.id, s); });
-repSales = Array.from(m.values());
+const _freshRepSales = Array.from(m.values());
+await sqliteStore.set('rep_sales', _freshRepSales);
 }
 } catch(e) {
 showToast('Rep sales operation failed.', 'error');
@@ -740,6 +760,8 @@ if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 }, 100);
 }
 async function deleteCurrentRepCustomer() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (!currentManagingRepCustomer) return;
 const name = currentManagingRepCustomer;
 const txs = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
@@ -767,7 +789,8 @@ deleteRecordFromFirestore('rep_customers', contactId).catch(() => {});
 const idsToDelete = txs.map(s => s.id);
 
 const repTxsToDelete = txs.slice();
-repSales = repSales.filter(s => !idsToDelete.includes(s.id));
+const prunedRepSales = repSales.filter(s => !idsToDelete.includes(s.id));
+await sqliteStore.set('rep_sales', prunedRepSales);
 for (const tx of repTxsToDelete) {
 await registerDeletion(tx.id, 'rep_sales', tx);
 }
@@ -782,6 +805,8 @@ showToast('Failed to delete rep customer. Please try again.', 'error');
 }
 }
 async function renderRepCustomerTransactions(name) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const list = document.getElementById('repCustomerManagementHistoryList');
 if (!list) return;
 let transactions = [];
@@ -790,8 +815,8 @@ const dbSales = await sqliteStore.get('rep_sales', []);
 if (Array.isArray(dbSales)) {
 const recordMap = new Map(dbSales.filter(s => s && s.id).map(s => [s.id, s]));
 if (Array.isArray(repSales)) repSales.forEach(s => { if (s && s.id && !recordMap.has(s.id)) recordMap.set(s.id, s); });
-repSales = Array.from(recordMap.values());
-transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+const mergedTx = Array.from(recordMap.values());
+transactions = mergedTx.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 } else {
 transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 }
@@ -932,7 +957,9 @@ _repFrag.appendChild(item);
 }
 list.replaceChildren(_repFrag);
 }
-function openRepCustomerEditModal(customerName) {
+async function openRepCustomerEditModal(customerName) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const nameInput = document.getElementById('rep-edit-cust-name');
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
@@ -962,6 +989,8 @@ document.getElementById('repCustomerEditOverlay').style.display = 'none';
 });
 }
 async function saveRepCustomerDetails() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const nameInput = document.getElementById('rep-edit-cust-name');
 const name = nameInput.value.trim();
 const originalName = nameInput.dataset.originalName || name;
@@ -975,7 +1004,8 @@ const freshRepContacts = await sqliteStore.get('rep_customers', []);
 if (Array.isArray(freshRepContacts)) {
 const m = new Map(freshRepContacts.map(c => [c.id, c]));
 if (Array.isArray(repCustomers)) repCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
-repCustomers = Array.from(m.values());
+const mergedRepC = Array.from(m.values());
+await sqliteStore.set('rep_customers', mergedRepC);
 }
 let contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase() && c.salesRep === currentRepProfile);
 if (!contact) contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && c.salesRep === currentRepProfile);
@@ -1143,6 +1173,8 @@ if (btn) btn.disabled = false;
 }, gpsOptions);
 }
 async function exportRepCustomerToPDF() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const titleElement = document.getElementById('repManageCustomerTitle');
 if (!titleElement) { showToast('No rep customer selected', 'warning'); return; }
 const customerName = titleElement.innerText.trim();
@@ -1354,7 +1386,8 @@ showToast('PDF exported successfully', 'success');
 showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
-function renderRepHistory() {
+async function renderRepHistory() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const list = document.getElementById('repHistoryList');
 if (!list) return;
 const dateInput = document.getElementById('rep-date');
@@ -1435,6 +1468,9 @@ tableHTML += `
 list.innerHTML = tableHTML;
 }
 async function refreshRepUI(force = false) {
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (sqliteStore && sqliteStore.getBatch) {
 try {
 const repKeys = ['rep_sales', 'rep_customers'];
@@ -1458,7 +1494,6 @@ await sqliteStore.set('rep_sales', freshRepSales);
 freshRepSales = freshRepSales.filter(r => !deletedRecordIds.has(r.id));
 freshRepSales.sort((a, b) => compareTimestamps(getRecordTimestamp(b), getRecordTimestamp(a)));
 }
-repSales = freshRepSales;
 }
 if (repDataMap.get('rep_customers') !== undefined && repDataMap.get('rep_customers') !== null) {
 let freshRepCustomers = repDataMap.get('rep_customers') || [];
@@ -1477,7 +1512,6 @@ if (fixedCount > 0) {
 await sqliteStore.set('rep_customers', freshRepCustomers);
 }
 }
-repCustomers = freshRepCustomers;
 }
 } catch (error) {
 console.error('Failed to save data locally.', _safeErr(error));

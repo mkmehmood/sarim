@@ -26,13 +26,11 @@ const FIREBASE_CDN_URLS = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
   'https://accounts.google.com/gsi/client',
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm',
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql.js'
 ];
 
+const SQLJS_CDN_ORIGIN = 'https://cdnjs.cloudflare.com';
+
 self.addEventListener('install', (event) => {
-  // Cache only local assets — Firebase CDN files are always fetched fresh.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
   );
@@ -54,6 +52,18 @@ self.addEventListener('message', (event) => {
   }
 });
 
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'offline-queue-sync') {
+    event.waitUntil(
+      self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then((clientList) => {
+        if (clientList.length > 0) {
+          clientList.forEach((client) => client.postMessage({ type: 'PROCESS_QUEUE' }));
+        }
+      })
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -66,7 +76,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Do NOT cache Firebase CDN files — always fetch fresh so version updates apply.
+  if (url.origin === SQLJS_CDN_ORIGIN) {
+    return;
+  }
+
   if (FIREBASE_CDN_URLS.includes(url.href)) {
     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;

@@ -13,6 +13,10 @@ calculateCustomerStatsForDisplay(name);
 }
 window._selectCustomerBase = selectCustomer;
 async function calculateCustomerStatsForDisplay(name) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (!name) return;
 const sales = customerSales.filter(s =>
 s && s.currentRepProfile === 'admin' && s.customerName && s.customerName.toLowerCase() === name.toLowerCase()
@@ -23,13 +27,13 @@ return;
 }
 let totalCredit = 0;
 let totalQty = 0;
-sales.forEach(s => {
+for (const s of sales) {
 totalQty += (s.quantity || 0);
 const isRepLinked = s.salesRep !== 'NONE';
 if (s.transactionType === 'OLD_DEBT') {
 if (!s.creditReceived) {
 const partialPaid = s.partialPaymentReceived || 0;
-totalCredit += (getSaleTransactionValue(s) - partialPaid);
+totalCredit += (await getSaleTransactionValue(s) - partialPaid);
 }
 } else if (s.paymentType === 'CREDIT' && !s.creditReceived) {
 
@@ -37,18 +41,17 @@ if (s.isMerged && typeof s.creditValue === 'number') {
 totalCredit += s.creditValue;
 } else {
 const partialPaid = s.partialPaymentReceived || 0;
-totalCredit += (getSaleTransactionValue(s) - partialPaid);
+totalCredit += (await getSaleTransactionValue(s) - partialPaid);
 }
 } else if (isRepLinked) {
 if (s.paymentType === 'CREDIT' && !s.creditReceived) {
 const partialPaid = s.partialPaymentReceived || 0;
-totalCredit += (getSaleTransactionValue(s) - partialPaid);
+totalCredit += (await getSaleTransactionValue(s) - partialPaid);
 } else if (s.paymentType === 'COLLECTION') {
 totalCredit -= (s.totalValue || 0);
 } else if (s.paymentType === 'PARTIAL_PAYMENT') {
 totalCredit -= (s.totalValue || 0);
 }
-// CASH or creditReceived=true: already received, no impact on outstanding debt
 } else {
 
 if (s.paymentType === 'COLLECTION') {
@@ -57,7 +60,7 @@ totalCredit -= (s.totalValue || 0);
 totalCredit -= (s.totalValue || 0);
 }
 }
-});
+}
 totalCredit = Math.max(0, totalCredit);
 const _setCust = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
 _setCust('customer-current-credit', await formatCurrency(totalCredit));
@@ -68,23 +71,15 @@ updateCollectionPreview();
 }
 }
 async function renderCustomersTable(page = 1) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const tbody = document.getElementById('customers-table-body');
 if (!tbody) {
 return;
 }
 try {
 const freshSales = await sqliteStore.get('customer_sales', []);
-if (Array.isArray(freshSales)) {
-const recordMap = new Map(freshSales.map(s => [s.id, s]));
-if (Array.isArray(customerSales)) {
-customerSales.forEach(s => {
-if (!recordMap.has(s.id)) {
-recordMap.set(s.id, s);
-}
-});
-}
-customerSales = Array.from(recordMap.values());
-}
+const mergedSales = Array.isArray(freshSales) ? freshSales : customerSales;
 } catch (error) {
 console.error('UI refresh failed.', _safeErr(error));
 showToast('UI refresh failed.', 'error');
@@ -96,7 +91,8 @@ const regMap = new Map(freshSalesCustomers.map(c => [c.id, c]));
 if (Array.isArray(salesCustomers)) {
 salesCustomers.forEach(c => { if (c && c.id && !regMap.has(c.id)) regMap.set(c.id, c); });
 }
-salesCustomers = Array.from(regMap.values());
+const mergedSC = Array.from(regMap.values());
+await sqliteStore.set('sales_customers', mergedSC);
 }
 } catch (regError) {
 console.warn('Registry refresh failed, using in-memory:', _safeErr(regError));
@@ -104,10 +100,10 @@ console.warn('Registry refresh failed, using in-memory:', _safeErr(regError));
 const filterInput = document.getElementById('customer-filter');
 const filterValue = filterInput ? filterInput.value.toLowerCase() : '';
 const customerStats = {};
-customerSales.forEach(sale => {
+for (const sale of customerSales) {
 const name = sale.customerName;
-if (!name || name.trim() === '') return;
-if (sale.currentRepProfile !== 'admin') return;
+if (!name || name.trim() === '') continue;
+if (sale.currentRepProfile !== 'admin') continue;
 const isRepLinked = sale.salesRep && sale.salesRep !== 'NONE';
 if (!customerStats[name]) {
 customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
@@ -115,25 +111,24 @@ customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
 customerStats[name].quantity += (sale.quantity || 0);
 if (sale.transactionType === 'OLD_DEBT' && !sale.creditReceived) {
 const partialPaid = sale.partialPaymentReceived || 0;
-customerStats[name].credit += (getSaleTransactionValue(sale) - partialPaid);
+customerStats[name].credit += (await getSaleTransactionValue(sale) - partialPaid);
 } else if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
 
 if (sale.isMerged && typeof sale.creditValue === 'number') {
 customerStats[name].credit += sale.creditValue;
 } else {
 const partialPaid = sale.partialPaymentReceived || 0;
-customerStats[name].credit += (getSaleTransactionValue(sale) - partialPaid);
+customerStats[name].credit += (await getSaleTransactionValue(sale) - partialPaid);
 }
 } else if (isRepLinked) {
 if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
 const partialPaid = sale.partialPaymentReceived || 0;
-customerStats[name].credit += (getSaleTransactionValue(sale) - partialPaid);
+customerStats[name].credit += (await getSaleTransactionValue(sale) - partialPaid);
 } else if (sale.paymentType === 'COLLECTION') {
 customerStats[name].credit -= (sale.totalValue || 0);
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 customerStats[name].credit -= (sale.totalValue || 0);
 }
-// CASH or creditReceived=true: already received, no impact on outstanding debt
 } else {
 
 if (sale.paymentType === 'COLLECTION') {
@@ -150,7 +145,7 @@ if (!isNaN(timestamp) && timestamp > customerStats[name].lastSaleDate) {
 customerStats[name].lastSaleDate = timestamp;
 }
 }
-});
+}
 let sortedCustomers = Object.values(customerStats)
 .filter(c => c && c.name)
 .sort((a, b) => {
@@ -196,7 +191,7 @@ page,
 totalPages
 };
 if (customerData && customerData.customers) {
-renderCustomersFromCache(customerData, tbody);
+await renderCustomersFromCache(customerData, tbody);
 } else {
 tbody.innerHTML = `<tr><td class="u-empty-state-danger" colspan="5" >Failed to load customer data</td></tr>`;
 }
@@ -205,7 +200,7 @@ _setCustH('customer-count', `${totalItems || 0} active`);
 _setCustH('customers-total-credit', `${fmtAmt(totalOutstanding)}`);
 _setCustH('customers-total-quantity', safeNumber(totalGlobalQty, 0).toFixed(2) + ' kg');
 }
-function renderCustomersFromCache(data, tbody) {
+async function renderCustomersFromCache(data, tbody) {
 if (!data) {
 tbody.innerHTML = `<tr><td class="u-empty-state-danger" colspan="5" >Error loading customers</td></tr>`;
 return;
@@ -219,6 +214,8 @@ if (customers.length === 0) {
 tbody.innerHTML = `<tr><td class="u-empty-state-md" colspan="5" >No customers found</td></tr>`;
 return;
 }
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 function buildCustomerRow(c) {
 if (!c || !c.name) return null;
 try {
@@ -259,6 +256,8 @@ GNDVirtualScroll.mount('vs-scroller-customers', customers, buildCustomerRow, tbo
 let currentManagingCustomer = null;
 let currentManagingRepCustomer = null;
 async function openCustomerManagement(customerName) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 currentManagingCustomer = customerName;
 const _setMCT = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
 _setMCT('manageCustomerTitle', customerName);
@@ -275,7 +274,7 @@ if (_cmOverlay) _cmOverlay.style.display = 'flex';
 });
 await renderCustomerTransactions(customerName);
 }
-function closeCustomerManagement() {
+async function closeCustomerManagement() {
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
 document.documentElement.style.overflow = '';
@@ -284,18 +283,8 @@ document.getElementById('customerManagementOverlay').style.display = 'none';
 currentManagingCustomer = null;
 setTimeout(async () => {
 try {
-const freshSales = await sqliteStore.get('customer_sales', []);
-if (Array.isArray(freshSales)) {
-const m = new Map(freshSales.map(s => [s.id, s]));
-if (Array.isArray(customerSales)) customerSales.forEach(s => { if (!m.has(s.id)) m.set(s.id, s); });
-customerSales = Array.from(m.values());
-}
-const freshContacts = await sqliteStore.get('sales_customers', []);
-if (Array.isArray(freshContacts)) {
-const m = new Map(freshContacts.map(c => [c.id, c]));
-if (Array.isArray(salesCustomers)) salesCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
-salesCustomers = Array.from(m.values());
-}
+await sqliteStore.get('customer_sales', []);
+await sqliteStore.get('sales_customers', []);
 } catch(e) {
 showToast('Customer data operation failed.', 'error');
 console.warn('closeCustomerManagement SQLite error', _safeErr(e));
@@ -304,6 +293,8 @@ if (typeof renderCustomersTable === 'function') renderCustomersTable();
 }, 100);
 }
 async function deleteCurrentCustomer() {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 if (!currentManagingCustomer) return;
 const name = currentManagingCustomer;
 const txs = customerSales.filter(s =>
@@ -333,7 +324,8 @@ deleteRecordFromFirestore('sales_customers', contactId).catch(() => {});
 const idsToDelete = txs.map(s => s.id);
 
 const txsToDelete = txs.slice();
-customerSales = customerSales.filter(s => !idsToDelete.includes(s.id));
+const prunedSales = customerSales.filter(s => !idsToDelete.includes(s.id));
+await sqliteStore.set('customer_sales', prunedSales);
 for (const tx of txsToDelete) {
 await registerDeletion(tx.id, 'sales', tx);
 }
@@ -348,6 +340,10 @@ showToast('Failed to delete customer. Please try again.', 'error');
 }
 }
 async function renderCustomerTransactions(name) {
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const list = document.getElementById('customerManagementHistoryList');
 if (!list) return;
 let transactions = [];
@@ -362,13 +358,13 @@ recordMap.set(s.id, s);
 }
 });
 }
-customerSales = Array.from(recordMap.values()).map(s => {
+const normalizedSales = Array.from(recordMap.values()).map(s => {
 if (s && !s.currentRepProfile && (!s.salesRep || s.salesRep === 'NONE' || s.salesRep === 'ADMIN')) {
 return { ...s, currentRepProfile: 'admin' };
 }
 return s;
 });
-transactions = customerSales.filter(s =>
+transactions = normalizedSales.filter(s =>
 s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 } else {
@@ -426,16 +422,15 @@ ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `| ◆ ${esc(address)
 </div>
 `;
 let currentDebt = 0;
-transactions.forEach(t => {
+for (const t of transactions) {
 const _tRepLinked = t.salesRep && t.salesRep !== 'NONE';
 if (t.transactionType === 'OLD_DEBT' && !t.creditReceived) {
 const partialPaid = t.partialPaymentReceived || 0;
-currentDebt += getSaleTransactionValue(t) - partialPaid;
+currentDebt += await getSaleTransactionValue(t) - partialPaid;
 } else if (_tRepLinked) {
-// Rep-linked: only unpaid CREDIT adds to debt; COLLECTION/PARTIAL_PAYMENT reduce it; CASH does nothing
 if (t.paymentType === 'CREDIT' && !t.creditReceived) {
 const partialPaid = t.partialPaymentReceived || 0;
-currentDebt += (getSaleTransactionValue(t) - partialPaid);
+currentDebt += (await getSaleTransactionValue(t) - partialPaid);
 } else if (t.paymentType === 'COLLECTION') {
 currentDebt -= (t.totalValue || 0);
 } else if (t.paymentType === 'PARTIAL_PAYMENT') {
@@ -446,14 +441,14 @@ if (t.isMerged && typeof t.creditValue === 'number') {
 currentDebt += t.creditValue;
 } else {
 const partialPaid = t.partialPaymentReceived || 0;
-currentDebt += (getSaleTransactionValue(t) - partialPaid);
+currentDebt += (await getSaleTransactionValue(t) - partialPaid);
 }
 } else if (t.paymentType === 'COLLECTION') {
 currentDebt -= (t.totalValue || 0);
 } else if (t.paymentType === 'PARTIAL_PAYMENT') {
 currentDebt -= (t.totalValue || 0);
 }
-});
+}
 currentDebt = Math.max(0, currentDebt);
 const _mcStats = document.getElementById('manageCustomerStats'); if (_mcStats) _mcStats.innerText = `Current Debt: ${await formatCurrency(currentDebt)}`;
 transactions.sort((a, b) => b.timestamp - a.timestamp);
@@ -472,7 +467,7 @@ let statusClass = t.creditReceived ? 'paid' : 'pending';
 let btnText = t.creditReceived ? 'PAID' : 'PENDING';
 let toggleBtnHtml = '';
 const partialPaid = t.partialPaymentReceived || 0;
-const _txValue = getSaleTransactionValue(t);
+const _txValue = await getSaleTransactionValue(t);
 const effectiveDue = (t.isMerged && typeof t.creditValue === 'number') ? t.creditValue : (_txValue - partialPaid);
 const hasPartialPayment = isCredit && !t.creditReceived && partialPaid > 0 && !t.isMerged;
 const isOldDebt = t.transactionType === 'OLD_DEBT';
@@ -559,6 +554,7 @@ _custFrag.appendChild(item);
 list.replaceChildren(_custFrag);
 }
 async function toggleSingleTransactionStatus(id) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const record = customerSales.find(s => s.id === id);
 if (record?.isMerged) {
 showToast('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 4000);
@@ -584,6 +580,7 @@ showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
 async function toggleRepTransactionStatus(id) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const record = repSales.find(s => s.id === id);
 if (record?.isMerged) {
 showToast('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 4000);
@@ -608,6 +605,8 @@ showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
 async function deleteTransactionFromOverlay(id) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (!id || !validateUUID(id)) {
 showToast('Invalid transaction ID', 'error');
 return;
@@ -678,7 +677,6 @@ rel.updatedAt = getTimestamp();
 ensureRecordIntegrity(rel, true);
 }
 }
-customerSales = customerSales.filter(s => s.id !== id);
 await unifiedDelete('customer_sales', customerSales, id, { strict: true }, item);
 refreshAllCalculations();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
@@ -691,6 +689,7 @@ showToast('Failed to delete transaction. Please try again.', 'error');
 }
 }
 async function deleteRepTransactionFromOverlay(id) {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (!id || !validateUUID(id)) {
 showToast('Invalid transaction ID', 'error');
 return;
@@ -759,7 +758,6 @@ rel.updatedAt = getTimestamp();
 ensureRecordIntegrity(rel, true);
 }
 }
-repSales = repSales.filter(s => s.id !== id);
 await unifiedDelete('rep_sales', repSales, id, { strict: true }, item);
 renderRepCustomerTransactions(currentManagingRepCustomer);
 renderRepCustomerTable();
@@ -771,6 +769,9 @@ showToast('Failed to delete transaction. Please try again.', 'error');
 }
 }
 async function processBulkPayment() {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const amount = parseFloat(document.getElementById('bulkPaymentAmount').value);
 if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'warning', 3000); return; }
 const snapshot = [...customerSales];
@@ -860,6 +861,9 @@ item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'non
 });
 }
 async function processRepBulkPayment() {
+const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const amount = parseFloat(document.getElementById('repBulkPaymentAmount').value);
 if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'warning', 3000); return; }
 const snapshot = [...repSales];
@@ -1081,10 +1085,14 @@ window.showGlassConfirm = showGlassConfirm;
 if (typeof window._onShowGlassConfirmReady === 'function') {
 window._onShowGlassConfirmReady();
 }
-function filterCustomers() {
+async function filterCustomers() {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 renderCustomersTable();
 }
-function openCustomerEditModal(customerName) {
+async function openCustomerEditModal(customerName) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const nameInput = document.getElementById('edit-cust-name');
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
@@ -1119,6 +1127,8 @@ document.getElementById('customerEditOverlay').style.display = 'none';
 });
 }
 async function saveCustomerDetails() {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const nameInput = document.getElementById('edit-cust-name');
 const name = nameInput.value.trim();
 const originalName = nameInput.dataset.originalName || name;
@@ -1133,7 +1143,8 @@ const freshContacts = await sqliteStore.get('sales_customers', []);
 if (Array.isArray(freshContacts)) {
 const m = new Map(freshContacts.map(c => [c.id, c]));
 if (Array.isArray(salesCustomers)) salesCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
-salesCustomers = Array.from(m.values());
+const refreshedSC = Array.from(m.values());
+await sqliteStore.set('sales_customers', refreshedSC);
 }
 let contact = salesCustomers.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase());
 if (!contact) contact = salesCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
