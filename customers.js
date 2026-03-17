@@ -679,7 +679,8 @@ rel.updatedAt = getTimestamp();
 ensureRecordIntegrity(rel, true);
 }
 }
-await unifiedDelete('customer_sales', customerSales, id, { strict: true }, item);
+const customerSalesFiltered = customerSales.filter(s => s.id !== id);
+await unifiedDelete('customer_sales', customerSalesFiltered, id, { strict: true }, item);
 refreshAllCalculations();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
 renderCustomersTable();
@@ -760,7 +761,8 @@ rel.updatedAt = getTimestamp();
 ensureRecordIntegrity(rel, true);
 }
 }
-await unifiedDelete('rep_sales', repSales, id, { strict: true }, item);
+const repSalesFiltered = repSales.filter(s => s.id !== id);
+await unifiedDelete('rep_sales', repSalesFiltered, id, { strict: true }, item);
 renderRepCustomerTransactions(currentManagingRepCustomer);
 renderRepCustomerTable();
 notifyDataChange('rep');

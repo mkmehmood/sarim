@@ -218,11 +218,22 @@ if (opts.strict !== true) {
 }
 await saveWithTracking(sqliteKey, dataArray);
 const collectionName = getFirestoreCollection(sqliteKey);
+// IMPORTANT: registerDeletion must be awaited OUTSIDE _syncQueue.run() because it
+// internally acquires _syncQueue itself. Calling it from within _syncQueue.run()
+// creates a promise-chain deadlock — the outer block awaits something that can only
+// run after the outer block completes — so deleted_records never gets updated and
+// deleteRecordFromFirestore never runs, leaving the record alive in Firestore.
+if (collectionName && typeof window.registerDeletion === 'function') {
+  try {
+    await window.registerDeletion(deletedRecordId, collectionName, preDeletedRecord || null);
+  } catch (e) {
+    console.warn('[unifiedDelete] registerDeletion failed:', String(e));
+  }
+}
+
+// Only the Firestore delete goes in the queue — it has no nested queue calls.
 _syncQueue.run(async () => {
   try {
-    if (collectionName && typeof window.registerDeletion === 'function') {
-      await window.registerDeletion(deletedRecordId, collectionName, preDeletedRecord || null);
-    }
     await deleteRecordFromFirestore(sqliteKey, deletedRecordId);
   } catch (e) {}
 });
@@ -2369,12 +2380,18 @@ async function _uploadChanges(userRef) {
       sqliteStore.get('factory_cost_adjustment_factor'),
       sqliteStore.get('factory_unit_tracking'),
     ]);
+    const _nowTs = Date.now();
     const fsPayload = {
-      default_formulas:       _fdf  || { standard: [], asaan: [] },
-      additional_costs:       _fac  || { standard: 0, asaan: 0 },
-      sale_prices:            _fsp  || { standard: 0, asaan: 0 },
-      cost_adjustment_factor: _fcaf || { standard: 1, asaan: 1 },
-      unit_tracking:          _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
+      default_formulas:                _fdf  || { standard: [], asaan: [] },
+      default_formulas_timestamp:      localFormulaTs || _nowTs,
+      additional_costs:                _fac  || { standard: 0, asaan: 0 },
+      additional_costs_timestamp:      localCostsTs   || _nowTs,
+      sale_prices:                     _fsp  || { standard: 0, asaan: 0 },
+      sale_prices_timestamp:           localPricesTs  || _nowTs,
+      cost_adjustment_factor:          _fcaf || { standard: 1, asaan: 1 },
+      cost_adjustment_factor_timestamp:localFactorTs  || _nowTs,
+      unit_tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
+      unit_tracking_timestamp:         localUnitTs    || _nowTs,
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -2662,12 +2679,19 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
     const _fcaf = _settingsBatch.get('factory_cost_adjustment_factor');
     const _fsp  = _settingsBatch.get('factory_sale_prices');
     const _fut  = _settingsBatch.get('factory_unit_tracking');
+    const _ensureBothStores = (obj, dflt) => {
+      if (!obj || typeof obj !== 'object') return dflt;
+      return {
+        standard: obj.standard !== undefined ? obj.standard : dflt.standard,
+        asaan:    obj.asaan    !== undefined ? obj.asaan    : dflt.asaan,
+      };
+    };
     await sqliteStore.setBatch([
-      ['factory_default_formulas',       (_fdf  && 'standard' in _fdf)  ? _fdf  : { standard: [], asaan: [] }],
-      ['factory_additional_costs',       (_fac  && 'standard' in _fac)  ? _fac  : { standard: 0, asaan: 0 }],
-      ['factory_cost_adjustment_factor', (_fcaf && 'standard' in _fcaf) ? _fcaf : { standard: 1, asaan: 1 }],
-      ['factory_sale_prices',            (_fsp  && 'standard' in _fsp)  ? _fsp  : { standard: 0, asaan: 0 }],
-      ['factory_unit_tracking',          (_fut  && 'standard' in _fut)  ? _fut  : { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } }],
+      ['factory_default_formulas',       _ensureBothStores(_fdf,  { standard: [], asaan: [] })],
+      ['factory_additional_costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
+      ['factory_cost_adjustment_factor', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
+      ['factory_sale_prices',            _ensureBothStores(_fsp,  { standard: 0,  asaan: 0  })],
+      ['factory_unit_tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
       ['naswar_default_settings', defaultSettings],
       ['appMode', appMode],
       ['current_rep_profile', currentRepProfile],

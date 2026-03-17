@@ -1857,7 +1857,8 @@ _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
 const _txToDelete1 = _dt;
-await unifiedDelete('payment_transactions', paymentTransactions, id, { strict: true }, _txToDelete1);
+const _ptFiltered1 = paymentTransactions.filter(t => t.id !== id);
+await unifiedDelete('payment_transactions', _ptFiltered1, id, { strict: true }, _txToDelete1);
 const _dtEntityRefreshed = paymentEntities.find(e => String(e.id) === String(_dt.entityId));
 if (_dtEntityRefreshed) renderEntityOverlayContent(_dtEntityRefreshed);
 if (typeof calculateNetCash === 'function') calculateNetCash();
@@ -3123,7 +3124,8 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 return;
 }
-await unifiedDelete('payment_transactions', paymentTransactions, id, { strict: true }, transaction);
+const _ptFiltered2 = paymentTransactions.filter(t => t.id !== id);
+await unifiedDelete('payment_transactions', _ptFiltered2, id, { strict: true }, transaction);
 notifyDataChange('payments');
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
@@ -4041,7 +4043,8 @@ _dcMsg += `\n\n\u21a9 ${(recordToDelete.quantity||0).toFixed(2)} kg will be rest
 _dcMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dcMsg, { title: `Delete ${_dcPayLabel}`, confirmText: "Delete", danger: true })) {
 try {
-await unifiedDelete('customer_sales', customerSales, id, { strict: true }, recordToDelete);
+const customerSalesFiltered = customerSales.filter(s => s.id !== id);
+await unifiedDelete('customer_sales', customerSalesFiltered, id, { strict: true }, recordToDelete);
 await refreshCustomerSales();
 calculateNetCash();
 calculateCashTracker();
@@ -11696,12 +11699,16 @@ _daeMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(_daeMsg, { title: `Delete All "${expenseName}" Records`, confirmText: "Delete All", danger: true }))) return;
 try {
 for (const exp of toDelete) {
-await unifiedDelete('expenses', expenseRecords, exp.id, { strict: true }, exp);
+const _expFiltered = expenseRecords.filter(e => e.id !== exp.id);
+await unifiedDelete('expenses', _expFiltered, exp.id, { strict: true }, exp);
+expenseRecords.length = 0; expenseRecords.push(..._expFiltered);
 const linked = paymentTransactions.filter(t => t.expenseId === exp.id);
 if (linked.length > 0) {
 const linkedToDelete = linked.slice();
 for (const tx of linkedToDelete) {
-await unifiedDelete('payment_transactions', paymentTransactions, tx.id, { strict: true }, tx);
+const _ptFilteredExp = paymentTransactions.filter(t => t.id !== tx.id);
+await unifiedDelete('payment_transactions', _ptFilteredExp, tx.id, { strict: true }, tx);
+paymentTransactions.length = 0; paymentTransactions.push(..._ptFilteredExp);
 }
 }
 }
@@ -11907,7 +11914,8 @@ const orphans = paymentTransactions.filter(t => t.expenseId === expenseId);
 if (orphans.length > 0) {
 const orphansCopy = orphans.slice();
 for (const tx of orphansCopy) {
-await unifiedDelete('payment_transactions', paymentTransactions, tx.id, { strict: true }, tx);
+const _ptFilteredDelExp = paymentTransactions.filter(t => t.id !== tx.id);
+await unifiedDelete('payment_transactions', _ptFilteredDelExp, tx.id, { strict: true }, tx);
 }
 }
 renderRecentExpenses();
@@ -11998,7 +12006,8 @@ for (const trans of txToDelete) {
 await unifiedDelete('payment_transactions', paymentTransactions, trans.id, { strict: true }, trans);
 }
 }
-await unifiedDelete('expenses', expenseRecords, expenseId, { strict: true }, expense);
+const _expRecFiltered = expenseRecords.filter(e => e.id !== expenseId);
+await unifiedDelete('expenses', _expRecFiltered, expenseId, { strict: true }, expense);
 notifyDataChange('expenses');
 renderRecentExpenses();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
@@ -13557,7 +13566,8 @@ relatedSale.updatedAt = getTimestamp();
 ensureRecordIntegrity(relatedSale, true);
 }
 }
-await unifiedDelete('rep_sales', repSales, id, { strict: true }, transaction);
+const repSalesFiltered = repSales.filter(s => s.id !== id);
+await unifiedDelete('rep_sales', repSalesFiltered, id, { strict: true }, transaction);
 if (wasPartialPayment && relatedSaleId) {
 const relatedSale = repSales.find(s => s.id === relatedSaleId);
 if (relatedSale) saveRecordToFirestore('rep_sales', relatedSale).catch(() => {});

@@ -373,10 +373,22 @@ const _sffBatch = await sqliteStore.getBatch([
 'factory_cost_adjustment_factor','factory_sale_prices','payment_transactions',
 ]);
 const factoryInventoryData = ensureArray(_sffBatch.get('factory_inventory_data'));
-const factoryDefaultFormulas = _sffBatch.get('factory_default_formulas') || {};
-const factoryAdditionalCosts = _sffBatch.get('factory_additional_costs') || {};
-const factoryCostAdjustmentFactor = _sffBatch.get('factory_cost_adjustment_factor') || {};
-const factorySalePrices = _sffBatch.get('factory_sale_prices') || {};
+const _rawFormulas = _sffBatch.get('factory_default_formulas');
+const _rawCosts    = _sffBatch.get('factory_additional_costs');
+const _rawFactor   = _sffBatch.get('factory_cost_adjustment_factor');
+const _rawPrices   = _sffBatch.get('factory_sale_prices');
+const factoryDefaultFormulas = (_rawFormulas && 'standard' in _rawFormulas && 'asaan' in _rawFormulas)
+  ? _rawFormulas
+  : { standard: (_rawFormulas && _rawFormulas.standard) || [], asaan: (_rawFormulas && _rawFormulas.asaan) || [] };
+const factoryAdditionalCosts = (_rawCosts && 'standard' in _rawCosts && 'asaan' in _rawCosts)
+  ? _rawCosts
+  : { standard: (_rawCosts && _rawCosts.standard != null ? _rawCosts.standard : 0), asaan: (_rawCosts && _rawCosts.asaan != null ? _rawCosts.asaan : 0) };
+const factoryCostAdjustmentFactor = (_rawFactor && 'standard' in _rawFactor && 'asaan' in _rawFactor)
+  ? _rawFactor
+  : { standard: (_rawFactor && _rawFactor.standard != null ? _rawFactor.standard : 1), asaan: (_rawFactor && _rawFactor.asaan != null ? _rawFactor.asaan : 1) };
+const factorySalePrices = (_rawPrices && 'standard' in _rawPrices && 'asaan' in _rawPrices)
+  ? _rawPrices
+  : { standard: (_rawPrices && _rawPrices.standard != null ? _rawPrices.standard : 0), asaan: (_rawPrices && _rawPrices.asaan != null ? _rawPrices.asaan : 0) };
 const paymentTransactions = ensureArray(_sffBatch.get('payment_transactions'));
 const container = document.getElementById('factoryRawMaterialsContainer');
 const rows = container.querySelectorAll('.factory-formula-grid');
@@ -386,13 +398,29 @@ const sel = row.querySelector('.factory-mat-select');
 const qtyIn = row.querySelector('.factory-mat-qty');
 const costIn = row.querySelector('.factory-mat-cost');
 if (sel && sel.value && qtyIn.value > 0 && costIn.value > 0) {
-const item = factoryInventoryData.find(i => i.id == sel.value);
-if (item) newFormula.push({ id: item.id, name: item.name, cost: parseFloat(costIn.value), quantity: parseFloat(qtyIn.value) });
+const selectedOpt = sel.options[sel.selectedIndex];
+const itemName = selectedOpt ? selectedOpt.textContent.trim() : '';
+if (itemName) {
+newFormula.push({ id: sel.value, name: itemName, cost: parseFloat(costIn.value), quantity: parseFloat(qtyIn.value) });
+}
 }
 });
+const _freshFormulas = await sqliteStore.get('factory_default_formulas');
+const _freshCosts    = await sqliteStore.get('factory_additional_costs');
+const _freshFactor   = await sqliteStore.get('factory_cost_adjustment_factor');
+const _otherStore = currentFactorySettingsStore === 'standard' ? 'asaan' : 'standard';
 factoryDefaultFormulas[currentFactorySettingsStore] = newFormula;
+if (_freshFormulas && _freshFormulas[_otherStore] !== undefined) {
+factoryDefaultFormulas[_otherStore] = _freshFormulas[_otherStore];
+}
 factoryAdditionalCosts[currentFactorySettingsStore] = parseFloat(document.getElementById('additional-cost-per-unit').value) || 0;
+if (_freshCosts && _freshCosts[_otherStore] !== undefined) {
+factoryAdditionalCosts[_otherStore] = _freshCosts[_otherStore];
+}
 factoryCostAdjustmentFactor[currentFactorySettingsStore] = parseFloat(document.getElementById('cost-adjustment-factor').value) || 1;
+if (_freshFactor && _freshFactor[_otherStore] !== undefined) {
+factoryCostAdjustmentFactor[_otherStore] = _freshFactor[_otherStore];
+}
 factorySalePrices.standard = parseFloat(document.getElementById('sale-price-standard').value) || 0;
 factorySalePrices.asaan = parseFloat(document.getElementById('sale-price-asaan').value) || 0;
 try {
@@ -1391,7 +1419,8 @@ if (await showGlassConfirm(confirmMsg, { title: isReturn ? 'Remove Return' : 'De
 try {
 const record = db.find(item => item.id === id);
 if (record) { record.deletedAt = getTimestamp(); record.updatedAt = getTimestamp(); ensureRecordIntegrity(record, true); }
-await unifiedDelete('mfg_pro_pkr', db, id, { strict: true }, record || null);
+const dbWithoutDeleted = db.filter(item => item.id !== id);
+await unifiedDelete('mfg_pro_pkr', dbWithoutDeleted, id, { strict: true }, record || null);
 notifyDataChange('production');
 void syncFactoryProductionStats().catch(() => {});
 await refreshUI();
