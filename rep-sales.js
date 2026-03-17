@@ -1381,9 +1381,21 @@ pageW / 2, 291, { align: 'center' }
 doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
 }
 await new Promise(r => setTimeout(r, 100));
-const filename = `Rep_Customer_Statement_${customerName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-doc.save(filename);
-showToast('PDF exported successfully', 'success');
+const dateStamp  = new Date().toISOString().split('T')[0];
+const safeRepName = customerName.replace(/[^a-z0-9]/gi, '_');
+if (pageCount === 1) {
+  // ── Single page → image + WhatsApp ──────────────────────────────────────
+  showToast('Single-page statement — converting to image…', 'info');
+  await _exportDocAsImageAndOpenWhatsApp(
+    doc,
+    phone,
+    `Rep_Customer_Statement_${safeRepName}_${dateStamp}`
+  );
+} else {
+  // ── Multi-page → regular PDF download ───────────────────────────────────
+  doc.save(`Rep_Customer_Statement_${safeRepName}_${dateStamp}.pdf`);
+  showToast('PDF exported successfully', 'success');
+}
 } catch (error) {
 showToast('Error generating PDF: ' + error.message, 'error');
 }

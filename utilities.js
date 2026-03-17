@@ -1988,6 +1988,87 @@ function _pdfDrawMergedSectionHeader(doc, yPos, pageW, label) {
 const PDF_MERGED_HDR_COLOR  = [126, 34, 206];
 const PDF_MERGED_ROW_COLOR  = [245, 235, 255];
 const PDF_MERGED_TEXT_COLOR = [126, 34, 206];
+
+/**
+ * When a statement fits on a single page, render it as a high-resolution JPEG.
+ *
+ * On mobile (Android / iOS) the Web Share API is used so the image is
+ * pre-attached when the user picks WhatsApp from the native share sheet.
+ *
+ * On desktop (no Web Share support) the image is downloaded and the
+ * recipient's WhatsApp Web chat is opened in a new tab.
+ *
+ * @param {object} doc          - jsPDF document (fully built, 1 page)
+ * @param {string} phone        - Raw phone string from the entity / customer
+ * @param {string} filenameBase - Base name (no extension) for the output file
+ */
+async function _exportDocAsImageAndOpenWhatsApp(doc, phone, filenameBase) {
+  // ── 1. Load pdf.js if needed ──────────────────────────────────────────────
+  const PDFJS_CDN  = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const PDFJS_WRKR = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  if (!window.pdfjsLib) {
+    await loadScript(PDFJS_CDN);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  if (!window.pdfjsLib) throw new Error('Failed to load pdf.js — please refresh and try again.');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WRKR;
+
+  // ── 2. Render page 1 → canvas at 2.5× scale (~150 dpi) ──────────────────
+  const pdfBytes = doc.output('arraybuffer');
+  const pdfDoc   = await window.pdfjsLib.getDocument({ data: pdfBytes }).promise;
+  const page     = await pdfDoc.getPage(1);
+  const viewport = page.getViewport({ scale: 2.5 });
+
+  const canvas   = document.createElement('canvas');
+  canvas.width   = viewport.width;
+  canvas.height  = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+  // ── 3. Convert canvas → Blob (JPEG 92%) ──────────────────────────────────
+  const imageBlob = await new Promise(resolve =>
+    canvas.toBlob(resolve, 'image/jpeg', 0.92)
+  );
+  const imageFile = new File([imageBlob], `${filenameBase}.jpg`, { type: 'image/jpeg' });
+
+  const hasPhone = phone && phone !== 'N/A' && phone.trim() !== '';
+  const cleaned  = hasPhone ? phone.trim().replace(/[^\d+]/g, '') : '';
+
+  // ── 4a. Mobile: Web Share API → native share sheet (WhatsApp gets the file)
+  if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+    try {
+      await navigator.share({
+        files: [imageFile],
+        title: 'Account Statement',
+      });
+      showToast('Statement shared successfully', 'success');
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        showToast('Share cancelled', 'info');
+        return;
+      }
+      // Any other error: fall through to desktop path
+      console.warn('[PDF share] Web Share failed, falling back to download:', err);
+    }
+  }
+
+  // ── 4b. Desktop fallback: download image + open WhatsApp Web ─────────────
+  const dlLink    = document.createElement('a');
+  dlLink.href     = URL.createObjectURL(imageBlob);
+  dlLink.download = `${filenameBase}.jpg`;
+  document.body.appendChild(dlLink);
+  dlLink.click();
+  document.body.removeChild(dlLink);
+  setTimeout(() => URL.revokeObjectURL(dlLink.href), 5000);
+
+  if (hasPhone) {
+    showToast('Image downloaded — opening WhatsApp to send it…', 'success');
+    setTimeout(() => window.open(`https://wa.me/${cleaned}`, '_blank'), 600);
+  } else {
+    showToast('Statement saved as image (no phone number on record)', 'success');
+  }
+}
+
 async function exportEntityToPDF() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -2332,9 +2413,21 @@ pageW / 2, 291, { align: 'center' }
 doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
 }
 await new Promise(r => setTimeout(r, 100));
-const filename = `Entity_Statement_${entity.name.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-doc.save(filename);
-showToast("PDF exported successfully", "success");
+const dateStamp  = new Date().toISOString().split('T')[0];
+const safeName   = entity.name.replace(/[^a-z0-9]/gi, '_');
+if (pageCount === 1) {
+  // ── Single page → image + WhatsApp ──────────────────────────────────────
+  showToast('Single-page statement — converting to image…', 'info');
+  await _exportDocAsImageAndOpenWhatsApp(
+    doc,
+    entity.phone || '',
+    `Entity_Statement_${safeName}_${dateStamp}`
+  );
+} else {
+  // ── Multi-page → regular PDF download ───────────────────────────────────
+  doc.save(`Entity_Statement_${safeName}_${dateStamp}.pdf`);
+  showToast('PDF exported successfully', 'success');
+}
 } catch (error) {
 showToast("Error generating PDF: " + error.message, "error");
 }
@@ -2437,19 +2530,19 @@ const buildSaleRow = async (t, runBal) => {
     const val = await getSaleTransactionValue(t);
     debit = val; credit = val;
     typeLabel = 'CASH';
-    detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 Rs ${fmtAmt(getSalePrice(t))}\n${t.supplyStore?getStoreLabel(t.supplyStore):''}`;
+    detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 Rs ${fmtAmt(await getSalePrice(t))}\n${t.supplyStore?getStoreLabel(t.supplyStore):''}`;
   } else if (pt === 'CREDIT' && !t.creditReceived) {
     const val = await getSaleTransactionValue(t);
     const partial = parseFloat(t.partialPaymentReceived) || 0;
     debit = val; credit = partial;
     typeLabel = partial > 0 ? 'CREDIT\n(PARTIAL)' : 'CREDIT';
-    detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 Rs ${fmtAmt(getSalePrice(t))}`;
+    detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 Rs ${fmtAmt(await getSalePrice(t))}`;
     if (partial > 0) detailLabel += `\nPaid: Rs ${fmtAmt(partial)} | Due: Rs ${fmtAmt(val-partial)}`;
   } else if (pt === 'CREDIT' && t.creditReceived) {
     const val = await getSaleTransactionValue(t);
     debit = val; credit = val;
     typeLabel = 'CREDIT\n(PAID)';
-    detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 Rs ${fmtAmt(getSalePrice(t))}`;
+    detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 Rs ${fmtAmt(await getSalePrice(t))}`;
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'COLLECTION') {
     credit = parseFloat(t.totalValue) || 0;
@@ -2533,7 +2626,7 @@ const txRows = [];
 const txRunBal = { val: 0 };
 let totDebit = 0, totCredit = 0, totQty = 0;
 for (const t of normalSalesTxns) {
-  const r = buildSaleRow(t, txRunBal);
+  const r = await buildSaleRow(t, txRunBal);
   txRows.push(r.row);
   totDebit  += r.debit;
   totCredit += r.credit;
@@ -2617,9 +2710,21 @@ pageW / 2, 291, { align: 'center' }
 doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
 }
 await new Promise(r => setTimeout(r, 100));
-const filename = `Customer_Statement_${customerName.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-doc.save(filename);
-showToast("PDF exported successfully", "success");
+const dateStamp    = new Date().toISOString().split('T')[0];
+const safeCustName = customerName.replace(/[^a-z0-9]/gi, '_');
+if (pageCount === 1) {
+  // ── Single page → image + WhatsApp ──────────────────────────────────────
+  showToast('Single-page statement — converting to image…', 'info');
+  await _exportDocAsImageAndOpenWhatsApp(
+    doc,
+    phone,
+    `Customer_Statement_${safeCustName}_${dateStamp}`
+  );
+} else {
+  // ── Multi-page → regular PDF download ───────────────────────────────────
+  doc.save(`Customer_Statement_${safeCustName}_${dateStamp}.pdf`);
+  showToast('PDF exported successfully', 'success');
+}
 } catch (error) {
 showToast("Error generating PDF: " + error.message, "error");
 }
@@ -9228,7 +9333,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   }
   await enforceRepModeLock();
   preventAdminAccess();
-  await checkBiometricLock();
+  if (typeof checkBiometricLock === 'function') await checkBiometricLock();
   const cloudMenuBtn = document.getElementById('cloudMenuBtn');
   if (cloudMenuBtn) cloudMenuBtn.style.display = (appMode === 'admin') ? '' : 'none';
   updateSyncButton();
