@@ -660,7 +660,7 @@ delete material.supplierName;
 delete material.supplierContact;
 delete material.supplierType;
 material.paymentStatus = 'pending';
-delete material.totalPayable;
+material.totalPayable = totalValue;
 }
 } else if (supplierType === 'existing') {
 if (!_supplierUnchanged) {

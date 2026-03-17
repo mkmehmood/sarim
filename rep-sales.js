@@ -557,8 +557,10 @@ if (cashSalesEl) cashSalesEl.textContent = `${fmtAmt(cashSales)}`;
 if (creditSalesEl) creditSalesEl.textContent = `${fmtAmt(creditSales)}`;
 }
 async function renderRepCustomerTable(page = 1) {
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const _rrctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
+const repSales = ensureArray(await sqliteStore.get('rep_sales')).filter(_rrctAlive);
+const repCustomers = ensureArray(await sqliteStore.get('rep_customers')).filter(_rrctAlive);
 const tbody = document.getElementById('rep-customers-table-body');
 if (!tbody) {
 return;

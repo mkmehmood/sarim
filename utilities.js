@@ -738,6 +738,7 @@ if (typeof loadSalesData === 'function') setTimeout(() => loadSalesData(currentC
 }
 async function syncFactoryTab() {
 try {
+if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductionStats();
 if (typeof updateFactoryUnitsAvailableStats === 'function') updateFactoryUnitsAvailableStats();
 if (typeof updateFactorySummaryCard === 'function') updateFactorySummaryCard();
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
@@ -3002,17 +3003,16 @@ let isPayable = false;
 let materialId = null;
 try {
 if (type === 'OUT') {
-const pendingMaterials = factoryInventoryData
-.filter(m =>
-String(m.supplierId) === String(entityId) &&
-m.paymentStatus === 'pending' &&
-m.totalPayable > 0
-)
-.sort((a, b) => {
-const da = new Date(a.purchaseDate || a.date || a.createdAt || 0).getTime();
-const db = new Date(b.purchaseDate || b.date || b.createdAt || 0).getTime();
-return da - db;
-});
+const isPendingMat = (m) => (m.paymentStatus === 'pending' || !m.paymentStatus) && parseFloat(m.totalPayable || 0) > 0;
+const linkedMaterials = factoryInventoryData
+.filter(m => String(m.supplierId) === String(entityId) && isPendingMat(m))
+.sort((a, b) => new Date(a.purchaseDate || a.createdAt || 0) - new Date(b.purchaseDate || b.createdAt || 0));
+const unlinkedMaterials = entity.isSupplier
+? factoryInventoryData
+.filter(m => !m.supplierId && isPendingMat(m))
+.sort((a, b) => new Date(a.purchaseDate || a.createdAt || 0) - new Date(b.purchaseDate || b.createdAt || 0))
+: [];
+const pendingMaterials = [...linkedMaterials, ...unlinkedMaterials];
 if (pendingMaterials.length > 0) {
 let remaining = amount;
 const materialsToSave = [];
@@ -3305,9 +3305,15 @@ entityBalances[transaction.entityId] += parseFloat(transaction.amount) || 0;
 if (factoryInventoryData && factoryInventoryData.length > 0) {
 const pendingPerSupplier = {};
 factoryInventoryData.forEach(material => {
-if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0) {
+const isPending = material.paymentStatus === 'pending' || !material.paymentStatus;
+if (material.supplierId && isPending && material.totalPayable > 0) {
 const sid = String(material.supplierId);
 pendingPerSupplier[sid] = (pendingPerSupplier[sid] || 0) + material.totalPayable;
+} else if (!material.supplierId && isPending) {
+const unlinkedPayable = parseFloat(material.totalPayable || material.totalValue || 0);
+if (unlinkedPayable > 0) {
+pendingPerSupplier['__unlinked__' + material.id] = unlinkedPayable;
+}
 }
 });
 for (const sid in pendingPerSupplier) {
@@ -4035,11 +4041,7 @@ _dcMsg += `\n\n\u21a9 ${(recordToDelete.quantity||0).toFixed(2)} kg will be rest
 _dcMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dcMsg, { title: `Delete ${_dcPayLabel}`, confirmText: "Delete", danger: true })) {
 try {
-await registerDeletion(id, 'sales', recordToDelete);
-const originalLength = customerSales.length;
-if (customerSales.length === originalLength) throw new Error('Record not found or not deleted');
-await saveWithTracking('customer_sales', customerSales);
-deleteRecordFromFirestore('customer_sales', id).catch(() => {});
+await unifiedDelete('customer_sales', customerSales, id, { strict: true }, recordToDelete);
 await refreshCustomerSales();
 calculateNetCash();
 calculateCashTracker();
@@ -5580,15 +5582,16 @@ const _ruiBatch = await sqliteStore.getBatch([
 'noman_history','payment_transactions','payment_entities',
 'expenses','deleted_records',
 ]);
-const db = ensureArray(_ruiBatch.get('mfg_pro_pkr'));
-const stockReturns = ensureArray(_ruiBatch.get('stock_returns'));
-const customerSales = ensureArray(_ruiBatch.get('customer_sales'));
-const salesCustomers = ensureArray(_ruiBatch.get('sales_customers'));
-const salesHistory = ensureArray(_ruiBatch.get('noman_history'));
-const paymentTransactions = ensureArray(_ruiBatch.get('payment_transactions'));
-const paymentEntities = ensureArray(_ruiBatch.get('payment_entities'));
-const expenseRecords = ensureArray(_ruiBatch.get('expenses'));
 const deletedRecordIds = new Set(ensureArray(_ruiBatch.get('deleted_records')));
+const _rdAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
+const db = ensureArray(_ruiBatch.get('mfg_pro_pkr')).filter(_rdAlive);
+const stockReturns = ensureArray(_ruiBatch.get('stock_returns')).filter(_rdAlive);
+const customerSales = ensureArray(_ruiBatch.get('customer_sales')).filter(_rdAlive);
+const salesCustomers = ensureArray(_ruiBatch.get('sales_customers')).filter(_rdAlive);
+const salesHistory = ensureArray(_ruiBatch.get('noman_history')).filter(_rdAlive);
+const paymentTransactions = ensureArray(_ruiBatch.get('payment_transactions')).filter(_rdAlive);
+const paymentEntities = ensureArray(_ruiBatch.get('payment_entities')).filter(_rdAlive);
+const expenseRecords = ensureArray(_ruiBatch.get('expenses')).filter(_rdAlive);
 const selectedDate = document.getElementById('sys-date').value;
 if (!selectedDate) return;
 if (sqliteStore && sqliteStore.get) {
@@ -5792,10 +5795,11 @@ card.style.display = 'none';
 });
 }
 async function renderEntityTable(page = 1) {
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const _retAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities')).filter(_retAlive);
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions')).filter(_retAlive);
+const expenseRecords = ensureArray(await sqliteStore.get('expenses')).filter(_retAlive);
 const tbody = document.getElementById('entity-table-body');
 const filterInput = document.getElementById('entity-list-filter');
 const filter = filterInput ? String(filterInput.value).toLowerCase() : '';
@@ -8170,10 +8174,12 @@ updateCustomerPieChart();
 }
 }
 async function refreshCustomerSales(page = 1, force = false) {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
-const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
-const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const _rcsAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales')).filter(_rcsAlive);
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers')).filter(_rcsAlive);
+const db = ensureArray(await sqliteStore.get('mfg_pro_pkr')).filter(_rcsAlive);
+const stockReturns = ensureArray(await sqliteStore.get('stock_returns')).filter(_rcsAlive);
 const selectedDate = document.getElementById('cust-date').value;
 if (!selectedDate) return;
 if (sqliteStore && sqliteStore.get) {
@@ -10585,7 +10591,9 @@ function renderRecentExpenses() {
 renderExpenseTable();
 }
 async function renderExpenseTable(page = 1) {
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const expenseRecords = ensureArray(await sqliteStore.get('expenses'))
+  .filter(item => item && item.id && !deletedRecordIds.has(String(item.id)));
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
 const tbody = document.getElementById('expense-table-body');
 const totalEl = document.getElementById('expense-table-total');

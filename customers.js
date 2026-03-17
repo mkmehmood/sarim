@@ -71,8 +71,10 @@ updateCollectionPreview();
 }
 }
 async function renderCustomersTable(page = 1) {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const _rctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
+const customerSales = ensureArray(await sqliteStore.get('customer_sales')).filter(_rctAlive);
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers')).filter(_rctAlive);
 const tbody = document.getElementById('customers-table-body');
 if (!tbody) {
 return;

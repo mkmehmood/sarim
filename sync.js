@@ -1438,10 +1438,7 @@ async function subscribeToRealtime() {
 
     for (const col of SYNC_COLLECTIONS) {
       const handler = _makeSnapshotHandler(col);
-      let query = userRef.collection(col.firestoreId);
-      const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(col.firestoreId);
-      if (lastSync) query = query.where('updatedAt', '>', lastSync);
-
+      const query = userRef.collection(col.firestoreId);
       const unsub = query.onSnapshot(async (snapshot) => {
         if (isSyncing) { _enqueueSyncLocked(handler, snapshot); return; }
         await handler(snapshot);
@@ -2891,14 +2888,12 @@ Your account protects your data with enterprise-grade encryption.
 </button>
 <div id="gsi-btn-container" style="display:none;"></div>
 
-<!-- ── Divider ── -->
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
   <div style="flex:1;height:1px;background:var(--glass-border);"></div>
   <span style="font-size:0.72rem;color:var(--text-muted);font-weight:500;white-space:nowrap;">or sign in with email</span>
   <div style="flex:1;height:1px;background:var(--glass-border);"></div>
 </div>
 
-<!-- ── Email / Password Form ── -->
 <form id="auth-form" style="display: flex; flex-direction: column; gap: 13px;">
 <input type="email" id="auth-email" placeholder="Email Address" required autocomplete="username"
 style="width: 100%; padding: 13px; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; box-sizing: border-box; color: var(--text-main); font-size:0.9rem;">
