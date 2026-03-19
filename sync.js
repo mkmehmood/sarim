@@ -1341,7 +1341,8 @@ function scheduleListenerReconnect() {
     if (typeof showToast === 'function') showToast('Connection lost. Please refresh the page.', 'error');
     return;
   }
-  const delay = BASE_RETRY_DELAY * Math.pow(2, listenerRetryAttempts);
+  const expDelay = BASE_RETRY_DELAY * Math.pow(2, listenerRetryAttempts);
+  const delay = Math.max(expDelay, APP_CONFIG.MIN_LISTENER_RECONNECT_MS);
   listenerRetryAttempts++;
   isReconnecting = true;
   listenerReconnectTimer = setTimeout(() => {
@@ -1446,19 +1447,6 @@ async function subscribeToRealtime() {
       }
     }, () => {});
     realtimeRefs.push(userDocUnsub);
-
-    for (const col of SYNC_COLLECTIONS) {
-      const handler = _makeSnapshotHandler(col);
-      const query = userRef.collection(col.firestoreId);
-      const unsub = query.onSnapshot(async (snapshot) => {
-        if (isSyncing) { _enqueueSyncLocked(handler, snapshot); return; }
-        await handler(snapshot);
-      }, _error => {
-        updateSignalUI('error');
-        scheduleListenerReconnect();
-      });
-      realtimeRefs.push(unsub);
-    }
 
     const _handleSettingsSnapshot = async (doc) => {
       try {
@@ -1812,12 +1800,14 @@ async function initFirebase() {
   try {
     window._fbOfflineHandler = () => { updateSignalUI('offline'); };
     window._fbVisibilityHandler = async () => {
-      if (document.visibilityState === 'visible') {
-        if (currentUser && database) {
-          try { await pullDataFromCloud(true); }
-          catch (error) { console.warn('Failed to pull data from cloud.', _safeErr(error)); }
-        }
-      }
+      if (document.visibilityState !== 'visible') return;
+      if (!currentUser || !database) return;
+      try {
+        const lastSync = await sqliteStore.get('last_synced');
+        const msSince = lastSync ? (Date.now() - new Date(lastSync).getTime()) : Infinity;
+        if (msSince < APP_CONFIG.VISIBILITY_SYNC_COOLDOWN_MS) return;
+        await pullDataFromCloud(true);
+      } catch (error) { console.warn('Failed to pull data from cloud.', _safeErr(error)); }
     };
     window.addEventListener('offline', window._fbOfflineHandler);
     document.addEventListener('visibilitychange', window._fbVisibilityHandler);
@@ -2067,9 +2057,13 @@ async function _detectUserType(userRef) {
 }
 
 async function _downloadDeltas(userRef, userType) {
+  const FRESH_THRESHOLD_MS = 8 * 1000;
   const buildQuery = async (collection, collectionName) => {
     if (userType === 'existing') return collection.get();
     const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(collectionName);
+    if (lastSync && (Date.now() - lastSync.toMillis()) < FRESH_THRESHOLD_MS) {
+      return { docs: [], docChanges: () => [] };
+    }
     return lastSync ? collection.where('updatedAt', '>', lastSync).get() : collection.get();
   };
 
@@ -2097,7 +2091,14 @@ async function _downloadDeltas(userRef, userType) {
     buildQuery(userRef.collection('expenses'), 'expenses'),
     buildQuery(userRef.collection('returns'), 'returns'),
   ]);
-  trackFirestoreRead(12 + 3);
+  trackFirestoreRead(3);
+  let realCollectionReads = 0;
+  [productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
+   salesCustomersSnap, transactionsSnap, entitiesSnap, inventorySnap,
+   factoryHistorySnap, expensesSnap, returnsSnap].forEach(snap => {
+    if (snap && typeof snap.query !== 'undefined') realCollectionReads++;
+  });
+  trackFirestoreRead(realCollectionReads);
 
   const extract = (snap) => snap
     ? snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => !d._placeholder)
@@ -2437,7 +2438,12 @@ async function _uploadChanges(userRef) {
   const configItemCount = (collectionsUploaded.has('factorySettings') ? 1 : 0)
     + (collectionsUploaded.has('settings') ? 1 : 0)
     + (collectionsUploaded.has('expenseCategories') ? 1 : 0);
-  return totalItemsToWrite + configItemCount;
+  const totalUploaded = totalItemsToWrite + configItemCount;
+  if (totalUploaded > 0 && typeof emitSyncUpdate === 'function') {
+    const uploadedCollections = Array.from(collectionsUploaded).reduce((acc, col) => { acc[col] = null; return acc; }, {});
+    await emitSyncUpdate(uploadedCollections).catch(() => {});
+  }
+  return totalUploaded;
 }
 
 function performOneClickSync(silent = false) {
@@ -2777,7 +2783,7 @@ clearInterval(window.deviceHeartbeatInterval);
 window.deviceHeartbeatInterval = null;
 }
 }
-const AUTO_BACKUP_INTERVAL = 180000;
+const AUTO_BACKUP_INTERVAL = 900000;
 
 async function scheduleAutoBackup() {
 clearAutoBackup();
@@ -2798,30 +2804,15 @@ clearInterval(autoSaveTimer);
 autoSaveTimer = null;
 }
 }
-async function wakeUpDatabase() {
-if (!firebaseDB || !currentUser) return false;
-try {
-const wakeUpPromise = firebaseDB.collection('users').doc(currentUser.uid)
-.collection('settings').doc('config').get();
-const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 45000));
-await Promise.race([wakeUpPromise, timeoutPromise]);
-dbWakeUpAttempted = true;
-return true;
-} catch (error) {
-return false;
-}
-}
 async function wakeUpDatabaseAndSync() {
-showToast('Connecting to cloud...', 'info');
-const awake = await wakeUpDatabase();
-if (awake) {
-await pullDataFromCloud(true);
-} else {
-setTimeout(async () => {
-const retryAwake = await wakeUpDatabase();
-if (retryAwake) await pullDataFromCloud(true);
-}, 5000);
-}
+  showToast('Connecting to cloud...', 'info');
+  if (!firebaseDB || !currentUser) {
+    setTimeout(async () => {
+      if (firebaseDB && currentUser) await pullDataFromCloud(false);
+    }, 5000);
+    return;
+  }
+  await pullDataFromCloud(false);
 }
 async function triggerCloudAction(action) {
 if (!firebaseDB) {

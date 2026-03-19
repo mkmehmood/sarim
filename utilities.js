@@ -2795,7 +2795,6 @@ async function loadChartJs() {
       }
     }
     _chartJsPromise = null;
-    if (!navigator.onLine) return;
     throw new Error('Chart.js could not be loaded from any CDN.');
   })();
   return _chartJsPromise;
@@ -3354,7 +3353,7 @@ const netSalesCredits = rawData.salesCredits;
 const combinedMarketDebt = rawData.calculatorTotalIssued - rawData.calculatorTotalRecovered;
 const cashInHand = rawData.totalProductionValue +
 netSalesCash + rawData.calculatorCash +
-rawData.paymentsIn - rawData.paymentsOut;
+rawData.paymentsIn - rawData.paymentsOut - totalExpenses;
 let AccountsReceivable = {
 salesTabCredit: netSalesCredits,
 calculatorCredit: Math.max(0, combinedMarketDebt),
@@ -3441,21 +3440,7 @@ CurrentLiabilities.accountsPayable.entityPayables += balance;
 }
 }
 CurrentLiabilities.accountsPayable.otherPayables.operating = 0;
-paymentTransactions.forEach(trans => {
-if (trans.isExpense && trans.category === 'operating') {
-CurrentLiabilities.accountsPayable.otherPayables.operating += trans.amount;
-}
-});
-if (Array.isArray(expenseRecords)) {
-expenseRecords.forEach(exp => {
-if (exp.isMerged !== true) return;
-if (exp.category === 'operating') {
-CurrentLiabilities.accountsPayable.otherPayables.operating += (parseFloat(exp.amount) || 0);
-}
-});
-}
-CurrentLiabilities.accountsPayable.otherPayables.total =
-CurrentLiabilities.accountsPayable.otherPayables.operating;
+CurrentLiabilities.accountsPayable.otherPayables.total = 0;
 CurrentLiabilities.accountsPayable.total =
 CurrentLiabilities.accountsPayable.supplierPayables +
 CurrentLiabilities.accountsPayable.entityPayables +
@@ -3475,7 +3460,8 @@ directSales: netSalesCash,
 productionCash: rawData.totalProductionValue,
 repCollections: rawData.calculatorCash,
 paymentsIn: rawData.paymentsIn,
-paymentsOut: rawData.paymentsOut
+paymentsOut: rawData.paymentsOut,
+operatingExpenses: totalExpenses
 },
 operatingCashFlow: netSalesCash + rawData.totalProductionValue + rawData.calculatorCash,
 assets: {
@@ -3527,6 +3513,8 @@ document.getElementById('cashDetailProductionCash').textContent = `${fmtAmt(safe
 document.getElementById('cashDetailRepCollections').textContent = `${fmtAmt(safeValue(indicators.cashDetails.repCollections))}`;
 document.getElementById('cashDetailPaymentsIn').textContent = `${fmtAmt(safeValue(indicators.cashDetails.paymentsIn))}`;
 document.getElementById('cashDetailPaymentsOut').textContent = `${fmtAmt(safeValue(indicators.cashDetails.paymentsOut))}`;
+const cashDetailOpExpEl = document.getElementById('cashDetailOperatingExpenses');
+if (cashDetailOpExpEl) cashDetailOpExpEl.textContent = `${fmtAmt(safeValue(indicators.cashDetails.operatingExpenses))}`;
 document.getElementById('cashDetailNet').textContent = `${fmtAmt(safeValue(indicators.cashInHand))}`;
 document.getElementById('formulaProdTotal').textContent = `${fmtAmt(safeValue(indicators.assets.cash))}`;
 document.getElementById('formulaRawMaterials').textContent = `${fmtAmt(safeValue(indicators.assets.rawMaterials))}`;
@@ -8575,7 +8563,8 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const compMode = currentCompMode;
-const selectedDate = document.getElementById('sale-date').value;
+const _sdEl = document.getElementById('sale-date');
+const selectedDate = _sdEl ? _sdEl.value : new Date().toISOString().split('T')[0];
 const selectedDateObj = new Date(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
@@ -8763,8 +8752,11 @@ currentCompMode = compMode;
 const btn = document.getElementById(`comp-${m}-btn`);
 if(btn) btn.className = `toggle-opt ${m === compMode ? 'active' : ''}`;
 });
-const seller = document.getElementById('sellerSelect').value;
-const searchDate = document.getElementById('sale-date').value;
+const _sellerEl = document.getElementById('sellerSelect');
+const _saleDateEl = document.getElementById('sale-date');
+if (!_sellerEl || !_saleDateEl) return;
+const seller = _sellerEl.value;
+const searchDate = _saleDateEl.value;
 autoFillTotalSoldQuantity();
 const isCombined = seller === "COMBINED";
 const label = isCombined ? "Combined" : seller;
@@ -8816,7 +8808,7 @@ _rawDate: h.date
 true, h.id, isCombined ? h.seller : null, isHighlight, h.isMerged
 ));
 });
-list.innerHTML = _hlParts.join('');
+if (list) list.innerHTML = _hlParts.join('');
 const validSearchDate = searchDate || new Date().toISOString().split('T')[0];
 const now = new Date(validSearchDate);
 if (isNaN(now.getTime())) {
@@ -8840,11 +8832,11 @@ if(hDate.getMonth() === now.getMonth() && hDate.getFullYear() === now.getFullYea
 if(hDate.getFullYear() === now.getFullYear()) addToRange(ranges.y, h);
 addToRange(ranges.a, h);
 });
-document.getElementById('dailyReport').innerHTML = createReportHTML("Daily View", ranges.d);
-document.getElementById('weeklyReport').innerHTML = createReportHTML("Weekly View", ranges.w);
-document.getElementById('monthlyReport').innerHTML = createReportHTML("Monthly View", ranges.m);
-document.getElementById('yearlyReport').innerHTML = createReportHTML("Yearly View", ranges.y);
-document.getElementById('allTimeReport').innerHTML = createReportHTML("All Time Summary", ranges.a);
+const _dr = document.getElementById('dailyReport'); if (_dr) _dr.innerHTML = createReportHTML("Daily View", ranges.d);
+const _wr = document.getElementById('weeklyReport'); if (_wr) _wr.innerHTML = createReportHTML("Weekly View", ranges.w);
+const _mr = document.getElementById('monthlyReport'); if (_mr) _mr.innerHTML = createReportHTML("Monthly View", ranges.m);
+const _yr = document.getElementById('yearlyReport'); if (_yr) _yr.innerHTML = createReportHTML("Yearly View", ranges.y);
+const _ar = document.getElementById('allTimeReport'); if (_ar) _ar.innerHTML = createReportHTML("All Time Summary", ranges.a);
 if (typeof setPerfOverviewMode === 'function') setPerfOverviewMode(currentPerfOverviewMode || 'day');
 const _saleDate = (document.getElementById('sale-date') || {}).value || new Date().toISOString().split('T')[0];
 _filterHistoryByPeriod('#historyList', _saleDate, currentPerfOverviewMode || 'day');
