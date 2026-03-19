@@ -576,8 +576,10 @@ if (typeof isSyncing !== 'undefined' && isSyncing) return;
 try {
 await pushDataToCloud(true);
 } catch (error) {
+if (navigator.onLine) {
 console.error('Sync failed. Check your connection.', _safeErr(error));
 showToast('Sync failed. Check your connection.', 'error');
+}
 }
 }, AUTO_SYNC_DELAY);
 }
@@ -2793,6 +2795,7 @@ async function loadChartJs() {
       }
     }
     _chartJsPromise = null;
+    if (!navigator.onLine) return;
     throw new Error('Chart.js could not be loaded from any CDN.');
   })();
   return _chartJsPromise;
