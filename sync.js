@@ -2503,6 +2503,36 @@ async function _doOneClickSync(silent = false) {
 
     await _syncSettings(cloudData);
 
+    const _colGapMap = [
+      { sqlite: 'mfg_pro_pkr',                 fs: 'production',         cloud: cloudData.data.mfg_pro_pkr },
+      { sqlite: 'customer_sales',               fs: 'sales',              cloud: cloudData.data.customer_sales },
+      { sqlite: 'noman_history',                fs: 'calculator_history', cloud: cloudData.data.noman_history },
+      { sqlite: 'rep_sales',                    fs: 'rep_sales',          cloud: cloudData.data.rep_sales },
+      { sqlite: 'rep_customers',                fs: 'rep_customers',      cloud: cloudData.data.rep_customers },
+      { sqlite: 'sales_customers',              fs: 'sales_customers',    cloud: cloudData.data.sales_customers },
+      { sqlite: 'payment_transactions',         fs: 'transactions',       cloud: cloudData.data.payment_transactions },
+      { sqlite: 'payment_entities',             fs: 'entities',           cloud: cloudData.data.payment_entities },
+      { sqlite: 'factory_inventory_data',       fs: 'inventory',          cloud: cloudData.data.factory_inventory_data },
+      { sqlite: 'factory_production_history',   fs: 'factory_history',    cloud: cloudData.data.factory_production_history },
+      { sqlite: 'stock_returns',                fs: 'returns',            cloud: cloudData.data.stock_returns },
+      { sqlite: 'expenses',                     fs: 'expenses',           cloud: cloudData.data.expenses },
+    ];
+    try {
+      const deletedIds = new Set(ensureArray(await sqliteStore.get('deleted_records')).map(String));
+      for (const col of _colGapMap) {
+        const cloudIds = new Set((col.cloud || []).map(r => String(r.id)));
+        const localArr = ensureArray(await sqliteStore.get(col.sqlite));
+        for (const rec of localArr) {
+          if (!rec || !rec.id) continue;
+          const sid = String(rec.id);
+          if (deletedIds.has(sid)) continue;
+          if (cloudIds.has(sid)) continue;
+          if (typeof validateUUID === 'function' && !validateUUID(sid)) continue;
+          DeltaSync.trackId(col.fs, sid);
+        }
+      }
+    } catch (_gapErr) {}
+
     if (userType === 'existing') {
       await sqliteStore.set('firestore_initialized', true);
       await sqliteStore.set('user_state', { type: 'existing', hasRealData: true, lastChecked: Date.now(), initialized: true, restoredItems: totalCloudChanges });
