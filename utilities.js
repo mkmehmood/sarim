@@ -4800,12 +4800,10 @@ const UUIDSyncRegistry = (() => {
 
   function skipUpload(col, id) {
     const sid = String(id);
-
     const up = _uploaded.get(col);
     if (up && up.has(sid)) return true;
-
+    if (!_myDeviceShard) return false;
     if (_isLocalOrigin(sid)) return false;
-
     return DeltaSync.wasUploaded(col, sid);
   }
 

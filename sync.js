@@ -2429,6 +2429,11 @@ async function _uploadChanges(userRef) {
     await DeltaSync.setLastSyncTimestamp(col);
     DeltaSync.clearDirty(col);
   }
+  for (const col of Object.keys(collections)) {
+    if (DeltaSync.isDirty(col) && !collectionsUploaded.has(col)) {
+      DeltaSync.clearDirty(col);
+    }
+  }
 
   const configItemCount = (collectionsUploaded.has('factorySettings') ? 1 : 0)
     + (collectionsUploaded.has('settings') ? 1 : 0)
@@ -2466,6 +2471,9 @@ async function _doOneClickSync(silent = false) {
   if (!silent) showToast('Syncing....', 'info');
 
   try {
+    if (typeof initDeviceShard === 'function') {
+      await initDeviceShard().catch(() => {});
+    }
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 
     const userType = await _detectUserType(userRef);
@@ -2576,6 +2584,10 @@ async function _doPushDataToCloud(silent = false) {
 
     await sqliteStore.init();
     await sqliteStore.flush();
+
+    if (typeof initDeviceShard === 'function') {
+      await initDeviceShard().catch(() => {});
+    }
 
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     const operationCount = await _uploadChanges(userRef);
