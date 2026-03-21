@@ -4772,6 +4772,7 @@ const UUIDSyncRegistry = (() => {
   const _uploaded   = new Map();
   const _downloaded = new Map();
   let   _myDeviceShard = null;
+  let   _newDeviceRestore = false;
 
   function _set(map, col) {
     if (!map.has(col)) map.set(col, new Set());
@@ -4794,6 +4795,10 @@ const UUIDSyncRegistry = (() => {
 
   function setDeviceShard(shard) {
     _myDeviceShard = shard ? String(shard).toLowerCase() : null;
+  }
+
+  function setNewDeviceRestore(flag) {
+    _newDeviceRestore = !!flag;
   }
 
   function markUploaded(col, id) {
@@ -4826,6 +4831,7 @@ const UUIDSyncRegistry = (() => {
     const dn = _downloaded.get(col);
     if (dn && dn.has(sid)) return true;
 
+    if (_newDeviceRestore) return false;
     if (_isLocalOrigin(sid)) return true;
     return false;
   }
@@ -4870,6 +4876,7 @@ const UUIDSyncRegistry = (() => {
 
   return {
     setDeviceShard,
+    setNewDeviceRestore,
     markUploaded,
     skipUpload,
     markDownloaded,

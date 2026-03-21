@@ -2497,8 +2497,12 @@ async function _doOneClickSync(silent = false) {
     const cloudData = await _downloadDeltas(userRef, userType);
     const totalCloudChanges = Object.values(cloudData.data).reduce((s, a) => s + (a?.length || 0), 0);
 
-    if (totalCloudChanges > 0) {
-      await _mergeAndPersist(cloudData);
+    if (userType === 'existing' && typeof UUIDSyncRegistry !== 'undefined') {
+      UUIDSyncRegistry.setNewDeviceRestore(true);
+    }
+    await _mergeAndPersist(cloudData);
+    if (userType === 'existing' && typeof UUIDSyncRegistry !== 'undefined') {
+      UUIDSyncRegistry.setNewDeviceRestore(false);
     }
 
     await _syncSettings(cloudData);
@@ -2667,7 +2671,8 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
     await sqliteStore.flush();
 
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-    const cloudData = await _downloadDeltas(userRef, 'returning');
+    const pullUserType = await _detectUserType(userRef);
+    const cloudData = await _downloadDeltas(userRef, pullUserType === 'new' ? 'existing' : pullUserType);
 
     const hasData = Object.values(cloudData.data).some(a => a.length > 0)
       || (cloudData.settings && cloudData.settings.exists)
@@ -2677,8 +2682,11 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
       return;
     }
 
+    if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(true);
     await _mergeAndPersist(cloudData);
+    if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(false);
     await _syncSettings(cloudData);
+    await sqliteStore.set('firestore_initialized', true);
 
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
