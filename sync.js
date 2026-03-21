@@ -2055,10 +2055,16 @@ async function _downloadDeltas(userRef, userType) {
   const FRESH_THRESHOLD_MS = 8 * 1000;
   const buildQuery = async (collection, collectionName) => {
     if (userType === 'existing') return collection.get();
-    const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(collectionName);
-    if (lastSync && (Date.now() - lastSync.toMillis()) < FRESH_THRESHOLD_MS) {
+    const lastDownloadKey = `lastDownload_${collectionName}`;
+    let lastDownloadMs = 0;
+    try {
+      const raw = await sqliteStore.get(lastDownloadKey);
+      lastDownloadMs = raw ? (typeof raw === 'number' ? raw : parseInt(raw)) : 0;
+    } catch (_) {}
+    if (lastDownloadMs && (Date.now() - lastDownloadMs) < FRESH_THRESHOLD_MS) {
       return { docs: [], docChanges: () => [] };
     }
+    const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(collectionName);
     return lastSync ? collection.where('updatedAt', '>', lastSync).get() : collection.get();
   };
 
@@ -2238,7 +2244,10 @@ async function _mergeAndPersist(cloudData) {
   rep_customers: data.rep_customers, sales_customers: data.sales_customers,
   };
   for (const [col, arr] of Object.entries(_colMap)) {
-  if (Array.isArray(arr)) await DeltaSync.setLastSyncTimestamp(col);
+  if (Array.isArray(arr)) {
+    await DeltaSync.setLastSyncTimestamp(col);
+    await sqliteStore.set(`lastDownload_${col}`, Date.now());
+  }
   }
   await DeltaSync.setLastSyncTimestamp('deletions');
 }
