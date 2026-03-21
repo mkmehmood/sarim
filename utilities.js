@@ -4511,6 +4511,12 @@ isDirty(collection) {
   const s = this._dirty.get(collection);
   return s !== undefined && s.size > 0;
 },
+isDirtyId(collection, id) {
+  const s = this._dirty.get(collection);
+  if (!s || s.size === 0) return false;
+  if (s.has('*')) return true;
+  return s.has(String(id));
+},
 markUploaded(collection, id) {
   const sid = String(id);
   if (!this._uploaded.has(collection)) this._uploaded.set(collection, new Set());
@@ -4800,6 +4806,7 @@ const UUIDSyncRegistry = (() => {
 
   function skipUpload(col, id) {
     const sid = String(id);
+    if (DeltaSync.isDirtyId(col, sid)) return false;
     const up = _uploaded.get(col);
     if (up && up.has(sid)) return true;
     if (!_myDeviceShard) return false;
@@ -4844,9 +4851,7 @@ const UUIDSyncRegistry = (() => {
     try {
       const arr = await sqliteStore.get(`uploadedIds_${col}`, []);
       if (Array.isArray(arr) && arr.length > 0) {
-        const s = _set(_uploaded, col);
-        arr.forEach(id => s.add(String(id)));
-
+        DeltaSync.loadUploadedIds(col).catch(() => {});
       }
     } catch (_) {}
   }
