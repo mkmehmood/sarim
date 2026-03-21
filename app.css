@@ -5813,3 +5813,265 @@ overflow-y: auto;
 overscroll-behavior-y: contain;
 touch-action: pan-y;
 }
+
+/* ═══════════════════════════════════════════════
+   SARIM CHARTS — pure CSS/HTML chart system
+   Replaces Chart.js with zero dependencies
+   ═══════════════════════════════════════════════ */
+.sc-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+/* Title */
+.sc-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: center;
+  padding: 4px 4px 2px;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+/* ── BAR CHART ─────────────────────────────── */
+.sc-bar-chart {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  min-height: 0;
+}
+.sc-y-axis {
+  position: relative;
+  width: 30px;
+  flex-shrink: 0;
+}
+.sc-y-tick {
+  position: absolute;
+  right: 2px;
+  transform: translateY(50%);
+  font-size: 7.5px;
+  color: var(--text-muted);
+  text-align: right;
+  line-height: 1;
+  pointer-events: none;
+}
+.sc-y-tick span { display: block; white-space: nowrap; }
+.sc-bars {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--glass-border);
+  position: relative;
+  padding-top: 6px;
+  min-height: 0;
+}
+.sc-grid-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+}
+.sc-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 0;
+  gap: 3px;
+}
+.sc-bar-fill {
+  width: 70%;
+  min-width: 4px;
+  border-radius: 3px 3px 0 0;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  min-height: 2px;
+}
+.sc-bar-fill:hover, .sc-bar-fill:focus { opacity: 0.75; outline: none; }
+.sc-stacked {
+  width: 70%;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 3px 3px 0 0;
+  overflow: hidden;
+  min-height: 2px;
+}
+.sc-seg {
+  cursor: pointer;
+  min-height: 2px;
+  transition: opacity 0.15s;
+}
+.sc-seg:hover, .sc-seg:focus { opacity: 0.78; outline: none; }
+.sc-bar-group {
+  display: flex;
+  gap: 1px;
+  align-items: flex-end;
+  height: 100%;
+  width: 80%;
+}
+.sc-bar-group .sc-bar-fill { width: 100%; }
+.sc-bar-lbl {
+  font-size: 7px;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+/* ── PIE CHART ─────────────────────────────── */
+.sc-pie-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+.sc-pie-svg-wrap {
+  flex-shrink: 0;
+}
+.sc-pie-svg {
+  width: 140px;
+  height: 140px;
+  display: block;
+}
+.sc-pie-slice {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sc-pie-slice:hover, .sc-pie-slice:focus { opacity: 0.80; outline: none; }
+.sc-pie-leg {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.sc-pie-leg-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  gap: 4px;
+  align-items: center;
+  font-size: 8.5px;
+  color: var(--text-muted);
+  min-width: 0;
+}
+.sc-pie-lbl {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sc-pie-val {
+  color: var(--text-main);
+  font-weight: 700;
+  white-space: nowrap;
+  font-size: 8px;
+}
+.sc-pie-pct {
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 8px;
+}
+/* ── LINE CHART ────────────────────────────── */
+.sc-line-wrap {
+  flex: 1;
+  min-height: 60px;
+  position: relative;
+}
+.sc-line-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.sc-dot {
+  cursor: pointer;
+  transition: r 0.12s;
+}
+.sc-dot:hover { r: 4.5; }
+/* ── SHARED LEGEND ─────────────────────────── */
+.sc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  justify-content: center;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.sc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8.5px;
+  color: var(--text-muted);
+}
+.sc-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+/* ── TOOLTIP ───────────────────────────────── */
+.sc-tooltip {
+  position: fixed;
+  background: var(--glass-bg, rgba(15,23,42,0.96));
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.12));
+  color: var(--text-main, #f1f5f9);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: opacity 0.1s;
+}
+/* ── EMPTY STATE ───────────────────────────── */
+.sc-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-style: italic;
+  min-height: 60px;
+}
+/* ── OVERRIDE: chart-box for sc-host children ─ */
+.chart-box > .sc-host,
+.sales-rep-chart-box > .sc-host {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Composition chart box keeps auto height */
+.chart-box:has(#compositionChart) {
+  height: auto;
+  min-height: 200px;
+}
+/* Light theme adjustments */
+[data-theme="light"] .sc-grid-line {
+  background: rgba(0,0,0,0.06);
+}
+[data-theme="light"] .sc-tooltip {
+  background: rgba(255,255,255,0.97);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}

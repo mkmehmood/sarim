@@ -1136,8 +1136,7 @@ window[col.tabSyncFn]();
 flashLivePulse();
 recordSuccessfulConnection();
 } catch (err) {
-console.error(`[Snapshot:${col.firestoreId}] error`, _safeErr(err));
-showToast('Failed to save data locally.', 'error');
+console.warn(`[Snapshot:${col.firestoreId}] local save error`, _safeErr(err));
 }
 };
 }
@@ -1493,8 +1492,7 @@ async function subscribeToRealtime() {
         flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
-        console.error('Failed to save data locally.', _safeErr(error));
-        showToast('Failed to save data locally.', 'error');
+        console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
     const settingsUnsub = userRef.collection('settings').doc('config').onSnapshot(async (doc) => {
@@ -1571,8 +1569,7 @@ async function subscribeToRealtime() {
         flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
-        console.error('Failed to save data locally.', _safeErr(error));
-        showToast('Failed to save data locally.', 'error');
+        console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
     const factorySettingsUnsub = userRef.collection('factorySettings').doc('config').onSnapshot(async (doc) => {
@@ -1604,8 +1601,7 @@ async function subscribeToRealtime() {
         }
         recordSuccessfulConnection();
       } catch (error) {
-        console.error('Failed to save data locally.', _safeErr(error));
-        showToast('Failed to save data locally.', 'error');
+        console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
     const expenseCategoriesUnsub = userRef.collection('expenseCategories').doc('categories').onSnapshot(async (doc) => {
@@ -1717,8 +1713,7 @@ async function subscribeToRealtime() {
           recordSuccessfulConnection();
         }
       } catch (error) {
-        console.error('Failed to save data locally.', _safeErr(error));
-        showToast('Failed to save data locally.', 'error');
+        console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
     const deletionsUnsub = userRef.collection('deletions').onSnapshot(async (snapshot) => {

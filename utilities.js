@@ -99,10 +99,10 @@ reg.sync.register('offline-queue-sync').catch(() => {});
 },
 async saveQueue() {
 try {
+await sqliteStore.init();
 await sqliteStore.set('offline_operation_queue', this.queue);
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[OfflineQueue] saveQueue failed:', _safeErr(error));
 }
 },
 async saveDeadLetterQueue() {
@@ -142,7 +142,7 @@ try {
 await this.executeOperation(item.operation);
 successfulIds.push(item.id);
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
+console.warn('[OfflineQueue] operation failed, will retry:', _safeErr(error));
 item.retries++;
 item.lastAttempt = Date.now();
 item.error = error.message;
@@ -935,9 +935,6 @@ const _UI_DEFAULTS = {
   editingFactoryInventoryId: null,
   editingEntityId: null,
   selectedEntityId: null,
-  mfgPieChartShowPercentage: false,
-  custPaymentChartShowPercentage: false,
-  compositionChartShowPercentage: false,
   currentFactoryDate: new Date().toISOString().split('T')[0],
 };
 let _uiState = { ..._UI_DEFAULTS };
@@ -988,9 +985,6 @@ Object.defineProperties(window, {
   editingFactoryInventoryId:    { get: () => getUI('editingFactoryInventoryId'),    set: v => setUI('editingFactoryInventoryId', v),    configurable: true },
   editingEntityId:              { get: () => getUI('editingEntityId'),              set: v => setUI('editingEntityId', v),              configurable: true },
   selectedEntityId:             { get: () => getUI('selectedEntityId'),             set: v => setUI('selectedEntityId', v),             configurable: true },
-  mfgPieChartShowPercentage:    { get: () => getUI('mfgPieChartShowPercentage'),    set: v => setUI('mfgPieChartShowPercentage', v),    configurable: true },
-  custPaymentChartShowPercentage:{ get: () => getUI('custPaymentChartShowPercentage'), set: v => setUI('custPaymentChartShowPercentage', v), configurable: true },
-  compositionChartShowPercentage:{ get: () => getUI('compositionChartShowPercentage'), set: v => setUI('compositionChartShowPercentage', v), configurable: true },
   currentFactoryDate:           { get: () => getUI('currentFactoryDate'),           set: v => setUI('currentFactoryDate', v),           configurable: true },
 });
 const splashQuotes = [
@@ -1527,8 +1521,7 @@ await sqliteStore.set('deletion_records', deletionRecords);
 }
 }
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[uploadDeletion] cloud commit failed, queuing for retry:', _safeErr(error));
 if (typeof OfflineQueue !== 'undefined') {
 await OfflineQueue.add({
 action: 'delete',
@@ -1553,7 +1546,8 @@ expiredIds.forEach(id => deletedRecordIds.delete(id));
 await sqliteStore.set('deletion_records', validDeletions);
 await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
 }
-if (firebaseDB && typeof currentUser !== 'undefined' && currentUser) {
+if (firebaseDB && typeof currentUser !== 'undefined' && currentUser &&
+!window._firestoreNetworkDisabled && navigator.onLine) {
 try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const expiredQuery = userRef.collection('deletions')
@@ -1567,8 +1561,7 @@ batch.delete(doc.ref);
 await batch.commit();
 }
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[cleanupOldDeletions] cloud cleanup failed, will retry when online:', _safeErr(error));
 }
 }
 }
@@ -2776,29 +2769,206 @@ function loadScript(url, integrity) {
   });
   return _scriptLoadPromises[url];
 }
-const _CHARTJS_URLS = [
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
-  'https://unpkg.com/chart.js@4.4.4/dist/chart.umd.min.js'
-];
-let _chartJsPromise = null;
-async function loadChartJs() {
-  if (window.Chart) return Promise.resolve();
-  if (_chartJsPromise) return _chartJsPromise;
-  _chartJsPromise = (async () => {
-    for (const url of _CHARTJS_URLS) {
-      try {
-        await loadScript(url);
-        if (window.Chart) return;
-      } catch (e) {
-        console.warn('Chart.js CDN failed, trying next:', url, _safeErr(e));
-      }
+const SarimChart = (() => {
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+  function _fmt(v) { return typeof fmtAmt === 'function' ? fmtAmt(+v || 0) : Math.round(+v || 0).toLocaleString(); }
+  function _short(v) {
+    v = +v || 0;
+    if (v >= 1e6) return (v/1e6).toFixed(1)+'M';
+    if (v >= 1e3) return (v/1e3).toFixed(0)+'k';
+    return Math.round(v).toString();
+  }
+  let _bodyTip = null;
+  function _getBodyTip() {
+    if (!_bodyTip || !_bodyTip.isConnected) {
+      _bodyTip = document.createElement('div');
+      _bodyTip.className = 'sc-tooltip';
+      _bodyTip.style.cssText = 'display:none;position:fixed;pointer-events:none;z-index:9999;';
+      document.body.appendChild(_bodyTip);
     }
-    _chartJsPromise = null;
-    throw new Error('Chart.js could not be loaded from any CDN.');
-  })();
-  return _chartJsPromise;
-}
+    return _bodyTip;
+  }
+  function _bindTips(host) {
+    host.querySelectorAll('[data-tip]').forEach(el => {
+      const show = () => {
+        const tip = _getBodyTip();
+        tip.textContent = el.dataset.tip;
+        tip.style.display = 'block';
+        const r = el.getBoundingClientRect();
+        const tw = tip.offsetWidth || 120;
+        let left = r.left + r.width / 2 - tw / 2;
+        let top = r.top - 38;
+        if (top < 4) top = r.bottom + 4;
+        left = Math.max(4, Math.min(left, window.innerWidth - tw - 4));
+        tip.style.left = left + 'px';
+        tip.style.top = top + 'px';
+      };
+      el.addEventListener('mouseenter', show);
+      el.addEventListener('touchstart', e => { e.preventDefault(); show(); }, {passive:false});
+      el.addEventListener('mouseleave', () => { const tip = _getBodyTip(); tip.style.display = 'none'; });
+      el.addEventListener('touchend', () => setTimeout(() => { const tip = _getBodyTip(); tip.style.display = 'none'; }, 1800));
+    });
+  }
+  class SarimChart {
+    constructor(el, cfg) {
+      this.el = el; this.config = cfg;
+      this.data = JSON.parse(JSON.stringify(cfg.data || {labels:[],datasets:[]}));
+      this.options = cfg.options || {};
+      if (this.el) { this.el.classList.add('sc-host'); this._render(); }
+    }
+    destroy() { if (this.el) { this.el.innerHTML = ''; this.el.classList.remove('sc-host'); } }
+    update() { if (this.el) this._render(); }
+    _render() {
+      if (!this.el) return;
+      const t = this.config.type;
+      if (t === 'bar') this._bar();
+      else if (t === 'pie') this._pie();
+      else if (t === 'line') this._line();
+    }
+    _titleHtml() {
+      const p = this.options?.plugins?.title;
+      return (p?.display && p?.text) ? `<div class="sc-title">${_esc(p.text)}</div>` : '';
+    }
+    _legendHtml(datasets, override) {
+      if (this.options?.plugins?.legend?.display === false) return '';
+      return '<div class="sc-legend">' + datasets.map((ds, i) => {
+        const c = override?.[i] || (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] || ds.backgroundColor[0] : (ds.backgroundColor || ds.borderColor || '#888'));
+        return `<div class="sc-legend-item"><span class="sc-legend-dot" style="background:${c}"></span><span>${_esc(ds.label||'')}</span></div>`;
+      }).join('') + '</div>';
+    }
+    _bar() {
+      const { datasets=[], labels=[] } = this.data;
+      const stacked = !!this.options?.scales?.y?.stacked;
+      let maxVal = 0;
+      if (stacked) {
+        labels.forEach((_, i) => { const s = datasets.reduce((a,ds)=>a+(+ds.data[i]||0),0); if(s>maxVal)maxVal=s; });
+      } else {
+        datasets.forEach(ds => ds.data.forEach(v => { if(+v>maxVal)maxVal=+v; }));
+      }
+      if (!maxVal) maxVal = 1;
+      let yTicks = '';
+      for (let i = 4; i >= 0; i--)
+        yTicks += `<div class="sc-y-tick" style="bottom:${(i/4*100).toFixed(1)}%"><span>${_short(maxVal*i/4)}</span></div>`;
+      let gridLines = '';
+      for (let i = 1; i <= 4; i++)
+        gridLines += `<div class="sc-grid-line" style="bottom:${(i/4*100).toFixed(1)}%"></div>`;
+      const single = datasets.length === 1;
+      const barsHtml = labels.map((lbl, i) => {
+        let inner = '';
+        if (stacked) {
+          const total = datasets.reduce((a,ds)=>a+(+ds.data[i]||0),0);
+          const ht = (total/maxVal*100).toFixed(2);
+          const segs = datasets.map(ds => {
+            const v = +ds.data[i]||0, p = total>0?(v/total*100).toFixed(2):'0';
+            const c = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+            return `<div class="sc-seg" style="height:${p}%;background:${c}" data-tip="${_esc(`${ds.label||''}: ${_fmt(v)}`)}" tabindex="0"></div>`;
+          }).join('');
+          inner = `<div class="sc-bar-fill sc-stacked" style="height:${ht}%">${segs}</div>`;
+        } else if (single) {
+          const ds = datasets[0], v = +ds.data[i]||0, ht = (v/maxVal*100).toFixed(2);
+          const c = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+          inner = `<div class="sc-bar-fill" style="height:${ht}%;background:${c};border-top:2px solid ${ds.borderColor||c}" data-tip="${_esc(`${_esc(String(lbl))}: ${_fmt(v)}`)}" tabindex="0"></div>`;
+        } else {
+          inner = '<div class="sc-bar-group">' + datasets.map(ds => {
+            const v = +ds.data[i]||0, ht = (v/maxVal*100).toFixed(2);
+            const c = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
+            return `<div class="sc-bar-fill" style="height:${ht}%;background:${c}" data-tip="${_esc(`${ds.label||''}: ${_fmt(v)}`)}" tabindex="0"></div>`;
+          }).join('') + '</div>';
+        }
+        const s = String(lbl), short = s.length > 5 ? s.slice(0,4)+'…' : s;
+        return `<div class="sc-bar-col">${inner}<div class="sc-bar-lbl" title="${_esc(s)}">${_esc(short)}</div></div>`;
+      }).join('');
+      this.el.innerHTML = `${this._titleHtml()}${datasets.length>1?this._legendHtml(datasets):''}
+<div class="sc-bar-chart">
+<div class="sc-y-axis">${yTicks}</div>
+<div class="sc-bars">${gridLines}${barsHtml}</div>
+</div>
+`;
+      _bindTips(this.el);
+    }
+    _pie() {
+      const { datasets=[], labels=[] } = this.data;
+      if (!datasets.length) return;
+      const ds = datasets[0];
+      const raw = (ds.data||[]).map(v => +v||0);
+      const total = raw.reduce((a,b)=>a+b,0);
+      const cols = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : ['#2563eb','#059669','#dc2626','#f59e0b','#7c3aed','#0891b2'];
+      const sz=120, cx=60, cy=60, r=54;
+      let paths = '';
+      if (total <= 0) {
+        paths = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--glass-border)"/>`;
+      } else {
+        let ang = -Math.PI/2;
+        raw.forEach((v, i) => {
+          if (v <= 0) return;
+          const pct = v/total, end = ang + pct*2*Math.PI;
+          const x1=cx+r*Math.cos(ang), y1=cy+r*Math.sin(ang);
+          const x2=cx+r*Math.cos(end), y2=cy+r*Math.sin(end);
+          const c = cols[i%cols.length], tip = _esc(`${labels[i]||''}: ${_fmt(v)} (${(pct*100).toFixed(1)}%)`);
+          paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${pct>.5?1:0},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${c}" stroke="var(--glass-bg,#0f172a)" stroke-width="1.5" class="sc-pie-slice" data-tip="${tip}" tabindex="0"/>`;
+          ang = end;
+        });
+      }
+      const leg = raw.map((v, i) => {
+        const c = cols[i%cols.length], p = total>0?(v/total*100).toFixed(1):'0';
+        return `<div class="sc-pie-leg-row"><span class="sc-legend-dot" style="background:${c}"></span><span class="sc-pie-lbl">${_esc(labels[i]||'')}</span><span class="sc-pie-val">${_fmt(v)}</span><span class="sc-pie-pct">${p}%</span></div>`;
+      }).join('');
+      this.el.innerHTML = `${this._titleHtml()}
+<div class="sc-pie-row">
+<div class="sc-pie-svg-wrap"><svg viewBox="0 0 ${sz} ${sz}" class="sc-pie-svg">${paths}</svg></div>
+<div class="sc-pie-leg">${leg}</div>
+</div>
+`;
+      _bindTips(this.el);
+    }
+    _line() {
+      const { datasets=[], labels=[] } = this.data;
+      if (!datasets.length || !labels.length) {
+        this.el.innerHTML = `${this._titleHtml()}${this._legendHtml(datasets)}<div class="sc-empty">No data yet</div>`;
+        return;
+      }
+      let maxVal = 0;
+      datasets.forEach(ds => ds.data.forEach(v => { if(+v>maxVal)maxVal=+v; }));
+      if (!maxVal) maxVal = 1;
+      const W=280, H=108, pL=34, pR=6, pT=6, pB=18, cW=W-pL-pR, cH=H-pT-pB, n=labels.length;
+      const xf = i => pL + (n>1?(i/(n-1))*cW:cW/2);
+      const yf = v => pT + cH - (+v||0)/maxVal*cH;
+      let svg = '';
+      for (let i=0; i<=4; i++) {
+        const y = pT+cH-(i/4)*cH;
+        svg += `<line x1="${pL}" y1="${y.toFixed(1)}" x2="${W-pR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+        svg += `<text x="${pL-3}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="7" fill="var(--text-muted,#94a3b8)">${_short(maxVal*i/4)}</text>`;
+      }
+      const xStep = Math.max(1, Math.ceil(n/6));
+      labels.forEach((lbl, i) => {
+        if (i%xStep!==0 && i!==n-1) return;
+        svg += `<text x="${xf(i).toFixed(1)}" y="${H-2}" text-anchor="middle" font-size="7" fill="var(--text-muted,#94a3b8)">${_esc(String(lbl))}</text>`;
+      });
+      datasets.forEach(ds => {
+        const pts = ds.data.map((v,i)=>({x:xf(i),y:yf(v),v}));
+        const lpts = pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+        if (ds.fill !== false && pts.length) {
+          const ap = `${pts[0].x.toFixed(1)},${pT+cH} ${lpts} ${pts[pts.length-1].x.toFixed(1)},${pT+cH}`;
+          svg += `<polyline points="${ap}" fill="${ds.backgroundColor||ds.borderColor+'22'}" stroke="none"/>`;
+        }
+        svg += `<polyline points="${lpts}" fill="none" stroke="${ds.borderColor||'#2563eb'}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
+        pts.forEach((p,i) => {
+          svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${ds.borderColor||'#2563eb'}" stroke="var(--glass-bg,#0f172a)" stroke-width="1.2" class="sc-dot" data-tip="${_esc(`${ds.label||''}: ${_fmt(p.v)}`)}"/>`;
+        });
+      });
+      svg += `<line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+cH}" stroke="var(--glass-border,rgba(255,255,255,0.1))" stroke-width="1"/>`;
+      svg += `<line x1="${pL}" y1="${pT+cH}" x2="${W-pR}" y2="${pT+cH}" stroke="var(--glass-border,rgba(255,255,255,0.1))" stroke-width="1"/>`;
+      this.el.innerHTML = `${this._titleHtml()}${this._legendHtml(datasets)}
+<div class="sc-line-wrap"><svg viewBox="0 0 ${W} ${H}" class="sc-line-svg">${svg}</svg></div>
+`;
+      _bindTips(this.el);
+    }
+  }
+  return SarimChart;
+})();
+
 function setCashTrackerMode(mode) {
 currentCashTrackerMode = mode;
 document.querySelectorAll('#tab-payments .toggle-group .toggle-opt').forEach(opt => {
@@ -3527,11 +3697,9 @@ if (calculatorReceivablesEl) calculatorReceivablesEl.textContent = `${fmtAmt(saf
 if (formulaReceivablesEl) formulaReceivablesEl.textContent = `${fmtAmt(safeValue(indicators.receivables.total))}`;
 const supplierPayablesEl = document.getElementById('supplierPayables');
 const entityPayablesEl = document.getElementById('entityPayables');
-const otherPayablesOperatingEl = document.getElementById('otherPayablesOperating');
 const formulaPayOutEl = document.getElementById('formulaPayOut');
 if (supplierPayablesEl) supplierPayablesEl.textContent = `${fmtAmt(safeValue(indicators.liabilities.accountsPayable.supplierPayables))}`;
 if (entityPayablesEl) entityPayablesEl.textContent = `${fmtAmt(safeValue(indicators.liabilities.accountsPayable.entityPayables))}`;
-if (otherPayablesOperatingEl) otherPayablesOperatingEl.textContent = `${fmtAmt(safeValue(indicators.liabilities.accountsPayable.otherPayables.operating))}`;
 if (formulaPayOutEl) formulaPayOutEl.textContent = `${fmtAmt(safeValue(indicators.liabilities.accountsPayable.total))}`;
 const currentAssetsTotalEl = document.getElementById('currentAssetsTotal');
 const currentLiabilitiesTotalEl = document.getElementById('currentLiabilitiesTotal');
@@ -4224,7 +4392,6 @@ writes: 0,
 history: [],
 lastReset: Date.now()
 };
-let firestoreUsageChart = null;
 function checkAndAutoResetFirestoreStats() {
 const now = Date.now();
 const hoursSinceReset = (now - firestoreStats.lastReset) / (1000 * 60 * 60);
@@ -4234,81 +4401,7 @@ firestoreStats.writes = 0;
 firestoreStats.history = [];
 firestoreStats.lastReset = now;
 saveFirestoreStats();
-updateFirestoreDisplay();
-if (firestoreUsageChart) {
-firestoreUsageChart.data.labels = [];
-firestoreUsageChart.data.datasets[0].data = [];
-firestoreUsageChart.data.datasets[1].data = [];
-firestoreUsageChart.update();
 }
-}
-}
-function initFirestoreUsageChart() {
-const canvas = document.getElementById('firestoreUsageChart');
-if (!canvas) {
-return;
-}
-if (!(canvas instanceof HTMLCanvasElement)) {
-return;
-}
-const ctx = canvas.getContext('2d');
-if (!ctx) {
-return;
-}
-firestoreUsageChart = new Chart(ctx, {
-type: 'line',
-data: {
-labels: [],
-datasets: [
-{
-label: 'Reads',
-data: [],
-borderColor: '#30d158',
-backgroundColor: 'rgba(48, 209, 88, 0.1)',
-tension: 0.4,
-fill: true
-},
-{
-label: 'Writes',
-data: [],
-borderColor: '#007aff',
-backgroundColor: 'rgba(0, 122, 255, 0.1)',
-tension: 0.4,
-fill: true
-}
-]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-plugins: {
-legend: {
-display: false
-}
-},
-scales: {
-y: {
-beginAtZero: true,
-ticks: {
-color: 'var(--text-muted)',
-font: { size: 10 }
-},
-grid: {
-color: 'rgba(255, 255, 255, 0.05)'
-}
-},
-x: {
-ticks: {
-color: 'var(--text-muted)',
-font: { size: 9 }
-},
-grid: {
-color: 'rgba(255, 255, 255, 0.05)'
-}
-}
-}
-}
-});
 }
 const FIRESTORE_THRESHOLDS = {
   reads:  { warn: 40000, critical: 48000 },
@@ -4350,64 +4443,26 @@ function trackFirestoreRead(count = 1) {
 checkAndAutoResetFirestoreStats();
 firestoreStats.reads += count;
 saveFirestoreStats();
-updateFirestoreDisplay();
 _checkFirestoreCostThresholds();
 }
 function trackFirestoreWrite(count = 1) {
 checkAndAutoResetFirestoreStats();
 firestoreStats.writes += count;
 saveFirestoreStats();
-updateFirestoreDisplay();
 _checkFirestoreCostThresholds();
-}
-function updateFirestoreDisplay() {
-const readsEl = document.getElementById('firestore-reads-count');
-const writesEl = document.getElementById('firestore-writes-count');
-if (readsEl) readsEl.textContent = firestoreStats.reads;
-if (writesEl) writesEl.textContent = firestoreStats.writes;
-if ((firestoreStats.reads + firestoreStats.writes) % 10 === 0) {
-updateFirestoreChart();
-}
-}
-function updateFirestoreChart() {
-if (!firestoreUsageChart) return;
-const now = new Date();
-const timeLabel = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-firestoreUsageChart.data.labels.push(timeLabel);
-firestoreUsageChart.data.datasets[0].data.push(firestoreStats.reads);
-firestoreUsageChart.data.datasets[1].data.push(firestoreStats.writes);
-if (firestoreUsageChart.data.labels.length > 10) {
-firestoreUsageChart.data.labels.shift();
-firestoreUsageChart.data.datasets[0].data.shift();
-firestoreUsageChart.data.datasets[1].data.shift();
-}
-firestoreUsageChart.update();
 }
 function resetFirestoreStats() {
 firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
-updateFirestoreDisplay();
-if (firestoreUsageChart) {
-firestoreUsageChart.data.labels = [];
-firestoreUsageChart.data.datasets[0].data = [];
-firestoreUsageChart.data.datasets[1].data = [];
-firestoreUsageChart.update();
-}
+saveFirestoreStats();
 }
 const originalOpenDataMenu = window.openDataMenu;
 window.openDataMenu = function() {
-
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof originalOpenDataMenu === 'function') {
 originalOpenDataMenu();
 } else {
 document.getElementById('dataMenuOverlay').style.display = 'flex';
 }
-setTimeout(async () => {
-if (!firestoreUsageChart) {
-await loadChartJs();
-initFirestoreUsageChart();
-}
-}, 100);
 };
 const DeltaSync = {
 _cache: {},
@@ -5301,101 +5356,18 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   }
   return revertedCount;
 }
-function togglePercentage(chartId) {
-let btnId = '';
-if (chartId === 'mfgPieChart') {
-btnId = 'mfgPiePercentageToggle';
-} else if (chartId === 'custPaymentChart') {
-btnId = 'custPaymentPercentageToggle';
-} else if (chartId === 'compositionChart') {
-btnId = 'compositionPercentageToggle';
-}
-const btn = document.getElementById(btnId);
-if (!btn) {
-return;
-}
-switch(chartId) {
-case 'mfgPieChart':
-mfgPieChartShowPercentage = !mfgPieChartShowPercentage;
-btn.textContent = mfgPieChartShowPercentage ? 'Show Values' : 'Show %';
-updateMfgPieChart();
-break;
-case 'custPaymentChart':
-custPaymentChartShowPercentage = !custPaymentChartShowPercentage;
-btn.textContent = custPaymentChartShowPercentage ? 'Show Values' : 'Show %';
-updateCustomerPieChart();
-break;
-case 'compositionChart':
-compositionChartShowPercentage = !compositionChartShowPercentage;
-btn.textContent = compositionChartShowPercentage ? 'Show Values' : 'Show %';
-updateCompositionChart();
-break;
-}
-}
 async function updateMfgPieChart() {
-const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
-const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-if (!mfgPieChart) return;
-const data = mfgPieChart.data.datasets[0].data;
-const total = data.reduce((a, b) => a + b, 0);
-if (mfgPieChartShowPercentage) {
-mfgPieChart.data.datasets[0].data = data.map(value => total > 0 ? ((value / total) * 100).toFixed(2) : 0);
-mfgPieChart.options.plugins.tooltip = {
-callbacks: {
-label: function(context) {
-return `${context.label}: ${context.parsed}%`;
-}
-}
-};
-} else {
-updateMfgCharts();
-}
-mfgPieChart.update();
+await updateMfgCharts();
 }
 async function updateCustomerPieChart() {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-if (!custPaymentChart) return;
-const data = custPaymentChart.data.datasets[0].data;
-const total = data.reduce((a, b) => a + b, 0);
-if (custPaymentChartShowPercentage) {
-custPaymentChart.data.datasets[0].data = data.map(value => total > 0 ? ((value / total) * 100).toFixed(2) : 0);
-custPaymentChart.options.plugins.tooltip = {
-callbacks: {
-label: function(context) {
-return `${context.label}: ${context.parsed}%`;
-}
-}
-};
-} else {
-updateCustomerCharts();
-}
-custPaymentChart.update();
+await updateCustomerCharts();
 }
 async function updateCompositionChart() {
-const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
-if (!salesCompChart) return;
-const data = salesCompChart.data.datasets[0].data;
-const total = data.reduce((a, b) => a + b, 0);
-if (compositionChartShowPercentage) {
-salesCompChart.data.datasets[0].data = data.map(value => total > 0 ? ((value / total) * 100).toFixed(2) : 0);
-salesCompChart.options.plugins.tooltip = {
-callbacks: {
-label: function(context) {
-return `${context.label}: ${context.parsed}%`;
-}
-}
-};
-} else {
-const seller = document.getElementById('sellerSelect').value;
-if (seller === 'COMBINED') {
+const _sdEl = document.getElementById('sellerSelect');
+if (_sdEl && _sdEl.value === 'COMBINED') {
 const comp = await calculateComparisonData();
 updateSalesCharts(comp);
 }
-}
-salesCompChart.update();
 }
 async function setIndChartMode(mode) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -5422,9 +5394,7 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-if (typeof Chart === 'undefined') {
-try { await loadChartJs(); } catch (e) { return; }
-}
+
 const seller = document.getElementById('sellerSelect').value;
 if (seller === 'COMBINED') return;
 if(indPerformanceChart) indPerformanceChart.destroy();
@@ -5504,14 +5474,8 @@ grid: 'rgba(37, 99, 235, 0.1)'
 const repChartColorsInd = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 const sellerColor = repChartColorsInd[salesRepsList.indexOf(seller) >= 0 ? salesRepsList.indexOf(seller) : 0];
 const chartElement = document.getElementById('indPerformanceChart');
-if (!chartElement) {
-return;
-}
-const ctx = chartElement.getContext('2d');
-if (!ctx) {
-return;
-}
-indPerformanceChart = new Chart(ctx, {
+if (!chartElement) { return; }
+indPerformanceChart = new SarimChart(chartElement, {
 type: 'bar',
 data: {
 labels: labels,
@@ -5567,10 +5531,7 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
-if (typeof Chart === 'undefined') {
-loadChartJs().then(() => updateStoreComparisonChart(mode)).catch(() => {});
-return;
-}
+
 if(storeComparisonChart) storeComparisonChart.destroy();
 const selectedDate = document.getElementById('sys-date').value;
 const selectedDateObj = new Date(selectedDate);
@@ -5630,14 +5591,8 @@ text: '#1e3a8a',
 grid: 'rgba(37, 99, 235, 0.1)'
 };
 const storeChartElement = document.getElementById('storeComparisonChart');
-if (!storeChartElement) {
-return;
-}
-const storeCtx = storeChartElement.getContext('2d');
-if (!storeCtx) {
-return;
-}
-storeComparisonChart = new Chart(storeCtx, {
+if (!storeChartElement) { return; }
+storeComparisonChart = new SarimChart(storeChartElement, {
 type: 'bar',
 data: {
 labels: storeLabels,
@@ -5694,6 +5649,7 @@ const expenseRecords = ensureArray(_ruiBatch.get('expenses')).filter(_rdAlive);
 const selectedDate = document.getElementById('sys-date').value;
 if (!selectedDate) return;
 if (sqliteStore && sqliteStore.get) {
+await sqliteStore.init();
 try {
 let freshProduction = await sqliteStore.get('mfg_pro_pkr', []);
 if (freshProduction && freshProduction.length > 0) {
@@ -5712,8 +5668,7 @@ await sqliteStore.set('mfg_pro_pkr', freshProduction);
 }
 }
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[validateAllData] data integrity check failed:', _safeErr(error));
 }
 }
 const [sYear, sMonth, sDay] = selectedDate.split('-').map(Number);
@@ -6983,7 +6938,6 @@ paymentHistorySection.style.visibility = tab === 'payments' ? 'visible' : 'hidde
 }
 setTimeout(async () => {
 try {
-await loadChartJs();
 const tabLoaders = {
 'sales': async () => {
 await syncSalesTab();
@@ -7264,10 +7218,7 @@ updateMfgCharts();
 async function updateMfgCharts() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-if (typeof Chart === 'undefined') {
-loadChartJs().then(() => updateMfgCharts()).catch(() => {});
-return;
-}
+
 if(mfgBarChart) mfgBarChart.destroy();
 if(mfgPieChart) mfgPieChart.destroy();
 let filteredData = currentProductionView === 'combined' ? db : db.filter(item => item.store === currentStore);
@@ -7361,14 +7312,8 @@ totalValue += (item.totalSale || 0);
 }
 });
 const mfgBarCanvas = document.getElementById('mfgBarChart');
-if (!mfgBarCanvas) {
-return;
-}
-const mfgBarCtx = mfgBarCanvas.getContext('2d');
-if (!mfgBarCtx) {
-return;
-}
-mfgBarChart = new Chart(mfgBarCtx, {
+if (!mfgBarCanvas) { return; }
+mfgBarChart = new SarimChart(mfgBarCanvas, {
 type: 'bar',
 data: {
 labels: labels,
@@ -7402,14 +7347,8 @@ x: { ticks: { color: colors.text, maxRotation: currentMfgMode === 'all' ? 45 : 0
 const pieData = [totalCost, totalProfit];
 const pieLabels = ['Total Cost', 'Net Profit'];
 const mfgPieCanvas = document.getElementById('mfgPieChart');
-if (!mfgPieCanvas) {
-return;
-}
-const mfgPieCtx = mfgPieCanvas.getContext('2d');
-if (!mfgPieCtx) {
-return;
-}
-mfgPieChart = new Chart(mfgPieCtx, {
+if (!mfgPieCanvas) { return; }
+mfgPieChart = new SarimChart(mfgPieCanvas, {
 type: 'pie',
 data: {
 labels: pieLabels,
@@ -7426,31 +7365,13 @@ plugins: {
 legend: { position:'bottom', labels: { color: colors.text, font: { size: 10 } } },
 title: {
 display: true,
-text: mfgPieChartShowPercentage ?
-`Financials (Percentage) - ${currentMfgMode === 'all' ? 'All Times' : currentMfgMode.charAt(0).toUpperCase() + currentMfgMode.slice(1)}` :
-`Financials: ${fmtAmt(safeValue(totalValue))} Total - ${currentMfgMode === 'all' ? 'All Times' : currentMfgMode.charAt(0).toUpperCase() + currentMfgMode.slice(1)}`,
+text: `Financials: ${fmtAmt(safeValue(totalValue))} Total - ${currentMfgMode === 'all' ? 'All Times' : currentMfgMode.charAt(0).toUpperCase() + currentMfgMode.slice(1)}`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
-},
-tooltip: {
-callbacks: {
-label: function(context) {
-if (mfgPieChartShowPercentage) {
-const total = context.dataset.data.reduce((a, b) => a + b, 0);
-const percentage = total > 0 ? safeNumber((context.parsed / total) * 100, 0).toFixed(2) : 0;
-return `${context.label}: ${percentage}%`;
-} else {
-return `${context.label}: ${fmtAmt(safeNumber(context.parsed, 0))}`;
-}
-}
-}
 }
 }
 }
 });
-if (mfgPieChartShowPercentage) {
-updateMfgPieChart();
-}
 }
 async function getWeightPerUnit(storeType) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -7705,8 +7626,7 @@ if (factoryDataMap.get('factory_default_formulas')) {
 const factoryDefaultFormulas = factoryDataMap.get('factory_default_formulas') || { standard: [], asaan: [] };
 }
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[initFactoryTab] data load failed:', _safeErr(error));
 }
 }
 const factoryDateInput = document.getElementById('factory-date');
@@ -8000,10 +7920,7 @@ async function updateCustomerCharts() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
-if (typeof Chart === 'undefined') {
-loadChartJs().then(() => updateCustomerCharts()).catch(() => {});
-return;
-}
+
 if(custSalesChart) custSalesChart.destroy();
 if(custPaymentChart) custPaymentChart.destroy();
 const selectedDate = document.getElementById('cust-date').value;
@@ -8163,14 +8080,8 @@ totalCash += item.totalValue;
 }
 });
 const custSalesCanvas = document.getElementById('custSalesChart');
-if (!custSalesCanvas) {
-return;
-}
-const custSalesCtx = custSalesCanvas.getContext('2d');
-if (!custSalesCtx) {
-return;
-}
-custSalesChart = new Chart(custSalesCtx, {
+if (!custSalesCanvas) { return; }
+custSalesChart = new SarimChart(custSalesCanvas, {
 type: 'bar',
 data: {
 labels: labels,
@@ -8222,14 +8133,8 @@ ticks: { color: colors.text, maxRotation: currentCustomerChartMode === 'all' ? 4
 const pieData = [totalCash, totalCredit];
 const pieLabels = ['Cash Sales (Inc. Received Credits)', 'Pending Credits'];
 const custPaymentCanvas = document.getElementById('custPaymentChart');
-if (!custPaymentCanvas) {
-return;
-}
-const custPaymentCtx = custPaymentCanvas.getContext('2d');
-if (!custPaymentCtx) {
-return;
-}
-custPaymentChart = new Chart(custPaymentCtx, {
+if (!custPaymentCanvas) { return; }
+custPaymentChart = new SarimChart(custPaymentCanvas, {
 type: 'pie',
 data: {
 labels: pieLabels,
@@ -8246,31 +8151,13 @@ plugins: {
 legend: { position:'bottom', labels: { color: colors.text, font: { size: 10 } } },
 title: {
 display: true,
-text: custPaymentChartShowPercentage ?
-`Payment Distribution (Percentage) - ${currentCustomerChartMode === 'all' ? 'All Times' : ''}` :
-`Total: ${fmtAmt(safeValue(totalCash + totalCredit))} - ${currentCustomerChartMode === 'all' ? 'All Times' : ''}`,
+text: `Total: ${fmtAmt(safeValue(totalCash + totalCredit))} - ${currentCustomerChartMode === 'all' ? 'All Times' : currentCustomerChartMode.charAt(0).toUpperCase() + currentCustomerChartMode.slice(1)}`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
-},
-tooltip: {
-callbacks: {
-label: function(context) {
-if (custPaymentChartShowPercentage) {
-const total = context.dataset.data.reduce((a, b) => a + b, 0);
-const percentage = total > 0 ? safeNumber((context.parsed / total) * 100, 0).toFixed(2) : 0;
-return `${context.label}: ${percentage}%`;
-} else {
-return `${context.label}: ${fmtAmt(safeNumber(context.parsed, 0))}`;
-}
-}
-}
 }
 }
 }
 });
-if (custPaymentChartShowPercentage) {
-updateCustomerPieChart();
-}
 }
 async function refreshCustomerSales(page = 1, force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
@@ -8284,7 +8171,8 @@ if (!selectedDate) return;
 if (sqliteStore && sqliteStore.get) {
 try {
 let freshSales = await sqliteStore.get('customer_sales', []);
-if (force && firebaseDB && currentUser) {
+if (force && firebaseDB && currentUser &&
+!window._firestoreNetworkDisabled && navigator.onLine) {
 try {
 const userDocRef = firebaseDB.collection('users').doc(currentUser.uid);
 const snapshot = await userDocRef.collection('sales').get();
@@ -8316,8 +8204,7 @@ freshSales = Array.from(localMap.values());
 await sqliteStore.set('customer_sales', freshSales);
 }
 } catch (firestoreError) {
-console.error('Failed to save data locally.', _safeErr(firestoreError));
-showToast('Failed to save data locally.', 'error');
+console.warn('[refreshCustomerSales] cloud fetch failed:', _safeErr(firestoreError));
 }
 }
 if (freshSales && freshSales.length > 0) {
@@ -8340,8 +8227,7 @@ await sqliteStore.set('customer_sales', freshSales);
 }
 }
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[refreshCustomerSales] data integrity fix failed:', _safeErr(error));
 }
 }
 const selectedDateObj = new Date(selectedDate);
@@ -8897,10 +8783,7 @@ range.expected += (h.totalExpected || 0);
 range.received += (h.received || 0);
 }
 function updateSalesCharts(comp) {
-if (typeof Chart === 'undefined') {
-loadChartJs().then(() => updateSalesCharts(comp)).catch(() => {});
-return;
-}
+
 if(!comp) return;
 const selectedMetric = document.getElementById('metricSelector').value;
 const metricLabel = document.getElementById('metricSelector').options[document.getElementById('metricSelector').selectedIndex].text;
@@ -8909,20 +8792,14 @@ text: '#1e3a8a',
 grid: 'rgba(37, 99, 235, 0.1)'
 };
 const perfChartElement = document.getElementById('performanceChart');
-if (!perfChartElement) {
-return;
-}
-const perfCtx = perfChartElement.getContext('2d');
-if (!perfCtx) {
-return;
-}
+if (!perfChartElement) { return; }
 const repChartColors = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 const repNames = salesRepsList;
 const chartLabels = repNames.map(r => r.split(' ').map(w => w[0]+w.slice(1).toLowerCase()).join(' '));
 const chartData = repNames.map(r => (comp[r] || {})[selectedMetric] || 0);
 const chartColors = repNames.map((_, i) => repChartColors[i % repChartColors.length]);
 if(salesPerfChart) salesPerfChart.destroy();
-salesPerfChart = new Chart(perfCtx, {
+salesPerfChart = new SarimChart(perfChartElement, {
 type: 'bar',
 data: {
 labels: chartLabels,
@@ -8953,15 +8830,9 @@ const totalReturnValue = totalReturned * avgPrice;
 const pieData = [totalCashValue, totalCreditValue, totalReturnValue];
 const pieLabels = ['Cash Sale Value', 'Credit Value', 'Return Value'];
 const compChartElement = document.getElementById('compositionChart');
-if (!compChartElement) {
-return;
-}
-const compCtx = compChartElement.getContext('2d');
-if (!compCtx) {
-return;
-}
+if (!compChartElement) { return; }
 if(salesCompChart) salesCompChart.destroy();
-salesCompChart = new Chart(compCtx, {
+salesCompChart = new SarimChart(compChartElement, {
 type: 'pie',
 data: {
 labels: pieLabels,
@@ -8979,31 +8850,13 @@ plugins: {
 legend: { position: 'bottom', labels: { color: colors.text, boxWidth: 12, font: { size: 10 } } },
 title: {
 display: true,
-text: compositionChartShowPercentage ?
-'Market Composition (Percentage)' :
-'Market Composition',
+text: 'Market Composition',
 color: colors.text,
 font: { size: 13, weight: 'bold' }
-},
-tooltip: {
-callbacks: {
-label: function(context) {
-if (compositionChartShowPercentage) {
-const total = context.dataset.data.reduce((a, b) => a + b, 0);
-const percentage = total > 0 ? safeNumber((context.parsed / total) * 100, 0).toFixed(2) : 0;
-return `${context.label}: ${percentage}%`;
-} else {
-return `${context.label}: ${fmtAmt(safeNumber(context.parsed, 0))}`;
-}
-}
-}
 }
 }
 }
 });
-if (compositionChartShowPercentage) {
-updateCompositionChart();
-}
 }
 async function processReturnToProduction(storeKey, quantity, date, seller) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -13214,8 +13067,8 @@ notifyDataChange('all');
 triggerAutoSync();
 return true;
 } catch (err) {
-console.error('Failed to save data locally.', _safeErr(err));
-showToast('Failed to save data locally.', 'error');
+console.error('[BiometricAuth] registration failed:', _safeErr(err));
+showToast('Biometric setup failed. Please try again.', 'error');
 throw err;
 }
 },
@@ -15247,6 +15100,7 @@ window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
 async function restoreDeviceModeOnLogin(uid) {
 if (!firebaseDB) return;
+if (window._firestoreNetworkDisabled || !navigator.onLine) return;
 try {
 const deviceId = await getDeviceId();
 const userRef = firebaseDB.collection('users').doc(uid);
@@ -15293,8 +15147,7 @@ setTimeout(() => { window.location.reload(); }, 1500);
 } else {
 }
 } catch (error) {
-console.error('Failed to save data locally.', _safeErr(error));
-showToast('Failed to save data locally.', 'error');
+console.warn('[restoreDeviceMode] could not restore device mode:', _safeErr(error));
 }
 }
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;

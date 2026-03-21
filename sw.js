@@ -1,4 +1,4 @@
-const BUILD_HASH = 'naswar-dealer-v2';
+const BUILD_HASH = 'naswar-dealer-v1';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -19,8 +19,7 @@ const ASSETS_TO_CACHE = [
 
   './sql-wasm.js',
   './sql-wasm.wasm',
-  './sql.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js'
+  './sql.js'
 ];
 const FIREBASE_CDN_URLS = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',

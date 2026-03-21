@@ -1039,11 +1039,16 @@ let inventoryUpdated = false;
 if (settings && settings.length > 0) {
 settings.forEach(item => {
 const materialUsed = item.quantity * units;
-const inventoryItem = factoryInventoryData.find(i => i.id === item.id);
+const inventoryItem = factoryInventoryData.find(i => String(i.id) === String(item.id));
 if (inventoryItem) {
 if (inventoryItem.quantity >= materialUsed) {
 inventoryItem.quantity -= materialUsed;
+inventoryItem.quantity = Math.max(0, parseFloat(inventoryItem.quantity.toFixed(6)));
 inventoryItem.totalValue = inventoryItem.quantity * inventoryItem.cost;
+if (inventoryItem.conversionFactor && inventoryItem.conversionFactor !== 1) {
+inventoryItem.purchaseQuantity = inventoryItem.quantity / inventoryItem.conversionFactor;
+}
+inventoryItem.updatedAt = getTimestamp();
 inventoryUpdated = true;
 } else {
 throw new Error(`Insufficient ${inventoryItem.name} in inventory! Available: ${inventoryItem.quantity}, Required: ${materialUsed}`);
