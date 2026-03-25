@@ -13207,8 +13207,8 @@ pubKeyCredParams: [
 ],
 authenticatorSelection: {
 authenticatorAttachment: "platform",
-userVerification: "required",
-residentKey: "preferred"
+userVerification: "preferred",
+residentKey: "discouraged"
 },
 timeout: 60000
 };
@@ -13242,7 +13242,7 @@ id: BiometricAuth._base64ToBuf(savedCredId),
 type: "public-key",
 transports: transports
 }],
-userVerification: "required",
+userVerification: "preferred",
 timeout: 60000
 };
 await navigator.credentials.get({ publicKey });
