@@ -1190,8 +1190,11 @@ updateFactoryUnitsAvailableStats();
 }
 
 async function renderFactoryHistory() {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const _fhBatch = await sqliteStore.getBatch(['factory_production_history','factory_additional_costs','factory_default_formulas','factory_inventory_data']);
+const factoryProductionHistory = ensureArray(_fhBatch.get('factory_production_history'));
+const factoryAdditionalCosts = (_fhBatch.get('factory_additional_costs')) || {};
+const factoryDefaultFormulas = (_fhBatch.get('factory_default_formulas')) || {};
+const factoryInventoryData = ensureArray(_fhBatch.get('factory_inventory_data'));
 const list = document.getElementById('factoryHistoryList');
 if (!list) return;
 if (factoryProductionHistory.length === 0) {
@@ -1215,6 +1218,45 @@ const storeLabel = entry.store === 'standard' ? 'STD' : 'ASN';
 const perUnitCost = entry.units > 0 ? entry.totalCost / entry.units : 0;
 const additionalCostPerUnit = factoryAdditionalCosts[entry.store] || 0;
 const totalAdditionalCost = additionalCostPerUnit * entry.units;
+// Build per-material breakdown
+const formula = factoryDefaultFormulas[entry.store] || [];
+let matsBreakdownHtml = '';
+if (formula.length > 0) {
+const rowsHtml = formula.map(f => {
+let inv = factoryInventoryData.find(i => String(i.id) === String(f.id));
+if (!inv && f.name) inv = factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase());
+const matName = esc(inv?.name || f.name || 'Material');
+const qtyUsed = (f.quantity * entry.units).toFixed(2);
+const unitCost = inv ? inv.cost : (f.cost || 0);
+const matCost = (unitCost * f.quantity * entry.units);
+return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--glass-border);">
+<span style="font-size:0.72rem;color:var(--text-main);font-weight:500;">${matName}</span>
+<span style="display:flex;gap:10px;align-items:center;">
+<span style="font-size:0.7rem;color:var(--text-muted);">${qtyUsed} kg</span>
+<span class="cost-val" style="font-size:0.72rem;min-width:60px;text-align:right;">${fmtAmt(matCost)}</span>
+</span>
+</div>`;
+}).join('');
+const breakdownId = `fh-breakdown-${entry.id}`;
+matsBreakdownHtml = `
+<div style="margin-top:8px;">
+<button onclick="(function(el){var p=document.getElementById('${breakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▸':'▾';})(this)"
+style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
+<span style="font-size:0.68rem;color:var(--accent);">▸</span>
+<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Materials Breakdown</span>
+</button>
+<div id="${breakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</span>
+<span style="display:flex;gap:10px;">
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Qty Used</span>
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Cost</span>
+</span>
+</div>
+${rowsHtml}
+</div>
+</div>`;
+}
 const div = document.createElement('div');
 div.className = 'factory-history-item';
 if (entry.date) div.setAttribute('data-date', entry.date);
@@ -1236,6 +1278,7 @@ ${totalAdditionalCost > 0 ? `<div class="factory-summary-row"><span class="facto
 <div class="factory-summary-row"><span class="factory-summary-label">Per Unit Cost</span><span class="cost-val">${await formatCurrency(perUnitCost)}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Total Cost</span><span class="rev-val">${await formatCurrency(entry.totalCost)}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Raw Materials Used</span><span class="qty-val">${safeNumber(entry.rawMaterialsUsed, 0).toFixed(2)} kg</span></div>
+${matsBreakdownHtml}
 ${entry.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteFactoryEntry('${entry.id}')">Delete & Restore Inventory</button>`}`;
 _fhFrag.appendChild(div);
 }

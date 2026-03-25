@@ -9407,8 +9407,9 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   if (await sqliteStore.get('bio_enabled') === 'true') {
     const bioBtn = document.getElementById('bio-toggle-btn');
     if (bioBtn) {
-      bioBtn.innerText = 'Disable Biometric Lock';
-      bioBtn.onclick = disableBiometricLock;
+      const lbl = document.getElementById('bio-toggle-label');
+      if (lbl) lbl.textContent = 'Disable Lock';
+      bioBtn.onclick = () => { closeSidebar && closeSidebar(); disableBiometricLock(); };
       bioBtn.classList.add('active');
     }
   }
