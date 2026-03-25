@@ -406,6 +406,37 @@ try {
   console.warn('Auth: post-login data reload failed:', _safeErr(e));
 }
 updateSyncButton();
+// ── Generate a fresh device ID + shard on every login ────────────────────
+// We only clear the stored device ID when the user has just signed in
+// (explicit credential entry or OAuth redirect).  Page reloads with a
+// persisted Firebase session must NOT re-generate the ID because:
+//   • The existing Firestore device doc (mode, shard, heartbeat) is still valid.
+//   • App lock mode (rep/factory/userrole) would briefly disappear until
+//     registerDevice re-writes the doc with the freshly-loaded SQLite mode.
+//
+// ── Stamp the login time so getDeviceId() can self-expire stale IDs ──────
+// sessionStorage is wiped by signOut() and cleared between browser sessions,
+// so every genuine login lands here with no prior value.  Page reloads
+// keep the existing stamp, meaning the current device ID (whose embedded
+// timestamp is >= _gznd_login_ts) is accepted as-is.
+//
+// getDeviceId() compares the timestamp baked into any found device ID
+// against _gznd_login_ts.  If the ID predates this login it is discarded
+// and a brand-new UUID+Date.now() is minted — no storage wipe needed, no
+// Firestore fingerprint recovery can resurrect the old ID.
+const _isFreshLogin = !sessionStorage.getItem('_gznd_login_ts');
+if (_isFreshLogin) {
+  try { sessionStorage.setItem('_gznd_login_ts', String(Date.now())); } catch(_) {}
+}
+// ── Derive device shard immediately and await it ──────────────────────────
+// Must run before registerDevice (which writes the shard to Firestore) and
+// before any generateUUID() calls so UUIDs always embed the correct shard.
+if (typeof initDeviceShard === 'function') {
+  await initDeviceShard().catch(() => {});
+  if (typeof UUIDSyncRegistry !== 'undefined') {
+    await UUIDSyncRegistry.loadAll().catch(() => {});
+  }
+}
 if (typeof subscribeToRealtime === 'function') {
 subscribeToRealtime().catch(e => console.warn('subscribeToRealtime failed:', _safeErr(e)));
 }
@@ -418,15 +449,6 @@ console.warn('Device registration failed:', _safeErr(err));
 }
 if (typeof refreshDeviceIdAnchors === 'function') {
 setTimeout(() => { refreshDeviceIdAnchors().catch(() => {}); }, 1500);
-}
-if (typeof initDeviceShard === 'function') {
-setTimeout(async () => {
-  await initDeviceShard().catch(() => {});
-
-  if (typeof UUIDSyncRegistry !== 'undefined') {
-    await UUIDSyncRegistry.loadAll().catch(() => {});
-  }
-}, 200);
 }
 setTimeout(async () => {
 try {
@@ -3439,6 +3461,10 @@ try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem(
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = '✓ Offline Login Successful';
 messageDiv.style.color = 'var(--accent-emerald)';
+// Derive shard immediately so any UUIDs generated during loadAllData use the correct shard
+if (typeof initDeviceShard === 'function') {
+  await initDeviceShard().catch(() => {});
+}
 try {
   if (typeof loadAllData === 'function') await loadAllData();
 } catch(e) { console.warn('Post-offline-login data reload failed:', _safeErr(e)); }
@@ -3475,6 +3501,7 @@ currentUser = { id: email.replace(/[^a-zA-Z0-9]/g, '_'), uid: email.replace(/[^a
 sqliteStore.setUserPrefix(currentUser.uid);
 await SQLiteCrypto.setSessionKey(email, password, currentUser.uid);
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
+if (typeof initDeviceShard === 'function') { await initDeviceShard().catch(() => {}); }
 try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) {}
 messageDiv.textContent = '✓ Offline Login (Network unavailable)';
 messageDiv.style.color = 'var(--accent-emerald)';
@@ -3673,6 +3700,23 @@ console.error('adminRemoveAccount:', _safeErr(err));
 
 async function signOut() {
 try {
+// ── STEP 1: Save app-mode fields BEFORE any storage is wiped ────────────
+// These survive the logout so the device boots straight into the same
+// mode (rep, admin, factory, etc.) after the user logs back in.
+let _savedAppMode = null;
+try {
+  const _modeKeys = [
+    'appMode', 'appMode_timestamp',
+    'repProfile', 'repProfile_timestamp',
+    'assignedManager', 'assignedUserTabs',
+  ];
+  const _modeVals = await sqliteStore.getBatch(_modeKeys).catch(() => new Map());
+  const _modeEntries = _modeKeys
+    .map(k => [k, _modeVals.get(k)])
+    .filter(([, v]) => v != null && v !== undefined);
+  if (_modeEntries.length) _savedAppMode = _modeEntries;
+} catch(_) {}
+
 stopDatabaseHeartbeat();
 clearAutoBackup();
 if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry();
@@ -3729,6 +3773,14 @@ try {
 sqliteStore.clearUserPrefix();
 DeltaSync.clearAllTimestamps().catch(() => {});
 if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
+// ── STEP 2a: Wipe device ID from all storage so re-login gets a fresh ID ──
+if (typeof _clearDeviceIdStorage === 'function') {
+  await _clearDeviceIdStorage().catch(() => {});
+}
+// ── STEP 3a: Restore app-mode so it persists to the new device/shard ──────
+if (_savedAppMode && _savedAppMode.length) {
+  await sqliteStore.setBatch(_savedAppMode).catch(() => {});
+}
 showToast(' Signed out successfully', 'success');
 } else {
 currentUser = null;
@@ -3769,6 +3821,14 @@ try {
 sqliteStore.clearUserPrefix();
 DeltaSync.clearAllTimestamps().catch(() => {});
 if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
+// ── STEP 2b: Wipe device ID from all storage so re-login gets a fresh ID ──
+if (typeof _clearDeviceIdStorage === 'function') {
+  await _clearDeviceIdStorage().catch(() => {});
+}
+// ── STEP 3b: Restore app-mode so it persists to the new device/shard ──────
+if (_savedAppMode && _savedAppMode.length) {
+  await sqliteStore.setBatch(_savedAppMode).catch(() => {});
+}
 showToast(' Signed out', 'success');
 }
 setTimeout(() => {

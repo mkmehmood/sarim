@@ -15025,15 +15025,32 @@ const modeColor = deviceMode === 'admin' ? '#007aff'
 const modeIcon = '';
 const onlineColor = isOnline ? '#30d158' : '#ff453a';
 const onlineDot = isOnline ? '● Online' : '○ Offline';
+// Prefer the shard stored on the Firestore document (written by registerDevice
+// using the composite device ID). Fall back to deriving it on the fly.
 let deviceShard = 'N/A';
-if (device.deviceId && typeof deriveDeviceShard === 'function') {
+if (device.deviceShard) {
+  deviceShard = String(device.deviceShard).toUpperCase();
+} else if (device.deviceId && typeof deriveDeviceShard === 'function') {
 try {
 deviceShard = deriveDeviceShard(device.deviceId).toUpperCase();
 } catch (_) { deviceShard = 'N/A'; }
 }
-let cardHtml = '<div style="margin-bottom:12px;padding:14px;background:var(--glass);border-radius:14px;border:2px solid var(--glass-border);">';
-cardHtml += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">';
-cardHtml += '<div style="font-size:0.65rem;font-family:\'Geist Mono\',monospace;color:var(--text-muted);flex:1;min-width:0;line-height:1.4;" title="Device shard: ' + deviceShard + '">Shard: <span style="color:var(--accent);font-weight:700;letter-spacing:0.08em;">' + deviceShard + '</span></div>';
+// Resolve the first-login timestamp from the stored field or the device ID suffix.
+let firstLoginStr = '';
+if (device.firstLoginAt) {
+  try {
+    const ms = typeof device.firstLoginAt === 'number'
+      ? device.firstLoginAt
+      : (device.firstLoginAt.toMillis ? device.firstLoginAt.toMillis() : Number(device.firstLoginAt));
+    firstLoginStr = new Date(ms).toLocaleString();
+  } catch (_) {}
+} else if (device.deviceId && typeof _extractDeviceFirstLoginTime === 'function') {
+  try {
+    const flt = _extractDeviceFirstLoginTime(device.deviceId);
+    if (flt) firstLoginStr = flt.toLocaleString();
+  } catch (_) {}
+}
+cardHtml += '<div style="font-size:0.65rem;font-family:\'Geist Mono\',monospace;color:var(--text-muted);flex:1;min-width:0;line-height:1.4;" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span style="color:var(--accent);font-weight:700;letter-spacing:0.08em;">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span style="color:var(--text-muted);font-weight:400;font-size:0.6rem;">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
 cardHtml += '<div style="text-align:right;flex-shrink:0;">';
 cardHtml += '<div style="font-size:0.8rem;font-weight:800;color:' + modeColor + ';white-space:nowrap;">' + modeLabel + '</div>';
 cardHtml += '<div style="font-size:0.6rem;color:' + onlineColor + ';margin-top:2px;">' + onlineDot + '</div>';
@@ -15237,55 +15254,92 @@ window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
 async function restoreDeviceModeOnLogin(uid) {
-if (!firebaseDB) return;
-if (window._firestoreNetworkDisabled || !navigator.onLine) return;
+// ── Helpers ──────────────────────────────────────────────────────────────
+function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, assignedUserTabs, remoteApplied) {
+  const previousMode = appMode;
+  appMode = modeStr;
+  const modeBatch = [['appMode', appMode], ['appMode_timestamp', ts]];
+  if (modeStr === 'rep' && assignedRep) {
+    currentRepProfile = assignedRep;
+    modeBatch.push(['repProfile', currentRepProfile], ['repProfile_timestamp', ts]);
+  } else if (modeStr === 'userrole' && assignedManager) {
+    window._assignedManagerName = assignedManager;
+    window._assignedUserTabs = Array.isArray(assignedUserTabs) ? assignedUserTabs : [];
+    modeBatch.push(['assignedManager', assignedManager], ['assignedUserTabs', window._assignedUserTabs]);
+  } else if ((modeStr === 'production' || modeStr === 'factory') && assignedManager) {
+    window._assignedManagerName = assignedManager;
+    modeBatch.push(['assignedManager', assignedManager]);
+  }
+  sqliteStore.setBatch(modeBatch).catch(() => {});
+  const modeLabel = modeStr === 'rep' ? 'Rep Mode'
+    : modeStr === 'userrole'    ? 'User Role Mode'
+    : modeStr === 'production'  ? 'Production Mode'
+    : modeStr === 'factory'     ? 'Factory Mode'
+    : 'Admin Mode';
+  showToast(remoteApplied
+    ? `Restoring remotely assigned ${modeLabel}...`
+    : `Switching to ${modeLabel}...`, 'info', 2000);
+  setTimeout(() => { window.location.reload(); }, 1500);
+}
+
 try {
-const deviceId = await getDeviceId();
-const userRef = firebaseDB.collection('users').doc(uid);
-const deviceRef = userRef.collection('devices').doc(deviceId);
-const deviceDoc = await deviceRef.get();
-if (!deviceDoc.exists) {
-return;
-}
-const data = deviceDoc.data();
-const cloudMode = data.currentMode || 'admin';
-const cloudTimestamp = data.appMode_timestamp || 0;
-const localTimestamp = (await sqliteStore.get('appMode_timestamp')) || 0;
-const _modeIsLocked = cloudMode !== 'admin';
-const _localIsAdmin = appMode === 'admin';
-const shouldRestore = (cloudMode && cloudTimestamp > localTimestamp && cloudMode !== appMode)
-  || (_modeIsLocked && _localIsAdmin);
-if (shouldRestore) {
-const previousMode = appMode;
-appMode = cloudMode;
-const modeBatch = [
-['appMode', appMode],
-['appMode_timestamp', cloudTimestamp]
-];
-if (cloudMode === 'rep' && data.assignedRep) {
-currentRepProfile = data.assignedRep;
-modeBatch.push(['repProfile', currentRepProfile]);
-modeBatch.push(['repProfile_timestamp', data.repProfile_timestamp || cloudTimestamp]);
-} else if (cloudMode === 'userrole' && data.assignedManager) {
-window._assignedManagerName = data.assignedManager;
-window._assignedUserTabs = Array.isArray(data.assignedUserTabs) ? data.assignedUserTabs : [];
-modeBatch.push(['assignedManager', data.assignedManager]);
-modeBatch.push(['assignedUserTabs', window._assignedUserTabs]);
-} else if ((cloudMode === 'production' || cloudMode === 'factory') && data.assignedManager) {
-window._assignedManagerName = data.assignedManager;
-modeBatch.push(['assignedManager', data.assignedManager]);
-}
-await sqliteStore.setBatch(modeBatch);
-const modeLabel = appMode === 'rep' ? 'Rep Mode' : appMode === 'userrole' ? 'User Role Mode' : appMode === 'production' ? 'Production Mode' : appMode === 'factory' ? 'Factory Mode' : 'Admin Mode';
-const isRemote = !!data.remoteAppliedMode;
-showToast(isRemote
-? `Restoring remotely assigned ${modeLabel}...`
-: `Switching to ${modeLabel}...`, 'info', 2000);
-setTimeout(() => { window.location.reload(); }, 1500);
-} else {
-}
+  const localTimestamp = Number(await sqliteStore.get('appMode_timestamp')) || 0;
+
+  // ── Path A: Try Firestore first (online, doc already written) ──────────
+  if (firebaseDB && !window._firestoreNetworkDisabled && navigator.onLine) {
+    try {
+      const deviceId = await getDeviceId();
+      const deviceRef = firebaseDB.collection('users').doc(uid)
+                                  .collection('devices').doc(deviceId);
+      const deviceDoc = await deviceRef.get();
+
+      if (deviceDoc.exists) {
+        const data = deviceDoc.data();
+        const cloudMode      = data.currentMode || 'admin';
+        const cloudTimestamp = data.appMode_timestamp || 0;
+        const _modeIsLocked  = cloudMode !== 'admin';
+        const _localIsAdmin  = appMode === 'admin';
+        const shouldRestore  = (cloudMode && cloudTimestamp > localTimestamp && cloudMode !== appMode)
+                            || (_modeIsLocked && _localIsAdmin);
+        if (shouldRestore) {
+          _applyModeFromData(
+            cloudMode, cloudTimestamp,
+            data.assignedRep, data.assignedManager,
+            data.assignedUserTabs, !!data.remoteAppliedMode
+          );
+        }
+        // Doc exists and mode is already correct — nothing to do.
+        return;
+      }
+      // Doc doesn't exist yet (fresh device ID, registerDevice() is still
+      // in-flight because it runs 500 ms after this function is called).
+      // Fall through to the SQLite fallback below.
+    } catch (_fsErr) {
+      console.warn('[restoreDeviceMode] Firestore read failed, trying SQLite fallback:', _safeErr(_fsErr));
+    }
+  }
+
+  // ── Path B: SQLite fallback ───────────────────────────────────────────
+  // This path activates when:
+  //   • The device doc doesn't exist yet (just rotated to a new device ID).
+  //   • The app is offline.
+  //   • Firestore threw an error.
+  // SQLite already holds the correct mode fields because the login flow
+  // saved them back before _clearDeviceIdStorage() ran.
+  const sqliteMode = await sqliteStore.get('appMode') || 'admin';
+  const _modeIsLockedSqlite = sqliteMode !== 'admin';
+  const _localIsAdminSqlite = appMode === 'admin';
+  if (_modeIsLockedSqlite && _localIsAdminSqlite) {
+    const assignedRep     = await sqliteStore.get('repProfile').catch(() => null);
+    const assignedManager = await sqliteStore.get('assignedManager').catch(() => null);
+    const assignedTabs    = await sqliteStore.get('assignedUserTabs').catch(() => []);
+    _applyModeFromData(
+      sqliteMode, localTimestamp || Date.now(),
+      assignedRep, assignedManager, assignedTabs, false
+    );
+  }
 } catch (error) {
-console.warn('[restoreDeviceMode] could not restore device mode:', _safeErr(error));
+  console.warn('[restoreDeviceMode] could not restore device mode:', _safeErr(error));
 }
 }
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
