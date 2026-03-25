@@ -13195,22 +13195,28 @@ const userId = new Uint8Array(16);
 window.crypto.getRandomValues(userId);
 const publicKey = {
 challenge: challenge,
-rp: { name: "Naswar Dealers App" },
+rp: { name: "Sarim App" },
 user: {
 id: userId,
 name: username,
 displayName: username
 },
-pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+pubKeyCredParams: [
+{ alg: -7, type: "public-key" },
+{ alg: -257, type: "public-key" }
+],
 authenticatorSelection: {
 authenticatorAttachment: "platform",
-userVerification: "required"
+userVerification: "required",
+residentKey: "preferred"
 },
 timeout: 60000
 };
 const credential = await navigator.credentials.create({ publicKey });
 const credId = BiometricAuth._bufToBase64(credential.rawId);
+const transports = credential.response?.getTransports?.() || ["internal", "hybrid"];
 await sqliteStore.set('bio_cred_id', credId);
+await sqliteStore.set('bio_cred_transports', JSON.stringify(transports));
 await sqliteStore.set('bio_enabled', 'true');
 notifyDataChange('all');
 triggerAutoSync();
@@ -13225,6 +13231,8 @@ authenticate: async () => {
 try {
 const savedCredId = await sqliteStore.get('bio_cred_id');
 if (!savedCredId) throw new Error("No biometric set up found.");
+const storedTransports = await sqliteStore.get('bio_cred_transports');
+const transports = storedTransports ? JSON.parse(storedTransports) : ["internal", "hybrid"];
 const challenge = new Uint8Array(32);
 window.crypto.getRandomValues(challenge);
 const publicKey = {
@@ -13232,9 +13240,10 @@ challenge: challenge,
 allowCredentials: [{
 id: BiometricAuth._base64ToBuf(savedCredId),
 type: "public-key",
-transports: ["internal"]
+transports: transports
 }],
-userVerification: "required"
+userVerification: "required",
+timeout: 60000
 };
 await navigator.credentials.get({ publicKey });
 return true;
