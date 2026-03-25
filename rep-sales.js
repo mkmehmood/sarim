@@ -172,7 +172,8 @@ showToast("Biometric Error: " + e.message, "error");
 if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
 }
 };
-setTimeout(() => window.triggerUnlock(), 500);
+// Auto-trigger removed: WebAuthn requires a real user gesture on mobile browsers.
+// The button above lets the user tap to trigger fingerprint/biometric auth.
 }
 }
 async function setRepMode(mode) {
