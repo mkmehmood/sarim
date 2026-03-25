@@ -13207,9 +13207,10 @@ pubKeyCredParams: [
 ],
 authenticatorSelection: {
 authenticatorAttachment: "platform",
-userVerification: "preferred",
+userVerification: "required",
 residentKey: "discouraged"
 },
+hints: ["client-device"],
 timeout: 60000
 };
 const credential = await navigator.credentials.create({ publicKey });
@@ -13244,7 +13245,8 @@ id: BiometricAuth._base64ToBuf(savedCredId),
 type: "public-key"
 // transports omitted: iOS Safari/Face ID silently skips prompt if transports hint doesn't match exactly
 }],
-userVerification: "preferred", // "required" breaks devices without Face ID; "preferred" matches registration setting
+userVerification: "required",
+hints: ["client-device"],
 timeout: 60000
 };
 await navigator.credentials.get({ publicKey });
