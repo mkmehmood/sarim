@@ -7855,6 +7855,7 @@ async function updateFactorySummaryCard() {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const mode = currentFactorySummaryMode || 'all';
@@ -7892,6 +7893,7 @@ let stdConsumed = 0, asaanConsumed = 0;
 let totalCost = 0, totalOutput = 0, totalProfit = 0;
 let totalSaleValue = 0, totalRawMatCost = 0;
 let totalRawUsed = 0;
+const rawByMaterial = {};
 db.forEach(async entry => {
 if (entry.isReturn === true) return;
 if (!isInRange(entry.date)) return;
@@ -7906,6 +7908,20 @@ totalProfit += entry.profit || 0;
 totalRawMatCost += entry.formulaCost || entry.totalCost || 0;
 const weightPerUnit = await getWeightPerUnit(formulaStore);
 totalRawUsed += weightPerUnit * units;
+// Accumulate per-material breakdown
+const formula = factoryDefaultFormulas[formulaStore] || [];
+formula.forEach(f => {
+  const matId = f.id || f.name || 'Unknown';
+  const inv = factoryInventoryData.find(i => String(i.id) === String(f.id)) ||
+               (f.name ? factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase()) : null);
+  const matName = inv?.name || f.name || 'Unknown';
+  const qtyUsed = f.quantity * units;
+  const unitCost = inv ? inv.cost : (f.cost || 0);
+  const matCost = unitCost * qtyUsed;
+  if (!rawByMaterial[matName]) rawByMaterial[matName] = { qty: 0, cost: 0 };
+  rawByMaterial[matName].qty += qtyUsed;
+  rawByMaterial[matName].cost += matCost;
+});
 });
 const totalConsumed = stdConsumed + asaanConsumed;
 const stdCostPerUnit = await getCostPerUnit('standard');
@@ -7922,6 +7938,42 @@ _setSum('factorySumUnitCost', await formatCurrency(avgCostPerUnit));
 _setSum('factorySumTotalCost', await formatCurrency(totalCost));
 _setSum('factorySumOutput', safeNumber(totalOutput, 0).toFixed(2) + ' kg');
 _setSum('factorySumRawUsed', safeNumber(totalRawUsed, 0).toFixed(2) + ' kg');
+// Render raw materials breakdown
+const _rawBreakdownEl = document.getElementById('factorySumRawBreakdown');
+if (_rawBreakdownEl) {
+  const _rawEntries = Object.entries(rawByMaterial).sort((a, b) => b[1].qty - a[1].qty);
+  if (_rawEntries.length > 0) {
+    const _bId = 'perf-sum-raw-breakdown';
+    const _rowsHtml = _rawEntries.map(([name, data]) => `
+<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--glass-border);">
+<span style="font-size:0.72rem;color:var(--text-main);font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
+<span style="display:flex;gap:10px;align-items:center;">
+<span style="font-size:0.7rem;color:var(--text-muted);">${safeNumber(data.qty,0).toFixed(2)} kg</span>
+<span class="cost-val" style="font-size:0.72rem;min-width:60px;text-align:right;">${fmtAmt(data.cost)}</span>
+</span>
+</div>`).join('');
+    _rawBreakdownEl.innerHTML = `
+<div style="margin-top:8px;">
+<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)"
+style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
+<span style="font-size:0.68rem;color:var(--accent);">&#x25b6;</span>
+<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Materials Breakdown</span>
+</button>
+<div id="${_bId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</span>
+<span style="display:flex;gap:10px;">
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Qty Used</span>
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Cost</span>
+</span>
+</div>
+${_rowsHtml}
+</div>
+</div>`;
+  } else {
+    _rawBreakdownEl.innerHTML = '';
+  }
+}
 _setSum('factorySumMatVal', await formatCurrency(totalMatValue));
 _setSum('factorySumProfit', await formatCurrency(totalProfit));
 _setSum('factorySumProfitUnit', await formatCurrency(avgProfitPerKg) + '/kg');
@@ -14207,9 +14259,9 @@ calculateRepCustomerStatsForDisplay(value);
 }
 document.addEventListener('click', function(e) {
 // Close any open breakdown panels when clicking outside them
-if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"]') &&
-    !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"]')) {
-  document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"]').forEach(panel => {
+if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown') &&
+    !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"], button[onclick*="perf-sum-raw-breakdown"]')) {
+  document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown').forEach(panel => {
     if (panel.style.display !== 'none') {
       panel.style.display = 'none';
       // Reset the toggle arrow on the sibling button's first span
