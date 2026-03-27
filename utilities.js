@@ -8123,6 +8123,7 @@ formulaCost: 0
 };
 const allStoresGrid = document.getElementById('all-stores-grid');
 const _asgFrag = document.createDocumentFragment();
+const allStoresSoldByCustomer = {};
 stores.forEach((store, index) => {
 let storeData = {
 production: 0,
@@ -8162,6 +8163,7 @@ storeData.profit += (item.profit || 0);
 }
 });
 let soldQty = 0;
+const soldByCustomer = {};
 customerSales.forEach(sale => {
 const saleDate = new Date(sale.date);
 const saleYear = saleDate.getFullYear();
@@ -8177,7 +8179,10 @@ else if (mode === 'month' && saleYear === selectedYear && saleMonth === selected
 else if (mode === 'year' && saleYear === selectedYear) includeSale = true;
 else if (mode === 'all') includeSale = true;
 if (includeSale && sale.supplyStore === store) {
-soldQty += (sale.quantity || 0);
+const qty = sale.quantity || 0;
+soldQty += qty;
+const custName = sale.customerName || 'Unknown';
+soldByCustomer[custName] = (soldByCustomer[custName] || 0) + qty;
 }
 });
 storeData.sold = soldQty;
@@ -8222,6 +8227,7 @@ const remainingQty = totalIn - soldQty;
 totalCombined.production += storeData.production;
 totalCombined.returns += storeData.returns;
 totalCombined.sold += storeData.sold;
+Object.entries(soldByCustomer).forEach(([cust, qty]) => { allStoresSoldByCustomer[cust] = (allStoresSoldByCustomer[cust] || 0) + qty; });
 totalCombined.qty += totalIn;
 totalCombined.value += storeData.value;
 totalCombined.cost += storeData.cost;
@@ -8232,6 +8238,32 @@ let returnsHtml = '';
 if (storeData.returns > 0) {
 returnsHtml = `<p><span>Returns Recvd:</span> <span style="color:#10b981; font-weight:800;">${safeValue(storeData.returns).toFixed(2)} kg</span></p>`;
 }
+// Build sold-by-customer breakdown (collapsible, matches Materials Breakdown style)
+let soldBreakdownHtml = '';
+const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] - a[1]);
+if (soldBreakdownEntries.length > 0) {
+const soldBreakdownId = `sold-breakdown-${store}-${index}`;
+const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
+<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--glass-border);">
+<span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
+<span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${safeValue(qty).toFixed(2)} kg</span>
+</div>`).join('');
+soldBreakdownHtml = `
+<div style="margin-top:4px;">
+<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)"
+style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
+<span style="font-size:0.68rem;color:var(--accent);">▶</span>
+<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Sold Breakdown</span>
+</button>
+<div id="${soldBreakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Customer</span>
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
+</div>
+${soldRowsHtml}
+</div>
+</div>`;
+}
 const card = document.createElement('div');
 card.className = `overview-card liquid-card`;
 card.innerHTML = `
@@ -8240,6 +8272,7 @@ card.innerHTML = `
 <p><span>Produced:</span> <span class="qty-val" style="color:var(--text-main);">${safeValue(storeData.production).toFixed(2)} kg</span></p>
 ${returnsHtml}
 <p><span>Sold (Sales Tab):</span> <span class="cost-val">${safeValue(soldQty).toFixed(2)} kg</span></p>
+${soldBreakdownHtml}
 <div style="border-top:1px dashed var(--glass-border); margin:4px 0; padding-top:4px;">
 <p><span>Remaining:</span> <span class="profit-val" style="font-size:1.1rem;">${safeValue(remainingQty).toFixed(2)} kg</span></p>
 </div>
@@ -8278,6 +8311,32 @@ const combinedRemaining = totalCombined.qty - totalCombined.sold;
 	if (calcTabTotalReturns > 0 && Math.abs(totalCombined.returns - calcTabTotalReturns) > 0.01) {
 		totalCombined.returns = calcTabTotalReturns;
 	}
+// Build combined sold-by-customer breakdown
+let combinedSoldBreakdownHtml = '';
+const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) => b[1] - a[1]);
+if (combinedSoldEntries.length > 0) {
+const combinedSoldBreakdownId = `sold-breakdown-combined`;
+const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
+<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--glass-border);">
+<span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
+<span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${safeValue(qty).toFixed(2)} kg</span>
+</div>`).join('');
+combinedSoldBreakdownHtml = `
+<div style="margin-top:4px;">
+<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)"
+style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
+<span style="font-size:0.68rem;color:var(--accent);">▶</span>
+<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Sold Breakdown</span>
+</button>
+<div id="${combinedSoldBreakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Customer</span>
+<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
+</div>
+${combinedSoldRowsHtml}
+</div>
+</div>`;
+}
 const combinedCard = document.createElement('div');
 combinedCard.className = `overview-card liquid-card highlight-card`;
 combinedCard.innerHTML = `
@@ -8285,6 +8344,7 @@ combinedCard.innerHTML = `
 <p><span>Fresh Production:</span> <span class="qty-val">${safeValue(totalCombined.production).toFixed(2)} kg</span></p>
 ${totalCombined.returns > 0 ? `<p><span>Total Returns:</span> <span style="color:#10b981; font-weight:800;">${safeValue(totalCombined.returns).toFixed(2)} kg</span></p>` : ''}
 <p><span>Total Sold:</span> <span class="cost-val">${safeValue(totalCombined.sold).toFixed(2)} kg</span></p>
+${combinedSoldBreakdownHtml}
 <div style="border-top:1px dashed var(--glass-border); margin:4px 0; padding-top:4px;">
 <p><span>Total Remaining:</span> <span class="profit-val" style="font-size:1.1rem;">${safeValue(combinedRemaining).toFixed(2)} kg</span></p>
 </div>
@@ -14146,6 +14206,24 @@ calculateRepCustomerStatsForDisplay(value);
 }
 }
 document.addEventListener('click', function(e) {
+// Close any open breakdown panels when clicking outside them
+if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"]') &&
+    !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"]')) {
+  document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"]').forEach(panel => {
+    if (panel.style.display !== 'none') {
+      panel.style.display = 'none';
+      // Reset the toggle arrow on the sibling button's first span
+      const btn = panel.previousElementSibling;
+      if (btn && btn.tagName === 'BUTTON') {
+        const arrow = btn.querySelector('span:first-child');
+        if (arrow) {
+          if (arrow.textContent === '▼') arrow.textContent = '▶'; // ▼ → ▶ (sold breakdowns)
+          // factory breakdowns use empty-string spans; textContent stays as-is (already collapsed)
+        }
+      }
+    }
+  });
+}
 const searchables = [
 { input: 'cust-name', results: 'customer-search-results' },
 { input: 'rep-cust-name', results: 'rep-customer-search-results' },
