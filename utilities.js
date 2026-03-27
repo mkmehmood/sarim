@@ -4456,12 +4456,14 @@ emitSyncUpdate({ customer_sales: null});
 
 const savedName = name;
 if (amountEl) amountEl.value = '';
+document.getElementById('cust-name').value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
 if (phoneInput) phoneInput.value = '';
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 if (typeof calculateCustomerStatsForDisplay === 'function') await calculateCustomerStatsForDisplay(savedName);
 showToast(` Collection of ${fmtAmt(amount)} recorded for ${name}`, 'success');
+if (typeof setSaleMode === 'function') setSaleMode('sale');
 } catch (error) {
 customerSales.length = 0;
 customerSales.push(...snapshot);

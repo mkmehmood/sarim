@@ -486,7 +486,7 @@ ${deleteBtnHtml}
 } else {
 const _displayUnitPrice = (t.unitPrice && t.unitPrice > 0)
   ? t.unitPrice
-  : getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || 'STORE_A');
+  : await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || 'STORE_A');
 itemContent = `
 <div class="cust-history-info">
 <div class="u-mono-bold" >${formatDisplayDate(t.date)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>

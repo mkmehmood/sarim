@@ -1302,7 +1302,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 <div id="rep-coll-inputs" class="hidden">
 <div class="field">
 <label>Amount Collected ()</label>
-<input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received">
+<input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received" oninput="calculateRepCustomerStats(document.getElementById('rep-cust-name').value.trim())">
 </div>
 </div>
 <div id="rep-customer-info-display" class="hidden" style="margin: 10px 0; padding: 12px; background: rgba(37, 99, 235, 0.05); border-radius: 10px; border: 1px solid var(--glass-border);">

@@ -216,8 +216,10 @@ _setRep('rep-result-label', "New Balance After Collection:");
 const _credEl = document.getElementById('rep-customer-current-credit');
 const currentDebtText = _credEl ? _credEl.innerText.replace('₨','').replace(/,/g,'') : '0';
 const currentDebt = parseFloat(currentDebtText) || 0;
-const formattedDebt = await formatCurrency(currentDebt);
-_setRep('rep-total-value', formattedDebt);
+const inputAmt = parseFloat(document.getElementById('rep-amount-collected')?.value) || 0;
+const remaining = Math.max(0, currentDebt - inputAmt);
+const formattedRemaining = await formatCurrency(remaining);
+_setRep('rep-total-value', formattedRemaining);
 }
 }
 
@@ -492,8 +494,9 @@ const _custName = document.getElementById('rep-cust-name'); if (_custName) _cust
 const _custInfo = document.getElementById('rep-customer-info-display'); if (_custInfo) _custInfo.classList.add('hidden');
 const _repTV1 = document.getElementById('rep-total-value'); if (_repTV1) _repTV1.innerText = '0.00';
 } else {
-const _custName2 = document.getElementById('rep-cust-name'); if (_custName2) _custName2.value = savedCustomerName;
-await calculateRepCustomerStats(savedCustomerName);
+const _custName2 = document.getElementById('rep-cust-name'); if (_custName2) _custName2.value = '';
+const _custInfo2 = document.getElementById('rep-customer-info-display'); if (_custInfo2) _custInfo2.classList.add('hidden');
+await setRepMode('sale');
 }
 if(phoneInput) phoneInput.value = '';
 document.getElementById('rep-new-customer-phone-container').classList.add('hidden');
