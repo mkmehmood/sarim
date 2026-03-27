@@ -1570,10 +1570,10 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <div class="field u-mb-15" >
 <label>Payment:</label>
 <div class="toggle-group">
-<button id="btn-payment-cash" class="toggle-opt active" onclick="selectPaymentType(this,'CASH')">Cash</button>
-<button id="btn-payment-credit" class="toggle-opt" onclick="selectPaymentType(this,'CREDIT')">Credit</button>
+<button id="btn-payment-cash" class="toggle-opt" onclick="selectPaymentType(this,'CASH')">Cash</button>
+<button id="btn-payment-credit" class="toggle-opt active" onclick="selectPaymentType(this,'CREDIT')">Credit</button>
 </div>
-<input type="hidden" id="payment-type-value" value="CASH">
+<input type="hidden" id="payment-type-value" value="CREDIT">
 </div>
 <div class="result-box" id="sale-result-cost">
 Total Cost: <span id="cust-total-cost">0.00</span>
@@ -2161,9 +2161,9 @@ style="width: 100%; font-size: 0.85rem; padding: 8px;"
 <div class="u-mt-5" >
 <label style="font-size: 0.7rem; margin-bottom: 8px; display: block; color: var(--text-muted);">Transaction Type</label>
 <div class="toggle-group" style="width:100%; display:flex;">
-<button id="btn-category-operating" class="toggle-opt active u-flex-1" onclick="selectExpenseCategory('operating', this)">Operating Expense</button>
+<button id="btn-category-operating" class="toggle-opt u-flex-1" onclick="selectExpenseCategory('operating', this)">Operating Expense</button>
 <button id="btn-category-in" class="toggle-opt u-flex-1" onclick="selectExpenseCategory('IN', this)">Payment IN</button>
-<button id="btn-category-out" class="toggle-opt u-flex-1" onclick="selectExpenseCategory('OUT', this)">Payment OUT</button>
+<button id="btn-category-out" class="toggle-opt active u-flex-1" onclick="selectExpenseCategory('OUT', this)">Payment OUT</button>
 </div>
 </div>
 <div style="display: flex; justify-content: center; margin-top: 10px;">

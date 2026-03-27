@@ -493,8 +493,7 @@ const _custInfo = document.getElementById('rep-customer-info-display'); if (_cus
 const _repTV1 = document.getElementById('rep-total-value'); if (_repTV1) _repTV1.innerText = '0.00';
 } else {
 const _custName2 = document.getElementById('rep-cust-name'); if (_custName2) _custName2.value = savedCustomerName;
-calculateRepCustomerStats(savedCustomerName);
-const _repTV2 = document.getElementById('rep-total-value'); if (_repTV2) _repTV2.innerText = '0.00';
+await calculateRepCustomerStats(savedCustomerName);
 }
 if(phoneInput) phoneInput.value = '';
 document.getElementById('rep-new-customer-phone-container').classList.add('hidden');

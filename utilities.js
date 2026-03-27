@@ -4266,7 +4266,7 @@ emitSyncUpdate({ customer_sales: null});
 document.getElementById('cust-name').value = '';
 document.getElementById('cust-quantity').value = '';
 selectSalesRep(document.querySelector('#sales-rep-toggle-group .toggle-opt'), 'NONE');
-selectPaymentType(document.getElementById('btn-payment-cash'), 'CASH');
+selectPaymentType(document.getElementById('btn-payment-credit'), 'CREDIT');
 selectSupplyStore(document.getElementById('btn-supply-store-a'), 'STORE_A');
 if (phoneInput) phoneInput.value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
@@ -4460,8 +4460,7 @@ document.getElementById('new-customer-phone-container').classList.add('hidden');
 if (phoneInput) phoneInput.value = '';
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
-if (typeof calculateCustomerStatsForDisplay === 'function') calculateCustomerStatsForDisplay(savedName);
-updateCollectionPreview();
+if (typeof calculateCustomerStatsForDisplay === 'function') await calculateCustomerStatsForDisplay(savedName);
 showToast(` Collection of ${fmtAmt(amount)} recorded for ${name}`, 'success');
 } catch (error) {
 customerSales.length = 0;
@@ -10497,25 +10496,24 @@ if (!query || query.length < 1) {
 resultsDiv.classList.add('hidden');
 return;
 }
-const expCatDedup = [...new Set(
-expenseRecords
-.filter(e => e && e.name && typeof e.name === 'string')
-.map(e => e.name)
-)];
-const expenseMatches = expenseCategories.filter(name => {
+const currentMode = window._expenseCategory || 'operating';
+const isPaymentMode = currentMode === 'IN' || currentMode === 'OUT';
+const expenseMatches = isPaymentMode ? [] : expenseCategories.filter(name => {
 if (!name || typeof name !== 'string') return false;
 return name.toLowerCase().includes(query);
 });
-const entityMatches = paymentEntities.filter(entity => {
+const entityMatches = !isPaymentMode ? [] : paymentEntities.filter(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return false;
+if (entity.isExpenseEntity === true) return false;
 return entity.name.toLowerCase().includes(query);
 });
 let html = '';
+if (!isPaymentMode) {
 html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> EXPENSES</div>`;
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
 if (!name || typeof name !== 'string') return;
-const safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+const safeName = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const count = expenseRecords.filter(e => e && e.name === name).length;
 html += `
 <div style="
@@ -10539,13 +10537,14 @@ ${count} expense records
 </div>`;
 });
 } else {
-html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching expenses</div>`;
+html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching expenses — will create new</div>`;
 }
+} else {
 html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> ENTITIES</div>`;
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return;
-const safeName = entity.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+const safeName = entity.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const transactions = paymentTransactions.filter(t => t && t.entityId === entity.id).length;
 html += `
 <div style="
@@ -10569,25 +10568,8 @@ ${transactions > 0 ? transactions + ' transactions' : ''}
 </div>`;
 });
 } else {
-html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching entities</div>`;
+html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching entities — will create new</div>`;
 }
-if (expenseMatches.length === 0 && entityMatches.length === 0) {
-html += `
-<div style="
-padding: 12px;
-font-size: 0.85rem;
-color: var(--accent);
-background: var(--liquid-blue);
-border-radius: 8px;
-margin: 5px;
-cursor: pointer;
-"
-onmousedown="hideExpenseSearch()">
-<strong> New entry:</strong> "${input.value}"
-<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
-Click to continue with this name
-</div>
-</div>`;
 }
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
@@ -10633,7 +10615,7 @@ function hideExpenseSearch() {
 document.getElementById('expense-search-results').classList.add('hidden');
 document.getElementById('expenseAmount').focus();
 }
-window._expenseCategory = 'operating';
+window._expenseCategory = 'OUT';
 window._returnStore = null;
 function selectExpenseCategory(value, clickedBtn) {
 window._expenseCategory = value;
@@ -10746,6 +10728,13 @@ e.name && e.name.toLowerCase() === name.toLowerCase() &&
 !e.isExpenseEntity
 );
 if (!entity) {
+const isKnownExpenseCategory = expenseCategories.some(
+cat => typeof cat === 'string' && cat.toLowerCase() === name.toLowerCase()
+);
+if (isKnownExpenseCategory) {
+showToast(`"${name}" is an operating expense category, not an entity. Switch to Operating Expense mode or use a different name.`, 'error', 5000);
+return;
+}
 let _seEntityId = generateUUID('ent');
 if (!validateUUID(_seEntityId)) _seEntityId = generateUUID('ent');
 let newEntity = {
@@ -12340,7 +12329,7 @@ document.getElementById('expenseAmount').value = '';
 document.getElementById('expenseDescription').value = '';
 document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
 document.getElementById('expense-search-results').classList.add('hidden');
-selectExpenseCategory('operating', document.getElementById('btn-category-operating'));
+selectExpenseCategory('OUT', document.getElementById('btn-category-out'));
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
 const btn = document.getElementById(id);
 if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
