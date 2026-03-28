@@ -237,7 +237,7 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-m
 await renderCustomerTransactions(customerName);
 }
 
-async function closeCustomerManagement() {
+function closeCustomerManagement() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-management-screen');
 currentManagingCustomer = null;
 setTimeout(async () => {

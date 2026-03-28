@@ -185,7 +185,7 @@ async function unifiedSave(sqliteKey, dataArray, specificRecord = null, linkedId
 
 if (specificRecord && specificRecord.id) {
   await saveWithTracking(sqliteKey, dataArray, specificRecord);
-  
+
   _syncQueue.run(async () => {
     try {
       await saveRecordToFirestore(sqliteKey, specificRecord);
@@ -204,7 +204,7 @@ if (specificRecord && specificRecord.id) {
         });
       }
     }
-  }); 
+  });
 } else if (Array.isArray(linkedIds) && linkedIds.length > 0) {
   await saveWithTracking(sqliteKey, dataArray, null, linkedIds);
   const recordsToSync = dataArray.filter(r => r && linkedIds.includes(r.id));
@@ -228,7 +228,7 @@ if (specificRecord && specificRecord.id) {
         }
       }
     }
-  }); 
+  });
 } else {
   await saveWithTracking(sqliteKey, dataArray);
 }
@@ -340,8 +340,6 @@ try { database.disableNetwork().catch(() => {}); } catch(_dnErr) {}
 window._firestoreNetworkDisabled = true;
 auth = firebase.auth();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-.then(() => {
-})
 .catch((error) => {
 });
 
@@ -437,9 +435,7 @@ if (typeof firebaseDB !== 'undefined' && firebaseDB && window._firestoreNetworkD
   } catch (_enErr) {  }
 }
 try {
-  
-  
-  
+
   const _bootstrapAlreadyRan = !!sessionStorage.getItem('_gznd_bootstrap_ran');
   if (!_bootstrapAlreadyRan) {
     if (typeof loadAllData === 'function') await loadAllData();
@@ -482,11 +478,11 @@ console.error('Could not restore device mode:', _safeErr(error));
 }
 }, 1000);
 setTimeout(async () => {
+try {
 if (typeof performOneClickSync === 'function' && !isSyncing) {
-  
-  
-  performOneClickSync(true);
+  await performOneClickSync(true);
 }
+} catch (e) { console.warn('[Sync] Auto-sync on login error:', _safeErr(e)); }
 }, 1500);
 } else {
 currentUser = null;
@@ -1469,14 +1465,16 @@ async function subscribeToRealtime() {
         if (data.forceLogout.at > sessionStart) {
           showToast('Your account access has been revoked. Signing out…', 'error', 5000);
           setTimeout(async () => {
-            if (typeof signOut === 'function') await signOut();
+            try { if (typeof signOut === 'function') await signOut(); }
+            catch (e) { console.warn('[Auth] Force logout error:', _safeErr(e)); }
           }, 1500);
         }
       }
       if (data.approved === false) {
         showToast('Your account has been suspended. Signing out…', 'error', 5000);
         setTimeout(async () => {
-          if (typeof signOut === 'function') await signOut();
+          try { if (typeof signOut === 'function') await signOut(); }
+          catch (e) { console.warn('[Auth] Suspend logout error:', _safeErr(e)); }
         }, 1500);
       }
       if (!snap.metadata.hasPendingWrites && !snap.metadata.fromCache && data.lastWrite) {
@@ -2646,7 +2644,7 @@ async function _doOneClickSync(silent = false) {
         showToast(msg, 'success');
         if (typeof closeDataMenu === 'function') closeDataMenu();
       } else if (totalCloudChanges > 0 || totalItemsToWrite > 0) {
-        
+
         showToast(` Synced — ${totalCloudChanges} new, ${totalItemsToWrite} uploaded`, 'info', 3000);
       }
       setTimeout(() => {
@@ -2674,7 +2672,7 @@ async function _doOneClickSync(silent = false) {
       }
       if (typeof closeDataMenu === 'function') closeDataMenu();
     } else if (totalCloudChanges > 0 || totalItemsToWrite > 0) {
-      
+
       showToast(` Synced — ${totalCloudChanges} new, ${totalItemsToWrite} uploaded`, 'info', 3000);
     }
 
@@ -2786,9 +2784,7 @@ async function _doPushDataToCloud(silent = false) {
 }
 
 function pullDataFromCloud(silent = false, forceDownload = false) {
-  
-  
-  
+
   return _syncQueue.run(() => _doPullDataFromCloud(silent, forceDownload));
 }
 
@@ -2877,17 +2873,15 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
 
     if (!silent) showToast(' Data Restored Successfully', 'success');
     if (typeof updateUnitsAvailableIndicator === 'function') updateUnitsAvailableIndicator();
-    
-    
-    
-    Promise.resolve().then(() => {
+
+    queueMicrotask(() => {
       if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {});
     });
   } catch (error) {
     console.error('[pullDataFromCloud] error:', _safeErr(error));
     if (!silent) showToast('Restore failed. Using local data.', 'error');
-    
-    Promise.resolve().then(() => {
+
+    queueMicrotask(() => {
       if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {});
     });
   } finally {
@@ -2897,7 +2891,8 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
 }
 
 async function showSyncHealthPanel() {
-  verifyDeltaSyncSystem().then(async results => {
+  try {
+    const results = await verifyDeltaSyncSystem();
     const lastSync = (await sqliteStore.get('last_synced', null)) || 'Unknown';
     const pending = results.issues.length;
     const ok = results.valid.length;
@@ -2937,7 +2932,7 @@ async function showSyncHealthPanel() {
       </button>
     `;
     document.body.appendChild(panel);
-  }).catch(e => console.warn('[SyncHealth]', _safeErr(e)));
+  } catch (e) { console.warn('[SyncHealth]', _safeErr(e)); }
 }
 window.showSyncHealthPanel = showSyncHealthPanel;
 let seamlessBackupTimer = null;
@@ -2947,9 +2942,11 @@ if (seamlessBackupTimer) {
 clearTimeout(seamlessBackupTimer);
 }
 seamlessBackupTimer = setTimeout(async () => {
+try {
 if (currentUser && firebaseDB) {
 await pushDataToCloud(true);
 }
+} catch (e) { console.warn('[Backup] Seamless backup error:', _safeErr(e)); }
 }, SEAMLESS_DELAY_MS);
 }
 
@@ -2986,7 +2983,9 @@ async function wakeUpDatabaseAndSync() {
   showToast('Connecting to cloud...', 'info');
   if (!firebaseDB || !currentUser) {
     setTimeout(async () => {
-      if (firebaseDB && currentUser) await pullDataFromCloud(false);
+      try {
+        if (firebaseDB && currentUser) await pullDataFromCloud(false);
+      } catch (e) { console.warn('[Sync] Wake-up pull error:', _safeErr(e)); }
     }, 5000);
     return;
   }
@@ -3021,7 +3020,7 @@ await pullDataFromCloud(false);
 }
 }
 
-function createAuthOverlay() {
+async function createAuthOverlay() {
 const existing = document.getElementById('auth-overlay');
 if (existing) existing.remove();
 const overlay = document.createElement('div');
@@ -3128,12 +3127,13 @@ _initGSIInOverlay();
 const form = document.getElementById('auth-form');
 if(form) form.addEventListener('submit', handleSignIn);
 
-OfflineAuth.getSavedEmail().then(email => {
-if (email) {
-const emailInput = document.getElementById('auth-email');
-if (emailInput) { emailInput.value = email; }
-}
-}).catch(() => {});
+try {
+  const email = await OfflineAuth.getSavedEmail();
+  if (email) {
+    const emailInput = document.getElementById('auth-email');
+    if (emailInput) { emailInput.value = email; }
+  }
+} catch (_e) {}
 }
 
 function showAuthOverlay() {

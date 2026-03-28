@@ -160,7 +160,7 @@ const container = document.getElementById('factoryRawMaterialsContainer');
 if (container) container.style.opacity = '0.35';
 renderFactorySettingsRows().then(() => {
 requestAnimationFrame(() => { if (container) container.style.opacity = '1'; });
-});
+}).catch(() => { if (container) container.style.opacity = '1'; });
 }
 
 async function refreshFactorySettingsOverlay() {

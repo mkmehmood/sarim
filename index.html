@@ -46,10 +46,10 @@
 <meta name="theme-color" content="#009688">
 <link rel="apple-touch-icon" href="192.png">
 <title>GULL AND ZUBAIR NASWAR DEALERS</title>
-<!-- Leaflet CSS: preload then swap to stylesheet — non-blocking -->
+
 <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"></noscript>
-<!-- Google Fonts: preconnect + non-blocking swap -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@300;400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -174,7 +174,7 @@ function _showUpdateDialog(reg) {
     if (waiting) {
       waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-      
+
       sessionStorage.setItem('_swJustUpdated', '1');
       window.location.reload();
     }
@@ -207,8 +207,6 @@ if ('serviceWorker' in navigator) {
         });
       });
 
-      
-      
       var _reloading = false;
       navigator.serviceWorker.addEventListener('controllerchange', function() {
         if (_reloading) return;
@@ -217,15 +215,13 @@ if ('serviceWorker' in navigator) {
         window.location.reload();
       });
 
-      
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible') reg.update();
       });
 
-      
       setInterval(function() { reg.update(); }, 30 * 60 * 1000);
 
-    }).catch(function(e) { console.error('[SW]', e); });
+    }).catch(function(e) { console.error('[SW]', (e&&e.message)||String(e)||'(unknown)'); });
   });
 }
 </script>
@@ -446,7 +442,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
     <div id="sidebar-settings-section">
     <div class="sidebar-section-label">Settings</div>
     <div id="sidebar-label-data" class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">DATA</div>
-    <button id="sidebar-btn-sync" class="sidebar-settings-btn" onclick="closeSidebar();performOneClickSync&&performOneClickSync().catch(e=>console.error(e))">
+    <button id="sidebar-btn-sync" class="sidebar-settings-btn" onclick="closeSidebar();performOneClickSync&&performOneClickSync().catch(function(e){console.error('Sync error:',(e&&e.message)||String(e)||'(unknown)')})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       Sync Data
     </button>
@@ -892,7 +888,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
 window._showLogoutConfirmDialog = async function() {
   if (typeof window.showGlassConfirm !== 'function') {
     if (typeof signOut === 'function') { signOut(); return; }
-    if (typeof firebase !== 'undefined' && firebase.auth) { firebase.auth().signOut().catch(console.error); return; }
+    if (typeof firebase !== 'undefined' && firebase.auth) { firebase.auth().signOut().catch(function(e){console.error('Sign out failed:',(e&&e.message)||String(e)||'(unknown)')}); return; }
     showToast('Sign out failed', 'error'); return;
   }
   const confirmed = await window.showGlassConfirm(
@@ -907,7 +903,7 @@ window._showLogoutConfirmDialog = async function() {
   );
   if (confirmed) {
     if (typeof signOut === 'function') { signOut(); }
-    else if (typeof firebase !== 'undefined' && firebase.auth) { firebase.auth().signOut().catch(console.error); }
+    else if (typeof firebase !== 'undefined' && firebase.auth) { firebase.auth().signOut().catch(function(e){console.error('Sign out failed:',(e&&e.message)||String(e)||'(unknown)')}); }
     else { showToast('Sign out failed', 'error'); }
   }
 };
@@ -1302,7 +1298,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 <div id="rep-coll-inputs" class="hidden">
 <div class="field">
 <label>Amount Collected ()</label>
-<input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received" oninput="calculateRepCustomerStats(document.getElementById('rep-cust-name').value.trim())">
+<input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received" oninput="updateRepCollectionPreview()">
 </div>
 </div>
 <div id="rep-customer-info-display" class="hidden" style="margin: 10px 0; padding: 12px; background: rgba(37, 99, 235, 0.05); border-radius: 10px; border: 1px solid var(--glass-border);">
@@ -2570,7 +2566,7 @@ function sidebarNav(tab) {
 }
 window.sidebarNav = sidebarNav;
 
-window.openDataMenu = function() { if(typeof performOneClickSync==='function') performOneClickSync().catch(e=>console.error(e)); };
+window.openDataMenu = function() { if(typeof performOneClickSync==='function') performOneClickSync().catch(function(e){console.error('Sync error:',(e&&e.message)||String(e)||'(unknown)')}); };
 window.closeDataMenu = function() {  };
 
 window.openRecycleBin = function() {

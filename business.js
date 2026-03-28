@@ -2496,7 +2496,7 @@ function _encodeModeTag() {
 
 let _uuidV5Cache   = null;
 let _uuidV5Pending = false;
-function _refreshV5Cache() {
+async function _refreshV5Cache() {
   if (_uuidV5Pending) return;
   _uuidV5Pending = true;
   const name = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
@@ -2507,13 +2507,12 @@ function _refreshV5Cache() {
     const input = new Uint8Array(_UUID_V5_NS.length + nameBytes.length);
     input.set(_UUID_V5_NS, 0);
     input.set(nameBytes, _UUID_V5_NS.length);
-    crypto.subtle.digest('SHA-1', input).then(buf => {
-      const b = new Uint8Array(buf.slice(0, 16));
-      b[6] = (b[6] & 0x0f) | 0x50;
-      b[8] = (b[8] & 0x3f) | 0x80;
-      _uuidV5Cache   = b;
-      _uuidV5Pending = false;
-    }).catch(() => { _uuidV5Pending = false; });
+    const buf = await crypto.subtle.digest('SHA-1', input);
+    const b = new Uint8Array(buf.slice(0, 16));
+    b[6] = (b[6] & 0x0f) | 0x50;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    _uuidV5Cache   = b;
+    _uuidV5Pending = false;
   } catch (_) {
     _uuidV5Pending = false;
   }

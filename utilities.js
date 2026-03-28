@@ -188,23 +188,25 @@ _scheduleDlqAutoRetry() {
   if (this._dlqAutoRetryTimer) return;
   if (this.deadLetterQueue.length === 0) return;
   this._dlqAutoRetryTimer = setTimeout(async () => {
-    this._dlqAutoRetryTimer = null;
-    if (this.deadLetterQueue.length === 0) return;
-    showToast('\uD83D\uDD04 Auto-retrying ' + this.deadLetterQueue.length + ' failed operation(s)\u2026', 'info', 4000);
-    const items = [...this.deadLetterQueue];
-    this.deadLetterQueue = [];
-    await this.saveDeadLetterQueue();
-    for (const entry of items) {
-      const fresh = { ...entry, retries: 0, error: null, lastAttempt: null };
-      delete fresh.failedAt; delete fresh.finalError;
-      this.queue.push(fresh);
-    }
-    await this.saveQueue();
-    this._renderDeadLetterPanel();
-    if (navigator.onLine) await this.processQueue();
-    if (this.deadLetterQueue.length > 0) {
-      showToast('\u26A0\uFE0F Auto-retry complete \u2014 ' + this.deadLetterQueue.length + ' operation(s) still failing. Use \"Failed ops\" to retry manually or export for safekeeping.', 'error', 8000);
-    }
+    try {
+      this._dlqAutoRetryTimer = null;
+      if (this.deadLetterQueue.length === 0) return;
+      showToast('\uD83D\uDD04 Auto-retrying ' + this.deadLetterQueue.length + ' failed operation(s)\u2026', 'info', 4000);
+      const items = [...this.deadLetterQueue];
+      this.deadLetterQueue = [];
+      await this.saveDeadLetterQueue();
+      for (const entry of items) {
+        const fresh = { ...entry, retries: 0, error: null, lastAttempt: null };
+        delete fresh.failedAt; delete fresh.finalError;
+        this.queue.push(fresh);
+      }
+      await this.saveQueue();
+      this._renderDeadLetterPanel();
+      if (navigator.onLine) await this.processQueue();
+      if (this.deadLetterQueue.length > 0) {
+        showToast('\u26A0\uFE0F Auto-retry complete \u2014 ' + this.deadLetterQueue.length + ' operation(s) still failing. Use \"Failed ops\" to retry manually or export for safekeeping.', 'error', 8000);
+      }
+    } catch (e) { console.warn('[DLQ] Auto-retry error:', _safeErr(e)); }
   }, this.dlqAutoRetryDelay);
 },
 exportDeadLetterQueue() {
@@ -1176,7 +1178,6 @@ function _dedupDeletionRecordsLocal(arr) {
 
 async function registerDeletion(id, collectionName = 'unknown', preDeletedRecord = null) {
 
-
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 if (!id) {
@@ -1296,8 +1297,8 @@ await sqliteStore.set('deletion_records', _deduped);
 await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
 triggerAutoSync();
 
-uploadDeletionToCloud(deletionRecord).catch(e => console.warn('[registerDeletion] cloud upload failed:', e));
-cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed:', e));
+uploadDeletionToCloud(deletionRecord).catch(e => console.warn('[registerDeletion] cloud upload failed:', _safeErr(e)));
+cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed:', _safeErr(e)));
 }
 
 async function _captureRecordSnapshot(id, collectionName) {
@@ -2145,7 +2146,7 @@ async function _exportDocAsImageAndOpenWhatsApp(doc, phone, filenameBase) {
         showToast('Share cancelled', 'info');
         return;
       }
-      console.warn('[PDF share] Web Share failed, falling back to download:', err);
+      console.warn('[PDF share] Web Share failed, falling back to download:', _safeErr(err));
     }
   }
 
@@ -3677,7 +3678,6 @@ card.style.display = 'none';
 
 async function getAvailableCashInHand() {
 
-
 const _gacBatch = await sqliteStore.getBatch([
 'noman_history','mfg_pro_pkr','customer_sales','payment_transactions','expenses',
 'factory_production_history'
@@ -4456,14 +4456,15 @@ emitSyncUpdate({ customer_sales: null});
 
 const savedName = name;
 if (amountEl) amountEl.value = '';
-document.getElementById('cust-name').value = '';
+const _custNameEl = document.getElementById('cust-name');
+if (_custNameEl) _custNameEl.value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
 if (phoneInput) phoneInput.value = '';
+if (typeof setSaleMode === 'function') setSaleMode('sale');
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 if (typeof calculateCustomerStatsForDisplay === 'function') await calculateCustomerStatsForDisplay(savedName);
 showToast(` Collection of ${fmtAmt(amount)} recorded for ${name}`, 'success');
-if (typeof setSaleMode === 'function') setSaleMode('sale');
 } catch (error) {
 customerSales.length = 0;
 customerSales.push(...snapshot);
@@ -4887,7 +4888,7 @@ const originalOpenDataMenu = window.openDataMenu;
 window.openDataMenu = function() {
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof performOneClickSync === 'function') {
-performOneClickSync().catch(e => console.error('[openDataMenu] sync error:', e));
+performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error:', _safeErr(e))});
 } else if (typeof originalOpenDataMenu === 'function') {
 originalOpenDataMenu();
 }
@@ -4908,7 +4909,7 @@ _cacheDel(key) {
 _dirty: new Map(),
 _uploaded: new Map(),
 _downloaded: new Map(),
-trackId(collection, id) {
+async trackId(collection, id) {
   if (!id) return;
   const sid = String(id);
   if (!this._dirty.has(collection)) this._dirty.set(collection, new Set());
@@ -4916,15 +4917,16 @@ trackId(collection, id) {
   if (this._downloaded.has(collection)) this._downloaded.get(collection).delete(sid);
   const _dirtyIds = Array.from(this._dirty.get(collection) || []).filter(id => id !== '*');
   if (_dirtyIds.length > 0) {
-    sqliteStore.get(`pendingSync_${collection}`, []).then(existing => {
+    try {
+      const existing = await sqliteStore.get(`pendingSync_${collection}`, []);
       const arr = Array.isArray(existing) ? existing : [];
       let changed = false;
       _dirtyIds.forEach(id => { if (!arr.includes(id)) { arr.push(id); changed = true; } });
       if (changed) {
         const trimmed = arr.length > 5000 ? arr.slice(-5000) : arr;
-        sqliteStore.set(`pendingSync_${collection}`, trimmed).catch(() => {});
+        await sqliteStore.set(`pendingSync_${collection}`, trimmed).catch(() => {});
       }
-    }).catch(() => {});
+    } catch (_e) {}
   }
 },
 trackCollection(collection) {
@@ -4945,7 +4947,7 @@ isDirtyId(collection, id) {
   if (s.has('*')) return true;
   return s.has(String(id));
 },
-markUploaded(collection, id) {
+async markUploaded(collection, id) {
   const sid = String(id);
   if (!this._uploaded.has(collection)) this._uploaded.set(collection, new Set());
   this._uploaded.get(collection).add(sid);
@@ -4953,15 +4955,16 @@ markUploaded(collection, id) {
 
   const _uploadedIds = Array.from(this._uploaded.get(collection) || []);
   if (_uploadedIds.length > 0) {
-    sqliteStore.get(`uploadedIds_${collection}`, []).then(existing => {
+    try {
+      const existing = await sqliteStore.get(`uploadedIds_${collection}`, []);
       const arr = Array.isArray(existing) ? existing : [];
       let changed = false;
       _uploadedIds.forEach(id => { if (!arr.includes(id)) { arr.push(id); changed = true; } });
       if (changed) {
         const trimmed = arr.length > 5000 ? arr.slice(arr.length - 5000) : arr;
-        sqliteStore.set(`uploadedIds_${collection}`, trimmed).catch(() => {});
+        await sqliteStore.set(`uploadedIds_${collection}`, trimmed).catch(() => {});
       }
-    }).catch(() => {});
+    } catch (_e) {}
   }
 },
 async loadUploadedIds(collection) {
@@ -7327,7 +7330,7 @@ await syncProductionTab();
 await refreshUI();
 },
 'factory': async () => {
-await new Promise(async resolve => {
+await new Promise(resolve => {
 if (typeof window._lazyLoadFactory === 'function') {
 window._lazyLoadFactory(resolve);
 } else {
@@ -7343,7 +7346,7 @@ await refreshPaymentTab();
 setTimeout(() => { if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1); }, 150);
 },
 'rep': async () => {
-await new Promise(async resolve => {
+await new Promise(resolve => {
 if (typeof window._lazyLoadRep === 'function') {
 window._lazyLoadRep(resolve);
 } else {
@@ -7360,7 +7363,7 @@ await tabLoaders[tab]();
 notifyDataChange(tab);
 } catch(e) {
 if (e instanceof DOMException) return;
-console.warn('[showTab] tab load error:', e && e.message || e);
+console.warn('[showTab] tab load error:', _safeErr(e));
 }
 }, 50);
 }
@@ -7910,7 +7913,7 @@ totalProfit += entry.profit || 0;
 totalRawMatCost += entry.formulaCost || entry.totalCost || 0;
 const weightPerUnit = await getWeightPerUnit(formulaStore);
 totalRawUsed += weightPerUnit * units;
-// Accumulate per-material breakdown
+
 const formula = factoryDefaultFormulas[formulaStore] || [];
 formula.forEach(f => {
   const matId = f.id || f.name || 'Unknown';
@@ -7962,7 +7965,7 @@ _setSum('factorySumUnitCost', await formatCurrency(avgCostPerUnit));
 _setSum('factorySumTotalCost', await formatCurrency(totalCost));
 _setSum('factorySumOutput', safeNumber(totalOutput, 0).toFixed(2) + ' kg');
 _setSum('factorySumRawUsed', safeNumber(totalRawUsed, 0).toFixed(2) + ' kg');
-// Render raw materials breakdown
+
 const _rawBreakdownEl = document.getElementById('factorySumRawBreakdown');
 if (_rawBreakdownEl) {
   const _rawEntries = Object.entries(rawByMaterial).sort((a, b) => b[1].qty - a[1].qty);
@@ -8314,7 +8317,7 @@ let returnsHtml = '';
 if (storeData.returns > 0) {
 returnsHtml = `<p><span>Returns Recvd:</span> <span style="color:#10b981; font-weight:800;">${safeValue(storeData.returns).toFixed(2)} kg</span></p>`;
 }
-// Build sold-by-customer breakdown (collapsible, matches Materials Breakdown style)
+
 let soldBreakdownHtml = '';
 const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] - a[1]);
 if (soldBreakdownEntries.length > 0) {
@@ -8387,7 +8390,7 @@ const combinedRemaining = totalCombined.qty - totalCombined.sold;
 	if (calcTabTotalReturns > 0 && Math.abs(totalCombined.returns - calcTabTotalReturns) > 0.01) {
 		totalCombined.returns = calcTabTotalReturns;
 	}
-// Build combined sold-by-customer breakdown
+
 let combinedSoldBreakdownHtml = '';
 const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) => b[1] - a[1]);
 if (combinedSoldEntries.length > 0) {
@@ -9530,7 +9533,7 @@ emitSyncUpdate({ factory_inventory_data: null});
 notifyDataChange('factory');
 }
 
-async function formatCurrency(num) {
+function formatCurrency(num) {
 if (typeof num !== 'number') num = parseFloat(num) || 0;
 if (isNaN(num) || !isFinite(num)) num = 0;
 return String(num.toFixed(2));
@@ -9541,8 +9544,7 @@ return isNaN(value) || !isFinite(value) ? 0 : value;
 }
 
 async function refreshAllDisplays() {
-// Fix: load all SQLite data in one batch up front, then run all independent tab
-// refreshes in parallel via Promise.all instead of sequentially awaiting each one.
+
 const _radBatch = await sqliteStore.getBatch([
 'mfg_pro_pkr','customer_sales','rep_sales','noman_history',
 'payment_transactions','payment_entities','expenses','stock_returns',
@@ -9568,29 +9570,28 @@ const factoryCostAdjustmentFactor = _radBatch.get('factory_cost_adjustment_facto
 const factoryUnitTracking = _radBatch.get('factory_unit_tracking') || {};
 const deletedRecordIds = new Set(ensureArray(_radBatch.get('deleted_records')));
 
-// Run all independent tab refreshes in parallel — total time = slowest tab, not sum of all
 await Promise.all([
-  // Production stats + production tab
+
   (async () => {
     try { await syncFactoryProductionStats(); } catch (e) { console.error('syncFactoryProductionStats failed.', _safeErr(e)); }
     try { if (typeof refreshUI === 'function') await refreshUI(1, true); } catch (e) { console.error('refreshUI failed.', _safeErr(e)); }
   })(),
-  // Customer sales tab
+
   (async () => {
     try {
       if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);
       else if (typeof renderCustomersTable === 'function') renderCustomersTable();
     } catch (e) { console.error('refreshCustomerSales failed.', _safeErr(e)); }
   })(),
-  // Sales comparison tab
+
   (async () => {
     try { if (typeof loadSalesData === 'function') await loadSalesData(currentCompMode); } catch (e) { console.error('loadSalesData failed.', _safeErr(e)); }
   })(),
-  // Factory tab (sync)
-  (async () => {
+
+  (() => {
     try { if (typeof initFactoryTab === 'function') initFactoryTab(); } catch (e) { console.error('initFactoryTab failed.', _safeErr(e)); }
   })(),
-  // Payments tab — only if visible; calculateNetCash is sync
+
   (async () => {
     try {
       if (document.getElementById('tab-payments') && !document.getElementById('tab-payments').classList.contains('hidden')) {
@@ -9599,8 +9600,8 @@ await Promise.all([
       if (typeof calculateNetCash === 'function') calculateNetCash();
     } catch (e) { console.error('refreshPaymentTab failed.', _safeErr(e)); }
   })(),
-  // Rep mode tab
-  (async () => {
+
+  (() => {
     try {
       if (appMode === 'rep') {
         if (typeof renderRepHistory === 'function') renderRepHistory();
@@ -9652,16 +9653,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
       }, 200);
     });
   }
-  const repAmtCollected = document.getElementById('rep-amount-collected');
-  if (repAmtCollected) {
-    repAmtCollected.addEventListener('input', function() {
-      const _credEl2 = document.getElementById('rep-customer-current-credit');
-      const currentDebt = parseFloat(_credEl2 ? _credEl2.innerText.replace('','') : '0') || 0;
-      const inputAmt = parseFloat(this.value) || 0;
-      const _repTVL = document.getElementById('rep-total-value');
-      if (_repTVL) _repTVL.innerText = "" + fmtAmt(safeNumber(currentDebt - inputAmt, 0));
-    });
-  }
+
   if (typeof ThemeManager !== 'undefined' && ThemeManager.init) ThemeManager.init();
   await initTheme();
   const hasFirebaseSession = await _checkFirebaseSessionExists();
@@ -9692,7 +9684,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
     await initializeDeviceListeners();
     if (typeof OfflineQueue !== 'undefined') await OfflineQueue.init();
     loadFirestoreStats();
-    // Mark that bootstrap has completed so onAuthStateChanged skips double loadAllData
+
     try { sessionStorage.setItem('_gznd_bootstrap_ran', '1'); } catch(_) {}
   } catch (e) {
 
@@ -10129,7 +10121,7 @@ card.style.display = 'none';
 });
 }
 
-async function openEntityManagement() {
+function openEntityManagement() {
 editingEntityId = null;
 const _en = document.getElementById('entityName'); if (_en) _en.value = '';
 const _ep = document.getElementById('entityPhone'); if (_ep) _ep.value = '';
@@ -12494,13 +12486,13 @@ default: return 'Other';
 }
 }
 
-async function openDataMenu() {
+function openDataMenu() {
 if (appMode === 'rep') {
 return;
 }
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof performOneClickSync === 'function') {
-performOneClickSync().catch(e => console.error('[openDataMenu] sync error:', e));
+performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error:', _safeErr(e))});
 }
 }
 
@@ -13621,7 +13613,7 @@ timeout: 60000
 await navigator.credentials.get({ publicKey });
 return true;
 } catch (err) {
-console.error('[BiometricAuth] authenticate error:', err.name, err.message);
+console.error('[BiometricAuth] authenticate error:', _safeErr(err));
 throw err;
 }
 }
@@ -14086,16 +14078,7 @@ const allSales = isRep ?
 const allRegistryNames = !isRep && Array.isArray(salesCustomers)
 ? salesCustomers.filter(c => c && c.name).map(c => String(c.name).trim().toLowerCase())
 : Array.isArray(repCustomers)
-? (() => {
-const _repSalesAllLower = new Set(
-(Array.isArray(repSales) ? repSales : [])
-.filter(s => s && s.customerName)
-.map(s => s.customerName.toLowerCase())
-);
-return repCustomers
-.filter(c => c && c.name && !_repSalesAllLower.has(String(c.name).trim().toLowerCase()))
-.map(c => String(c.name).trim().toLowerCase());
-})()
+? repCustomers.filter(c => c && c.name).map(c => String(c.name).trim().toLowerCase())
 : [];
 const existingNames = [...new Set([
 ...allSales
@@ -14225,21 +14208,17 @@ No matching suppliers found
 }
 break;
 case 'repCustomers': {
-// Only show customers who have at least one transaction with the current rep profile
-const _repNamesFromSales = repSales
-.filter(s => s && s.salesRep === currentRepProfile)
-.map(s => s.customerName)
-.filter(n => n && typeof n === 'string');
-// Include registry customers only if they have no sales for ANY rep (truly unassigned)
-const _repSalesAllNamesLower = new Set(repSales.filter(s => s && s.customerName).map(s => s.customerName.toLowerCase()));
 let _freshRepReg = [];
 try { _freshRepReg = await sqliteStore.get('rep_customers', []) || []; } catch(e) {}
 const _repRegMap = new Map((_freshRepReg).filter(c => c && c.id).map(c => [c.id, c]));
 if (Array.isArray(repCustomers)) repCustomers.forEach(c => { if (c && c.id && !_repRegMap.has(c.id)) _repRegMap.set(c.id, c); });
 const _mergedRepReg = Array.from(_repRegMap.values());
+const _repNamesFromSales = repSales
+.filter(s => s.salesRep === currentRepProfile)
+.map(s => s.customerName)
+.filter(n => n && typeof n === 'string');
 const _repNamesFromRegistry = _mergedRepReg
-.filter(c => c && c.name && typeof c.name === 'string' && !_repSalesAllNamesLower.has(c.name.toLowerCase()))
-.map(c => c.name);
+.filter(c => c && c.name && typeof c.name === 'string' && c.salesRep === currentRepProfile).map(c => c.name);
 const repUniqueCustomers = [...new Set([..._repNamesFromSales, ..._repNamesFromRegistry])];
 matches = repUniqueCustomers.filter(name =>
 name && typeof name === 'string' && name.toLowerCase().includes(query.toLowerCase())

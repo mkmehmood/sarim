@@ -1,4 +1,4 @@
-const BUILD_HASH = 'sarim-v27.03.2026';
+const BUILD_HASH = 'sarim-v29.03.2026-c';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -22,8 +22,6 @@ const ASSETS_TO_CACHE = [
   '/sarim/sql.js'
 ];
 
-// Versioned CDN resources — pre-cached opportunistically during install.
-// These are immutable (version-pinned URLs), so cache-first is safe.
 const CDN_ASSETS_TO_PRECACHE = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js',
@@ -46,12 +44,12 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(ASSETS_TO_CACHE))
       .then(() => {
-        // Pre-cache CDN resources opportunistically — failures do NOT block install
+
         return caches.open(CACHE_NAME).then((cache) =>
           Promise.allSettled(
             CDN_ASSETS_TO_PRECACHE.map(url =>
               cache.add(new Request(url, { mode: 'cors', credentials: 'omit' }))
-                   .catch(() => { /* network unavailable — skip silently */ })
+                   .catch(() => {  })
             )
           )
         );
@@ -103,9 +101,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Versioned CDN assets (Firebase, Leaflet, GSI): cache-first.
-  // These URLs are version-pinned so stale is never wrong; serve from cache
-  // instantly if available, fetch and cache in background when not.
   const isCdnAsset = CDN_ASSETS_TO_PRECACHE.some(u => event.request.url === u) ||
     FIREBASE_CDN_ORIGINS.some(origin => url.origin === origin);
 

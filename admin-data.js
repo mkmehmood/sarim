@@ -1140,7 +1140,7 @@ async function restoreFromBackup(backupTimestamp) {
     await sqliteStore.set('expenses', backup.expenseRecords);
     await sqliteStore.set('stock_returns', backup.stockReturns);
     if (firebaseDB && currentUser) {
-      Promise.resolve().then(async () => {
+      void (async () => {
         try {
           const userRef = firebaseDB.collection('users').doc(currentUser.uid);
           const fbCollections = [
@@ -1178,7 +1178,7 @@ async function restoreFromBackup(backupTimestamp) {
         } catch (fbErr) {
           console.warn('Firebase rollback warning:', _safeErr(fbErr));
         }
-      }).catch(() => {});
+      })();
     }
     return true;
   } catch (e) {
@@ -1712,7 +1712,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'production', mergedRecords);
   if (!commitResult.ok) {
-    console.warn(`mergeProductionData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeProductionData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('prod', commitResult);
   }
 }
@@ -1856,7 +1856,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'sales', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
-    console.warn(`mergeSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('sales', commitResult);
   }
 }
@@ -1958,7 +1958,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'calculator_history', mergedRecords);
   if (!commitResult.ok) {
-    console.warn(`mergeCalculatorData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeCalculatorData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('calc', commitResult);
   }
 }
@@ -2038,7 +2038,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'transactions', mergedRecords);
   if (!commitResult.ok) {
-    console.warn(`mergePaymentData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergePaymentData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('pay', commitResult);
   }
 }
@@ -2110,7 +2110,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'factory_history', mergedRecords);
   if (!commitResult.ok) {
-    console.warn(`mergeFactoryData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeFactoryData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('factory', commitResult);
   }
 }
@@ -2258,7 +2258,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'rep_sales', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
-    console.warn(`mergeRepSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeRepSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('repsales', commitResult);
   }
 }
@@ -2327,7 +2327,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'expenses', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
-    console.warn(`mergeExpensesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeExpensesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('exp', commitResult);
   }
 }
@@ -2403,7 +2403,7 @@ if (firebaseDB && currentUser) {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const commitResult = await _commitMergedBatch(userRef, 'returns', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
-    console.warn(`mergeStockReturnsData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, commitResult.error);
+    console.warn(`mergeStockReturnsData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
     _markRowSyncWarning('ret', commitResult);
   }
 }

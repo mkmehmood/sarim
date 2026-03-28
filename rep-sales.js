@@ -199,7 +199,7 @@ _reEnable();
 }
 }
 
-async function setRepMode(mode) {
+function setRepMode(mode) {
 repTransactionMode = mode;
 const _setRep = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
 const _btnSale = document.getElementById('btn-mode-sale'); if (_btnSale) _btnSale.className = `toggle-opt ${mode === 'sale' ? 'active' : ''}`;
@@ -213,13 +213,7 @@ calculateRepSalePreview();
 const _saleIn2 = document.getElementById('rep-sale-inputs'); if (_saleIn2) _saleIn2.classList.add('hidden');
 const _collIn2 = document.getElementById('rep-coll-inputs'); if (_collIn2) _collIn2.classList.remove('hidden');
 _setRep('rep-result-label', "New Balance After Collection:");
-const _credEl = document.getElementById('rep-customer-current-credit');
-const currentDebtText = _credEl ? _credEl.innerText.replace('₨','').replace(/,/g,'') : '0';
-const currentDebt = parseFloat(currentDebtText) || 0;
-const inputAmt = parseFloat(document.getElementById('rep-amount-collected')?.value) || 0;
-const remaining = Math.max(0, currentDebt - inputAmt);
-const formattedRemaining = await formatCurrency(remaining);
-_setRep('rep-total-value', formattedRemaining);
+updateRepCollectionPreview();
 }
 }
 
@@ -273,10 +267,20 @@ if (_repCred) _repCred.innerText = "" + fmtAmt(safeNumber(debt, 0));
 const _repInfo = document.getElementById('rep-customer-info-display');
 if (_repInfo) _repInfo.classList.remove('hidden');
 if(repTransactionMode === 'collection') {
-const inputAmt = parseFloat(document.getElementById('rep-amount-collected')?.value) || 0;
-const _repTV = document.getElementById('rep-total-value');
-if (_repTV) _repTV.innerText = "" + fmtAmt(Math.max(0, safeNumber(debt - inputAmt, 0)));
+updateRepCollectionPreview(debt);
 }
+}
+
+function updateRepCollectionPreview(debtOverride) {
+if (repTransactionMode !== 'collection') return;
+const _credEl = document.getElementById('rep-customer-current-credit');
+const debt = (typeof debtOverride === 'number')
+? debtOverride
+: parseFloat((_credEl?.innerText || '0').replace(/[^0-9.-]/g, '')) || 0;
+const inputAmt = parseFloat(document.getElementById('rep-amount-collected')?.value) || 0;
+const remaining = Math.max(0, debt - inputAmt);
+const _repTV = document.getElementById('rep-total-value');
+if (_repTV) _repTV.innerText = '' + fmtAmt(safeNumber(remaining, 0));
 }
 
 async function calculateRepSalePreview() {
@@ -315,7 +319,6 @@ showToast("Date and Name required", "warning");
 restoreBtn();
 return;
 }
-
 
 let gpsCoords = null;
 const _gpsBgPromise = Promise.race([
@@ -455,7 +458,7 @@ transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 repSales.push(transactionRecord);
 await unifiedSave('rep_sales', repSales, transactionRecord);
 
-_gpsBgPromise.then(async coords => {
+void _gpsBgPromise.then(async coords => {
   if (!coords) return;
   try {
     const allSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -799,7 +802,7 @@ const recordMap2 = new Map(freshRepSales2.filter(s => s && s.id).map(s => [s.id,
 repSales.forEach(s => { if (s && s.id && !recordMap2.has(s.id)) recordMap2.set(s.id, s); });
 activeRepSales = Array.from(recordMap2.values());
 }
-} catch (_e) { /* fall back to repSales */ }
+} catch (_e) {  }
 const myData = activeRepSales.filter(s =>
 s.salesRep === currentRepProfile
 );
