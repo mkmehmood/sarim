@@ -1475,6 +1475,10 @@ try {
     expenses: expenseRecords,
     settings: _settingsSnapshot,
     deleted_records: Array.from(deletedRecordIds),
+    // Include all photos (person, expense, payment) so year-close backup is self-contained.
+    // person_photos_timestamps is included so timestamp-based conflict resolution works on restore.
+    person_photos: (await sqliteStore.get('person_photos')) || {},
+    person_photos_timestamps: (await sqliteStore.get('person_photos_timestamps')) || {},
     _meta: {
       encryptedFor:        currentUser.email,
       createdAt:           Date.now(),
@@ -2587,6 +2591,39 @@ const existingMerged = expenseRecords.filter(e => e.isMerged === true);
 const postCloseExpenses = expenseRecords.filter(e => e.isMerged !== true && _recTs(e) > closeEpoch);
 const mergedExpenses = [...existingMerged, ...mergedRecords, ...postCloseExpenses];
 await sqliteStore.set('expenses', mergedExpenses);
+
+// Collect all old expense IDs that were merged away (not kept as post-close or already-merged).
+// Their photos must be deleted from local store and Firestore so they don't orphan.
+try {
+  const _keptIds = new Set(mergedExpenses.map(e => e.id));
+  const _mergedAwayIds = expenseRecords
+    .filter(e => !_keptIds.has(e.id))
+    .map(e => e.id);
+  if (_mergedAwayIds.length > 0) {
+    const _fyPh   = (await sqliteStore.get('person_photos')) || {};
+    const _fyPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+    const _fyDk   = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    let _fyPhChanged = false;
+    for (const _mergedId of _mergedAwayIds) {
+      const _mergedPhKey = 'expense:' + _mergedId;
+      if (_fyPh[_mergedPhKey] !== undefined) {
+        delete _fyPh[_mergedPhKey];
+        delete _fyPhTs[_mergedPhKey];
+        // Mark dirty → sync will push deleted:true tombstone to Firestore,
+        // removing the photo from all connected devices on next pull.
+        if (!_fyDk.includes(_mergedPhKey)) _fyDk.push(_mergedPhKey);
+        _fyPhChanged = true;
+      }
+    }
+    if (_fyPhChanged) {
+      await sqliteStore.set('person_photos', _fyPh);
+      await sqliteStore.set('person_photos_timestamps', _fyPhTs);
+      await sqliteStore.set('person_photos_dirty_keys', _fyDk);
+      console.log('[mergeExpensesData] Queued photo deletion for', _mergedAwayIds.length, 'merged expense record(s).');
+    }
+  }
+} catch (_fyPhErr) { console.warn('[mergeExpensesData] photo cleanup failed:', _fyPhErr); }
+
 emitSyncUpdate({ expenses: null});
 updateCloseYearProgress('Expenses Merged', 97);
 }

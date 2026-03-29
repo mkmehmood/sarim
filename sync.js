@@ -2894,23 +2894,52 @@ async function _syncSettings(cloudData) {
   if (personPhotosSnap && !personPhotosSnap.empty) {
     try {
       const localPhotos = (await sqliteStore.get('person_photos')) || {};
+      // person_photos_timestamps stores { [photoKey]: epochMs } so we can compare
+      // remote updatedAt against the local copy's age and overwrite stale photos.
+      const localPhotoTimestamps = (await sqliteStore.get('person_photos_timestamps')) || {};
       const localDirtyKeys = new Set((await sqliteStore.get('person_photos_dirty_keys')) || []);
       let photosChanged = false;
+      let timestampsChanged = false;
       for (const doc of personPhotosSnap.docs) {
         const docData = doc.data();
         const photoKey = docData.key;
         if (!photoKey) continue;
 
+        // Skip keys the local device has modified but not yet pushed — local wins.
         if (localDirtyKeys.has(photoKey)) continue;
-        if (docData.deleted) {
-          if (localPhotos[photoKey]) { delete localPhotos[photoKey]; photosChanged = true; }
-        } else if (docData.data && !localPhotos[photoKey]) {
 
-          localPhotos[photoKey] = docData.data;
-          photosChanged = true;
+        if (docData.deleted) {
+          // Remote deletion: remove from local store on all connected devices.
+          if (localPhotos[photoKey] !== undefined) {
+            delete localPhotos[photoKey];
+            delete localPhotoTimestamps[photoKey];
+            photosChanged = true;
+            timestampsChanged = true;
+          }
+        } else if (docData.data) {
+          // FIX: The previous condition was "!localPhotos[photoKey]" which only pulled
+          // photos that didn't exist locally at all. This meant that when a photo was
+          // *updated* or *replaced* on one device, every other device that already had
+          // the old photo stored locally would silently ignore the newer version from
+          // Firestore — the old photo would persist indefinitely on those devices.
+          //
+          // Fix: compare the remote Firestore updatedAt timestamp against the locally
+          // recorded timestamp for that photo key. Overwrite whenever the remote copy
+          // is newer (or when no local copy exists).
+          const remoteUpdatedAt = docData.updatedAt?.toMillis ? docData.updatedAt.toMillis() : 0;
+          const localUpdatedAt = localPhotoTimestamps[photoKey] || 0;
+          if (!localPhotos[photoKey] || remoteUpdatedAt > localUpdatedAt) {
+            localPhotos[photoKey] = docData.data;
+            if (remoteUpdatedAt) {
+              localPhotoTimestamps[photoKey] = remoteUpdatedAt;
+              timestampsChanged = true;
+            }
+            photosChanged = true;
+          }
         }
       }
       if (photosChanged) await sqliteStore.set('person_photos', localPhotos);
+      if (timestampsChanged) await sqliteStore.set('person_photos_timestamps', localPhotoTimestamps);
       await DeltaSync.setLastSyncTimestamp('personPhotos');
     } catch(_phe) { console.warn('[syncSettings] personPhotos merge error', _phe); }
   }
@@ -3049,6 +3078,9 @@ async function _uploadChanges(userRef) {
     collectionsUploaded.add('expenseCategories');
   }
 
+  // Track which photo keys were queued for upload so we can update local state
+  // only after the Firestore batch.commit() succeeds (prevents data loss on failure).
+  let _uploadedPhotoKeys = [];
   try {
     const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
     if (_dirtyPhotoKeys.length > 0) {
@@ -3061,21 +3093,37 @@ async function _uploadChanges(userRef) {
         if (_photoVal) {
           _photoBatch.set(_photosRef.doc(_safeDocId), { key: _photoKey, data: _photoVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
         } else {
-
+          // Deleted locally — push tombstone so all connected devices remove it too.
           _photoBatch.set(_photosRef.doc(_safeDocId), { key: _photoKey, data: null, deleted: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
         }
         operationCount++;
         totalItemsToWrite++;
         trackFirestoreWrite(1);
+        _uploadedPhotoKeys.push(_photoKey);
       }
-      await sqliteStore.set('person_photos_dirty_keys', []);
       collectionsUploaded.add('personPhotos');
+      // NOTE: dirty keys intentionally NOT cleared here — cleared below after commit succeeds.
     }
   } catch(_photoUploadErr) { console.warn('[uploadChanges] person_photos upload error', _photoUploadErr); }
 
   if (operationCount > 0) batches.push(currentBatch);
   for (const batch of batches) {
     await batch.commit();
+  }
+
+  // Post-commit: clear dirty photo keys and stamp local timestamps now that Firestore
+  // has accepted the writes. This prevents re-uploading on the next sync cycle and
+  // ensures the pull logic won't overwrite the just-uploaded photos with stale data.
+  if (_uploadedPhotoKeys.length > 0) {
+    try {
+      const _remainingDirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+      const _uploadedSet = new Set(_uploadedPhotoKeys);
+      await sqliteStore.set('person_photos_dirty_keys', _remainingDirty.filter(k => !_uploadedSet.has(k)));
+      const _localTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+      const _nowMs = Date.now();
+      _uploadedPhotoKeys.forEach(k => { _localTs[k] = _nowMs; });
+      await sqliteStore.set('person_photos_timestamps', _localTs);
+    } catch(_postPhErr) { console.warn('[uploadChanges] person_photos post-commit cleanup error', _postPhErr); }
   }
 
   for (const col of collectionsUploaded) {

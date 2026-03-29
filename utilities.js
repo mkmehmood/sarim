@@ -1386,6 +1386,15 @@ displayDetail: _snapshot.displayDetail || null,
 displayAmount: _snapshot.displayAmount || null,
 snapshot: _snapshot.record || null,
 };
+// Embed the photo data URL in the deletion record so recoverRecord() can restore it
+// under the new ID without needing a separate Firestore lookup.
+if (collectionName === 'expenses' || collectionName === 'transactions') {
+  try {
+    const _regPhKey = 'expense:' + id;
+    const _regPh = (await sqliteStore.get('person_photos')) || {};
+    if (_regPh[_regPhKey]) deletionRecord._photoDataUrl = _regPh[_regPhKey];
+  } catch(_regPhErr) { console.warn('[registerDeletion] photo snapshot failed', _regPhErr); }
+}
 if (!validateTimestamp(deletionRecord.deletedAt, false)) {
 deletionRecord.deletedAt = now;
 deletionRecord.tombstoned_at = now;
@@ -3282,19 +3291,25 @@ async function savePersonPhoto(prefix, storageKey) {
   try {
     const stored = await sqliteStore.get('person_photos');
     const photos = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
+    // person_photos_timestamps tracks per-key epoch ms so sync can tell which copy is newer.
+    const timestamps = (await sqliteStore.get('person_photos_timestamps')) || {};
+    const now = Date.now();
     if (pending) {
       // Compress photo before storing to keep size reasonable
       const compressed = await _compressPhoto(pending, 300, 0.75);
       photos[storageKey] = compressed;
+      timestamps[storageKey] = now; // record local write time for future conflict resolution
     } else {
       delete photos[storageKey];
+      delete timestamps[storageKey];
     }
     await sqliteStore.set('person_photos', photos);
+    await sqliteStore.set('person_photos_timestamps', timestamps);
     // Mark dirty key for Firestore sync
     const _dirtyKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
     if (!_dirtyKeys.includes(storageKey)) _dirtyKeys.push(storageKey);
     await sqliteStore.set('person_photos_dirty_keys', _dirtyKeys);
-    await sqliteStore.set('person_photos_timestamp', Date.now());
+    await sqliteStore.set('person_photos_timestamp', now);
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   } catch(e) { console.warn('Photo save failed', e); }
 }
@@ -7652,10 +7667,35 @@ if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArr
   try {
     const existingPhotos = (await sqliteStore.get('person_photos')) || {};
     const backupPhotos = data.person_photos;
-    const mergedPhotos = Object.assign({}, backupPhotos, existingPhotos);
+    // Backup wins over stale local copies — existing fills any gaps the backup doesn't cover.
+    // Previously this was reversed (existingPhotos won), meaning a restore couldn't overwrite
+    // an outdated local photo with the correct backup version.
+    const mergedPhotos = Object.assign({}, existingPhotos, backupPhotos);
     await sqliteStore.set('person_photos', mergedPhotos);
-    const photoCount = Object.keys(backupPhotos).length;
-    if (photoCount > 0) showToast(`Restored ${photoCount} photo(s) from backup.`, 'info', 3000);
+
+    // Restore timestamps: use backup timestamps if provided, otherwise stamp now for every
+    // backup photo key so the pull logic knows these are fresh and won't overwrite them.
+    const existingTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+    const backupTs   = (data.person_photos_timestamps && typeof data.person_photos_timestamps === 'object')
+      ? data.person_photos_timestamps : {};
+    const nowMs = Date.now();
+    const mergedTs = Object.assign({}, existingTs);
+    for (const key of Object.keys(backupPhotos)) {
+      mergedTs[key] = backupTs[key] || nowMs;
+    }
+    await sqliteStore.set('person_photos_timestamps', mergedTs);
+
+    // Mark every restored photo key dirty so the sync engine pushes them to Firestore,
+    // ensuring all connected devices on the same account receive the restored photos.
+    const restoredKeys = Object.keys(backupPhotos);
+    if (restoredKeys.length > 0) {
+      const dirtyKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+      for (const k of restoredKeys) { if (!dirtyKeys.includes(k)) dirtyKeys.push(k); }
+      await sqliteStore.set('person_photos_dirty_keys', dirtyKeys);
+      await sqliteStore.set('person_photos_timestamp', nowMs);
+      if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+      showToast(`Restored ${restoredKeys.length} photo(s) from backup.`, 'info', 3000);
+    }
   } catch(e) { console.warn('[restore] person_photos merge failed', e); }
 }
 showToast(`Restore complete${syncMessage}! ${statsMessage}`, 'success', 5000);
@@ -7978,13 +8018,32 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     try {
       const _ycExisting = (await sqliteStore.get('person_photos')) || {};
       const _ycBackup   = data.person_photos;
-      const _ycMerged   = Object.assign({}, _ycBackup, _ycExisting);
+      // Backup wins — this is a full year-close reversal so the backup state is authoritative.
+      // Previously existing photos won, meaning the restored backup couldn't overwrite stale locals.
+      const _ycMerged = Object.assign({}, _ycExisting, _ycBackup);
       await sqliteStore.set('person_photos', _ycMerged);
 
+      // Restore timestamps from backup if present, otherwise stamp now so conflict resolution
+      // treats all restored photos as the latest version and won't revert them on next pull.
+      const _ycExistingTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+      const _ycBackupTs   = (data.person_photos_timestamps && typeof data.person_photos_timestamps === 'object')
+        ? data.person_photos_timestamps : {};
+      const _ycNowMs = Date.now();
+      const _ycMergedTs = Object.assign({}, _ycExistingTs);
+      for (const _ycKey of Object.keys(_ycBackup)) {
+        _ycMergedTs[_ycKey] = _ycBackupTs[_ycKey] || _ycNowMs;
+      }
+      await sqliteStore.set('person_photos_timestamps', _ycMergedTs);
+
+      // Mark ALL restored keys dirty so sync pushes them to Firestore — every connected
+      // device on the same account will receive the full restored photo set on next pull.
       const _ycDirty = Object.keys(_ycBackup);
       if (_ycDirty.length > 0) {
-        await sqliteStore.set('person_photos_dirty_keys', _ycDirty);
-        await sqliteStore.set('person_photos_timestamp', Date.now());
+        const _ycExistingDirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+        const _ycMergedDirty = Array.from(new Set([..._ycExistingDirty, ..._ycDirty]));
+        await sqliteStore.set('person_photos_dirty_keys', _ycMergedDirty);
+        await sqliteStore.set('person_photos_timestamp', _ycNowMs);
+        if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
       }
     } catch(_ycPhErr) { console.warn('[ycRestore] person_photos restore error', _ycPhErr); }
   }
@@ -11543,6 +11602,9 @@ if (window._expensePendingPhoto) {
     const _storedPh = (await sqliteStore.get('person_photos')) || {};
     _storedPh[_photoKey] = await _compressPhoto(window._expensePendingPhoto, 400, 0.8);
     await sqliteStore.set('person_photos', _storedPh);
+    const _expPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+    _expPhTs[_photoKey] = Date.now();
+    await sqliteStore.set('person_photos_timestamps', _expPhTs);
     const _dk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
     if (!_dk.includes(_photoKey)) _dk.push(_photoKey);
     await sqliteStore.set('person_photos_dirty_keys', _dk);
@@ -11577,6 +11639,9 @@ if (window._expensePendingPhoto) {
     const _payStoredPh = (await sqliteStore.get('person_photos')) || {};
     _payStoredPh[_payPhotoKey] = await _compressPhoto(window._expensePendingPhoto, 400, 0.8);
     await sqliteStore.set('person_photos', _payStoredPh);
+    const _payPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+    _payPhTs[_payPhotoKey] = Date.now();
+    await sqliteStore.set('person_photos_timestamps', _payPhTs);
     const _payDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
     if (!_payDk.includes(_payPhotoKey)) _payDk.push(_payPhotoKey);
     await sqliteStore.set('person_photos_dirty_keys', _payDk);
@@ -12859,6 +12924,8 @@ if (_daeTxCount > 0) _daeMsg += `\n\n↩ ${_daeTxCount} linked payment transacti
 _daeMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(_daeMsg, { title: `Delete All "${expenseName}" Records`, confirmText: "Delete All", danger: true }))) return;
 try {
+// Collect photos to delete across all expenses in one batch for efficiency
+const _bulkPhotoKeysToDelete = [];
 for (const exp of toDelete) {
 const _expFiltered = expenseRecords.filter(e => e.id !== exp.id);
 await unifiedDelete('expenses', _expFiltered, exp.id, { strict: true }, exp);
@@ -12872,7 +12939,29 @@ await unifiedDelete('payment_transactions', _ptFilteredExp, tx.id, { strict: tru
 paymentTransactions.length = 0; paymentTransactions.push(..._ptFilteredExp);
 }
 }
+_bulkPhotoKeysToDelete.push('expense:' + exp.id);
 }
+// Delete all collected photo keys in a single read-modify-write cycle
+try {
+  const _bulkPh = (await sqliteStore.get('person_photos')) || {};
+  const _bulkPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+  const _bulkDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+  let _bulkPhChanged = false;
+  for (const _bKey of _bulkPhotoKeysToDelete) {
+    if (_bulkPh[_bKey] !== undefined) {
+      delete _bulkPh[_bKey];
+      delete _bulkPhTs[_bKey];
+      if (!_bulkDk.includes(_bKey)) _bulkDk.push(_bKey);
+      _bulkPhChanged = true;
+    }
+  }
+  if (_bulkPhChanged) {
+    await sqliteStore.set('person_photos', _bulkPh);
+    await sqliteStore.set('person_photos_timestamps', _bulkPhTs);
+    await sqliteStore.set('person_photos_dirty_keys', _bulkDk);
+    if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+  }
+} catch(_bulkPhErr) { console.warn('[deleteAllExpenses] photo batch cleanup failed', _bulkPhErr); }
 notifyDataChange('expenses');
 showToast(` All "${expenseName}" expense records deleted`, 'success');
 closeExpenseDetailsOverlay();
@@ -13170,6 +13259,27 @@ await unifiedDelete('payment_transactions', paymentTransactions, trans.id, { str
 }
 const _expRecFiltered = expenseRecords.filter(e => e.id !== expenseId);
 await unifiedDelete('expenses', _expRecFiltered, expenseId, { strict: true }, expense);
+
+// Delete the photo attached to this expense/payment (if any) from local store
+// and push a tombstone to Firestore so all connected devices remove it too.
+try {
+  const _delPhotoKey = 'expense:' + expenseId;
+  const _delPhotos = (await sqliteStore.get('person_photos')) || {};
+  if (_delPhotos[_delPhotoKey] !== undefined) {
+    delete _delPhotos[_delPhotoKey];
+    await sqliteStore.set('person_photos', _delPhotos);
+    const _delPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+    delete _delPhTs[_delPhotoKey];
+    await sqliteStore.set('person_photos_timestamps', _delPhTs);
+    // Mark dirty so the sync engine pushes a deleted:true tombstone to Firestore,
+    // which causes all other devices to remove this photo on their next pull.
+    const _delDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    if (!_delDk.includes(_delPhotoKey)) _delDk.push(_delPhotoKey);
+    await sqliteStore.set('person_photos_dirty_keys', _delDk);
+    if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+  }
+} catch(_delPhErr) { console.warn('[deleteExpense] photo cleanup failed', _delPhErr); }
+
 notifyDataChange('expenses');
 renderRecentExpenses();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
@@ -13399,6 +13509,41 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     }
     if (typeof invalidateAllCaches === 'function') {
       await invalidateAllCaches();
+    }
+    // Fix 5: Restore the expense/payment photo under the new record ID.
+    // On delete, the photo was stored as 'expense:<oldId>'. Recovery assigns a new UUID,
+    // so we must migrate the photo to 'expense:<newId>' and push it to Firestore.
+    // Source priority: (1) _photoDataUrl embedded in the deletion snapshot,
+    //                  (2) local person_photos store (photo may still be there).
+    if (collectionName === 'expenses' || collectionName === 'transactions') {
+      try {
+        const _recOldPhKey = 'expense:' + oldId;
+        const _recNewPhKey = 'expense:' + newId;
+        const _recPh = (await sqliteStore.get('person_photos')) || {};
+        const _recPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+        // Try snapshot-embedded photo first, fall back to whatever is still in local store
+        const _tombstone = (Array.isArray(localDeletionRecords) ? localDeletionRecords : deletionRecords).find(r => r.id === deletedId || r.recordId === deletedId);
+        const _recPhotoData = (_tombstone && _tombstone._photoDataUrl)
+          ? _tombstone._photoDataUrl
+          : (_recPh[_recOldPhKey] || null);
+        if (_recPhotoData) {
+          // Write photo under new key
+          _recPh[_recNewPhKey] = _recPhotoData;
+          _recPhTs[_recNewPhKey] = Date.now();
+          // Remove old key (it belongs to the deleted record)
+          delete _recPh[_recOldPhKey];
+          delete _recPhTs[_recOldPhKey];
+          await sqliteStore.set('person_photos', _recPh);
+          await sqliteStore.set('person_photos_timestamps', _recPhTs);
+          // Mark new key dirty so sync pushes it to Firestore; mark old key dirty
+          // so sync pushes a tombstone removing it from Firestore and other devices.
+          const _recDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+          if (!_recDk.includes(_recNewPhKey)) _recDk.push(_recNewPhKey);
+          if (!_recDk.includes(_recOldPhKey)) _recDk.push(_recOldPhKey);
+          await sqliteStore.set('person_photos_dirty_keys', _recDk);
+          await sqliteStore.set('person_photos_timestamp', Date.now());
+        }
+      } catch(_recPhErr) { console.warn('[recoverRecord] photo restore failed', _recPhErr); }
     }
     triggerAutoSync();
     return true;
@@ -13839,6 +13984,13 @@ async function hardDeleteRecord(id, collectionName) {
           const batch = firebaseDB.batch();
           batch.delete(userRef.collection('deletions').doc(sid));
           batch.delete(userRef.collection(collectionName).doc(sid));
+          // Also hard-delete the photo document from Firestore personPhotos
+          // so all connected devices stop seeing it.
+          if (collectionName === 'expenses' || collectionName === 'transactions') {
+            const _hdPhotoKey = 'expense:' + sid;
+            const _hdSafeDocId = btoa(unescape(encodeURIComponent(_hdPhotoKey))).replace(/[+/=]/g, c => ({'+':'-','/':'_','=':''})[c] || '');
+            batch.delete(userRef.collection('personPhotos').doc(_hdSafeDocId));
+          }
           await batch.commit();
           trackFirestoreWrite(2);
         } catch(e) {
@@ -13846,9 +13998,32 @@ async function hardDeleteRecord(id, collectionName) {
           if (typeof OfflineQueue !== 'undefined') {
             await OfflineQueue.add({ action: 'delete', collection: 'deletions',      docId: sid, data: null });
             await OfflineQueue.add({ action: 'delete', collection: collectionName,   docId: sid, data: null });
+            if (collectionName === 'expenses' || collectionName === 'transactions') {
+              const _hdPhotoKey = 'expense:' + sid;
+              const _hdSafeDocId = btoa(unescape(encodeURIComponent(_hdPhotoKey))).replace(/[+/=]/g, c => ({'+':'-','/':'_','=':''})[c] || '');
+              await OfflineQueue.add({ action: 'delete', collection: 'personPhotos', docId: _hdSafeDocId, data: null });
+            }
           }
         }
       })();
+    }
+    // Hard-delete photo from local store (no dirty key needed — Firestore doc deleted above)
+    if (collectionName === 'expenses' || collectionName === 'transactions') {
+      try {
+        const _hdLocalPhKey = 'expense:' + sid;
+        const _hdLocalPh = (await sqliteStore.get('person_photos')) || {};
+        if (_hdLocalPh[_hdLocalPhKey] !== undefined) {
+          delete _hdLocalPh[_hdLocalPhKey];
+          await sqliteStore.set('person_photos', _hdLocalPh);
+          const _hdLocalTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+          delete _hdLocalTs[_hdLocalPhKey];
+          await sqliteStore.set('person_photos_timestamps', _hdLocalTs);
+          // Remove from dirty keys too — no need to sync a tombstone since we deleted the doc directly
+          const _hdDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+          const _hdDkFiltered = _hdDk.filter(k => k !== _hdLocalPhKey);
+          if (_hdDkFiltered.length !== _hdDk.length) await sqliteStore.set('person_photos_dirty_keys', _hdDkFiltered);
+        }
+      } catch(_hdPhErr) { console.warn('[hardDeleteRecord] photo local cleanup failed', _hdPhErr); }
     }
     return true;
   } catch(e) {
@@ -13929,6 +14104,9 @@ stockReturns: stockReturns,
 settings: await sqliteStore.get('naswar_default_settings', defaultSettings),
 deleted_records: Array.from(deletedRecordIds),
 person_photos: (await sqliteStore.get('person_photos')) || {},
+// Include timestamps so restore can correctly mark photos as authoritative versions
+// and the sync engine won't overwrite them with older copies from Firestore.
+person_photos_timestamps: (await sqliteStore.get('person_photos_timestamps')) || {},
 _meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 },
 backupMetadata: {
 version: '3.0',
