@@ -291,7 +291,8 @@ if ('serviceWorker' in navigator) {
   background: rgba(29,233,182,0.12); color: var(--accent);
 }
 .sidebar-nav-btn svg, .sidebar-settings-btn svg {
-  width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7;
+  width: 16px; height: 16px; flex-shrink: 0; opacity: 1;
+  color: inherit;
 }
 .sidebar-nav-btn.active svg { opacity: 1; }
 .sidebar-divider {
@@ -416,88 +417,78 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
     <div class="sidebar-section-label">Navigation</div>
     <button class="sidebar-nav-btn" id="snav-prod" onclick="sidebarNav('prod')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="20" width="28" height="12" rx="3" fill="currentColor" opacity="0.15"/>
-        <rect x="4" y="20" width="28" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/>
-        <rect x="10" y="14" width="16" height="7" rx="2" fill="currentColor" opacity="0.25"/>
-        <rect x="10" y="14" width="16" height="7" rx="2" stroke="currentColor" stroke-width="1.4"/>
-        <rect x="14" y="8" width="8" height="7" rx="1.5" fill="currentColor" opacity="0.4"/>
-        <rect x="14" y="8" width="8" height="7" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-        <rect x="16" y="4" width="4" height="5" rx="1" fill="currentColor"/>
-        <line x1="9" y1="24" x2="9" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="14" y1="24" x2="14" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="19" y1="24" x2="19" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="24" y1="24" x2="24" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <rect x="4" y="20" width="28" height="12" rx="3" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.6"/>
+        <rect x="10" y="14" width="16" height="7" rx="2" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="14" y="8" width="8" height="7" rx="1.5" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="16" y="4" width="4" height="5" rx="1" fill="var(--accent)" opacity="0.7"/>
+        <line x1="9" y1="24" x2="9" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+        <line x1="14" y1="24" x2="14" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+        <line x1="19" y1="24" x2="19" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+        <line x1="24" y1="24" x2="24" y2="30" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
       </svg>
       Production
     </button>
     <button class="sidebar-nav-btn" id="snav-sales" onclick="sidebarNav('sales')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="7" y="3" width="22" height="30" rx="3" fill="currentColor" opacity="0.1"/>
-        <rect x="7" y="3" width="22" height="30" rx="3" stroke="currentColor" stroke-width="1.6"/>
-        <path d="M7 30 L12 27 L17 30 L22 27 L29 30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="12" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="12" y1="22" x2="19" y2="22" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <circle cx="24" cy="22" r="3.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.3"/>
-        <text x="24" y="23.5" text-anchor="middle" font-size="4.5" fill="currentColor" font-family="sans-serif" font-weight="bold">₨</text>
+        <rect x="7" y="3" width="22" height="30" rx="3" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/>
+        <path d="M7 30 L12 27 L17 30 L22 27 L29 30" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
+        <line x1="12" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
+        <line x1="12" y1="22" x2="19" y2="22" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/>
+        <circle cx="24" cy="22" r="3.5" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.3"/>
+        <text x="24" y="23.5" text-anchor="middle" font-size="4.5" fill="var(--accent)" font-family="sans-serif" font-weight="bold">₨</text>
       </svg>
       Sales
     </button>
     <button class="sidebar-nav-btn" id="snav-calc" onclick="sidebarNav('calc')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="4" width="26" height="28" rx="4" fill="currentColor" opacity="0.08"/>
-        <rect x="5" y="4" width="26" height="28" rx="4" stroke="currentColor" stroke-width="1.6"/>
-        <rect x="8" y="8" width="20" height="7" rx="2" fill="currentColor" opacity="0.2"/>
-        <rect x="8" y="8" width="20" height="7" rx="2" stroke="currentColor" stroke-width="1.3"/>
-        <line x1="13" y1="10" x2="13" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-        <line x1="18" y1="10" x2="18" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-        <line x1="23" y1="10" x2="23" y2="13" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        <rect x="5" y="4" width="26" height="28" rx="4" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/>
+        <rect x="8" y="8" width="20" height="7" rx="2" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.3"/>
+        <line x1="13" y1="10" x2="13" y2="13" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="18" y1="10" x2="18" y2="13" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="23" y1="10" x2="23" y2="13" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round"/>
         <circle cx="12" cy="21" r="2" fill="currentColor" opacity="0.7"/>
         <circle cx="18" cy="21" r="2" fill="currentColor" opacity="0.7"/>
         <circle cx="24" cy="21" r="2" fill="currentColor" opacity="0.7"/>
-        <circle cx="12" cy="27" r="2" fill="currentColor" opacity="0.5"/>
-        <circle cx="18" cy="27" r="2" fill="currentColor" opacity="0.5"/>
-        <rect x="21" y="25" width="6" height="4" rx="1.5" fill="currentColor" opacity="0.8"/>
+        <circle cx="12" cy="27" r="2" fill="currentColor" opacity="0.55"/>
+        <circle cx="18" cy="27" r="2" fill="currentColor" opacity="0.55"/>
+        <rect x="21" y="25" width="6" height="4" rx="1.5" fill="var(--accent)" opacity="0.75"/>
       </svg>
       Calculator
     </button>
     <button class="sidebar-nav-btn" id="snav-factory" onclick="sidebarNav('factory')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="3" y="22" width="30" height="11" rx="2.5" fill="currentColor" opacity="0.12"/>
-        <rect x="3" y="22" width="30" height="11" rx="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <rect x="6" y="15" width="10" height="8" rx="1.5" fill="currentColor" opacity="0.18"/>
-        <rect x="6" y="15" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
-        <rect x="20" y="12" width="9" height="11" rx="1.5" fill="currentColor" opacity="0.18"/>
-        <rect x="20" y="12" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+        <rect x="3" y="22" width="30" height="11" rx="2.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.5"/>
+        <rect x="6" y="15" width="10" height="8" rx="1.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="20" y="12" width="9" height="11" rx="1.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.4"/>
         <rect x="22" y="6" width="2.5" height="7" rx="1" fill="currentColor" opacity="0.6"/>
-        <rect x="26" y="8" width="2.5" height="5" rx="1" fill="currentColor" opacity="0.4"/>
-        <circle cx="23" cy="4.5" r="1.5" fill="currentColor" opacity="0.25"/>
-        <circle cx="25" cy="3" r="1" fill="currentColor" opacity="0.15"/>
-        <rect x="13" y="25" width="10" height="8" rx="1.5" fill="currentColor" opacity="0.3"/>
+        <rect x="26" y="8" width="2.5" height="5" rx="1" fill="currentColor" opacity="0.6"/>
+        <circle cx="23" cy="4.5" r="1.5" fill="currentColor" opacity="0.55"/>
+        <circle cx="25" cy="3" r="1" fill="currentColor" opacity="0.55"/>
+        <rect x="13" y="25" width="10" height="8" rx="1.5" fill="var(--accent)" fill-opacity="0.3"/>
       </svg>
       Factory
     </button>
     <button class="sidebar-nav-btn" id="snav-payments" onclick="sidebarNav('payments')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="14" width="22" height="14" rx="3" fill="currentColor" opacity="0.12"/>
-        <rect x="4" y="14" width="22" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>
-        <line x1="4" y1="19" x2="26" y2="19" stroke="currentColor" stroke-width="1.4"/>
-        <rect x="7" y="22" width="6" height="2.5" rx="1" fill="currentColor" opacity="0.6"/>
-        <ellipse cx="28" cy="22" rx="5" ry="2" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.3"/>
-        <ellipse cx="28" cy="19.5" rx="5" ry="2" fill="currentColor" opacity="0.35" stroke="currentColor" stroke-width="1.3"/>
-        <ellipse cx="28" cy="17" rx="5" ry="2" fill="currentColor" opacity="0.5" stroke="currentColor" stroke-width="1.3"/>
-        <ellipse cx="28" cy="14.5" rx="5" ry="2" fill="currentColor" opacity="0.65" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="4" y="14" width="22" height="14" rx="3" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.5"/>
+        <line x1="4" y1="19" x2="26" y2="19" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="7" y="22" width="6" height="2.5" rx="1" fill="currentColor" opacity="0.65"/>
+        <ellipse cx="28" cy="22" rx="5" ry="2" fill="var(--accent-gold)" fill-opacity="0.2" stroke="var(--accent-gold)" stroke-width="1.3"/>
+        <ellipse cx="28" cy="19.5" rx="5" ry="2" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.3"/>
+        <ellipse cx="28" cy="17" rx="5" ry="2" fill="var(--accent-gold)" fill-opacity="0.22" stroke="var(--accent-gold)" stroke-width="1.3"/>
+        <ellipse cx="28" cy="14.5" rx="5" ry="2" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.3"/>
       </svg>
       Payments
     </button>
     <button class="sidebar-nav-btn" id="snav-rep" onclick="sidebarNav('rep')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="13" cy="10" r="5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M4 30 C4 24 22 24 22 30" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity="0.1" stroke-linecap="round"/>
-        <rect x="24" y="22" width="3.5" height="9" rx="1" fill="currentColor" opacity="0.4"/>
-        <rect x="28.5" y="17" width="3.5" height="14" rx="1" fill="currentColor" opacity="0.65"/>
-        <polyline points="23,19 27,14 32,10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <circle cx="32" cy="10" r="2" fill="currentColor"/>
+        <circle cx="13" cy="10" r="5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/>
+        <path d="M4 30 C4 24 22 24 22 30" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity="0.10" stroke-linecap="round"/>
+        <rect x="24" y="22" width="3.5" height="9" rx="1" fill="var(--accent-emerald)" opacity="0.55"/>
+        <rect x="28.5" y="17" width="3.5" height="14" rx="1" fill="var(--accent-emerald)" opacity="0.75"/>
+        <polyline points="23,19 27,14 32,10" stroke="var(--accent-emerald)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="32" cy="10" r="2" fill="var(--accent-emerald)"/>
       </svg>
       Rep Sales
     </button>
@@ -507,186 +498,184 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
     <div id="sidebar-label-data" class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">DATA</div>
     <button id="sidebar-btn-sync" class="sidebar-settings-btn" onclick="closeSidebar();performOneClickSync&&performOneClickSync().catch(function(e){console.error('Sync error:',(e&&e.message)||String(e)||'(unknown)')})">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10 8 A10 10 0 0 1 28 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-        <polyline points="25,6 28,10 24,11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M26 28 A10 10 0 0 1 8 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-        <polyline points="11,30 8,26 12,25" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="18" cy="18" r="3" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.2"/>
+        <path d="M10 8 A10 10 0 0 1 28 18" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <polyline points="25,6 28,10 24,11" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M26 28 A10 10 0 0 1 8 18" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <polyline points="11,30 8,26 12,25" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="18" cy="18" r="3" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.2"/>
       </svg>
       Sync Data
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('backup-restore-screen')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="6" width="24" height="24" rx="4" fill="currentColor" opacity="0.1"/>
-        <rect x="5" y="6" width="24" height="24" rx="4" stroke="currentColor" stroke-width="1.6"/>
-        <circle cx="17" cy="18" r="6" stroke="currentColor" stroke-width="1.4" fill="currentColor" opacity="0.1"/>
-        <circle cx="17" cy="18" r="2.5" fill="currentColor" opacity="0.5"/>
-        <line x1="17" y1="12" x2="17" y2="14.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="17" y1="21.5" x2="17" y2="24" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="11" y1="18" x2="13.5" y2="18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <line x1="20.5" y1="18" x2="23" y2="18" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <rect x="29" y="14" width="2.5" height="8" rx="1.2" fill="currentColor" opacity="0.5"/>
-        <line x1="3" y1="30" x2="5" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <rect x="5" y="6" width="24" height="24" rx="4" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/>
+        <circle cx="17" cy="18" r="6" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity="0.15"/>
+        <circle cx="17" cy="18" r="2.5" fill="var(--accent)" opacity="0.6"/>
+        <line x1="17" y1="12" x2="17" y2="14.5" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="17" y1="21.5" x2="17" y2="24" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="11" y1="18" x2="13.5" y2="18" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="20.5" y1="18" x2="23" y2="18" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+        <rect x="29" y="14" width="2.5" height="8" rx="1.2" fill="currentColor" opacity="0.55"/>
+        <line x1="3" y1="30" x2="5" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
       </svg>
       Backup &amp; Restore
     </button>
     <button id="sidebar-btn-recycle" class="sidebar-settings-btn" onclick="closeSidebar();openRecycleBin()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 11 L10 31 A2 2 0 0 0 12 33 H24 A2 2 0 0 0 26 31 L28 11 Z" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-        <line x1="6" y1="11" x2="30" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M14 8 H22 M14 8 A1 1 0 0 1 15 7 H21 A1 1 0 0 1 22 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <path d="M15 17 C15 17 13 20 15 23 C17 26 21 26 21 26" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>
-        <polyline points="19,24 21,26 19,28" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M8 11 L10 31 A2 2 0 0 0 12 33 H24 A2 2 0 0 0 26 31 L28 11 Z" fill="var(--danger)" fill-opacity="0.10" stroke="var(--danger)" stroke-width="1.5" stroke-linejoin="round"/>
+        <line x1="6" y1="11" x2="30" y2="11" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M14 8 H22 M14 8 A1 1 0 0 1 15 7 H21 A1 1 0 0 1 22 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/>
+        <path d="M15 17 C15 17 13 20 15 23 C17 26 21 26 21 26" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.6"/>
+        <polyline points="19,24 21,26 19,28" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
       </svg>
       Recycle Bin
     </button>
     <div id="sidebar-label-appearance" class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">APPEARANCE</div>
     <button id="sidebar-btn-theme" class="sidebar-settings-btn" onclick="closeSidebar();(async()=>{await toggleDarkMode();})()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="18" cy="18" r="9" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M18 9 A9 9 0 0 1 18 27 Z" fill="currentColor" opacity="0.5"/>
-        <line x1="18" y1="4" x2="18" y2="6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="18" y1="29.5" x2="18" y2="32" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="4" y1="18" x2="6.5" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="29.5" y1="18" x2="32" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="8.1" y1="8.1" x2="9.9" y2="9.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="26.1" y1="26.1" x2="27.9" y2="27.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="18" cy="18" r="9" fill="var(--accent-gold)" fill-opacity="0.15" stroke="var(--accent-gold)" stroke-width="1.5"/>
+        <path d="M18 9 A9 9 0 0 1 18 27 Z" fill="var(--accent-gold)" opacity="0.4"/>
+        <line x1="18" y1="4" x2="18" y2="6.5" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="18" y1="29.5" x2="18" y2="32" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="4" y1="18" x2="6.5" y2="18" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="29.5" y1="18" x2="32" y2="18" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="8.1" y1="8.1" x2="9.9" y2="9.9" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="26.1" y1="26.1" x2="27.9" y2="27.9" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
       Theme
     </button>
     <button id="bio-toggle-btn" class="sidebar-settings-btn" onclick="closeSidebar();enableBiometricLock()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18 30 C10 30 6 24 6 18 C6 11 11 6 18 6 C25 6 30 11 30 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
-        <path d="M18 26 C13 26 10 22.5 10 18 C10 13.5 13.5 10 18 10 C22.5 10 26 13.5 26 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.6"/>
-        <path d="M18 22 C15.8 22 14 20.2 14 18 C14 15.8 15.8 14 18 14 C20.2 14 22 15.8 22 18 L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.85"/>
-        <circle cx="18" cy="18" r="2" fill="currentColor"/>
-        <path d="M22 25 C22 28 26 28 28 26" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
+        <path d="M18 30 C10 30 6 24 6 18 C6 11 11 6 18 6 C25 6 30 11 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M18 26 C13 26 10 22.5 10 18 C10 13.5 13.5 10 18 10 C22.5 10 26 13.5 26 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.75"/>
+        <path d="M18 22 C15.8 22 14 20.2 14 18 C14 15.8 15.8 14 18 14 C20.2 14 22 15.8 22 18 L22 22" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.85"/>
+        <circle cx="18" cy="18" r="2" fill="var(--accent)"/>
+        <path d="M22 25 C22 28 26 28 28 26" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.55"/>
       </svg>
       <span id="bio-toggle-label">Fingerprint Lock</span>
     </button>
     <div class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">BUSINESS</div>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('add-entity-screen');if(typeof prepareAddEntityScreen==='function')prepareAddEntityScreen()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="12" r="5.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M4 30 C4 23 24 23 24 30" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity="0.1" stroke-linecap="round"/>
-        <line x1="28" y1="14" x2="28" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <line x1="24" y1="18" x2="32" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="14" cy="12" r="5.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/>
+        <path d="M4 30 C4 23 24 23 24 30" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity="0.10" stroke-linecap="round"/>
+        <line x1="28" y1="14" x2="28" y2="22" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="24" y1="18" x2="32" y2="18" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/>
       </svg>
       Add Entity
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('raw-material-screen');if(typeof prepareRawMaterialScreen==='function')prepareRawMaterialScreen()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="18" cy="18" r="4" fill="currentColor" opacity="0.4" stroke="currentColor" stroke-width="1.4"/>
-        <circle cx="8" cy="10" r="3" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.3"/>
-        <circle cx="28" cy="10" r="3" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.3"/>
-        <circle cx="8" cy="26" r="3" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.3"/>
-        <circle cx="28" cy="26" r="3" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.3"/>
-        <line x1="11" y1="12" x2="15" y2="15" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
-        <line x1="25" y1="12" x2="21" y2="15" stroke="currentColor" stroke-width="1.2" opacity="0.5"/>
-        <line x1="11" y1="24" x2="15" y2="21" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
-        <line x1="25" y1="24" x2="21" y2="21" stroke="currentColor" stroke-width="1.2" opacity="0.4"/>
+        <circle cx="18" cy="18" r="4" fill="var(--accent)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="1.4"/>
+        <circle cx="8" cy="10" r="3" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.3"/>
+        <circle cx="28" cy="10" r="3" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.3"/>
+        <circle cx="8" cy="26" r="3" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.3"/>
+        <circle cx="28" cy="26" r="3" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.3"/>
+        <line x1="11" y1="12" x2="15" y2="15" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+        <line x1="25" y1="12" x2="21" y2="15" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+        <line x1="11" y1="24" x2="15" y2="21" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
+        <line x1="25" y1="24" x2="21" y2="21" stroke="currentColor" stroke-width="1.2" opacity="0.55"/>
       </svg>
       Add Raw Materials
     </button>
     <div class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">FACTORY</div>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('formula-standard-screen');if(typeof openFactorySettings==='function')openFactorySettings('standard')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8" y="5" width="20" height="26" rx="3" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M8 30 Q5 30 5 27 Q5 24 8 24" stroke="currentColor" stroke-width="1.3" fill="none"/>
-        <line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <text x="12" y="20" font-size="7" fill="currentColor" opacity="0.9" font-family="monospace" font-weight="bold">A=πr²</text>
+        <rect x="8" y="5" width="20" height="26" rx="3" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
+        <path d="M8 30 Q5 30 5 27 Q5 24 8 24" stroke="var(--accent)" stroke-width="1.3" fill="none"/>
+        <line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+        <text x="12" y="20" font-size="7" fill="var(--accent)" font-family="monospace" font-weight="bold">A=πr²</text>
         <line x1="12" y1="25" x2="20" y2="25" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
       </svg>
       Formula - Standard
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('formula-asaan-screen');if(typeof openFactorySettings==='function')openFactorySettings('asaan')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
-        <line x1="12" y1="13" x2="24" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="12" y1="18" x2="24" y2="18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="12" y1="23" x2="18" y2="23" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="var(--accent-purple)" fill-opacity="0.10" stroke="var(--accent-purple)" stroke-width="1.5"/>
+        <path d="M23 35 V29 H29" stroke="var(--accent-purple)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+        <line x1="12" y1="13" x2="24" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/>
+        <line x1="12" y1="18" x2="24" y2="18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/>
+        <line x1="12" y1="23" x2="18" y2="23" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.55"/>
       </svg>
       Formula - Asaan
     </button>
     <div class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">TEAM</div>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('sales-rep-screen');if(typeof loadManageRepsContent==='function')loadManageRepsContent()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="11" r="4.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/>
-        <circle cx="23" cy="11" r="4.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/>
-        <path d="M2 30 C2 24 22 24 22 30" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <path d="M18 30 C18 24 34 24 34 30" fill="currentColor" fill-opacity="0.08" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="12" cy="11" r="4.5" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.4"/>
+        <circle cx="23" cy="11" r="4.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4" opacity="0.8"/>
+        <path d="M2 30 C2 24 22 24 22 30" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M18 30 C18 24 34 24 34 30" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
       </svg>
       Sales Representatives
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('user-roles-screen');if(typeof loadUserRolesContent==='function')loadUserRolesContent()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="11" r="5" fill="currentColor" opacity="0.18" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M4 28 C4 22 24 22 24 28" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-        <circle cx="28" cy="22" r="4" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/>
-        <line x1="31" y1="25" x2="34" y2="28" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <line x1="33" y1="27" x2="35" y2="25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="14" cy="11" r="5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/>
+        <path d="M4 28 C4 22 24 22 24 28" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="28" cy="22" r="4" fill="var(--accent-gold)" fill-opacity="0.2" stroke="var(--accent-gold)" stroke-width="1.4"/>
+        <line x1="31" y1="25" x2="34" y2="28" stroke="var(--accent-gold)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="33" y1="27" x2="35" y2="25" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/>
       </svg>
       User Roles
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('app-accounts-screen');if(typeof loadAccountsList==='function')loadAccountsList()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M18 3 L30 8 V18 C30 25 24 31 18 33 C12 31 6 25 6 18 V8 Z" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-        <rect x="14" y="19" width="8" height="7" rx="1.5" fill="currentColor" opacity="0.3" stroke="currentColor" stroke-width="1.3"/>
-        <path d="M15 19 V17 A3 3 0 0 1 21 17 V19" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
-        <circle cx="18" cy="22.5" r="1.2" fill="currentColor"/>
+        <path d="M18 3 L30 8 V18 C30 25 24 31 18 33 C12 31 6 25 6 18 V8 Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round"/>
+        <rect x="14" y="19" width="8" height="7" rx="1.5" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.3"/>
+        <path d="M15 19 V17 A3 3 0 0 1 21 17 V19" stroke="var(--accent)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <circle cx="18" cy="22.5" r="1.2" fill="var(--accent)"/>
       </svg>
       App Accounts
     </button>
     <div class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">SYSTEM</div>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('device-display-screen')">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="10" y="3" width="16" height="30" rx="4" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.6"/>
+        <rect x="10" y="3" width="16" height="30" rx="4" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/>
         <line x1="14" y1="7.5" x2="22" y2="7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
-        <rect x="13" y="11" width="10" height="14" rx="1.5" fill="currentColor" opacity="0.15"/>
-        <circle cx="18" cy="29" r="1.5" fill="currentColor" opacity="0.7"/>
-        <line x1="6" y1="12" x2="8.5" y2="14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
-        <line x1="6" y1="18" x2="9" y2="18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
-        <line x1="6" y1="24" x2="8.5" y2="22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
-        <line x1="30" y1="12" x2="27.5" y2="14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
-        <line x1="30" y1="18" x2="27" y2="18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
-        <line x1="30" y1="24" x2="27.5" y2="22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.35"/>
+        <rect x="13" y="11" width="10" height="14" rx="1.5" fill="var(--accent)" fill-opacity="0.2"/>
+        <circle cx="18" cy="29" r="1.5" fill="var(--accent)" opacity="0.75"/>
+        <line x1="6" y1="12" x2="8.5" y2="14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="6" y1="18" x2="9" y2="18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="6" y1="24" x2="8.5" y2="22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="30" y1="12" x2="27.5" y2="14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="30" y1="18" x2="27" y2="18" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="30" y1="24" x2="27.5" y2="22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
       </svg>
       Device Display
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();if(typeof window._showCloseFinancialYearDialog==='function'){window._showCloseFinancialYearDialog();}else if(typeof showCloseFinancialYearDialog==='function'){showCloseFinancialYearDialog();}else{showToast('Feature not available','warning')}">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="8" width="20" height="20" rx="3" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.5"/>
-        <line x1="4" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.4"/>
-        <line x1="9" y1="5" x2="9" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <line x1="19" y1="5" x2="19" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        <line x1="8" y1="19" x2="14" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <line x1="8" y1="23" x2="12" y2="23" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-        <path d="M27 10 H33 L29 17 H31 L27 24 H33 L29 17 H31 Z" fill="currentColor" opacity="0.5" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
+        <rect x="4" y="8" width="20" height="20" rx="3" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
+        <line x1="4" y1="14" x2="24" y2="14" stroke="var(--accent)" stroke-width="1.4"/>
+        <line x1="9" y1="5" x2="9" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.65"/>
+        <line x1="19" y1="5" x2="19" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.65"/>
+        <line x1="8" y1="19" x2="14" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+        <line x1="8" y1="23" x2="12" y2="23" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+        <path d="M27 10 H33 L29 17 H31 L27 24 H33 L29 17 H31 Z" fill="var(--warning)" fill-opacity="0.3" stroke="var(--warning)" stroke-width="1" stroke-linejoin="round"/>
       </svg>
       Close Financial Year
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('db-structure-screen');setTimeout(loadDbStructureScreen,80)">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="5" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/>
-        <rect x="5" y="15" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/>
-        <rect x="5" y="25" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.4"/>
-        <circle cx="27" cy="8.5" r="1.5" fill="currentColor"/>
-        <circle cx="27" cy="18.5" r="1.5" fill="currentColor" opacity="0.6"/>
-        <circle cx="27" cy="28.5" r="1.5" fill="currentColor" opacity="0.35"/>
-        <line x1="9" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
-        <line x1="9" y1="18.5" x2="20" y2="18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
-        <line x1="9" y1="28.5" x2="18" y2="28.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/>
+        <rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4"/>
+        <rect x="5" y="25" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/>
+        <circle cx="27" cy="8.5" r="1.5" fill="var(--accent)"/>
+        <circle cx="27" cy="18.5" r="1.5" fill="var(--accent)" opacity="0.7"/>
+        <circle cx="27" cy="28.5" r="1.5" fill="var(--accent)" opacity="0.5"/>
+        <line x1="9" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="9" y1="18.5" x2="20" y2="18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
+        <line x1="9" y1="28.5" x2="18" y2="28.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/>
       </svg>
       Database Structure
     </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();_showLogoutConfirmDialog();" style="color:var(--danger);">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="4" width="16" height="28" rx="2.5" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/>
-        <path d="M12 4 Q8 6 8 18 Q8 30 12 32" stroke="currentColor" stroke-width="1" fill="none" opacity="0.3" stroke-linecap="round"/>
-        <circle cx="18" cy="18" r="1.2" fill="currentColor" opacity="0.5"/>
-        <line x1="22" y1="18" x2="31" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <polyline points="27,13 32,18 27,23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <rect x="5" y="4" width="16" height="28" rx="2.5" fill="var(--danger)" fill-opacity="0.10" stroke="var(--danger)" stroke-width="1.5"/>
+        <path d="M12 4 Q8 6 8 18 Q8 30 12 32" stroke="currentColor" stroke-width="1" fill="none" opacity="0.5" stroke-linecap="round"/>
+        <line x1="22" y1="18" x2="31" y2="18" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"/>
+        <polyline points="27,13 32,18 27,23" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
       Logout
     </button>
@@ -702,7 +691,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
     <p class="settings-group-label">Backup</p>
     <div class="settings-list-item" onclick="triggerLocalBackup()">
       <div class="settings-list-item-icon" style="background:rgba(29,233,182,0.1);">
-        <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="6" width="24" height="24" rx="4" fill="currentColor" opacity="0.1" stroke="var(--accent)" stroke-width="1.6"/><circle cx="17" cy="18" r="6" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity="0.1"/><circle cx="17" cy="18" r="2.5" fill="var(--accent)" opacity="0.5"/><line x1="17" y1="12" x2="17" y2="14.5" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><line x1="17" y1="21.5" x2="17" y2="24" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><line x1="11" y1="18" x2="13.5" y2="18" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><line x1="20.5" y1="18" x2="23" y2="18" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><rect x="29" y="14" width="2.5" height="8" rx="1.2" fill="var(--accent)" opacity="0.5"/></svg>
+        <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="6" width="24" height="24" rx="4" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/><circle cx="17" cy="18" r="6" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity="0.18"/><circle cx="17" cy="18" r="2.5" fill="var(--accent)" opacity="0.8"/><line x1="17" y1="12" x2="17" y2="14.5" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><line x1="17" y1="21.5" x2="17" y2="24" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><line x1="11" y1="18" x2="13.5" y2="18" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><line x1="20.5" y1="18" x2="23" y2="18" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/><rect x="29" y="14" width="2.5" height="8" rx="1.2" fill="var(--accent)" opacity="0.5"/></svg>
       </div>
       <div class="settings-list-item-info">
         <p class="settings-list-item-title">Backup to Phone</p>
@@ -713,7 +702,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
     <p class="settings-group-label">Restore</p>
     <div class="settings-list-item" onclick="document.getElementById('restoreInput').click()">
       <div class="settings-list-item-icon" style="background:rgba(255,179,0,0.1);">
-        <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="var(--warning)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="var(--warning)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="18" r="3" fill="var(--warning)" opacity="0.25" stroke="var(--warning)" stroke-width="1.2"/></svg>
+        <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="var(--warning)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="var(--warning)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="18" r="3" fill="var(--warning)" opacity="0.52" stroke="var(--warning)" stroke-width="1.2"/></svg>
       </div>
       <div class="settings-list-item-info">
         <p class="settings-list-item-title">Restore from Phone</p>
@@ -1020,7 +1009,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
   <div class="screen-topbar">
     <h2 class="screen-title">Connected Devices</h2>
     <button class="btn-theme" style="padding:6px 10px;margin-left:auto;" onclick="refreshDeviceList()" title="Refresh">
-      <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
   <div class="screen-body">
@@ -1033,7 +1022,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
 <div id="close-financial-year-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex-shrink:0;width:36px;height:36px;border-radius:10px;background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.25);display:flex;align-items:center;justify-content:center;">
-      <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="8" width="20" height="20" rx="3" fill="var(--danger)" opacity="0.1" stroke="var(--danger)" stroke-width="1.5"/><line x1="4" y1="14" x2="24" y2="14" stroke="var(--danger)" stroke-width="1.4"/><line x1="9" y1="5" x2="9" y2="11" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round"/><line x1="19" y1="5" x2="19" y2="11" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round"/><path d="M27 10 H33 L29 17 H31 L27 24 H33 L29 17 H31 Z" fill="var(--danger)" opacity="0.5" stroke="var(--danger)" stroke-width="1" stroke-linejoin="round"/></svg>
+      <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="8" width="20" height="20" rx="3" fill="var(--danger)" opacity="0.38" stroke="var(--danger)" stroke-width="1.5"/><line x1="4" y1="14" x2="24" y2="14" stroke="var(--danger)" stroke-width="1.4"/><line x1="9" y1="5" x2="9" y2="11" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round"/><line x1="19" y1="5" x2="19" y2="11" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round"/><path d="M27 10 H33 L29 17 H31 L27 24 H33 L29 17 H31 Z" fill="var(--danger)" opacity="0.5" stroke="var(--danger)" stroke-width="1" stroke-linejoin="round"/></svg>
     </div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1050,13 +1039,13 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
   <div class="screen-topbar">
     <h2 class="screen-title">Database Structure</h2>
     <button onclick="loadDbStructureScreen()" title="Refresh" style="flex-shrink:0;width:34px;height:34px;border-radius:10px;background:var(--glass-raised);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:background 0.15s,color 0.15s;margin-left:auto;" onmouseover="this.style.background='var(--glass-hover)';this.style.color='var(--text-main)'" onmouseout="this.style.background='var(--glass-raised)';this.style.color='var(--text-muted)'">
-      <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
   <div class="screen-body">
     <div id="delta-sync-details-container" style="font-size:0.8rem;">
       <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
-        <svg width="40" height="40" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:12px;opacity:0.35;"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="currentColor"/><circle cx="27" cy="18.5" r="1.5" fill="currentColor" opacity="0.6"/><circle cx="27" cy="28.5" r="1.5" fill="currentColor" opacity="0.35"/><line x1="9" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="9" y1="18.5" x2="20" y2="18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/><line x1="9" y1="28.5" x2="18" y2="28.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/></svg>
+        <svg width="40" height="40" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:12px;"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="var(--accent)"/><circle cx="27" cy="18.5" r="1.5" fill="var(--accent)" opacity="0.7"/><circle cx="27" cy="28.5" r="1.5" fill="var(--accent)" opacity="0.5"/><line x1="9" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/><line x1="9" y1="18.5" x2="20" y2="18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/><line x1="9" y1="28.5" x2="18" y2="28.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/></svg>
         <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px;">Loading database structure…</div>
       </div>
     </div>
@@ -1077,7 +1066,7 @@ window._showLogoutConfirmDialog = async function() {
       confirmText: 'Sign Out',
       cancelText: 'Cancel',
       danger: true,
-      icon: '<svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="4" width="16" height="28" rx="2.5" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/><path d="M12 4 Q8 6 8 18 Q8 30 12 32" stroke="currentColor" stroke-width="1" fill="none" opacity="0.3" stroke-linecap="round"/><line x1="22" y1="18" x2="31" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="27,13 32,18 27,23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+      icon: '<svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="4" width="16" height="28" rx="2.5" fill="var(--danger)" fill-opacity="0.10" stroke="var(--danger)" stroke-width="1.5"/><path d="M12 4 Q8 6 8 18 Q8 30 12 32" stroke="currentColor" stroke-width="1" fill="none" opacity="0.5" stroke-linecap="round"/><line x1="22" y1="18" x2="31" y2="18" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"/><polyline points="27,13 32,18 27,23" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
     }
   );
   if (confirmed) {
@@ -1144,7 +1133,7 @@ window._showLogoutConfirmDialog = async function() {
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
         <div id="entity-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--glass-bg,#1a2535);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('entity')">
-          <svg id="entity-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;"><circle cx="18" cy="13" r="6" fill="currentColor"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          <svg id="entity-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><circle cx="18" cy="13" r="6" fill="var(--accent)"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
           <img id="entity-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
         </div>
         <button onclick="document.getElementById('entity-photo-file').click()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;" title="Upload photo">
@@ -1153,12 +1142,8 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="openPhotoCapture('entity')">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="18" cy="20" r="6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M13 9l2-4h6l2 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="20" r="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.15"/><path d="M13 9l2-4h6l2 4" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
           Camera
-        </button>
-        <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="document.getElementById('entity-photo-file').click()">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="24" height="28" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 12h12M12 18h12M12 24h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          Gallery
         </button>
         <button class="btn-theme" id="entity-photo-clear-btn" style="font-size:0.72rem;padding:5px 10px;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);border-radius:8px;display:none;" onclick="clearPersonPhoto('entity')" title="Remove photo">✕</button>
       </div>
@@ -1276,7 +1261,7 @@ window._showLogoutConfirmDialog = async function() {
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
         <div id="cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--glass-bg,#1a2535);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('cust')">
-          <svg id="cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;"><circle cx="18" cy="13" r="6" fill="currentColor"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          <svg id="cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><circle cx="18" cy="13" r="6" fill="var(--accent)"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
           <img id="cust-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
         </div>
         <button onclick="document.getElementById('cust-photo-file').click()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;" title="Upload photo">
@@ -1285,12 +1270,8 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="openPhotoCapture('cust')">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="18" cy="20" r="6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M13 9l2-4h6l2 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="20" r="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.15"/><path d="M13 9l2-4h6l2 4" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
           Camera
-        </button>
-        <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="document.getElementById('cust-photo-file').click()">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="24" height="28" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 12h12M12 18h12M12 24h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          Gallery
         </button>
         <button class="btn-theme" id="cust-photo-clear-btn" style="font-size:0.72rem;padding:5px 10px;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);border-radius:8px;display:none;" onclick="clearPersonPhoto('cust')" title="Remove photo">✕</button>
       </div>
@@ -1316,7 +1297,7 @@ window._showLogoutConfirmDialog = async function() {
         <div style="display:flex;gap:5px;">
           <input class="u-flex-1" type="text" id="edit-cust-address" placeholder="Area, Shop #, etc.">
           <button class="btn-theme" onclick="fetchDeviceLocation()" title="Auto-Fetch Location" style="border:1px solid var(--accent);color:var(--accent);padding:0 10px;">
-            <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="18" r="2" fill="currentColor"/><line x1="18" y1="4" x2="18" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="18" y1="28" x2="18" y2="32" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="18" x2="8" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="28" y1="18" x2="32" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="24.5" y1="24.5" x2="27.5" y2="27.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="27.5" y1="8.5" x2="24.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="11.5" y1="24.5" x2="8.5" y2="27.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6" fill="var(--accent-gold)" fill-opacity="0.25" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="2" fill="var(--accent-gold)"/><line x1="18" y1="4" x2="18" y2="8" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="18" y1="28" x2="18" y2="32" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="18" x2="8" y2="18" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="28" y1="18" x2="32" y2="18" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="24.5" y1="24.5" x2="27.5" y2="27.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="27.5" y1="8.5" x2="24.5" y2="11.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="11.5" y1="24.5" x2="8.5" y2="27.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/></svg>
           </button>
         </div>
         <div id="location-status" style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;font-style:italic;"></div>
@@ -1379,7 +1360,7 @@ window._showLogoutConfirmDialog = async function() {
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
         <div id="rep-cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--glass-bg,#1a2535);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('rep-cust')">
-          <svg id="rep-cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;"><circle cx="18" cy="13" r="6" fill="currentColor"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+          <svg id="rep-cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><circle cx="18" cy="13" r="6" fill="var(--accent)"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
           <img id="rep-cust-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
         </div>
         <button onclick="document.getElementById('rep-cust-photo-file').click()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;" title="Upload photo">
@@ -1388,12 +1369,8 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="openPhotoCapture('rep-cust')">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="18" cy="20" r="6" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M13 9l2-4h6l2 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="20" r="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.15"/><path d="M13 9l2-4h6l2 4" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
           Camera
-        </button>
-        <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="document.getElementById('rep-cust-photo-file').click()">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="24" height="28" rx="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 12h12M12 18h12M12 24h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          Gallery
         </button>
         <button class="btn-theme" id="rep-cust-photo-clear-btn" style="font-size:0.72rem;padding:5px 10px;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);border-radius:8px;display:none;" onclick="clearPersonPhoto('rep-cust')" title="Remove photo">✕</button>
       </div>
@@ -1419,7 +1396,7 @@ window._showLogoutConfirmDialog = async function() {
         <div style="display:flex;gap:5px;">
           <input class="u-flex-1" type="text" id="rep-edit-cust-address" placeholder="Area, Shop #, etc.">
           <button class="btn-theme" onclick="fetchRepDeviceLocation()" title="Auto-Fetch Location" style="border:1px solid var(--accent);color:var(--accent);padding:0 10px;">
-            <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="18" r="2" fill="currentColor"/><line x1="18" y1="4" x2="18" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="18" y1="28" x2="18" y2="32" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="18" x2="8" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="28" y1="18" x2="32" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="24.5" y1="24.5" x2="27.5" y2="27.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="27.5" y1="8.5" x2="24.5" y2="11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="11.5" y1="24.5" x2="8.5" y2="27.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6" fill="var(--accent-gold)" fill-opacity="0.25" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="2" fill="var(--accent-gold)"/><line x1="18" y1="4" x2="18" y2="8" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="18" y1="28" x2="18" y2="32" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="18" x2="8" y2="18" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="28" y1="18" x2="32" y2="18" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="24.5" y1="24.5" x2="27.5" y2="27.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="27.5" y1="8.5" x2="24.5" y2="11.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="11.5" y1="24.5" x2="8.5" y2="27.5" stroke="var(--accent-gold)" stroke-width="1.4" stroke-linecap="round"/></svg>
           </button>
         </div>
         <div id="rep-location-status" style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;font-style:italic;"></div>
@@ -1476,7 +1453,7 @@ window._showLogoutConfirmDialog = async function() {
     <canvas id="photo-capture-canvas" style="display:none;"></canvas>
     <div style="display:flex;gap:10px;width:100%;">
       <button class="btn btn-main" style="flex:1;" onclick="capturePhotoFromCamera()">
-        <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:5px;vertical-align:middle;"><rect x="3" y="9" width="30" height="22" rx="3" stroke="currentColor" stroke-width="1.8" fill="none"/><circle cx="18" cy="20" r="6" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M13 9l2-4h6l2 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+        <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:5px;vertical-align:middle;"><rect x="3" y="9" width="30" height="22" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="20" r="6" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity="0.18"/><path d="M13 9l2-4h6l2 4" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
         Capture
       </button>
       <button class="btn btn-danger" style="flex:0.5;" onclick="closePhotoCapture()">Cancel</button>
@@ -1610,7 +1587,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 placeholder="Search customers..."
 oninput="renderRepCustomerTable()">
 <button class="btn-theme" onclick="exportCustomerData('rep')" title="Download PDF"
-style="color: var(--accent-emerald); border-color: var(--accent-emerald); flex-shrink: 0; padding: 6px 12px; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+style="color: var(--accent-emerald); border-color: var(--accent-emerald); flex-shrink: 0; padding: 6px 12px; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
 </div>
 <div id="vs-scroller-rep-customers" style="overflow-x: auto; overflow-y: auto; max-height: 400px; margin-top: 10px;">
 <table class="u-table-full" >
@@ -1886,7 +1863,7 @@ Profit: <span id="cust-profit">0.00</span>
 <input type="text" id="customer-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
 oninput="filterCustomers()">
 <span id="customer-count" style="font-size: 0.7rem; color: var(--text-muted); display:none;">0 customers</span>
-<button class="btn-theme" onclick="exportCustomerData('admin')" title="Download PDF" style="color: var(--accent); border-color: var(--accent); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+<button class="btn-theme" onclick="exportCustomerData('admin')" title="Download PDF" style="color: var(--accent); border-color: var(--accent); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
 </div>
 <div id="vs-scroller-customers" style="overflow-x: auto; overflow-y: auto; max-height: 400px; margin-top: 10px;">
 <table class="u-table-full" >
@@ -2627,7 +2604,7 @@ Save Transaction
 <input type="text" id="unified-search" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
 oninput="renderUnifiedTable()">
 <button class="btn-theme" onclick="exportUnifiedData()" title="Download PDF"
-style="color: var(--accent-emerald); border-color: var(--accent-emerald); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+style="color: var(--accent-emerald); border-color: var(--accent-emerald); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
 </div>
 <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
 <select id="unifiedViewMode" onchange="renderUnifiedTable()" style="flex: 1; min-width: 150px; font-size: 0.85rem; padding: 8px;">
@@ -3093,7 +3070,7 @@ window.loadManageRepsContent = function() {
 window.loadDbStructureScreen = async function() {
   var container = document.getElementById('delta-sync-details-container');
   if (!container) return;
-  container.innerHTML = '<div style="color:var(--text-muted);padding:32px 20px;text-align:center;font-size:0.82rem;"><svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 12px;opacity:0.35;"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="currentColor"/><circle cx="27" cy="18.5" r="1.5" fill="currentColor" opacity="0.6"/><circle cx="27" cy="28.5" r="1.5" fill="currentColor" opacity="0.35"/></svg>Loading database structure…</div>';
+  container.innerHTML = '<div style="color:var(--text-muted);padding:32px 20px;text-align:center;font-size:0.82rem;"><svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 12px;"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="var(--accent)"/><circle cx="27" cy="18.5" r="1.5" fill="var(--accent)" opacity="0.7"/><circle cx="27" cy="28.5" r="1.5" fill="var(--accent)" opacity="0.5"/></svg>Loading database structure…</div>';
   var showFn = window._showDeltaSyncDetails || window.showDeltaSyncDetails;
   if (!showFn) {
     container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.82rem;">Requires an active Firestore connection.</div>';
@@ -3128,7 +3105,7 @@ window.loadDbStructureScreen = async function() {
       }
       capturedModal.remove();
     } else {
-      container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 12px;opacity:0.35;"><path d="M18 3 L30 8 V18 C30 25 24 31 18 33 C12 31 6 25 6 18 V8 Z" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><rect x="14" y="19" width="8" height="7" rx="1.5" fill="currentColor" opacity="0.3" stroke="currentColor" stroke-width="1.3"/><path d="M15 19 V17 A3 3 0 0 1 21 17 V19" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/><circle cx="18" cy="22.5" r="1.2" fill="currentColor"/></svg><div style="font-size:0.82rem;font-weight:600;margin-bottom:6px;">Sign in required</div><div style="font-size:0.73rem;">Database structure requires an active Firestore connection.</div></div>';
+      container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text-muted);"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto 12px;"><path d="M18 3 L30 8 V18 C30 25 24 31 18 33 C12 31 6 25 6 18 V8 Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round"/><rect x="14" y="19" width="8" height="7" rx="1.5" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.3"/><path d="M15 19 V17 A3 3 0 0 1 21 17 V19" stroke="var(--accent)" stroke-width="1.3" fill="none" stroke-linecap="round"/><circle cx="18" cy="22.5" r="1.2" fill="var(--accent)"/></svg><div style="font-size:0.82rem;font-weight:600;margin-bottom:6px;">Sign in required</div><div style="font-size:0.73rem;">Database structure requires an active Firestore connection.</div></div>';
     }
   } catch(e) {
     document.body.appendChild = originalAppend;

@@ -46,7 +46,7 @@ modal.id = 'delta-stats-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radius:20px;text-align:center;">
-  <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="currentColor"/><circle cx="27" cy="18.5" r="1.5" fill="currentColor" opacity="0.6"/><circle cx="27" cy="28.5" r="1.5" fill="currentColor" opacity="0.35"/><line x1="9" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="9" y1="18.5" x2="20" y2="18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/><line x1="9" y1="28.5" x2="18" y2="28.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.3"/></svg></div>
+  <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="var(--accent)"/><circle cx="27" cy="18.5" r="1.5" fill="var(--accent)" opacity="0.7"/><circle cx="27" cy="28.5" r="1.5" fill="var(--accent)" opacity="0.5"/><line x1="9" y1="8.5" x2="22" y2="8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/><line x1="9" y1="18.5" x2="20" y2="18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/><line x1="9" y1="28.5" x2="18" y2="28.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.55"/></svg></div>
   <div style="color:var(--text-muted);font-size:0.85rem;">Loading database structure…</div>
 </div>`;
 document.body.appendChild(modal);
@@ -59,7 +59,7 @@ try {
   const [
     productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
     salesCustomersSnap, transactionsSnap, entitiesSnap, inventorySnap,
-    factoryHistorySnap, returnsSnap, expensesSnap, deletionsSnap,
+    factoryHistorySnap, returnsSnap, expensesSnap, deletionsSnap, personPhotosSnap,
     settingsDoc, factorySettingsDoc, expenseCategoriesDoc, teamDoc,
     deviceDoc, accountInfoDoc, yearCloseSignalDoc
   ] = await Promise.all([
@@ -76,6 +76,7 @@ try {
     userRef.collection('returns').get(),
     userRef.collection('expenses').get(),
     userRef.collection('deletions').get(),
+    userRef.collection('personPhotos').get().catch(() => ({ size: 0, docs: [] })),
     userRef.collection('settings').doc('config').get(),
     userRef.collection('factorySettings').doc('config').get(),
     userRef.collection('expenseCategories').doc('categories').get(),
@@ -88,17 +89,22 @@ try {
   const stats      = await DeltaSync.getSyncStats();
   const uuidStats  = (typeof UUIDSyncRegistry !== 'undefined') ? UUIDSyncRegistry.stats() : {};
   const myDeviceShard = uuidStats._myDeviceShard ? uuidStats._myDeviceShard.toUpperCase() : '—';
-  const firestoreStats = (typeof _firestoreStats !== 'undefined') ? _firestoreStats : { reads: 0, writes: 0, lastReset: Date.now() };
+  const _savedFsStats = await sqliteStore.get('firestore_stats', null);
+  const firestoreStats = (_savedFsStats && typeof _savedFsStats.reads === 'number')
+    ? _savedFsStats
+    : { reads: 0, writes: 0, lastReset: Date.now() };
 
   // SQLite live counts
   const sqliteCounts = {};
   const sqliteKeys = ['mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
     'sales_customers','payment_transactions','payment_entities','factory_inventory_data',
-    'factory_production_history','stock_returns','expenses','deletion_records'];
+    'factory_production_history','stock_returns','expenses','deletion_records','person_photos'];
   await Promise.all(sqliteKeys.map(async k => {
     const arr = await sqliteStore.get(k, []);
-    sqliteCounts[k] = Array.isArray(arr) ? arr.length : 0;
+    sqliteCounts[k] = Array.isArray(arr) ? arr.length : (arr && typeof arr === 'object' ? Object.keys(arr).length : 0);
   }));
+  const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+  sqliteCounts['_person_photos_dirty'] = Array.isArray(_dirtyPhotoKeys) ? _dirtyPhotoKeys.length : 0;
 
   const COLLECTIONS = [
     { fsName:'production',         sqliteKey:'mfg_pro_pkr',               jsVar:'db',                       snap:productionSnap,      tabFn:'syncProductionTab',  lock:true,  desc:'Factory production batches' },
@@ -114,6 +120,7 @@ try {
     { fsName:'returns',            sqliteKey:'stock_returns',              jsVar:'stockReturns',             snap:returnsSnap,         tabFn:'syncProductionTab',  lock:true,  desc:'Stock return records' },
     { fsName:'expenses',           sqliteKey:'expenses',                   jsVar:'expenseRecords',           snap:expensesSnap,        tabFn:'refreshPaymentTab',  lock:true,  desc:'Expense entries' },
     { fsName:'deletions',          sqliteKey:'deletion_records',           jsVar:'deletedRecordIds',         snap:deletionsSnap,       tabFn:null,                 lock:false, desc:'Tombstone records for soft-deleted IDs' },
+    { fsName:'personPhotos',       sqliteKey:'person_photos',              jsVar:'person_photos{}',          snap:personPhotosSnap,    tabFn:null,                 lock:false, desc:'Person/customer/entity photos (keyed object: cust:name, entity:id, rep-cust:rep:name)', isPhotoStore:true },
   ];
 
   const CONFIG_DOCS = [
@@ -148,9 +155,12 @@ try {
   ];
 
   // ── helpers ─────────────────────────────────────────────────────────────────
-  const ago = ms => {
-    if (!ms) return 'never';
+  const ago = raw => {
+    if (!raw) return 'never';
+    const ms = typeof raw === 'string' ? Date.parse(raw) : raw;
+    if (!ms || isNaN(ms)) return 'never';
     const s = Math.floor((Date.now() - ms) / 1000);
+    if (s < 0) return 'just now';
     if (s < 60) return s + 's ago';
     if (s < 3600) return Math.floor(s/60) + 'm ago';
     if (s < 86400) return Math.floor(s/3600) + 'h ago';
@@ -186,7 +196,7 @@ try {
   <!-- title bar -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0">
     <div style="display:flex;align-items:center;gap:10px">
-      <span style="display:flex;align-items:center;"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="currentColor"/><circle cx="27" cy="18.5" r="1.5" fill="currentColor" opacity="0.6"/><circle cx="27" cy="28.5" r="1.5" fill="currentColor" opacity="0.35"/></svg></span>
+      <span style="display:flex;align-items:center;"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="var(--accent)"/><circle cx="27" cy="18.5" r="1.5" fill="var(--accent)" opacity="0.7"/><circle cx="27" cy="28.5" r="1.5" fill="var(--accent)" opacity="0.5"/></svg></span>
       <div>
         <div style="font-weight:700;font-size:1rem;color:var(--text)">Database Structure</div>
         <div style="font-size:0.67rem;color:var(--text-muted);font-family:'Geist Mono','Courier New',monospace;margin-top:1px">
@@ -214,19 +224,34 @@ try {
 
   // ── TAB 0 — Collections ──────────────────────────────────────────────────────
   html += `<div id="dbv-pane-0">`;
-  html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+  const _reads      = firestoreStats.reads  || 0;
+  const _writes     = firestoreStats.writes || 0;
+  const _readPct    = Math.min(100, Math.round(_reads  / 500));
+  const _writePct   = Math.min(100, Math.round(_writes / 200));
+  const _readColor  = _readPct  >= 80 ? '#ff453a' : _readPct  >= 50 ? '#f59e0b' : '#30d158';
+  const _writeColor = _writePct >= 80 ? '#ff453a' : _writePct >= 50 ? '#f59e0b' : '#007aff';
+  const _resetAgo   = firestoreStats.lastReset ? ago(firestoreStats.lastReset) : 'unknown';
+  const _msLeft     = firestoreStats.lastReset ? Math.max(0, 864e5 - (Date.now() - firestoreStats.lastReset)) : 0;
+  const _resetNext  = _msLeft > 0 ? (Math.floor(_msLeft/3600000) + 'h ' + Math.floor((_msLeft%3600000)/60000) + 'm') : 'soon';
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
     <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${totalFsDocs}</div>
+      <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${totalFsDocs.toLocaleString()}</div>
       <div style="font-size:0.63rem;color:var(--text-muted)">Firestore Docs</div>
+      <div style="font-size:0.58rem;color:var(--text-muted);margin-top:2px">live count</div>
     </div>
     <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:#30d158">${firestoreStats.reads||0}</div>
-      <div style="font-size:0.63rem;color:var(--text-muted)">Reads (session)</div>
+      <div style="font-size:1.3rem;font-weight:700;color:${_readColor}">${_reads.toLocaleString()}</div>
+      <div style="font-size:0.63rem;color:var(--text-muted)">Reads (24 h)</div>
+      <div style="font-size:0.58rem;color:${_readColor};margin-top:2px">${_readPct}% of 50 000</div>
     </div>
     <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:#007aff">${firestoreStats.writes||0}</div>
-      <div style="font-size:0.63rem;color:var(--text-muted)">Writes (session)</div>
+      <div style="font-size:1.3rem;font-weight:700;color:${_writeColor}">${_writes.toLocaleString()}</div>
+      <div style="font-size:0.63rem;color:var(--text-muted)">Writes (24 h)</div>
+      <div style="font-size:0.58rem;color:${_writeColor};margin-top:2px">${_writePct}% of 20 000</div>
     </div>
+  </div>
+  <div style="font-size:0.59rem;color:var(--text-muted);text-align:right;margin-bottom:10px;padding-right:2px">
+    Counter started ${_resetAgo} &nbsp;·&nbsp; resets in ${_resetNext}
   </div>`;
 
   COLLECTIONS.forEach(col => {
@@ -236,8 +261,8 @@ try {
     const uuidCol  = uuidStats[col.fsName] || {};
     const isDirty  = DeltaSync.isDirty(col.fsName);
     const lastSync = colStats.lastSync ? ago(colStats.lastSync) : 'never';
-    const hasLiveListener = col.fsName !== 'deletions'; // deletions uses its own handler
-    const mismatch = Math.abs(fsDocs - sqDocs) > 0;
+    const hasLiveListener = col.fsName !== 'deletions' && col.fsName !== 'personPhotos';
+    const mismatch = !col.isPhotoStore && Math.abs(fsDocs - sqDocs) > 0;
     const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
 
     html += `
@@ -260,7 +285,7 @@ try {
     <div style="text-align:right;flex-shrink:0">
       <div style="font-size:0.78rem;font-weight:700;color:var(--accent)">${fsDocs} FS</div>
       <div style="font-size:0.72rem;color:${mismatch?'#ff453a':'var(--text-muted)'}">
-        ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M27 10 H33 L29 17 H31 L27 24 H33 L29 17 H31 Z" fill="#f59e0b" opacity="0.6" stroke="#f59e0b" stroke-width="1" stroke-linejoin="round"/><circle cx="18" cy="18" r="2" fill="#f59e0b" opacity="0.8"/></svg>':''}
+        ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M27 10 H33 L29 17 H31 L27 24 H33 L29 17 H31 Z" fill="var(--warning)" opacity="0.7" stroke="var(--warning)" stroke-width="1" stroke-linejoin="round"/><circle cx="18" cy="18" r="2" fill="var(--warning)" opacity="0.9"/></svg>':''}
       </div>
     </div>
   </div>
@@ -269,6 +294,7 @@ try {
     <span>↓ <b style="color:#007aff">${uuidCol.downloaded||0}</b> down</span>
     <span>Syncs: <b style="color:var(--text)">${colStats.syncCount||0}</b></span>
     <span>Last: <b style="color:var(--text)">${lastSync}</b></span>
+    ${col.isPhotoStore ? `<span>Dirty keys: <b style="color:${sqliteCounts['_person_photos_dirty']>0?'#f59e0b':'var(--text)'}">${sqliteCounts['_person_photos_dirty']}</b></span>` : ''}
   </div>
 </div>`;
   });
@@ -336,6 +362,7 @@ try {
     { name:'expenseCategories/categories',     type:'doc',  path:'_handleExpenseCategoriesSnapshot',                purpose:'expense_categories', fires:'categories_timestamp change or content diff' },
     { name:'devices/{deviceId}',               type:'doc',  path:'_handleDeviceSnapshot',                           purpose:'Live remote mode changes (admin→rep etc.) without re-login', fires:'remoteAppliedMode flag + appMode_timestamp > local' },
     { name:'deletions',                        type:'col',  path:'_handleDeletionsSnapshot',                        purpose:'Propagate soft deletes to all devices, filter from data arrays', fires:'Any add/modify/remove on the deletions collection' },
+    { name:'personPhotos',                     type:'col',  path:'pullDataFromCloud → personPhotos delta fetch',    purpose:'Sync person/customer/entity photos (base64) from cloud; upload dirty keys on push', fires:'Delta pull on sync — not a live onSnapshot listener; uploads via dirty-key queue' },
     ...COLLECTIONS.filter(c => c.fsName !== 'deletions').map(c => ({
       name: c.fsName,
       type: 'col',
@@ -415,6 +442,7 @@ try {
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">returns/</span> <span style="color:var(--text-muted)">{docId}</span></div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">expenses/</span> <span style="color:var(--text-muted)">{docId}</span></div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">deletions/</span> <span style="color:var(--text-muted)">{recordId}</span> — tombstones</div>
+      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">personPhotos/</span> <span style="color:var(--text-muted)">{base64Key}</span> — photos keyed by type:id (cust:name, entity:id, rep-cust:rep:name)</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">activityLog/</span> <span style="color:var(--text-muted)">{auto}</span> — write-only audit</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">sync_updates/</span> <span style="color:var(--text-muted)">{auto}</span> — heartbeat log (cleaned hourly)</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">devices/</span> <span style="color:var(--text-muted)">{deviceId}</span> — fingerprint, mode, heartbeat</div>
@@ -886,7 +914,7 @@ _cyBody.innerHTML = `
           onkeydown="if(event.key==='Enter'&&!document.getElementById('close-year-confirm-btn').disabled){verifyAndExecuteCloseYear();}">
         <button type="button" id="cy-pwd-eye" tabindex="-1"
           onclick="(function(b){const i=document.getElementById('close-year-confirm-input');i.type=i.type==='password'?'text':'password';b.querySelector('svg').style.opacity=i.type==='text'?'1':'0.40';})(this)">
-          <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.4;transition:opacity 0.2s;"><path d="M6 18 C6 18 10 10 18 10 C26 10 30 18 30 18 C30 18 26 26 18 26 C10 26 6 18 6 18 Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="currentColor" fill-opacity="0.05"/><circle cx="18" cy="18" r="4" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.4"/><circle cx="18" cy="18" r="1.5" fill="currentColor"/></svg>
+          <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="transition:opacity 0.2s;"><path d="M6 18 C6 18 10 10 18 10 C26 10 30 18 30 18 C30 18 26 26 18 26 C10 26 6 18 6 18 Z" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="18" r="4" fill="var(--accent)" opacity="0.30" stroke="var(--accent)" stroke-width="1.4"/><circle cx="18" cy="18" r="1.5" fill="var(--accent)"/></svg>
         </button>
       </div>
       <div id="close-year-pwd-error"></div>
@@ -1120,14 +1148,14 @@ if (Array.isArray(stockReturns)) {
 }
 const storeCodeToLabel = _storeCodeToLabel;
 const CY_ICONS = {
-  prod:     '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="20" width="28" height="12" rx="3" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="14" width="16" height="7" rx="2" fill="currentColor" opacity="0.25" stroke="currentColor" stroke-width="1.4"/><rect x="14" y="8" width="8" height="7" rx="1.5" fill="currentColor" opacity="0.4" stroke="currentColor" stroke-width="1.4"/><rect x="16" y="4" width="4" height="5" rx="1" fill="currentColor"/></svg>',
-  sales:    '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="3" width="22" height="30" rx="3" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.6"/><path d="M7 30 L12 27 L17 30 L22 27 L29 30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="12" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="12" y1="22" x2="19" y2="22" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
-  calc:     '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="4" width="26" height="28" rx="4" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.6"/><rect x="8" y="8" width="20" height="7" rx="2" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="21" r="2" fill="currentColor" opacity="0.7"/><circle cx="18" cy="21" r="2" fill="currentColor" opacity="0.7"/><circle cx="24" cy="21" r="2" fill="currentColor" opacity="0.7"/><circle cx="12" cy="27" r="2" fill="currentColor" opacity="0.5"/><circle cx="18" cy="27" r="2" fill="currentColor" opacity="0.5"/><rect x="21" y="25" width="6" height="4" rx="1.5" fill="currentColor" opacity="0.8"/></svg>',
-  pay:      '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="14" width="22" height="14" rx="3" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="19" x2="26" y2="19" stroke="currentColor" stroke-width="1.4"/><rect x="7" y="22" width="6" height="2.5" rx="1" fill="currentColor" opacity="0.6"/><ellipse cx="28" cy="19.5" rx="5" ry="2" fill="currentColor" opacity="0.35" stroke="currentColor" stroke-width="1.3"/><ellipse cx="28" cy="17" rx="5" ry="2" fill="currentColor" opacity="0.5" stroke="currentColor" stroke-width="1.3"/></svg>',
-  factory:  '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="22" width="30" height="11" rx="2.5" fill="currentColor" opacity="0.12" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="15" width="10" height="8" rx="1.5" fill="currentColor" opacity="0.18" stroke="currentColor" stroke-width="1.4"/><rect x="20" y="12" width="9" height="11" rx="1.5" fill="currentColor" opacity="0.18" stroke="currentColor" stroke-width="1.4"/><rect x="22" y="6" width="2.5" height="7" rx="1" fill="currentColor" opacity="0.6"/><rect x="13" y="25" width="10" height="8" rx="1.5" fill="currentColor" opacity="0.3"/></svg>',
-  repsales: '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="13" cy="10" r="5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.5"/><path d="M4 30 C4 24 22 24 22 30" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity="0.1" stroke-linecap="round"/><rect x="24" y="22" width="3.5" height="9" rx="1" fill="currentColor" opacity="0.4"/><rect x="28.5" y="17" width="3.5" height="14" rx="1" fill="currentColor" opacity="0.65"/><circle cx="32" cy="10" r="2" fill="currentColor"/></svg>',
-  exp:      '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="3" width="22" height="30" rx="3" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="22" x2="18" y2="22" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="24" cy="22" r="3.5" fill="currentColor" opacity="0.2" stroke="currentColor" stroke-width="1.3"/></svg>',
-  ret:      '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  prod:     '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="20" width="28" height="12" rx="3" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.6"/><rect x="10" y="14" width="16" height="7" rx="2" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.4"/><rect x="14" y="8" width="8" height="7" rx="1.5" fill="var(--accent)" fill-opacity="0.25" stroke="var(--accent)" stroke-width="1.4"/><rect x="16" y="4" width="4" height="5" rx="1" fill="var(--accent)" opacity="0.7"/></svg>',
+  sales:    '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="3" width="22" height="30" rx="3" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/><path d="M7 30 L12 27 L17 30 L22 27 L29 30" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/><line x1="12" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/><line x1="12" y1="22" x2="19" y2="22" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/></svg>',
+  calc:     '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="4" width="26" height="28" rx="4" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.6"/><rect x="8" y="8" width="20" height="7" rx="2" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.3"/><circle cx="12" cy="21" r="2" fill="currentColor" opacity="0.7"/><circle cx="18" cy="21" r="2" fill="currentColor" opacity="0.7"/><circle cx="24" cy="21" r="2" fill="currentColor" opacity="0.7"/><circle cx="12" cy="27" r="2" fill="currentColor" opacity="0.55"/><circle cx="18" cy="27" r="2" fill="currentColor" opacity="0.55"/><rect x="21" y="25" width="6" height="4" rx="1.5" fill="var(--accent)" opacity="0.75"/></svg>',
+  pay:      '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="14" width="22" height="14" rx="3" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.5"/><line x1="4" y1="19" x2="26" y2="19" stroke="var(--accent)" stroke-width="1.4"/><rect x="7" y="22" width="6" height="2.5" rx="1" fill="currentColor" opacity="0.65"/><ellipse cx="28" cy="19.5" rx="5" ry="2" fill="var(--accent-gold)" fill-opacity="0.25" stroke="var(--accent-gold)" stroke-width="1.3"/><ellipse cx="28" cy="17" rx="5" ry="2" fill="var(--accent-gold)" fill-opacity="0.38" stroke="var(--accent-gold)" stroke-width="1.3"/></svg>',
+  factory:  '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="22" width="30" height="11" rx="2.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.5"/><rect x="6" y="15" width="10" height="8" rx="1.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.4"/><rect x="20" y="12" width="9" height="11" rx="1.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.4"/><rect x="22" y="6" width="2.5" height="7" rx="1" fill="currentColor" opacity="0.6"/><rect x="13" y="25" width="10" height="8" rx="1.5" fill="var(--accent)" fill-opacity="0.30"/></svg>',
+  repsales: '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="13" cy="10" r="5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.5"/><path d="M4 30 C4 24 22 24 22 30" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity="0.10" stroke-linecap="round"/><rect x="24" y="22" width="3.5" height="9" rx="1" fill="var(--accent-emerald)" opacity="0.55"/><rect x="28.5" y="17" width="3.5" height="14" rx="1" fill="var(--accent-emerald)" opacity="0.75"/><circle cx="32" cy="10" r="2" fill="var(--accent-emerald)"/></svg>',
+  exp:      '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="3" width="22" height="30" rx="3" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/><line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/><line x1="12" y1="17" x2="24" y2="17" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/><line x1="12" y1="22" x2="18" y2="22" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.55"/><circle cx="24" cy="22" r="3.5" fill="var(--accent-gold)" fill-opacity="0.25" stroke="var(--accent-gold)" stroke-width="1.3"/></svg>',
+  ret:      '<svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 8 A10 10 0 0 1 28 18" stroke="var(--warning)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="25,6 28,10 24,11" fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M26 28 A10 10 0 0 1 8 18" stroke="var(--warning)" stroke-width="1.8" stroke-linecap="round" fill="none"/><polyline points="11,30 8,26 12,25" fill="none" stroke="var(--warning)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 };
 const previewRow = (id, label, key, recCount, details, mergeNote, accent, hasData) => {
   const cssAccentVar = accent.replace('var(--','').replace(')','');

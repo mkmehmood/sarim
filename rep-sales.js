@@ -118,7 +118,7 @@ lockScreen.innerHTML = `
 </style>
 
 <div id="_lock-icon-wrap">
-  <svg width="42" height="42" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="42" height="42" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px var(--accent-glow));">
     <path d="M18 3 L30 8 V18 C30 25 24 31 18 33 C12 31 6 25 6 18 V8 Z" fill="#1de9b6" opacity="0.12" stroke="#1de9b6" stroke-width="1.6" stroke-linejoin="round"/>
     <rect x="14" y="19" width="8" height="7" rx="1.5" fill="#1de9b6" opacity="0.3" stroke="#1de9b6" stroke-width="1.3"/>
     <path d="M15 19 V17 A3 3 0 0 1 21 17 V19" stroke="#1de9b6" stroke-width="1.3" fill="none" stroke-linecap="round"/>
@@ -1023,7 +1023,7 @@ ${_repAvatarHTML}
 <div style="min-width:0;flex:1;">
 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 <span>${esc(name)}</span>
-<button class="sidebar-settings-btn" style="width:auto;padding:5px 10px;font-size:0.75rem;color:var(--accent);background:rgba(29,233,182,0.07);border-radius:8px;border:1px solid rgba(29,233,182,0.25);display:inline-flex;align-items:center;gap:5px;" onclick="openRepCustomerEditModal('${_repSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="currentColor" opacity="0.1" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="25" width="18" height="7" rx="2.5" fill="currentColor" opacity="0.08" stroke="currentColor" stroke-width="1.4"/><line x1="27" y1="26" x2="32" y2="21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="26" cy="27" r="1" fill="currentColor"/></svg>Edit</button>
+<button class="sidebar-settings-btn" style="width:auto;padding:5px 10px;font-size:0.75rem;color:var(--accent);background:rgba(29,233,182,0.07);border-radius:8px;border:1px solid rgba(29,233,182,0.25);display:inline-flex;align-items:center;gap:5px;" onclick="openRepCustomerEditModal('${_repSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="25" width="18" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/><line x1="27" y1="26" x2="32" y2="21" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/><circle cx="26" cy="27" r="1" fill="var(--accent)"/></svg>Edit</button>
 </div>
 <div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:2px;">
 ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` : ''}
