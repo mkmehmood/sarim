@@ -344,6 +344,69 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 });
 
 _checkGoogleRedirectResult();
+
+const SW_TOKEN_FILE = 'sw_sync_token.json';
+let _swTokenRefreshTimer = null;
+
+async function saveTokenForSW(firebaseUser) {
+  try {
+    if (!firebaseUser || !navigator.storage || typeof navigator.storage.getDirectory !== 'function') return;
+    const token  = await firebaseUser.getIdToken( false);
+    const record = JSON.stringify({ token, uid: firebaseUser.uid, expiry: Date.now() + 55 * 60 * 1000 });
+    const root   = await navigator.storage.getDirectory();
+    const fh     = await root.getFileHandle(SW_TOKEN_FILE, { create: true });
+    const wr     = await fh.createWritable();
+    await wr.write(record);
+    await wr.close();
+    console.log('[SWToken] Token saved to OPFS, expires in ~55 min');
+  } catch (e) { console.warn('[SWToken] Could not save token to OPFS:', e); }
+}
+
+async function clearTokenForSW() {
+  try {
+    if (typeof navigator.storage.getDirectory !== 'function') return;
+    const root = await navigator.storage.getDirectory();
+    await root.removeEntry(SW_TOKEN_FILE).catch(() => {});
+  } catch {  }
+}
+
+function startSWTokenRefresh(firebaseUser) {
+  if (_swTokenRefreshTimer) clearInterval(_swTokenRefreshTimer);
+
+  _swTokenRefreshTimer = setInterval(async () => {
+    try {
+      const fresh = await firebaseUser.getIdToken( true);
+      const record = JSON.stringify({ token: fresh, uid: firebaseUser.uid, expiry: Date.now() + 55 * 60 * 1000 });
+      const root   = await navigator.storage.getDirectory();
+      const fh     = await root.getFileHandle(SW_TOKEN_FILE, { create: true });
+      const wr     = await fh.createWritable();
+      await wr.write(record);
+      await wr.close();
+      console.log('[SWToken] Token refreshed in OPFS');
+    } catch (e) { console.warn('[SWToken] Token refresh failed:', e); }
+  }, 50 * 60 * 1000);
+}
+
+function stopSWTokenRefresh() {
+  if (_swTokenRefreshTimer) { clearInterval(_swTokenRefreshTimer); _swTokenRefreshTimer = null; }
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'BG_SYNC_COMPLETE') {
+      const syncedIds = event.data.syncedIds || [];
+      if (syncedIds.length > 0 && typeof OfflineQueue !== 'undefined') {
+        OfflineQueue.queue = OfflineQueue.queue.filter(item => !syncedIds.includes(item.id));
+        OfflineQueue.saveQueue().catch(() => {});
+        console.log(`[SWToken] SW synced ${syncedIds.length} operation(s) in background; queue updated.`);
+        if (OfflineQueue.queue.length === 0 && typeof showToast === 'function') {
+          showToast('☁️ Background sync complete', 'success', 3000);
+        }
+      }
+    }
+  });
+}
+
 auth.onAuthStateChanged(async (user) => {
 if (user) {
 currentUser = {
@@ -352,6 +415,9 @@ uid: user.uid,
 email: user.email,
 displayName: user.displayName
 };
+
+saveTokenForSW(user).catch(() => {});
+startSWTokenRefresh(user);
 
 updateSyncButton();
 try {
@@ -486,6 +552,9 @@ if (typeof performOneClickSync === 'function' && !isSyncing) {
 }, 1500);
 } else {
 currentUser = null;
+
+stopSWTokenRefresh();
+clearTokenForSW().catch(() => {});
 try {
   await SQLiteCrypto.sessionDelete('login');
   await SQLiteCrypto.sessionDelete('active');
@@ -631,9 +700,7 @@ displayName: this.currentUser.displayName || 'User',
 accountCreated: firebase.firestore.FieldValue.serverTimestamp(),
 lastActivity: firebase.firestore.FieldValue.serverTimestamp()
 });
-// NOTE: account/preferences removed — fields (theme, currency, timezone, defaultRepProfile)
-// are stored in naswar_default_settings (settings/config) and never read from this path.
-// Writing to an unreachable path creates misleading dead data in Firestore.
+
 this.results.success.push('account');
 } catch (error) {
 this.results.errors.push({ collection: 'account', error: error.message });
@@ -1221,13 +1288,11 @@ function _updateArray(array, docData, collectionName) {
     };
     const cloudMs = _getMs_pre(docData);
     const localMs = _getMs_pre(localRecord);
-    // BUG FIX: a cloud merged (year-close) record must always beat a local non-merged record,
-    // regardless of timestamps. Without this, a recently-created local record could block
-    // the year-close merged record from being applied via the real-time snapshot path.
+
     if (docData.isMerged === true && localRecord.isMerged !== true) {
-      // fall through — let the merged record overwrite the non-merged one
+
     } else if (localRecord.isMerged === true && docData.isMerged !== true) {
-      return array; // local merged beats cloud non-merged — year-close already applied locally
+      return array;
     } else if (cloudMs > 0 && cloudMs <= localMs) {
       return array;
     }
@@ -1254,10 +1319,7 @@ function _updateArray(array, docData, collectionName) {
     array.push(docData);
   } else {
     const localItem = array[existingIdx];
-    // BUG FIX: isMerged-wins rule — a merged record from cloud must always replace a
-    // non-merged local record (year-close compaction). A local merged record must never
-    // be overwritten by a cloud non-merged record (restore already deletes merged records
-    // via Firestore 'removed' changes, which the snapshot handler handles separately).
+
     const _isMergedWins =
       (docData.isMerged === true && localItem.isMerged !== true)
       || (!(localItem.isMerged === true && docData.isMerged !== true)
@@ -1448,19 +1510,14 @@ async function subscribeToRealtime() {
         if (!Array.isArray(col.data)) continue;
         const merged = col.data.filter(r => r.isMerged === true);
         if (merged.length === 0) continue;
-        // BUG FIX: was `break` on first failure — process every collection so partial
-        // failures don't leave later collections permanently unsynced.
+
         const result = await _commitMergedBatch(userRef, col.name, merged, col.filter);
         if (!result.ok) { allOk = false; }
       }
       if (allOk) {
         pendingFirestoreYearClose = false;
         await sqliteStore.set('pendingFirestoreYearClose', false);
-        // BUG FIX: previously the retry never pushed fyCloseCount / lastYearClosed* metadata
-        // to Firestore after collection commits succeeded. Connected devices therefore never
-        // received the updated year counter. Now we push it to settings/config (the same
-        // path _downloadDeltas reads) with a fresh timestamp so their timestamp-guard lets
-        // the new value through.
+
         try {
           const _fySettings = await sqliteStore.get('naswar_default_settings', {});
           const _fyTs = Date.now();
@@ -1477,10 +1534,7 @@ async function subscribeToRealtime() {
         } catch (_metaRetryErr) {
           console.warn('pendingFirestoreYearClose: metadata push failed:', _safeErr(_metaRetryErr));
         }
-        // FIX: Re-broadcast yearCloseSignal now that Firestore is fully populated.
-        // Other devices may have already wiped and rebuilt from an incomplete cloud state
-        // (only partially-written collections were present). Broadcasting again forces them
-        // to do a second wipe+rebuild from the now-complete Firestore data.
+
         try {
           const _retryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
           await userRef.collection('settings').doc('yearCloseSignal').set({
@@ -1498,8 +1552,6 @@ async function subscribeToRealtime() {
     } catch (e) { console.warn('pendingFirestoreYearClose retry failed:', _safeErr(e)); }
   }
 
-  // FIX: Retry year-close restore cloud writes if they failed during a previous restore attempt.
-  // Mirrors the pendingFirestoreYearClose retry above but for the restore path.
   if (!pendingFirestoreRestore) {
     try {
       const _storedRestoreFlag = await sqliteStore.get('pendingFirestoreRestore');
@@ -1531,7 +1583,7 @@ async function subscribeToRealtime() {
           if (records.length === 0) continue;
           const colRef = _restoreUserRef.collection(colName);
           const incomingIds = new Set(records.filter(r => r && r.id).map(r => String(r.id)));
-          // Mark stale Firestore docs for deletion
+
           const preSnap = await colRef.get();
           const staleDocs = preSnap.docs.filter(d => !incomingIds.has(d.id) && d.id !== '_placeholder_' && !d.data()._placeholder);
           if (staleDocs.length > 0) {
@@ -1542,7 +1594,7 @@ async function subscribeToRealtime() {
             });
             await Promise.all(mBatches.map(b => b.commit()));
           }
-          // Write all current local records
+
           const wBatches = [firebaseDB.batch()]; let wOps = 0;
           for (const record of records) {
             if (!record || !record.id) continue;
@@ -1552,7 +1604,7 @@ async function subscribeToRealtime() {
             wBatches[wBatches.length-1].set(colRef.doc(String(record.id)), san, { merge: false }); wOps++;
           }
           if (wOps > 0) await Promise.all(wBatches.map(b => b.commit()));
-          // Hard-delete the stale docs
+
           if (staleDocs.length > 0) {
             const dBatches = [firebaseDB.batch()]; let dOps = 0;
             staleDocs.forEach(d => {
@@ -1570,7 +1622,7 @@ async function subscribeToRealtime() {
       if (_restoreAllOk) {
         pendingFirestoreRestore = false;
         await sqliteStore.set('pendingFirestoreRestore', false);
-        // Broadcast the restore signal now that cloud is fully populated
+
         try {
           const _rRetryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
           await _restoreUserRef.collection('settings').doc('yearCloseSignal').set({
@@ -1655,7 +1707,7 @@ async function subscribeToRealtime() {
         const timestampChecks = [
           { cloud: cloudSettings.naswar_default_settings_timestamp, local: await sqliteStore.get('naswar_default_settings_timestamp') },
           { cloud: cloudSettings.repProfile_timestamp,              local: await sqliteStore.get('repProfile_timestamp') },
-          // FIX: also watch for sales_reps written to settings/config during account init
+
           { cloud: cloudSettings.sales_reps_timestamp,             local: await sqliteStore.get('sales_reps_list_timestamp') },
         ];
         for (const check of timestampChecks) {
@@ -1667,8 +1719,7 @@ async function subscribeToRealtime() {
           const ct = cloudSettings.naswar_default_settings_timestamp || 0;
           const lt = (await sqliteStore.get('naswar_default_settings_timestamp')) || 0;
           if (ct > lt) {
-            // BUG FIX: same guard as _syncSettings — deep-merge FY fields so the locally-closed
-            // device's fyCloseCount is never clobbered by a stale snapshot from another device.
+
             const cloudFy = cloudSettings.naswar_default_settings;
             const localFy = (await sqliteStore.get('naswar_default_settings')) || {};
             const mergedFy = {
@@ -1704,7 +1755,7 @@ async function subscribeToRealtime() {
           }
         }
         if (cloudSettings.last_synced) await sqliteStore.set('last_synced', cloudSettings.last_synced);
-        // FIX: sync sales_reps embedded in settings/config (written during account init)
+
         if (Array.isArray(cloudSettings.sales_reps) && cloudSettings.sales_reps.length > 0) {
           const ct = cloudSettings.sales_reps_timestamp || 0;
           const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
@@ -1943,18 +1994,12 @@ async function subscribeToRealtime() {
               const _docRid = String(_removedData.recordId || change.doc.id);
               const _docCollection = _removedData.collection || _removedData.recordType || null;
 
-              // Remove from local deletion_records list (recycle bin display)
               deletionRecords = deletionRecords.filter(r =>
                 String(r.id) !== _docRid && String(r.recordId) !== _docRid
               );
 
-              // Also remove from deleted_records set so the record is no longer
-              // treated as soft-deleted on this device
               deletedSet.delete(_docRid);
 
-              // Hard-purge the actual record from the local SQLite data store
-              // so it disappears from all views on this device (mirrors what
-              // hardDeleteRecord does on the originating device)
               if (_docCollection) {
                 try {
                   const _sqliteKey = getSQLiteKey(_docCollection);
@@ -2043,51 +2088,36 @@ async function subscribeToRealtime() {
     });
     realtimeRefs.push(teamUnsub);
 
-    // ── YEAR-CLOSE / RESTORE CROSS-DEVICE LISTENER ──────────────────────────────
-    // When another device writes to settings/yearCloseSignal (triggered by either
-    // executeCloseFinancialYear or _doYearCloseRestore), every OTHER device must:
-    //   1. Clear its entire SQLite store and DeltaSync timestamps.
-    //   2. Re-download all data fresh from Firestore (full rebuild).
-    // This guarantees no device is left with a stale mix of pre-close and post-close
-    // records after a year-close or reversal.
     const _handleYearCloseSignal = async (doc) => {
       try {
         if (!doc.exists) return;
-        // Ignore writes from cache / pending (only react to server-confirmed writes)
+
         if (doc.metadata.hasPendingWrites) return;
         if (doc.metadata.fromCache) return;
         const sig = doc.data();
         if (!sig || typeof sig !== 'object') return;
-        const sigType       = sig.type;        // 'close' | 'restore'
+        const sigType       = sig.type;
         const sigTriggeredAt = sig.triggeredAt || 0;
         const sigTriggeredBy = sig.triggeredBy || 'unknown';
 
-        // Only process close or restore signals
         if (sigType !== 'close' && sigType !== 'restore') return;
 
-        // Guard: don't react to our own signal (the device that fired it already
-        // has the correct data). We track the last signal we handled ourselves.
         const _myDeviceId = (typeof getDeviceId === 'function')
           ? await getDeviceId().catch(() => null)
           : null;
         if (_myDeviceId && sigTriggeredBy === _myDeviceId) return;
 
-        // Guard: only process signals newer than the last one we handled.
         const _lastHandledSig = (await sqliteStore.get('_lastHandledYearCloseSignal')) || 0;
         if (sigTriggeredAt <= _lastHandledSig) return;
 
-        // Mark as handled before doing the heavy work to prevent double-processing
-        // if the snapshot fires again before the rebuild finishes.
         await sqliteStore.set('_lastHandledYearCloseSignal', sigTriggeredAt);
 
         const _sigLabel = sigType === 'close' ? 'Financial Year Close' : 'Year-Close Restore';
         console.log(`[sync] yearCloseSignal received (${sigType}) from device ${sigTriggeredBy} — wiping SQLite and rebuilding from cloud.`);
         showToast(`↻ ${_sigLabel} detected on another device — refreshing data…`, 'info', 6000);
 
-        // Stop any in-progress sync to avoid interference.
         if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry && OfflineQueue.cancelRetry();
 
-        // Wipe all user data collections from SQLite.
         try {
           const _wipeKeys = [
             'mfg_pro_pkr', 'customer_sales', 'noman_history', 'rep_sales',
@@ -2100,13 +2130,11 @@ async function subscribeToRealtime() {
           console.warn('[yearCloseSignal] SQLite wipe failed:', _safeErr(_wipeErr));
         }
 
-        // Clear DeltaSync and UUIDSyncRegistry so the next pull downloads everything.
         try {
           await DeltaSync.clearAllTimestamps();
           if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
-        } catch (_dsErr) { /* non-fatal */ }
+        } catch (_dsErr) {  }
 
-        // Re-download all data from Firestore.
         try {
           await pullDataFromCloud(false, true);
         } catch (_rebuildErr) {
@@ -2115,12 +2143,11 @@ async function subscribeToRealtime() {
           return;
         }
 
-        // Refresh UI.
         try {
           if (typeof loadAllData === 'function')        await loadAllData();
           if (typeof invalidateAllCaches === 'function') await invalidateAllCaches();
           if (typeof refreshAllDisplays === 'function') await refreshAllDisplays();
-        } catch (_uiErr) { /* non-fatal */ }
+        } catch (_uiErr) {  }
 
         showToast(` Data refreshed after ${_sigLabel} from another device.`, 'success', 4000);
         recordSuccessfulConnection();
@@ -2136,12 +2163,7 @@ async function subscribeToRealtime() {
       console.warn('[sync] yearCloseSignal listener error:', _ec, _safeErr(_e));
     });
     realtimeRefs.push(yearCloseSignalUnsub);
-    // ─────────────────────────────────────────────────────────────────────────────
 
-    // ── DEVICE MODE LISTENER ─────────────────────────────────────────────────────
-    // Watch this device's own Firestore document so remote mode changes (admin→rep,
-    // rep→admin, etc.) applied by another device take effect immediately, without
-    // requiring a page reload or re-login.
     try {
       const _listenDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => null) : null;
       if (_listenDeviceId) {
@@ -2155,19 +2177,19 @@ async function subscribeToRealtime() {
             if (!data) return;
             const cloudMode      = data.currentMode || 'admin';
             const cloudTimestamp = data.appMode_timestamp || 0;
-            // Only act if this is a remotely applied command (flag set by remoteControlDevice)
+
             if (!data.remoteAppliedMode) return;
             const localTimestamp = Number(await sqliteStore.get('appMode_timestamp').catch(() => 0)) || 0;
             if (cloudTimestamp <= localTimestamp) return;
-            if (cloudMode === appMode) return; // already in this mode
-            // Apply the remote mode change live — _applyModeFromData reloads the page
+            if (cloudMode === appMode) return;
+
             if (typeof _applyModeFromData === 'function') {
               _applyModeFromData(
                 cloudMode, cloudTimestamp,
                 data.assignedRep    || null,
                 data.assignedManager || null,
                 data.assignedUserTabs || [],
-                true /* remoteApplied */
+                true
               );
             }
           } catch (_devSnapErr) {
@@ -2178,7 +2200,7 @@ async function subscribeToRealtime() {
           if (isSyncing) { _enqueueSyncLocked(_handleDeviceSnapshot, docSnap); return; }
           await _handleDeviceSnapshot(docSnap);
         }, _e => {
-          // Non-fatal — device doc listener failing doesn't break core sync
+
           console.warn('[sync] device doc listener error:', _e && _e.code, _safeErr(_e));
         });
         realtimeRefs.push(deviceDocUnsub);
@@ -2186,7 +2208,6 @@ async function subscribeToRealtime() {
     } catch (_devListenErr) {
       console.warn('[sync] failed to register device doc listener (non-fatal):', _safeErr(_devListenErr));
     }
-    // ─────────────────────────────────────────────────────────────────────────────
 
     updateSignalUI('online');
     recordSuccessfulConnection();
@@ -2385,8 +2406,7 @@ async function _commitMergedBatch(userRef, collectionName, mergedRecords, delete
         batchesFailed++;
         if (!firstError) firstError = batchErr;
         console.error(`_commitMergedBatch [${collectionName}] batch ${batchesTotal} failed:`, _safeErr(batchErr));
-        // Do NOT re-throw — continue remaining batches and return {ok:false} so callers
-        // can call _markRowSyncWarning and set pendingFirestoreYearClose correctly.
+
       }
     }
   } catch (outerErr) {
@@ -2441,10 +2461,7 @@ function mergeArrays(localArray, cloudArray, collectionName) {
 
       const cloudWins = (typeof compareRecordVersions === 'function')
         ? compareRecordVersions(cloudItem, localRecord) > 0
-        // BUG FIX: if the cloud record is a merged (year-close) record and the local one is
-        // not, the cloud record must always win regardless of timestamps. This handles the case
-        // where a connected device has the original pre-close records and receives the merged
-        // compacted record from the device that just ran Close Financial Year.
+
         : (cloudItem.isMerged === true && localRecord.isMerged !== true)
           || (!(localRecord.isMerged === true && cloudItem.isMerged !== true)
               && _toMs(cloudItem.updatedAt || cloudItem.timestamp) > _toMs(localRecord?.updatedAt || localRecord?.timestamp));
@@ -2548,7 +2565,6 @@ async function _downloadDeltas(userRef, userType, forceDownload = false) {
   });
   trackFirestoreRead(realCollectionReads);
 
-  // Download personPhotos — only docs updated after last sync
   let personPhotosSnap = null;
   try {
     const lastPhotoSync = await DeltaSync.getLastSyncFirestoreTimestamp('personPhotos');
@@ -2655,19 +2671,6 @@ async function _mergeAndPersist(cloudData) {
   const _deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
   const _notDeleted = item => !_deletedArr.includes(item.id);
 
-  // BUG FIX: After a year close the closing device deletes all non-merged records from
-  // Firestore and writes only merged records. A connected device running _mergeAndPersist
-  // only adds/updates from cloud — it never removes local records that disappeared from
-  // Firestore. So its SQLite ends up with both old non-merged records AND the new merged
-  // records, corrupting balances and making the year-close state inconsistent.
-  //
-  // Detection: a "year-close compaction" occurred on a collection when ALL cloud records
-  // for that collection have isMerged===true AND there is at least one merged record
-  // (an empty cloud collection just means nothing was downloaded yet — skip it).
-  //
-  // When detected: remove local non-merged records whose IDs are absent from cloud (the
-  // pre-close originals that the closing device deleted), while keeping any post-close
-  // records the local device may have added after the close epoch.
   const _yearCloseCollectionKeys = [
     ['mfg_pro_pkr',                'mfg_pro_pkr'],
     ['customer_sales',             'customer_sales'],
@@ -2682,35 +2685,31 @@ async function _mergeAndPersist(cloudData) {
     if (!Array.isArray(cloudArr) || cloudArr.length === 0) return localArr;
     const cloudAllMerged = cloudArr.every(r => r.isMerged === true);
     if (cloudAllMerged) {
-      // YEAR-CLOSE direction: cloud has only merged records; drop local non-merged originals
-      // that the closing device deleted from Firestore.
+
       const cloudIds = new Set(cloudArr.map(r => String(r.id)));
       return localArr.filter(r => {
         if (!r || !r.id) return false;
-        if (cloudIds.has(String(r.id))) return true;   // present in cloud — keep
-        if (r.isMerged === true) return false;          // merged record NOT in cloud — stale, drop
-        // Non-merged record absent from cloud: keep (it is a post-close record on this device).
+        if (cloudIds.has(String(r.id))) return true;
+        if (r.isMerged === true) return false;
+
         return true;
       });
     }
-    // RESTORE direction: cloud has only non-merged (original) records. If local still
-    // has merged records for the same collection, they represent a year-close that has now
-    // been reversed — drop them so the restore propagates correctly to this device.
+
     const cloudNoneMerged = cloudArr.every(r => r.isMerged !== true);
     const localHasMerged  = localArr.some(r => r && r.isMerged === true);
     if (cloudNoneMerged && localHasMerged && cloudArr.length > 0) {
       const cloudIds = new Set(cloudArr.map(r => String(r.id)));
       return localArr.filter(r => {
         if (!r || !r.id) return false;
-        if (cloudIds.has(String(r.id))) return true;   // in cloud — keep
-        if (r.isMerged === true) return false;          // local merged record absent from cloud — drop (restore reversed it)
-        return true;                                    // non-merged post-restore record — keep
+        if (cloudIds.has(String(r.id))) return true;
+        if (r.isMerged === true) return false;
+        return true;
       });
     }
-    return localArr; // Normal delta sync — no compaction/restore adjustment needed.
+    return localArr;
   };
 
-  // Apply compaction filter before mergeArrays so mergeArrays doesn't re-add dropped records.
   const _preFilter = {};
   for (const [localKey, cloudKey] of _yearCloseCollectionKeys) {
     const localArr = ensureArray(_localBatch.get(localKey));
@@ -2785,29 +2784,22 @@ async function _syncSettings(cloudData) {
   if (settingsSnap && settingsSnap.exists) {
     const sd = settingsSnap.data();
     if (sd && sd.naswar_default_settings) {
-      // BUG FIX: previously overwrote defaultSettings blindly with the cloud copy, ignoring
-      // timestamps. A device that just closed the year offline then came online would have its
-      // fyCloseCount / lastYearClosed* reset to 0/null by any connected device that pulled
-      // before the pending retry had a chance to push the new counter.
-      // Now: honour the naswar_default_settings_timestamp. Only apply the cloud FY fields when
-      // the cloud timestamp is strictly newer than our local one. Deep-merge so non-FY fields
-      // (like appMode, themePreference) still update normally.
+
       const ct = sd.naswar_default_settings_timestamp || 0;
       const lt = (await sqliteStore.get('naswar_default_settings_timestamp')) || 0;
       const localSettings = (await sqliteStore.get('naswar_default_settings')) || {};
       if (ct >= lt) {
-        // Cloud is newer or same age — take cloud value but preserve any locally-higher fyCloseCount
-        // to guard against replication lag where two devices closed in rapid succession.
+
         const cloudFy = sd.naswar_default_settings;
         const mergedFy = {
           ...localSettings,
           ...cloudFy,
-          // Always keep the higher fyCloseCount between cloud and local.
+
           fyCloseCount: Math.max(
             typeof cloudFy.fyCloseCount  === 'number' ? cloudFy.fyCloseCount  : 0,
             typeof localSettings.fyCloseCount === 'number' ? localSettings.fyCloseCount : 0
           ),
-          // Keep the most recent lastYearClosedAt.
+
           lastYearClosedAt: Math.max(
             cloudFy.lastYearClosedAt   || 0,
             localSettings.lastYearClosedAt || 0
@@ -2824,13 +2816,12 @@ async function _syncSettings(cloudData) {
           ['naswar_default_settings_timestamp', ct || Date.now()],
         ]);
       } else {
-        // Local is strictly newer — keep it, but still update non-FY cloud fields that local
-        // may not have (e.g. settings written by another device for a different key).
+
         const cloudFy = sd.naswar_default_settings;
         const mergedFy = {
           ...cloudFy,
           ...localSettings,
-          // Always keep the higher fyCloseCount.
+
           fyCloseCount: Math.max(
             typeof cloudFy.fyCloseCount  === 'number' ? cloudFy.fyCloseCount  : 0,
             typeof localSettings.fyCloseCount === 'number' ? localSettings.fyCloseCount : 0
@@ -2838,7 +2829,7 @@ async function _syncSettings(cloudData) {
         };
         defaultSettings = mergedFy;
         await sqliteStore.set('naswar_default_settings', defaultSettings);
-        // Do NOT update the local timestamp — local is already newer.
+
       }
     }
 
@@ -2900,9 +2891,6 @@ async function _syncSettings(cloudData) {
     }
   }
 
-  // ── Sync person_photos from cloud personPhotos subcollection ──
-  // Each doc: { key: "entity:uuid" | "cust:name" | "rep-cust:rep:name", data: base64|null, deleted: bool }
-  // Local wins on conflict — only fill gaps (missing keys) or apply deletions
   if (personPhotosSnap && !personPhotosSnap.empty) {
     try {
       const localPhotos = (await sqliteStore.get('person_photos')) || {};
@@ -2912,12 +2900,12 @@ async function _syncSettings(cloudData) {
         const docData = doc.data();
         const photoKey = docData.key;
         if (!photoKey) continue;
-        // Skip keys we have locally dirty (our version is newer — will upload on next sync)
+
         if (localDirtyKeys.has(photoKey)) continue;
         if (docData.deleted) {
           if (localPhotos[photoKey]) { delete localPhotos[photoKey]; photosChanged = true; }
         } else if (docData.data && !localPhotos[photoKey]) {
-          // Only fill in missing — never overwrite existing local photo
+
           localPhotos[photoKey] = docData.data;
           photosChanged = true;
         }
@@ -3061,8 +3049,6 @@ async function _uploadChanges(userRef) {
     collectionsUploaded.add('expenseCategories');
   }
 
-  // ── Upload person_photos: each dirty key becomes its own Firestore doc ──
-  // Doc IDs use base64-encoded key to safely handle colons/slashes in names.
   try {
     const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
     if (_dirtyPhotoKeys.length > 0) {
@@ -3075,7 +3061,7 @@ async function _uploadChanges(userRef) {
         if (_photoVal) {
           _photoBatch.set(_photosRef.doc(_safeDocId), { key: _photoKey, data: _photoVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
         } else {
-          // Photo was deleted — write a tombstone so other devices remove it
+
           _photoBatch.set(_photosRef.doc(_safeDocId), { key: _photoKey, data: null, deleted: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
         }
         operationCount++;

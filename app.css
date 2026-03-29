@@ -5353,7 +5353,6 @@ to   { transform: translateY(100%); opacity: 0;   }
   }
 }
 
-/* Pre-close dropdown menu on transaction cards */
 .txn-card-wrap {
   position: relative;
   display: flex;
@@ -5438,7 +5437,6 @@ to   { transform: translateY(100%); opacity: 0;   }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Pre-close panel v2 — full detail, outside-click dismissable */
 .preclose-overlay {
   display: none;
   position: fixed;
@@ -5546,7 +5544,6 @@ to   { transform: translateY(100%); opacity: 0;   }
   margin: 10px 0;
 }
 
-/* inline preclose panel extra val classes */
 .txn-preclose-val.warn   { color: var(--warning); font-weight: 700; font-family: 'Geist Mono', monospace; font-size: 0.68rem; }
 .txn-preclose-val.purple { color: #af52de; font-weight: 700; font-family: 'Geist Mono', monospace; font-size: 0.68rem; }
 .txn-preclose-section {
@@ -5561,9 +5558,6 @@ to   { transform: translateY(100%); opacity: 0;   }
 }
 .txn-preclose-section:first-child { margin-top: 2px; border-top: none; padding-top: 0; }
 
-/* ── DB Structure Screen ────────────────────────────────────────────────── */
-/* When #dbv-root is injected into the screen, hide the modal title bar
-   (duplicates the screen topbar) and let .screen-body be the sole scroller. */
 #db-structure-screen #delta-sync-details-container {
   padding: 0;
 }
@@ -5573,11 +5567,11 @@ to   { transform: translateY(100%); opacity: 0;   }
   border-radius: 0;
   background: transparent;
 }
-/* Hide the duplicate title row (has the ✕ button) inside the screen */
+
 #db-structure-screen #dbv-root > div:first-child {
   display: none !important;
 }
-/* Tab bar: sticky so it stays visible while scrolling */
+
 #db-structure-screen #dbv-root > div:nth-child(2) {
   position: sticky;
   top: 0;
@@ -5587,7 +5581,7 @@ to   { transform: translateY(100%); opacity: 0;   }
   margin: 0 0 4px;
   border-bottom: 1px solid var(--glass-border);
 }
-/* Body: no internal scroll — .screen-body handles it */
+
 #db-structure-screen #dbv-body {
   overflow: visible !important;
   flex: none !important;

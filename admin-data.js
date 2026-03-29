@@ -40,7 +40,6 @@ if (!firebaseDB || !currentUser) {
   return;
 }
 
-// ── Spinner ─────────────────────────────────────────────────────────────────
 const modal = document.createElement('div');
 modal.id = 'delta-stats-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
@@ -55,7 +54,6 @@ try {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const deviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => '—') : '—';
 
-  // Fetch all Firestore collections in parallel
   const [
     productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
     salesCustomersSnap, transactionsSnap, entitiesSnap, inventorySnap,
@@ -94,7 +92,6 @@ try {
     ? _savedFsStats
     : { reads: 0, writes: 0, lastReset: Date.now() };
 
-  // SQLite live counts
   const sqliteCounts = {};
   const sqliteKeys = ['mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
     'sales_customers','payment_transactions','payment_entities','factory_inventory_data',
@@ -154,7 +151,6 @@ try {
       listener:'none — read once on login' },
   ];
 
-  // ── helpers ─────────────────────────────────────────────────────────────────
   const ago = raw => {
     if (!raw) return 'never';
     const ms = typeof raw === 'string' ? Date.parse(raw) : raw;
@@ -189,7 +185,6 @@ try {
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
 
-  // ── header ───────────────────────────────────────────────────────────────────
   let html = `
 <div id="dbv-root" style="background:var(--glass);border-radius:20px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
 
@@ -222,7 +217,6 @@ try {
   <div id="dbv-body" style="overflow-y:auto;padding:16px 20px 20px;flex:1;min-height:0">
 `;
 
-  // ── TAB 0 — Collections ──────────────────────────────────────────────────────
   html += `<div id="dbv-pane-0">`;
   const _reads      = firestoreStats.reads  || 0;
   const _writes     = firestoreStats.writes || 0;
@@ -298,9 +292,8 @@ try {
   </div>
 </div>`;
   });
-  html += `</div>`; // end pane-0
+  html += `</div>`;
 
-  // ── TAB 1 — Config Documents ─────────────────────────────────────────────────
   html += `<div id="dbv-pane-1" style="display:none">`;
   CONFIG_DOCS.forEach(doc => {
     const exists = doc.doc && doc.doc.exists;
@@ -318,7 +311,6 @@ try {
     </div>
   </div>`;
 
-    // SQLite mapping
     if (doc.sqlite.length) {
       html += `<div style="margin-bottom:6px">
         <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:3px;font-weight:600">SQLite ↔ Firestore field mapping:</div>
@@ -332,7 +324,6 @@ try {
       </div>`;
     }
 
-    // Firestore field values
     if (exists && data) {
       html += `<div style="border-top:1px solid var(--glass-border);padding-top:6px">
         <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:4px;font-weight:600">Firestore fields:</div>
@@ -347,11 +338,10 @@ try {
         </div>
       </div>`;
     }
-    html += `</div>`; // end doc card
+    html += `</div>`;
   });
-  html += `</div>`; // end pane-1
+  html += `</div>`;
 
-  // ── TAB 2 — Listeners ────────────────────────────────────────────────────────
   html += `<div id="dbv-pane-2" style="display:none">`;
   const LISTENERS = [
     { name:'users/{uid}',                      type:'doc',  path:'userRef.onSnapshot',                              purpose:'Force-logout, account suspension, lastWrite ping for pull trigger', fires:'Any write to the user root doc' },
@@ -391,12 +381,10 @@ try {
   <div style="font-size:0.6rem;color:var(--text-muted);margin-top:3px">Fires when: ${l.fires}</div>
 </div>`;
   });
-  html += `</div>`; // end pane-2
+  html += `</div>`;
 
-  // ── TAB 3 — Summary ──────────────────────────────────────────────────────────
   html += `<div id="dbv-pane-3" style="display:none">`;
 
-  // Mapping table
   html += `<div style="margin-bottom:12px">
     <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore → SQLite → JS Variable Map</div>
     <div style="overflow-x:auto">
@@ -424,7 +412,6 @@ try {
     </div>
   </div>`;
 
-  // Schema overview
   html += `<div style="margin-bottom:12px;padding:12px;background:var(--input-bg);border-radius:14px">
     <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore Schema (users/{uid}/…)</div>
     <div style="font-size:0.63rem;font-family:'Geist Mono','Courier New',monospace;line-height:1.9;color:var(--text-muted)">
@@ -472,11 +459,9 @@ try {
   })()}
   `;
 
-  html += `</div>`; // end pane-3
+  html += `</div>`;
 
-  html += `</div></div>`; // end #dbv-body + #dbv-root
-
-
+  html += `</div></div>`;
 
   modal.innerHTML = html;
 
@@ -497,9 +482,7 @@ if (typeof closeYearAbortController === 'undefined') var closeYearAbortControlle
 if (typeof _fyVerifiedPassword === 'undefined') var _fyVerifiedPassword = null;
 if (typeof pendingFirestoreYearClose === 'undefined') var pendingFirestoreYearClose = false;
 if (typeof pendingFirestoreRestore === 'undefined') var pendingFirestoreRestore = false;
-// Tracks whether any merge*Data Firestore commit failed during the current close run.
-// Reset at the start of executeCloseFinancialYear; set to true by _markRowSyncWarning.
-// Used to drive pendingFirestoreYearClose reliably without fragile DOM scanning.
+
 if (typeof _hasMergeCommitFailure === 'undefined') var _hasMergeCommitFailure = false;
 function _storeCodeToLabel(c) {
   if (c === 'STORE_A') return 'ZUBAIR';
@@ -1272,7 +1255,7 @@ async function createMergeBackup() {
   const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
   const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-  // BUG FIX: also snapshot contact registries — these are mutated during merge and must be restorable
+
   const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
   const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
   const backup = {
@@ -1304,7 +1287,7 @@ async function restoreFromBackup(backupTimestamp) {
     if (!backup) {
       throw new Error('Backup not found: ' + backupTimestamp);
     }
-    // Restore all SQLite collections from the snapshot
+
     await sqliteStore.set('mfg_pro_pkr', backup.db);
     await sqliteStore.set('customer_sales', backup.customerSales);
     await sqliteStore.set('noman_history', backup.salesHistory);
@@ -1313,23 +1296,20 @@ async function restoreFromBackup(backupTimestamp) {
     await sqliteStore.set('rep_sales', backup.repSales);
     await sqliteStore.set('expenses', backup.expenseRecords);
     await sqliteStore.set('stock_returns', backup.stockReturns);
-    // BUG FIX: restore contact registries that were snapshotted but previously never restored
+
     if (Array.isArray(backup.repCustomers))   await sqliteStore.set('rep_customers',   backup.repCustomers);
     if (Array.isArray(backup.salesCustomers)) await sqliteStore.set('sales_customers', backup.salesCustomers);
-    // BUG FIX: emit sync events so in-memory live variables and UI refresh from the restored SQLite values
+
     if (typeof emitSyncUpdate === 'function') {
       emitSyncUpdate({ mfg_pro_pkr: null, customer_sales: null, noman_history: null,
         payment_transactions: null, factory_production_history: null,
         rep_sales: null, expenses: null, stock_returns: null });
     }
-    // BUG FIX: Firestore rollback — delete merged records written after backupTimestamp.
-    // Previously used stale closure vars (db, customerSales, etc.) from executeCloseFinancialYear
-    // which may already be partially mutated. Now uses backup.* arrays which are the pre-merge state.
-    // Also awaited instead of fire-and-forget so failures surface to the caller.
+
     if (firebaseDB && currentUser) {
       try {
         const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-        // Map: Firestore collection name → backup array to determine which IDs should survive
+
         const fbCollections = [
           { name: 'production',         backupData: backup.db },
           { name: 'sales',              backupData: backup.customerSales },
@@ -1345,10 +1325,10 @@ async function restoreFromBackup(backupTimestamp) {
             const snapshot = await userRef.collection(col.name).get();
             const batch = firebaseDB.batch();
             let deleteCount = 0;
-            // Build set of IDs that existed in the pre-merge backup so we never delete them
+
             const preExistingIds = new Set((Array.isArray(col.backupData) ? col.backupData : []).map(r => String(r.id)));
             snapshot.docs.forEach(doc => {
-              // Delete if: created at or after backupTimestamp AND not present in the pre-merge snapshot
+
               if (!preExistingIds.has(doc.id)) {
                 const data = doc.data();
                 const docCreatedAt = data.createdAt?.toMillis ? data.createdAt.toMillis() :
@@ -1434,9 +1414,9 @@ async function verifyMergeConsistency(snap) {
 }
 
 async function executeCloseFinancialYear() {
-  // fyMeta declared at outer scope so the completion UI block (outside the try) can read it
+
   let fyMeta = null;
-  // Reset per-run failure flag so stale state from a previous aborted run never bleeds through.
+
   _hasMergeCommitFailure = false;
   const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
   const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
@@ -1509,7 +1489,7 @@ try {
       }
     }
   };
-  // BUG FIX: read and zero out atomically — try/finally was unnecessary and obscured intent
+
   const encPassword = _fyVerifiedPassword || null;
   _fyVerifiedPassword = null;
   if (encPassword) {
@@ -1585,9 +1565,7 @@ const liveUpdate = (rowId, afterText, accentColor, resultLabel, resultNote) => {
     detailEl.style.transition = 'all 0.35s ease';
   }
 };
-// Capture the epoch once — only records created AT OR BEFORE this moment
-// are eligible for merging. Records created after (entered mid-close on
-// another device) are left as live non-merged records for the new year.
+
 const closeEpoch = Date.now();
 updateCloseYearProgress('Merging Production Data', 25);
 try {
@@ -1624,9 +1602,6 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
     throw new Error(`Data consistency check failed: ${consistencyCheck.errors.join('; ')}`);
   }
 
-  // ── HARD DELETE: purge all soft-deleted tombstone records from SQLite and Firestore.
-  // At year-close we do a full compaction — there is no reason to carry tombstones into
-  // the new year. The backup snapshot already contains deleted_records for audit purposes.
   updateCloseYearProgress('Purging deleted records...', 93);
   try {
     const _tombstoneIds = Array.from(
@@ -1644,7 +1619,7 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
         await _delBatch.commit().catch(e => console.warn('[yearClose] tombstone Firestore purge batch failed:', _safeErr(e)));
       }
     }
-    // Wipe tombstones from SQLite completely.
+
     await sqliteStore.set('deleted_records', []);
     await sqliteStore.set('deletion_records', []);
     console.log('[yearClose] Hard-deleted', _tombstoneIds.length, 'tombstone record(s) from SQLite + Firestore.');
@@ -1653,20 +1628,13 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
   }
 
 try {
-  // BUG FIX: was declared with 'const' inside this try block, making it invisible to the
-  // completion UI code below (fyMeta2 typeof check always failed → showed Year #1 / no date).
-  // Now assigned to outer-scoped var so completion section reads the real saved values.
+
   fyMeta = await sqliteStore.get('naswar_default_settings', {});
   fyMeta.lastYearClosedAt   = Date.now();
   fyMeta.lastYearClosedDate = new Date().toISOString();
   fyMeta.fyCloseCount       = (fyMeta.fyCloseCount || 0) + 1;
   fyMeta.lastConsistencyCheck = consistencyCheck;
-  // BUG FIX: previously used unreliable DOM text scanning ('[id^="cy-status-"]' containing
-  // "Sync Failed") to set pendingFirestoreYearClose. This read stale/absent DOM nodes and
-  // almost always returned false even when Firestore batches had failed, meaning the
-  // pending-retry in subscribeToRealtime never fired on reconnection.
-  // Now driven by _hasMergeCommitFailure — a flag each merge*Data function sets via
-  // _markRowSyncWarning when _commitMergedBatch returns {ok:false}.
+
   const hasSyncWarning = typeof _hasMergeCommitFailure !== 'undefined' && _hasMergeCommitFailure === true;
   if (hasSyncWarning) {
     fyMeta.pendingFirestoreYearClose = true;
@@ -1679,13 +1647,10 @@ try {
   }
   const _fyMetaTs = Date.now();
   await sqliteStore.set('naswar_default_settings', fyMeta);
-  // BUG FIX: write a timestamp so _syncSettings on other devices lets the cloud value
-  // win over a stale local copy (the timestamp-guard at line ~1525 requires this field).
+
   await sqliteStore.set('naswar_default_settings_timestamp', _fyMetaTs);
   if (firebaseDB && currentUser) {
-    // BUG FIX: was writing to settings/naswar_default_settings (wrong sub-doc).
-    // _downloadDeltas reads settings/config — use that path so connected devices receive
-    // the fyCloseCount / lastYearClosed* fields when they next pull or get a snapshot.
+
     await firebaseDB.collection('users').doc(currentUser.uid)
       .collection('settings').doc('config')
       .set({
@@ -1700,9 +1665,6 @@ try {
       await DeltaSync.setLastSyncTimestamp('settings');
     }
 
-    // ── CROSS-DEVICE SIGNAL: tell all other connected devices to wipe their SQLite
-    // and rebuild from cloud. Written to settings/yearCloseSignal so the onSnapshot
-    // listener in subscribeToRealtime picks it up immediately on every other tab/device.
     try {
       const _sigDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
       await firebaseDB.collection('users').doc(currentUser.uid)
@@ -1743,8 +1705,7 @@ if (completeSection) {
     .filter(id => { const el = document.getElementById('cy-row-' + id); return el && el.style.borderLeftColor && el.style.borderLeftColor.includes('warning') || (el && el.style.borderLeftColor === 'var(--warning)'); });
   const hasSyncWarnings = document.querySelectorAll('[id^="cy-status-"]') &&
     [...document.querySelectorAll('[id^="cy-status-"]')].some(el => el.textContent.includes('Sync Failed'));
-  // BUG FIX: local vars (db, customerSales, etc.) still point to pre-merge arrays loaded at
-  // function start. Read fresh merged counts from SQLite so the completion stats are accurate.
+
   const _freshMergedCount = async () => {
     const keys = ['mfg_pro_pkr','customer_sales','noman_history','payment_transactions',
                   'factory_production_history','rep_sales','expenses','stock_returns'];
@@ -1827,8 +1788,7 @@ closeYearAbortController = null;
 }
 
 function _markRowSyncWarning(rowId, commitResult) {
-  // Signal to executeCloseFinancialYear that at least one Firestore commit failed,
-  // so it can set pendingFirestoreYearClose=true without relying on DOM inspection.
+
   _hasMergeCommitFailure = true;
   try {
     const rowEl = document.getElementById('cy-row-' + rowId);
@@ -2250,8 +2210,7 @@ const postCloseCalc = salesHistory.filter(item => item.isMerged !== true && _rec
 const mergedHistory = [...existingMergedCalc, ...mergedRecords, ...postCloseCalc];
 await sqliteStore.set('noman_history', mergedHistory);
 emitSyncUpdate({ noman_history: null});
-// BUG FIX: removed duplicate sqliteStore.set('noman_history', salesHistory) that overwrote
-// the correctly-merged data with the original pre-merge array, silently discarding all merges.
+
 updateCloseYearProgress('Calculator Data Merged', 60);
 }
 
@@ -2407,8 +2366,7 @@ const postCloseFactory = factoryProductionHistory.filter(item => item.isMerged !
 const mergedFph = [...existingMergedFactory, ...mergedRecords, ...postCloseFactory];
 await sqliteStore.set('factory_production_history', mergedFph);
 emitSyncUpdate({ factory_production_history: null});
-// BUG FIX: removed duplicate sqliteStore.set('factory_production_history', factoryProductionHistory)
-// that overwrote the merged result with the original array, discarding all factory merges.
+
 updateCloseYearProgress('Factory Data Merged', 90);
 }
 

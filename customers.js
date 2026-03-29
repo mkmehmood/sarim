@@ -157,17 +157,12 @@ return b.lastSaleDate - a.lastSaleDate;
 });
 if (Array.isArray(salesCustomers)) {
 const statsNames = new Set(sortedCustomers.map(c => c.name.toLowerCase()));
-const directSalesNames = new Set(
-(Array.isArray(customerSales) ? customerSales : [])
-.filter(s => s.customerName && s.currentRepProfile === 'admin')
-.map(s => s.customerName.toLowerCase())
-);
 salesCustomers.forEach(sc => {
 if (!sc || !sc.name || !sc.name.trim()) return;
 const lcName = sc.name.toLowerCase();
 if (statsNames.has(lcName)) return;
-if (!directSalesNames.has(lcName)) return;
 sortedCustomers.push({ name: sc.name, credit: 0, quantity: 0, lastSaleDate: 0 });
+statsNames.add(lcName);
 });
 }
 if (filterValue) {
@@ -1087,11 +1082,22 @@ renderCustomersTable();
 }
 
 async function openCustomerEditModal(customerName) {
+customerName = customerName || '';
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const nameInput = document.getElementById('edit-cust-name');
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
+if (!customerName) {
+document.getElementById('edit-cust-phone').value = '';
+document.getElementById('edit-cust-address').value = '';
+document.getElementById('edit-cust-old-debit').value = '';
+const editPriceInput = document.getElementById('edit-cust-custom-price');
+if (editPriceInput) editPriceInput.value = '';
+await loadPersonPhotoIntoEditor('cust', '');
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-edit-screen');
+return;
+}
 const contact = salesCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
 const saleRecord = customerSales.find(s =>
 s && s.customerName === customerName &&

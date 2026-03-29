@@ -502,6 +502,113 @@ isSyncing = false;
 }
 showToast('Offline — changes will be saved locally', 'warning', 4000);
 });
+
+(function initConnectionMonitor() {
+  const SLOW_RTT_MS      = 500;
+  const SLOW_DOWNLINK    = 0.5;
+  const CHECK_INTERVAL   = 20000;
+  const TOAST_COOLDOWN   = 60000;
+  let _lastSlowToast     = 0;
+  let _slowBannerVisible = false;
+  let _monitorTimer      = null;
+
+  function getSlowBanner() {
+    let b = document.getElementById('slow-connection-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'slow-connection-banner';
+      b.style.cssText = [
+        'position:fixed', 'bottom:0', 'left:0', 'right:0', 'z-index:9998',
+        'background:linear-gradient(90deg,#92400e,#b45309)',
+        'color:#fef3c7', 'font-size:0.78rem', 'font-weight:600',
+        'padding:6px 16px', 'display:flex', 'align-items:center',
+        'gap:8px', 'transition:transform 0.3s ease',
+        'transform:translateY(100%)', 'box-shadow:0 -2px 8px rgba(0,0,0,0.4)'
+      ].join(';');
+      b.innerHTML = '<span>⚠️</span><span id="slow-banner-msg">Weak signal — app running offline, data saves locally</span>' +
+        '<button onclick="document.getElementById(\'slow-connection-banner\').style.transform=\'translateY(100%)\'" ' +
+        'style="margin-left:auto;background:none;border:none;color:#fef3c7;cursor:pointer;font-size:1rem;padding:0 4px">✕</button>';
+      document.body.appendChild(b);
+    }
+    return b;
+  }
+
+  function showSlowBanner(msg) {
+    if (_slowBannerVisible) return;
+    _slowBannerVisible = true;
+    const b = getSlowBanner();
+    const m = document.getElementById('slow-banner-msg');
+    if (m) m.textContent = msg || 'Weak signal — app running offline, data saves locally';
+
+    const offlineBanner = document.getElementById('offline-banner');
+    const bottomOff = offlineBanner && offlineBanner.classList.contains('visible') ? '48px' : '0';
+    b.style.bottom = bottomOff;
+    requestAnimationFrame(() => { b.style.transform = 'translateY(0)'; });
+  }
+
+  function hideSlowBanner() {
+    if (!_slowBannerVisible) return;
+    _slowBannerVisible = false;
+    const b = document.getElementById('slow-connection-banner');
+    if (b) b.style.transform = 'translateY(100%)';
+  }
+
+  function isConnectionSlow() {
+    if (!navigator.onLine) return false;
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!conn) return false;
+    const type = conn.effectiveType || '';
+    if (type === 'slow-2g' || type === '2g') return true;
+    if (conn.rtt && conn.rtt > SLOW_RTT_MS) return true;
+    if (conn.downlink && conn.downlink < SLOW_DOWNLINK) return true;
+    return false;
+  }
+
+  function checkConnection() {
+    if (!navigator.onLine) { hideSlowBanner(); return; }
+    const slow = isConnectionSlow();
+    if (slow) {
+      const conn = navigator.connection || {};
+      const detail = conn.effectiveType
+        ? `${conn.effectiveType.toUpperCase()} signal`
+        : conn.rtt ? `${conn.rtt}ms latency` : 'Weak signal';
+      showSlowBanner(`${detail} — app works offline, changes queued for sync`);
+      if (Date.now() - _lastSlowToast > TOAST_COOLDOWN) {
+        _lastSlowToast = Date.now();
+        if (typeof showToast === 'function') {
+          showToast('⚠️ Weak connection — all changes saved locally', 'warning', 5000);
+        }
+      }
+    } else {
+      hideSlowBanner();
+    }
+  }
+
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    conn.addEventListener('change', checkConnection);
+  }
+
+  function startMonitor() {
+    if (_monitorTimer) clearInterval(_monitorTimer);
+    checkConnection();
+    _monitorTimer = setInterval(checkConnection, CHECK_INTERVAL);
+  }
+  function stopMonitor() {
+    if (_monitorTimer) { clearInterval(_monitorTimer); _monitorTimer = null; }
+    hideSlowBanner();
+  }
+
+  window.addEventListener('online',  () => { startMonitor(); });
+  window.addEventListener('offline', () => { stopMonitor(); });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startMonitor);
+  } else {
+    setTimeout(startMonitor, 1500);
+  }
+})();
+
 document.addEventListener('visibilitychange', async () => {
 if (document.visibilityState !== 'visible') return;
 if (syncState.pendingUpdates.size > 0 && !syncState.isRefreshing) {
@@ -1581,7 +1688,6 @@ console.warn('[cleanupOldDeletions] cloud cleanup failed, will retry when online
 }
 }
 
-// ── Pre-close inline panel builder ────────────────────────────────────────
 async function _buildPreclosePanel(record, type, panelId) {
   const ms  = record.mergedSummary || {};
   const dr  = ms.dateRange || {};
@@ -1674,7 +1780,6 @@ async function _buildPreclosePanel(record, type, panelId) {
   </div>`;
 }
 
-// Toggle an inline preclose panel; builds content on first open
 async function _togglePreclosePanel(btn, panelId, recordId, storeKey, type) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
@@ -1684,14 +1789,14 @@ async function _togglePreclosePanel(btn, panelId, recordId, storeKey, type) {
     btn.classList.remove('active');
     return;
   }
-  // Build content if not yet done
+
   if (!panel.dataset.built) {
     try {
       const store = ensureArray(await sqliteStore.get(storeKey));
       const rec   = store.find(x => String(x.id) === String(recordId));
       if (rec) {
         const inner = await _buildPreclosePanel(rec, type, panelId);
-        // inner is a full div — extract body
+
         const tmp = document.createElement('div');
         tmp.innerHTML = inner;
         const built = tmp.firstElementChild;
@@ -1703,7 +1808,6 @@ async function _togglePreclosePanel(btn, panelId, recordId, storeKey, type) {
   panel.classList.add('open');
   btn.classList.add('active');
 }
-// ── End pre-close inline panel ─────────────────────────────────────────────
 
 async function openEntityDetailsOverlay(id) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -3269,7 +3373,7 @@ function openPhotoLightbox(src) {
   if (!modal || !img) return;
   img.src = src;
   modal.style.display = 'flex';
-  // Prevent body scroll
+
   document.body.style.overflow = 'hidden';
 }
 
@@ -3279,7 +3383,6 @@ function closePhotoLightbox() {
   document.body.style.overflow = '';
 }
 
-// On edit screen: tap photo to view it; tap placeholder to open file picker
 function previewPhotoClick(prefix) {
   const img = document.getElementById(prefix + '-photo-img');
   if (img && img.style.display !== 'none' && img.src && img.src !== window.location.href) {
@@ -3288,7 +3391,6 @@ function previewPhotoClick(prefix) {
     document.getElementById(prefix + '-photo-file').click();
   }
 }
-// ── End Person Photo Management ───────────────────────────────────────────
 
 function loadScript(url, integrity) {
   const existing = document.querySelector('script[src="' + url + '"]');
@@ -7475,12 +7577,12 @@ showToast('Not logged in to cloud. Data restored locally only.', 'warning');
 }
 const statsMessage = `Added: ${totalAdded}, Updated: ${totalUpdated}, Skipped: ${totalSkipped}`;
 const syncMessage = cloudSyncSuccess ? ' and new/updated records uploaded to cloud' : '';
-// Restore person_photos: merge backup photos into local (local wins if both exist for same key)
+
 if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArray(data.person_photos)) {
   try {
     const existingPhotos = (await sqliteStore.get('person_photos')) || {};
     const backupPhotos = data.person_photos;
-    const mergedPhotos = Object.assign({}, backupPhotos, existingPhotos); // local wins
+    const mergedPhotos = Object.assign({}, backupPhotos, existingPhotos);
     await sqliteStore.set('person_photos', mergedPhotos);
     const photoCount = Object.keys(backupPhotos).length;
     if (photoCount > 0) showToast(`Restored ${photoCount} photo(s) from backup.`, 'info', 3000);
@@ -7511,9 +7613,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   data = normaliseBackupFields(data);
   showToast('↩ Reversing financial year close — replacing data...', 'info', 5000);
 
-  // Tombstone all current merged records (created by THIS year-close) so they
-  // can never be resurrected by cloud sync.  Records whose IDs already appear
-  // in the backup are pre-existing and must NOT be tombstoned.
   const _backupIds = new Set([
     ...ensureArray(data.mfg || data.mfg_pro_pkr),
     ...ensureArray(data.sales || data.noman_history),
@@ -7548,17 +7647,10 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   const _ycRepNameSet = new Set((Array.isArray(salesRepsList) ? salesRepsList : []).map(r => r.toLowerCase()));
   const _ycNotRepName = (c) => !c || !c.name || !_ycRepNameSet.has(c.name.toLowerCase());
 
-  // Records created AFTER the backup was taken are new post-close entries —
-  // they must survive the restore unchanged.  Records at or before the backup
-  // timestamp belong to the closed year and are fully replaced by the backup.
   const _backupCreatedAt = (data._meta && data._meta.createdAt) || 0;
   const _recTs = r => r.createdAt || r.timestamp || 0;
   const _isPostClose  = r => r && r.id && _recTs(r) > _backupCreatedAt;
 
-  // Helper: from a current collection keep only genuine post-close records:
-  //  - created after the backup timestamp (truly new)
-  //  - not a merged record from THIS year-close (those are tombstoned above)
-  //  - alive (not deleted) and not already in the backup (no duplicate risk)
   const _postCloseKeep = (current, backupArr) => {
     const backupIdSet = new Set(ensureArray(backupArr).filter(r => r && r.id).map(r => String(r.id)));
     return ensureArray(current).filter(r =>
@@ -7592,7 +7684,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
                                   ..._postCloseKeep(expenseRecords, data.expenses)],
   };
 
-  // Deduplicate each collection by id, favouring the backup record on conflict
   const _dedupReplace = (arr) => {
     const map = new Map();
     ensureArray(arr).forEach(r => { if (r && r.id) map.set(String(r.id), r); });
@@ -7617,8 +7708,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     ['expenses',                   replaceData.expenses],
   ]);
 
-  // ── Reset DeltaSync for every restored collection so cloud sync treats
-  //    the tombstoned merged records as already-deleted and never re-pushes them.
   try {
     const _restoreDeltaMap = {
       production:          replaceData.mfg_pro_pkr,
@@ -7638,13 +7727,12 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
       if (typeof DeltaSync !== 'undefined') {
         DeltaSync.clearDirty(deltaName);
         await DeltaSync.setLastSyncTimestamp(deltaName);
-        // Mark every tombstoned merged ID as already uploaded+downloaded
-        // so DeltaSync never queues them for re-push from cloud
+
         _mergedToTombstone.forEach(r => {
           DeltaSync.markUploaded(deltaName, r.id);
           DeltaSync.markDownloaded(deltaName, r.id);
         });
-        // Mark the restored records as clean
+
         ensureArray(records).forEach(r => {
           if (r && r.id) {
             DeltaSync.markUploaded(deltaName, r.id);
@@ -7655,8 +7743,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     }
   } catch(_dsErr) { console.warn('DeltaSync reset after restore failed:', _safeErr(_dsErr)); }
 
-  // ── Sync in-memory JS globals so UI re-renders immediately with correct data
-  //    without waiting for a full loadAllData() cloud round-trip.
   try {
     if (typeof customerSales !== 'undefined' && Array.isArray(customerSales)) {
       customerSales.length = 0;
@@ -7693,8 +7779,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     currentSettings.lastYearClosedDate = snap.lastYearClosedDate ?? null;
     currentSettings.pendingFirestoreYearClose = false;
     pendingFirestoreYearClose = false;
-    // BUG FIX: write a fresh timestamp so connected devices' _syncSettings timestamp-guard
-    // lets the restored FY counter through (previously the timestamp was never updated here).
+
     const _restoreMetaTs = Date.now();
     await sqliteStore.set('naswar_default_settings', currentSettings);
     await sqliteStore.set('naswar_default_settings_timestamp', _restoreMetaTs);
@@ -7710,7 +7795,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
               lastYearClosedAt:  currentSettings.lastYearClosedAt,
               lastYearClosedDate:currentSettings.lastYearClosedDate
             },
-            // Include timestamp so connected devices' guard lets the update through.
+
             naswar_default_settings_timestamp: _restoreMetaTs
           }, { merge: true });
         if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp('settings');
@@ -7818,14 +7903,14 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   try { syncFactoryProductionStats(); } catch(e) {}
   try { await invalidateAllCaches(); } catch(e) {}
   try { await refreshAllDisplays(); } catch(e) {}
-  // Restore photos from year-close backup (backup photos fill gaps; local wins)
+
   if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArray(data.person_photos)) {
     try {
       const _ycExisting = (await sqliteStore.get('person_photos')) || {};
       const _ycBackup   = data.person_photos;
       const _ycMerged   = Object.assign({}, _ycBackup, _ycExisting);
       await sqliteStore.set('person_photos', _ycMerged);
-      // Mark all restored photo keys dirty so they sync to cloud
+
       const _ycDirty = Object.keys(_ycBackup);
       if (_ycDirty.length > 0) {
         await sqliteStore.set('person_photos_dirty_keys', _ycDirty);
@@ -13609,25 +13694,21 @@ window.closeRecycleBin = closeRecycleBin;
 window.renderRecycleBin = renderRecycleBin;
 window.attemptRecoverRecord = attemptRecoverRecord;
 
-// ── Hard Delete (permanent) ────────────────────────────────────────────────
 async function hardDeleteRecord(id, collectionName) {
   if (!id || !collectionName) return false;
   const sid = String(id);
   try {
-    // 1. Remove from deleted_records set
+
     const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
     deletedRecordIds.delete(sid);
     await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
 
-    // 2. Remove from deletion_records list
     const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     const pruned = deletionRecords.filter(r => String(r.id) !== sid && String(r.recordId || r.id) !== sid);
     await sqliteStore.set('deletion_records', pruned);
 
-    // 3. Mark recovered this session so it vanishes from the UI
     _recoveredThisSession.add(sid);
 
-    // 4. Remove from every relevant SQLite data store
     const sqliteKey = getSQLiteKey(collectionName);
     if (sqliteKey) {
       const store = ensureArray(await sqliteStore.get(sqliteKey));
@@ -13637,7 +13718,6 @@ async function hardDeleteRecord(id, collectionName) {
       }
     }
 
-    // 5. Remove from OfflineQueue (cancel any pending ops for this id)
     if (typeof OfflineQueue !== 'undefined') {
       const isThisId = (item) => {
         const op = item.operation || {};
@@ -13654,7 +13734,6 @@ async function hardDeleteRecord(id, collectionName) {
       }
     }
 
-    // 6. Delete from Firestore (deletions tombstone + original collection doc)
     if (firebaseDB && currentUser) {
       (async () => {
         try {
@@ -14927,19 +15006,19 @@ calculateRepCustomerStatsForDisplay(value);
 }
 }
 document.addEventListener('click', function(e) {
-// Close any open breakdown panels when clicking outside them
+
 if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown') &&
     !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"], button[onclick*="perf-sum-raw-breakdown"]')) {
   document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown').forEach(panel => {
     if (panel.style.display !== 'none') {
       panel.style.display = 'none';
-      // Reset the toggle arrow on the sibling button's first span
+
       const btn = panel.previousElementSibling;
       if (btn && btn.tagName === 'BUTTON') {
         const arrow = btn.querySelector('span:first-child');
         if (arrow) {
-          if (arrow.textContent === '▼') arrow.textContent = '▶'; // ▼ → ▶ (sold breakdowns)
-          // factory breakdowns use empty-string spans; textContent stays as-is (already collapsed)
+          if (arrow.textContent === '▼') arrow.textContent = '▶';
+
         }
       }
     }

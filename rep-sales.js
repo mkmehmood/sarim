@@ -479,9 +479,9 @@ try {
 const _rcName = transactionRecord.customerName;
 const _rcPhone = transactionRecord.customerPhone || '';
 if (_rcName && _rcName.trim()) {
-const existsInRepRegistry = Array.isArray(repCustomers) && repCustomers.some(c => c && c.name && c.name.toLowerCase() === _rcName.toLowerCase());
+const existsInRepRegistry = Array.isArray(repCustomers) && repCustomers.some(c => c && c.name && c.name.toLowerCase() === _rcName.toLowerCase() && (c.salesRep === currentRepProfile || !c.salesRep));
 if (!existsInRepRegistry) {
-const _rcContact = { id: generateUUID('rep_cust'), name: _rcName, phone: _rcPhone, address: '', oldDebit: 0, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
+const _rcContact = { id: generateUUID('rep_cust'), name: _rcName, phone: _rcPhone, address: '', oldDebit: 0, salesRep: currentRepProfile, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 if (!Array.isArray(repCustomers)) repCustomers = [];
 repCustomers.push(_rcContact);
 await unifiedSave('rep_customers', repCustomers, _rcContact);
@@ -538,9 +538,13 @@ async function autoUpdateCustomerLocation(customerName, currentGps) {
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (!currentGps || !currentGps.lat || !currentGps.lng) return;
-const contactIndex = repCustomers.findIndex(
-c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase()
-);
+const _lcAutoName = customerName.toLowerCase();
+const contactIndex = repCustomers.findIndex(c => {
+if (!c || !c.name) return false;
+if (c.name.toLowerCase() !== _lcAutoName) return false;
+if (c.salesRep) return c.salesRep === currentRepProfile;
+return repSales.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcAutoName);
+});
 if (contactIndex === -1) return;
 const contact = repCustomers[contactIndex];
 if (contact.locationConfirmed) return;
@@ -832,18 +836,20 @@ custMap[s.customerName].debt -= (s.totalValue || 0);
 const sortedCustomers = Object.keys(custMap).sort();
 if (Array.isArray(repCustomers)) {
 const custMapNames = new Set(Object.keys(custMap).map(n => n.toLowerCase()));
-const profileRepNames = new Set(
-repSales
-.filter(s => s.salesRep === currentRepProfile && s.customerName)
+const repSalesNamesForProfile = new Set(
+(Array.isArray(repSales) ? repSales : [])
+.filter(s => s && s.salesRep === currentRepProfile && s.customerName)
 .map(s => s.customerName.toLowerCase())
 );
 repCustomers.forEach(rc => {
 if (!rc || !rc.name || !rc.name.trim()) return;
+if (rc.salesRep && rc.salesRep !== currentRepProfile) return;
+if (!rc.salesRep && !repSalesNamesForProfile.has(rc.name.toLowerCase())) return;
 const lcName = rc.name.toLowerCase();
 if (custMapNames.has(lcName)) return;
-if (!profileRepNames.has(lcName)) return;
 custMap[rc.name] = { debt: 0, count: 0 };
 sortedCustomers.push(rc.name);
+custMapNames.add(lcName);
 });
 sortedCustomers.sort();
 }
@@ -871,7 +877,7 @@ s.salesRep === currentRepProfile
 );
 const latestTransaction = customerTransactions.sort((a, b) => b.timestamp - a.timestamp)[0];
 const displayDate = latestTransaction?.date ? formatDisplayDate(latestTransaction.date) : '-';
-const repContact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
+const repContact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && (c.salesRep === currentRepProfile || !c.salesRep));
 const phone = repContact?.phone || latestTransaction?.customerPhone || '-';
 const tr = document.createElement('tr');
 tr.style.borderBottom = '1px solid var(--glass-border)';
@@ -950,7 +956,13 @@ msg += `\n\nAll rep sales history for this customer will be permanently deleted.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: 'Delete Rep Customer', confirmText: 'Delete Permanently', danger: true }))) return;
 try {
-const contactIdx = repCustomers.findIndex(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
+const _lcDelName = name.toLowerCase();
+const contactIdx = repCustomers.findIndex(c => {
+if (!c || !c.name) return false;
+if (c.name.toLowerCase() !== _lcDelName) return false;
+if (c.salesRep) return c.salesRep === currentRepProfile;
+return repSales.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcDelName);
+});
 if (contactIdx !== -1) {
 const contactRecord = repCustomers[contactIdx];
 const contactId = contactRecord.id;
@@ -1146,11 +1158,21 @@ list.replaceChildren(_repFrag);
 }
 
 async function openRepCustomerEditModal(customerName) {
+customerName = customerName || '';
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const nameInput = document.getElementById('rep-edit-cust-name');
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
+if (!customerName) {
+document.getElementById('rep-edit-cust-phone').value = '';
+document.getElementById('rep-edit-cust-address').value = '';
+document.getElementById('rep-edit-cust-old-debit').value = '';
+const _repPhotoKey = 'rep-cust:' + (currentRepProfile || '') + ':';
+await loadPersonPhotoIntoEditor('rep-cust', _repPhotoKey);
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-customer-edit-screen');
+return;
+}
 const contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && c.salesRep === currentRepProfile)
   || repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && !c.salesRep);
 const saleRecord = repSales.find(s => s.customerName === customerName && s.salesRep === currentRepProfile && s.customerPhone);
@@ -1489,7 +1511,7 @@ doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.setTextColor(50, 50, 50
 doc.text(`Rep Customer Account Statement · ${rangeName}`, pageW / 2, 30, { align: 'center' });
 doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(80, 80, 80);
 let yPos = 38;
-// Embed rep customer photo if available
+
 const _repPdfPhotoKey = 'rep-cust:' + (currentRepProfile || '') + ':' + customerName.toLowerCase();
 const _repPdfPhoto = await getPersonPhoto(_repPdfPhotoKey);
 if (_repPdfPhoto) {
