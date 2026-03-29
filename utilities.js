@@ -1932,6 +1932,7 @@ const badgeBg = isOut ? 'rgba(220, 38, 38, 0.1)' : 'rgba(5, 150, 105, 0.1)';
 const badgeColor = isOut ? 'var(--danger)' : 'var(--accent-emerald)';
 const label = isOut ? 'PAYMENT OUT' : 'PAYMENT IN';
 const safeId = String(t.id).replace(/'/g, "\\'");
+const safeExpenseId = t.expenseId ? String(t.expenseId).replace(/'/g, "\\'") : '';
 const item = document.createElement('div');
 item.className = `cust-history-item${t.isSettled ? ' is-settled-record' : ''}`;
 item.style.flexDirection = 'column';
@@ -1948,13 +1949,10 @@ item.innerHTML = `
       <span style="background:${badgeBg};color:${badgeColor};padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">${label}</span>
       <div class="${colorClass}" style="font-size:0.9rem;margin-top:2px;">${fmtAmt(t.amount)}</div>
     </div>
-    ${t.isMerged
-      ? `<button class="txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'ep-${t.id}','${safeId}','payment_transactions','entity')">⋮</button>`
-      : `<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteEntityTransaction('${esc(t.id)}')">⌫</button>`
-    }
+    <button class="txn-kebab-btn" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')">⋮</button>
+    <button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteEntityTransaction('${esc(t.id)}')">⌫</button>
   </div>
-</div>
-${t.isMerged ? `<div class="txn-preclose-panel" id="ep-${t.id}"></div>` : ''}`;
+</div>`;
 _entityFrag.appendChild(item);
 });
 list.replaceChildren(_entityFrag);
@@ -1968,6 +1966,18 @@ const text = item.innerText.toLowerCase();
 if (!text.includes(term)) { item.style.display = 'none'; return; }
 item.style.display = item.style.flexDirection === 'column' ? 'flex' : 'flex';
 });
+}
+
+async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
+  const photoKey = expenseId ? 'expense:' + expenseId : null;
+  if (photoKey) {
+    try {
+      const stored = (await sqliteStore.get('person_photos')) || {};
+      const dataUrl = stored[photoKey] || null;
+      if (dataUrl) { openPhotoLightbox(dataUrl); return; }
+    } catch(_) {}
+  }
+  showToast('No photo attached to this transaction', 'warning', 2000);
 }
 
 async function saveQuickEntityTransaction() {
@@ -3323,9 +3333,15 @@ async function openPhotoCapture(prefix) {
   const video = document.getElementById('photo-capture-video');
   if (!modal || !video) return;
   modal.style.display = 'flex';
+  const torchBtn = document.getElementById('torch-btn');
+  if (torchBtn) { torchBtn.style.color = 'var(--text-muted)'; torchBtn.style.background = 'none'; }
+  window._torchOn = false;
   try {
     _photoCaptureStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
     video.srcObject = _photoCaptureStream;
+    const track = _photoCaptureStream.getVideoTracks()[0];
+    const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+    if (torchBtn) torchBtn.style.display = caps.torch ? 'flex' : 'none';
   } catch(e) {
     modal.style.display = 'none';
     showToast('Camera not available. Please use Gallery instead.', 'warning');
@@ -3337,11 +3353,35 @@ function closePhotoCapture() {
   const video = document.getElementById('photo-capture-video');
   if (modal) modal.style.display = 'none';
   if (_photoCaptureStream) {
+    try {
+      const track = _photoCaptureStream.getVideoTracks()[0];
+      if (track && track.applyConstraints) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+    } catch(_) {}
     _photoCaptureStream.getTracks().forEach(t => t.stop());
     _photoCaptureStream = null;
   }
   if (video) video.srcObject = null;
+  window._torchOn = false;
   _photoCaptureTarget = null;
+}
+
+async function toggleTorch() {
+  if (!_photoCaptureStream) return;
+  const track = _photoCaptureStream.getVideoTracks()[0];
+  if (!track) return;
+  window._torchOn = !window._torchOn;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: window._torchOn }] });
+    const btn = document.getElementById('torch-btn');
+    if (btn) {
+      btn.style.color = window._torchOn ? '#f59e0b' : 'var(--text-muted)';
+      btn.style.background = window._torchOn ? 'rgba(245,158,11,0.15)' : 'none';
+      btn.style.borderColor = window._torchOn ? '#f59e0b' : 'var(--glass-border)';
+    }
+  } catch(e) {
+    showToast('Flashlight not supported on this device', 'warning');
+    window._torchOn = false;
+  }
 }
 
 function capturePhotoFromCamera() {
@@ -3355,7 +3395,37 @@ function capturePhotoFromCamera() {
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
   const target = _photoCaptureTarget;
   closePhotoCapture();
-  applyPersonPhoto(target, dataUrl);
+  if (target === 'expense') {
+    _applyExpensePendingPhoto(dataUrl);
+  } else {
+    applyPersonPhoto(target, dataUrl);
+  }
+}
+
+window._expensePendingPhoto = null;
+
+function openExpensePhotoCapture() {
+  openPhotoCapture('expense');
+}
+
+function handleExpensePhotoFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => _applyExpensePendingPhoto(e.target.result);
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function _applyExpensePendingPhoto(dataUrl) {
+  window._expensePendingPhoto = dataUrl;
+  const dot = document.getElementById('expense-photo-dot');
+  const btn = document.getElementById('expense-photo-btn');
+  if (dot) dot.style.display = dataUrl ? '' : 'none';
+  if (btn) {
+    btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
+    btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
+  }
 }
 
 function renderPersonAvatarHTML(photoDataUrl, size) {
@@ -11467,6 +11537,19 @@ emitSyncUpdate({
 expenses: null,
 expense_categories: null
 });
+if (window._expensePendingPhoto) {
+  try {
+    const _photoKey = 'expense:' + expense.id;
+    const _storedPh = (await sqliteStore.get('person_photos')) || {};
+    _storedPh[_photoKey] = await _compressPhoto(window._expensePendingPhoto, 400, 0.8);
+    await sqliteStore.set('person_photos', _storedPh);
+    const _dk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    if (!_dk.includes(_photoKey)) _dk.push(_photoKey);
+    await sqliteStore.set('person_photos_dirty_keys', _dk);
+    await sqliteStore.set('person_photos_timestamp', Date.now());
+    if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+  } catch(_pe) { console.warn('Expense photo save failed', _pe); }
+}
 await createExpenseTransaction(expense);
 showToast(`Operating expense recorded: ${name}`, "success");
 } else {
@@ -11488,6 +11571,19 @@ syncedAt: new Date().toISOString()
 payExpenseRecord = ensureRecordIntegrity(payExpenseRecord, false);
 expenseRecords.push(payExpenseRecord);
 await unifiedSave('expenses', expenseRecords, payExpenseRecord);
+if (window._expensePendingPhoto) {
+  try {
+    const _payPhotoKey = 'expense:' + payExpenseRecord.id;
+    const _payStoredPh = (await sqliteStore.get('person_photos')) || {};
+    _payStoredPh[_payPhotoKey] = await _compressPhoto(window._expensePendingPhoto, 400, 0.8);
+    await sqliteStore.set('person_photos', _payStoredPh);
+    const _payDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    if (!_payDk.includes(_payPhotoKey)) _payDk.push(_payPhotoKey);
+    await sqliteStore.set('person_photos_dirty_keys', _payDk);
+    await sqliteStore.set('person_photos_timestamp', Date.now());
+    if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+  } catch(_ppe) { console.warn('Expense photo save failed', _ppe); }
+}
 let entity = paymentEntities.find(e =>
 e.name && e.name.toLowerCase() === name.toLowerCase() &&
 !e.isExpenseEntity
@@ -13105,6 +13201,8 @@ const previewId = generateUUID('exp');
 expIdEl.textContent = 'ID: ' + previewId.split('-').slice(0,2).join('-') + '…';
 expIdEl.title = previewId;
 }
+window._expensePendingPhoto = null;
+_applyExpensePendingPhoto(null);
 }
 
 function getCategoryColor(category) {

@@ -1448,7 +1448,12 @@ window._showLogoutConfirmDialog = async function() {
   <div style="background:var(--card-bg,#111827);border-radius:16px;padding:16px;width:min(92vw,400px);display:flex;flex-direction:column;align-items:center;gap:12px;">
     <div style="width:100%;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-weight:700;font-size:0.95rem;color:var(--text-main);">Take Photo</span>
-      <button onclick="closePhotoCapture()" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;">✕</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="torch-btn" onclick="toggleTorch()" title="Toggle Flashlight" style="background:none;border:1px solid var(--glass-border);border-radius:8px;color:var(--text-muted);font-size:1.1rem;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;padding:0;transition:background 0.15s,color 0.15s;">
+          <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 4v10M14 8l-7 10h11l-2 14 11-16H16l2-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>
+        </button>
+        <button onclick="closePhotoCapture()" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;line-height:1;">✕</button>
+      </div>
     </div>
     <video id="photo-capture-video" autoplay playsinline style="width:100%;border-radius:12px;background:#000;aspect-ratio:1/1;object-fit:cover;max-height:300px;"></video>
     <canvas id="photo-capture-canvas" style="display:none;"></canvas>
@@ -2426,13 +2431,20 @@ style="width: 100%; font-size: 0.85rem; font-weight: 600; padding: 8px;"
 >
 </div>
 <div style="flex: 2; min-width: 200px;">
-<label class="u-label-sm" >Description <span style="opacity: 0.6;">(Optional)</span></label>
-<input
-type="text"
-id="expenseDescription"
-placeholder="Add details..."
-style="width: 100%; font-size: 0.85rem; padding: 8px;"
->
+<label class="u-label-sm">Description <span style="opacity: 0.6;">(Optional)</span></label>
+<div style="display:flex;gap:6px;align-items:center;">
+  <input
+    type="text"
+    id="expenseDescription"
+    placeholder="Add details..."
+    style="flex:1; font-size: 0.85rem; padding: 8px;"
+  >
+  <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" style="flex-shrink:0;width:36px;height:36px;border-radius:8px;border:1px solid var(--glass-border);background:var(--glass-bg,#1a2535);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;position:relative;">
+    <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="20" r="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.15"/><path d="M13 9l2-4h6l2 4" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+    <span id="expense-photo-dot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--card-bg,#111827);"></span>
+  </button>
+</div>
+<input type="file" id="expense-photo-file" accept="image/*" style="display:none" onchange="handleExpensePhotoFile(event)">
 </div>
 </div>
 <div class="u-mt-5" >
