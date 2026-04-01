@@ -7135,15 +7135,13 @@ if (item.isMerged && item.isReturn && item.returnsByStore && Object.keys(item.re
 if (item.isReturn) {
 div.innerHTML = `
 ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeClass}">${esc(storeLabel)}</span>` : ''}
-${returnBadge}
-${item.isMerged ? '' : ''}
 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
 <h4 style="margin:0;">${dateDisplay} @ ${esc(item.time || '')}${mergedBadge}</h4>
 </div>
 <p style="color:var(--accent-emerald); font-size:0.75rem; font-style:italic;">${item.isMerged ? 'Merged returns by' : 'Returned by'} ${esc(item.returnedBy || 'Representative')}</p>
 <p><span>Returned Weight:</span> <span class="qty-val">${safeValue(item.net).toFixed(2)} kg</span></p>
 ${returnsByStoreHtml}
-${item.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`}
+${item.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full" style="margin-top:20px;" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`}
 `;
 } else {
 div.innerHTML = `
