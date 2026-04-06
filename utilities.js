@@ -4901,7 +4901,8 @@ storeSpecificProduction += production.net || 0;
 });
 let storeSpecificSales = 0;
 customerSales.forEach(sale => {
-if (sale.date === date && sale.supplyStore === store) {
+const _saleEffectiveDate = sale.supplyDate || sale.date;
+if (_saleEffectiveDate === date && sale.supplyStore === store) {
 storeSpecificSales += sale.quantity || 0;
 }
 });
@@ -4977,6 +4978,7 @@ const ampm = hours >= 12 ? 'PM' : 'AM';
 hours = hours % 12;
 hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+const deviceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 const recordId = generateUUID('sale');
 const recordTimestamp = getTimestamp();
 if (!validateUUID(recordId)) {
@@ -4988,7 +4990,8 @@ id: recordId,
 timestamp: recordTimestamp,
 createdAt: recordTimestamp,
 updatedAt: recordTimestamp,
-date: date,
+date: deviceDate,
+supplyDate: date,
 time: timeString,
 customerName: name,
 customerPhone: phoneNumber,
@@ -5453,7 +5456,8 @@ storeReturns += returnEntry.quantity || 0;
 });
 let storeSales = 0;
 customerSales.forEach(sale => {
-if (sale.date === date && sale.supplyStore === store) {
+const _saleEffectiveDate = sale.supplyDate || sale.date;
+if (_saleEffectiveDate === date && sale.supplyStore === store) {
 storeSales += sale.quantity || 0;
 }
 });
@@ -9444,11 +9448,12 @@ storeData.profit += (item.profit || 0);
 let soldQty = 0;
 const soldByCustomer = {};
 customerSales.forEach(sale => {
-const saleDate = new Date(sale.date);
+const saleDate = new Date(sale.supplyDate || sale.date);
 const saleYear = saleDate.getFullYear();
 const saleMonth = saleDate.getMonth();
+const saleDateStr = sale.supplyDate || sale.date;
 let includeSale = false;
-if (mode === 'day' && sale.date === selectedDate) includeSale = true;
+if (mode === 'day' && saleDateStr === selectedDate) includeSale = true;
 else if (mode === 'week') {
 const weekStart = new Date(selectedDateObj);
 weekStart.setDate(selectedDateObj.getDate() - 6);
