@@ -667,8 +667,11 @@ try {
 await pushDataToCloud(true);
 } catch (error) {
 if (navigator.onLine) {
+const _errMsg = (error && (error.message || error.code || error.name))
+? (error.message || error.code || error.name)
+: (typeof error === 'string' ? error : 'please try again or check your data');
 console.error('Sync failed. Check your connection.', _safeErr(error));
-showToast('Sync failed. Check your connection.', 'error');
+showToast('Sync failed: ' + _errMsg, 'error');
 }
 }
 }, AUTO_SYNC_DELAY);
@@ -786,7 +789,7 @@ break;
 syncCoreDisplays();
 } catch (error) {
 console.error('Tab sync failed.', _safeErr(error));
-showToast('Tab sync failed.', 'error');
+showToast('Tab sync failed: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 } finally {
 syncState.isRefreshing = false;
 if (syncState.pendingUpdates.size > 0) {
@@ -812,17 +815,16 @@ calculateCashTracker();
 }
 } catch (error) {
 console.error('Calculation failed.', _safeErr(error));
-showToast('Calculation failed.', 'error');
+showToast('Dashboard calculation failed: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 }
-
 async function syncCalculatorTab() {
 try {
 if (typeof loadSalesData === 'function') await loadSalesData(currentCompMode);
 if (typeof autoFillTotalSoldQuantity === 'function') autoFillTotalSoldQuantity();
 } catch (error) {
 console.error('Failed to load sales data.', _safeErr(error));
-showToast('Failed to load sales data.', 'error');
+showToast('Failed to load sales data: ' + (_safeErr(error).message || 'please try again'), 'error');
 if (typeof loadSalesData === 'function') setTimeout(() => loadSalesData(currentCompMode), 500);
 }
 }
@@ -836,7 +838,7 @@ if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 if (typeof renderFactoryHistory === 'function') renderFactoryHistory();
 } catch (error) {
 console.error('Failed to render data.', _safeErr(error));
-showToast('Failed to render data.', 'error');
+showToast('Factory tab failed to render: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 if (typeof updateFactoryUnitsAvailableStats === 'function') setTimeout(updateFactoryUnitsAvailableStats, 500);
 }
 }
@@ -847,7 +849,7 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof renderEntityTable === 'function') await renderEntityTable();
 } catch (error) {
 console.error('Payment tab refresh failed.', _safeErr(error));
-showToast('Payment tab refresh failed.', 'error');
+showToast('Payments tab failed to load: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 if (typeof refreshPaymentTab === 'function') setTimeout(refreshPaymentTab, 500);
 }
 }
@@ -859,7 +861,7 @@ if (typeof updateMfgCharts === 'function') updateMfgCharts();
 if (typeof calculateCustomerSale === 'function') calculateCustomerSale();
 } catch (error) {
 console.error('UI refresh failed.', _safeErr(error));
-showToast('UI refresh failed.', 'error');
+showToast('Production tab failed to refresh: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 if (typeof refreshUI === 'function') setTimeout(refreshUI, 500);
 }
 }
@@ -870,7 +872,7 @@ if (typeof calculateCustomerSale === 'function') calculateCustomerSale();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 } catch (error) {
 console.error('Customer data operation failed.', _safeErr(error));
-showToast('Customer data operation failed.', 'error');
+showToast('Sales tab failed to refresh: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 if (typeof refreshCustomerSales === 'function') setTimeout(refreshCustomerSales, 500);
 }
 }
@@ -881,7 +883,7 @@ if (typeof renderRepCustomerTable === 'function') await renderRepCustomerTable()
 if (typeof calculateRepAnalytics === 'function') calculateRepAnalytics();
 } catch (error) {
 console.error('Rep tab refresh failed.', _safeErr(error));
-showToast('Rep tab refresh failed.', 'error');
+showToast('Rep tab failed to refresh: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 if (typeof renderRepCustomerTable === 'function') setTimeout(renderRepCustomerTable, 500);
 }
 }
@@ -964,7 +966,7 @@ try {
 await loadAllData();
 } catch (error) {
 console.error('Failed to load app data.', _safeErr(error));
-showToast('Failed to load app data.', 'error');
+showToast('Failed to load app data: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 }
 window.forceSync = async function() {
@@ -5058,7 +5060,7 @@ try {
 await unifiedSave('customer_sales', customerSales);
 } catch (rollbackError) {
 console.error('UI refresh failed.', _safeErr(rollbackError));
-showToast('UI refresh failed.', 'error');
+showToast('Sale rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
 showToast(' Failed to save sale. Please try again.', 'error');
 }
@@ -10019,10 +10021,6 @@ period.credit += (ms.unpaidCredit || 0);
 if (item.paymentType === 'CREDIT' && !item.creditReceived) {
 const partialPaid = item.partialPaymentReceived || 0;
 period.credit += (item.totalValue || 0) - partialPaid;
-} else if (item.paymentType === 'COLLECTION' || item.paymentType === 'PARTIAL_PAYMENT') {
-period.credit -= (item.totalValue || 0);
-} else {
-period.cash += (item.totalValue || 0);
 }
 } else if (item.paymentType === 'CREDIT' && !item.creditReceived) {
 period.credit += (item.totalValue || 0);
@@ -11540,7 +11538,7 @@ await sqliteStore.set('payment_transactions', freshTransactions);
 }
 await syncSuppliersToEntities();
 try { calculateNetCash(); } catch (e) {
-showToast('Calculation failed.', 'error');
+showToast('Economic health calculation failed: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 console.error('calculateNetCash error:', _safeErr(e));
 }
 try {
@@ -11553,19 +11551,19 @@ updateFactoryInventoryDisplay();
 console.error('updateFactoryInventoryDisplay error:', _safeErr(e));
 }
 try { calculatePaymentSummaries(); } catch (e) {
-showToast('Calculation failed.', 'error');
+showToast('Payment summaries failed to calculate: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 console.error('calculatePaymentSummaries error:', _safeErr(e));
 }
 try { await renderUnifiedTable(); } catch (e) {
-showToast('Calculation failed.', 'error');
+showToast('Transaction table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 console.error('renderUnifiedTable error:', _safeErr(e));
 }
 try { updateExpenseBreakdown(); } catch (e) {
-showToast('Calculation failed.', 'error');
+showToast('Expense breakdown failed to update: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 console.error('updateExpenseBreakdown error:', _safeErr(e));
 }
 try { calculateCashTracker(); } catch (e) {
-showToast('Calculation failed.', 'error');
+showToast('Cash tracker failed to calculate: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 console.error('calculateCashTracker error:', _safeErr(e));
 }
 const historyList = document.getElementById('paymentHistoryList');
@@ -12246,7 +12244,7 @@ try {
 renderUnifiedTable(1);
 } catch (e) {
 console.error('Failed to render data.', _safeErr(e));
-showToast('Failed to render data.', 'error');
+showToast('Transaction table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof refreshPaymentTab === 'function') {
@@ -12254,7 +12252,7 @@ try {
 await refreshPaymentTab(true);
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Payment tab refresh failed.', 'error');
+showToast('Payments tab failed to refresh: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof renderExpenseTable === 'function') {
@@ -12262,7 +12260,7 @@ try {
 renderExpenseTable(1);
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Payment tab refresh failed.', 'error');
+showToast('Expense table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof handleExpenseSearch === 'function') {
@@ -12270,7 +12268,7 @@ try {
 handleExpenseSearch();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Payment tab refresh failed.', 'error');
+showToast('Expense search failed to run: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof calculateNetCash === 'function') {
@@ -12278,7 +12276,7 @@ try {
 calculateNetCash();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Payment tab refresh failed.', 'error');
+showToast('Economic health calculation failed: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof renderFactoryInventory === 'function') {
@@ -12286,7 +12284,7 @@ try {
 renderFactoryInventory();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Payment tab refresh failed.', 'error');
+showToast('Factory inventory failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 triggerAutoSync();
@@ -12308,7 +12306,7 @@ await sqliteStore.setBatch([
 ]);
 } catch (rollbackError) {
 console.error('Failed to render data.', _safeErr(rollbackError));
-showToast('Failed to render data.', 'error');
+showToast('Expense rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
 showToast('Failed to save expense. Please try again.', 'error');
 }
@@ -12387,7 +12385,7 @@ if (freshExpenses && freshExpenses.length > 0) {
 }
 } catch (error) {
 console.error('Calculation failed.', _safeErr(error));
-showToast('Calculation failed.', 'error');
+showToast('Failed to load expense records: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 const periodFilter = document.getElementById('expensePeriodFilter')?.value || 'month';
 const categoryFilter = document.getElementById('expenseCategoryFilter')?.value || 'all';

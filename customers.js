@@ -85,7 +85,7 @@ const freshSales = await sqliteStore.get('customer_sales', []);
 const mergedSales = Array.isArray(freshSales) ? freshSales : customerSales;
 } catch (error) {
 console.error('UI refresh failed.', _safeErr(error));
-showToast('UI refresh failed.', 'error');
+showToast('Failed to reload sales data: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 try {
 const freshSalesCustomers = await sqliteStore.get('sales_customers', []);
@@ -1362,7 +1362,7 @@ throw new Error("Address not found");
 }
 } catch (error) {
 console.error('An unexpected error occurred.', _safeErr(error));
-showToast('An unexpected error occurred.', 'error');
+showToast('Address lookup failed: ' + (_safeErr(error).message || 'GPS coordinates saved instead'), 'error');
 addressInput.value = `GPS: ${coordsText}`;
 statusDiv.textContent = "Address lookup failed. Saved GPS Coordinates.";
 statusDiv.style.color = "var(--warning)";

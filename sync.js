@@ -3061,8 +3061,8 @@ async function _uploadChanges(userRef) {
       const docId = String(item.id);
       if (!docId || docId.includes('/')) continue;
       const sanitizedItem = sanitizeForFirestore(item);
-      sanitizedItem.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
       if (!sanitizedItem || Object.keys(sanitizedItem).length === 0) continue;
+      sanitizedItem.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
       if (sanitizedItem.id && typeof sanitizedItem.id !== 'string') sanitizedItem.id = String(sanitizedItem.id);
       getOrNewBatch().set(userRef.collection(collectionName).doc(docId), sanitizedItem, { merge: true });
       operationCount++;

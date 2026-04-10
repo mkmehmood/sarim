@@ -1227,7 +1227,7 @@ await sqliteStore.setBatch([
 ]);
 } catch (rollbackError) {
 console.error('Failed to save data locally.', _safeErr(rollbackError));
-showToast('Failed to save data locally.', 'error');
+showToast('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
 showToast(error.message || 'Failed to save production data. Please try again.', 'error', 4000);
 }
