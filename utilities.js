@@ -10066,10 +10066,12 @@ histContainer.replaceChildren(Object.assign(document.createElement('p'), {textCo
 } else {
 const fragment = document.createDocumentFragment();
 displayData.forEach(async item => {
-const effDate = item.supplyDate || item.date;
+const effDate = item.date;
 const isSelected = effDate === selectedDate;
 const highlightClass = isSelected ? 'highlight-card' : '';
-const dateDisplay = isSelected ? `${formatDisplayDate(effDate)} (Selected)` : formatDisplayDate(effDate);
+const dateDisplay = isSelected
+? `${formatDisplayDate(item.date)} (Selected)`
+: formatDisplayDate(item.date);
 const creditReceived = item.creditReceived || false;
 const paymentType = item.paymentType || 'CASH';
 const badgeClass = creditReceived ? 'received' : (paymentType ? paymentType.toLowerCase() : 'cash');
@@ -10106,6 +10108,9 @@ creditSection = `<div class="received-indicator">Credit Received </div>`;
 }
 }
 const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="settled-badge"> Settled</div>` : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`;
+const supplyDateLine = (item.supplyDate && item.supplyDate !== item.date)
+? `<p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${esc(formatDisplayDate(item.supplyDate))}</p>`
+: '';
 if (isOldDebtItem) {
 card.innerHTML = `
 <div class="payment-badge credit">CREDIT</div>
@@ -10113,6 +10118,7 @@ card.innerHTML = `
 <span class="old-debt-badge">OLD DEBT</span>${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
 <h4 style="margin-top: 5px; font-size: 0.85rem; color: var(--text-muted);">${dateDisplay}</h4>
+${supplyDateLine}
 <hr>
 <p><span>Previous Balance:</span> <span class="rev-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
 <p class="u-fs-sm u-text-muted" >${esc(item.notes || 'Brought forward from previous records')}</p>
@@ -10126,6 +10132,7 @@ card.innerHTML = `
 <h4 style="margin:0;font-size:0.85rem;color:var(--text-muted);">${dateDisplay}</h4>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
+${supplyDateLine}
 <hr>
 <p><span>Amount Collected:</span> <span class="profit-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
 ${deleteBtnHtml}
@@ -10138,6 +10145,7 @@ card.innerHTML = `
 <h4 style="margin:0;font-size:0.85rem;color:var(--text-muted);">${dateDisplay}</h4>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
+${supplyDateLine}
 <div class="supply-tag ${supplyTagClass}">Supply: ${supplyTagText}</div>
 <hr>
 <p><span>Quantity:</span> <span class="qty-val">${safeValue(item.quantity).toFixed(2)} kg</span></p>

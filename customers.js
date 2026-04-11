@@ -467,6 +467,7 @@ itemContent = `
     <div class="u-mono-bold">${formatDisplayDate(t.date)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -482,6 +483,7 @@ itemContent = `
     </div>
     <div style="font-size:0.75rem;color:var(--warning);">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${esc(t.notes || 'Brought forward from previous records')}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -498,6 +500,7 @@ itemContent = `
     <div class="u-fs-sm2 u-text-muted">${safeToFixed(t.quantity, 2)} kg @ ${await formatCurrency(_displayUnitPrice)} = ${await formatCurrency(_txValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${getStoreLabel(t.supplyStore)}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
