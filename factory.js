@@ -1495,6 +1495,7 @@ tracking[ft].unitCostHistory.push({ date: entry.date, costPerUnit: entry.totalCo
 }
 });
 db.forEach(entry => {
+if (entry.isReturn) return;
 const formulaStore = entry.formulaStore || _resolveFormulaType(entry.store);
 if (!tracking[formulaStore]) tracking[formulaStore] = { produced: 0, consumed: 0, available: 0, unitCostHistory: [] };
 if (entry.formulaUnits) tracking[formulaStore].consumed += entry.formulaUnits;
@@ -1510,7 +1511,7 @@ return tracking;
 
 async function syncFactoryProductionStats() {
 const tracking = await updateFormulaInventory();
-updateUnitsAvailableIndicator();
+await updateUnitsAvailableIndicator(tracking);
 updateFactoryUnitsAvailableStats();
 updateFactorySummaryCard();
 return tracking;
@@ -1530,8 +1531,8 @@ const available = factoryUnitTracking[formulaStore]?.available || 0;
 return { available, sufficient: available >= requestedUnits, deficit: Math.max(0, requestedUnits - available) };
 }
 
-async function updateUnitsAvailableIndicator() {
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+async function updateUnitsAvailableIndicator(preloadedTracking) {
+const factoryUnitTracking = preloadedTracking || (await sqliteStore.get('factory_unit_tracking')) || {};
 const store = document.getElementById('storeSelector').value;
 if (!store) return;
 const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : (store === 'STORE_C' ? 'asaan' : 'standard');

@@ -1129,7 +1129,7 @@ if (isPartialPayment || isCollection) {
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">${formatDisplayDate(t.date)}${_mergedBadgeHtml(t, {inline:true})}</div>
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}${_mergedBadgeHtml(t, {inline:true})}</div>
     <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}</div>
   </div>
@@ -1141,8 +1141,8 @@ itemContent = `
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">
-      ${formatDisplayDate(t.date)}
+    <div class="u-fs-sm2 u-text-muted">
+      ${formatDisplayDateTime(t.date, t.time || null)}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
     </div>
     <div style="font-size:0.75rem;color:var(--warning);">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
@@ -1159,7 +1159,7 @@ const _repDisplayUnitPrice = (t.unitPrice && t.unitPrice > 0)
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div style="font-weight:700;font-size:0.85rem;color:var(--text-main);">${formatDisplayDate(t.date)}${_mergedBadgeHtml(t, {inline:true})}</div>
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}${_mergedBadgeHtml(t, {inline:true})}</div>
     <div style="font-size:0.75rem;color:var(--text-muted);">${safeToFixed(t.quantity, 2)} kg @ ${await formatCurrency(_repDisplayUnitPrice)} = ${await formatCurrency(t.totalValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)}</div>` : ''}
   </div>
