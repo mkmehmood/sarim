@@ -150,6 +150,7 @@
 <script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
+window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){existing.style.display=existing.style.display==='none'?'block':'none';return;}var pop=document.createElement('div');pop.id=popId;pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:140px;padding:6px 0;';items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);white-space:nowrap;';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);pop.style.display='none';};pop.appendChild(d);});anchor.style.position='relative';anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)pop.style.display='none';}},true);};
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
   if (sessionStorage.getItem('_swJustUpdated')) { sessionStorage.removeItem('_swJustUpdated'); return; }
@@ -774,15 +775,18 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
   <div class="screen-body">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
       <div id="recycleBinStats" style="font-size:0.75rem;color:var(--text-muted);"></div>
-      <select id="recycleBinFilter" onchange="renderRecycleBin(this.value)" style="padding:5px 10px;border-radius:999px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);font-size:0.78rem;cursor:pointer;">
-        <option value="all">All Tabs</option>
-        <option value="tab_sales">Sales Tab</option>
-        <option value="tab_rep">Rep Tab</option>
-        <option value="tab_production">Manufacturing Tab</option>
-        <option value="tab_calculator">Calculator Tab</option>
-        <option value="tab_factory">Factory Tab</option>
-        <option value="tab_payments">Payments Tab</option>
-      </select>
+      <div style="position:relative;">
+        <button id="recycleBinFilterBtn" class="store-selector" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);font-size:0.78rem;" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <select id="recycleBinFilter" style="display:none;">
+          <option value="all">All Tabs</option>
+          <option value="tab_sales">Sales Tab</option>
+          <option value="tab_rep">Rep Tab</option>
+          <option value="tab_production">Manufacturing Tab</option>
+          <option value="tab_calculator">Calculator Tab</option>
+          <option value="tab_factory">Factory Tab</option>
+          <option value="tab_payments">Payments Tab</option>
+        </select>
+      </div>
     </div>
     <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:14px;padding:9px 13px;font-size:0.73rem;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">
       Recover restores the record to its original collection. Records expire after <strong style="color:var(--text-main);">90 days</strong>. Use <strong style="color:#ef4444;">Delete Forever</strong> to erase a record immediately and permanently.
@@ -839,11 +843,14 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       <div class="grid-inputs">
         <div class="field">
           <label>Supplier Action</label>
-          <select id="factoryMaterialSupplierType" onchange="toggleSupplierFields()">
-            <option value="none">No Supplier Link</option>
-            <option value="existing">Select Existing Entity</option>
-            <option value="new">Add New Supplier Entity</option>
-          </select>
+          <div style="position:relative;">
+            <button id="factoryMaterialSupplierTypeBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="window._mkPopover(this.parentNode,'_pop_suppType',[{value:'none',label:'No Supplier Link'},{value:'existing',label:'Select Existing Entity'},{value:'new',label:'Add New Supplier Entity'}],function(v,l){document.getElementById('factoryMaterialSupplierType').value=v;document.getElementById('factoryMaterialSupplierTypeBtn').querySelector('span').textContent=l;toggleSupplierFields();})"><span>No Supplier Link </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <select id="factoryMaterialSupplierType" style="display:none;">
+              <option value="none">No Supplier Link</option>
+              <option value="existing">Select Existing Entity</option>
+              <option value="new">Add New Supplier Entity</option>
+            </select>
+          </div>
         </div>
       </div>
       <div id="existingSupplierSection" class="hidden">
@@ -1220,14 +1227,16 @@ window._showLogoutConfirmDialog = async function() {
   </div>
   <div class="screen-body">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
-      <select id="expenseOverlayRange" class="store-selector" style="flex:1;" onchange="renderExpenseOverlayContent()">
+      <select id="expenseOverlayRange" style="display:none;" onchange="renderExpenseOverlayContent()">
         <option value="today">Today</option>
         <option value="week">This Week</option>
         <option value="month">This Month</option>
         <option value="year">This Year</option>
         <option value="all" selected>All Time</option>
       </select>
-      <button class="btn btn-noran btn-sm btn-pdf" onclick="exportExpenseOverlayToPDF()" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      <div style="position:relative;flex-shrink:0;">
+        <button class="btn btn-noran btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      </div>
     </div>
     <div class="debt-panel u-debt-header liquid-card" style="margin-bottom:14px;">
       <h4 class="u-heading-accent">Quick Add Expense</h4>
@@ -1575,8 +1584,11 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 <div class="grid-inputs" style="margin-top: 10px;">
 <div class="field">
 <label style="color: var(--accent);">View For:</label>
-<select id="admin-rep-selector" class="store-selector" onchange="adminSwitchRepProfile(this.value)">
+<div style="position:relative;">
+<button id="adminRepSelectorBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="(function(b){var sel=document.getElementById('admin-rep-selector');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_adminRep',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;adminSwitchRepProfile(v);});})( this)"><span>— </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="admin-rep-selector" style="display:none;">
 </select>
+</div>
 </div>
 <div class="field">
 <label>Select Date</label>
@@ -1977,9 +1989,12 @@ No records found
 </header>
 <div class="section liquid-card chart-card">
 <label>Sales Representative:</label>
-<select id="sellerSelect" class="store-selector" onchange="(async () => { await loadSalesData() })()">
+<div style="position:relative;">
+<button id="sellerSelectBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="(function(b){var sel=document.getElementById('sellerSelect');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_seller',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;(async()=>{await loadSalesData();})();});})( this)"><span>COMPARISON </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="sellerSelect" style="display:none;">
 <option value="COMBINED">COMPARISON</option>
 </select>
+</div>
 <div id="entrySection" class="hidden">
 <div class="grid-inputs">
 <div class="field"><label>Date</label><input type="date" id="sale-date" onchange="(async () => { await loadSalesData(); setPerfOverviewMode(currentPerfOverviewMode || 'day'); })()"></div>
@@ -2028,11 +2043,14 @@ No records found
 <div id="combinedExportArea">
 <div class="field" style="margin-bottom: 12px;">
 <label>View Chart For:</label>
-<select id="metricSelector" class="store-selector" onchange="(async () => { await loadSalesData(currentCompMode) })()">
+<div style="position:relative;">
+<button id="metricSelectorBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="window._mkPopover(this.parentNode,'_pop_metric',[{value:'prof',label:'Net Profit (Value)'},{value:'rev',label:'Gross Revenue (Value)'},{value:'sold',label:'Quantity Sold'}],function(v,l){document.getElementById('metricSelector').value=v;document.getElementById('metricSelectorBtn').querySelector('span').textContent=l;(async()=>{await loadSalesData(currentCompMode);})();})"><span>Net Profit (Value) </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="metricSelector" style="display:none;">
 <option value="prof">Net Profit (Value)</option>
 <option value="rev">Gross Revenue (Value)</option>
 <option value="sold">Quantity Sold</option>
 </select>
+</div>
 </div>
 <div class="chart-container">
 <div class="chart-box">
@@ -2063,7 +2081,9 @@ No records found
 </div>
 <div class="sales-rep-metric-selector">
 <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px;">Select Metric:</label>
-<select id="indMetricSelector" class="sales-rep-metric-dropdown" onchange="setIndChartMetric(this.value)">
+<div style="position:relative;">
+<button id="indMetricSelectorBtn" class="sales-rep-metric-dropdown store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="window._mkPopover(this.parentNode,'_pop_indMetric',[{value:'weight',label:'Weight (kg)'},{value:'value',label:'Total Value'},{value:'cost',label:'Total Cost'},{value:'profit',label:'Net Profit'},{value:'cash',label:'Cash Sales'},{value:'credit',label:'Credit Sales'}],function(v,l){document.getElementById('indMetricSelector').value=v;document.getElementById('indMetricSelectorBtn').querySelector('span').textContent=l;setIndChartMetric(v);})"><span>Weight (kg) </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="indMetricSelector" style="display:none;">
 <option value="weight">Weight (kg)</option>
 <option value="value">Total Value ()</option>
 <option value="cost">Total Cost ()</option>
@@ -2071,6 +2091,7 @@ No records found
 <option value="cash">Cash Sales ()</option>
 <option value="credit">Credit Sales ()</option>
 </select>
+</div>
 </div>
 <div class="sales-rep-chart-container">
 <div class="sales-rep-chart-box">
@@ -2633,16 +2654,22 @@ oninput="renderUnifiedTable()">
 style="color: var(--accent-emerald); border-color: var(--accent-emerald); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
 </div>
 <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
-<select id="unifiedViewMode" onchange="renderUnifiedTable()" style="flex: 1; min-width: 150px; font-size: 0.85rem; padding: 8px;">
+<div style="position:relative;flex:1;min-width:150px;">
+<button id="unifiedViewModeBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;font-size:0.85rem;padding:8px;" onclick="window._mkPopover(this.parentNode,'_pop_uniView',[{value:'entities',label:'Entities & Balances'},{value:'transactions',label:'Expenses'}],function(v,l){document.getElementById('unifiedViewMode').value=v;document.getElementById('unifiedViewModeBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>Entities &amp; Balances </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="unifiedViewMode" style="display:none;">
 <option value="entities" selected>Entities & Balances</option>
 <option value="transactions">Expenses</option>
 </select>
-<select id="unifiedPeriodFilter" onchange="renderUnifiedTable()" style="flex: 1; min-width: 120px; font-size: 0.85rem; padding: 8px;">
+</div>
+<div style="position:relative;flex:1;min-width:120px;">
+<button id="unifiedPeriodFilterBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;font-size:0.85rem;padding:8px;" onclick="window._mkPopover(this.parentNode,'_pop_uniPeriod',[{value:'today',label:'Today'},{value:'week',label:'This Week'},{value:'month',label:'This Month'},{value:'all',label:'All Time'}],function(v,l){document.getElementById('unifiedPeriodFilter').value=v;document.getElementById('unifiedPeriodFilterBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>This Month </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="unifiedPeriodFilter" style="display:none;">
 <option value="today">Today</option>
 <option value="week">This Week</option>
 <option value="month" selected>This Month</option>
 <option value="all">All Time</option>
 </select>
+</div>
 </div>
 <div id="unified-table-container" style="overflow-x: auto; overflow-y: auto; max-height: 500px; margin-top: 10px;">
 <table class="u-table-full" >
