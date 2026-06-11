@@ -33,44 +33,51 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # ─── 5. Install Capacitor (no package.json needed) ─────────────
+      # ─── 5. Copy web files into www folder ─────────────────────────
+      - name: Prepare web directory
+        run: |
+          mkdir -p www
+          cp -r *.html *.css *.js *.png *.json sw.js dist www/ 2>/dev/null || true
+          cp -r .well-known www/ 2>/dev/null || true
+          ls www/
+
+      # ─── 6. Install Capacitor ──────────────────────────────────────
       - name: Install Capacitor
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android --no-package-lock
 
-      # ─── 6. Init Capacitor pointing to repo root as web dir ─────────
+      # ─── 7. Init Capacitor with www as web dir ──────────────────────
       - name: Init Capacitor
-        run: |
-          npx cap init "SarimBiz" "com.sarim.biz" --web-dir .
+        run: npx cap init "SarimBiz" "com.sarim.biz" --web-dir www
 
-      # ─── 7. Add Android platform ───────────────────────────────────
+      # ─── 8. Add Android platform ───────────────────────────────────
       - name: Add Android platform
         run: npx cap add android
 
-      # ─── 8. Sync web assets ────────────────────────────────────────
+      # ─── 9. Sync Capacitor ─────────────────────────────────────────
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # ─── 9. Bump versionCode ───────────────────────────────────────
+      # ─── 10. Bump versionCode ──────────────────────────────────────
       - name: Bump versionCode
         run: |
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
 
-      # ─── 10. Grant gradlew permission ──────────────────────────────
+      # ─── 11. Grant gradlew permission ──────────────────────────────
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      # ─── 11. Build debug APK ───────────────────────────────────────
+      # ─── 12. Build debug APK ───────────────────────────────────────
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug --no-daemon
 
-      # ─── 12. Find APK ──────────────────────────────────────────────
+      # ─── 13. Find APK ──────────────────────────────────────────────
       - name: Find APK
         run: find . -name "*.apk" -type f
 
-      # ─── 13. Upload APK ────────────────────────────────────────────
+      # ─── 14. Upload APK ────────────────────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
