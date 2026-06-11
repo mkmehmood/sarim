@@ -1,1 +1,80 @@
-1
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─── 1. Checkout ───────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ─── 2. Node.js 24 ─────────────────────────────────────────────
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # ─── 3. Java 21 ────────────────────────────────────────────────
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # ─── 4. Android SDK ────────────────────────────────────────────
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # ─── 5. Install Capacitor (no package.json needed) ─────────────
+      - name: Install Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android --no-package-lock
+
+      # ─── 6. Init Capacitor pointing to repo root as web dir ─────────
+      - name: Init Capacitor
+        run: |
+          npx cap init "SarimBiz" "com.sarim.biz" --web-dir .
+
+      # ─── 7. Add Android platform ───────────────────────────────────
+      - name: Add Android platform
+        run: npx cap add android
+
+      # ─── 8. Sync web assets ────────────────────────────────────────
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      # ─── 9. Bump versionCode ───────────────────────────────────────
+      - name: Bump versionCode
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+
+      # ─── 10. Grant gradlew permission ──────────────────────────────
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      # ─── 11. Build debug APK ───────────────────────────────────────
+      - name: Build debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      # ─── 12. Find APK ──────────────────────────────────────────────
+      - name: Find APK
+        run: find . -name "*.apk" -type f
+
+      # ─── 13. Upload APK ────────────────────────────────────────────
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SarimBiz-v1.0.${{ github.run_number }}
+          path: android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
