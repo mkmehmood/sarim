@@ -183,6 +183,36 @@ jobs:
           echo "--- AndroidManifest patched ---"
           grep "largeHeap\|application" android/app/src/main/AndroidManifest.xml | head -5
 
+      # ─── 12b. Set launcher icons from repo PNG ─────────────────────
+      - name: Generate launcher icons from 512.png
+        run: |
+          # Install imagemagick for resizing
+          sudo apt-get install -y imagemagick 2>/dev/null | tail -1
+
+          SRC="www/512.png"
+          if [ ! -f "$SRC" ]; then SRC="www/192.png"; fi
+          echo "Using icon source: $SRC"
+
+          # Android icon sizes per density folder
+          declare -A SIZES=(
+            ["mipmap-mdpi"]=48
+            ["mipmap-hdpi"]=72
+            ["mipmap-xhdpi"]=96
+            ["mipmap-xxhdpi"]=144
+            ["mipmap-xxxhdpi"]=192
+          )
+
+          for FOLDER in "${!SIZES[@]}"; do
+            SIZE=${SIZES[$FOLDER]}
+            DEST="android/app/src/main/res/$FOLDER"
+            mkdir -p "$DEST"
+            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DEST/ic_launcher.png"
+            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DEST/ic_launcher_round.png"
+            echo "Generated ${SIZE}x${SIZE} → $DEST"
+          done
+
+          echo "--- Launcher icons generated ---"
+
       # ─── 13. Bump versionCode ──────────────────────────────────────
       - name: Bump versionCode
         run: |
