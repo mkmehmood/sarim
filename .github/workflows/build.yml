@@ -62,10 +62,7 @@ jobs:
               "StatusBar": {
                 "overlaysWebView": false,
                 "style": "DARK",
-                "backgroundColor": "#ffffff"
-              },
-              "EdgeToEdge": {
-                "backgroundColor": "#ffffff"
+                "backgroundColor": "#ffffffff"
               }
             }
           }
@@ -138,21 +135,112 @@ jobs:
           echo "--- Patched CSP ---"
           grep -A 40 "Content-Security-Policy" www/index.html | head -45
 
-      # ─── 9. Patch Firebase authDomain to use localhost ─────────────
-      #   Firebase Auth redirects need localhost when running in APK.
-      #   We update authDomain from *.firebaseapp.com to localhost so
-      #   OAuth popup/redirect works inside the Capacitor WebView.
-      - name: Patch Firebase authDomain for localhost
+      # ─── 9. Restore original Firebase config + place google-services.json ──
+      - name: Patch Firebase config and add google-services.json
         run: |
-          # Patch authDomain in utilities-sales.js
-          sed -i \
-            's|authDomain: "calculator-fabd3\.firebaseapp\.com"|authDomain: "localhost"|g' \
-            www/utilities-sales.js
+          # ── A. Restore original Firebase JS config in all JS files ──
+          python3 - << 'FBEOF'
+import re, os
 
-          # Also add capacitor://localhost to Firebase authorized domains
-          # by patching the firebaseConfig to include it
-          echo "--- Firebase authDomain patched ---"
-          grep "authDomain" www/utilities-sales.js
+files = [
+    "www/utilities-sales.js",
+    "www/sync.js",
+    "www/business.js",
+]
+
+# Original config restored as-is from the repo
+new_config = """const firebaseConfig = {
+  apiKey: "AIzaSyDYjGQILtrcG2nfKACSfsVtfIPZOAgbr_s",
+  authDomain: "calculator-fabd3.firebaseapp.com",
+  databaseURL: "https://calculator-fabd3-default-rtdb.firebaseio.com",
+  projectId: "calculator-fabd3",
+  storageBucket: "calculator-fabd3.firebasestorage.app",
+  messagingSenderId: "124313576124",
+  appId: "1:124313576124:web:fb721bb61bc19b51db26b9",
+  measurementId: "G-G45Y5KL4EJ"
+};"""
+
+pattern = re.compile(r'const firebaseConfig\s*=\s*\{[^}]*\}', re.DOTALL)
+
+for path in files:
+    if not os.path.exists(path):
+        print(f"Skipping {path}")
+        continue
+    with open(path) as f:
+        src = f.read()
+    updated = pattern.sub(new_config, src)
+    if updated != src:
+        with open(path, "w") as f:
+            f.write(updated)
+        print(f"Patched: {path}")
+    else:
+        print(f"No match: {path}")
+FBEOF
+
+          # ── B. Write google-services.json for Android native SDK ───
+          cat > android/app/google-services.json << 'GSEOF'
+{
+  "project_info": {
+    "project_number": "124313576124",
+    "firebase_url": "https://calculator-fabd3-default-rtdb.firebaseio.com",
+    "project_id": "calculator-fabd3",
+    "storage_bucket": "calculator-fabd3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:124313576124:android:c2413be54359acd4db26b9",
+        "android_client_info": {
+          "package_name": "com.sarim.dealersapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAE03wJlYxe4jhai62IXNkH79hkvTZH0nE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+GSEOF
+          echo "--- google-services.json written ---"
+          cat android/app/google-services.json
+
+          # ── C. Update app package name to match google-services.json ─
+          sed -i 's/com\.sarim\.biz/com.sarim.dealersapp/g' \
+            android/app/src/main/AndroidManifest.xml
+          sed -i 's/applicationId "com\.sarim\.biz"/applicationId "com.sarim.dealersapp"/g' \
+            android/app/build.gradle
+          echo "--- Package name updated to com.sarim.dealersapp ---"
+
+          # ── D. Add Google Services plugin to build.gradle ───────────
+          # App-level: apply plugin
+          grep -q "google-services" android/app/build.gradle || \
+            echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+
+          # Project-level: add classpath
+          grep -q "google-services" android/build.gradle || \
+            sed -i "s|dependencies {|dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'|" \
+            android/build.gradle
+
+          echo "--- Google Services plugin added ---"
 
       # ─── 10. Add Android platform ──────────────────────────────────
       - name: Add Android platform
@@ -166,14 +254,44 @@ jobs:
       - name: Disable edge-to-edge display
         run: |
           STYLES="android/app/src/main/res/values/styles.xml"
-          if [ -f "$STYLES" ]; then
-            grep -q "android:statusBarColor" "$STYLES" || \
-              sed -i 's|</style>|    <item name="android:statusBarColor">@android:color/white</item>\n</style>|' "$STYLES"
-            grep -q "android:windowTranslucentStatus" "$STYLES" || \
-              sed -i 's|</style>|    <item name="android:windowTranslucentStatus">false</item>\n</style>|' "$STYLES"
-          fi
-          echo "--- Styles patched ---"
-          cat "$STYLES" || true
+
+          # Write a clean styles.xml that disables edge-to-edge completely
+          cat > "$STYLES" << 'STYLESEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:background">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:fitsSystemWindows">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
+STYLESEOF
+
+          # Also fix values-v21 if it exists
+          mkdir -p android/app/src/main/res/values-v21
+          cat > android/app/src/main/res/values-v21/styles.xml << 'STYLESV21EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:background">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:fitsSystemWindows">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
+STYLESV21EOF
+
+          # Patch AndroidManifest to use AppTheme and fitsSystemWindows
+          sed -i 's/android:theme="@style\/AppTheme"/android:theme="@style\/AppTheme" android:fitsSystemWindows="true"/' \
+            android/app/src/main/AndroidManifest.xml || true
+
+          echo "--- Edge-to-edge disabled ---"
+          cat "$STYLES"
 
       # ─── 12. Enable large heap for SQLite WASM ─────────────────────
       - name: Patch AndroidManifest for large heap
@@ -186,32 +304,36 @@ jobs:
       # ─── 12b. Set launcher icons from repo PNG ─────────────────────
       - name: Generate launcher icons from 512.png
         run: |
-          # Install imagemagick for resizing
-          sudo apt-get install -y imagemagick 2>/dev/null | tail -1
+          pip install Pillow --quiet
 
-          SRC="www/512.png"
-          if [ ! -f "$SRC" ]; then SRC="www/192.png"; fi
-          echo "Using icon source: $SRC"
+          python3 << 'ICONEOF'
+from PIL import Image
+import os
 
-          # Android icon sizes per density folder
-          declare -A SIZES=(
-            ["mipmap-mdpi"]=48
-            ["mipmap-hdpi"]=72
-            ["mipmap-xhdpi"]=96
-            ["mipmap-xxhdpi"]=144
-            ["mipmap-xxxhdpi"]=192
-          )
+src = "www/512.png" if os.path.exists("www/512.png") else "www/192.png"
+print(f"Using icon: {src}")
+img = Image.open(src).convert("RGBA")
 
-          for FOLDER in "${!SIZES[@]}"; do
-            SIZE=${SIZES[$FOLDER]}
-            DEST="android/app/src/main/res/$FOLDER"
-            mkdir -p "$DEST"
-            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DEST/ic_launcher.png"
-            convert "$SRC" -resize "${SIZE}x${SIZE}" "$DEST/ic_launcher_round.png"
-            echo "Generated ${SIZE}x${SIZE} → $DEST"
-          done
+sizes = {
+    "mipmap-mdpi": 48,
+    "mipmap-hdpi": 72,
+    "mipmap-xhdpi": 96,
+    "mipmap-xxhdpi": 144,
+    "mipmap-xxxhdpi": 192,
+}
 
-          echo "--- Launcher icons generated ---"
+for folder, size in sizes.items():
+    dest = f"android/app/src/main/res/{folder}"
+    os.makedirs(dest, exist_ok=True)
+    resized = img.resize((size, size), Image.LANCZOS)
+    resized.save(f"{dest}/ic_launcher.png")
+    resized.save(f"{dest}/ic_launcher_round.png")
+    # Also save foreground for adaptive icons
+    resized.save(f"{dest}/ic_launcher_foreground.png")
+    print(f"Generated {size}x{size} -> {dest}")
+
+print("All launcher icons generated!")
+ICONEOF
 
       # ─── 13. Bump versionCode ──────────────────────────────────────
       - name: Bump versionCode
