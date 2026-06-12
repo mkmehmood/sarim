@@ -55,7 +55,18 @@ jobs:
             "android": {
               "allowMixedContent": false,
               "webContentsDebuggingEnabled": false,
-              "loggingBehavior": "none"
+              "loggingBehavior": "none",
+              "backgroundColor": "#ffffff"
+            },
+            "plugins": {
+              "StatusBar": {
+                "overlaysWebView": false,
+                "style": "DARK",
+                "backgroundColor": "#ffffff"
+              },
+              "EdgeToEdge": {
+                "backgroundColor": "#ffffff"
+              }
             }
           }
           CAPEOF
@@ -150,6 +161,19 @@ jobs:
       # ─── 11. Sync Capacitor ────────────────────────────────────────
       - name: Sync Capacitor
         run: npx cap sync android
+
+      # ─── 12a. Disable edge-to-edge (app sits below status bar) ────
+      - name: Disable edge-to-edge display
+        run: |
+          STYLES="android/app/src/main/res/values/styles.xml"
+          if [ -f "$STYLES" ]; then
+            grep -q "android:statusBarColor" "$STYLES" || \
+              sed -i 's|</style>|    <item name="android:statusBarColor">@android:color/white</item>\n</style>|' "$STYLES"
+            grep -q "android:windowTranslucentStatus" "$STYLES" || \
+              sed -i 's|</style>|    <item name="android:windowTranslucentStatus">false</item>\n</style>|' "$STYLES"
+          fi
+          echo "--- Styles patched ---"
+          cat "$STYLES" || true
 
       # ─── 12. Enable large heap for SQLite WASM ─────────────────────
       - name: Patch AndroidManifest for large heap
