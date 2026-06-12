@@ -33,51 +33,151 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # ─── 5. Copy web files into www folder ─────────────────────────
-      - name: Prepare web directory
-        run: |
-          mkdir -p www
-          cp -r *.html *.css *.js *.png *.json sw.js dist www/ 2>/dev/null || true
-          cp -r .well-known www/ 2>/dev/null || true
-          ls www/
-
-      # ─── 6. Install Capacitor ──────────────────────────────────────
+      # ─── 5. Install Capacitor ──────────────────────────────────────
       - name: Install Capacitor
         run: |
           npm init -y
           npm install @capacitor/core @capacitor/cli @capacitor/android --no-package-lock
 
-      # ─── 7. Init Capacitor with www as web dir ──────────────────────
-      - name: Init Capacitor
-        run: npx cap init "SarimBiz" "com.sarim.biz" --web-dir www
+      # ─── 6. Create capacitor.config.json ───────────────────────────
+      - name: Create capacitor config
+        run: |
+          cat > capacitor.config.json << 'CAPEOF'
+          {
+            "appId": "com.sarim.biz",
+            "appName": "SarimBiz",
+            "webDir": "www",
+            "server": {
+              "androidScheme": "https",
+              "hostname": "localhost",
+              "cleartext": false
+            },
+            "android": {
+              "allowMixedContent": false,
+              "webContentsDebuggingEnabled": false,
+              "loggingBehavior": "none"
+            }
+          }
+          CAPEOF
 
-      # ─── 8. Add Android platform ───────────────────────────────────
+      # ─── 7. Copy ALL repo files into www preserving structure ───────
+      - name: Prepare www folder
+        run: |
+          mkdir -p www
+          rsync -av \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='android' \
+            --exclude='www' \
+            --exclude='capacitor.config.json' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            . www/
+
+      # ─── 8. Patch index.html CSP for Capacitor + Firebase ──────────
+      #
+      #  Your app uses:
+      #   - sql.js (WASM SQLite) → needs wasm-unsafe-eval + blob:
+      #   - OPFS / localStorage  → needs capacitor: scheme
+      #   - Firebase Auth/Firestore → needs capacitor: in connect-src
+      #   - upgrade-insecure-requests blocks capacitor:// internally
+      #
+      - name: Patch CSP and localhost for Capacitor
+        run: |
+          # 1. Replace default-src 'none' with permissive Capacitor default
+          sed -i \
+            "s|default-src 'none';|default-src 'self' capacitor: https: blob: data:;|g" \
+            www/index.html
+
+          # 2. Add capacitor: and blob: to script-src (WASM needs blob:)
+          sed -i \
+            "s|script-src  'self' 'unsafe-inline' 'wasm-unsafe-eval'|script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' capacitor: https: blob:|g" \
+            www/index.html
+
+          # 3. Add capacitor: to style-src
+          sed -i \
+            "s|style-src   'self' 'unsafe-inline'|style-src 'self' 'unsafe-inline' capacitor: https:|g" \
+            www/index.html
+
+          # 4. Add capacitor: and blob: to img-src
+          sed -i \
+            "s|img-src     'self' data:|img-src 'self' data: capacitor: https: blob:|g" \
+            www/index.html
+
+          # 5. Add capacitor: to connect-src (Firebase + OPFS calls)
+          sed -i \
+            "s|connect-src 'self'|connect-src 'self' capacitor: https: wss: blob:|g" \
+            www/index.html
+
+          # 6. Add blob: to worker-src (sql-wasm.js worker)
+          sed -i \
+            "s|worker-src  'self';|worker-src 'self' blob:;|g" \
+            www/index.html
+
+          # 7. Remove upgrade-insecure-requests — breaks capacitor:// scheme
+          sed -i \
+            "s|upgrade-insecure-requests;||g" \
+            www/index.html
+
+          # 8. Add manifest-src for capacitor
+          sed -i \
+            "s|manifest-src 'self';|manifest-src 'self' capacitor:;|g" \
+            www/index.html
+
+          echo "--- Patched CSP ---"
+          grep -A 40 "Content-Security-Policy" www/index.html | head -45
+
+      # ─── 9. Patch Firebase authDomain to use localhost ─────────────
+      #   Firebase Auth redirects need localhost when running in APK.
+      #   We update authDomain from *.firebaseapp.com to localhost so
+      #   OAuth popup/redirect works inside the Capacitor WebView.
+      - name: Patch Firebase authDomain for localhost
+        run: |
+          # Patch authDomain in utilities-sales.js
+          sed -i \
+            's|authDomain: "calculator-fabd3\.firebaseapp\.com"|authDomain: "localhost"|g' \
+            www/utilities-sales.js
+
+          # Also add capacitor://localhost to Firebase authorized domains
+          # by patching the firebaseConfig to include it
+          echo "--- Firebase authDomain patched ---"
+          grep "authDomain" www/utilities-sales.js
+
+      # ─── 10. Add Android platform ──────────────────────────────────
       - name: Add Android platform
         run: npx cap add android
 
-      # ─── 9. Sync Capacitor ─────────────────────────────────────────
+      # ─── 11. Sync Capacitor ────────────────────────────────────────
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # ─── 10. Bump versionCode ──────────────────────────────────────
+      # ─── 12. Enable large heap for SQLite WASM ─────────────────────
+      - name: Patch AndroidManifest for large heap
+        run: |
+          sed -i 's/<application/<application android:largeHeap="true"/' \
+            android/app/src/main/AndroidManifest.xml
+          echo "--- AndroidManifest patched ---"
+          grep "largeHeap\|application" android/app/src/main/AndroidManifest.xml | head -5
+
+      # ─── 13. Bump versionCode ──────────────────────────────────────
       - name: Bump versionCode
         run: |
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
 
-      # ─── 11. Grant gradlew permission ──────────────────────────────
+      # ─── 14. Grant gradlew permission ──────────────────────────────
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      # ─── 12. Build debug APK ───────────────────────────────────────
+      # ─── 15. Build debug APK ───────────────────────────────────────
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug --no-daemon
 
-      # ─── 13. Find APK ──────────────────────────────────────────────
+      # ─── 16. Find APK ──────────────────────────────────────────────
       - name: Find APK
         run: find . -name "*.apk" -type f
 
-      # ─── 14. Upload APK ────────────────────────────────────────────
+      # ─── 17. Upload APK ────────────────────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
