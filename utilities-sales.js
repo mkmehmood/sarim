@@ -1765,16 +1765,25 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const seller = document.getElementById('sellerSelect').value;
 const costPerKg = await getCostPriceForStore('STORE_A');
-const salePrice = await getSalePriceForStore('STORE_A');
+const autoSalePrice = await getSalePriceForStore('STORE_A');
 const sold = parseFloat(document.getElementById('totalSold').value) || 0;
 const ret = parseFloat(document.getElementById('returnedQuantity').value) || 0;
 const exp = parseFloat(document.getElementById('expiredQuantity').value) || 0;
+const shared = parseFloat(document.getElementById('sharedQty').value) || 0;
 const cred = parseFloat(document.getElementById('creditSales').value) || 0;
 const prev = parseFloat(document.getElementById('prevCreditReceived').value) || 0;
 const rec = parseFloat(document.getElementById('receivedCash').value) || 0;
-const netSold = Math.max(0, sold - ret - exp);
+const fieldExp = parseFloat(document.getElementById('fieldExpenses').value) || 0;
+const salePrice = autoSalePrice;
+const commissionPerUnit = parseFloat(document.getElementById('commissionPerUnit').value) || 0;
+const commissionPaid = parseFloat(document.getElementById('commissionPaid').value) || 0;
+
+// Net units = total sold minus returns, expired/damaged stock, and any
+// units shared/deducted out. Cash-eligible units further deduct credit
+// sales, since those units haven't been collected as cash yet.
+const netSold = Math.max(0, sold - ret - exp - shared);
 const cashQty = Math.max(0, netSold - cred);
-const expected = (cashQty * salePrice) + prev;
+const expected = (cashQty * salePrice) + prev - fieldExp;
 document.getElementById('totalExpectedCash').textContent = fmtAmt(safeValue(expected));
 const diff = rec - expected;
 const box = document.getElementById('discrepancyBox');
@@ -1789,6 +1798,20 @@ if (_discEl) _discEl.innerText = `SHORT: ${fmtAmt(Math.abs(diff))}`;
 if (box) box.className = 'result-box discrepancy-ok';
 if (_discEl) _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 }
+
+// Commission accounting: earned on net units sold (before the credit
+// split, since commission is owed on product sold regardless of
+// whether cash was collected yet), minus whatever's already been paid.
+const grossCommission = commissionPerUnit * netSold;
+const commissionPayable = Math.max(0, grossCommission - commissionPaid);
+const grossEl = document.getElementById('grossCommissionEarned');
+const paidEl = document.getElementById('commissionPaidDisplay');
+const payableEl = document.getElementById('commissionPayableDisplay');
+const payableBox = document.getElementById('commissionPayableBox');
+if (grossEl) grossEl.textContent = fmtAmt(safeValue(grossCommission));
+if (paidEl) paidEl.textContent = fmtAmt(safeValue(commissionPaid));
+if (payableEl) payableEl.textContent = fmtAmt(safeValue(commissionPayable));
+if (payableBox) payableBox.className = commissionPayable > 0.01 ? 'result-box discrepancy-alert' : 'result-box discrepancy-ok';
 }
 
 const firebaseConfig = {
@@ -2427,9 +2450,13 @@ const date = document.getElementById('sale-date').value;
 const sold = parseFloat(document.getElementById('totalSold').value) || 0;
 const ret = parseFloat(document.getElementById('returnedQuantity').value) || 0;
 const exp = parseFloat(document.getElementById('expiredQuantity').value) || 0;
+const shared = parseFloat(document.getElementById('sharedQty').value) || 0;
 const cred = parseFloat(document.getElementById('creditSales').value) || 0;
 const prev = parseFloat(document.getElementById('prevCreditReceived').value) || 0;
 const rec = parseFloat(document.getElementById('receivedCash').value) || 0;
+const fieldExp = parseFloat(document.getElementById('fieldExpenses').value) || 0;
+const commissionPerUnit = parseFloat(document.getElementById('commissionPerUnit').value) || 0;
+const commissionPaid = parseFloat(document.getElementById('commissionPaid').value) || 0;
 let selectedStore = null;
 if (ret > 0) {
 if (!window._returnStore) {
@@ -2446,19 +2473,25 @@ if(salePrice <= 0) return showToast('Please set a sale price in Factory Formulas
 if(ret > sold) return showToast('Returned quantity cannot exceed total sold', 'warning', 3000);
 if(exp < 0) return showToast('Expired quantity cannot be negative', 'warning', 3000);
 if(ret < 0) return showToast('Returned quantity cannot be negative', 'warning', 3000);
+if(shared < 0) return showToast('Shared (deduction) quantity cannot be negative', 'warning', 3000);
 if(cred < 0) return showToast('Credit sales cannot be negative', 'warning', 3000);
 if(prev < 0) return showToast('Previous credit received cannot be negative', 'warning', 3000);
 if(rec < 0) return showToast('Received cash cannot be negative', 'warning', 3000);
-if((ret + exp) > sold) return showToast('Combined returned + expired quantity cannot exceed total sold', 'warning', 3000);
-const netSold = Math.max(0, sold - ret - exp);
+if(fieldExp < 0) return showToast('Field expenses cannot be negative', 'warning', 3000);
+if(commissionPerUnit < 0) return showToast('Commission per unit cannot be negative', 'warning', 3000);
+if(commissionPaid < 0) return showToast('Commission paid cannot be negative', 'warning', 3000);
+if((ret + exp + shared) > sold) return showToast('Combined returned + expired + shared quantity cannot exceed total sold', 'warning', 3000);
+const netSold = Math.max(0, sold - ret - exp - shared);
 if(cred > netSold) return showToast('Credit sales cannot exceed net sold quantity', 'warning', 3000);
 const cashQty = Math.max(0, netSold - cred);
 const creditValue = cred * salePrice;
 const revenue = netSold * salePrice;
 const totalCost = netSold * costPerKg;
 const profit = revenue - totalCost;
-const totalExpected = (cashQty * salePrice) + prev;
+const totalExpected = (cashQty * salePrice) + prev - fieldExp;
 const diff = rec - totalExpected;
+const grossCommission = commissionPerUnit * netSold;
+const commissionPayable = Math.max(0, grossCommission - commissionPaid);
 let statusText = "PERFECT MATCH ";
 let statusClass = "result-box discrepancy-ok";
 if (Math.abs(diff) > 0.01) {
@@ -2497,12 +2530,18 @@ totalSold: Number(safeNumber(sold, 0).toFixed(2)),
 returned: Number(safeNumber(ret, 0).toFixed(2)),
 returnStore: selectedStore ? selectedStore.value : null,
 expired: Number(safeNumber(exp, 0).toFixed(2)),
+shared: Number(safeNumber(shared, 0).toFixed(2)),
 creditQty: Number(safeNumber(cred, 0).toFixed(2)),
 cashQty: Number(safeNumber(cashQty, 0).toFixed(2)),
 creditValue: Number(safeNumber(creditValue, 0).toFixed(2)),
 prevColl: Number(safeNumber(prev, 0).toFixed(2)),
+fieldExpenses: Number(safeNumber(fieldExp, 0).toFixed(2)),
 totalExpected: Number(safeNumber(totalExpected, 0).toFixed(2)),
 received: Number(safeNumber(rec, 0).toFixed(2)),
+commissionPerUnit: Number(safeNumber(commissionPerUnit, 0).toFixed(2)),
+commissionPaid: Number(safeNumber(commissionPaid, 0).toFixed(2)),
+grossCommission: Number(safeNumber(grossCommission, 0).toFixed(2)),
+commissionPayable: Number(safeNumber(commissionPayable, 0).toFixed(2)),
 statusText: statusText,
 statusClass: statusClass,
 linkedSalesIds: [],
@@ -2532,9 +2571,13 @@ salesHistory.push(entry);
 document.getElementById('totalSold').value = '';
 document.getElementById('returnedQuantity').value = '';
 document.getElementById('expiredQuantity').value = '';
+document.getElementById('sharedQty').value = '';
 document.getElementById('creditSales').value = '';
 document.getElementById('prevCreditReceived').value = '';
 document.getElementById('receivedCash').value = '';
+document.getElementById('fieldExpenses').value = '';
+document.getElementById('commissionPerUnit').value = '';
+document.getElementById('commissionPaid').value = '';
 document.getElementById('returnStoreSection').classList.add('hidden');
 document.getElementById('expiredSection').classList.add('hidden');
 showToast(`Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');

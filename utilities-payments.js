@@ -39,7 +39,7 @@ const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
 let history; history = await sqliteStore.get('noman_history', []);
 const comp = {};
-salesRepsList.forEach(rep => { comp[rep] = {prof:0, rev:0, sold:0, ret:0, exp:0, cred:0, cash:0, coll:0, giv:0, cost:0}; });
+salesRepsList.forEach(rep => { comp[rep] = {prof:0, rev:0, sold:0, ret:0, exp:0, shared:0, cred:0, cash:0, coll:0, giv:0, cost:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0}; });
 history.forEach(h => {
 const hDate = new Date(h.date);
 const hYear = hDate.getFullYear();
@@ -61,10 +61,15 @@ comp[h.seller].cost += (h.totalCost || 0);
 comp[h.seller].sold += h.totalSold;
 comp[h.seller].ret += h.returned;
 comp[h.seller].exp += (h.expired || 0);
+comp[h.seller].shared += (h.shared || 0);
 comp[h.seller].cred += h.creditQty;
 comp[h.seller].cash += h.cashQty;
 comp[h.seller].coll += h.prevColl;
 comp[h.seller].giv += h.creditValue;
+comp[h.seller].fieldExp += (h.fieldExpenses || 0);
+comp[h.seller].grossCommission += (h.grossCommission || 0);
+comp[h.seller].commissionPaid += (h.commissionPaid || 0);
+comp[h.seller].commissionPayable += (h.commissionPayable || 0);
 }
 });
 return comp;
@@ -100,6 +105,7 @@ let html = `<div class="card liquid-card ${highlightClass}"${dateAttr}>${badge}<
 <p><span>Total Sold:</span> <span class="qty-val">${safeValue(data.sold).toFixed(2)}</span></p>
 <p><span>Returned:</span> <span class="qty-val">${safeValue(data.ret).toFixed(2)}</span></p>
 ${safeValue(data.expired) > 0 ? `<p><span>Expired (→ CHORA):</span> <span class="cost-val">${safeValue(data.expired).toFixed(2)}</span></p>` : ''}
+${safeValue(data.shared) > 0 ? `<p><span>Shared (Deduction):</span> <span class="cost-val">${safeValue(data.shared).toFixed(2)}</span></p>` : ''}
 <p><span>Cash Qty:</span> <span class="qty-val">${safeValue(data.cash).toFixed(2)}</span></p>
 <p><span>Credit Qty:</span> <span class="qty-val">${safeValue(data.cred).toFixed(2)}</span></p>
 <hr>
@@ -109,9 +115,14 @@ ${safeValue(data.expired) > 0 ? `<p><span>Expired (→ CHORA):</span> <span clas
 <p><span>Credit In:</span> <span class="profit-val">${fmtAmt(collected)}</span></p>
 <p><span>Net Debt:</span> <span class="${balClass}">${fmtAmt(balance)}</span></p>
 <hr>
+${safeValue(data.fieldExp) > 0 ? `<p><span>Field Expenses:</span> <span class="cost-val">${fmtAmt(safeValue(data.fieldExp))}</span></p>` : ''}
 <p><span>Expected Cash:</span> <span class="qty-val" style="color:var(--text-main);">${fmtAmt(expected)}</span></p>
 <p><span>Received Cash:</span> <span class="qty-val" style="font-weight:800; color:var(--text-main);">${safeNumber(received, 0).toFixed(2)}</span></p>
 <p><span>Discrepancy:</span> <span class="${discClass}">${discText}</span></p>
+${(safeValue(data.grossCommission) > 0 || safeValue(data.commissionPaid) > 0) ? `<hr>
+<p><span>Commission Earned:</span> <span class="rev-val">${fmtAmt(safeValue(data.grossCommission))}</span></p>
+<p><span>Commission Paid:</span> <span class="profit-val">${fmtAmt(safeValue(data.commissionPaid))}</span></p>
+<p><span>Commission Payable:</span> <span class="${safeValue(data.commissionPayable) > 0.01 ? 'cost-val' : 'units-available-good'}">${fmtAmt(safeValue(data.commissionPayable))}</span></p>` : ''}
 `;
 if (isHistory) {
 html += `
@@ -249,11 +260,11 @@ if (a.date !== searchDate && b.date === searchDate) return 1;
 return b.timestamp - a.timestamp;
 });
 const ranges = {
-d: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-w: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-m: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-y: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 },
-a: { sold:0, ret:0, expired:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0 }
+d: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
+w: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
+m: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
+y: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
+a: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 }
 };
 const list = document.getElementById('historyList');
 const _hlParts = [];
@@ -266,6 +277,7 @@ dateTitle,
 sold: h.totalSold,
 ret: h.returned,
 expired: h.expired,
+shared: h.shared,
 cash: h.cashQty,
 cred: h.creditQty,
 revenue: h.revenue,
@@ -274,6 +286,10 @@ creditVal: h.creditValue,
 collected: h.prevColl,
 expected: h.totalExpected,
 received: h.received,
+fieldExp: h.fieldExpenses,
+grossCommission: h.grossCommission,
+commissionPaid: h.commissionPaid,
+commissionPayable: h.commissionPayable,
 statusClass: h.statusClass,
 statusText: h.statusText,
 _rawDate: h.date
@@ -336,11 +352,16 @@ const metrics = [
 { label: 'Qty Sold', key: 'sold', cls: null },
 { label: 'Returns', key: 'ret', cls: null },
 { label: 'Expired (→ CHORA)', key: 'exp', cls: 'cost-val' },
+{ label: 'Shared (Deduction)', key: 'shared', cls: 'cost-val' },
 { label: 'Total Cost', key: 'cost', cls: 'cost-val' },
 { label: 'Gross Revenue', key: 'rev', cls: 'rev-val' },
 { label: 'Net Profit', key: 'prof', cls: 'profit-val', winner: true },
 { label: 'Credit Issued', key: 'giv', cls: null },
 { label: 'Credit Recovered', key: 'coll', cls: null },
+{ label: 'Field Expenses', key: 'fieldExp', cls: 'cost-val' },
+{ label: 'Commission Earned', key: 'grossCommission', cls: 'rev-val' },
+{ label: 'Commission Paid', key: 'commissionPaid', cls: 'profit-val' },
+{ label: 'Commission Payable', key: 'commissionPayable', cls: 'cost-val' },
 ];
 document.getElementById('comparisonBody').innerHTML = metrics.map(m => {
 const cells = repNames.map(r => {
@@ -361,6 +382,7 @@ function addToRange(range, h) {
 range.sold += h.totalSold;
 range.ret += h.returned;
 range.expired = (range.expired || 0) + (h.expired || 0);
+range.shared = (range.shared || 0) + (h.shared || 0);
 range.cash += h.cashQty;
 range.cred += h.creditQty;
 range.creditVal += h.creditValue;
@@ -369,6 +391,10 @@ range.profit += h.profit;
 range.revenue += h.revenue;
 range.expected += (h.totalExpected || 0);
 range.received += (h.received || 0);
+range.fieldExp = (range.fieldExp || 0) + (h.fieldExpenses || 0);
+range.grossCommission = (range.grossCommission || 0) + (h.grossCommission || 0);
+range.commissionPaid = (range.commissionPaid || 0) + (h.commissionPaid || 0);
+range.commissionPayable = (range.commissionPayable || 0) + (h.commissionPayable || 0);
 }
 
 function updateSalesCharts(comp) {

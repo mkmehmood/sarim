@@ -1988,22 +1988,28 @@ No records found
 <h1 class="shimmer-text u-heading-bold">Calculator</h1>
 </header>
 <div class="section liquid-card chart-card">
-<label>Sales Representative:</label>
+<div class="grid-inputs">
+<div class="field">
+<label>Sales Representative</label>
 <div style="position:relative;">
 <button id="sellerSelectBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="(function(b){var sel=document.getElementById('sellerSelect');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_seller',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;(async()=>{await loadSalesData();})();});})( this)"><span>COMPARISON </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <select id="sellerSelect" style="display:none;">
 <option value="COMBINED">COMPARISON</option>
 </select>
 </div>
-<div id="entrySection" class="hidden">
-<div class="grid-inputs">
+</div>
 <div class="field"><label>Date</label><input type="date" id="sale-date" onchange="(async () => { await loadSalesData(); setPerfOverviewMode(currentPerfOverviewMode || 'day'); })()"></div>
+</div>
+<div id="entrySection" class="hidden">
+<div class="u-heading-accent" style="margin-top:15px;">Product Quantities</div>
+<div class="grid-inputs">
 <div class="field">
 <label>Total Sold Qty</label>
 <input type="number" id="totalSold" readonly style="background:rgba(37, 99, 235, 0.1); color:var(--text-main); font-weight:800; border:1px solid var(--accent);" onclick="handleTripleTap(this, 'sales')">
 </div>
 <div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
-<div class="field"><label>Expired Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
+<div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
+<div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
 <div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
 <label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group" style="margin-top: 8px;">
@@ -2020,14 +2026,24 @@ No records found
 * Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
 </div>
 </div>
-</div>
-<div class="grid-inputs">
 <div class="field"><label>Credit Sales Qty</label><input type="number" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+</div>
+<div class="u-heading-accent" style="margin-top:15px;">Commission</div>
+<div class="grid-inputs">
+<div class="field"><label>Commission / Unit</label><input type="number" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" oninput="calculateSales()" placeholder="0"></div>
+</div>
+<div class="u-heading-accent" style="margin-top:15px;">Collections &amp; Handover Cash</div>
+<div class="grid-inputs">
 <div class="field"><label>Recovered Credit</label><input type="number" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
-<div class="field"><label>Physical Cash In Hand</label><input type="number" id="receivedCash" oninput="calculateSales()"></div>
+<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Physical Cash Received from Rep</label><input type="number" id="receivedCash" oninput="calculateSales()"></div>
 </div>
 <div class="result-box">Expected Cash: <span id="totalExpectedCash">0.00</span></div>
 <div class="result-box" id="discrepancyBox">Status: <span id="discrepancyStatus">OK</span></div>
+<div class="result-box">Gross Commission Earned: <span id="grossCommissionEarned">0.00</span></div>
+<div class="result-box">Commission Paid: <span id="commissionPaidDisplay">0.00</span></div>
+<div class="result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
 <button class="btn btn-noman" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
 </div>
 <div id="combinedSection" class="hidden">
@@ -2730,7 +2746,6 @@ No records found
 <span id="offline-queue-badge" title="Pending uploads when back online">0 pending</span>
 </div>
 
-</div>
 <script src="constants.js" defer></script>
 <script src="business.js" defer></script>
 <script src="admin-data.js" defer></script>
