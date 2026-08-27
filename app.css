@@ -1067,15 +1067,24 @@ margin-bottom: 15px;
 flex-wrap: wrap;
 gap: 10px;
 }
-.overlay-header__row3 select.store-selector { flex:1; font-size:0.75rem; padding:6px 10px; }
+.overlay-header__row3 select.store-selector { flex:1; font-size:16px; padding:6px 10px; }
 .overlay-header__row3 .btn-pdf { flex-shrink:0; padding:6px 12px; font-size:0.75rem; }
 #sales-summary-card { transition: background 0.25s, border-color 0.25s; }
 #sales-summary-toggle, #perf-overview-toggle { flex-shrink: 0; }
 .grid-inputs {
 display: grid;
-grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+/* Always exactly two columns, on every device — a fixed track count
+   instead of auto-fit means the layout no longer depends on viewport
+   width, so date/text/number/select fields always pair up the same
+   way on phones, tablets, and desktop. */
+grid-template-columns: repeat(2, 1fr);
 gap: 12px;
 margin-bottom: 15px;
+/* Cap the row's width so on wide screens the two fields stay a
+   sensible, comfortable size instead of stretching to fill a
+   1200px-wide card. Below this width it behaves exactly as before
+   (100% of the available space). */
+max-width: 640px;
 }
 .field {
 display: flex;
@@ -1147,7 +1156,7 @@ border: none;
 border-bottom: 1.5px dashed rgba(255,255,255,0.35);
 border-radius: 0;
 color: var(--text-main);
-font-size: 0.875rem;
+font-size: 16px;
 transition: border-color 0.2s;
 }
 .search-bar:focus {
@@ -1814,7 +1823,10 @@ line-height: 1;
 }
 input, select, textarea {
 font-family: 'Geist', system-ui, sans-serif;
-font-size: 0.9375rem;
+/* 16px minimum avoids iOS Safari's auto-zoom-on-focus for data-entry
+   fields (see the matching !important rules further down for the
+   device-consistency fix). */
+font-size: 16px;
 font-weight: 400;
 letter-spacing: -0.005em;
 }
@@ -2095,7 +2107,7 @@ transition: opacity 0.18s ease;
 width: 100%;
 min-width: 0;
 padding: 7px 5px;
-font-size: 0.8rem;
+font-size: 16px;
 }
 .factory-mat-select {
 position: relative;
@@ -2105,7 +2117,7 @@ min-width: 0;
 width: 100%;
 min-width: 0;
 padding: 7px 5px;
-font-size: 0.8rem;
+font-size: 16px;
 box-sizing: border-box;
 }
 .factory-mat-dropdown {
@@ -3772,7 +3784,7 @@ min-height: 36px !important;
 max-height: 36px !important;
 padding: 0 4px !important;
 border-radius: 0 !important;
-font-size: 0.8rem !important;
+font-size: 16px !important;
 font-weight: 500 !important;
 background: transparent !important;
 border: none !important;
@@ -3872,7 +3884,11 @@ min-height: 38px !important;
 max-height: 38px !important;
 padding: 0 4px !important;
 border-radius: 0 !important;
-font-size: 0.84rem !important;
+/* 16px minimum: below this, iOS Safari auto-zooms the page on focus
+   (Android does not), which made these fields feel inconsistent
+   across devices. Box height/line-height are unchanged so it still
+   reads visually the same size. */
+font-size: 16px !important;
 box-sizing: border-box !important;
 width: 100% !important;
 background: transparent !important;
@@ -3902,7 +3918,7 @@ min-height: 36px !important;
 border-radius: 0 !important;
 padding: 0 4px !important;
 box-sizing: border-box !important;
-font-size: 0.82rem !important;
+font-size: 16px !important;
 background: transparent !important;
 border: none !important;
 border-bottom: 1.5px dashed rgba(255,255,255,0.35) !important;
@@ -4407,7 +4423,7 @@ to   { opacity:1; transform:translateX(0); }
   background: rgba(255,255,255,0.04);
   border: 1.5px solid rgba(255,255,255,0.10);
   border-radius: var(--radius-lg, 12px);
-  color: var(--text-main); font-size: 0.87rem;
+  color: var(--text-main); font-size: 16px;
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
@@ -5176,12 +5192,10 @@ to   { transform: translateY(100%); opacity: 0;   }
   }
 }
 
-@media screen and (max-width: 449px) {
-  .grid-inputs {
-    grid-template-columns: 1fr !important;
-    gap: 10px !important;
-  }
-}
+/* .grid-inputs intentionally has no narrow-screen override — it stays
+   a fixed 2-column grid at every width so field pairs (date/text/
+   number/select, etc.) are laid out identically on phones as on
+   desktop. See the base .grid-inputs rule above. */
 
 @media screen and (max-width: 449px) {
   .section,
@@ -5264,7 +5278,7 @@ to   { transform: translateY(100%); opacity: 0;   }
   input,
   select,
   textarea {
-    font-size: 0.9rem !important;
+    font-size: 16px !important;
     padding: 8px 4px !important;
   }
   label {
@@ -5677,4 +5691,189 @@ font-size: 0.62rem;
 color: var(--text-muted);
 padding: 2px 7px;
 white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Custom date picker (replaces native input[type=date] OS chrome so  */
+/* the UI is pixel-identical across iOS/Android/desktop).             */
+/* ------------------------------------------------------------------ */
+.cdp-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+.cdp-btn {
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  padding: 0 4px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1.5px dashed rgba(255,255,255,0.35);
+  background: transparent;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: left;
+}
+.cdp-btn:focus {
+  outline: none;
+  border-bottom: 1.5px dashed rgba(255,255,255,0.55);
+}
+.cdp-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cdp-btn-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.cdp-btn-disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+[data-theme="light"] .cdp-btn {
+  border-bottom: 1.5px dashed rgba(15,23,42,0.25);
+  color: var(--text-main);
+}
+[data-theme="light"] .cdp-btn:focus {
+  border-bottom: 1.5px dashed rgba(15,23,42,0.45);
+}
+
+.cdp-popover {
+  /* Rendered as a portal directly under document.body (see
+     custom-date-picker.js) so that no ancestor's `overflow: hidden`
+     (e.g. .liquid-card, used to clip its rounded corners/gradient) can
+     clip it. `position: fixed` + top/left/right/bottom are computed and
+     kept in sync with the trigger button in JS via positionPopover(). */
+  position: fixed;
+  z-index: 9999;
+  width: 250px;
+  max-width: calc(100vw - 24px);
+  background: var(--glass-frosted, var(--glass));
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  box-sizing: border-box;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.cdp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cdp-nav {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cdp-nav:hover { background: var(--glass-raised); }
+.cdp-title {
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: default;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.cdp-title-clickable {
+  cursor: pointer;
+}
+.cdp-title-clickable:hover {
+  background: var(--glass-raised);
+}
+.cdp-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 2px;
+}
+.cdp-weekdays span {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+.cdp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cdp-day {
+  aspect-ratio: 1 / 1;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.74rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cdp-day:hover:not(:disabled) { background: var(--glass-raised); }
+.cdp-day-empty { visibility: hidden; cursor: default; }
+.cdp-day-disabled { opacity: 0.28; cursor: default; }
+.cdp-day-today {
+  box-shadow: inset 0 0 0 1.3px var(--accent);
+  font-weight: 700;
+}
+.cdp-day-selected {
+  background: var(--toggle-opt-active-bg, var(--accent-dim));
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Month/year grids shown when drilling out of the day view via the
+   header title (mirrors native OS date-picker behavior). */
+.cdp-grid-months,
+.cdp-grid-years {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.cdp-cell {
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cdp-cell:hover:not(:disabled) { background: var(--glass-raised); }
+.cdp-cell-disabled { opacity: 0.28; cursor: default; pointer-events: none; }
+.cdp-cell-today {
+  box-shadow: inset 0 0 0 1.3px var(--accent);
+}
+.cdp-cell-selected {
+  background: var(--toggle-opt-active-bg, var(--accent-dim));
+  color: var(--accent);
+  font-weight: 700;
 }

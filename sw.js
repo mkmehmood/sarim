@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.27.08.2026';
+const BUILD_HASH = 'V.27.08.2026.5';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -15,6 +15,7 @@ const ASSETS_TO_CACHE = [
   '/sarim/customers.js',
   '/sarim/rep-sales.js',
   '/sarim/admin-data.js',
+  '/sarim/custom-date-picker.js',
   '/sarim/manifest.json',
   '/sarim/192.png',
   '/sarim/512.png',
