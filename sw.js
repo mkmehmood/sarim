@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.20.06.2026';
+const BUILD_HASH = 'V.27.08.2026';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -59,18 +59,63 @@ const OSM_TILE_ORIGIN = 'https://tile.openstreetmap.org';
 
 const OFFLINE_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
+// Cache one URL, retrying once with `cache: 'reload'` (bypassing the HTTP
+// cache) if the first attempt fails. Never throws — failures are reported
+// back to the caller so a single bad asset can't abort the whole install.
+async function precacheOne(cache, url, opts) {
+  try {
+    const req = typeof url === 'string' ? new Request(url, opts || {}) : url;
+    let res;
+    try {
+      res = await fetch(req, opts || {});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    } catch (e) {
+      // Retry once, forcing a fresh network fetch in case the first
+      // failure was a stale/broken cache entry or a transient blip.
+      res = await fetch(req, Object.assign({}, opts || {}, { cache: 'reload' }));
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    }
+    await cache.put(req, res);
+    return { url: typeof url === 'string' ? url : url.url, ok: true };
+  } catch (e) {
+    return { url: typeof url === 'string' ? url : url.url, ok: false, error: (e && e.message) || String(e) };
+  }
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
 
-      .then((cache) => cache.addAll(ASSETS_TO_CACHE))
+      // IMPORTANT: do NOT use cache.addAll() here. addAll() is all-or-
+      // nothing — if a single asset in the list fails to fetch (a
+      // transient network blip, a 404, etc.) the entire install step
+      // rejects, skipWaiting() never runs, and the app ends up with
+      // *no* offline cache at all despite everything else being wired
+      // up for offline use. Precaching each asset independently means
+      // one bad file degrades gracefully instead of breaking offline
+      // support entirely.
+      .then((cache) =>
+        Promise.all(ASSETS_TO_CACHE.map((url) => precacheOne(cache, url)))
+          .then((results) => {
+            const failed = results.filter((r) => !r.ok);
+            if (failed.length) {
+              console.warn('[SW] Some app-shell assets failed to precache:', failed);
+            }
+            const criticalFailed = failed.some((r) => r.url.endsWith('/') || r.url.endsWith('index.html'));
+            if (criticalFailed) {
+              // The app shell itself couldn't be cached — surface this
+              // as a real install failure so the browser retries later
+              // instead of silently pretending offline mode is ready.
+              throw new Error('Failed to precache app shell: ' + JSON.stringify(failed));
+            }
+            return cache;
+          })
+      )
 
-      .then(() =>
-        caches.open(CACHE_NAME).then((cache) =>
-          Promise.allSettled(
-            CDN_ASSETS_TO_PRECACHE.map((url) =>
-              cache.add(new Request(url, { mode: 'cors', credentials: 'omit' })).catch(() => {})
-            )
+      .then((cache) =>
+        Promise.allSettled(
+          CDN_ASSETS_TO_PRECACHE.map((url) =>
+            cache.add(new Request(url, { mode: 'cors', credentials: 'omit' })).catch(() => {})
           )
         )
       )
