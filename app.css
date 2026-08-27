@@ -1067,7 +1067,7 @@ margin-bottom: 15px;
 flex-wrap: wrap;
 gap: 10px;
 }
-.overlay-header__row3 select.store-selector { flex:1; font-size:16px; padding:6px 10px; }
+.overlay-header__row3 select.store-selector { flex:1; font-size:0.85rem; padding:6px 10px; }
 .overlay-header__row3 .btn-pdf { flex-shrink:0; padding:6px 12px; font-size:0.75rem; }
 #sales-summary-card { transition: background 0.25s, border-color 0.25s; }
 #sales-summary-toggle, #perf-overview-toggle { flex-shrink: 0; }
@@ -1110,7 +1110,7 @@ font-family: inherit;
 transition: border-color 0.2s, box-shadow 0.2s;
 font-weight: 500;
 -webkit-appearance: none;
-font-size: 16px;
+font-size: 0.85rem;
 caret-color: var(--accent);
 }
 textarea {
@@ -1124,7 +1124,7 @@ outline: none;
 font-family: inherit;
 transition: border-color 0.2s, box-shadow 0.2s;
 font-weight: 500;
-font-size: 16px;
+font-size: 0.85rem;
 resize: vertical;
 min-height: 80px;
 caret-color: var(--accent);
@@ -1156,7 +1156,7 @@ border: none;
 border-bottom: 1.5px dashed rgba(255,255,255,0.35);
 border-radius: 0;
 color: var(--text-main);
-font-size: 16px;
+font-size: 0.85rem;
 transition: border-color 0.2s;
 }
 .search-bar:focus {
@@ -1823,10 +1823,15 @@ line-height: 1;
 }
 input, select, textarea {
 font-family: 'Geist', system-ui, sans-serif;
-/* 16px minimum avoids iOS Safari's auto-zoom-on-focus for data-entry
-   fields (see the matching !important rules further down for the
-   device-consistency fix). */
-font-size: 16px;
+/* Matches the app's general type scale (see .u-fs-md) rather than the
+   16px iOS previously used to suppress Safari's auto-zoom-on-focus for
+   data-entry fields. That protection is intentionally traded away here
+   for visual consistency with the rest of the UI — tapping into a field
+   below 16px will make iOS Safari (not Android) zoom the page in, since
+   the viewport's `user-scalable=no` doesn't suppress that specific
+   behavior. Revert to 16px on the rules below (same fix, same comment)
+   if that regression turns out to matter more than the mismatch did. */
+font-size: 0.85rem;
 font-weight: 400;
 letter-spacing: -0.005em;
 }
@@ -2107,7 +2112,7 @@ transition: opacity 0.18s ease;
 width: 100%;
 min-width: 0;
 padding: 7px 5px;
-font-size: 16px;
+font-size: 0.85rem;
 }
 .factory-mat-select {
 position: relative;
@@ -2117,7 +2122,7 @@ min-width: 0;
 width: 100%;
 min-width: 0;
 padding: 7px 5px;
-font-size: 16px;
+font-size: 0.85rem;
 box-sizing: border-box;
 }
 .factory-mat-dropdown {
@@ -3784,7 +3789,9 @@ min-height: 36px !important;
 max-height: 36px !important;
 padding: 0 4px !important;
 border-radius: 0 !important;
-font-size: 16px !important;
+/* See the `input, select, textarea` rule earlier in this file for why
+   this is 0.85rem instead of the 16px iOS zoom-prevention floor. */
+font-size: 0.85rem !important;
 font-weight: 500 !important;
 background: transparent !important;
 border: none !important;
@@ -3884,11 +3891,12 @@ min-height: 38px !important;
 max-height: 38px !important;
 padding: 0 4px !important;
 border-radius: 0 !important;
-/* 16px minimum: below this, iOS Safari auto-zooms the page on focus
-   (Android does not), which made these fields feel inconsistent
-   across devices. Box height/line-height are unchanged so it still
-   reads visually the same size. */
-font-size: 16px !important;
+/* Was 16px !important as an iOS-Safari zoom-on-focus fix (below 16px,
+   iOS zooms the page in on focus; Android doesn't). Dropped to match
+   the app's general 0.85rem type scale instead, trading that fix away
+   for visual consistency — see the `input, select, textarea` rule
+   earlier in this file. */
+font-size: 0.85rem !important;
 box-sizing: border-box !important;
 width: 100% !important;
 background: transparent !important;
@@ -3918,7 +3926,7 @@ min-height: 36px !important;
 border-radius: 0 !important;
 padding: 0 4px !important;
 box-sizing: border-box !important;
-font-size: 16px !important;
+font-size: 0.85rem !important;
 background: transparent !important;
 border: none !important;
 border-bottom: 1.5px dashed rgba(255,255,255,0.35) !important;
@@ -4423,7 +4431,7 @@ to   { opacity:1; transform:translateX(0); }
   background: rgba(255,255,255,0.04);
   border: 1.5px solid rgba(255,255,255,0.10);
   border-radius: var(--radius-lg, 12px);
-  color: var(--text-main); font-size: 16px;
+  color: var(--text-main); font-size: 0.85rem;
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
@@ -5278,7 +5286,7 @@ to   { transform: translateY(100%); opacity: 0;   }
   input,
   select,
   textarea {
-    font-size: 16px !important;
+    font-size: 0.85rem !important;
     padding: 8px 4px !important;
   }
   label {
@@ -5713,9 +5721,14 @@ white-space: nowrap;
   border-bottom: 1.5px dashed rgba(255,255,255,0.35);
   background: transparent;
   color: var(--text-main);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 500;
+  /* Match the app's canonical input typography (see the `input, select,
+     textarea` rule above) so the date-picker's trigger button — which
+     visually replaces a text input — reads identically to every other
+     field instead of looking smaller/lighter or, previously, larger. */
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: -0.005em;
   display: flex;
   align-items: center;
   justify-content: space-between;
