@@ -1,12 +1,6 @@
 window._GOOGLE_CLIENT_ID = '124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com';
 
-var currentActiveTab, currentCashTrackerMode, currentCompMode, currentCustomerChartMode;
-var currentEntityId, currentExpenseOverlayName, currentFactoryDate, currentFactoryEntryStore;
-var currentFactorySummaryMode, currentIndMetric, currentIndMode, currentMfgMode;
-var currentOverviewMode, currentPerfOverviewMode, currentProductionView, currentRepAnalyticsMode;
-var currentSalesSummaryMode, currentStore, currentStoreComparisonMetric, custTransactionMode;
-var editingEntityId, editingFactoryInventoryId, entityListViewType, entityViewMode;
-var repTransactionMode, selectedEntityId;
+var entityListViewType;
 
 const APP_CONFIG = Object.freeze({
   CACHE_VERSION: 'V.30.08.2026',
