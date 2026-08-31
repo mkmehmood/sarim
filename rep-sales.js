@@ -299,7 +299,7 @@ if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 
 async function saveRepTransaction() {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+let repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const submitBtn = document.querySelector('#rep-new-transaction-card .btn-main');
 if (submitBtn) {
 if (submitBtn.disabled) return;

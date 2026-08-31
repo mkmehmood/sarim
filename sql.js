@@ -124,10 +124,10 @@ function Yc(){function a(){if(!Wc&&(Wc=!0,f.calledRun=!0,!Ka)){f.noFSInit||ec||(
 f.postRun.shift();Sa.unshift(b)}cb(Sa)}}if(!(0<Ua)){if(f.preRun)for("function"==typeof f.preRun&&(f.preRun=[f.preRun]);f.preRun.length;)Ta();cb(Pa);0<Ua||(f.setStatus?(f.setStatus("Running..."),setTimeout(function(){setTimeout(function(){f.setStatus("")},1);a()},1)):a())}}if(f.preInit)for("function"==typeof f.preInit&&(f.preInit=[f.preInit]);0<f.preInit.length;)f.preInit.pop()();Yc();
 
         return Module;
-    }); 
+    });
 
   return initSqlJsPromise;
-} 
+}
 
 if (typeof exports === 'object' && typeof module === 'object'){
     module.exports = initSqlJs;

@@ -1,4 +1,3 @@
-
 async function toggleCustomerCreditReceived(id, event) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 if (event) {
@@ -39,7 +38,7 @@ const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
 let history; history = await sqliteStore.get('noman_history', []);
 const comp = {};
-salesRepsList.forEach(rep => { comp[rep] = {prof:0, rev:0, sold:0, ret:0, exp:0, shared:0, cred:0, cash:0, coll:0, giv:0, cost:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0}; });
+salesRepsList.forEach(rep => { comp[rep] = {prof:0, rev:0, sold:0, ret:0, exp:0, shared:0, cred:0, cash:0, coll:0, giv:0, cost:0, fieldExp:0, commissionPaid:0}; });
 history.forEach(h => {
 const hDate = new Date(h.date);
 const hYear = hDate.getFullYear();
@@ -67,9 +66,7 @@ comp[h.seller].cash += h.cashQty;
 comp[h.seller].coll += h.prevColl;
 comp[h.seller].giv += h.creditValue;
 comp[h.seller].fieldExp += (h.fieldExpenses || 0);
-comp[h.seller].grossCommission += (h.grossCommission || 0);
 comp[h.seller].commissionPaid += (h.commissionPaid || 0);
-comp[h.seller].commissionPayable += (h.commissionPayable || 0);
 }
 });
 return comp;
@@ -119,10 +116,8 @@ ${safeValue(data.fieldExp) > 0 ? `<p><span>Field Expenses:</span> <span class="c
 <p><span>Expected Cash:</span> <span class="qty-val" style="color:var(--text-main);">${fmtAmt(expected)}</span></p>
 <p><span>Received Cash:</span> <span class="qty-val" style="font-weight:800; color:var(--text-main);">${safeNumber(received, 0).toFixed(2)}</span></p>
 <p><span>Discrepancy:</span> <span class="${discClass}">${discText}</span></p>
-${(safeValue(data.grossCommission) > 0 || safeValue(data.commissionPaid) > 0) ? `<hr>
-<p><span>Commission Earned:</span> <span class="rev-val">${fmtAmt(safeValue(data.grossCommission))}</span></p>
-<p><span>Commission Paid:</span> <span class="profit-val">${fmtAmt(safeValue(data.commissionPaid))}</span></p>
-<p><span>Commission Payable:</span> <span class="${safeValue(data.commissionPayable) > 0.01 ? 'cost-val' : 'units-available-good'}">${fmtAmt(safeValue(data.commissionPayable))}</span></p>` : ''}
+${safeValue(data.commissionPaid) > 0 ? `<hr>
+<p><span>Commission Paid:</span> <span class="profit-val">${fmtAmt(safeValue(data.commissionPaid))}</span></p>` : ''}
 `;
 if (isHistory) {
 html += `
@@ -260,11 +255,11 @@ if (a.date !== searchDate && b.date === searchDate) return 1;
 return b.timestamp - a.timestamp;
 });
 const ranges = {
-d: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
-w: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
-m: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
-y: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 },
-a: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, grossCommission:0, commissionPaid:0, commissionPayable:0 }
+d: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, commissionPaid:0 },
+w: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, commissionPaid:0 },
+m: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, commissionPaid:0 },
+y: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, commissionPaid:0 },
+a: { sold:0, ret:0, expired:0, shared:0, cash:0, cred:0, creditVal:0, collected:0, profit:0, revenue:0, expected:0, received:0, fieldExp:0, commissionPaid:0 }
 };
 const list = document.getElementById('historyList');
 const _hlParts = [];
@@ -287,9 +282,7 @@ collected: h.prevColl,
 expected: h.totalExpected,
 received: h.received,
 fieldExp: h.fieldExpenses,
-grossCommission: h.grossCommission,
 commissionPaid: h.commissionPaid,
-commissionPayable: h.commissionPayable,
 statusClass: h.statusClass,
 statusText: h.statusText,
 _rawDate: h.date
@@ -359,9 +352,7 @@ const metrics = [
 { label: 'Credit Issued', key: 'giv', cls: null },
 { label: 'Credit Recovered', key: 'coll', cls: null },
 { label: 'Field Expenses', key: 'fieldExp', cls: 'cost-val' },
-{ label: 'Commission Earned', key: 'grossCommission', cls: 'rev-val' },
 { label: 'Commission Paid', key: 'commissionPaid', cls: 'profit-val' },
-{ label: 'Commission Payable', key: 'commissionPayable', cls: 'cost-val' },
 ];
 document.getElementById('comparisonBody').innerHTML = metrics.map(m => {
 const cells = repNames.map(r => {
@@ -392,9 +383,7 @@ range.revenue += h.revenue;
 range.expected += (h.totalExpected || 0);
 range.received += (h.received || 0);
 range.fieldExp = (range.fieldExp || 0) + (h.fieldExpenses || 0);
-range.grossCommission = (range.grossCommission || 0) + (h.grossCommission || 0);
 range.commissionPaid = (range.commissionPaid || 0) + (h.commissionPaid || 0);
-range.commissionPayable = (range.commissionPayable || 0) + (h.commissionPayable || 0);
 }
 
 function updateSalesCharts(comp) {
@@ -6101,9 +6090,9 @@ if (listenerReconnectTimer) {
 clearTimeout(listenerReconnectTimer);
 }
 
-if (typeof scrollRafId !== 'undefined' && scrollRafId !== null) {
-cancelAnimationFrame(scrollRafId);
-scrollRafId = null;
+if (window._scrollRafId != null) {
+cancelAnimationFrame(window._scrollRafId);
+window._scrollRafId = null;
 }
 if (window._rafScrollHandler) {
 window.removeEventListener('scroll', window._rafScrollHandler);
@@ -6408,8 +6397,6 @@ const _overlayStack = (() => {
     'customer-edit-screen':        { closeFn: () => closeStandaloneScreen('customer-edit-screen'),           contentSel: '.screen-body' },
     'rep-customer-management-screen': { closeFn: () => closeStandaloneScreen('rep-customer-management-screen'), contentSel: '.screen-body' },
     'rep-customer-edit-screen':    { closeFn: () => closeStandaloneScreen('rep-customer-edit-screen'),       contentSel: '.screen-body' },
-    'entity-details-screen':       { closeFn: () => closeStandaloneScreen('entity-details-screen'),          contentSel: '.screen-body' },
-    'expense-details-screen':      { closeFn: () => closeStandaloneScreen('expense-details-screen'),         contentSel: '.screen-body' },
     'entityTransactionsOverlay':   { closeFn: () => closeEntityTransactions(),        contentSel: '.factory-overlay-card' },
   };
   function _openLayers() {
@@ -6994,8 +6981,6 @@ window.removeDevice = removeDevice;
 window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
-async function restoreDeviceModeOnLogin(uid) {
-
 function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, assignedUserTabs, remoteApplied) {
   const previousMode = appMode;
   appMode = modeStr;
@@ -7022,7 +7007,8 @@ function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, assignedU
     : `Switching to ${modeLabel}...`, 'info', 2000);
   setTimeout(() => { window.location.reload(); }, 1500);
 }
-
+window._applyModeFromData = _applyModeFromData;
+async function restoreDeviceModeOnLogin(uid) {
 try {
   const localTimestamp = Number(await sqliteStore.get('appMode_timestamp')) || 0;
 
@@ -7103,18 +7089,7 @@ try {
 
 if (doc.metadata.fromCache || doc.metadata.hasPendingWrites) return;
 if (!doc.exists) {
-setTimeout(async () => {
-try {
-const recheck = await deviceRef.get();
-if (!recheck.exists) {
-if (typeof signOut === 'function') {
-showToast('This device has been removed. Logging out…', 'warning', 4000);
-window._forceLogoutSignOut = true;
-setTimeout(() => signOut().catch(() => {}), 1200);
-}
-}
-} catch (_rc) {}
-}, 3000);
+
 return;
 }
 const data = doc.data();

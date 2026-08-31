@@ -3140,7 +3140,7 @@ async function savePersonPhoto(prefix, storageKey) {
     if (pending) {
       const compressed = await _compressPhoto(pending, 1600, 0.88);
       photos[storageKey] = compressed;
-      timestamps[storageKey] = now; // record local write time for future conflict resolution
+      timestamps[storageKey] = now;
     } else {
       delete photos[storageKey];
       delete timestamps[storageKey];

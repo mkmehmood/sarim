@@ -3027,16 +3027,16 @@ async function saveStoreFromForm() {
   const stores = await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]));
 
   if (editIndex >= 0) {
-    // Editing existing store
+
     const s = stores[editIndex];
     if (!s) return;
-    // Check duplicate name
+
     const dup = stores.findIndex((st, i) => i !== editIndex && st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     s.name = nameRaw;
     s.formulaType = formulaType;
   } else {
-    // New store — generate next key
+
     const existingNums = stores.map(s => {
       const m = s.key.match(/^STORE_([A-Z])$/);
       if (m) return m[1].charCodeAt(0) - 65;
@@ -3045,7 +3045,7 @@ async function saveStoreFromForm() {
     const nextNum = existingNums.length ? Math.max(...existingNums) + 1 : 0;
     if (nextNum > 25) { if (typeof showToast === 'function') showToast('Maximum 26 stores allowed', 'warning'); return; }
     const newKey = 'STORE_' + String.fromCharCode(65 + nextNum);
-    // Check duplicate name
+
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     stores.push({ key: newKey, name: nameRaw, formulaType });
@@ -3061,7 +3061,6 @@ async function saveStoreFromForm() {
   if (typeof showToast === 'function') showToast(editIndex >= 0 ? 'Store updated' : 'Store added', 'success');
 }
 window.saveStoreFromForm = saveStoreFromForm;
-// ─────────────────────────────────────────────────────────────────────────────
 
 window.openDataMenu = function() { if(typeof performOneClickSync==='function') performOneClickSync().catch(function(e){console.error('Sync error:',(e&&e.message)||String(e)||'(unknown)')}); };
 window.closeDataMenu = function() {  };
@@ -3401,9 +3400,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var firstActive = document.getElementById('snav-prod');
   if (firstActive) firstActive.classList.add('active');
 
-  // Rebuild dynamic store UI once stores are loaded
   if (typeof rebuildStoreUI === 'function') {
-    // Small delay to let sqliteStore initialize
+
     setTimeout(function() {
       rebuildStoreUI().catch(function(e) { console.warn('[StoreUI]', e && e.message); });
     }, 600);

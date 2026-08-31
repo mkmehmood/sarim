@@ -1,4 +1,3 @@
-
 function setCashTrackerMode(mode) {
 currentCashTrackerMode = mode;
 document.querySelectorAll('#tab-payments .toggle-group .toggle-opt').forEach(opt => {
@@ -281,6 +280,7 @@ document.getElementById('entityTransactionsOverlay').style.display = 'none';
 }
 
 async function savePaymentTransaction() {
+let message = '';
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -436,7 +436,7 @@ if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 }
 
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
-let message = `Payment ${type === 'IN' ? 'received from' : 'made to'} ${entity.name}`;
+message = `Payment ${type === 'IN' ? 'received from' : 'made to'} ${entity.name}`;
 if (isPayable) {
 message += ' (Material purchase settled - liability reduced)';
 }
@@ -972,7 +972,7 @@ cashRatioElement.textContent = (cashRatio === null || cashRatio === undefined) ?
 async function saveCustomerSale() {
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+let salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -1778,9 +1778,6 @@ const salePrice = autoSalePrice;
 const commissionPerUnit = parseFloat(document.getElementById('commissionPerUnit').value) || 0;
 const commissionPaid = parseFloat(document.getElementById('commissionPaid').value) || 0;
 
-// Net units = total sold minus returns, expired/damaged stock, and any
-// units shared/deducted out. Cash-eligible units further deduct credit
-// sales, since those units haven't been collected as cash yet.
 const netSold = Math.max(0, sold - ret - exp - shared);
 const cashQty = Math.max(0, netSold - cred);
 const expected = (cashQty * salePrice) + prev - fieldExp;
@@ -1799,9 +1796,6 @@ if (box) box.className = 'result-box discrepancy-ok';
 if (_discEl) _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 }
 
-// Commission accounting: earned on net units sold (before the credit
-// split, since commission is owed on product sold regardless of
-// whether cash was collected yet), minus whatever's already been paid.
 const grossCommission = commissionPerUnit * netSold;
 const commissionPayable = Math.max(0, grossCommission - commissionPaid);
 const grossEl = document.getElementById('grossCommissionEarned');
@@ -4802,13 +4796,12 @@ requestAnimationFrame(step);
 window.fastScrollToTop = function() {
 window.scrollTo({ top: 0, behavior: 'instant' });
 };
-let scrollRafId = null;
 let lastScrollY = 0;
 window._rafScrollHandler = () => {
-if (scrollRafId === null) {
-scrollRafId = requestAnimationFrame(() => {
+if (window._scrollRafId == null) {
+window._scrollRafId = requestAnimationFrame(() => {
 lastScrollY = window.pageYOffset;
-scrollRafId = null;
+window._scrollRafId = null;
 });
 }
 };

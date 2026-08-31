@@ -1,5 +1,5 @@
 :root {
-/* ── Dark Mode: Deep Immersive Liquid Glass ── */
+
 --bg-gradient: linear-gradient(145deg, #0F172A 0%, #0c1628 40%, #061019 70%, #020617 100%);
 --glass: rgba(30, 41, 59, 0.40);
 --glass-mid: rgba(30, 41, 59, 0.50);
@@ -123,7 +123,7 @@
 --z-toast: 2147483647;
 }
 [data-theme="light"] {
-/* ── Light Mode: Premium Slate Glass — Warm Gray Elegance ── */
+
 --bg-gradient: linear-gradient(150deg, #E8ECF0 0%, #EAEEF2 35%, #E4E8ED 65%, #ECF0F4 100%);
 --glass: rgba(255, 255, 255, 0.72);
 --glass-mid: rgba(255, 255, 255, 0.60);
@@ -162,7 +162,7 @@
 --input-border: rgba(148, 163, 184, 0.45);
 --input-focus: rgba(16, 185, 129, 0.30);
 --card-hover: rgba(255, 255, 255, 0.90);
-/* Layered depth shadows — key to the premium gray feel */
+
 --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(148, 163, 184, 0.10);
 --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(148, 163, 184, 0.09);
 --shadow: 0 4px 14px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(148, 163, 184, 0.10);
@@ -1073,17 +1073,11 @@ gap: 10px;
 #sales-summary-toggle, #perf-overview-toggle { flex-shrink: 0; }
 .grid-inputs {
 display: grid;
-/* Always exactly two columns, on every device — a fixed track count
-   instead of auto-fit means the layout no longer depends on viewport
-   width, so date/text/number/select fields always pair up the same
-   way on phones, tablets, and desktop. */
+
 grid-template-columns: repeat(2, 1fr);
 gap: 12px;
 margin-bottom: 15px;
-/* Cap the row's width so on wide screens the two fields stay a
-   sensible, comfortable size instead of stretching to fill a
-   1200px-wide card. Below this width it behaves exactly as before
-   (100% of the available space). */
+
 max-width: 640px;
 }
 .field {
@@ -1823,14 +1817,7 @@ line-height: 1;
 }
 input, select, textarea {
 font-family: 'Geist', system-ui, sans-serif;
-/* Matches the app's general type scale (see .u-fs-md) rather than the
-   16px iOS previously used to suppress Safari's auto-zoom-on-focus for
-   data-entry fields. That protection is intentionally traded away here
-   for visual consistency with the rest of the UI — tapping into a field
-   below 16px will make iOS Safari (not Android) zoom the page in, since
-   the viewport's `user-scalable=no` doesn't suppress that specific
-   behavior. Revert to 16px on the rules below (same fix, same comment)
-   if that regression turns out to matter more than the mismatch did. */
+
 font-size: 0.85rem;
 font-weight: 400;
 letter-spacing: -0.005em;
@@ -3789,8 +3776,7 @@ min-height: 36px !important;
 max-height: 36px !important;
 padding: 0 4px !important;
 border-radius: 0 !important;
-/* See the `input, select, textarea` rule earlier in this file for why
-   this is 0.85rem instead of the 16px iOS zoom-prevention floor. */
+
 font-size: 0.85rem !important;
 font-weight: 500 !important;
 background: transparent !important;
@@ -3891,11 +3877,7 @@ min-height: 38px !important;
 max-height: 38px !important;
 padding: 0 4px !important;
 border-radius: 0 !important;
-/* Was 16px !important as an iOS-Safari zoom-on-focus fix (below 16px,
-   iOS zooms the page in on focus; Android doesn't). Dropped to match
-   the app's general 0.85rem type scale instead, trading that fix away
-   for visual consistency — see the `input, select, textarea` rule
-   earlier in this file. */
+
 font-size: 0.85rem !important;
 box-sizing: border-box !important;
 width: 100% !important;
@@ -5200,11 +5182,6 @@ to   { transform: translateY(100%); opacity: 0;   }
   }
 }
 
-/* .grid-inputs intentionally has no narrow-screen override — it stays
-   a fixed 2-column grid at every width so field pairs (date/text/
-   number/select, etc.) are laid out identically on phones as on
-   desktop. See the base .grid-inputs rule above. */
-
 @media screen and (max-width: 449px) {
   .section,
   .liquid-card,
@@ -5701,10 +5678,6 @@ padding: 2px 7px;
 white-space: nowrap;
 }
 
-/* ------------------------------------------------------------------ */
-/* Custom date picker (replaces native input[type=date] OS chrome so  */
-/* the UI is pixel-identical across iOS/Android/desktop).             */
-/* ------------------------------------------------------------------ */
 .cdp-wrap {
   position: relative;
   display: inline-block;
@@ -5721,10 +5694,7 @@ white-space: nowrap;
   border-bottom: 1.5px dashed rgba(255,255,255,0.35);
   background: transparent;
   color: var(--text-main);
-  /* Match the app's canonical input typography (see the `input, select,
-     textarea` rule above) so the date-picker's trigger button — which
-     visually replaces a text input — reads identically to every other
-     field instead of looking smaller/lighter or, previously, larger. */
+
   font-family: 'Geist', system-ui, sans-serif;
   font-size: 0.85rem;
   font-weight: 400;
@@ -5765,11 +5735,7 @@ white-space: nowrap;
 }
 
 .cdp-popover {
-  /* Rendered as a portal directly under document.body (see
-     custom-date-picker.js) so that no ancestor's `overflow: hidden`
-     (e.g. .liquid-card, used to clip its rounded corners/gradient) can
-     clip it. `position: fixed` + top/left/right/bottom are computed and
-     kept in sync with the trigger button in JS via positionPopover(). */
+
   position: fixed;
   z-index: 9999;
   width: 250px;
@@ -5859,8 +5825,6 @@ white-space: nowrap;
   font-weight: 700;
 }
 
-/* Month/year grids shown when drilling out of the day view via the
-   header title (mirrors native OS date-picker behavior). */
 .cdp-grid-months,
 .cdp-grid-years {
   display: grid;

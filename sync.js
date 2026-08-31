@@ -416,6 +416,11 @@ email: user.email,
 displayName: user.displayName
 };
 
+if (!window._sessionStartMs) {
+  const _lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
+  window._sessionStartMs = _lsStart || Date.now();
+}
+
 saveTokenForSW(user).catch(() => {});
 startSWTokenRefresh(user);
 
@@ -1193,7 +1198,7 @@ const _sid = String(change.doc.id);
 if (change.type === 'added' && _existingIdSet.has(_sid)) {
   if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.markDownloaded(col.firestoreId, _sid);
   else DeltaSync.markDownloaded(col.firestoreId, _sid);
-  continue; 
+  continue;
 }
 if (typeof UUIDSyncRegistry !== 'undefined') {
 UUIDSyncRegistry.markDownloaded(col.firestoreId, change.doc.id);
@@ -1661,7 +1666,12 @@ async function subscribeToRealtime() {
       if (!snap.exists) return;
       const data = snap.data() || {};
       if (data.forceLogout && data.forceLogout.at) {
-        const sessionStart = parseInt((await sqliteStore.get('session_start', 0)) || '0', 10);
+
+        let sessionStart = window._sessionStartMs;
+        if (!sessionStart) {
+          const lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
+          sessionStart = lsStart || parseInt((await sqliteStore.get('session_start', 0)) || '0', 10) || Date.now();
+        }
         if (data.forceLogout.at > sessionStart) {
           showToast('Your account access has been revoked. Signing out…', 'error', 5000);
           setTimeout(async () => {
@@ -3034,7 +3044,7 @@ async function _uploadChanges(userRef) {
 
   let totalItemsToWrite = 0;
   const collectionsUploaded = new Set();
-  const _pendingUploadMarks = []; 
+  const _pendingUploadMarks = [];
 
   for (const [collectionName, dataArray] of Object.entries(collections)) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) continue;
@@ -3047,11 +3057,11 @@ async function _uploadChanges(userRef) {
     for (const item of changedItems) {
       if (!item || !item.id) continue;
 
-      if (_isUploaded(collectionName, item.id)) continue; 
+      if (_isUploaded(collectionName, item.id)) continue;
 
       if (DeltaSync.wasDownloaded(collectionName, item.id)
           && !DeltaSync.isDirtyId(collectionName, item.id)) {
-        _pendingUploadMarks.push({ collectionName, id: item.id }); 
+        _pendingUploadMarks.push({ collectionName, id: item.id });
         continue;
       }
       if (!validateUUID(String(item.id))) {
@@ -3893,6 +3903,7 @@ displayName: user.displayName || '', googleAuth: true,
 lastLogin: new Date().toISOString()
 });
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); localStorage.setItem('_gznd_session_start', String(Date.now())); } catch(e) {}
+window._sessionStartMs = Date.now();
 sqliteStore.set('session_start', Date.now()).catch(() => {});
 if (typeof database !== 'undefined' && database) {
 try {
@@ -4130,6 +4141,7 @@ await SQLiteCrypto.sessionSet('login', {
   lastLogin: new Date().toISOString()
 });
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); localStorage.setItem('_gznd_session_start', String(Date.now())); } catch(e) {}
+window._sessionStartMs = Date.now();
 sqliteStore.set('session_start', Date.now()).catch(() => {});
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = 'Success! Loading...';
