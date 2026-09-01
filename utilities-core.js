@@ -370,61 +370,123 @@ finalError: item.finalError
 }
 };
 if (typeof window._firestoreNetworkDisabled === 'undefined') window._firestoreNetworkDisabled = false;
+// Single source of truth for the top network/status bar. Every other
+// network-related indicator in the app (the old bottom "weak signal"
+// banner, the Firestore connecting/error dot updates in sync.js, the
+// payments-tab connection dot) now feeds its state into this one function
+// instead of independently touching its own copy of the DOM - previously
+// several of those wrote to a `#connection-indicator` element that was
+// never actually present in index.html (and was separately forced
+// display:none in CSS even where referenced), so those updates were
+// silent no-ops. See _setCloudConnectionState()/_setSlowConnectionState()
+// below for how other modules report into this.
 function updateOfflineBanner() {
 const banner = document.getElementById('offline-banner');
 const badge = document.getElementById('offline-queue-badge');
-const dot = document.getElementById('connection-indicator');
+const dot = document.getElementById('network-status-dot');
+const msgEl = document.getElementById('offline-banner-msg');
 const isOnline = navigator.onLine;
 const pending = (typeof OfflineQueue !== 'undefined') ? OfflineQueue.queue.length : 0;
 const failed = (typeof OfflineQueue !== 'undefined') ? OfflineQueue.deadLetterQueue.length : 0;
-if (banner) {
+const isSlow = isOnline && !!window._isSlowConnection;
+const slowDetail = window._slowConnectionDetail || 'Weak signal';
+const cloudState = window._cloudConnectionState || null; // 'connecting' | 'loading' | 'error' | null
+
+let show = true;
+let message = '';
 if (!isOnline) {
-banner.classList.add('visible');
-document.body.classList.add('offline-active');
+message = 'Offline — changes saved locally';
+} else if (isSlow) {
+message = `${slowDetail} — changes queued for sync`;
+} else if (pending > 0) {
+message = `Syncing ${pending} queued operation${pending !== 1 ? 's' : ''}...`;
+} else if (cloudState === 'connecting' || cloudState === 'loading') {
+message = 'Connecting to cloud...';
+} else if (cloudState === 'error') {
+message = 'Cloud connection error — retrying...';
+} else if (cloudState === 'signed-out') {
+message = 'Signed out — please sign in to sync';
+} else if (window.isSyncing) {
+message = 'Syncing with cloud...';
+} else if (failed > 0) {
+message = 'All caught up — some uploads need attention';
+} else {
+show = false;
+}
+
+if (banner) {
+banner.classList.toggle('visible', show);
+document.body.classList.toggle('offline-active', show);
+}
+if (msgEl) msgEl.textContent = message;
 if (badge) {
-if (pending > 0) {
+if (!isOnline) {
+badge.textContent = pending > 0 ? `${pending} pending` : 'saves queued locally';
+badge.style.display = '';
+} else if (isSlow && pending > 0) {
 badge.textContent = `${pending} pending`;
 badge.style.display = '';
-} else {
-badge.textContent = 'saves queued locally';
+} else if (pending > 0) {
+badge.textContent = `Syncing ${pending}...`;
 badge.style.display = '';
-}
-}
-} else if (pending > 0 || failed > 0) {
-banner.classList.add('visible');
-document.body.classList.add('offline-active');
-if (badge) {
-badge.textContent = pending > 0 ? `Syncing ${pending} queued op(s)...` : '';
-badge.style.display = pending > 0 ? '' : 'none';
-}
 } else {
-banner.classList.remove('visible');
-document.body.classList.remove('offline-active');
+badge.textContent = '';
+badge.style.display = 'none';
 }
 }
 if (dot) {
 if (!isOnline) {
-dot.className = 'signal-offline';
+dot.className = 'net-dot net-dot-offline';
 dot.title = pending > 0
 ? `Offline — ${pending} operation(s) will sync when back online`
 : 'Offline — changes saved locally';
 } else if (failed > 0) {
-dot.className = 'signal-connecting';
-dot.title = `${failed} upload(s) permanently failed — click "Failed ops" to review`;
+dot.className = 'net-dot net-dot-warning';
+dot.title = `${failed} upload(s) permanently failed — tap "Failed ops" to review`;
+} else if (isSlow) {
+dot.className = 'net-dot net-dot-warning';
+dot.title = slowDetail;
 } else if (pending > 0) {
-dot.className = 'signal-connecting';
+dot.className = 'net-dot net-dot-warning';
 dot.title = `Syncing ${pending} queued operation(s)...`;
+} else if (cloudState === 'connecting' || cloudState === 'loading') {
+dot.className = 'net-dot net-dot-warning';
+dot.title = 'Connecting to cloud...';
+} else if (cloudState === 'error') {
+dot.className = 'net-dot net-dot-warning';
+dot.title = 'Cloud connection error — retrying...';
+} else if (cloudState === 'signed-out') {
+dot.className = 'net-dot net-dot-warning';
+dot.title = 'Signed out — please sign in to sync';
 } else if (window.isSyncing) {
-dot.className = 'signal-connecting';
+dot.className = 'net-dot net-dot-warning';
 dot.title = 'Syncing with cloud...';
 } else {
-dot.className = 'signal-online';
+dot.className = 'net-dot net-dot-online';
 dot.title = 'Online — connected to Firestore';
 }
 }
 if (typeof OfflineQueue !== 'undefined') {
 OfflineQueue._renderDeadLetterPanel();
 }
+}
+
+// Reported by sync.js's Firestore connection lifecycle (SDK loading,
+// realtime listener connecting/erroring/reconnecting). Replaces the old
+// updateSignalUI()/initializeFirebaseSystem()/retryFirebaseInit() writes
+// to the nonexistent #connection-indicator element.
+function _setCloudConnectionState(state) {
+window._cloudConnectionState = state; // 'connecting' | 'loading' | 'error' | 'signed-out' | null
+updateOfflineBanner();
+}
+
+// Reported by the connection-speed monitor below. Kept as a separate
+// setter (rather than inlining into checkConnection()) so any other module
+// can flag a slow link the same way without duplicating banner logic.
+function _setSlowConnectionState(isSlow, detail) {
+window._isSlowConnection = isSlow;
+window._slowConnectionDetail = detail || null;
+updateOfflineBanner();
 }
 (function patchOfflineQueueAdd() {
 const _origAdd = OfflineQueue.add.bind(OfflineQueue);
@@ -509,49 +571,7 @@ showToast('Offline — changes will be saved locally', 'warning', 4000);
   const CHECK_INTERVAL   = 20000;
   const TOAST_COOLDOWN   = 60000;
   let _lastSlowToast     = 0;
-  let _slowBannerVisible = false;
   let _monitorTimer      = null;
-
-  function getSlowBanner() {
-    let b = document.getElementById('slow-connection-banner');
-    if (!b) {
-      b = document.createElement('div');
-      b.id = 'slow-connection-banner';
-      b.style.cssText = [
-        'position:fixed', 'bottom:0', 'left:0', 'right:0', 'z-index:9998',
-        'background:linear-gradient(90deg,#92400e,#b45309)',
-        'color:#fef3c7', 'font-size:0.78rem', 'font-weight:600',
-        'padding:6px 16px', 'display:flex', 'align-items:center',
-        'gap:8px', 'transition:transform 0.3s ease',
-        'transform:translateY(100%)', 'box-shadow:0 -2px 8px rgba(0,0,0,0.4)'
-      ].join(';');
-      b.innerHTML = '<span>⚠️</span><span id="slow-banner-msg">Weak signal — app running offline, data saves locally</span>' +
-        '<button onclick="document.getElementById(\'slow-connection-banner\').style.transform=\'translateY(100%)\'" ' +
-        'style="margin-left:auto;background:none;border:none;color:#fef3c7;cursor:pointer;font-size:1rem;padding:0 4px">✕</button>';
-      document.body.appendChild(b);
-    }
-    return b;
-  }
-
-  function showSlowBanner(msg) {
-    if (_slowBannerVisible) return;
-    _slowBannerVisible = true;
-    const b = getSlowBanner();
-    const m = document.getElementById('slow-banner-msg');
-    if (m) m.textContent = msg || 'Weak signal — app running offline, data saves locally';
-
-    const offlineBanner = document.getElementById('offline-banner');
-    const bottomOff = offlineBanner && offlineBanner.classList.contains('visible') ? '48px' : '0';
-    b.style.bottom = bottomOff;
-    requestAnimationFrame(() => { b.style.transform = 'translateY(0)'; });
-  }
-
-  function hideSlowBanner() {
-    if (!_slowBannerVisible) return;
-    _slowBannerVisible = false;
-    const b = document.getElementById('slow-connection-banner');
-    if (b) b.style.transform = 'translateY(100%)';
-  }
 
   function isConnectionSlow() {
     if (!navigator.onLine) return false;
@@ -564,15 +584,20 @@ showToast('Offline — changes will be saved locally', 'warning', 4000);
     return false;
   }
 
+  // Reports into the single top status bar (see _setSlowConnectionState /
+  // updateOfflineBanner above) instead of creating its own separate
+  // bottom banner - previously this and the offline banner were two
+  // independent fixed-position bars that had to manually coordinate their
+  // own stacking order (see the old bottom-offset hack this replaced).
   function checkConnection() {
-    if (!navigator.onLine) { hideSlowBanner(); return; }
+    if (!navigator.onLine) { _setSlowConnectionState(false); return; }
     const slow = isConnectionSlow();
     if (slow) {
       const conn = navigator.connection || {};
       const detail = conn.effectiveType
         ? `${conn.effectiveType.toUpperCase()} signal`
         : conn.rtt ? `${conn.rtt}ms latency` : 'Weak signal';
-      showSlowBanner(`${detail} — app works offline, changes queued for sync`);
+      _setSlowConnectionState(true, detail);
       if (Date.now() - _lastSlowToast > TOAST_COOLDOWN) {
         _lastSlowToast = Date.now();
         if (typeof showToast === 'function') {
@@ -580,7 +605,7 @@ showToast('Offline — changes will be saved locally', 'warning', 4000);
         }
       }
     } else {
-      hideSlowBanner();
+      _setSlowConnectionState(false);
     }
   }
 
@@ -596,7 +621,7 @@ showToast('Offline — changes will be saved locally', 'warning', 4000);
   }
   function stopMonitor() {
     if (_monitorTimer) { clearInterval(_monitorTimer); _monitorTimer = null; }
-    hideSlowBanner();
+    _setSlowConnectionState(false);
   }
 
   window.addEventListener('online',  () => { startMonitor(); });

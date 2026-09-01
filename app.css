@@ -954,6 +954,7 @@ right: 0;
 z-index: var(--z-ptr, 10002);
 overflow: hidden;
 min-height: 52px;
+transition: top 0.2s var(--ease-out-quart, ease-out);
 }
 .system-controls::before { display: none; }
 [data-theme="light"] .system-controls {
@@ -2367,51 +2368,75 @@ padding: 2px 6px !important;
 font-size: 0.6rem !important;
 }
 }
-#connection-indicator {
-display: none !important;
+.net-dot {
+display: inline-block;
+width: 8px;
+height: 8px;
+min-width: 8px;
+border-radius: 50%;
+flex-shrink: 0;
+transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
-#connection-indicator:hover {
-transform: scale(1.2);
+.net-dot-online {
+background-color: var(--accent);
+box-shadow: 0 0 8px var(--accent-glow, rgba(16, 185, 129, 0.5));
 }
-.signal-online, .sig-online {
-background-color: #10b981 !important;
-box-shadow: 0 0 12px #10b981, 0 0 15px rgba(16, 185, 129, 0.4) !important;
-border-color: #ffffff;
+.net-dot-warning {
+background-color: var(--warning);
+box-shadow: 0 0 8px var(--warning-dim, rgba(245, 158, 11, 0.4));
+animation: net-dot-pulse 1.4s ease-in-out infinite;
 }
-.signal-connecting, .sig-connecting {
-background-color: #f59e0b !important;
-box-shadow: 0 0 10px #f59e0b !important;
-animation: signal-pulse 1s ease-in-out infinite;
+.net-dot-offline {
+background-color: var(--danger);
+box-shadow: none;
+opacity: 0.85;
 }
-.signal-offline {
-background-color: #ef4444 !important;
-box-shadow: none !important;
-opacity: 0.7;
-border-color: rgba(255,255,255,0.5);
+.net-dot-flash {
+transform: scale(1.8);
+box-shadow: 0 0 12px var(--accent-glow, rgba(16, 185, 129, 0.5));
 }
-@keyframes signal-pulse {
+@keyframes net-dot-pulse {
 0%, 100% { transform: scale(1); opacity: 1; }
-50% { transform: scale(1.3); opacity: 0.7; }
+50% { transform: scale(1.3); opacity: 0.65; }
 }
 #offline-banner {
 position: fixed;
 top: 0; left: 0; right: 0;
 z-index: var(--z-system, 99999);
-background: linear-gradient(90deg, #b45309, #d97706);
-color: #fff;
+height: 34px;
+box-sizing: border-box;
+/* Matches .system-controls exactly (same var, no blur in dark mode) so
+   the two read as one continuous surface once the banner stacks above
+   it, rather than a differently-styled strip glued on top. */
+background: var(--glass);
+border-bottom: 1px solid var(--glass-border);
+color: var(--text-main, #f8fafc);
 font-size: 0.72rem;
-font-weight: 700;
-text-align: center;
-padding: 6px 12px;
-letter-spacing: 0.03em;
+font-weight: 600;
+text-align: left;
+padding: 0 14px;
+letter-spacing: 0.01em;
 display: none;
 align-items: center;
-justify-content: center;
+justify-content: flex-start;
 gap: 8px;
-box-shadow: 0 2px 12px rgba(0,0,0,0.35);
 animation: banner-slide-down 0.25s ease-out;
 }
+[data-theme="light"] #offline-banner {
+background: rgba(255, 255, 255, 0.72);
+backdrop-filter: blur(20px) saturate(160%);
+-webkit-backdrop-filter: blur(20px) saturate(160%);
+border-bottom: 1px solid rgba(255, 255, 255, 0.65);
+box-shadow: 0 2px 16px rgba(15, 23, 42, 0.07), 0 1px 3px rgba(15, 23, 42, 0.05);
+}
 #offline-banner.visible { display: flex; }
+#offline-banner-msg {
+flex: 1 1 auto;
+min-width: 0;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
 #offline-queue-badge {
 border-radius: 24px;
 padding: 1px 8px;
@@ -2419,6 +2444,9 @@ font-size: 0.68rem;
 min-width: 22px;
 display: inline-block;
 color: var(--text-muted);
+background: var(--glass-raised);
+margin-left: auto;
+flex-shrink: 0;
 }
 #dl-queue-badge {
 border: none;
@@ -2431,6 +2459,14 @@ cursor: pointer;
 display: inline-block;
 letter-spacing: 0.02em;
 transition: color 0.15s;
+margin-left: 6px;
+flex-shrink: 0;
+}
+/* Shift the fixed hamburger/system-controls bar down by exactly the
+   banner's height when it's visible, so the two stack cleanly instead of
+   the banner (higher z-index) covering the top of system-controls. */
+body.offline-active .system-controls {
+top: 34px;
 }
 #dl-queue-badge:hover { color: var(--text-main); }
 #dl-queue-modal {
@@ -2563,7 +2599,13 @@ padding-top: 10px;
 from { transform: translateY(-100%); opacity: 0; }
 to { transform: translateY(0); opacity: 1; }
 }
-body.offline-active { padding-top: 30px; }
+/* Adds the banner's height on top of the 52px already reserved for the
+   fixed .system-controls bar (see the base `body { padding-top: 52px }`
+   rule) rather than replacing it - previously this used a lower value
+   than the base rule it was meant to extend, so page content actually
+   got LESS top clearance while the banner was visible, letting the
+   banner+system-controls stack cover it. */
+body.offline-active { padding-top: 86px; }
 @media (max-width: 768px) {
 .report-grid[style*="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))"] {
 grid-template-columns: 1fr !important;

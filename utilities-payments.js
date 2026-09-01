@@ -5921,21 +5921,17 @@ defaultValue: '',
 description: 'WebAuthn biometric credential ID'
 }
 };
+// Delegates to the single top status bar (updateOfflineBanner) instead of
+// writing to the #connection-indicator element, which never existed in
+// index.html and was independently forced display:none in CSS anyway -
+// this function's writes were previously silent no-ops.
 function updateConnectionStatus() {
-const dot = document.getElementById('connection-indicator');
-if (!dot) return;
 if (!navigator.onLine) {
-dot.className = 'signal-offline';
-dot.title = "Offline - Changes saved locally";
-} else if (isSyncing) {
-dot.className = 'signal-connecting';
-dot.title = "Syncing with Cloud...";
-} else if (firebase.apps.length && currentUser) {
-dot.className = 'signal-online';
-dot.title = "Online - Connected to Firestore";
+_setCloudConnectionState(null);
+} else if (!(firebase.apps.length && currentUser)) {
+_setCloudConnectionState('signed-out');
 } else {
-dot.className = 'signal-offline';
-dot.title = "Disconnected - Please Sign In";
+_setCloudConnectionState(null);
 }
 }
 window.addEventListener('online', () => { updateConnectionStatus(); if(typeof updateOfflineBanner==='function') updateOfflineBanner(); });

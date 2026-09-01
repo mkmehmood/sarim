@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.01. 09.2026.1';
+const BUILD_HASH = 'V.30.08.2026.1';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [

@@ -309,12 +309,8 @@ window.getSQLiteKey = getSQLiteKey;
 window.saveRecordToFirestore = saveRecordToFirestore;
 window.deleteRecordFromFirestore = deleteRecordFromFirestore;
 async function initializeFirebaseSystem() {
-const indicator = document.getElementById('connection-indicator');
 if (typeof firebase === 'undefined') {
-if (indicator) {
-indicator.title = 'Loading Cloud SDK...';
-indicator.className = 'signal-connecting';
-}
+if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('loading');
 setTimeout(initializeFirebaseSystem, 500);
 return;
 }
@@ -573,10 +569,7 @@ console.error('Failed to clear persistent login:', _safeErr(e));
 updateSyncButton();
 }
 });
-if (indicator) {
-indicator.title = 'Cloud Connected';
-indicator.className = 'signal-online';
-}
+if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState(null);
 if (typeof initFirebase === 'function') {
 initFirebase();
 } else {
@@ -585,10 +578,7 @@ setTimeout(initializeFirebaseSystem, 500);
 } catch (error) {
 console.error('Sync failed. Check your connection.', _safeErr(error));
 showToast('Sync failed. Check your connection.', 'error');
-if (indicator) {
-indicator.title = 'Connection Failed';
-indicator.className = 'signal-offline';
-}
+if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('error');
 setTimeout(initializeFirebaseSystem, APP_CONFIG.FIREBASE_INIT_RETRY_DELAY);
 }
 }
@@ -1070,11 +1060,7 @@ if (attempts < maxAttempts) {
 const delay = Math.min(1000 * Math.pow(2, attempts), 5000);
 setTimeout(() => retryFirebaseInit(attempts + 1, maxAttempts), delay);
 } else {
-const indicator = document.getElementById('connection-indicator');
-if (indicator) {
-indicator.title = 'Firebase failed to load - check console';
-indicator.style.background = 'red';
-}
+if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('error');
 if (typeof showToast === 'function') {
 showToast(' Cloud sync unavailable. App will work offline.', 'warning');
 }
@@ -1388,31 +1374,37 @@ async function _flushSyncLockQueue() {
   }
 }
 
+// Reports Firestore's realtime-listener connection lifecycle into the
+// single top status bar (see _setCloudConnectionState/updateOfflineBanner
+// in utilities-core.js) instead of writing to #connection-indicator, which
+// never existed in index.html - these writes were previously silent
+// no-ops. Function name/signature kept as-is since it's called from ~15
+// sites across this file's realtime-listener error handling.
 function updateSignalUI(status) {
-  const dot = document.getElementById('connection-indicator');
-  if (!dot) return;
-  dot.className = '';
+  if (typeof _setCloudConnectionState !== 'function') return;
   if (status === 'online') {
-    dot.classList.add('signal-online');
-    dot.title = 'Live Connection Active';
+    _setCloudConnectionState(null);
   } else if (status === 'connecting') {
-    dot.classList.add('signal-connecting');
-    dot.title = 'Connecting...';
-  } else if (status === 'error') {
-    dot.classList.add('signal-connecting');
-    dot.title = 'Connection Error — Reconnecting...';
+    _setCloudConnectionState('connecting');
   } else {
-    dot.classList.add('signal-offline');
-    dot.title = 'Offline / Disconnected';
+    // 'error' and the listener's own 'offline' (permission-denied /
+    // failed-precondition on the Firestore listener itself, which can
+    // happen even while the device's network is up) both mean "cloud
+    // isn't reachable right now" from the UI's point of view.
+    _setCloudConnectionState('error');
   }
 }
 
+// Brief visual acknowledgement that a realtime update was just pushed to
+// Firestore. Pulses the status dot inside the merged top bar via a CSS
+// class (so it picks up the live theme's accent color) rather than
+// hardcoding an inline box-shadow color that wouldn't adapt between
+// light/dark themes.
 function flashLivePulse() {
-  const dot = document.getElementById('connection-indicator');
+  const dot = document.getElementById('network-status-dot');
   if (!dot) return;
-  dot.style.transform = 'scale(1.8)';
-  dot.style.boxShadow = '0 0 20px #10b981';
-  setTimeout(() => { dot.style.transform = ''; dot.style.boxShadow = ''; }, 300);
+  dot.classList.add('net-dot-flash');
+  setTimeout(() => { dot.classList.remove('net-dot-flash'); }, 300);
 }
 
 async function emitSyncUpdate(payload) {
