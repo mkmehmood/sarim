@@ -1671,8 +1671,20 @@ updated = true;
 }
 return transaction;
 });
+// Only drop records too malformed to ever render or be acted on (no id,
+// no usable type/amount). entityId is deliberately NOT a requirement here:
+// unlike id/date/amount/type above, nothing repairs a missing entityId, so
+// requiring it here silently and PERMANENTLY deleted any transaction that
+// ever ended up without one (e.g. synced from an older schema, a restored
+// backup, or any other edge case that leaves entityId blank) - every time
+// the app loaded, since this filtered array gets written straight back to
+// storage a few lines down. The history list already renders a graceful
+// "Unknown Entity" fallback for exactly this case (see refreshPaymentTab's
+// `entity ? entity.name : (transaction.entityName || 'Unknown Entity')`),
+// so there's no reason to destroy the record instead of just displaying it
+// with that fallback.
 localTransactions = localTransactions.filter(t =>
-t && t.id && t.entityId && (t.type === 'IN' || t.type === 'OUT') && typeof t.amount === 'number'
+t && t.id && (t.type === 'IN' || t.type === 'OUT') && typeof t.amount === 'number'
 );
 await sqliteStore.set('payment_entities', localEntities);
 await sqliteStore.set('payment_transactions', localTransactions);
