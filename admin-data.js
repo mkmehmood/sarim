@@ -1055,7 +1055,7 @@ async function generateCloseYearSummary() {
   const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const S = {
-  production:   { total:0, nonMerged:0, stores: new Set(), returnCount:0, sellerReturns: new Set(), sellerStoreCards: new Set() },
+  production:   { total:0, nonMerged:0, stores: new Set(), returnCount:0, sellerReturns: new Set(), sellerStoreCards: new Set(), transferCount:0 },
   sales:        { total:0, nonMerged:0, customers: new Set(), settledCount:0, creditCount:0 },
   calculator:   { total:0, nonMerged:0, reps: new Set() },
   payments:     { total:0, nonMerged:0, entities: new Set(), netBalanceCount:0 },
@@ -1070,7 +1070,8 @@ if (Array.isArray(db)) {
     if (i.store) S.production.stores.add(i.store);
     if (i.isMerged !== true) {
       S.production.nonMerged++;
-      if (i.isReturn === true) { S.production.returnCount++; if(i.returnedBy) S.production.sellerReturns.add(i.returnedBy); if(i.returnedBy && i.store) S.production.sellerStoreCards.add(i.returnedBy+'::'+i.store); }
+      if (i.isTransfer === true) { S.production.transferCount++; }
+      else if (i.isReturn === true) { S.production.returnCount++; if(i.returnedBy) S.production.sellerReturns.add(i.returnedBy); if(i.returnedBy && i.store) S.production.sellerStoreCards.add(i.returnedBy+'::'+i.store); }
     }
   });
 }
@@ -1183,8 +1184,11 @@ rows += previewRow('prod', 'Production', 'mfg_pro_pkr',
     ['Stores', storeList, 'var(--text-main)'],
     ['Returns', S.production.returnCount > 0 ? S.production.returnCount + ' (' + sellerList + ')' : 'none',
       S.production.returnCount > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)'],
+    ['Transfers', S.production.transferCount > 0 ? S.production.transferCount + ' (kept as-is)' : 'none',
+      S.production.transferCount > 0 ? 'var(--accent)' : 'var(--text-muted)'],
   ],
-  prodTotalCards + ' cards (' + S.production.stores.size + ' store + ' + prodRetCards + ' ret)',
+  prodTotalCards + ' cards (' + S.production.stores.size + ' store + ' + prodRetCards + ' ret)' +
+    (S.production.transferCount > 0 ? ' + ' + S.production.transferCount + ' transfer' + (S.production.transferCount !== 1 ? 's' : '') + ' kept' : ''),
   'var(--accent)', S.production.nonMerged > 0
 );
 const custCount = S.sales.customers.size;
@@ -1574,7 +1578,8 @@ const _postMergeProd = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const prodMerged = _postMergeProd.filter(i=>i.isMerged);
 const storeMerged  = prodMerged.filter(i=>!i.isReturn).length;
 const sellerMerged = prodMerged.filter(i=>i.isReturn).length;
-liveUpdate('prod', `${storeMerged} store + ${sellerMerged} seller return card${sellerMerged!==1?'s':''}`, 'var(--accent)', `${storeMerged + sellerMerged} merged cards`, `${storeMerged} store balance${storeMerged!==1?'s':''} + ${sellerMerged} seller return card${sellerMerged!==1?'s':''}`);
+const transfersKept = _postMergeProd.filter(i=>i.isMerged!==true && i.isTransfer===true).length;
+liveUpdate('prod', `${storeMerged} store + ${sellerMerged} seller return card${sellerMerged!==1?'s':''}${transfersKept>0?` + ${transfersKept} transfer${transfersKept!==1?'s':''} kept`:''}`, 'var(--accent)', `${storeMerged + sellerMerged} merged cards`, `${storeMerged} store balance${storeMerged!==1?'s':''} + ${sellerMerged} seller return card${sellerMerged!==1?'s':''}${transfersKept>0?` + ${transfersKept} transfer${transfersKept!==1?'s':''} kept as-is`:''}`);
 snap.prod.after = prodMerged.length;
 await mergeSalesData(signal, closeEpoch);
 snap.sales.after = ensureArray(await sqliteStore.get('customer_sales')).filter(i=>i.isMerged).length;
@@ -1837,8 +1842,9 @@ const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digi
 const _recTs = r => r.createdAt || r.timestamp || 0;
 const mergedRecords = [];
 const nonMerged    = db.filter(i => i.isMerged !== true && _recTs(i) <= closeEpoch);
-const prodItems    = nonMerged.filter(i => i.isReturn !== true);
-const returnItems  = nonMerged.filter(i => i.isReturn === true);
+const transferItems = nonMerged.filter(i => i.isTransfer === true);
+const prodItems    = nonMerged.filter(i => i.isReturn !== true && i.isTransfer !== true);
+const returnItems  = nonMerged.filter(i => i.isReturn === true && i.isTransfer !== true);
 const storeGroups = {};
 prodItems.forEach(item => {
   const store = item.store || 'UNKNOWN';
@@ -1953,7 +1959,7 @@ if (firebaseDB && currentUser) {
 }
 const existingMerged = db.filter(item => item.isMerged === true);
 const postCloseRecords = db.filter(item => item.isMerged !== true && _recTs(item) > closeEpoch);
-const mergedDb = [...existingMerged, ...mergedRecords, ...postCloseRecords];
+const mergedDb = [...existingMerged, ...transferItems, ...mergedRecords, ...postCloseRecords];
 await sqliteStore.set('mfg_pro_pkr', mergedDb);
 emitSyncUpdate({ mfg_pro_pkr: null});
 updateCloseYearProgress('Production Data Merged', 20);

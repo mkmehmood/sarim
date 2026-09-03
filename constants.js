@@ -3,7 +3,7 @@ window._GOOGLE_CLIENT_ID = '124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.g
 var entityListViewType;
 
 const APP_CONFIG = Object.freeze({
-  CACHE_VERSION: 'V.30.08.2026',
+  CACHE_VERSION: 'V.02.09.2026',
 
   PBKDF2_ITERATIONS: 210000,
   PBKDF2_ITERATIONS_SHA256: 310000,

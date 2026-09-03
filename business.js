@@ -649,7 +649,7 @@ const SQLITE_ASMJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13
 const SQLITE_MAGIC        = 'SQLite format 3\0';
 const SQLITE_SCHEMA_VERSION = 2;
 
-const PERSIST_URGENT_MS   = 0;
+const PERSIST_URGENT_MS   = 300;
 const PERSIST_NORMAL_MS   = 3000;
 const PERSIST_LAZY_MS     = 8000;
 
@@ -658,6 +658,7 @@ const sqliteStore = (() => {
   let _sqlDB           = null;
   let _SQL             = null;
   let _initPromise     = null;
+  let _initGeneration  = 0;
   let _prefix          = '';
   let _uid             = '';
   let _quotaToastShown = false;
@@ -760,6 +761,33 @@ const sqliteStore = (() => {
     }
   }
 
+  async function _attemptRecovery() {
+    const sources = [];
+    if (_hasOPFS) {
+      sources.push({ name: 'OPFS primary', load: () => _opfsRead(SQLITE_DB_NAME) });
+      sources.push({ name: 'OPFS backup',  load: () => _opfsRead(SQLITE_DB_NAME + '.bak') });
+    } else {
+      sources.push({ name: 'localStorage primary', load: async () => _lsBlobRead(_LS_BLOB_KEY)     });
+      sources.push({ name: 'localStorage backup',  load: async () => _lsBlobRead(_LS_BLOB_KEY_BAK) });
+    }
+    for (const src of sources) {
+      try {
+        const bytes = await src.load();
+        if (!bytes || !_isValidSQLite(bytes)) continue;
+        const candidate = new _SQL.Database(bytes);
+        if (_integrityCheck(candidate)) {
+          _clearStmtCache();
+          _sqlDB = candidate;
+          console.warn('[SQLite] Recovered using', src.name);
+          return true;
+        }
+      } catch (e) {
+        console.warn('[SQLite] recovery attempt from', src.name, 'failed:', _safeErr(e));
+      }
+    }
+    return false;
+  }
+
   async function _checkQuota(requiredBytes = 0) {
     try {
       if (!navigator.storage || !navigator.storage.estimate) return true;
@@ -806,29 +834,93 @@ const sqliteStore = (() => {
 
   const _LS_BLOB_KEY     = '_gznd_sqlite_db';
   const _LS_BLOB_KEY_BAK = '_gznd_sqlite_db_bak';
+  const _LS_SAFE_RAW_BYTES = 3.5 * 1024 * 1024;
+  let _lsQuotaWarned = false;
+
+  function _yieldToMain() {
+    return new Promise(resolve => setTimeout(resolve, 0));
+  }
+
+  async function _bytesToBase64Async(bytes) {
+    const CHUNK = 0x8000;
+    let binary = '';
+    let i = 0;
+    while (i < bytes.length) {
+      const sliceStart = Date.now();
+      while (i < bytes.length && (Date.now() - sliceStart) < 8) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+        i += CHUNK;
+      }
+      if (i < bytes.length) await _yieldToMain();
+    }
+    return btoa(binary);
+  }
+
+  async function _base64ToBytesAsync(b64) {
+    const binary = atob(b64);
+    const bytes  = new Uint8Array(binary.length);
+    let i = 0;
+    while (i < binary.length) {
+      const sliceStart = Date.now();
+      while (i < binary.length && (Date.now() - sliceStart) < 8) {
+        bytes[i] = binary.charCodeAt(i);
+        i++;
+      }
+      if (i < binary.length) await _yieldToMain();
+    }
+    return bytes;
+  }
+
+  function _bytesToBase64Sync(bytes) {
+    const CHUNK = 0x8000;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
+    }
+    return btoa(binary);
+  }
+
+  function _lsBlobWriteSync(lsKey, data) {
+    try {
+      localStorage.setItem(lsKey, _bytesToBase64Sync(data));
+    } catch (e) {
+      console.warn('[SQLite] sync localStorage blob write (unload) failed:', _safeErr(e));
+    }
+  }
 
   async function _lsBlobWrite(lsKey, data) {
     try {
-      const CHUNK = 0x8000;
-      let binary = '';
-      for (let i = 0; i < data.length; i += CHUNK) {
-        binary += String.fromCharCode.apply(null, data.subarray(i, i + CHUNK));
+      if (!_hasOPFS && data.byteLength > _LS_SAFE_RAW_BYTES) {
+        if (!_lsQuotaWarned) {
+          _lsQuotaWarned = true;
+          const mb = (data.byteLength / 1024 / 1024).toFixed(1);
+          if (typeof showToast === 'function') {
+            showToast(`Your data (${mb} MB) is approaching the browser's local storage limit on this device. Use Sync often, and consider switching to a modern browser (Chrome/Edge/Safari 16.4+) so the app can use faster, larger local storage.`, 'warning', 12000);
+          }
+          setTimeout(() => { _lsQuotaWarned = false; }, 60000);
+        }
       }
-      localStorage.setItem(lsKey, btoa(binary));
+      const b64 = await _bytesToBase64Async(data);
+      localStorage.setItem(lsKey, b64);
     } catch(e) {
       console.warn('[SQLite] localStorage blob write failed (storage full?):', _safeErr(e));
+      if (typeof showToast === 'function' && !_lsQuotaWarned) {
+        _lsQuotaWarned = true;
+        showToast('Could not save data locally — device storage is full. Please free up space or sync now to avoid losing changes.', 'error', 12000);
+        setTimeout(() => { _lsQuotaWarned = false; }, 60000);
+      }
     }
   }
-  function _lsBlobRead(lsKey) {
+  async function _lsBlobRead(lsKey) {
     try {
       const b64 = localStorage.getItem(lsKey);
       if (!b64) return null;
-      const binary = atob(b64);
-      const bytes  = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      return bytes;
+      return await _base64ToBytesAsync(b64);
     } catch { return null; }
   }
+
+  let _lastBackupWriteAt = 0;
+  const BACKUP_WRITE_INTERVAL_MS = 60000;
 
   async function _dualPersist() {
     if (!_sqlDB) return;
@@ -836,17 +928,20 @@ const sqliteStore = (() => {
     const required = data.byteLength * 2 + 1024 * 1024;
     await _checkQuota(required);
     const writes = [];
+    const now = Date.now();
+    const shouldWriteBackup = (now - _lastBackupWriteAt) >= BACKUP_WRITE_INTERVAL_MS;
     if (_hasOPFS) {
       writes.push(
         _opfsShadowWrite(data)
-          .then(() => _opfsWrite(SQLITE_DB_NAME + '.bak', data))
+          .then(() => shouldWriteBackup ? _opfsWrite(SQLITE_DB_NAME + '.bak', data) : null)
+          .then(() => { if (shouldWriteBackup) _lastBackupWriteAt = now; })
           .catch(e => console.warn('[SQLite] OPFS write failed:', _safeErr(e)))
       );
     } else {
       writes.push(
-        Promise.resolve()
-          .then(() => _lsBlobWrite(_LS_BLOB_KEY, data))
-          .then(() => _lsBlobWrite(_LS_BLOB_KEY_BAK, data))
+        _lsBlobWrite(_LS_BLOB_KEY, data)
+          .then(() => shouldWriteBackup ? _lsBlobWrite(_LS_BLOB_KEY_BAK, data) : null)
+          .then(() => { if (shouldWriteBackup) _lastBackupWriteAt = now; })
           .catch(e => console.warn('[SQLite] localStorage blob write failed:', _safeErr(e)))
       );
     }
@@ -916,13 +1011,39 @@ const sqliteStore = (() => {
     });
   }
 
+  const SQLITE_LOAD_TIMEOUT_MS = 12000;
+  const SQLITE_BOOT_TIMEOUT_MS = 25000;
+
+  function _withTimeout(promise, ms, label) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const t = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('[SQLite] ' + label + ' timed out after ' + ms + 'ms'));
+      }, ms);
+      promise.then(
+        v => { if (!settled) { settled = true; clearTimeout(t); resolve(v); } },
+        e => { if (!settled) { settled = true; clearTimeout(t); reject(e); } }
+      );
+    });
+  }
+
+  function _injectScriptTimed(src) {
+    return _withTimeout(_injectScript(src), SQLITE_LOAD_TIMEOUT_MS, 'script load ' + src);
+  }
+
+  function _fetchTimed(url) {
+    return _withTimeout(fetch(url), SQLITE_LOAD_TIMEOUT_MS, 'fetch ' + url);
+  }
+
   async function _tryLoadWasm() {
     if (typeof window.initSqlJs !== 'function') {
       try {
-        await _injectScript(SQLITE_JS_LOCAL);
+        await _injectScriptTimed(SQLITE_JS_LOCAL);
       } catch (_e1) {
         console.warn('[SQLite] local sql-wasm.js failed, trying CDN:', _safeErr(_e1));
-        await _injectScript(SQLITE_CDN);
+        await _injectScriptTimed(SQLITE_CDN);
       }
     }
 
@@ -932,17 +1053,17 @@ const sqliteStore = (() => {
 
     let buffer;
     try {
-      const resp = await fetch(SQLITE_WASM_LOCAL);
+      const resp = await _fetchTimed(SQLITE_WASM_LOCAL);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       buffer = await resp.arrayBuffer();
     } catch (_e2) {
       console.warn('[SQLite] local sql-wasm.wasm failed, trying CDN:', _safeErr(_e2));
-      const resp = await fetch(SQLITE_WASM_CDN);
+      const resp = await _fetchTimed(SQLITE_WASM_CDN);
       if (!resp.ok) throw new Error('[SQLite] WASM CDN fetch failed: ' + resp.status);
       buffer = await resp.arrayBuffer();
     }
 
-    return window.initSqlJs({ wasmBinary: buffer });
+    return _withTimeout(Promise.resolve(window.initSqlJs({ wasmBinary: buffer })), SQLITE_LOAD_TIMEOUT_MS, 'initSqlJs (wasm)');
   }
 
   async function _tryLoadAsmJs() {
@@ -950,17 +1071,17 @@ const sqliteStore = (() => {
     delete window.SQL;
 
     try {
-      await _injectScript(SQLITE_ASMJS_LOCAL);
+      await _injectScriptTimed(SQLITE_ASMJS_LOCAL);
     } catch (_e1) {
       console.warn('[SQLite] local sql.js failed, trying CDN:', _safeErr(_e1));
-      await _injectScript(SQLITE_ASMJS_CDN);
+      await _injectScriptTimed(SQLITE_ASMJS_CDN);
     }
 
     if (typeof window.initSqlJs !== 'function') {
       throw new Error('[SQLite] asm.js initSqlJs not available after script load');
     }
 
-    return window.initSqlJs();
+    return _withTimeout(Promise.resolve(window.initSqlJs()), SQLITE_LOAD_TIMEOUT_MS, 'initSqlJs (asm.js)');
   }
 
   async function _loadSqlJs() {
@@ -1212,7 +1333,8 @@ const sqliteStore = (() => {
     async init() {
       if (_sqlDB)       return _sqlDB;
       if (_initPromise) return _initPromise;
-      _initPromise = (async () => {
+      const myGeneration = ++_initGeneration;
+      _initPromise = _withTimeout((async () => {
         try {
 
           _hasOPFS = typeof navigator !== 'undefined' &&
@@ -1221,12 +1343,19 @@ const sqliteStore = (() => {
 
           _SQL = await _loadSqlJs();
           const existing = await _loadBestDB();
+          if (myGeneration !== _initGeneration) {
+            throw new Error('[SQLite] init superseded by a later attempt');
+          }
           _clearStmtCache();
           _sqlDB = existing ? new _SQL.Database(existing) : new _SQL.Database();
           _bootstrapSchema(_sqlDB);
 
           if (existing && !_integrityCheck(_sqlDB)) {
-            console.error('[SQLite] Integrity check failed — proceeding with caution');
+            console.error('[SQLite] Integrity check failed — attempting recovery');
+            const recovered = await _attemptRecovery();
+            if (!recovered && typeof showToast === 'function') {
+              showToast('Local data could not be fully verified. If something looks missing, use Sync to restore from the cloud.', 'warning', 8000);
+            }
           }
 
           if (!existing) await _dualPersist();
@@ -1248,7 +1377,7 @@ const sqliteStore = (() => {
               if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
               try {
                 const data = _sqlDB.export();
-                _lsBlobWrite(_LS_BLOB_KEY, data).catch(() => {});
+                _lsBlobWriteSync(_LS_BLOB_KEY, data);
                 if (_hasOPFS) {
                   _opfsShadowWrite(data).catch(() => {});
                 }
@@ -1258,10 +1387,17 @@ const sqliteStore = (() => {
 
           return _sqlDB;
         } catch (e) {
-          _initPromise = null;
+          if (myGeneration === _initGeneration) _initPromise = null;
           throw e;
         }
-      })();
+      })(), SQLITE_BOOT_TIMEOUT_MS, 'database startup').catch(e => {
+        if (myGeneration === _initGeneration) _initPromise = null;
+        if (typeof showToast === 'function') {
+          showToast('The app database is taking too long to start. Please check your connection and reload.', 'error', 10000);
+        }
+        console.error('[SQLite] boot failed or timed out:', _safeErr(e));
+        throw e;
+      });
       return _initPromise;
     },
 

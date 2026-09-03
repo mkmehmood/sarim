@@ -1720,19 +1720,20 @@ if (!query || query.length < 1) {
 resultsDiv.classList.add('hidden');
 return;
 }
-const currentMode = window._expenseCategory || 'operating';
-const isPaymentMode = currentMode === 'IN' || currentMode === 'OUT';
-const expenseMatches = isPaymentMode ? [] : expenseCategories.filter(name => {
+// Show BOTH expense categories and payment entities together so the user can
+// pick whichever name they mean — the Transaction Type toggle (Operating
+// Expense / Payment IN / Payment OUT) still drives what gets saved, and
+// selecting a name below auto-adjusts that toggle via selectExpense().
+const expenseMatches = expenseCategories.filter(name => {
 if (!name || typeof name !== 'string') return false;
 return name.toLowerCase().includes(query);
 });
-const entityMatches = !isPaymentMode ? [] : paymentEntities.filter(entity => {
+const entityMatches = paymentEntities.filter(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return false;
 if (entity.isExpenseEntity === true) return false;
 return entity.name.toLowerCase().includes(query);
 });
 let html = '';
-if (!isPaymentMode) {
 html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> EXPENSES</div>`;
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
@@ -1763,7 +1764,6 @@ ${count} expense records
 } else {
 html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching expenses — will create new</div>`;
 }
-} else {
 html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> ENTITIES</div>`;
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
@@ -1793,7 +1793,6 @@ ${transactions > 0 ? transactions + ' transactions' : ''}
 });
 } else {
 html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching entities — will create new</div>`;
-}
 }
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
@@ -3832,7 +3831,17 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   }
 }
 window.purgeRecoveredId = purgeRecoveredId;
-async function recoverRecord(deletedId, collectionName) {
+async function _findPairedTransferTombstone(currentId, transferPairId) {
+  if (!transferPairId) return null;
+  const allDeletions = ensureArray(await sqliteStore.get('deletion_records'));
+  return allDeletions.find(r =>
+    String(r.id) !== String(currentId) &&
+    String(r.recordId || r.id) !== String(currentId) &&
+    r.snapshot && r.snapshot.transferPairId === transferPairId
+  ) || null;
+}
+
+async function recoverRecord(deletedId, collectionName, _isPairRecovery = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -3932,6 +3941,14 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       } catch(_recPhErr) { console.warn('[recoverRecord] photo restore failed', _recPhErr); }
     }
     triggerAutoSync();
+    if (!_isPairRecovery && cleanRecord && cleanRecord.isTransfer === true && cleanRecord.transferPairId) {
+      try {
+        const pairTomb = await _findPairedTransferTombstone(oldId, cleanRecord.transferPairId);
+        if (pairTomb) {
+          await recoverRecord(pairTomb.id || pairTomb.recordId, pairTomb.collection || collectionName, true);
+        }
+      } catch (_pairErr) { console.warn('[RecycleBin] paired transfer recovery failed', _safeErr(_pairErr)); }
+    }
     return true;
   } catch(e) {
     console.error('[RecycleBin] recoverRecord error:', _safeErr(e));
@@ -4110,7 +4127,11 @@ async function renderRecycleBin(filterCollection = 'all') {
           r.displayDetail = r.displayDetail || [s.salesRep ? `Rep: ${s.salesRep}` : '', s.paymentType || '', s.date || ''].filter(Boolean).join(' · ');
           r.displayAmount = r.displayAmount || (s.totalValue != null ? `₨${Number(s.totalValue).toLocaleString()}` : null);
         } else if (col === 'transactions') {
-          r.displayName   = s.entityName || s.name || s.description || null;
+          if (s.isTransfer === true) {
+            r.displayName   = `Transfer – ${s.entityName || '?'} ${s.type === 'OUT' ? '→' : '←'} ${s.transferPeerEntityName || '?'}`;
+          } else {
+            r.displayName   = s.entityName || s.name || s.description || null;
+          }
           r.displayDetail = r.displayDetail || [s.type === 'IN' ? '↓ IN' : s.type === 'OUT' ? '↑ OUT' : (s.type || ''), s.date || ''].filter(Boolean).join(' · ');
           r.displayAmount = r.displayAmount || (s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null);
         } else if (col === 'expenses') {
@@ -4118,9 +4139,17 @@ async function renderRecycleBin(filterCollection = 'all') {
           r.displayDetail = r.displayDetail || [s.category || '', s.date || ''].filter(Boolean).join(' · ');
           r.displayAmount = r.displayAmount || (s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null);
         } else if (col === 'production') {
-          r.displayName   = s.supplyStore || s.store ? `Production – ${s.supplyStore || s.store}` : null;
+          if (s.isTransfer === true) {
+            const _dir  = s.transferDirection === 'out' ? 'Transfer Out' : 'Transfer In';
+            const _peer = s.transferPeerStore ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.transferPeerStore) : s.transferPeerStore) : '';
+            const _self = (s.supplyStore || s.store) ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.supplyStore || s.store) : (s.supplyStore || s.store)) : '';
+            r.displayName   = _peer ? `${_dir} – ${_self} ${s.transferDirection === 'out' ? '→' : '←'} ${_peer}` : `${_dir} – ${_self || 'Stock Transfer'}`;
+            r.displayAmount = r.displayAmount || (s.net != null ? `${Math.abs(s.net)} kg` : null);
+          } else {
+            r.displayName   = s.supplyStore || s.store ? `Production – ${s.supplyStore || s.store}` : null;
+            r.displayAmount = r.displayAmount || (s.net != null ? `${s.net} kg` : null);
+          }
           r.displayDetail = r.displayDetail || s.date || '';
-          r.displayAmount = r.displayAmount || (s.net != null ? `${s.net} kg` : null);
         } else if (col === 'returns') {
           r.displayName   = s.store ? `Return – ${s.store}` : null;
           r.displayDetail = r.displayDetail || s.date || '';
@@ -4158,6 +4187,20 @@ async function renderRecycleBin(filterCollection = 'all') {
           const tab = RECYCLE_COLLECTION_TO_TAB[r.collection || 'unknown'] || 'tab_payments';
           return tab === filterCollection;
         });
+    window._recycleBinCurrentFiltered = filtered;
+    window._recycleBinCurrentFilterKey = filterCollection;
+    const emptyBtn = document.getElementById('recycleBinEmptyBtn');
+    const emptyBtnLabel = document.getElementById('recycleBinEmptyBtnLabel');
+    if (emptyBtn && emptyBtnLabel) {
+      if (filtered.length === 0) {
+        emptyBtn.style.display = 'none';
+      } else {
+        emptyBtn.style.display = 'flex';
+        emptyBtnLabel.textContent = filterCollection === 'all'
+          ? `Empty Bin (${filtered.length})`
+          : `Empty Tab (${filtered.length})`;
+      }
+    }
     if (filtered.length === 0) {
       container.innerHTML = `<div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
         <div style="font-size:1rem;font-weight:600;">Recycle Bin is empty</div>
@@ -4194,7 +4237,11 @@ async function renderRecycleBin(filterCollection = 'all') {
             displayDetail = [s.supplyStore || s.store || '', s.paymentType || '', s.date || ''].filter(Boolean).join(' · ');
             displayAmount = s.totalValue != null ? `₨${Number(s.totalValue).toLocaleString()}` : null;
           } else if (col === 'transactions') {
-            displayName   = s.entityName || s.description || s.name || null;
+            if (s.isTransfer === true) {
+              displayName = `Transfer – ${s.entityName || '?'} ${s.type === 'OUT' ? '→' : '←'} ${s.transferPeerEntityName || '?'}`;
+            } else {
+              displayName = s.entityName || s.description || s.name || null;
+            }
             displayDetail = [s.type === 'IN' ? '↓ IN' : s.type === 'OUT' ? '↑ OUT' : (s.type || ''), s.date || ''].filter(Boolean).join(' · ');
             displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null;
           } else if (col === 'expenses') {
@@ -4202,9 +4249,17 @@ async function renderRecycleBin(filterCollection = 'all') {
             displayDetail = [s.category || '', s.date || ''].filter(Boolean).join(' · ');
             displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null;
           } else if (col === 'production') {
-            displayName   = s.supplyStore || s.store ? `Production – ${s.supplyStore || s.store}` : 'Production Batch';
+            if (s.isTransfer === true) {
+              const _dir  = s.transferDirection === 'out' ? 'Transfer Out' : 'Transfer In';
+              const _peer = s.transferPeerStore ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.transferPeerStore) : s.transferPeerStore) : '';
+              const _self = (s.supplyStore || s.store) ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.supplyStore || s.store) : (s.supplyStore || s.store)) : '';
+              displayName   = _peer ? `${_dir} – ${_self} ${s.transferDirection === 'out' ? '→' : '←'} ${_peer}` : `${_dir} – ${_self || 'Stock Transfer'}`;
+              displayAmount = s.net != null ? `${Math.abs(s.net)} kg` : null;
+            } else {
+              displayName   = s.supplyStore || s.store ? `Production – ${s.supplyStore || s.store}` : 'Production Batch';
+              displayAmount = s.net != null ? `${s.net} kg` : null;
+            }
             displayDetail = s.date || '';
-            displayAmount = s.net != null ? `${s.net} kg` : null;
           } else if (col === 'returns') {
             displayName   = s.store ? `Return – ${s.store}` : 'Stock Return';
             displayDetail = s.date || '';
@@ -4290,6 +4345,8 @@ async function renderRecycleBin(filterCollection = 'all') {
     }).join('');
   } catch(e) {
     container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);">Failed to load recycle bin.</div>`;
+    const emptyBtnErr = document.getElementById('recycleBinEmptyBtn');
+    if (emptyBtnErr) emptyBtnErr.style.display = 'none';
     console.error('[RecycleBin] render error', _safeErr(e));
   }
 }
@@ -4300,14 +4357,17 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const tabKey = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
   const label = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
+  const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
+  const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
+  const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
   if (!(await showGlassConfirm(
-    `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.`,
+    `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}`,
     { title: 'Recover Record', confirmText: 'Recover', danger: false }
   ))) return;
   showToast('Recovering record…', 'info', 1500);
   const ok = await recoverRecord(id, collectionName);
   if (ok) {
-    showToast(`${label} recovered successfully!`, 'success');
+    showToast(isTransferPair ? `${label} recovered — both sides of the transfer restored!` : `${label} recovered successfully!`, 'success');
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();
@@ -4323,7 +4383,49 @@ window.closeRecycleBin = closeRecycleBin;
 window.renderRecycleBin = renderRecycleBin;
 window.attemptRecoverRecord = attemptRecoverRecord;
 
-async function hardDeleteRecord(id, collectionName) {
+async function emptyRecycleBin() {
+  const currentFilter = window._recycleBinCurrentFilterKey || (document.getElementById('recycleBinFilter') || {}).value || 'all';
+  const targets = (window._recycleBinCurrentFiltered || []).slice();
+  if (targets.length === 0) {
+    showToast('Recycle bin is already empty.', 'info');
+    return;
+  }
+  const scopeLabel = currentFilter === 'all' ? 'the entire recycle bin' : `all "${RECYCLE_TAB_LABELS[currentFilter] || currentFilter}" items`;
+  const confirmed = await showGlassConfirm(
+    `Permanently delete ${targets.length} record${targets.length !== 1 ? 's' : ''} from ${scopeLabel}?\n\nThis action CANNOT be undone. Any linked transfer pairs will be deleted together. All records will be erased from local storage and the cloud.`,
+    { title: 'Empty Recycle Bin', confirmText: `Delete ${targets.length} Forever`, danger: true }
+  );
+  if (!confirmed) return;
+  const emptyBtn = document.getElementById('recycleBinEmptyBtn');
+  if (emptyBtn) emptyBtn.style.pointerEvents = 'none';
+  showToast(`Deleting ${targets.length} record${targets.length !== 1 ? 's' : ''} permanently…`, 'info', 3000);
+  let failCount = 0;
+  for (const rec of targets) {
+    const rid = rec.id || rec.recordId;
+    if (!rid) continue;
+    const col = rec.collection || 'unknown';
+    try {
+      const ok = await hardDeleteRecord(rid, col);
+      if (!ok) failCount++;
+    } catch (e) {
+      failCount++;
+      console.warn('[RecycleBin] emptyRecycleBin item failed', _safeErr(e));
+    }
+  }
+  notifyDataChange('all');
+  if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
+  if (typeof calculateCashTracker === 'function') { try { calculateCashTracker(); } catch (_) {} }
+  if (emptyBtn) emptyBtn.style.pointerEvents = '';
+  await renderRecycleBin(currentFilter);
+  if (failCount > 0) {
+    showToast(`Emptied recycle bin with ${failCount} error${failCount !== 1 ? 's' : ''}. Some records may need a retry.`, 'warning', 6000);
+  } else {
+    showToast('Recycle bin emptied.', 'success');
+  }
+}
+window.emptyRecycleBin = emptyRecycleBin;
+
+async function hardDeleteRecord(id, collectionName, _isPairDelete = false) {
   if (!id || !collectionName) return false;
   const sid = String(id);
   try {
@@ -4333,6 +4435,7 @@ async function hardDeleteRecord(id, collectionName) {
     await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
 
     const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
+    const ownTombstone = deletionRecords.find(r => String(r.id) === sid || String(r.recordId || r.id) === sid);
     const pruned = deletionRecords.filter(r => String(r.id) !== sid && String(r.recordId || r.id) !== sid);
     await sqliteStore.set('deletion_records', pruned);
 
@@ -4417,6 +4520,14 @@ async function hardDeleteRecord(id, collectionName) {
         }
       } catch(_hdPhErr) { console.warn('[hardDeleteRecord] photo local cleanup failed', _hdPhErr); }
     }
+    if (!_isPairDelete && ownTombstone && ownTombstone.snapshot && ownTombstone.snapshot.isTransfer === true && ownTombstone.snapshot.transferPairId) {
+      try {
+        const pairTomb = await _findPairedTransferTombstone(sid, ownTombstone.snapshot.transferPairId);
+        if (pairTomb) {
+          await hardDeleteRecord(pairTomb.id || pairTomb.recordId, pairTomb.collection || collectionName, true);
+        }
+      } catch (_pairErr) { console.warn('[RecycleBin] paired transfer hard-delete failed', _safeErr(_pairErr)); }
+    }
     return true;
   } catch(e) {
     console.error('[RecycleBin] hardDeleteRecord error:', _safeErr(e));
@@ -4428,15 +4539,19 @@ async function attemptHardDeleteRecord(id, collectionName) {
   const tabKey   = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
   const label    = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
+  const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
+  const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
+  const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
+  const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be permanently deleted together.' : '';
   const confirmed = await showGlassConfirm(
-    `Permanently delete this ${label}?\n\nThis action CANNOT be undone. The record will be erased from all local storage and the cloud.`,
+    `Permanently delete this ${label}?\n\nThis action CANNOT be undone. The record will be erased from all local storage and the cloud.${pairNote}`,
     { title: 'Delete Forever', confirmText: 'Delete Forever', danger: true }
   );
   if (!confirmed) return;
   showToast('Deleting permanently…', 'info', 1500);
   const ok = await hardDeleteRecord(id, collectionName);
   if (ok) {
-    showToast(`${label} permanently deleted.`, 'success');
+    showToast(isTransferPair ? `${label} and its paired transfer record permanently deleted.` : `${label} permanently deleted.`, 'success');
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();
@@ -5654,6 +5769,10 @@ input.value = value;
 if (id) {
 input.setAttribute('data-entity-id', id);
 input.setAttribute('data-supplier-id', id);
+if (/-search$/.test(inputId)) {
+const valueField = document.getElementById(inputId.replace(/-search$/, '-value'));
+if (valueField) valueField.value = id;
+}
 }
 }
 if (resultsDiv) {
@@ -5702,7 +5821,9 @@ const searchables = [
 { input: 'cust-name', results: 'customer-search-results' },
 { input: 'rep-cust-name', results: 'rep-customer-search-results' },
 { input: 'paymentEntity', results: 'payment-entity-search-results' },
-{ input: 'factoryExistingSupplier', results: 'factory-supplier-search-results' }
+{ input: 'factoryExistingSupplier', results: 'factory-supplier-search-results' },
+{ input: 'payment-transfer-from-search', results: 'payment-transfer-from-results' },
+{ input: 'payment-transfer-to-search', results: 'payment-transfer-to-results' }
 ];
 searchables.forEach(item => {
 const input = document.getElementById(item.input);
@@ -7260,3 +7381,239 @@ window._teamUnsubscribe = null;
 }
 window.listenForTeamChanges = listenForTeamChanges;
 window.applyRemoteModeChange = applyRemoteModeChange;
+
+async function prepareEntityTransferScreen() {
+if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
+showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
+if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('payment-transfer-screen');
+return;
+}
+const dateInput = document.getElementById('payment-transfer-date');
+if (dateInput && !dateInput.value) {
+const d = new Date();
+dateInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+const fromSearch = document.getElementById('payment-transfer-from-search'); if (fromSearch) { fromSearch.value = ''; fromSearch.removeAttribute('data-entity-id'); }
+const toSearch = document.getElementById('payment-transfer-to-search'); if (toSearch) { toSearch.value = ''; toSearch.removeAttribute('data-entity-id'); }
+const fromHidden = document.getElementById('payment-transfer-from-value'); if (fromHidden) fromHidden.value = '';
+const toHidden = document.getElementById('payment-transfer-to-value'); if (toHidden) toHidden.value = '';
+const fromResults = document.getElementById('payment-transfer-from-results'); if (fromResults) fromResults.classList.add('hidden');
+const toResults = document.getElementById('payment-transfer-to-results'); if (toResults) toResults.classList.add('hidden');
+const amtInput = document.getElementById('payment-transfer-amount'); if (amtInput) amtInput.value = '';
+const noteInput = document.getElementById('payment-transfer-note'); if (noteInput) noteInput.value = '';
+if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(null);
+await renderPaymentTransferHistory();
+}
+window.prepareEntityTransferScreen = prepareEntityTransferScreen;
+
+async function saveEntityTransfer() {
+if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
+showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
+return;
+}
+const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const fromId = (document.getElementById('payment-transfer-from-value') || {}).value;
+const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
+const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
+const date = (document.getElementById('payment-transfer-date') || {}).value;
+const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
+if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
+if (!fromId || !toId) { showToast('Please search and select both entities from the list.', 'warning', 3000); return; }
+if (String(fromId) === String(toId)) { showToast('From and To entities must be different.', 'warning', 3000); return; }
+if (amount <= 0) { showToast('Please enter a valid amount.', 'warning', 3000); return; }
+const fromEntity = paymentEntities.find(e => String(e.id) === String(fromId));
+const toEntity = paymentEntities.find(e => String(e.id) === String(toId));
+if (!fromEntity || !toEntity) { showToast('Selected entity not found.', 'error', 3000); return; }
+if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { showToast('Expense-only entities cannot be used in a transfer.', 'warning', 4000); return; }
+let pairId = generateUUID('trfpair');
+if (!validateUUID(pairId)) pairId = generateUUID('trfpair');
+const createdAt = getTimestamp();
+let outId = generateUUID('pay');
+if (!validateUUID(outId)) outId = generateUUID('pay');
+let inId = generateUUID('pay');
+if (!validateUUID(inId)) inId = generateUUID('pay');
+const createdBy = (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null;
+let outTx = {
+id: outId, entityId: fromEntity.id, entityName: fromEntity.name, amount: amount, type: 'OUT', date: date,
+description: note ? `Transfer to ${toEntity.name}: ${note}` : `Transfer to ${toEntity.name}`,
+isPayable: false, isExpense: false, isTransfer: true, transferPairId: pairId,
+transferPeerEntityId: toEntity.id, transferPeerEntityName: toEntity.name,
+createdBy: createdBy
+};
+let inTx = {
+id: inId, entityId: toEntity.id, entityName: toEntity.name, amount: amount, type: 'IN', date: date,
+description: note ? `Transfer from ${fromEntity.name}: ${note}` : `Transfer from ${fromEntity.name}`,
+isPayable: false, isExpense: false, isTransfer: true, transferPairId: pairId,
+transferPeerEntityId: fromEntity.id, transferPeerEntityName: fromEntity.name,
+createdBy: createdBy
+};
+outTx = ensureRecordIntegrity(outTx, false);
+inTx = ensureRecordIntegrity(inTx, false);
+paymentTransactions.push(outTx, inTx);
+await unifiedSave('payment_transactions', paymentTransactions, null, [outTx.id, inTx.id]);
+if (window._paymentTransferPendingPhoto) {
+try {
+const _storedPh = (await sqliteStore.get('person_photos')) || {};
+const _compressed = await _compressPhoto(window._paymentTransferPendingPhoto, 1600, 0.88);
+_storedPh['expense:' + outTx.id] = _compressed;
+_storedPh['expense:' + inTx.id] = _compressed;
+await sqliteStore.set('person_photos', _storedPh);
+const _phTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+_phTs['expense:' + outTx.id] = Date.now();
+_phTs['expense:' + inTx.id] = Date.now();
+await sqliteStore.set('person_photos_timestamps', _phTs);
+const _dk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+if (!_dk.includes('expense:' + outTx.id)) _dk.push('expense:' + outTx.id);
+if (!_dk.includes('expense:' + inTx.id)) _dk.push('expense:' + inTx.id);
+await sqliteStore.set('person_photos_dirty_keys', _dk);
+await sqliteStore.set('person_photos_timestamp', Date.now());
+} catch (_pe) { console.warn('Payment transfer photo save failed', _pe); }
+}
+notifyDataChange('payments');
+emitSyncUpdate({ payment_transactions: null });
+showToast(`Transferred ${fmtAmt(amount)}: ${fromEntity.name} → ${toEntity.name}`, 'success');
+if (typeof prepareEntityTransferScreen === 'function') await prepareEntityTransferScreen();
+if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(true); } catch (_) {} }
+if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
+triggerAutoSync();
+}
+window.saveEntityTransfer = saveEntityTransfer;
+
+function openPaymentTransferPhotoCapture() {
+openPhotoCapture('paytransfer');
+}
+window.openPaymentTransferPhotoCapture = openPaymentTransferPhotoCapture;
+
+function handlePaymentTransferPhotoFile(event) {
+const file = event.target.files && event.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = (e) => _applyPaymentTransferPendingPhoto(e.target.result);
+reader.readAsDataURL(file);
+event.target.value = '';
+}
+window.handlePaymentTransferPhotoFile = handlePaymentTransferPhotoFile;
+
+window._paymentTransferPendingPhoto = null;
+function _applyPaymentTransferPendingPhoto(dataUrl) {
+window._paymentTransferPendingPhoto = dataUrl || null;
+const dot = document.getElementById('payment-transfer-photo-dot');
+const btn = document.getElementById('payment-transfer-photo-btn');
+if (dot) dot.style.display = dataUrl ? '' : 'none';
+if (btn) {
+btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
+btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
+}
+}
+window._applyPaymentTransferPendingPhoto = _applyPaymentTransferPendingPhoto;
+
+async function renderPaymentTransferHistory() {
+const list = document.getElementById('paymentTransferHistoryList');
+if (!list) return;
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const transfers = paymentTransactions.filter(t => t.isTransfer === true && t.type === 'OUT')
+.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+if (transfers.length === 0) {
+list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No payment transfers recorded yet.' }));
+return;
+}
+const fragment = document.createDocumentFragment();
+transfers.forEach(t => {
+const item = document.createElement('div');
+item.className = 'cust-history-item';
+item.style.flexDirection = 'column';
+item.style.alignItems = 'stretch';
+const safeId = String(t.id).replace(/'/g, "\\'");
+const photoBadgeId = 'ph-badge-trf-' + String(t.id).replace(/[^a-z0-9]/gi, '');
+item.innerHTML = `
+<div class="txn-card-row">
+  <div class="cust-history-info">
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}</div>
+    <div class="u-fs-sm2 u-text-muted">${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}</div>
+    ${t.description ? `<div class="u-fs-sm2 u-text-muted">${esc(t.description)}</div>` : ''}
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+    <div style="text-align:right;">
+      <span style="color:var(--accent);padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">TRANSFER</span>
+      <div class="cost-val" style="font-size:0.9rem;margin-top:2px;">${fmtAmt(t.amount)}</div>
+    </div>
+    <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')"
+      style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
+      <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <rect x="3" y="7" width="30" height="22" rx="3" stroke="currentColor" stroke-width="1.8" fill="none"/>
+        <circle cx="18" cy="18" r="6" stroke="currentColor" stroke-width="1.6" fill="none"/>
+        <circle cx="18" cy="18" r="2.5" fill="currentColor"/>
+        <rect x="22" y="4" width="8" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/>
+      </svg>
+      Photo
+    </button>
+  </div>
+</div>
+<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>
+`;
+fragment.appendChild(item);
+if (t.id) {
+  const _phKey = 'expense:' + t.id;
+  sqliteStore.get('person_photos').then(ph => {
+    if (ph && ph[_phKey]) {
+      const badge = document.getElementById(photoBadgeId);
+      if (badge) badge.style.display = 'inline-flex';
+    }
+  }).catch(() => {});
+}
+});
+list.replaceChildren(fragment);
+}
+window.renderPaymentTransferHistory = renderPaymentTransferHistory;
+
+async function deletePaymentTransfer(pairId, skipConfirm = false) {
+const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const entries = paymentTransactions.filter(t => t.transferPairId === pairId);
+if (entries.length === 0) return;
+const outSide = entries.find(t => t.type === 'OUT');
+const inSide = entries.find(t => t.type === 'IN');
+const amount = (outSide && outSide.amount) || (inSide && inSide.amount) || 0;
+const fromName = outSide ? outSide.entityName : (inSide ? inSide.transferPeerEntityName : '?');
+const toName = inSide ? inSide.entityName : (outSide ? outSide.transferPeerEntityName : '?');
+if (!skipConfirm) {
+const confirmMsg = `Remove this payment transfer?\n${fromName} → ${toName}\nAmount: ${fmtAmt(amount)}\n\nThis cannot be undone.`;
+if (!(await showGlassConfirm(confirmMsg, { title: 'Remove Transfer', confirmText: 'Remove', danger: true }))) return;
+}
+try {
+let working = paymentTransactions.slice();
+for (const entry of entries) {
+working = working.filter(t => t.id !== entry.id);
+await unifiedDelete('payment_transactions', working, entry.id, { strict: true }, entry);
+}
+try {
+const _trfPh = (await sqliteStore.get('person_photos')) || {};
+const _trfPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+const _trfDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+let _trfPhChanged = false;
+for (const entry of entries) {
+const _pk = 'expense:' + entry.id;
+if (_trfPh[_pk] !== undefined) {
+delete _trfPh[_pk];
+delete _trfPhTs[_pk];
+if (!_trfDk.includes(_pk)) _trfDk.push(_pk);
+_trfPhChanged = true;
+}
+}
+if (_trfPhChanged) {
+await sqliteStore.set('person_photos', _trfPh);
+await sqliteStore.set('person_photos_timestamps', _trfPhTs);
+await sqliteStore.set('person_photos_dirty_keys', _trfDk);
+if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+}
+} catch (_trfPhErr) { console.warn('[deletePaymentTransfer] photo cleanup failed', _trfPhErr); }
+notifyDataChange('payments');
+if (typeof renderPaymentTransferHistory === 'function') await renderPaymentTransferHistory();
+if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(true); } catch (_) {} }
+if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
+if (!skipConfirm) showToast('Payment transfer removed', 'success');
+} catch (e) {
+showToast('Failed to remove transfer. Please try again.', 'error');
+}
+}
+window.deletePaymentTransfer = deletePaymentTransfer;

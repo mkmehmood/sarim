@@ -527,6 +527,28 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       </svg>
       Recycle Bin
     </button>
+    <button class="sidebar-settings-btn" id="sidebar-btn-stock-transfer" onclick="closeSidebar();openStandaloneScreen('stock-transfer-screen');if(typeof prepareStockTransferScreen==='function')prepareStockTransferScreen()">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="14" width="11" height="11" rx="2.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.6"/>
+        <rect x="23" y="11" width="11" height="11" rx="2.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.6"/>
+        <path d="M13 17 H23" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/>
+        <polyline points="19,13 23,17 19,21" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M23 27 H13" stroke="var(--accent-gold)" stroke-width="1.6" stroke-linecap="round"/>
+        <polyline points="17,23 13,27 17,31" fill="none" stroke="var(--accent-gold)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Stock Transfer
+    </button>
+    <button class="sidebar-settings-btn" id="sidebar-btn-payment-transfer" onclick="closeSidebar();openStandaloneScreen('payment-transfer-screen');if(typeof prepareEntityTransferScreen==='function')prepareEntityTransferScreen()">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="10" cy="18" r="6.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.6"/>
+        <circle cx="26" cy="18" r="6.5" fill="var(--accent-gold)" fill-opacity="0.15" stroke="var(--accent-gold)" stroke-width="1.6"/>
+        <path d="M15.5 14.5 H22" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+        <polyline points="19,11.5 22,14.5 19,17.5" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M20.5 21.5 H14" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round"/>
+        <polyline points="17,18.5 14,21.5 17,24.5" fill="none" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Payment Transfer
+    </button>
     <div id="sidebar-label-appearance" class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">APPEARANCE</div>
     <button id="sidebar-btn-theme" class="sidebar-settings-btn" onclick="closeSidebar();(async()=>{await toggleDarkMode();})()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -775,23 +797,145 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
   <div class="screen-body">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
       <div id="recycleBinStats" style="font-size:0.75rem;color:var(--text-muted);"></div>
-      <div style="position:relative;">
-        <button id="recycleBinFilterBtn" class="store-selector" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);font-size:0.78rem;" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <select id="recycleBinFilter" style="display:none;">
-          <option value="all">All Tabs</option>
-          <option value="tab_sales">Sales Tab</option>
-          <option value="tab_rep">Rep Tab</option>
-          <option value="tab_production">Manufacturing Tab</option>
-          <option value="tab_calculator">Calculator Tab</option>
-          <option value="tab_factory">Factory Tab</option>
-          <option value="tab_payments">Payments Tab</option>
-        </select>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="position:relative;">
+          <button id="recycleBinFilterBtn" class="store-selector" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);font-size:0.78rem;" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <select id="recycleBinFilter" style="display:none;">
+            <option value="all">All Tabs</option>
+            <option value="tab_sales">Sales Tab</option>
+            <option value="tab_rep">Rep Tab</option>
+            <option value="tab_production">Manufacturing Tab</option>
+            <option value="tab_calculator">Calculator Tab</option>
+            <option value="tab_factory">Factory Tab</option>
+            <option value="tab_payments">Payments Tab</option>
+          </select>
+        </div>
+        <button id="recycleBinEmptyBtn" onclick="(async()=>{await emptyRecycleBin()})()" style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.10);color:#ef4444;font-size:0.78rem;font-weight:600;">
+          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 11h22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 11V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9.5 11l1.3 18a2 2 0 0 0 2 1.8h10.4a2 2 0 0 0 2-1.8l1.3-18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 16v9M21 16v9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span id="recycleBinEmptyBtnLabel">Empty Bin</span>
+        </button>
       </div>
     </div>
     <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:14px;padding:9px 13px;font-size:0.73rem;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">
       Recover restores the record to its original collection. Records expire after <strong style="color:var(--text-main);">90 days</strong>. Use <strong style="color:#ef4444;">Delete Forever</strong> to erase a record immediately and permanently.
     </div>
     <div id="recycleBinList"></div>
+  </div>
+</div>
+
+<div id="stock-transfer-screen" class="standalone-screen" style="display:none">
+  <div class="screen-topbar">
+    <h2 class="screen-title">Stock Transfer</h2>
+  </div>
+  <div class="screen-body">
+    <div class="liquid-card" style="padding:16px;margin-bottom:16px;border:1px solid var(--glass-border);border-radius:var(--radius-lg);">
+      <p class="settings-group-label">Move Stock Between Stores</p>
+      <div class="grid-inputs u-mb-15">
+        <div class="field">
+          <label>From Store</label>
+          <input type="hidden" id="stock-transfer-from-value" value="">
+          <button type="button" id="stockTransferFromBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfFrom',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-from-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability();});})(this)"><span>Select Store </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="field">
+          <label>To Store</label>
+          <input type="hidden" id="stock-transfer-to-value" value="">
+          <button type="button" id="stockTransferToBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfTo',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-to-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';});})(this)"><span>Select Store </span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <div class="grid-inputs u-mb-15">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="stock-transfer-date" oninput="if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability()">
+        </div>
+        <div class="field">
+          <label>Quantity (kg)</label>
+          <input type="number" id="stock-transfer-qty" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="field u-mb-15">
+        <label>Note (optional)</label>
+        <input type="text" id="stock-transfer-note" placeholder="e.g. Balancing stock ahead of weekend rush" maxlength="120">
+      </div>
+      <div id="stockTransferAvailability" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px;"></div>
+      <button class="btn btn-noman" style="width:100%;" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
+    </div>
+
+    <p class="settings-group-label">Transfer History</p>
+    <div id="stockTransferHistoryList"></div>
+
+    <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
+      <strong style="color:var(--warning);">Note:</strong> A transfer is only allowed up to the stock currently available at the source store on the selected date.
+      Transfers are recorded against both stores' stock history and sync to all connected devices automatically.
+    </div>
+  </div>
+</div>
+
+<div id="payment-transfer-screen" class="standalone-screen" style="display:none">
+  <div class="screen-topbar">
+    <h2 class="screen-title">Payment Transfer</h2>
+  </div>
+  <div class="screen-body">
+    <div class="liquid-card" style="padding:16px;margin-bottom:16px;border:1px solid var(--glass-border);border-radius:var(--radius-lg);">
+      <p class="settings-group-label">Move Balance Between Entities</p>
+      <div class="grid-inputs u-mb-15">
+        <div class="field" style="position:relative;">
+          <label>From Entity</label>
+          <input type="hidden" id="payment-transfer-from-value" value="">
+          <input
+            type="text"
+            id="payment-transfer-from-search"
+            placeholder="Search entity..."
+            oninput="handleUniversalSearch('payment-transfer-from-search','payment-transfer-from-results','entities');document.getElementById('payment-transfer-from-value').value=''"
+            autocomplete="off"
+            style="width:100%;font-size:0.85rem;padding:8px;"
+          >
+          <div id="payment-transfer-from-results" class="hidden" style="position:absolute;z-index:var(--z-modal, 1000);width:100%;max-height:200px;overflow-y:auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;margin-top:5px;box-shadow:var(--shadow);"></div>
+        </div>
+        <div class="field" style="position:relative;">
+          <label>To Entity</label>
+          <input type="hidden" id="payment-transfer-to-value" value="">
+          <input
+            type="text"
+            id="payment-transfer-to-search"
+            placeholder="Search entity..."
+            oninput="handleUniversalSearch('payment-transfer-to-search','payment-transfer-to-results','entities');document.getElementById('payment-transfer-to-value').value=''"
+            autocomplete="off"
+            style="width:100%;font-size:0.85rem;padding:8px;"
+          >
+          <div id="payment-transfer-to-results" class="hidden" style="position:absolute;z-index:var(--z-modal, 1000);width:100%;max-height:200px;overflow-y:auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;margin-top:5px;box-shadow:var(--shadow);"></div>
+        </div>
+      </div>
+      <div class="grid-inputs u-mb-15">
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="payment-transfer-date">
+        </div>
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="payment-transfer-amount" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="field u-mb-15">
+        <label>Note (optional)</label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" style="flex:1;">
+          <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" style="flex-shrink:0;width:36px;height:36px;border-radius:8px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;position:relative;">
+            <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="9" width="30" height="22" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.10"/><circle cx="18" cy="20" r="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity="0.15"/><path d="M13 9l2-4h6l2 4" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+            <span id="payment-transfer-photo-dot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--card-bg,#111827);"></span>
+          </button>
+        </div>
+        <input type="file" id="payment-transfer-photo-file" accept="image/*" style="display:none" onchange="handlePaymentTransferPhotoFile(event)">
+      </div>
+      <button class="btn btn-noman" style="width:100%;" onclick="(async()=>{await saveEntityTransfer()})()">Transfer Payment</button>
+    </div>
+
+    <p class="settings-group-label">Transfer History</p>
+    <div id="paymentTransferHistoryList"></div>
+
+    <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
+      <strong style="color:var(--warning);">Note:</strong> A payment transfer records an OUT transaction against the source entity and an IN transaction against the destination entity.
+      Both entities' balances update immediately and sync to all connected devices automatically.
+    </div>
   </div>
 </div>
 
@@ -1160,7 +1304,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div style="position:relative;flex-shrink:0;">
-        <button class="btn btn-noran btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_entity');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_entity';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('entityPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportEntityToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_entity');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_entity';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('entityPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportEntityToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
       </div>
     </div>
     <div id="entityManagementHistoryList"></div>
@@ -1226,7 +1370,8 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
   <div class="screen-body">
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;position:relative;">
+      <input type="text" id="expense-history-search" class="search-bar u-m-0" style="flex:1;" placeholder="Search history..." oninput="filterExpenseManagementHistory()" autocomplete="off">
       <select id="expenseOverlayRange" style="display:none;" onchange="renderExpenseOverlayContent()">
         <option value="today">Today</option>
         <option value="week">This Week</option>
@@ -1235,7 +1380,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div style="position:relative;flex-shrink:0;">
-        <button class="btn btn-noran btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.5"/><path d="M23 35 V29 H29" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><line x1="12" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="19" x2="24" y2="19" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="24" x2="18" y2="24" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
       </div>
     </div>
     <div class="debt-panel u-debt-header liquid-card" style="margin-bottom:14px;">
@@ -1253,7 +1398,6 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div class="u-field-hint">* Adds a new expense record under "<span class="u-text-warning u-fw-600" id="quickExpenseNameLabel"></span>" for today's date.</div>
     </div>
-    <input type="text" id="expense-history-search" class="search-bar" placeholder="Search history..." oninput="filterExpenseManagementHistory()" style="margin-bottom:10px;width:100%;box-sizing:border-box;">
     <div id="expenseManagementHistoryList"></div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
       <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteAllExpensesByName()">Delete All Records Permanently</button>

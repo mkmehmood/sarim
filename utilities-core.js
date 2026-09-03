@@ -1308,9 +1308,15 @@ if (preDeletedRecord && typeof preDeletedRecord === 'object') {
       tempResult.displayAmount = s.totalValue != null ? `₨${Number(s.totalValue).toLocaleString()}` : (s.quantity ? `${s.quantity} kg` : null);
       break;
     case 'transactions':
-      tempResult.displayName   = s.entityName || s.name || s.description || 'Unknown Transaction';
-      tempResult.displayDetail = [s.type === 'IN' ? '↓ IN' : s.type === 'OUT' ? '↑ OUT' : (s.type || ''), s.date || ''].filter(Boolean).join(' · ');
-      tempResult.displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : (s.totalValue != null ? `₨${Number(s.totalValue).toLocaleString()}` : null);
+      if (s.isTransfer === true) {
+        tempResult.displayName   = `Transfer – ${s.entityName || '?'} ${s.type === 'OUT' ? '→' : '←'} ${s.transferPeerEntityName || '?'}`;
+        tempResult.displayDetail = [s.type === 'IN' ? '↓ IN' : s.type === 'OUT' ? '↑ OUT' : (s.type || ''), s.date || ''].filter(Boolean).join(' · ');
+        tempResult.displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null;
+      } else {
+        tempResult.displayName   = s.entityName || s.name || s.description || 'Unknown Transaction';
+        tempResult.displayDetail = [s.type === 'IN' ? '↓ IN' : s.type === 'OUT' ? '↑ OUT' : (s.type || ''), s.date || ''].filter(Boolean).join(' · ');
+        tempResult.displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : (s.totalValue != null ? `₨${Number(s.totalValue).toLocaleString()}` : null);
+      }
       break;
     case 'rep_sales':
       tempResult.displayName   = s.customerName || s.name || 'Unknown Rep Customer';
@@ -1331,9 +1337,18 @@ if (preDeletedRecord && typeof preDeletedRecord === 'object') {
       tempResult.displayDetail = [s.salesRep ? `Rep: ${s.salesRep}` : '', s.phone || ''].filter(Boolean).join(' · ');
       break;
     case 'production':
-      tempResult.displayName   = s.store ? `Production – ${getStoreLabel ? getStoreLabel(s.store) : s.store}` : 'Production Batch';
-      tempResult.displayDetail = s.date || '';
-      tempResult.displayAmount = s.net != null ? `${s.net} kg` : null;
+      if (s.isTransfer === true) {
+        const _dir  = s.transferDirection === 'out' ? 'Transfer Out' : 'Transfer In';
+        const _peer = s.transferPeerStore ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.transferPeerStore) : s.transferPeerStore) : '';
+        const _self = s.store ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.store) : s.store) : '';
+        tempResult.displayName   = _peer ? `${_dir} – ${_self} ${s.transferDirection === 'out' ? '→' : '←'} ${_peer}` : `${_dir} – ${_self || 'Stock Transfer'}`;
+        tempResult.displayDetail = s.date || '';
+        tempResult.displayAmount = s.net != null ? `${Math.abs(s.net)} kg` : null;
+      } else {
+        tempResult.displayName   = s.store ? `Production – ${getStoreLabel ? getStoreLabel(s.store) : s.store}` : 'Production Batch';
+        tempResult.displayDetail = s.date || '';
+        tempResult.displayAmount = s.net != null ? `${s.net} kg` : null;
+      }
       break;
     case 'factory_history':
       tempResult.displayName   = s.store ? `Factory – ${getStoreLabel ? getStoreLabel(s.store) : s.store}` : 'Factory Production';
@@ -1459,12 +1474,21 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_prod
         result.displayAmount = record.totalValue != null ? `₨${Number(record.totalValue).toLocaleString()}` : (record.quantity ? `${record.quantity} kg` : null);
         break;
       case 'transactions':
-        result.displayName   = record.entityName || record.description || record.name || 'Unknown Entity';
-        result.displayDetail = [
-          record.type === 'IN' ? '↓ IN' : record.type === 'OUT' ? '↑ OUT' : (record.type || ''),
-          record.date || ''
-        ].filter(Boolean).join(' · ');
-        result.displayAmount = record.amount != null ? `₨${Number(record.amount).toLocaleString()}` : (record.totalValue != null ? `₨${Number(record.totalValue).toLocaleString()}` : null);
+        if (record.isTransfer === true) {
+          result.displayName   = `Transfer – ${record.entityName || '?'} ${record.type === 'OUT' ? '→' : '←'} ${record.transferPeerEntityName || '?'}`;
+          result.displayDetail = [
+            record.type === 'IN' ? '↓ IN' : record.type === 'OUT' ? '↑ OUT' : (record.type || ''),
+            record.date || ''
+          ].filter(Boolean).join(' · ');
+          result.displayAmount = record.amount != null ? `₨${Number(record.amount).toLocaleString()}` : null;
+        } else {
+          result.displayName   = record.entityName || record.description || record.name || 'Unknown Entity';
+          result.displayDetail = [
+            record.type === 'IN' ? '↓ IN' : record.type === 'OUT' ? '↑ OUT' : (record.type || ''),
+            record.date || ''
+          ].filter(Boolean).join(' · ');
+          result.displayAmount = record.amount != null ? `₨${Number(record.amount).toLocaleString()}` : (record.totalValue != null ? `₨${Number(record.totalValue).toLocaleString()}` : null);
+        }
         break;
       case 'rep_sales':
         result.displayName   = record.customerName || record.name || 'Unknown Rep Customer';
@@ -1481,9 +1505,18 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_prod
         result.displayAmount = record.amount != null ? `₨${Number(record.amount).toLocaleString()}` : null;
         break;
       case 'production':
-        result.displayName   = record.store ? `Store ${record.store}` : 'Production Batch';
-        result.displayDetail = record.date || '';
-        result.displayAmount = record.net != null ? `${record.net} kg net` : null;
+        if (record.isTransfer === true) {
+          const _dir  = record.transferDirection === 'out' ? 'Transfer Out' : 'Transfer In';
+          const _peer = record.transferPeerStore ? (typeof getStoreLabel === 'function' ? getStoreLabel(record.transferPeerStore) : record.transferPeerStore) : '';
+          const _self = record.store ? (typeof getStoreLabel === 'function' ? getStoreLabel(record.store) : record.store) : '';
+          result.displayName   = _peer ? `${_dir} – ${_self} ${record.transferDirection === 'out' ? '→' : '←'} ${_peer}` : `${_dir} – ${_self || 'Stock Transfer'}`;
+          result.displayDetail = record.date || '';
+          result.displayAmount = record.net != null ? `${Math.abs(record.net)} kg` : null;
+        } else {
+          result.displayName   = record.store ? `Store ${record.store}` : 'Production Batch';
+          result.displayDetail = record.date || '';
+          result.displayAmount = record.net != null ? `${record.net} kg net` : null;
+        }
         break;
       case 'factory_history':
         result.displayName   = record.store ? `Factory – ${record.store}` : 'Factory Production';
@@ -1545,7 +1578,11 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
         result.displayAmount = s.totalValue != null ? `₨${Number(s.totalValue).toLocaleString()}` : null;
         break;
       case 'transactions':
-        result.displayName   = s.entityName || s.description || s.name || null;
+        if (s.isTransfer === true) {
+          result.displayName = `Transfer – ${s.entityName || '?'} ${s.type === 'OUT' ? '→' : '←'} ${s.transferPeerEntityName || '?'}`;
+        } else {
+          result.displayName = s.entityName || s.description || s.name || null;
+        }
         result.displayDetail = [s.type === 'IN' ? '↓ IN' : s.type === 'OUT' ? '↑ OUT' : (s.type || ''), s.date || ''].filter(Boolean).join(' · ');
         result.displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null;
         break;
@@ -1555,9 +1592,17 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
         result.displayAmount = s.amount != null ? `₨${Number(s.amount).toLocaleString()}` : null;
         break;
       case 'production':
-        result.displayName   = s.store ? `Production – ${s.store}` : 'Production Batch';
+        if (s.isTransfer === true) {
+          const _dir  = s.transferDirection === 'out' ? 'Transfer Out' : 'Transfer In';
+          const _peer = s.transferPeerStore ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.transferPeerStore) : s.transferPeerStore) : '';
+          const _self = s.store ? (typeof getStoreLabel === 'function' ? getStoreLabel(s.store) : s.store) : '';
+          result.displayName   = _peer ? `${_dir} – ${_self} ${s.transferDirection === 'out' ? '→' : '←'} ${_peer}` : `${_dir} – ${_self || 'Stock Transfer'}`;
+          result.displayAmount = s.net != null ? `${Math.abs(s.net)} kg` : null;
+        } else {
+          result.displayName   = s.store ? `Production – ${s.store}` : 'Production Batch';
+          result.displayAmount = s.net != null ? `${s.net} kg` : null;
+        }
         result.displayDetail = s.date || '';
-        result.displayAmount = s.net != null ? `${s.net} kg` : null;
         break;
       case 'returns':
         result.displayName   = s.store ? `Return – ${s.store}` : 'Stock Return';
@@ -1924,11 +1969,13 @@ return;
 transactions.forEach(t => {
 const isOut = t.type === 'OUT';
 const colorClass = isOut ? 'cost-val' : 'profit-val';
-const badgeColor = isOut ? 'var(--danger)' : 'var(--accent-emerald)';
-const label = isOut ? 'PAYMENT OUT' : 'PAYMENT IN';
+const badgeColor = t.isTransfer ? 'var(--accent)' : (isOut ? 'var(--danger)' : 'var(--accent-emerald)');
+const label = t.isTransfer ? (isOut ? 'TRANSFER OUT' : 'TRANSFER IN') : (isOut ? 'PAYMENT OUT' : 'PAYMENT IN');
+const transferPeerLine = t.isTransfer ? `<div class="u-fs-sm2 u-text-muted">${isOut ? 'To' : 'From'}: ${esc(t.transferPeerEntityName || '')}</div>` : '';
 const safeId = String(t.id).replace(/'/g, "\\'");
-const safeExpenseId = t.expenseId ? String(t.expenseId).replace(/'/g, "\\'") : '';
-const photoBadgeId = 'ph-badge-' + (t.expenseId || t.id).replace(/[^a-z0-9]/gi, '');
+const _photoRefId = t.expenseId || t.id;
+const safeExpenseId = _photoRefId ? String(_photoRefId).replace(/'/g, "\\'") : '';
+const photoBadgeId = 'ph-badge-' + String(_photoRefId || t.id).replace(/[^a-z0-9]/gi, '');
 const item = document.createElement('div');
 item.className = `cust-history-item${t.isSettled ? ' is-settled-record' : ''}`;
 item.style.flexDirection = 'column';
@@ -1938,6 +1985,7 @@ item.innerHTML = `
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}</div>
     <div class="u-fs-sm2 u-text-muted">${esc(t.description || 'No description')}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${transferPeerLine}
     ${t.isMerged ? _mergedBadgeHtml(t) : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -1955,12 +2003,12 @@ item.innerHTML = `
       </svg>
       Photo
     </button>
-    <button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteEntityTransaction('${esc(t.id)}')">⌫</button>
+    <button class="btn btn-sm btn-danger u-p-4-8" onclick="${t.isTransfer ? `(async()=>{await deletePaymentTransfer('${esc(t.transferPairId)}');const _ent=(await sqliteStore.get('payment_entities')||[]).find(e=>String(e.id)===String(currentEntityId));if(_ent)renderEntityOverlayContent(_ent);})()` : `deleteEntityTransaction('${esc(t.id)}')`}">⌫</button>
   </div>
 </div>`;
 _entityFrag.appendChild(item);
-if (t.expenseId) {
-  const _phKey = 'expense:' + t.expenseId;
+if (_photoRefId) {
+  const _phKey = 'expense:' + _photoRefId;
   sqliteStore.get('person_photos').then(ph => {
     if (ph && ph[_phKey]) {
       const badge = document.getElementById(photoBadgeId);
@@ -2065,6 +2113,12 @@ if (_ent0) renderEntityOverlayContent(_ent0);
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 return;
 }
+if (_dt.isTransfer === true) {
+if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dt.transferPairId);
+const _ent0b = paymentEntities.find(e => String(e.id) === String(currentEntityId));
+if (_ent0b) renderEntityOverlayContent(_ent0b);
+return;
+}
 if (_dt.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
@@ -2166,8 +2220,16 @@ ensureRecordIntegrity(mat, true);
 await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
 }
 const txsToDelete = _entityTxs.slice();
-let filteredTx = paymentTransactions.slice();
-for (const tx of txsToDelete) {
+const _transferTxs = txsToDelete.filter(t => t.isTransfer === true);
+const _normalTxs = txsToDelete.filter(t => t.isTransfer !== true);
+const _processedPairIds = new Set();
+for (const tx of _transferTxs) {
+if (_processedPairIds.has(tx.transferPairId)) continue;
+_processedPairIds.add(tx.transferPairId);
+if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(tx.transferPairId, true);
+}
+let filteredTx = ensureArray(await sqliteStore.get('payment_transactions'));
+for (const tx of _normalTxs) {
 filteredTx = filteredTx.filter(t => t.id !== tx.id);
 await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, tx);
 }
@@ -3288,6 +3350,8 @@ function capturePhotoFromCamera() {
   closePhotoCapture();
   if (target === 'expense') {
     _applyExpensePendingPhoto(dataUrl);
+  } else if (target === 'paytransfer') {
+    if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(dataUrl);
   } else {
     applyPersonPhoto(target, dataUrl);
   }

@@ -1601,6 +1601,10 @@ if (!id || !validateUUID(id)) { showToast('Invalid production record ID', 'error
 const entryToDelete = db.find(item => item.id === id);
 if (!entryToDelete) return;
 if (entryToDelete.isMerged) { showToast('Merged opening balance records cannot be deleted', 'warning'); return; }
+if (entryToDelete.isTransfer === true) {
+if (typeof deleteStockTransfer === 'function') await deleteStockTransfer(entryToDelete.transferPairId);
+return;
+}
 const isReturn = entryToDelete.isReturn === true;
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
 const _dpSalesOnDate = (typeof customerSales !== 'undefined' ? customerSales : []).filter(s => s.date === entryToDelete.date && s.store === entryToDelete.store).length;

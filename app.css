@@ -1342,11 +1342,12 @@ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 gap: 12px;
 margin-bottom: 20px;
 }
-#prodHistoryList .card:not(.return-card),
+#prodHistoryList .card:not(.return-card):not(.transfer-card),
 #historyList .card {
 min-height: 180px;
 }
-#prodHistoryList .return-card {
+#prodHistoryList .return-card,
+#prodHistoryList .transfer-card {
 min-height: 0;
 }
 .card {
@@ -5779,7 +5780,7 @@ white-space: nowrap;
 .cdp-popover {
 
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-dialog, 10300);
   width: 250px;
   max-width: calc(100vw - 24px);
   background: var(--glass-frosted, var(--glass));
