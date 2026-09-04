@@ -619,7 +619,7 @@ const _radBatch = await sqliteStore.getBatch([
 'payment_transactions','payment_entities','expenses','stock_returns',
 'factory_inventory_data','factory_production_history',
 'factory_default_formulas','factory_additional_costs',
-'factory_sale_prices','factory_cost_adjustment_factor',
+'factory_cost_adjustment_factor',
 'factory_unit_tracking','deleted_records',
 ]);
 const db = ensureArray(_radBatch.get('mfg_pro_pkr'));
@@ -634,7 +634,6 @@ const factoryInventoryData = ensureArray(_radBatch.get('factory_inventory_data')
 const factoryProductionHistory = ensureArray(_radBatch.get('factory_production_history'));
 const factoryDefaultFormulas = _radBatch.get('factory_default_formulas') || {};
 const factoryAdditionalCosts = _radBatch.get('factory_additional_costs') || {};
-const factorySalePrices = _radBatch.get('factory_sale_prices') || {};
 const factoryCostAdjustmentFactor = _radBatch.get('factory_cost_adjustment_factor') || {};
 const factoryUnitTracking = _radBatch.get('factory_unit_tracking') || {};
 const deletedRecordIds = new Set(ensureArray(_radBatch.get('deleted_records')));
@@ -1338,7 +1337,7 @@ const allKeys = [
 'factory_inventory_data', 'factory_production_history',
 'factory_unit_tracking',
 'factory_default_formulas', 'factory_additional_costs',
-'factory_sale_prices', 'factory_cost_adjustment_factor'
+'factory_cost_adjustment_factor'
 ];
 const paymentDataMap = await sqliteStore.getBatch(allKeys);
 if (paymentDataMap.get('expenses')) {
@@ -4568,9 +4567,9 @@ async function triggerLocalBackup() {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const appStoresSnapshot = ensureArray(await sqliteStore.get('app_stores'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -4602,8 +4601,8 @@ factoryProductionHistory: factoryProductionHistory,
 factoryDefaultFormulas: factoryDefaultFormulas,
 factoryAdditionalCosts: factoryAdditionalCosts,
 factoryCostAdjustmentFactor: factoryCostAdjustmentFactor,
-factorySalePrices: factorySalePrices,
 factoryUnitTracking: factoryUnitTracking,
+appStores: appStoresSnapshot,
 paymentEntities: paymentEntities,
 paymentTransactions: paymentTransactions,
 expenses: await sqliteStore.get('expenses', []),
@@ -4649,7 +4648,6 @@ const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventor
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const file = event.target.files[0];
@@ -4693,11 +4691,11 @@ stock_returns: data.stockReturns || data.stock_returns || [],
 factory_default_formulas: data.factoryDefaultFormulas || data.factory_default_formulas || { standard: [], asaan: [] },
 factory_additional_costs: data.factoryAdditionalCosts || data.factory_additional_costs || { standard: 0, asaan: 0 },
 factory_cost_adjustment_factor: data.factoryCostAdjustmentFactor || data.factory_cost_adjustment_factor || { standard: 1, asaan: 1 },
-factory_sale_prices: data.factorySalePrices || data.factory_sale_prices || { standard: 0, asaan: 0 },
 factory_unit_tracking: data.factoryUnitTracking || data.factory_unit_tracking || {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 },
+app_stores: data.appStores || data.app_stores || [],
 naswar_default_settings: data.settings || data.naswar_default_settings || {},
 deleted_records: data.deleted_records || [],
 appMode: data.appMode || 'admin',
@@ -4736,7 +4734,7 @@ prodSnap, salesSnap, calcSnap, repSnap, transSnap, entSnap,
 invSnap, factSnap, retSnap,
 repCustomersSnap, salesCustomersSnap, expensesSnap,
 settingsSnap, factorySettingsSnap,
-expenseCategoriesSnap, deletionsSnap
+expenseCategoriesSnap, deletionsSnap, appStoresSnap
 ] = await Promise.all([
 buildDeltaQuery(userRef.collection('production'), 'production'),
 buildDeltaQuery(userRef.collection('sales'), 'sales'),
@@ -4753,7 +4751,8 @@ buildDeltaQuery(userRef.collection('expenses'), 'expenses'),
 userRef.collection('settings').doc('config').get(),
 userRef.collection('factorySettings').doc('config').get(),
 userRef.collection('expenseCategories').doc('categories').get(),
-userRef.collection('deletions').get()
+userRef.collection('deletions').get(),
+userRef.collection('appStores').doc('stores').get()
 ]);
 const cloudData = {
 mfg_pro_pkr: prodSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
@@ -4774,7 +4773,6 @@ const factoryData = factorySettingsSnap.data();
 cloudData.factory_default_formulas = factoryData.default_formulas || { standard: [], asaan: [] };
 cloudData.factory_additional_costs = factoryData.additional_costs || { standard: 0, asaan: 0 };
 cloudData.factory_cost_adjustment_factor = factoryData.cost_adjustment_factor || { standard: 1, asaan: 1 };
-cloudData.factory_sale_prices = factoryData.sale_prices || { standard: 0, asaan: 0 };
 cloudData.factory_unit_tracking = factoryData.unit_tracking || {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
@@ -4783,12 +4781,12 @@ asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 cloudData.factory_default_formulas = { standard: [], asaan: [] };
 cloudData.factory_additional_costs = { standard: 0, asaan: 0 };
 cloudData.factory_cost_adjustment_factor = { standard: 1, asaan: 1 };
-cloudData.factory_sale_prices = { standard: 0, asaan: 0 };
 cloudData.factory_unit_tracking = {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 };
 }
+cloudData.app_stores = (appStoresSnap && appStoresSnap.exists && Array.isArray(appStoresSnap.data().stores)) ? appStoresSnap.data().stores : [];
 if (expenseCategoriesSnap && expenseCategoriesSnap.exists) {
 const categoriesData = expenseCategoriesSnap.data();
 cloudData.expense_categories = categoriesData.categories || [];
@@ -4888,14 +4886,13 @@ if (fileHasData) return file;
 if (cloudHasData) return cloud;
 return { standard: 1, asaan: 1 };
 })(),
-factory_sale_prices: (() => {
-const cloud = cloudData.factory_sale_prices;
-const file = normalized.factory_sale_prices;
-const fileHasData = file && (parseFloat(file.standard) > 0 || parseFloat(file.asaan) > 0);
-const cloudHasData = cloud && (parseFloat(cloud.standard) > 0 || parseFloat(cloud.asaan) > 0);
-if (fileHasData) return file;
-if (cloudHasData) return cloud;
-return { standard: 0, asaan: 0 };
+app_stores: (() => {
+const cloud = Array.isArray(cloudData.app_stores) ? cloudData.app_stores : [];
+const file = Array.isArray(normalized.app_stores) ? normalized.app_stores : [];
+const map = new Map();
+cloud.forEach(s => { if (s && s.key) map.set(s.key, s); });
+file.forEach(s => { if (s && s.key) map.set(s.key, s); });
+return Array.from(map.values());
 })(),
 factory_unit_tracking: (() => {
 const cloud = cloudData.factory_unit_tracking;
@@ -4970,13 +4967,17 @@ additional_costs: merged.factory_additional_costs,
 additional_costs_timestamp: Date.now(),
 cost_adjustment_factor: merged.factory_cost_adjustment_factor,
 cost_adjustment_factor_timestamp: Date.now(),
-sale_prices: merged.factory_sale_prices,
-sale_prices_timestamp: Date.now(),
 unit_tracking: merged.factory_unit_tracking,
 unit_tracking_timestamp: Date.now(),
 last_synced: now
 }, { merge: true });
 operationCount++;
+if (Array.isArray(merged.app_stores) && merged.app_stores.length > 0) {
+const appStoresRef = userRef.collection('appStores').doc('stores');
+const storesBatch = getCurrentBatch();
+storesBatch.set(appStoresRef, { stores: merged.app_stores }, { merge: true });
+operationCount++;
+}
 if (merged.expense_categories) {
 const expenseCategoriesRef = userRef.collection('expenseCategories').doc('categories');
 const currentBatch = getCurrentBatch();
@@ -5959,13 +5960,6 @@ type: 'object',
 defaultValue: { standard: 0, asaan: 0 },
 description: 'Overhead / extra costs per unit'
 },
-factory_sale_prices: {
-localKey: 'factory_sale_prices',
-localVariable: 'factorySalePrices',
-type: 'object',
-defaultValue: { standard: 0, asaan: 0 },
-description: 'Standard selling price per kg/unit per store type'
-},
 factory_cost_adjustment_factor: {
 localKey: 'factory_cost_adjustment_factor',
 localVariable: 'factoryCostAdjustmentFactor',
@@ -6680,8 +6674,8 @@ const settingsKeys = [
 ['factoryDefaultFormulas', 'Factory Default Formulas'],
 ['factoryAdditionalCosts', 'Additional Costs'],
 ['factoryCostAdjustmentFactor', 'Cost Adjustment Factor'],
-['factorySalePrices', 'Sale Prices'],
 ['factoryUnitTracking', 'Unit Tracking'],
+['appStores', 'Stores & Sale Prices'],
 ['settings', 'App Settings (naswar)'],
 ];
 for (const [key, label] of settingsKeys) {

@@ -870,8 +870,6 @@ additional_costs: { standard: 0, asaan: 0 },
 additional_costs_timestamp: Date.now(),
 cost_adjustment_factor: { standard: 1, asaan: 1 },
 cost_adjustment_factor_timestamp: Date.now(),
-sale_prices: { standard: 0, asaan: 0 },
-sale_prices_timestamp: Date.now(),
 unit_tracking: {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
@@ -1807,7 +1805,6 @@ async function subscribeToRealtime() {
           { cloud: cfs.default_formulas_timestamp,       local: await sqliteStore.get('factory_default_formulas_timestamp') },
           { cloud: cfs.additional_costs_timestamp,       local: await sqliteStore.get('factory_additional_costs_timestamp') },
           { cloud: cfs.cost_adjustment_factor_timestamp, local: await sqliteStore.get('factory_cost_adjustment_factor_timestamp') },
-          { cloud: cfs.sale_prices_timestamp,            local: await sqliteStore.get('factory_sale_prices_timestamp') },
           { cloud: cfs.unit_tracking_timestamp,          local: await sqliteStore.get('factory_unit_tracking_timestamp') },
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
@@ -1841,12 +1838,6 @@ async function subscribeToRealtime() {
           cfs.cost_adjustment_factor, cfs.cost_adjustment_factor_timestamp,
           'factory_cost_adjustment_factor_timestamp', 'factory_cost_adjustment_factor',
           o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 })
-        );
-
-        const newPrices = await _applyFactorySetting(
-          cfs.sale_prices, cfs.sale_prices_timestamp,
-          'factory_sale_prices_timestamp', 'factory_sale_prices',
-          o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
         );
 
         const newTracking = await _applyFactorySetting(
@@ -2397,7 +2388,7 @@ function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       if (sanitizedValue !== null && sanitizedValue !== undefined) {
         if (typeof sanitizedValue === 'object' && !Array.isArray(sanitizedValue)) {
           const isFactorySettings = ['default_formulas', 'additional_costs', 'cost_adjustment_factor',
-            'sale_prices', 'unit_tracking', 'standard', 'asaan'].includes(cleanKey);
+            'unit_tracking', 'standard', 'asaan'].includes(cleanKey);
           if (Object.keys(sanitizedValue).length > 0 || isFactorySettings) sanitized[cleanKey] = sanitizedValue;
         } else {
           sanitized[cleanKey] = sanitizedValue;
@@ -2928,8 +2919,6 @@ async function _syncSettings(cloudData) {
       if (newCosts) { await sqliteStore.setBatch([['factory_additional_costs', newCosts], ['factory_additional_costs_timestamp', fsData.additional_costs_timestamp || ts]]); }
       const newFactor = await _applyFs(fsData.cost_adjustment_factor, null, null, o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 }));
       if (newFactor) { await sqliteStore.setBatch([['factory_cost_adjustment_factor', newFactor], ['factory_cost_adjustment_factor_timestamp', fsData.cost_adjustment_factor_timestamp || ts]]); }
-      const newPrices = await _applyFs(fsData.sale_prices, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
-      if (newPrices) { await sqliteStore.setBatch([['factory_sale_prices', newPrices], ['factory_sale_prices_timestamp', fsData.sale_prices_timestamp || ts]]); }
       if (fsData.unit_tracking && ('standard' in fsData.unit_tracking) && ('asaan' in fsData.unit_tracking)) {
         const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
         const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
@@ -3080,17 +3069,15 @@ async function _uploadChanges(userRef) {
   const localFormulaTs = await sqliteStore.get('factory_default_formulas_timestamp');
   const localCostsTs   = await sqliteStore.get('factory_additional_costs_timestamp');
   const localFactorTs  = await sqliteStore.get('factory_cost_adjustment_factor_timestamp');
-  const localPricesTs  = await sqliteStore.get('factory_sale_prices_timestamp');
   const localUnitTs    = await sqliteStore.get('factory_unit_tracking_timestamp');
 
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factorySettings');
-  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localPricesTs, localUnitTs]
+  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
-    const [_fdf, _fac, _fsp, _fcaf, _fut] = await Promise.all([
+    const [_fdf, _fac, _fcaf, _fut] = await Promise.all([
       sqliteStore.get('factory_default_formulas'),
       sqliteStore.get('factory_additional_costs'),
-      sqliteStore.get('factory_sale_prices'),
       sqliteStore.get('factory_cost_adjustment_factor'),
       sqliteStore.get('factory_unit_tracking'),
     ]);
@@ -3100,8 +3087,6 @@ async function _uploadChanges(userRef) {
       default_formulas_timestamp:      localFormulaTs || _nowTs,
       additional_costs:                _fac  || { standard: 0, asaan: 0 },
       additional_costs_timestamp:      localCostsTs   || _nowTs,
-      sale_prices:                     _fsp  || { standard: 0, asaan: 0 },
-      sale_prices_timestamp:           localPricesTs  || _nowTs,
       cost_adjustment_factor:          _fcaf || { standard: 1, asaan: 1 },
       cost_adjustment_factor_timestamp:localFactorTs  || _nowTs,
       unit_tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
@@ -3491,12 +3476,11 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
 
     const _settingsBatch = await sqliteStore.getBatch([
       'factory_default_formulas', 'factory_additional_costs',
-      'factory_cost_adjustment_factor', 'factory_sale_prices', 'factory_unit_tracking',
+      'factory_cost_adjustment_factor', 'factory_unit_tracking',
     ]);
     const _fdf  = _settingsBatch.get('factory_default_formulas');
     const _fac  = _settingsBatch.get('factory_additional_costs');
     const _fcaf = _settingsBatch.get('factory_cost_adjustment_factor');
-    const _fsp  = _settingsBatch.get('factory_sale_prices');
     const _fut  = _settingsBatch.get('factory_unit_tracking');
     const _ensureBothStores = (obj, dflt) => {
       if (!obj || typeof obj !== 'object') return dflt;
@@ -3509,7 +3493,6 @@ async function _doPullDataFromCloud(silent = false, forceDownload = false) {
       ['factory_default_formulas',       _ensureBothStores(_fdf,  { standard: [], asaan: [] })],
       ['factory_additional_costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
       ['factory_cost_adjustment_factor', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
-      ['factory_sale_prices',            _ensureBothStores(_fsp,  { standard: 0,  asaan: 0  })],
       ['factory_unit_tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
       ['naswar_default_settings', defaultSettings],
       ['appMode', appMode],

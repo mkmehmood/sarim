@@ -706,7 +706,7 @@ const sqliteStore = (() => {
 
   const _SETTINGS_KEYS = new Set([
     'factory_default_formulas', 'factory_additional_costs',
-    'factory_sale_prices', 'factory_cost_adjustment_factor',
+    'factory_cost_adjustment_factor',
     'factory_unit_tracking', 'naswar_default_settings',
     'expense_categories', 'sales_reps_list', 'user_roles_list',
     'offline_operation_queue', 'offline_dead_letter_queue',

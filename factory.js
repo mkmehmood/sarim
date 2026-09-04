@@ -124,20 +124,17 @@ async function openFactorySettings() {
 let factoryDefaultFormulas = { standard: [], asaan: [] };
 let factoryAdditionalCosts = { standard: 0, asaan: 0 };
 let factoryCostAdjustmentFactor = { standard: 1, asaan: 1 };
-let factorySalePrices = { standard: 0, asaan: 0 };
 let factoryUnitTracking = { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } };
 try {
-const [loadedFormulas, loadedCosts, loadedFactor, loadedPrices, loadedTracking] = await Promise.all([
+const [loadedFormulas, loadedCosts, loadedFactor, loadedTracking] = await Promise.all([
 sqliteStore.get('factory_default_formulas'),
 sqliteStore.get('factory_additional_costs'),
 sqliteStore.get('factory_cost_adjustment_factor'),
-sqliteStore.get('factory_sale_prices'),
 sqliteStore.get('factory_unit_tracking')
 ]);
 if (loadedFormulas && 'standard' in loadedFormulas && 'asaan' in loadedFormulas) factoryDefaultFormulas = loadedFormulas;
 if (loadedCosts && 'standard' in loadedCosts && 'asaan' in loadedCosts) factoryAdditionalCosts = loadedCosts;
 if (loadedFactor && 'standard' in loadedFactor && 'asaan' in loadedFactor) factoryCostAdjustmentFactor = loadedFactor;
-if (loadedPrices && 'standard' in loadedPrices && 'asaan' in loadedPrices) factorySalePrices = loadedPrices;
 if (loadedTracking && 'standard' in loadedTracking && 'asaan' in loadedTracking) factoryUnitTracking = loadedTracking;
 } catch (error) {
 showToast('Error loading factory settings. Using defaults.', 'warning');
@@ -199,7 +196,6 @@ async function renderFactorySettingsRows() {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const container = document.getElementById('factoryRawMaterialsContainer');
@@ -219,8 +215,6 @@ const additionalCost = factoryAdditionalCosts[currentFactorySettingsStore] || 0;
 document.getElementById('additional-cost-per-unit').value = additionalCost;
 const adjustmentFactor = factoryCostAdjustmentFactor[currentFactorySettingsStore] || 1;
 document.getElementById('cost-adjustment-factor').value = adjustmentFactor;
-document.getElementById('sale-price-standard').value = factorySalePrices.standard || 0;
-document.getElementById('sale-price-asaan').value = factorySalePrices.asaan || 0;
 const perUnitCost = totalRawCost + additionalCost;
 const salesCostPerKg = adjustmentFactor > 0 ? perUnitCost / adjustmentFactor : perUnitCost;
 const safeTotalWeight = parseFloat(totalWeight) || 0;
@@ -234,14 +228,10 @@ const asaanScreen = document.getElementById('formula-asaan-screen');
 if (asaanScreen && asaanScreen.style.display !== 'none') {
 const acpuA = document.getElementById('additional-cost-per-unit-asaan');
 const cafA = document.getElementById('cost-adjustment-factor-asaan');
-const spSA = document.getElementById('sale-price-standard-asaan');
-const spAO = document.getElementById('sale-price-asaan-only');
 const asaanAdditionalCost = factoryAdditionalCosts['asaan'] || 0;
 const asaanAdjustmentFactor = factoryCostAdjustmentFactor['asaan'] || 1;
 if (acpuA) acpuA.value = asaanAdditionalCost;
 if (cafA) cafA.value = asaanAdjustmentFactor;
-if (spSA) spSA.value = factorySalePrices.standard || 0;
-if (spAO) spAO.value = factorySalePrices.asaan || 0;
 const asaanContainer = document.getElementById('factoryRawMaterialsContainerAsaan');
 if (asaanContainer) {
 asaanContainer.replaceChildren();
@@ -425,13 +415,12 @@ _setFS('factorySettingsSalesCostPerKg', await formatCurrency(salesCostPerKg));
 async function saveFactoryFormulas() {
 const _sffBatch = await sqliteStore.getBatch([
 'factory_inventory_data','factory_default_formulas','factory_additional_costs',
-'factory_cost_adjustment_factor','factory_sale_prices','payment_transactions',
+'factory_cost_adjustment_factor','payment_transactions',
 ]);
 const factoryInventoryData = ensureArray(_sffBatch.get('factory_inventory_data'));
 const _rawFormulas = _sffBatch.get('factory_default_formulas');
 const _rawCosts    = _sffBatch.get('factory_additional_costs');
 const _rawFactor   = _sffBatch.get('factory_cost_adjustment_factor');
-const _rawPrices   = _sffBatch.get('factory_sale_prices');
 const factoryDefaultFormulas = (_rawFormulas && 'standard' in _rawFormulas && 'asaan' in _rawFormulas)
   ? _rawFormulas
   : { standard: (_rawFormulas && _rawFormulas.standard) || [], asaan: (_rawFormulas && _rawFormulas.asaan) || [] };
@@ -441,9 +430,6 @@ const factoryAdditionalCosts = (_rawCosts && 'standard' in _rawCosts && 'asaan' 
 const factoryCostAdjustmentFactor = (_rawFactor && 'standard' in _rawFactor && 'asaan' in _rawFactor)
   ? _rawFactor
   : { standard: (_rawFactor && _rawFactor.standard != null ? _rawFactor.standard : 1), asaan: (_rawFactor && _rawFactor.asaan != null ? _rawFactor.asaan : 1) };
-const factorySalePrices = (_rawPrices && 'standard' in _rawPrices && 'asaan' in _rawPrices)
-  ? _rawPrices
-  : { standard: (_rawPrices && _rawPrices.standard != null ? _rawPrices.standard : 0), asaan: (_rawPrices && _rawPrices.asaan != null ? _rawPrices.asaan : 0) };
 const paymentTransactions = ensureArray(_sffBatch.get('payment_transactions'));
 const container = document.getElementById('factoryRawMaterialsContainer');
 const rows = container.querySelectorAll('.factory-formula-grid');
@@ -481,16 +467,6 @@ factoryCostAdjustmentFactor[currentFactorySettingsStore] = parseFloat(document.g
 if (_freshFactor && _freshFactor[_otherStore] !== undefined) {
 factoryCostAdjustmentFactor[_otherStore] = _freshFactor[_otherStore];
 }
-factorySalePrices.standard = parseFloat(document.getElementById('sale-price-standard').value) || 0;
-factorySalePrices.asaan = parseFloat(document.getElementById('sale-price-asaan').value) || 0;
-if (factorySalePrices.standard <= 0 && factorySalePrices.asaan <= 0) {
-showToast('Sale prices cannot both be 0 — profit calculations would go negative. Please set at least one sale price.', 'warning', 5000);
-return;
-}
-if (factorySalePrices.standard < 0 || factorySalePrices.asaan < 0) {
-showToast('Sale prices cannot be negative.', 'warning', 4000);
-return;
-}
 try {
 const timestamp = getTimestamp();
 await sqliteStore.setBatch([
@@ -499,9 +475,7 @@ await sqliteStore.setBatch([
 ['factory_additional_costs', factoryAdditionalCosts],
 ['factory_additional_costs_timestamp', timestamp],
 ['factory_cost_adjustment_factor', factoryCostAdjustmentFactor],
-['factory_cost_adjustment_factor_timestamp', timestamp],
-['factory_sale_prices', factorySalePrices],
-['factory_sale_prices_timestamp', timestamp]
+['factory_cost_adjustment_factor_timestamp', timestamp]
 ]);
 } catch (e) {
 showToast('Failed to save settings. Please try again.', 'error', 4000);
@@ -518,8 +492,6 @@ additional_costs: factoryAdditionalCosts,
 additional_costs_timestamp: timestamp,
 cost_adjustment_factor: factoryCostAdjustmentFactor,
 cost_adjustment_factor_timestamp: timestamp,
-sale_prices: factorySalePrices,
-sale_prices_timestamp: timestamp,
 last_synced: new Date().toISOString()
 });
 if (typeof OfflineQueue !== 'undefined') {
@@ -531,7 +503,6 @@ try {
 await pushDataToCloud(true);
 emitSyncUpdate({
 factory_default_formulas: null,
-factory_sale_prices: null,
 factory_additional_costs: null,
 factory_cost_adjustment_factor: null
 });
@@ -549,8 +520,6 @@ additional_costs: factoryAdditionalCosts,
 additional_costs_timestamp: timestamp,
 cost_adjustment_factor: factoryCostAdjustmentFactor,
 cost_adjustment_factor_timestamp: timestamp,
-sale_prices: factorySalePrices,
-sale_prices_timestamp: timestamp,
 last_synced: new Date().toISOString()
 })
 });
@@ -1031,15 +1000,14 @@ calculateFactoryProduction();
 }
 
 async function getSalePriceForStore(store) {
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 if (!store) return 0;
-const formulaType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : (store === 'STORE_C' ? 'asaan' : 'standard');
-return factorySalePrices[formulaType] || 0;
+const stores = typeof getAppStores === 'function' ? await getAppStores() : [];
+const storeEntry = stores.find(s => s.key === store);
+return (storeEntry && storeEntry.salePrice > 0) ? storeEntry.salePrice : 0;
 }
 
 async function getEffectiveSalePriceForCustomer(customerName, store) {
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 if (customerName) {
 const _reg = Array.isArray(salesCustomers) ? salesCustomers.find(c => c && c.name && c.name.toLowerCase() === String(customerName).toLowerCase()) : null;
 if (_reg && _reg.customSalePrice > 0) return _reg.customSalePrice;
@@ -1048,7 +1016,6 @@ return await getSalePriceForStore(store);
 }
 
 async function getSaleTransactionValue(t) {
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 if (!t) return 0;
 if (t.isMerged) return parseFloat(t.totalValue) || 0;
@@ -1070,7 +1037,6 @@ return await calculateSalesCostPerKg(formulaType);
 }
 
 async function getStorePricing(store) {
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
@@ -1551,9 +1517,6 @@ else warning.classList.add('hidden');
 }
 
 async function calculateDynamicProductionCost() {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const net = parseFloat(document.getElementById('net-wt').value) || 0;
 const store = document.getElementById('storeSelector').value;
 if (!store) return;
@@ -1573,7 +1536,6 @@ updateUnitsAvailableIndicator();
 }
 
 async function updateProductionCostOnStoreChange() {
-const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
 const store = document.getElementById('storeSelector').value;
 if (!store) return;
 currentStore = store;

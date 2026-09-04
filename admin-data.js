@@ -133,9 +133,9 @@ try {
       sqlite:[['_lastHandledYearCloseSignal','triggeredAt']],
       fsFields:['type','triggeredAt','triggeredBy','fyCloseCount'],
       listener:'_handleYearCloseSignal' },
-    { path:'factorySettings/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, sale prices, unit tracking',
-      sqlite:[['factory_default_formulas','default_formulas'],['factory_additional_costs','additional_costs'],['factory_cost_adjustment_factor','cost_adjustment_factor'],['factory_sale_prices','sale_prices'],['factory_unit_tracking','unit_tracking']],
-      fsFields:['default_formulas','additional_costs','cost_adjustment_factor','sale_prices','unit_tracking','default_formulas_timestamp'],
+    { path:'factorySettings/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, unit tracking',
+      sqlite:[['factory_default_formulas','default_formulas'],['factory_additional_costs','additional_costs'],['factory_cost_adjustment_factor','cost_adjustment_factor'],['factory_unit_tracking','unit_tracking']],
+      fsFields:['default_formulas','additional_costs','cost_adjustment_factor','unit_tracking','default_formulas_timestamp'],
       listener:'_handleFactorySettingsSnapshot' },
     { path:'expenseCategories/categories', doc:expenseCategoriesDoc, desc:'Expense category definitions',
       sqlite:[['expense_categories','categories']],
@@ -348,7 +348,8 @@ try {
     { name:'settings/config',                  type:'doc',  path:'_handleSettingsSnapshot',                         purpose:'naswar_default_settings, repProfile, sales_reps (init copy)', fires:'Timestamp guard on naswar_default_settings_timestamp, repProfile_timestamp, sales_reps_timestamp' },
     { name:'settings/team',                    type:'doc',  path:'_handleTeamSnapshot',                             purpose:'sales_reps_list, user_roles_list', fires:'updated_at timestamp change' },
     { name:'settings/yearCloseSignal',         type:'doc',  path:'_handleYearCloseSignal',                          purpose:'Wipe SQLite + full cloud rebuild on other devices after year-close or restore', fires:'triggeredAt > _lastHandledYearCloseSignal AND triggeredBy ≠ this device' },
-    { name:'factorySettings/config',           type:'doc',  path:'_handleFactorySettingsSnapshot',                  purpose:'factory_default_formulas, additional_costs, cost_adjustment_factor, sale_prices, unit_tracking', fires:'Individual per-field timestamp guards' },
+    { name:'factorySettings/config',           type:'doc',  path:'_handleFactorySettingsSnapshot',                  purpose:'factory_default_formulas, additional_costs, cost_adjustment_factor, unit_tracking', fires:'Individual per-field timestamp guards' },
+    { name:'appStores/stores',                 type:'doc',  path:'appStoresUnsub',                                  purpose:'app_stores — store list including each store\'s per-store sale price', fires:'app_stores_timestamp change' },
     { name:'expenseCategories/categories',     type:'doc',  path:'_handleExpenseCategoriesSnapshot',                purpose:'expense_categories', fires:'categories_timestamp change or content diff' },
     { name:'devices/{deviceId}',               type:'doc',  path:'_handleDeviceSnapshot',                           purpose:'Live remote mode changes (admin→rep etc.) without re-login', fires:'remoteAppliedMode flag + appMode_timestamp > local' },
     { name:'deletions',                        type:'col',  path:'_handleDeletionsSnapshot',                        purpose:'Propagate soft deletes to all devices, filter from data arrays', fires:'Any add/modify/remove on the deletions collection' },
@@ -1051,7 +1052,6 @@ async function generateCloseYearSummary() {
   const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
   const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
   const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-  const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
   const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const S = {
@@ -1426,9 +1426,9 @@ async function executeCloseFinancialYear() {
   const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
   const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
   const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-  const factorySalePrices = (await sqliteStore.get('factory_sale_prices')) || {};
   const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
   const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+  const appStoresSnapshot = ensureArray(await sqliteStore.get('app_stores'));
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
   const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -1469,8 +1469,8 @@ try {
     factoryDefaultFormulas: factoryDefaultFormulas,
     factoryAdditionalCosts: factoryAdditionalCosts,
     factoryCostAdjustmentFactor: factoryCostAdjustmentFactor,
-    factorySalePrices: factorySalePrices,
     factoryUnitTracking: factoryUnitTracking,
+    appStores: appStoresSnapshot,
     paymentEntities: paymentEntities,
     paymentTransactions: paymentTransactions,
     stockReturns: stockReturns,
@@ -2814,7 +2814,7 @@ await sqliteStore.set(collection.name, data);
 }
 const settingsKeys = [
 'factory_default_formulas', 'factory_additional_costs',
-'factory_cost_adjustment_factor', 'factory_sale_prices',
+'factory_cost_adjustment_factor',
 'factory_unit_tracking', 'naswar_default_settings'
 ];
 for (const key of settingsKeys) {
