@@ -2468,6 +2468,9 @@ const doc = new jsPDF('p', 'mm', 'a4');
 const pageW = doc.internal.pageSize.getWidth();
 doc.setFillColor(...headerColor);
 doc.rect(0, 0, pageW, 22, 'F');
+if (typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined') {
+  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17); } catch(e) {}
+}
 doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.setTextColor(255, 255, 255);
 doc.text('GULL AND ZUBAIR NASWAR DEALERS', pageW / 2, 10, { align: 'center' });
 doc.setFontSize(9); doc.setFont(undefined, 'normal');
@@ -2883,6 +2886,9 @@ const pageW = doc.internal.pageSize.getWidth();
 const hdrColor = [40, 167, 69];
 doc.setFillColor(...hdrColor);
 doc.rect(0, 0, pageW, 22, 'F');
+if (typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined') {
+  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17); } catch(e) {}
+}
 doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.setTextColor(255, 255, 255);
 doc.text('GULL AND ZUBAIR NASWAR DEALERS', pageW / 2, 10, { align: 'center' });
 doc.setFontSize(9); doc.setFont(undefined, 'normal');
