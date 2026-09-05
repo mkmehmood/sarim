@@ -2680,14 +2680,14 @@ if (ex.address === "N/A" && entity.address) ex.address = entity.address;
 }
 if (customerMap.size === 0) { showToast("No customers found to export.", "warning"); return; }
 const { jsPDF } = window.jspdf;
-const doc = new jsPDF('l', 'mm', 'a4');
+const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
 const pageW = doc.internal.pageSize.getWidth();
 const pageH = doc.internal.pageSize.getHeight();
 const hdrColor = [40, 167, 69];
 doc.setFillColor(...hdrColor);
 doc.rect(0, 0, pageW, 22, 'F');
 if (typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined') {
-  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17); } catch(e) {}
+  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17, undefined, 'NONE'); } catch(e) {}
 }
 doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
 doc.text('GULL AND ZUBAIR NASWAR DEALERS', pageW/2, 10, { align:'center' });

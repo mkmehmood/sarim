@@ -2808,7 +2808,7 @@ if (!window.jspdf || !window.jspdf.jsPDF) {
 throw new Error("Failed to load PDF library. Please refresh and try again.");
 }
 const { jsPDF } = window.jspdf;
-const doc = new jsPDF('p', 'mm', 'a4');
+const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
 const pageW = doc.internal.pageSize.getWidth();
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2823,7 +2823,7 @@ const hdrColor = isEntities ? [0, 150, 136] : [255, 149, 0];
 doc.setFillColor(...hdrColor);
 doc.rect(0, 0, pageW, 22, 'F');
 if (typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined') {
-  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17); } catch(e) {}
+  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17, undefined, 'NONE'); } catch(e) {}
 }
 doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
 doc.text('GULL AND ZUBAIR NASWAR DEALERS', pageW/2, 10, { align:'center' });
@@ -3422,13 +3422,13 @@ records.sort((a, b) => new Date(a.date) - new Date(b.date));
 const total = records.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 const rangeName = range === 'all' ? 'All Time' : range.charAt(0).toUpperCase() + range.slice(1);
 const { jsPDF } = window.jspdf;
-const doc = new jsPDF('p', 'mm', 'a4');
+const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
 const pageW = doc.internal.pageSize.getWidth();
 const hdrColor = [255, 149, 0];
 doc.setFillColor(...hdrColor);
 doc.rect(0, 0, pageW, 22, 'F');
 if (typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined') {
-  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17); } catch(e) {}
+  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17, undefined, 'NONE'); } catch(e) {}
 }
 doc.setFontSize(15); doc.setFont(undefined,'bold'); doc.setTextColor(255,255,255);
 doc.text('GULL AND ZUBAIR NASWAR DEALERS', pageW/2, 10, { align:'center' });

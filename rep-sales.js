@@ -1539,13 +1539,13 @@ const repContact = repCustomers.find(c => c && c.name && c.name.toLowerCase() ==
 const phone = repContact?.phone || transactions.find(t => t.customerPhone)?.customerPhone || 'N/A';
 const address = repContact?.address || 'N/A';
 const { jsPDF } = window.jspdf;
-const doc = new jsPDF('p', 'mm', 'a4');
+const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
 const pageW = doc.internal.pageSize.getWidth();
 const hdrColor = [79, 70, 229];
 doc.setFillColor(...hdrColor);
 doc.rect(0, 0, pageW, 22, 'F');
 if (typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined') {
-  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17); } catch(e) {}
+  try { doc.addImage(BRAND_LOGO_JPEG_BASE64, 'JPEG', 6, 2.5, 23.72, 17, undefined, 'NONE'); } catch(e) {}
 }
 doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.setTextColor(255, 255, 255);
 doc.text('GULL AND ZUBAIR NASWAR DEALERS', pageW / 2, 10, { align: 'center' });
@@ -1561,7 +1561,7 @@ let yPos = 38;
 const _repPdfPhotoKey = 'rep-cust:' + (currentRepProfile || '') + ':' + customerName.toLowerCase();
 const _repPdfPhoto = await getPersonPhoto(_repPdfPhotoKey);
 if (_repPdfPhoto) {
-  try { doc.addImage(_repPdfPhoto, 'JPEG', pageW - 14 - 22, 25, 22, 22); } catch(e) {}
+  try { doc.addImage(_repPdfPhoto, 'JPEG', pageW - 14 - 22, 25, 22, 22, undefined, 'NONE'); } catch(e) {}
 }
 doc.setFont(undefined, 'bold'); doc.text('Customer:', 14, yPos);
 doc.setFont(undefined, 'normal'); doc.text(customerName, 36, yPos);
