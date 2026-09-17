@@ -6049,6 +6049,8 @@ description: 'WebAuthn biometric credential ID'
 function updateConnectionStatus() {
 if (!navigator.onLine) {
 _setCloudConnectionState(null);
+} else if (typeof firebase === 'undefined') {
+_setCloudConnectionState('signed-out');
 } else if (!(firebase.apps.length && currentUser)) {
 _setCloudConnectionState('signed-out');
 } else {
