@@ -4160,29 +4160,43 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     if (typeof invalidateAllCaches === 'function') {
       await invalidateAllCaches();
     }
-    if (collectionName === 'expenses' || collectionName === 'transactions') {
+    if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
       try {
-        const _recOldPhKey = 'expense:' + oldId;
-        const _recNewPhKey = 'expense:' + newId;
         const _recPh = (await sqliteStore.get('person_photos')) || {};
         const _recPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+        const _recDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
         const _tombstone = (Array.isArray(localDeletionRecords) ? localDeletionRecords : deletionRecords).find(r => r.id === deletedId || r.recordId === deletedId);
-        const _recPhotoData = (_tombstone && _tombstone._photoDataUrl)
-          ? _tombstone._photoDataUrl
-          : (_recPh[_recOldPhKey] || null);
-        if (_recPhotoData) {
-          _recPh[_recNewPhKey] = _recPhotoData;
-          _recPhTs[_recNewPhKey] = Date.now();
-          delete _recPh[_recOldPhKey];
-          delete _recPhTs[_recOldPhKey];
-          await sqliteStore.set('person_photos', _recPh);
-          await sqliteStore.set('person_photos_timestamps', _recPhTs);
-          const _recDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
-          if (!_recDk.includes(_recNewPhKey)) _recDk.push(_recNewPhKey);
-          if (!_recDk.includes(_recOldPhKey)) _recDk.push(_recOldPhKey);
-          await sqliteStore.set('person_photos_dirty_keys', _recDk);
-          await sqliteStore.set('person_photos_timestamp', Date.now());
+        const _stash = (_tombstone && _tombstone._photos) || {};
+        const _now = Date.now();
+        const _put = (key, data) => {
+          if (!data) return;
+          _recPh[key] = data;
+          _recPhTs[key] = _now;
+          if (!_recDk.includes(key)) _recDk.push(key);
+        };
+        const _ownOld = 'expense:' + oldId;
+        const _ownData = _stash[_ownOld] || (_tombstone && _tombstone._photoDataUrl) || _recPh[_ownOld] || null;
+        if (_ownData) {
+          _put('expense:' + newId, _ownData);
+          const paymentTxs = ensureArray(await sqliteStore.get('payment_transactions'));
+          const stillReferenced = collectionName === 'expenses' && paymentTxs.some(t => t && String(t.expenseId) === oldId);
+          if (!stillReferenced) {
+            delete _recPh[_ownOld];
+            delete _recPhTs[_ownOld];
+            if (!_recDk.includes(_ownOld)) _recDk.push(_ownOld);
+          } else {
+            _put(_ownOld, _ownData);
+          }
         }
+        if (cleanRecord && cleanRecord.expenseId) {
+          const linkedKey = 'expense:' + cleanRecord.expenseId;
+          const linkedData = _stash[linkedKey] || _recPh[linkedKey] || null;
+          if (linkedData && !_recPh[linkedKey]) _put(linkedKey, linkedData);
+        }
+        await sqliteStore.set('person_photos', _recPh);
+        await sqliteStore.set('person_photos_timestamps', _recPhTs);
+        await sqliteStore.set('person_photos_dirty_keys', _recDk);
+        await sqliteStore.set('person_photos_timestamp', _now);
       } catch(_recPhErr) { console.warn('[recoverRecord] photo restore failed', _recPhErr); }
     }
     triggerAutoSync();
@@ -4749,7 +4763,19 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
         }
       } catch(_hdOffErr) { console.warn('[hardDeleteRecord] offline queue failed', _hdOffErr); }
     }
-    if (collectionName === 'expenses' || collectionName === 'transactions') {
+    if (collectionName === 'mfg_pro_pkr' && ownTombstone && ownTombstone.snapshot && Array.isArray(ownTombstone.snapshot.photoKeys)) {
+      try {
+        const _pk = ownTombstone.snapshot.photoKeys;
+        const _pph = (await sqliteStore.get('person_photos')) || {};
+        const _pts = (await sqliteStore.get('person_photos_timestamps')) || {};
+        const _pdk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+        _pk.forEach(k => { delete _pph[k]; delete _pts[k]; if (!_pdk.includes(k)) _pdk.push(k); });
+        await sqliteStore.set('person_photos', _pph);
+        await sqliteStore.set('person_photos_timestamps', _pts);
+        await sqliteStore.set('person_photos_dirty_keys', _pdk);
+      } catch(_ppErr) { console.warn('[hardDeleteRecord] production photo cleanup failed', _ppErr); }
+    }
+    if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
       try {
         const _hdLocalPhKey = 'expense:' + sid;
         const _hdLocalPh = (await sqliteStore.get('person_photos')) || {};

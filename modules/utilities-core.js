@@ -1455,11 +1455,20 @@ displayDetail: _snapshot.displayDetail || null,
 displayAmount: _snapshot.displayAmount || null,
 snapshot: _snapshot.record || null,
 };
-if (collectionName === 'expenses' || collectionName === 'transactions') {
+if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
   try {
-    const _regPhKey = 'expense:' + id;
     const _regPh = (await sqliteStore.get('person_photos')) || {};
-    if (_regPh[_regPhKey]) deletionRecord._photoDataUrl = _regPh[_regPhKey];
+    const _regKeys = ['expense:' + id];
+    const _snapRec = _snapshot.record || null;
+    if (_snapRec && _snapRec.expenseId) _regKeys.push('expense:' + _snapRec.expenseId);
+    const _regPhotos = {};
+    let _regBytes = 0;
+    for (const k of _regKeys) {
+      const v = _regPh[k];
+      if (v && _regBytes + String(v).length < 700000) { _regPhotos[k] = v; _regBytes += String(v).length; }
+    }
+    if (_regPh['expense:' + id]) deletionRecord._photoDataUrl = _regPh['expense:' + id];
+    if (Object.keys(_regPhotos).length) deletionRecord._photos = _regPhotos;
   } catch(_regPhErr) { console.warn('[registerDeletion] photo snapshot failed', _regPhErr); }
 }
 if (!validateTimestamp(deletionRecord.deletedAt, false)) {
