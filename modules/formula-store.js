@@ -10,7 +10,6 @@ const SLOTS_TS_KEY = 'factory_formula_slots_timestamp';
 const SLOT_KEYS = ['standard', 'asaan'];
 const FALLBACK = { standard: 'Standard', asaan: 'Asaan' };
 let _editingId = null;
-let _migration = null;
 const _el = (id) => document.getElementById(id);
 const _num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 const _fmt = (v) => (typeof window.fmtNum === 'function' ? window.fmtNum(v) : String(v));
@@ -105,45 +104,7 @@ function _afterChange() {
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
   refreshFormulaDependentUI();
 }
-async function _runMigration() {
-  const batch = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, ..._FEED_KEYS]);
-  const rawSlots = batch.get(SLOTS_KEY);
-  const list = ensureArray(batch.get(STORE_KEY)).filter((f) => f && f.id);
-  const slots = { standard: (rawSlots && rawSlots.standard) || null, asaan: (rawSlots && rawSlots.asaan) || null };
-  const formulas = batch.get('factory_default_formulas') || {};
-  const costs = batch.get('factory_additional_costs') || {};
-  const factors = batch.get('factory_cost_adjustment_factor') || {};
-  const now = getTimestamp();
-  let listChanged = false;
-  let slotsChanged = false;
-  SLOT_KEYS.forEach((k) => {
-    const exists = slots[k] && list.find((f) => String(f.id) === String(slots[k]));
-    if (exists) return;
-    const ings = ensureArray(formulas[k]);
-    if (!ings.length) return;
-    const id = slots[k] || 'fml_legacy_' + k;
-    if (!list.find((f) => String(f.id) === String(id))) {
-      list.push({ id, name: FALLBACK[k], ingredients: ings, additionalCost: _num(costs[k], 0), costAdjustmentFactor: _num(factors[k], 1) || 1, createdAt: now, updatedAt: now });
-      listChanged = true;
-    }
-    if (slots[k] !== id) {
-      slots[k] = id;
-      slotsChanged = true;
-    }
-  });
-  if (!listChanged && !slotsChanged) return;
-  await _freezeLegacyRecords();
-  const writes = [];
-  if (listChanged) writes.push([STORE_KEY, list]);
-  if (slotsChanged) writes.push([SLOTS_KEY, slots]);
-  await sqliteStore.setBatch(writes);
-}
-export function ensureFormulaStoreMigrated() {
-  if (!_migration) _migration = _runMigration().catch((e) => { console.warn('[formula-store] migration failed', e && e.message); }).finally(() => { _migration = null; });
-  return _migration;
-}
 export async function commitStoresWithFormulas(stores) {
-  await ensureFormulaStoreMigrated();
   const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('factory_unit_tracking')]);
   stores = stores.map((s) => {
     if (s.formulaId) return s;
@@ -229,7 +190,6 @@ export async function renderFormulaStoreList() {
   box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId || slotsNow[s.formulaType || 'standard']) === String(f.id)).map((s) => s.name))).join('');
 }
 export async function openFormulaStore() {
-  await ensureFormulaStoreMigrated();
   await renderFormulaStoreList();
 }
 function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory) {
@@ -398,7 +358,6 @@ export async function saveFormulaStoreEntry() {
   const c = _collectEditor();
   if (!c.name) { showToast('Enter a formula name', 'warning'); return false; }
   if (!c.ingredients.length) { showToast('Add at least one ingredient with quantity', 'warning'); return false; }
-  await ensureFormulaStoreMigrated();
   const [list, slots, batch] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS)]);
   const now = getTimestamp();
   const idx = _editingId ? list.findIndex((f) => String(f.id) === String(_editingId)) : -1;
@@ -504,7 +463,6 @@ export function syncFactoryAvailPicker(slot) {
   _renderChoice('factoryAvailToggle', _slotItems(view, view ? view.availOrder : []), slot, (k) => { if (typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(k); }, 'No formula');
 }
 export async function refreshFormulaDependentUI() {
-  await ensureFormulaStoreMigrated();
   const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('factory_unit_tracking')]);
   const used = new Set(stores.map((s) => s.formulaType || 'standard'));
   const typeMap = {};
@@ -536,4 +494,4 @@ export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
-Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, ensureFormulaStoreMigrated, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });
+Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });

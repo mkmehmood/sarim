@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -34,35 +34,11 @@ function load(initial = {}) {
   };
   const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function');
   const ctx = vm.createContext({ ...stubs, console, structuredClone, Promise, Number, String, Array, Math, Date, JSON });
-  vm.runInContext(body + '\nthis.api = { ensureFormulaStoreMigrated, commitStoresWithFormulas };', ctx);
+  vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, getFormulaStore, getFormulaSlots };', ctx);
   return { api: ctx.api, data, writes, notes };
 }
 
 const legacy = { factory_default_formulas: { standard: [{ name: 'a', quantity: 1, cost: 2 }], asaan: [{ name: 'b', quantity: 1, cost: 3 }] } };
-
-describe('formula-store migration never overrides cloud data', () => {
-  it('fresh device: writes nothing', async () => {
-    const { api, writes } = load();
-    await api.ensureFormulaStoreMigrated();
-    assert.deepEqual(writes, []);
-  });
-  it('legacy formulas are converted, without touching stores or timestamps', async () => {
-    const { api, data, writes } = load(legacy);
-    await api.ensureFormulaStoreMigrated();
-    assert.equal(data.get('factory_formula_store').length, 2);
-    assert.ok(data.get('factory_formula_slots').standard && data.get('factory_formula_slots').asaan);
-    assert.ok(!writes.includes('app_stores'));
-    assert.ok(!writes.includes('app_stores_timestamp'));
-    assert.ok(!writes.some((k) => k.endsWith('_timestamp')));
-  });
-  it('is idempotent', async () => {
-    const t = load(legacy);
-    await t.api.ensureFormulaStoreMigrated();
-    const n = t.writes.length;
-    await t.api.ensureFormulaStoreMigrated();
-    assert.equal(t.writes.length, n);
-  });
-});
 
 describe('commitStoresWithFormulas', () => {
   const base = () => ({
