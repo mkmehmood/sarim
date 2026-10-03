@@ -1,5 +1,6 @@
 import { ensureArray, esc, generateUUID, getTimestamp, sqliteStore } from './business.js';
 import { showGlassConfirm, showToast } from './customers.js';
+import { sendDeviceNotification } from './notify.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 const STORE_KEY = 'factory_formula_store';
@@ -107,7 +108,9 @@ function _afterChange() {
 async function _runMigration() {
   const batch = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, ..._FEED_KEYS]);
   const rawSlots = batch.get(SLOTS_KEY);
-  const stores = ensureArray(await getAppStores()).map((s) => ({ ...s }));
+  const savedStores = await sqliteStore.get('app_stores');
+  const hasSavedStores = Array.isArray(savedStores) && savedStores.length > 0;
+  const stores = ensureArray(hasSavedStores ? savedStores : await getAppStores()).map((s) => ({ ...s }));
   const list = ensureArray(batch.get(STORE_KEY)).filter((f) => f && f.id);
   const slots = { standard: (rawSlots && rawSlots.standard) || null, asaan: (rawSlots && rawSlots.asaan) || null };
   const formulas = batch.get('factory_default_formulas') || {};
@@ -133,6 +136,7 @@ async function _runMigration() {
   });
   let storesChanged = false;
   stores.forEach((s) => {
+    if (!hasSavedStores) return;
     const valid = s.formulaId && list.find((f) => String(f.id) === String(s.formulaId));
     if (valid) return;
     const id = slots[s.formulaType || 'standard'];
@@ -145,7 +149,7 @@ async function _runMigration() {
   const writes = [];
   if (listChanged) writes.push([STORE_KEY, list], [STORE_TS_KEY, now]);
   if (slotsChanged) writes.push([SLOTS_KEY, slots], [SLOTS_TS_KEY, now]);
-  if (storesChanged) writes.push(['app_stores', stores], ['app_stores_timestamp', Date.now()]);
+  if (storesChanged) writes.push(['app_stores', stores]);
   await sqliteStore.setBatch(writes);
   _invalidateStoresCache();
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
@@ -227,13 +231,13 @@ function _card(f, inventory, usedBy) {
 export async function renderFormulaStoreList() {
   const box = _el('formulaStoreList');
   if (!box) return;
-  const [list, stores] = await Promise.all([getFormulaStore(), getAppStores()]);
+  const [list, stores, slotsNow] = await Promise.all([getFormulaStore(), getAppStores(), getFormulaSlots()]);
   if (!list.length) {
     box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
   const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
-  box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId) === String(f.id)).map((s) => s.name))).join('');
+  box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId || slotsNow[s.formulaType || 'standard']) === String(f.id)).map((s) => s.name))).join('');
 }
 export async function openFormulaStore() {
   await ensureFormulaStoreMigrated();
@@ -419,21 +423,25 @@ export async function saveFormulaStoreEntry() {
   if (inSlot) await _freezeLegacyRecords();
   await _saveFormulaStore(list, inSlot ? _feedWrites(list, slots, batch, now) : []);
   showToast('Formula saved', 'success');
+  sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `${c.name} — ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}`, 'formula-' + _editingId).catch(() => {});
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   return true;
 }
 export async function deleteFormulaStoreEntry() {
   if (!_editingId) return;
   const [slots, stores] = await Promise.all([getFormulaSlots(), getAppStores()]);
-  const users = stores.filter((s) => String(s.formulaId) === String(_editingId)).map((s) => s.name);
+  const users = stores.filter((s) => String(s.formulaId || slots[s.formulaType || 'standard']) === String(_editingId)).map((s) => s.name);
   if (users.length || SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId))) {
     showToast(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning', 4500);
     return;
   }
   const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
   if (!ok) return;
-  const list = (await getFormulaStore()).filter((f) => String(f.id) !== String(_editingId));
+  const fullList = await getFormulaStore();
+  const removed = fullList.find((f) => String(f.id) === String(_editingId));
+  const list = fullList.filter((f) => String(f.id) !== String(_editingId));
   await _saveFormulaStore(list);
+  sendDeviceNotification('Formula deleted', removed && removed.name ? removed.name : 'A formula was removed', 'formula-del-' + _editingId).catch(() => {});
   _editingId = null;
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   showToast('Formula deleted', 'success');

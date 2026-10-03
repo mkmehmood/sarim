@@ -250,13 +250,37 @@ triggerAutoSync();
 return true;
 }
 
+const _DELETE_LABELS = {
+  rep_sales: 'Sale', customer_sales: 'Sale', payment_transactions: 'Payment', expenses: 'Expense',
+  mfg_pro_pkr: 'Production entry', payment_entities: 'Entity', sales_customers: 'Customer', rep_customers: 'Customer',
+  factory_inventory_data: 'Raw material', factory_production_history: 'Factory entry', stock_returns: 'Return', noman_history: 'Calculation'
+};
+function _notifyDeletion(key, r) {
+  try {
+    const label = _DELETE_LABELS[key] || 'Record';
+    const parts = [];
+    if (r) {
+      const who = r.customerName || r.entityName || r.name || r.description || '';
+      if (who) parts.push(who);
+      const amt = r.totalValue != null ? r.totalValue : r.amount;
+      if (amt != null && amt !== '' && !isNaN(Number(amt))) parts.push(fmtAmt(amt));
+      else if (r.net != null && !isNaN(Number(r.net))) parts.push(Math.abs(Number(r.net)) + ' kg');
+    }
+    sendDeviceNotification(label + ' deleted', parts.length ? parts.join(' — ') : label + ' was removed', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
+  } catch (_) {}
+}
 export async function unifiedDelete(sqliteKey, dataArray, deletedRecordId, opts = {}, preDeletedRecord = null) {
 if (opts.strict !== true) {
   console.warn(`[RecycleBin] BLOCKED unifiedDelete on "${sqliteKey}" id=${deletedRecordId} — strict flag missing. Pass { strict: true } to confirm intentional deletion.`);
   if (typeof window.showToast === 'function') window.showToast('Delete blocked: missing strict confirmation flag.', 'warning');
   return false;
 }
+let _delRecord = preDeletedRecord || null;
+if (!_delRecord) {
+  try { _delRecord = ensureArray(await sqliteStore.get(sqliteKey)).find(r => r && String(r.id) === String(deletedRecordId)) || null; } catch (_) {}
+}
 await saveWithTracking(sqliteKey, dataArray);
+_notifyDeletion(sqliteKey, _delRecord);
 const collectionName = getFirestoreCollection(sqliteKey);
 if (collectionName && typeof window.registerDeletion === 'function') {
   try {
@@ -1928,6 +1952,7 @@ export async function subscribeToRealtime() {
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           emitSyncUpdate({ appStores: null });
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
+          if (localTs) sendDeviceNotification('Stores updated', 'Store prices or formulas were changed on another device', 'stores-remote').catch(() => {});
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -2342,10 +2367,32 @@ export function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
 function _keepLocalSalePrices(cloudStores, localStores) {
   const local = Array.isArray(localStores) ? localStores : [];
   return cloudStores.map((c) => {
-    if (!c || (c.salePrice > 0)) return c;
+    if (!c) return c;
     const l = local.find((x) => x && x.key === c.key);
-    return l && l.salePrice > 0 ? { ...c, salePrice: l.salePrice } : c;
+    if (!l) return c;
+    const out = { ...c };
+    if (!(c.salePrice > 0) && l.salePrice > 0) out.salePrice = l.salePrice;
+    if (!c.formulaId && l.formulaId) out.formulaId = l.formulaId;
+    return out;
   });
+}
+function _fillStoresFromCloud(localStores, cloudStores) {
+  const cloud = Array.isArray(cloudStores) ? cloudStores.filter((c) => c && c.key) : [];
+  const local = Array.isArray(localStores) ? localStores : [];
+  let changed = false;
+  const out = local.map((l) => {
+    if (!l) return l;
+    const c = cloud.find((x) => x.key === l.key);
+    if (!c) return l;
+    const n = { ...l };
+    if (!(l.salePrice > 0) && c.salePrice > 0) { n.salePrice = c.salePrice; changed = true; }
+    if (!l.formulaId && c.formulaId) { n.formulaId = c.formulaId; if (c.formulaType) n.formulaType = c.formulaType; changed = true; }
+    return n;
+  });
+  cloud.forEach((c) => {
+    if (!out.some((l) => l && l.key === c.key)) { out.push(c); changed = true; }
+  });
+  return { stores: out, changed };
 }
 export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   if (depth > 20) return null;
@@ -3238,7 +3285,21 @@ export async function _uploadChanges(userRef) {
   const localStoresTs = await sqliteStore.get('app_stores_timestamp');
   const lastStoresSync = await DeltaSync.getLastSyncTimestamp('appStores');
   if (localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
-    const _as = await sqliteStore.get('app_stores');
+    let _as = await sqliteStore.get('app_stores');
+    if (!lastStoresSync) {
+      try {
+        const _cloudStoresSnap = await userRef.collection('appStores').doc('stores').get();
+        const _cd = _cloudStoresSnap && _cloudStoresSnap.exists ? _cloudStoresSnap.data() : null;
+        if (_cd && Array.isArray(_cd.stores)) {
+          const filled = _fillStoresFromCloud(_as || [], _cd.stores);
+          if (filled.changed) {
+            _as = filled.stores;
+            await sqliteStore.set('app_stores', _as);
+            if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
+          }
+        }
+      } catch (_fe) { console.warn('[sync] stores pre-upload cloud check failed:', _safeErr(_fe)); }
+    }
     configBatch.set(
       userRef.collection('appStores').doc('stores'),
       sanitizeForFirestore({ stores: _as || [], stores_timestamp: localStoresTs }),

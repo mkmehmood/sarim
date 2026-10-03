@@ -5163,7 +5163,11 @@ const cloud = Array.isArray(cloudData.app_stores) ? cloudData.app_stores : [];
 const file = Array.isArray(normalized.app_stores) ? normalized.app_stores : [];
 const map = new Map();
 cloud.forEach(s => { if (s && s.key) map.set(s.key, s); });
-file.forEach(s => { if (s && s.key) map.set(s.key, s); });
+file.forEach(s => {
+  if (!s || !s.key) return;
+  const prev = map.get(s.key);
+  map.set(s.key, prev ? { ...prev, ...s, salePrice: (s.salePrice > 0 ? s.salePrice : prev.salePrice), formulaId: s.formulaId || prev.formulaId } : s);
+});
 return Array.from(map.values());
 })(),
 factory_unit_tracking: (() => {

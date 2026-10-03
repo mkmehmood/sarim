@@ -159,6 +159,7 @@ function _showUpdateDialog(reg) {
     return;
   }
   window._swDialogShown = true;
+  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('App update available', 'A new version is ready. Open the app to update.', 'app-update').catch(function(){});
   showGlassConfirm(
     'A new version of the app is ready.'
     + '\n\nWhat happens when you update:'
@@ -171,6 +172,7 @@ function _showUpdateDialog(reg) {
     window._swDialogShown = false;
     if (!confirmed) return;
     window._swConfirmed = true;
+    try { localStorage.setItem('_swNotifyUpdated', '1'); } catch (e) {}
     var waiting = reg.waiting;
     if (waiting) {
       waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -192,6 +194,12 @@ window._onShowGlassConfirmReady = function() {
 
 if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())) {
   window.addEventListener('load', function() {
+    try {
+      if (localStorage.getItem('_swNotifyUpdated')) {
+        localStorage.removeItem('_swNotifyUpdated');
+        setTimeout(function() { if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('App updated', 'Sarim was updated to the latest version.', 'app-updated').catch(function(){}); }, 3000);
+      }
+    } catch (e) {}
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
 
       if (reg.waiting) {
@@ -3105,7 +3113,7 @@ async function editStore(index) {
   document.getElementById('store-edit-index').value = String(index);
   document.getElementById('store-name-input').value = s.name;
   document.getElementById('store-sale-price-input').value = s.salePrice || 0;
-  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || '');
+  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || (typeof getFormulaSlots === 'function' ? ((await getFormulaSlots())[s.formulaType || 'standard'] || '') : ''));
   document.getElementById('store-form-heading').textContent = 'Edit Store';
   document.getElementById('store-save-btn-text').textContent = 'Save Changes';
   const cancelBtn = document.getElementById('store-cancel-edit-btn');
@@ -3130,6 +3138,7 @@ async function deleteStore(index) {
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
   if (typeof showToast === 'function') showToast('Store deleted', 'success');
+  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Store deleted', s.name, 'store-del-' + s.key).catch(function(){});
 }
 window.deleteStore = deleteStore;
 
@@ -3185,6 +3194,10 @@ async function saveStoreFromForm() {
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
   if (typeof showToast === 'function') showToast(editIndex >= 0 ? 'Store updated' : 'Store added', 'success');
+  if (typeof window.sendDeviceNotification === 'function') {
+    var _nStore = (commitResult.stores || []).find(function(x) { return x.name === nameRaw; }) || {};
+    window.sendDeviceNotification(editIndex >= 0 ? 'Store updated' : 'Store added', nameRaw + ' — sale price ' + (_nStore.salePrice > 0 ? _nStore.salePrice : 0) + '/kg', 'store-' + (_nStore.key || nameRaw)).catch(function(){});
+  }
 }
 window.saveStoreFromForm = saveStoreFromForm;
 
