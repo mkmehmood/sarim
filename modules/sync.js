@@ -1,6 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
-import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateAllDataOnStartup, validateUUID } from './business.js';
+import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, closeYearInProgress, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
@@ -3454,12 +3454,6 @@ export async function _doOneClickSync(silent = false) {
 
         showToast(` Synced — ${totalCloudChanges} new, ${totalItemsToWrite} uploaded`, 'info', 3000);
       }
-      setTimeout(() => {
-        _syncQueue.run(async () => {
-          try { if (typeof validateAllDataOnStartup === 'function') await validateAllDataOnStartup(); }
-          catch (e) { console.error('Data validation error:', _safeErr(e)); }
-        });
-      }, 2000);
       return;
     }
 
@@ -3482,13 +3476,6 @@ export async function _doOneClickSync(silent = false) {
 
       showToast(` Synced — ${totalCloudChanges} new, ${totalItemsToWrite} uploaded`, 'info', 3000);
     }
-
-    setTimeout(() => {
-      _syncQueue.run(async () => {
-        try { if (typeof validateAllDataOnStartup === 'function') await validateAllDataOnStartup(); }
-        catch (e) { console.error('Data validation error:', _safeErr(e)); }
-      });
-    }, 2000);
 
     return { down: totalCloudChanges, up: totalItemsToWrite };
 

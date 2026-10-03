@@ -45,44 +45,6 @@ function _slotOfStore(key, typeMap) {
   if (key === 'standard' || key === 'asaan') return key;
   return typeMap[key] || (key === 'STORE_C' ? 'asaan' : 'standard');
 }
-async function _freezeLegacyRecords() {
-  const [stores, labels, batch] = await Promise.all([getAppStores(), getFormulaSlotLabels(), sqliteStore.getBatch(['factory_production_history', 'mfg_pro_pkr', 'factory_default_formulas', 'factory_inventory_data'])]);
-  const typeMap = {};
-  stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });
-  const formulas = batch.get('factory_default_formulas') || {};
-  const inventory = ensureArray(batch.get('factory_inventory_data'));
-  const now = getTimestamp();
-  const history = ensureArray(batch.get('factory_production_history'));
-  const production = ensureArray(batch.get('mfg_pro_pkr'));
-  let historyChanged = false;
-  let productionChanged = false;
-  history.forEach((r) => {
-    if (!r || (r.formulaType && r.formulaName)) return;
-    const t = r.formulaType || _slotOfStore(r.store, typeMap);
-    r.formulaType = t;
-    r.formulaName = labels[t] || FALLBACK[t];
-    r.updatedAt = now;
-    historyChanged = true;
-  });
-  production.forEach((r) => {
-    if (!r) return;
-    const needSlot = !r.formulaStore;
-    const needSnap = !r.isReturn && !Array.isArray(r.formulaMaterials);
-    if (!needSlot && !needSnap) return;
-    const slot = r.formulaStore || _slotOfStore(r.store, typeMap);
-    r.formulaStore = slot;
-    if (needSnap) {
-      r.formulaName = labels[slot] || FALLBACK[slot];
-      r.formulaMaterials = ensureArray(formulas[slot]).map((i) => ({ id: i.id, name: i.name, quantity: _num(i.quantity, 0), cost: _liveCost(i, inventory) }));
-    }
-    r.updatedAt = now;
-    productionChanged = true;
-  });
-  const writes = [];
-  if (historyChanged) writes.push(['factory_production_history', history]);
-  if (productionChanged) writes.push(['mfg_pro_pkr', production]);
-  if (writes.length) await sqliteStore.setBatch(writes);
-}
 function _feedWrites(list, slots, base, now) {
   const formulas = { standard: [], asaan: [], ...(base.get('factory_default_formulas') || {}) };
   const costs = { standard: 0, asaan: 0, ...(base.get('factory_additional_costs') || {}) };
@@ -132,7 +94,6 @@ export async function commitStoresWithFormulas(stores) {
     const slot = s.formulaId ? SLOT_KEYS.find((k) => String(next[k]) === String(s.formulaId)) : null;
     return { ...s, formulaType: slot || s.formulaType || 'standard' };
   });
-  await _freezeLegacyRecords();
   const now = getTimestamp();
   const writes = [..._feedWrites(list, next, batch, now), [SLOTS_KEY, next], [SLOTS_TS_KEY, now], ['app_stores', normalized], ['app_stores_timestamp', Date.now()]];
   await sqliteStore.setBatch(writes);
@@ -368,7 +329,6 @@ export async function saveFormulaStoreEntry() {
     list.push({ id: _editingId, ...c, createdAt: now, updatedAt: now });
   }
   const inSlot = SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId));
-  if (inSlot) await _freezeLegacyRecords();
   await _saveFormulaStore(list, inSlot ? _feedWrites(list, slots, batch, now) : []);
   showToast('Formula saved', 'success');
   sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `${c.name} — ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}`, 'formula-' + _editingId).catch(() => {});

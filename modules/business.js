@@ -1149,10 +1149,6 @@ export const sqliteStore = (() => {
       version     INTEGER NOT NULL,
       upgraded_at INTEGER NOT NULL
     )`);
-    const vRows          = db.exec('SELECT version FROM schema_version LIMIT 1');
-    const currentVersion = (vRows.length && vRows[0].values.length)
-      ? vRows[0].values[0][0] : 0;
-
     db.run(`CREATE TABLE IF NOT EXISTS kv_store (
       full_key   TEXT    NOT NULL PRIMARY KEY,
       user_key   TEXT    NOT NULL,
@@ -2813,90 +2809,6 @@ if (window._tombstoneCleanupInterval) clearInterval(window._tombstoneCleanupInte
 window._tombstoneCleanupInterval = setInterval(() => cleanupOldTombstones(), APP_CONFIG.TOMBSTONE_CLEANUP_INTERVAL_MS);
 }
 
-export async function validateAndFixRecords(dataType, records) {
-if (!Array.isArray(records) || records.length === 0) {
-return { fixed: 0, valid: 0, total: 0 };
-}
-const validRecords = records.filter(record => {
-if (!record || typeof record !== 'object') return false;
-const dataKeys = Object.keys(record).filter(key =>
-!['id', 'createdAt', 'updatedAt', 'timestamp', 'deletedAt', 'tombstoned_at'].includes(key)
-);
-return dataKeys.length > 0;
-});
-if (validRecords.length === 0) {
-return { fixed: 0, valid: 0, total: 0 };
-}
-let fixedCount = 0;
-let validCount = 0;
-const validatedRecords = validRecords.map(record => {
-let needsFix = false;
-if (!record.id || !validateUUID(record.id)) {
-needsFix = true;
-}
-if (!record.createdAt || !validateTimestamp(record.createdAt)) {
-needsFix = true;
-}
-if (!record.updatedAt || !validateTimestamp(record.updatedAt)) {
-needsFix = true;
-}
-if (record.updatedAt && record.createdAt && record.updatedAt < record.createdAt) {
-needsFix = true;
-}
-if (needsFix) {
-record = ensureRecordIntegrity(record, false, true);
-fixedCount++;
-} else {
-validCount++;
-}
-return record;
-});
-if (fixedCount > 0) {
-await sqliteStore.set(dataType, validatedRecords);
-}
-return {
-fixed: fixedCount,
-valid: validCount,
-total: validRecords.length,
-records: validatedRecords
-};
-}
-
-export async function validateAllDataOnStartup() {
-const dataTypes = [
-'expenses',
-'mfg_pro_pkr',
-'customer_sales',
-'rep_sales',
-'noman_history',
-'payment_transactions',
-'payment_entities',
-'factory_production_history',
-'stock_returns'
-];
-let totalFixed = 0;
-let totalValid = 0;
-let totalRecords = 0;
-for (const dataType of dataTypes) {
-try {
-const records = await sqliteStore.get(dataType) || [];
-if (records.length > 0) {
-const result = await validateAndFixRecords(dataType, records);
-totalFixed += result.fixed;
-totalValid += result.valid;
-totalRecords += result.total;
-}
-} catch (error) {
-console.error('Data validation encountered an error.', _safeErr(error));
-showToast('Data validation encountered an error.', 'error');
-}
-}
-if (totalFixed > 0) {
-} else {
-}
-return { totalFixed, totalValid, totalRecords };
-}
-
 window._safeErr = _safeErr;
 window.escapeHtml = escapeHtml;
 window.esc = esc;
@@ -2992,5 +2904,3 @@ window.getRecordTimestamp = getRecordTimestamp;
 window.ensureRecordIntegrity = ensureRecordIntegrity;
 window.cleanupOldTombstones = cleanupOldTombstones;
 window.scheduleAutomaticCleanup = scheduleAutomaticCleanup;
-window.validateAndFixRecords = validateAndFixRecords;
-window.validateAllDataOnStartup = validateAllDataOnStartup;
