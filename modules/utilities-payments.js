@@ -6279,7 +6279,7 @@ localKey: 'factory_default_formulas',
 localVariable: 'factoryDefaultFormulas',
 type: 'object',
 defaultValue: { standard: [], asaan: [] },
-description: 'Recipe / formula definitions (Standard vs Asaan)'
+description: 'Recipe / formula definitions, Formula Store and store formula slots'
 },
 factory_additional_costs: {
 localKey: 'factory_additional_costs',
@@ -6827,8 +6827,8 @@ closeStandaloneScreen('app-accounts-screen');
 }
 export const _overlayStack = (() => {
   const _registry = {
-    'formula-standard-screen':     { closeFn: () => closeStandaloneScreen('formula-standard-screen'), contentSel: '.screen-body' },
-    'formula-asaan-screen':        { closeFn: () => closeStandaloneScreen('formula-asaan-screen'),    contentSel: '.screen-body' },
+    'formula-store-screen':        { closeFn: () => closeStandaloneScreen('formula-store-screen'), contentSel: '.screen-body' },
+    'formula-store-edit-screen':   { closeFn: () => closeStandaloneScreen('formula-store-edit-screen'), contentSel: '.screen-body' },
     'raw-material-screen':         { closeFn: () => closeStandaloneScreen('raw-material-screen'),     contentSel: '.screen-body' },
     'add-entity-screen':           { closeFn: () => closeStandaloneScreen('add-entity-screen'),       contentSel: '.screen-body' },
     'sales-rep-screen':            { closeFn: () => closeStandaloneScreen('sales-rep-screen'),        contentSel: '.screen-body' },

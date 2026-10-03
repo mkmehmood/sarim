@@ -1653,6 +1653,7 @@ export async function rebuildStoreUI() {
     });
   }
 
+  if (typeof window.refreshFormulaDependentUI === 'function') await window.refreshFormulaDependentUI();
 }
 window.rebuildStoreUI = rebuildStoreUI;
 

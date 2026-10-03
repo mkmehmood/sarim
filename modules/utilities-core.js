@@ -6,7 +6,7 @@ import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode,
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, currentCashTrackerMode, currentCustomerChartMode, currentFactoryDate, currentFactoryEntryStore, currentIndMetric, currentIndMode, currentMfgMode, currentOverviewMode, currentProductionView, currentStoreComparisonMetric, custTransactionMode, getStoreFormulaType, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, currentExpenseOverlayName, currentPerfOverviewMode, currentSalesSummaryMode, deletePaymentTransfer, editEntityBasicInfo, editingEntityId, entityViewMode, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, selectedEntityId, toSafeDate } from './utilities-payments.js';
-import { calculateDynamicCost, currentFactorySettingsStore, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
+import { calculateDynamicCost, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, currentRepAnalyticsMode, refreshRepUI, renderRepCustomerTable, repTransactionMode } from './rep-sales.js';
 
@@ -1062,7 +1062,6 @@ export const _UI_DEFAULTS = {
   currentOverviewMode: 'day',
   currentProductionView: 'store',
   currentFactoryEntryStore: 'STORE_A',
-  currentFactorySettingsStore: 'standard',
   currentFactorySummaryMode: 'daily',
   currentCashTrackerMode: 'day',
   currentSalesSummaryMode: 'day',
@@ -1114,7 +1113,6 @@ Object.defineProperties(window, {
   currentOverviewMode:          { get: () => getUI('currentOverviewMode'),          set: v => setUI('currentOverviewMode', v),          configurable: true },
   currentProductionView:        { get: () => getUI('currentProductionView'),        set: v => setUI('currentProductionView', v),        configurable: true },
   currentFactoryEntryStore:     { get: () => getUI('currentFactoryEntryStore'),     set: v => setUI('currentFactoryEntryStore', v),     configurable: true },
-  currentFactorySettingsStore:  { get: () => getUI('currentFactorySettingsStore'),  set: v => setUI('currentFactorySettingsStore', v),  configurable: true },
   currentFactorySummaryMode:    { get: () => getUI('currentFactorySummaryMode'),    set: v => setUI('currentFactorySummaryMode', v),    configurable: true },
   currentCashTrackerMode:       { get: () => getUI('currentCashTrackerMode'),       set: v => setUI('currentCashTrackerMode', v),       configurable: true },
   currentSalesSummaryMode:      { get: () => getUI('currentSalesSummaryMode'),      set: v => setUI('currentSalesSummaryMode', v),      configurable: true },

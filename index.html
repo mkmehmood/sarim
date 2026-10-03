@@ -622,26 +622,6 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       Add Raw Materials
     </button>
     <div class="sidebar-section-label" style="padding-top:6px;color:var(--text-secondary);font-size:0.55rem;">FACTORY</div>
-    <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('formula-standard-screen');if(typeof openFactorySettings==='function')openFactorySettings('standard')">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8" y="5" width="20" height="26" rx="3" fill="var(--accent)" fill-opacity="0.10" stroke="var(--accent)" stroke-width="1.5"/>
-        <path d="M8 30 Q5 30 5 27 Q5 24 8 24" stroke="var(--accent)" stroke-width="1.3" fill="none"/>
-        <line x1="12" y1="12" x2="24" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
-        <text x="12" y="20" font-size="7" fill="var(--accent)" font-family="monospace" font-weight="bold">A=πr²</text>
-        <line x1="12" y1="25" x2="20" y2="25" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
-      </svg>
-      Formula - Standard
-    </button>
-    <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('formula-asaan-screen');if(typeof openFactorySettings==='function')openFactorySettings('asaan')">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M9 5 H27 A2 2 0 0 1 29 7 V29 L23 35 H9 A2 2 0 0 1 7 33 V7 A2 2 0 0 1 9 5 Z" fill="var(--accent-purple)" fill-opacity="0.10" stroke="var(--accent-purple)" stroke-width="1.5"/>
-        <path d="M23 35 V29 H29" stroke="var(--accent-purple)" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
-        <line x1="12" y1="13" x2="24" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/>
-        <line x1="12" y1="18" x2="24" y2="18" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.65"/>
-        <line x1="12" y1="23" x2="18" y2="23" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.55"/>
-      </svg>
-      Formula - Asaan
-    </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('formula-store-screen');if(typeof openFormulaStore==='function')openFormulaStore()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M5 13 L8 6 H28 L31 13" fill="var(--accent-gold)" fill-opacity="0.12" stroke="var(--accent-gold)" stroke-width="1.5" stroke-linejoin="round"/>
@@ -750,13 +730,10 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
           <input type="text" id="store-name-input" placeholder="e.g. KARACHI" maxlength="32" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
         </div>
         <div class="field">
-          <label>Formula Type</label>
-          <input type="hidden" id="store-formula-select" value="standard">
-          <div class="toggle-group" id="formulaTypeToggleGroup">
-            <button type="button" class="toggle-opt active" onclick="setFormulaToggle('standard',this)">Standard</button>
-            <button type="button" class="toggle-opt" onclick="setFormulaToggle('asaan',this)">Asaan</button>
-          </div>
-          <div class="u-field-hint-xs">Determines which cost formula is used for this store</div>
+          <label>Formula</label>
+          <input type="hidden" id="store-formula-select" value="">
+          <button type="button" id="store-formula-btn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="openStoreFormulaPicker(this)"><span>Select formula</span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="u-field-hint-xs">Picked from the Formula Store. Sets the cost formula used for this store</div>
         </div>
         <div class="field">
           <label>Sale Price (per kg)</label>
@@ -1056,76 +1033,6 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
   </div>
 </div>
 
-<div id="formula-standard-screen" class="standalone-screen" style="display:none">
-  <div class="screen-topbar">
-    <h2 class="screen-title">Formula - Standard</h2>
-  </div>
-  <div class="screen-body" id="formula-standard-body">
-    <div class="grid-inputs u-mb-15">
-      <div class="field">
-        <label>Additional Cost (Per Unit)</label>
-        <input type="number" id="additional-cost-per-unit" step="0.01" min="0" value="0" oninput="updateFactoryFormulasSummary()">
-      </div>
-      <div class="field">
-        <label>Cost Adjustment for Sales &amp; Calc (X)</label>
-        <input type="number" id="cost-adjustment-factor" step="0.01" min="1" value="1" oninput="updateFactoryFormulasSummary()">
-        <div class="u-field-hint-xs">Cost per kg = (Raw Material Cost + Additional Cost) / X</div>
-      </div>
-    </div>
-    <div class="factory-formula-header">
-      <span>Material</span>
-      <span>Cost / Unit</span>
-      <span>Qty (kg)</span>
-      <span></span>
-    </div>
-    <div id="factoryRawMaterialsContainer"></div>
-    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow('standard')">+ Add Ingredient Row</button>
-    <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15" style="margin-top:12px;">
-      <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="factorySettingsUnitWeight">0 kg</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="factorySettingsRawCostPerUnit">0</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Total Cost per Unit:</span><span class="cost-val" id="factorySettingsPerUnit">0</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Available Units:</span><span class="qty-val" id="factorySettingsAvailableUnits">0</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Cost per kg (Sales/Calc):</span><span class="cost-val" id="factorySettingsSalesCostPerKg">0</span></div>
-    </div>
-    <button class="btn btn-noman" style="width:100%;" onclick="(async()=>{await saveFactoryFormulas()})()">Save Standard Formula</button>
-  </div>
-</div>
-
-<div id="formula-asaan-screen" class="standalone-screen" style="display:none">
-  <div class="screen-topbar">
-    <h2 class="screen-title">Formula - Asaan</h2>
-  </div>
-  <div class="screen-body" id="formula-asaan-body">
-    <div class="grid-inputs u-mb-15">
-      <div class="field">
-        <label>Additional Cost (Per Unit)</label>
-        <input type="number" id="additional-cost-per-unit-asaan" step="0.01" min="0" value="0" oninput="updateFactoryFormulasSummaryAsaan()">
-      </div>
-      <div class="field">
-        <label>Cost Adjustment for Sales &amp; Calc (X)</label>
-        <input type="number" id="cost-adjustment-factor-asaan" step="0.01" min="1" value="1" oninput="updateFactoryFormulasSummaryAsaan()">
-        <div class="u-field-hint-xs">Cost per kg = (Raw Material Cost + Additional Cost) / X</div>
-      </div>
-    </div>
-    <div class="factory-formula-header">
-      <span>Material</span>
-      <span>Cost / Unit</span>
-      <span>Qty (kg)</span>
-      <span></span>
-    </div>
-    <div id="factoryRawMaterialsContainerAsaan"></div>
-    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow('asaan')">+ Add Ingredient Row</button>
-    <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15" style="margin-top:12px;">
-      <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="factorySettingsUnitWeightAsaan">0 kg</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="factorySettingsRawCostPerUnitAsaan">0</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Total Cost per Unit:</span><span class="cost-val" id="factorySettingsPerUnitAsaan">0</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Available Units:</span><span class="qty-val" id="factorySettingsAvailableUnitsAsaan">0</span></div>
-      <div class="factory-summary-row"><span class="factory-summary-label">Cost per kg (Sales/Calc):</span><span class="cost-val" id="factorySettingsSalesCostPerKgAsaan">0</span></div>
-    </div>
-    <button class="btn btn-noman" style="width:100%;" onclick="(async()=>{await saveFactoryFormulasAsaan()})()">Save Asaan Formula</button>
-  </div>
-</div>
-
 <div id="formula-store-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Formula Store</h2>
@@ -1164,17 +1071,12 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       <span></span>
     </div>
     <div id="fsEditContainer"></div>
-    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow('store')">+ Add Ingredient Row</button>
+    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow()">+ Add Ingredient Row</button>
     <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15" style="margin-top:12px;">
       <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="fsSummaryWeight">0 kg</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="fsSummaryRaw">0</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Total Cost per Unit:</span><span class="cost-val" id="fsSummaryPerUnit">0</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Cost per kg (Sales/Calc):</span><span class="cost-val" id="fsSummaryPerKg">0</span></div>
-    </div>
-    <button class="btn btn-theme" style="width:100%;margin-bottom:10px;" onclick="toggleFormulaStoreSwap()">⇄ Swap Formula</button>
-    <div id="fs-swap-panel" class="toggle-group" style="display:none;margin-bottom:12px;">
-      <button type="button" class="toggle-opt" onclick="swapFormulaStoreWith('standard')">Swap with Standard</button>
-      <button type="button" class="toggle-opt" onclick="swapFormulaStoreWith('asaan')">Swap with Asaan</button>
     </div>
     <button class="btn btn-noman" style="width:100%;" onclick="(async()=>{await saveFormulaStoreEntry()})()">Save Formula</button>
     <button class="btn btn-danger" id="fs-delete-btn" style="width:100%;margin-top:10px;display:none;" onclick="deleteFormulaStoreEntry()">Delete Formula</button>
@@ -3149,7 +3051,7 @@ async function renderStoreList() {
     return;
   }
 
-  const fTypeLabel = { standard: 'Standard', asaan: 'Asaan' };
+  const formulaNames = typeof getStoreFormulaNames === 'function' ? await getStoreFormulaNames() : {};
   const fTypeColor = { standard: 'var(--accent)', asaan: 'var(--accent-purple,#a78bfa)' };
 
   container.innerHTML = stores.map((s, i) => {
@@ -3166,7 +3068,7 @@ async function renderStoreList() {
           <div style="font-size:0.65rem;color:var(--text-muted);margin-top:1px;">
             Key: <span style="font-family:monospace;color:var(--accent);">${s.key}</span>
             &nbsp;·&nbsp;
-            <span style="color:${fTypeColor[s.formulaType]||'var(--accent)'};">${fTypeLabel[s.formulaType] || s.formulaType} Formula</span>
+            <span style="color:${fTypeColor[s.formulaType]||'var(--accent)'};">${formulaNames[s.key] || 'No formula'}</span>
             ${isUsed ? '&nbsp;·&nbsp;<span style="color:var(--text-muted);">Has records</span>' : ''}
           </div>
           <div style="font-size:0.72rem;color:var(--accent);margin-top:3px;font-weight:700;">
@@ -3183,24 +3085,11 @@ async function renderStoreList() {
 }
 window.renderStoreList = renderStoreList;
 
-function setFormulaToggle(val, btn) {
-  document.getElementById('store-formula-select').value = val;
-  const grp = document.getElementById('formulaTypeToggleGroup');
-  if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.toggle('active', b === btn));
-}
-window.setFormulaToggle = setFormulaToggle;
-
-function _setFormulaToggleByValue(val) {
-  document.getElementById('store-formula-select').value = val || 'standard';
-  const grp = document.getElementById('formulaTypeToggleGroup');
-  if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes("'" + (val || 'standard') + "'")));
-}
-
 function resetStoreForm() {
   document.getElementById('store-edit-index').value = '-1';
   document.getElementById('store-name-input').value = '';
   document.getElementById('store-sale-price-input').value = '0';
-  _setFormulaToggleByValue('standard');
+  if (typeof setStoreFormulaSelection === 'function') setStoreFormulaSelection('');
   document.getElementById('store-form-heading').textContent = 'New Store';
   document.getElementById('store-save-btn-text').textContent = 'Add Store';
   const cancelBtn = document.getElementById('store-cancel-edit-btn');
@@ -3215,7 +3104,7 @@ async function editStore(index) {
   document.getElementById('store-edit-index').value = String(index);
   document.getElementById('store-name-input').value = s.name;
   document.getElementById('store-sale-price-input').value = s.salePrice || 0;
-  _setFormulaToggleByValue(s.formulaType || 'standard');
+  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || '');
   document.getElementById('store-form-heading').textContent = 'Edit Store';
   document.getElementById('store-save-btn-text').textContent = 'Save Changes';
   const cancelBtn = document.getElementById('store-cancel-edit-btn');
@@ -3245,7 +3134,7 @@ window.deleteStore = deleteStore;
 
 async function saveStoreFromForm() {
   const nameRaw = (document.getElementById('store-name-input').value || '').trim().toUpperCase();
-  const formulaType = document.getElementById('store-formula-select').value || 'standard';
+  const formulaId = document.getElementById('store-formula-select').value || '';
   const salePriceRaw = parseFloat(document.getElementById('store-sale-price-input').value);
   const salePrice = (isNaN(salePriceRaw) || salePriceRaw < 0) ? 0 : salePriceRaw;
   const editIndex = parseInt(document.getElementById('store-edit-index').value, 10);
@@ -3255,8 +3144,11 @@ async function saveStoreFromForm() {
     return;
   }
 
-  const stores = await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]));
-
+  if (!formulaId) {
+    if (typeof showToast === 'function') showToast('Select a formula from the Formula Store', 'warning');
+    return;
+  }
+  const stores = (await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]))).map(function(st) { return Object.assign({}, st); });
   if (editIndex >= 0) {
 
     const s = stores[editIndex];
@@ -3265,7 +3157,7 @@ async function saveStoreFromForm() {
     const dup = stores.findIndex((st, i) => i !== editIndex && st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     s.name = nameRaw;
-    s.formulaType = formulaType;
+    s.formulaId = formulaId;
     s.salePrice = salePrice;
   } else {
 
@@ -3280,13 +3172,14 @@ async function saveStoreFromForm() {
 
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
-    stores.push({ key: newKey, name: nameRaw, formulaType, salePrice });
+    stores.push({ key: newKey, name: nameRaw, formulaType: 'standard', formulaId, salePrice });
   }
 
-  await sqliteStore.set('app_stores', stores);
-  await sqliteStore.set('app_stores_timestamp', Date.now());
-  if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
-  if (typeof triggerAutoSync === 'function') triggerAutoSync();
+  const commitResult = await commitStoresWithFormulas(stores);
+  if (!commitResult.ok) {
+    if (typeof showToast === 'function') showToast(commitResult.error, 'warning', 5000);
+    return;
+  }
   resetStoreForm();
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
@@ -3344,206 +3237,6 @@ window.openFactoryInventoryModal = function() {
   openStandaloneScreen('raw-material-screen');
 };
 window.closeFactoryInventoryModal = function() { closeStandaloneScreen('raw-material-screen'); };
-
-window._origOpenFactorySettings = window.openFactorySettings;
-
-async function _loadFormulaScreen(store) {
-  window.currentFactorySettingsStore = store;
-
-  if (store === 'asaan') {
-
-    try {
-      var loadedFormulas = await sqliteStore.get('factory_default_formulas');
-      var loadedCosts    = await sqliteStore.get('factory_additional_costs');
-      var loadedFactor   = await sqliteStore.get('factory_cost_adjustment_factor');
-      var loadedTracking = await sqliteStore.get('factory_unit_tracking');
-      var inventoryData  = await sqliteStore.get('factory_inventory_data');
-
-      var asaanFormula    = (loadedFormulas && loadedFormulas.asaan)   || [];
-      var asaanAddlCost   = (loadedCosts   && loadedCosts.asaan   != null) ? loadedCosts.asaan   : 0;
-      var asaanFactor     = (loadedFactor  && loadedFactor.asaan  != null) ? loadedFactor.asaan  : 1;
-      var asaanAvailable  = (loadedTracking && loadedTracking.asaan) ? loadedTracking.asaan.available : 0;
-
-      var acpuA = document.getElementById('additional-cost-per-unit-asaan');
-      var cafA  = document.getElementById('cost-adjustment-factor-asaan');
-      if (acpuA) acpuA.value = asaanAddlCost;
-      if (cafA)  cafA.value  = asaanFactor;
-
-      var dstContainer = document.getElementById('factoryRawMaterialsContainerAsaan');
-      if (dstContainer) {
-        dstContainer.replaceChildren();
-        var safeInventory = Array.isArray(inventoryData) ? inventoryData : [];
-        for (var ing of asaanFormula) {
-          if (typeof createFactorySettingRow === 'function') {
-            await createFactorySettingRow(dstContainer, ing.id, ing.quantity, ing.cost, ing.name, safeInventory);
-          }
-        }
-      }
-
-      var totalRawCost = 0, totalWeight = 0;
-      asaanFormula.forEach(function(ing) {
-        totalRawCost += (ing.cost * ing.quantity);
-        totalWeight  += ing.quantity;
-      });
-      var perUnitCost    = totalRawCost + asaanAddlCost;
-      var salesCostPerKg = asaanFactor > 0 ? perUnitCost / asaanFactor : perUnitCost;
-      var _set = function(id, val) { var el = document.getElementById(id); if (el) el.innerText = val; };
-      _set('factorySettingsUnitWeightAsaan',    window.fmtNum(parseFloat(totalWeight) || 0) + ' kg');
-      _set('factorySettingsRawCostPerUnitAsaan', window.fmtNum(totalRawCost));
-      _set('factorySettingsPerUnitAsaan',        window.fmtNum(perUnitCost));
-      _set('factorySettingsAvailableUnitsAsaan', asaanAvailable);
-      _set('factorySettingsSalesCostPerKgAsaan', window.fmtNum(salesCostPerKg));
-    } catch(e) {
-      console.error('[_loadFormulaScreen asaan]', e);
-    }
-  } else {
-
-    try {
-      var stdFormulas  = await sqliteStore.get('factory_default_formulas');
-      var stdCosts     = await sqliteStore.get('factory_additional_costs');
-      var stdFactor    = await sqliteStore.get('factory_cost_adjustment_factor');
-      var stdTracking  = await sqliteStore.get('factory_unit_tracking');
-      var stdInventory = await sqliteStore.get('factory_inventory_data');
-
-      var stdFormula    = (stdFormulas  && stdFormulas.standard)              || [];
-      var stdAddlCost   = (stdCosts     && stdCosts.standard   != null)       ? stdCosts.standard   : 0;
-      var stdAdj        = (stdFactor    && stdFactor.standard  != null)       ? stdFactor.standard  : 1;
-      var stdAvailable  = (stdTracking  && stdTracking.standard)              ? stdTracking.standard.available : 0;
-
-      var acpu = document.getElementById('additional-cost-per-unit');
-      var caf  = document.getElementById('cost-adjustment-factor');
-      if (acpu) acpu.value = stdAddlCost;
-      if (caf)  caf.value  = stdAdj;
-
-      var stdContainer = document.getElementById('factoryRawMaterialsContainer');
-      if (stdContainer) {
-        stdContainer.replaceChildren();
-        var safeStdInventory = Array.isArray(stdInventory) ? stdInventory : [];
-        for (var ing of stdFormula) {
-          if (typeof createFactorySettingRow === 'function') {
-            await createFactorySettingRow(stdContainer, ing.id, ing.quantity, ing.cost, ing.name, safeStdInventory);
-          }
-        }
-      }
-
-      var totalRawCost = 0, totalWeight = 0;
-      stdFormula.forEach(function(ing) {
-        totalRawCost += (ing.cost * ing.quantity);
-        totalWeight  += ing.quantity;
-      });
-      var perUnitCost    = totalRawCost + stdAddlCost;
-      var salesCostPerKg = stdAdj > 0 ? perUnitCost / stdAdj : perUnitCost;
-      var _setS = function(id, val) { var el = document.getElementById(id); if (el) el.innerText = val; };
-      _setS('factorySettingsUnitWeight',      window.fmtNum(parseFloat(totalWeight) || 0) + ' kg');
-      _setS('factorySettingsRawCostPerUnit',  window.fmtNum(totalRawCost));
-      _setS('factorySettingsPerUnit',         window.fmtNum(perUnitCost));
-      _setS('factorySettingsAvailableUnits',  stdAvailable);
-      _setS('factorySettingsSalesCostPerKg',  window.fmtNum(salesCostPerKg));
-    } catch(e) {
-      console.error('[_loadFormulaScreen standard]', e);
-    }
-  }
-}
-
-window.openFactorySettings = async function(store) {
-  if (typeof window.createFactorySettingRow !== 'function' && typeof window._lazyLoadFactory === 'function') {
-    await new Promise(function(resolve) { window._lazyLoadFactory(resolve); });
-  }
-  var targetScreen = (store === 'asaan') ? 'formula-asaan-screen' : 'formula-standard-screen';
-  openStandaloneScreen(targetScreen);
-  await _loadFormulaScreen(store || 'standard');
-};
-window.closeFactorySettings = function() {
-  closeStandaloneScreen('formula-standard-screen');
-  closeStandaloneScreen('formula-asaan-screen');
-};
-
-window.saveFactoryFormulasAsaan = async function() {
-  try {
-    var acpuA = document.getElementById('additional-cost-per-unit-asaan');
-    var cafA  = document.getElementById('cost-adjustment-factor-asaan');
-    var container = document.getElementById('factoryRawMaterialsContainerAsaan');
-
-    var newAsaanFormula = [];
-    if (container) {
-      var inventoryData = await sqliteStore.get('factory_inventory_data') || [];
-      container.querySelectorAll('.factory-formula-grid').forEach(function(row) {
-        var inp    = row.querySelector('.factory-mat-search-input');
-        var costIn = row.querySelector('.factory-mat-cost');
-        var qtyIn  = row.querySelector('.factory-mat-qty');
-        if (inp && inp.dataset.matId && qtyIn && parseFloat(qtyIn.value) > 0) {
-          var itemName = inp.value.trim();
-          if (itemName) {
-            var resolvedId = inp.dataset.matId;
-            var liveMatch = inventoryData.find(function(i) { return String(i.id) === String(resolvedId); });
-            if (!liveMatch && itemName) {
-              var nameMatch = inventoryData.find(function(i) { return i.name && i.name.trim().toLowerCase() === itemName.toLowerCase(); });
-              if (nameMatch) resolvedId = nameMatch.id;
-            }
-            newAsaanFormula.push({
-              id: resolvedId,
-              name: itemName,
-              cost: parseFloat(costIn ? costIn.value : 0) || 0,
-              quantity: parseFloat(qtyIn.value)
-            });
-          }
-        }
-      });
-    }
-
-    var _rawFormulas = await sqliteStore.get('factory_default_formulas') || {};
-    var _rawCosts    = await sqliteStore.get('factory_additional_costs')  || {};
-    var _rawFactor   = await sqliteStore.get('factory_cost_adjustment_factor') || {};
-
-    _rawFormulas.asaan = newAsaanFormula;
-    _rawCosts.asaan    = parseFloat(acpuA ? acpuA.value : 0) || 0;
-    _rawFactor.asaan   = parseFloat(cafA  ? cafA.value  : 1) || 1;
-
-    await sqliteStore.set('factory_default_formulas',       _rawFormulas);
-    await sqliteStore.set('factory_additional_costs',       _rawCosts);
-    await sqliteStore.set('factory_cost_adjustment_factor', _rawFactor);
-
-    if (typeof showToast === 'function') showToast('Asaan formula saved.', 'success');
-    if (typeof triggerAutoSync === 'function') triggerAutoSync();
-  } catch(e) {
-    console.error('[saveFactoryFormulasAsaan]', e);
-    if (typeof showToast === 'function') showToast('Failed to save Asaan formula.', 'error');
-  }
-};
-
-window.addFactoryMaterialRowAsaan = async function() {
-  var container = document.getElementById('factoryRawMaterialsContainerAsaan');
-  if (!container) return;
-  if (typeof createFactorySettingRow === 'function') {
-    await createFactorySettingRow(container);
-  }
-};
-
-window.updateFactoryFormulasSummaryAsaan = function() {
-  var acpuA = document.getElementById('additional-cost-per-unit-asaan');
-  var cafA  = document.getElementById('cost-adjustment-factor-asaan');
-  var srcContainer = document.getElementById('factoryRawMaterialsContainerAsaan');
-  var rawCost = 0, weight = 0;
-  if (srcContainer) {
-    srcContainer.querySelectorAll('.factory-formula-grid').forEach(function(row) {
-      var costEl = row.querySelector('.factory-mat-cost');
-      var qtyEl  = row.querySelector('.factory-mat-qty');
-      if (costEl && qtyEl) {
-        rawCost += (parseFloat(costEl.value) || 0) * (parseFloat(qtyEl.value) || 0);
-        weight  += parseFloat(qtyEl.value) || 0;
-      }
-    });
-  }
-  var additionalCost   = parseFloat(acpuA ? acpuA.value : 0) || 0;
-  var adjustmentFactor = parseFloat(cafA  ? cafA.value  : 1) || 1;
-  var perUnitCost      = rawCost + additionalCost;
-  var salesCostPerKg   = adjustmentFactor > 0 ? perUnitCost / adjustmentFactor : perUnitCost;
-  var setVal = function(id, val) { var el = document.getElementById(id); if (el) el.innerText = val; };
-  setVal('factorySettingsUnitWeightAsaan',    window.fmtNum(weight) + ' kg');
-  setVal('factorySettingsRawCostPerUnitAsaan', window.fmtNum(rawCost));
-  setVal('factorySettingsPerUnitAsaan',        window.fmtNum(perUnitCost));
-  setVal('factorySettingsSalesCostPerKgAsaan', window.fmtNum(salesCostPerKg));
-};
 
 window.openManageRepsModal = function() {
   openStandaloneScreen('sales-rep-screen');

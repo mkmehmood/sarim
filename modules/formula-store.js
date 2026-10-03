@@ -1,24 +1,177 @@
 import { ensureArray, esc, generateUUID, getTimestamp, sqliteStore } from './business.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
+import { _invalidateStoresCache, getAppStores } from './utilities-sales.js';
 const STORE_KEY = 'factory_formula_store';
 const STORE_TS_KEY = 'factory_formula_store_timestamp';
+const SLOTS_KEY = 'factory_formula_slots';
+const SLOTS_TS_KEY = 'factory_formula_slots_timestamp';
+const SLOT_KEYS = ['standard', 'asaan'];
+const FALLBACK = { standard: 'Standard', asaan: 'Asaan' };
 let _editingId = null;
+let _migration = null;
 const _el = (id) => document.getElementById(id);
 const _num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 const _fmt = (v) => (typeof window.fmtNum === 'function' ? window.fmtNum(v) : String(v));
-const _label = (t) => (t === 'asaan' ? 'Asaan' : 'Standard');
-async function _ensureRowBuilder() {
-  if (typeof window.createFactorySettingRow === 'function') return;
-  await new Promise((resolve) => { if (typeof window._lazyLoadFactory === 'function') window._lazyLoadFactory(resolve); else resolve(); });
-}
+const _money = (v) => (typeof window.formatCurrency === 'function' ? window.formatCurrency(v) : _fmt(v));
 export async function getFormulaStore() {
   return ensureArray(await sqliteStore.get(STORE_KEY)).filter((f) => f && f.id);
 }
-async function _saveFormulaStore(list) {
-  await sqliteStore.setBatch([[STORE_KEY, list], [STORE_TS_KEY, getTimestamp()]]);
+export async function getFormulaSlots() {
+  const v = await sqliteStore.get(SLOTS_KEY);
+  return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
+}
+export async function getFormulaSlotLabels() {
+  const [list, slots] = await Promise.all([getFormulaStore(), getFormulaSlots()]);
+  const out = {};
+  SLOT_KEYS.forEach((k) => {
+    const f = list.find((x) => String(x.id) === String(slots[k]));
+    out[k] = f && f.name ? f.name : FALLBACK[k];
+  });
+  return out;
+}
+export async function getStoreFormulaNames() {
+  const [stores, list, slots] = await Promise.all([getAppStores(), getFormulaStore(), getFormulaSlots()]);
+  const out = {};
+  stores.forEach((s) => {
+    const id = s.formulaId || slots[s.formulaType || 'standard'];
+    const f = list.find((x) => String(x.id) === String(id));
+    out[s.key] = esc(f && f.name ? f.name : (FALLBACK[s.formulaType] || 'Formula'));
+  });
+  return out;
+}
+function _slotOfStore(key, typeMap) {
+  if (key === 'standard' || key === 'asaan') return key;
+  return typeMap[key] || (key === 'STORE_C' ? 'asaan' : 'standard');
+}
+async function _freezeLegacyRecords() {
+  const [stores, labels, batch] = await Promise.all([getAppStores(), getFormulaSlotLabels(), sqliteStore.getBatch(['factory_production_history', 'mfg_pro_pkr'])]);
+  const typeMap = {};
+  stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });
+  const now = getTimestamp();
+  const history = ensureArray(batch.get('factory_production_history'));
+  const production = ensureArray(batch.get('mfg_pro_pkr'));
+  let historyChanged = false;
+  let productionChanged = false;
+  history.forEach((r) => {
+    if (!r || (r.formulaType && r.formulaName)) return;
+    const t = r.formulaType || _slotOfStore(r.store, typeMap);
+    r.formulaType = t;
+    r.formulaName = labels[t] || FALLBACK[t];
+    r.updatedAt = now;
+    historyChanged = true;
+  });
+  production.forEach((r) => {
+    if (!r || r.formulaStore) return;
+    r.formulaStore = _slotOfStore(r.store, typeMap);
+    r.updatedAt = now;
+    productionChanged = true;
+  });
+  const writes = [];
+  if (historyChanged) writes.push(['factory_production_history', history]);
+  if (productionChanged) writes.push(['mfg_pro_pkr', production]);
+  if (writes.length) await sqliteStore.setBatch(writes);
+}
+function _feedWrites(list, slots, base, now) {
+  const formulas = { standard: [], asaan: [], ...(base.get('factory_default_formulas') || {}) };
+  const costs = { standard: 0, asaan: 0, ...(base.get('factory_additional_costs') || {}) };
+  const factors = { standard: 1, asaan: 1, ...(base.get('factory_cost_adjustment_factor') || {}) };
+  SLOT_KEYS.forEach((k) => {
+    const f = list.find((x) => String(x.id) === String(slots[k]));
+    if (!f) return;
+    formulas[k] = ensureArray(f.ingredients).map((i) => ({ id: i.id, name: i.name, cost: _num(i.cost, 0), quantity: _num(i.quantity, 0) }));
+    costs[k] = _num(f.additionalCost, 0);
+    factors[k] = _num(f.costAdjustmentFactor, 1) || 1;
+  });
+  return [['factory_default_formulas', formulas], ['factory_default_formulas_timestamp', now], ['factory_additional_costs', costs], ['factory_additional_costs_timestamp', now], ['factory_cost_adjustment_factor', factors], ['factory_cost_adjustment_factor_timestamp', now]];
+}
+const _FEED_KEYS = ['factory_default_formulas', 'factory_additional_costs', 'factory_cost_adjustment_factor'];
+function _afterChange() {
   notifyDataChange('all');
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
+  if (typeof window.updateAllTabsWithFactoryCosts === 'function') window.updateAllTabsWithFactoryCosts();
+  if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
+  refreshFormulaDependentUI();
+}
+async function _runMigration() {
+  const batch = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, ..._FEED_KEYS]);
+  const rawSlots = batch.get(SLOTS_KEY);
+  const hasSlots = !!(rawSlots && typeof rawSlots === 'object' && (rawSlots.standard || rawSlots.asaan));
+  const stores = ensureArray(await getAppStores()).map((s) => ({ ...s }));
+  const list = ensureArray(batch.get(STORE_KEY)).filter((f) => f && f.id);
+  const slots = hasSlots ? { standard: rawSlots.standard || null, asaan: rawSlots.asaan || null } : { standard: null, asaan: null };
+  const now = getTimestamp();
+  let slotsChanged = false;
+  if (!hasSlots) {
+    const formulas = batch.get('factory_default_formulas') || {};
+    const costs = batch.get('factory_additional_costs') || {};
+    const factors = batch.get('factory_cost_adjustment_factor') || {};
+    SLOT_KEYS.forEach((k) => {
+      const ings = ensureArray(formulas[k]);
+      if (!ings.length) return;
+      const id = 'fml_legacy_' + k;
+      if (!list.find((f) => f.id === id)) list.push({ id, name: FALLBACK[k], ingredients: ings, additionalCost: _num(costs[k], 0), costAdjustmentFactor: _num(factors[k], 1) || 1, createdAt: now, updatedAt: now });
+      slots[k] = id;
+      slotsChanged = true;
+    });
+  }
+  let storesChanged = false;
+  stores.forEach((s) => {
+    if (s.formulaId) return;
+    const id = slots[s.formulaType || 'standard'];
+    if (!id) return;
+    s.formulaId = id;
+    storesChanged = true;
+  });
+  if (!slotsChanged && !storesChanged) return;
+  await _freezeLegacyRecords();
+  const writes = [];
+  if (slotsChanged) writes.push([STORE_KEY, list], [STORE_TS_KEY, now], [SLOTS_KEY, slots], [SLOTS_TS_KEY, now]);
+  if (storesChanged) writes.push(['app_stores', stores], ['app_stores_timestamp', Date.now()]);
+  await sqliteStore.setBatch(writes);
+  _invalidateStoresCache();
+  if (typeof triggerAutoSync === 'function') triggerAutoSync();
+}
+export function ensureFormulaStoreMigrated() {
+  if (!_migration) _migration = _runMigration().catch(() => {}).finally(() => { _migration = null; });
+  return _migration;
+}
+export async function commitStoresWithFormulas(stores) {
+  await ensureFormulaStoreMigrated();
+  const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('factory_unit_tracking')]);
+  const ids = [];
+  stores.forEach((s) => { if (s.formulaId && !ids.includes(String(s.formulaId))) ids.push(String(s.formulaId)); });
+  if (ids.some((id) => !list.find((f) => String(f.id) === id))) return { ok: false, error: 'Selected formula no longer exists in the Formula Store' };
+  if (ids.length > SLOT_KEYS.length) return { ok: false, error: 'Only two different formulas can be active across stores. Pick one of the formulas already in use.' };
+  const next = { standard: slots.standard, asaan: slots.asaan };
+  ids.filter((id) => String(next.standard) !== id && String(next.asaan) !== id).forEach((id) => {
+    const free = SLOT_KEYS.find((k) => !ids.includes(String(next[k])));
+    next[free] = id;
+  });
+  for (const k of SLOT_KEYS) {
+    if (!slots[k] || String(next[k]) === String(slots[k])) continue;
+    const available = _num(tracking && tracking[k] && tracking[k].available, 0);
+    if (available > 0) {
+      const old = list.find((f) => String(f.id) === String(slots[k]));
+      return { ok: false, error: `${available} unit${available === 1 ? '' : 's'} of "${old ? old.name : FALLBACK[k]}" are still available. Use them in manufacturing before assigning a different formula.` };
+    }
+  }
+  const normalized = stores.map((s) => {
+    const slot = s.formulaId ? SLOT_KEYS.find((k) => String(next[k]) === String(s.formulaId)) : null;
+    return { ...s, formulaType: slot || s.formulaType || 'standard' };
+  });
+  await _freezeLegacyRecords();
+  const now = getTimestamp();
+  const writes = [..._feedWrites(list, next, batch, now), [SLOTS_KEY, next], [SLOTS_TS_KEY, now], ['app_stores', normalized], ['app_stores_timestamp', Date.now()]];
+  await sqliteStore.setBatch(writes);
+  _invalidateStoresCache();
+  _afterChange();
+  return { ok: true, stores: normalized };
+}
+async function _saveFormulaStore(list, extraWrites) {
+  const now = getTimestamp();
+  await sqliteStore.setBatch([[STORE_KEY, list], [STORE_TS_KEY, now], ...(extraWrites || [])]);
+  _afterChange();
 }
 function _totals(ingredients, additionalCost, factor) {
   let raw = 0;
@@ -34,13 +187,10 @@ function _liveCost(ing, inventory) {
   const c = live ? Number(live.cost) : NaN;
   return Number.isFinite(c) && c > 0 ? c : _num(ing.cost, 0);
 }
-function _money(v) {
-  return typeof window.formatCurrency === 'function' ? window.formatCurrency(v) : _fmt(v);
-}
 function _row(label, value, extra) {
   return `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;${extra || ''}"><span>${label}</span><span>${value}</span></div>`;
 }
-function _card(f, inventory) {
+function _card(f, inventory, usedBy) {
   const ings = ensureArray(f.ingredients).map((i) => ({ ...i, cost: _liveCost(i, inventory) }));
   const addl = _num(f.additionalCost, 0);
   const factor = _num(f.costAdjustmentFactor, 1) || 1;
@@ -53,32 +203,121 @@ function _card(f, inventory) {
   html += _row('Raw Material Cost per Unit', _money(t.raw));
   html += _row('Total Cost per Unit', _money(t.perUnit), 'font-weight:700;');
   html += _row('Cost per kg (Sales/Calc)', _money(t.perKg));
-  html += '<div class="formula-store-edit-hint">Tap to edit or swap</div>';
+  html += `<div class="formula-store-edit-hint">${usedBy.length ? 'Used by ' + esc(usedBy.join(', ')) + ' · ' : ''}Tap to edit</div>`;
   return `<div class="formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;
 }
 export async function renderFormulaStoreList() {
   const box = _el('formulaStoreList');
   if (!box) return;
-  const list = await getFormulaStore();
+  const [list, stores] = await Promise.all([getFormulaStore(), getAppStores()]);
   if (!list.length) {
     box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
   const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
-  box.innerHTML = list.map((f) => _card(f, inventory)).join('');
+  box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId) === String(f.id)).map((s) => s.name))).join('');
 }
 export async function openFormulaStore() {
+  await ensureFormulaStoreMigrated();
   await renderFormulaStoreList();
 }
+function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory) {
+  let currentCost = costVal !== null ? costVal : 0;
+  const currentId = selectedId ? String(selectedId) : '';
+  let currentName = savedName || '';
+  if (currentId) {
+    const match = inventory.find((i) => String(i.id) === currentId);
+    if (match) {
+      currentName = match.name;
+      if (costVal === null) currentCost = match.cost;
+    }
+  }
+  const notify = () => container.dispatchEvent(new CustomEvent('formularowchange'));
+  const div = document.createElement('div');
+  div.className = 'factory-formula-grid';
+  div.style.position = 'relative';
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'factory-mat-select';
+  searchWrap.style.cssText = 'position:relative;';
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'factory-mat-search-input';
+  searchInput.placeholder = 'Search material…';
+  searchInput.value = currentName;
+  searchInput.dataset.matId = currentId;
+  searchInput.dataset.matCost = String(currentCost);
+  searchInput.autocomplete = 'off';
+  searchInput.style.cssText = 'width:100%;box-sizing:border-box;';
+  const dropdown = document.createElement('div');
+  dropdown.className = 'factory-mat-dropdown hidden u-search-dropdown';
+  dropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:999;max-height:180px;overflow-y:auto;';
+  const costInput = document.createElement('input');
+  costInput.type = 'number';
+  costInput.className = 'factory-mat-cost';
+  costInput.placeholder = 'Cost';
+  costInput.value = currentCost;
+  costInput.readOnly = true;
+  costInput.style.cssText = 'background:rgba(0,0,0,0.05);color:var(--text-muted);cursor:default;';
+  const renderDropdown = (query) => {
+    const q = (query || '').toLowerCase();
+    const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;
+    if (!filtered.length) {
+      dropdown.innerHTML = '<div class="u-search-empty">No materials found</div>';
+    } else {
+      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);background:var(--input-bg);">${esc(i.name)}</div>`).join('');
+    }
+    dropdown.classList.remove('hidden');
+    dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {
+      opt.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        searchInput.value = opt.dataset.name;
+        searchInput.dataset.matId = opt.dataset.id;
+        searchInput.dataset.matCost = opt.dataset.cost;
+        costInput.value = opt.dataset.cost;
+        dropdown.classList.add('hidden');
+        notify();
+      });
+    });
+  };
+  searchInput.addEventListener('focus', () => renderDropdown(searchInput.value));
+  searchInput.addEventListener('input', () => renderDropdown(searchInput.value));
+  searchInput.addEventListener('blur', () => {
+    setTimeout(() => dropdown.classList.add('hidden'), 150);
+    if (!searchInput.dataset.matId) {
+      searchInput.value = '';
+      costInput.value = '';
+    }
+  });
+  searchWrap.appendChild(searchInput);
+  searchWrap.appendChild(dropdown);
+  const qtyInput = document.createElement('input');
+  qtyInput.type = 'number';
+  qtyInput.className = 'factory-mat-qty';
+  qtyInput.placeholder = 'Qty (kg)';
+  qtyInput.value = qtyVal;
+  qtyInput.addEventListener('input', notify);
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'factory-row-del-btn';
+  delBtn.innerHTML = '&times;';
+  delBtn.title = 'Remove row';
+  delBtn.onclick = () => {
+    div.remove();
+    notify();
+  };
+  div.appendChild(searchWrap);
+  div.appendChild(costInput);
+  div.appendChild(qtyInput);
+  div.appendChild(delBtn);
+  container.appendChild(div);
+  return div;
+}
 async function _fillEditor(entry) {
-  await _ensureRowBuilder();
   const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
   const container = _el('fsEditContainer');
   if (!container) return;
   container.replaceChildren();
-  for (const ing of ensureArray(entry.ingredients)) {
-    await window.createFactorySettingRow(container, ing.id, ing.quantity, ing.cost, ing.name, inventory);
-  }
+  ensureArray(entry.ingredients).forEach((ing) => _createRow(container, ing.id, ing.quantity, ing.cost, ing.name, inventory));
   _el('fs-edit-name').value = entry.name || '';
   _el('fs-additional-cost').value = _num(entry.additionalCost, 0);
   _el('fs-cost-factor').value = _num(entry.costAdjustmentFactor, 1);
@@ -114,16 +353,11 @@ export function updateFormulaStoreSummary() {
   set('fsSummaryPerUnit', _fmt(t.perUnit));
   set('fsSummaryPerKg', _fmt(t.perKg));
 }
-function _bindContainer(id, refresh) {
-  const container = _el(id);
+function _bindEditor() {
+  const container = _el('fsEditContainer');
   if (!container || container.dataset.bound === '1') return;
   container.dataset.bound = '1';
-  const run = () => setTimeout(refresh, 0);
-  ['input', 'mousedown', 'click', 'focusout'].forEach((evt) => container.addEventListener(evt, run));
-}
-function _bindEditor() {
-  _bindContainer('fsEditContainer', updateFormulaStoreSummary);
-  _bindContainer('factoryRawMaterialsContainerAsaan', () => { if (typeof window.updateFactoryFormulasSummaryAsaan === 'function') window.updateFactoryFormulasSummaryAsaan(); });
+  container.addEventListener('formularowchange', () => setTimeout(updateFormulaStoreSummary, 0));
 }
 export async function openFormulaStoreEditor(id) {
   _editingId = id || null;
@@ -132,43 +366,29 @@ export async function openFormulaStoreEditor(id) {
   if (id && !entry) { showToast('Formula not found', 'warning'); return; }
   const del = _el('fs-delete-btn');
   if (del) del.style.display = entry ? '' : 'none';
-  const panel = _el('fs-swap-panel');
-  if (panel) panel.style.display = 'none';
   const title = _el('fs-edit-title');
   if (title) title.textContent = entry ? 'Edit Formula' : 'New Formula';
   _bindEditor();
   if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen('formula-store-edit-screen');
   await _fillEditor(entry || { name: '', ingredients: [], additionalCost: 0, costAdjustmentFactor: 1 });
 }
-const _ROW_TARGETS = { standard: 'factoryRawMaterialsContainer', asaan: 'factoryRawMaterialsContainerAsaan', store: 'fsEditContainer' };
-function _refreshFor(kind) {
-  if (kind === 'store') updateFormulaStoreSummary();
-  else if (kind === 'asaan' && typeof window.updateFactoryFormulasSummaryAsaan === 'function') window.updateFactoryFormulasSummaryAsaan();
-  else if (typeof window.updateFactoryFormulasSummary === 'function') window.updateFactoryFormulasSummary();
-}
-export async function addFormulaIngredientRow(kind) {
-  const container = _el(_ROW_TARGETS[kind]);
+export async function addFormulaIngredientRow() {
+  const container = _el('fsEditContainer');
   if (!container) return;
-  await _ensureRowBuilder();
-  if (typeof window.createFactorySettingRow !== 'function') { showToast('Formula editor is still loading, try again', 'warning'); return; }
   _bindEditor();
-  const before = container.children.length;
-  await window.createFactorySettingRow(container, '', '', null, '', null);
-  if (container.children.length === before) return;
-  const row = container.lastElementChild;
+  const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  const row = _createRow(container, '', '', null, '', inventory);
   row.scrollIntoView({ block: 'center', behavior: 'smooth' });
   const inp = row.querySelector('.factory-mat-search-input');
   if (inp) setTimeout(() => inp.focus(), 200);
-  _refreshFor(kind);
+  updateFormulaStoreSummary();
 }
-export function addFormulaStoreRow() {
-  return addFormulaIngredientRow('store');
-}
-export async function saveFormulaStoreEntry(silent) {
+export async function saveFormulaStoreEntry() {
   const c = _collectEditor();
   if (!c.name) { showToast('Enter a formula name', 'warning'); return false; }
   if (!c.ingredients.length) { showToast('Add at least one ingredient with quantity', 'warning'); return false; }
-  const list = await getFormulaStore();
+  await ensureFormulaStoreMigrated();
+  const [list, slots, batch] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS)]);
   const now = getTimestamp();
   const idx = _editingId ? list.findIndex((f) => String(f.id) === String(_editingId)) : -1;
   if (idx >= 0) {
@@ -177,75 +397,97 @@ export async function saveFormulaStoreEntry(silent) {
     _editingId = generateUUID('formula');
     list.push({ id: _editingId, ...c, createdAt: now, updatedAt: now });
   }
-  await _saveFormulaStore(list);
-  if (!silent) {
-    showToast('Formula saved', 'success');
-    if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
-    renderFormulaStoreList();
-  }
+  const inSlot = SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId));
+  if (inSlot) await _freezeLegacyRecords();
+  await _saveFormulaStore(list, inSlot ? _feedWrites(list, slots, batch, now) : []);
+  showToast('Formula saved', 'success');
+  if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   return true;
 }
-export function deleteFormulaStoreEntry() {
+export async function deleteFormulaStoreEntry() {
   if (!_editingId) return;
-  showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true }).then(async (ok) => {
-    if (!ok) return;
-    const list = (await getFormulaStore()).filter((f) => String(f.id) !== String(_editingId));
-    await _saveFormulaStore(list);
-    _editingId = null;
-    if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
-    renderFormulaStoreList();
-    showToast('Formula deleted', 'success');
-  });
-}
-export function toggleFormulaStoreSwap() {
-  const panel = _el('fs-swap-panel');
-  if (panel) panel.style.display = panel.style.display === 'none' ? '' : 'none';
-}
-export async function swapFormulaStoreWith(type) {
-  if (type !== 'standard' && type !== 'asaan') return;
-  const c = _collectEditor();
-  if (!c.name) { showToast('Enter a formula name first', 'warning'); return; }
-  if (!c.ingredients.length) { showToast('Add at least one ingredient first', 'warning'); return; }
-  const label = _label(type);
-  const ok = await showGlassConfirm(`Swap this formula with the current ${label} formula?\n\nThis formula becomes the active ${label} formula and the current ${label} formula moves into the store.`, { title: `Swap with ${label}`, confirmText: 'Swap' });
-  if (!ok) return;
-  const batch = await sqliteStore.getBatch(['factory_default_formulas', 'factory_additional_costs', 'factory_cost_adjustment_factor']);
-  const formulas = { standard: [], asaan: [], ...(batch.get('factory_default_formulas') || {}) };
-  const costs = { standard: 0, asaan: 0, ...(batch.get('factory_additional_costs') || {}) };
-  const factors = { standard: 1, asaan: 1, ...(batch.get('factory_cost_adjustment_factor') || {}) };
-  const previous = { ingredients: ensureArray(formulas[type]), additionalCost: _num(costs[type], 0), costAdjustmentFactor: _num(factors[type], 1) || 1 };
-  formulas[type] = c.ingredients;
-  costs[type] = c.additionalCost;
-  factors[type] = c.costAdjustmentFactor;
-  const list = await getFormulaStore();
-  const now = getTimestamp();
-  const idx = _editingId ? list.findIndex((f) => String(f.id) === String(_editingId)) : -1;
-  const swapped = { name: c.name, ...previous, updatedAt: now };
-  if (idx >= 0) {
-    list[idx] = { ...list[idx], ...swapped };
-  } else {
-    _editingId = generateUUID('formula');
-    list.push({ id: _editingId, ...swapped, createdAt: now });
+  const [slots, stores] = await Promise.all([getFormulaSlots(), getAppStores()]);
+  const users = stores.filter((s) => String(s.formulaId) === String(_editingId)).map((s) => s.name);
+  if (users.length || SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId))) {
+    showToast(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning', 4500);
+    return;
   }
-  await sqliteStore.setBatch([
-    ['factory_default_formulas', formulas], ['factory_default_formulas_timestamp', now],
-    ['factory_additional_costs', costs], ['factory_additional_costs_timestamp', now],
-    ['factory_cost_adjustment_factor', factors], ['factory_cost_adjustment_factor_timestamp', now],
-    [STORE_KEY, list], [STORE_TS_KEY, now]
-  ]);
-  notifyDataChange('all');
-  if (typeof triggerAutoSync === 'function') triggerAutoSync();
-  if (typeof window.updateAllTabsWithFactoryCosts === 'function') window.updateAllTabsWithFactoryCosts();
+  const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
+  if (!ok) return;
+  const list = (await getFormulaStore()).filter((f) => String(f.id) !== String(_editingId));
+  await _saveFormulaStore(list);
+  _editingId = null;
+  if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
+  showToast('Formula deleted', 'success');
+}
+export async function setStoreFormulaSelection(id) {
+  const list = await getFormulaStore();
+  const f = list.find((x) => String(x.id) === String(id));
+  const input = _el('store-formula-select');
+  if (input) input.value = f ? String(f.id) : '';
+  const btn = _el('store-formula-btn');
+  const sp = btn ? btn.querySelector('span') : null;
+  if (sp) sp.textContent = f ? (f.name || 'Untitled') : 'Select formula';
+}
+export async function openStoreFormulaPicker(btn) {
+  const old = document.getElementById('_pop_storeFormula');
+  const wasOpen = !!old && old.style.display !== 'none';
+  if (old) old.remove();
+  if (wasOpen) return;
+  const list = await getFormulaStore();
+  if (!list.length) { showToast('Add a formula in the Formula Store first', 'warning'); return; }
+  window._mkPopover(btn.parentNode, '_pop_storeFormula', list.map((f) => ({ value: String(f.id), label: f.name || 'Untitled' })), (v) => {
+    const input = _el('store-formula-select');
+    if (input) input.value = v;
+  });
+  const pop = document.getElementById('_pop_storeFormula');
+  if (pop) {
+    pop.style.left = '0';
+    pop.style.maxHeight = '220px';
+    pop.style.overflowY = 'auto';
+  }
+}
+function _setOption(el, label, visible) {
+  if (!el) return;
+  el.textContent = label;
+  el.style.display = visible ? '' : 'none';
+}
+export async function refreshFormulaDependentUI() {
+  await ensureFormulaStoreMigrated();
+  const [labels, slots, stores] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores()]);
+  const used = new Set(stores.map((s) => s.formulaType || 'standard'));
+  const visible = {};
+  SLOT_KEYS.forEach((k) => { visible[k] = !!slots[k] && used.has(k); });
+  if (!visible.standard && !visible.asaan) { visible.standard = true; visible.asaan = true; }
+  window._formulaSlotLabels = labels;
+  const typeMap = {};
+  stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });
+  const activeSlot = _slotOfStore(window.currentFactoryEntryStore || 'STORE_A', typeMap);
+  SLOT_KEYS.forEach((k) => {
+    const opt = _el('factory-formula-opt-' + k);
+    _setOption(opt, labels[k], visible[k]);
+    if (opt) opt.classList.toggle('active', k === activeSlot && visible[k]);
+  });
+  const toggle = _el('factory-avail-store-toggle');
+  if (toggle) {
+    const opts = toggle.querySelectorAll('.toggle-opt');
+    let hasActive = false;
+    SLOT_KEYS.forEach((k, i) => {
+      _setOption(opts[i], labels[k], visible[k]);
+      if (opts[i] && visible[k] && opts[i].classList.contains('active')) hasActive = true;
+    });
+    if (!hasActive) {
+      const first = SLOT_KEYS.findIndex((k) => visible[k]);
+      if (first >= 0 && opts[first] && typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(SLOT_KEYS[first], opts[first]);
+    }
+  }
+  refreshFormulaStoreScreens();
+  if (typeof window.renderStoreList === 'function' && _el('store-manager-screen') && _el('store-manager-screen').style.display !== 'none') window.renderStoreList();
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
-  const panel = _el('fs-swap-panel');
-  if (panel) panel.style.display = 'none';
-  await _fillEditor({ ...swapped });
-  renderFormulaStoreList();
-  showToast(`Swapped with ${label} formula`, 'success');
+  if (typeof window.renderFactoryHistory === 'function') window.renderFactoryHistory();
 }
 export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
-Object.assign(window, { addFormulaIngredientRow, ensureFormulaEditorReady: _ensureRowBuilder, openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaStoreRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, toggleFormulaStoreSwap, swapFormulaStoreWith, updateFormulaStoreSummary, refreshFormulaStoreScreens });
-_bindEditor();
+Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, ensureFormulaStoreMigrated, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });

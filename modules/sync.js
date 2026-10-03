@@ -4,7 +4,7 @@ import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, closeYear
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
-import { refreshFactorySettingsOverlay, renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
+import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -1802,6 +1802,7 @@ export async function subscribeToRealtime() {
           { cloud: cfs.cost_adjustment_factor_timestamp, local: await sqliteStore.get('factory_cost_adjustment_factor_timestamp') },
           { cloud: cfs.unit_tracking_timestamp,          local: await sqliteStore.get('factory_unit_tracking_timestamp') },
           { cloud: cfs.formula_store_timestamp,          local: await sqliteStore.get('factory_formula_store_timestamp') },
+          { cloud: cfs.formula_slots_timestamp,          local: await sqliteStore.get('factory_formula_slots_timestamp') },
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
@@ -1847,9 +1848,11 @@ export async function subscribeToRealtime() {
 
         if (Array.isArray(cfs.formula_store) && (cfs.formula_store_timestamp || 0) > ((await sqliteStore.get('factory_formula_store_timestamp')) || 0)) {
           await sqliteStore.setBatch([['factory_formula_store', cfs.formula_store], ['factory_formula_store_timestamp', cfs.formula_store_timestamp]]);
-          if (typeof window.refreshFormulaStoreScreens === 'function') window.refreshFormulaStoreScreens();
         }
-        refreshFactorySettingsOverlay();
+        if (cfs.formula_slots && typeof cfs.formula_slots === 'object' && (cfs.formula_slots_timestamp || 0) > ((await sqliteStore.get('factory_formula_slots_timestamp')) || 0)) {
+          await sqliteStore.setBatch([['factory_formula_slots', cfs.formula_slots], ['factory_formula_slots_timestamp', cfs.formula_slots_timestamp]]);
+        }
+        if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         emitSyncUpdate({ factorySettings: null});
         flashLivePulse();
         recordSuccessfulConnection();
@@ -1923,6 +1926,7 @@ export async function subscribeToRealtime() {
           if (cloudTs) await sqliteStore.set('app_stores_timestamp', cloudTs);
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           emitSyncUpdate({ appStores: null });
+          if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -2388,7 +2392,7 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       if (sanitizedValue !== null && sanitizedValue !== undefined) {
         if (typeof sanitizedValue === 'object' && !Array.isArray(sanitizedValue)) {
           const isFactorySettings = ['default_formulas', 'additional_costs', 'cost_adjustment_factor',
-            'unit_tracking', 'standard', 'asaan', 'formula_store'].includes(cleanKey);
+            'unit_tracking', 'standard', 'asaan', 'formula_store', 'formula_slots'].includes(cleanKey);
           if (Object.keys(sanitizedValue).length > 0 || isFactorySettings) sanitized[cleanKey] = sanitizedValue;
         } else {
           sanitized[cleanKey] = sanitizedValue;
@@ -2962,9 +2966,11 @@ export async function _syncSettings(cloudData) {
       }
       if (Array.isArray(fsData.formula_store)) {
         await sqliteStore.setBatch([['factory_formula_store', fsData.formula_store], ['factory_formula_store_timestamp', fsData.formula_store_timestamp || ts]]);
-        if (typeof window.refreshFormulaStoreScreens === 'function') window.refreshFormulaStoreScreens();
       }
-      refreshFactorySettingsOverlay();
+      if (fsData.formula_slots && typeof fsData.formula_slots === 'object') {
+        await sqliteStore.setBatch([['factory_formula_slots', fsData.formula_slots], ['factory_formula_slots_timestamp', fsData.formula_slots_timestamp || ts]]);
+      }
+      if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
     }
   }
   if (expCatSnap && expCatSnap.exists) {
@@ -3111,17 +3117,19 @@ export async function _uploadChanges(userRef) {
   const localFactorTs  = await sqliteStore.get('factory_cost_adjustment_factor_timestamp');
   const localUnitTs    = await sqliteStore.get('factory_unit_tracking_timestamp');
   const localStoreTs   = await sqliteStore.get('factory_formula_store_timestamp');
+  const localSlotsTs   = await sqliteStore.get('factory_formula_slots_timestamp');
 
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factorySettings');
-  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs]
+  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs, localSlotsTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
-    const [_fdf, _fac, _fcaf, _fut, _ffs] = await Promise.all([
+    const [_fdf, _fac, _fcaf, _fut, _ffs, _ffsl] = await Promise.all([
       sqliteStore.get('factory_default_formulas'),
       sqliteStore.get('factory_additional_costs'),
       sqliteStore.get('factory_cost_adjustment_factor'),
       sqliteStore.get('factory_unit_tracking'),
       sqliteStore.get('factory_formula_store'),
+      sqliteStore.get('factory_formula_slots'),
     ]);
     const _nowTs = Date.now();
     const fsPayload = {
@@ -3135,6 +3143,8 @@ export async function _uploadChanges(userRef) {
       unit_tracking_timestamp:         localUnitTs    || _nowTs,
       formula_store:                   Array.isArray(_ffs) ? _ffs : [],
       formula_store_timestamp:         localStoreTs   || _nowTs,
+      formula_slots:                   _ffsl && typeof _ffsl === 'object' ? _ffsl : { standard: null, asaan: null },
+      formula_slots_timestamp:         localSlotsTs   || _nowTs,
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -3513,11 +3523,13 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
           const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
           const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
           await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || Date.now()]]);
-          refreshFactorySettingsOverlay();
+          if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         }
         if (Array.isArray(fsData.formula_store)) {
           await sqliteStore.setBatch([['factory_formula_store', fsData.formula_store], ['factory_formula_store_timestamp', fsData.formula_store_timestamp || Date.now()]]);
-          if (typeof window.refreshFormulaStoreScreens === 'function') window.refreshFormulaStoreScreens();
+        }
+        if (fsData.formula_slots && typeof fsData.formula_slots === 'object') {
+          await sqliteStore.setBatch([['factory_formula_slots', fsData.formula_slots], ['factory_formula_slots_timestamp', fsData.formula_slots_timestamp || Date.now()]]);
         }
       }
     }

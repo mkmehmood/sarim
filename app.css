@@ -2106,8 +2106,7 @@ font-size: 0.85rem;
 margin: 15px 0;
 border: 1px dashed var(--glass-border);
 }
-#factoryRawMaterialsContainer,
-#factoryRawMaterialsContainerAsaan {
+#fsEditContainer {
 transition: opacity 0.18s ease;
 }
 .factory-formula-grid select,
