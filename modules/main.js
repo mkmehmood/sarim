@@ -1,4 +1,5 @@
 import './native.js';
+import './notify.js';
 import './constants.js';
 import './business.js';
 import './admin-data.js';

@@ -1,5 +1,5 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
-import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateAllDataOnStartup, validateUUID } from './business.js';
+import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateAllDataOnStartup, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, closeYearInProgress, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
@@ -2640,6 +2640,41 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
   };
 }
 
+const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
+const _REMOTE_TX_KEYS = ['rep_sales', 'customer_sales', 'payment_transactions', 'expenses'];
+function _describeRemoteTx(key, r) {
+  if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
+  const created = Number(r.createdAt || r.timestamp || 0);
+  if (!created || Date.now() - created > _REMOTE_TX_WINDOW_MS) return null;
+  if (key === 'rep_sales') {
+    const rep = r.salesRep;
+    if (!rep || rep === 'NONE' || rep === 'admin') return null;
+    return r.isCollection ? `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` : `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}`;
+  }
+  const who = r.createdBy;
+  if (!who) return null;
+  if (key === 'customer_sales') return `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}`;
+  if (key === 'payment_transactions') {
+    if (r.isExpense) return null;
+    return `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}`;
+  }
+  return `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}`;
+}
+export function notifyAdminOfRemoteTransactions(localBatch, merged) {
+  if (appMode !== 'admin') return;
+  const lines = [];
+  for (const key of _REMOTE_TX_KEYS) {
+    const known = new Set(ensureArray(localBatch.get(key)).map(r => String(r && r.id)));
+    for (const r of ensureArray(merged[key])) {
+      if (!r || known.has(String(r.id))) continue;
+      const line = _describeRemoteTx(key, r);
+      if (line) lines.push(line);
+    }
+  }
+  lines.slice(0, 5).forEach(line => showToast(line, 'info', 4500));
+  if (lines.length > 5) showToast(`+${lines.length - 5} more new transactions`, 'info', 4500);
+}
+window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
 export async function _mergeAndPersist(cloudData) {
 
   try {
@@ -2800,6 +2835,7 @@ export async function _mergeAndPersist(cloudData) {
   ...Object.entries(_merged).map(([k, v]) => [k, v]),
   ['last_synced', new Date().toISOString()],
   ]);
+  try { notifyAdminOfRemoteTransactions(_localBatch, _merged); } catch (_) {}
 
   const _colMap = {
   production: data.mfg_pro_pkr, sales: data.customer_sales,
