@@ -6291,49 +6291,49 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 
 /* ── Splash: ruled ledger page ───────────────────────────── */
 #splash-screen {
-  --sp-bg: #EDF1F5; --sp-bg2: #E5E9EF; --sp-rule: rgba(100,116,139,0.20); --sp-margin: rgba(239,68,68,0.40);
-  --sp-ink: #0F9D6B; --sp-label: #64748B; --sp-quote: #1E293B; --sp-author: #475569; --sp-track: rgba(16,185,129,0.16);
+  --sp-bg1: #EEF1F5; --sp-bg2: #EEF1F5; --sp-bg3: #E1E5EA; --sp-rule: #D6DCE2; --sp-margin: #EABDBF;
+  --sp-ink: #059669; --sp-label: #64748B; --sp-quote: #1E293B; --sp-author: #64748B; --sp-track: rgba(5,150,105,0.20);
   position: fixed; inset: 0; z-index: var(--z-screen, 10200); overflow: hidden;
-  display: flex; flex-direction: column; justify-content: space-between; align-items: stretch;
-  padding: calc(env(safe-area-inset-top, 0px) + 72px) 32px calc(env(safe-area-inset-bottom, 0px) + 72px) 64px;
-  background:
-    repeating-linear-gradient(to bottom, transparent 0, transparent 55px, var(--sp-rule) 55px, var(--sp-rule) 56px),
-    linear-gradient(150deg, var(--sp-bg) 0%, var(--sp-bg2) 100%);
   font-family: var(--font-ui);
+  background:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 23px, var(--sp-rule) 23px, var(--sp-rule) 24px, transparent 24px, transparent 28px),
+    linear-gradient(165deg, var(--sp-bg1) 0%, var(--sp-bg2) 60%, var(--sp-bg3) 100%);
   animation: fadeOut 0.6s ease-in-out 3s forwards;
 }
 html:not([data-theme="light"]) #splash-screen {
-  --sp-bg: #0D1426; --sp-bg2: #02040C; --sp-rule: rgba(148,163,184,0.12); --sp-margin: rgba(248,113,113,0.30);
-  --sp-ink: #4ADE80; --sp-label: #8A94A8; --sp-quote: #E8EDF5; --sp-author: #A3ADC0; --sp-track: rgba(74,222,128,0.14);
+  --sp-bg1: #0E1528; --sp-bg2: #08121E; --sp-bg3: #020513; --sp-rule: #1C2538; --sp-margin: #54313E;
+  --sp-ink: #4ADE80; --sp-label: #94A3B8; --sp-quote: #F8FAFC; --sp-author: #94A3B8; --sp-track: rgba(74,222,128,0.16);
 }
-.splash-margin { position: absolute; top: 0; bottom: 0; left: 36px; width: 8px; border-left: 1px solid var(--sp-margin); border-right: 1px solid var(--sp-margin); }
-.splash-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; position: relative; z-index: 2; }
-.splash-kicker, .splash-date, .splash-status, .splash-author { text-transform: uppercase; font-weight: 600; }
-.splash-kicker { font-size: 0.8125rem; letter-spacing: 0.24em; color: var(--sp-label); }
-.splash-date { font-size: 0.8125rem; letter-spacing: 0.24em; color: var(--sp-ink); white-space: nowrap; }
-.splash-stamp-wrap { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; min-height: 0; }
-.splash-stamp { width: min(70vw, 320px); height: auto; overflow: visible; animation: stampIn 0.7s cubic-bezier(.2,.9,.3,1.2) both; }
+.splash-col {
+  position: absolute; top: 0; bottom: 0; left: 0; right: 0; max-width: 390px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 68px) 27px calc(env(safe-area-inset-bottom, 0px) + 75px) 62px;
+}
+.splash-margin { position: absolute; top: 0; bottom: 0; left: 35px; width: 5px; border-left: 1px solid var(--sp-margin); border-right: 1px solid var(--sp-margin); box-sizing: border-box; }
+#splash-screen .splash-kicker, #splash-screen .splash-date, #splash-screen .splash-status, #splash-screen .splash-author {
+  font-size: 10px; line-height: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; margin-right: -0.2em;
+}
+.splash-head { display: flex; justify-content: space-between; align-items: baseline; position: relative; z-index: 2; }
+.splash-kicker { color: var(--sp-label); }
+.splash-date { color: var(--sp-ink); white-space: nowrap; }
+.splash-stamp-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; position: relative; z-index: 2; }
+.splash-stamp { width: min(58.7vw, 229px); height: auto; overflow: visible; animation: stampIn 0.7s cubic-bezier(.2,.9,.3,1.2) both; }
 .stamp-ink { fill: var(--sp-ink); stroke: var(--sp-ink); }
 .stamp-ink text { stroke: none; }
-.stamp-ring-text { font-family: var(--font-display); font-weight: 800; }
-.stamp-ink text.stamp-ring-text { stroke: var(--sp-ink); stroke-width: 0.6; }
-.stamp-mono { font-family: var(--font-display); font-weight: 800; }
-@keyframes stampIn { from { opacity: 0; transform: scale(1.12) rotate(-3deg); } to { opacity: 1; transform: none; } }
+.stamp-ring-text { font-family: var(--font-display); font-weight: 700; fill: var(--sp-ink); }
+.stamp-mono { font-family: var(--font-display); font-weight: 700; fill: var(--sp-ink); }
+@keyframes stampIn { from { opacity: 0; transform: scale(1.1) rotate(-3deg); } to { opacity: 1; transform: none; } }
 .splash-foot { position: relative; z-index: 2; }
-.splash-quote {
-  font-family: var(--font-display); font-style: italic; font-weight: 400;
-  font-size: clamp(1.2rem, 5.4vw, 1.6rem); line-height: 1.5; color: var(--sp-quote);
-  text-align: left; text-wrap: pretty; margin: 0 0 10px;
-}
-.splash-author-row { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-bottom: 26px; }
-.splash-author-rule { width: 44px; height: 1px; background: var(--sp-ink); flex: none; }
-.splash-author { font-size: 0.75rem; letter-spacing: 0.12em; color: var(--sp-author); white-space: nowrap; }
-.splash-status { font-size: 0.75rem; letter-spacing: 0.28em; color: var(--sp-label); margin-bottom: 14px; }
-.splash-progress { position: relative; height: 16px; }
-.splash-progress i { position: absolute; left: 0; height: 2px; width: 100%; background: var(--sp-track); overflow: hidden; }
+.splash-quote { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 18px; line-height: 28px; color: var(--sp-quote); text-align: left; margin: 0; }
+.splash-author-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 28px; }
+.splash-author-rule { width: 34px; height: 1px; background: var(--sp-ink); opacity: .7; flex: none; transform: translateY(-2px); }
+.splash-author { color: var(--sp-author); letter-spacing: 0.22em !important; white-space: nowrap; }
+.splash-status { color: var(--sp-label); margin: 6px 0 9px; }
+.splash-progress { position: relative; height: 8px; }
+.splash-progress i { position: absolute; left: 0; width: 100%; height: 1px; background: var(--sp-track); overflow: hidden; }
 .splash-progress i:first-child { top: 0; }
-.splash-progress i:last-child { top: 14px; height: 1.5px; }
+.splash-progress i:last-child { top: 7px; }
 .splash-progress i::after { content: ''; position: absolute; inset: 0; background: var(--sp-ink); transform-origin: left; transform: scaleX(0.05); animation: splashFill 3s cubic-bezier(.3,.6,.3,1) forwards; }
-.splash-progress i:last-child::after { animation-delay: 0.15s; }
+.splash-progress i:last-child::after { animation-delay: .15s; }
 @keyframes splashFill { to { transform: scaleX(0.62); } }
-@media (prefers-reduced-motion: reduce) { .splash-stamp, .splash-progress i::after { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .splash-stamp, .splash-progress i::after { animation: none; transform: scaleX(0.62); } .splash-stamp { transform: none; } }
