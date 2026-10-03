@@ -96,44 +96,51 @@ function _afterChange() {
 async function _runMigration() {
   const batch = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, ..._FEED_KEYS]);
   const rawSlots = batch.get(SLOTS_KEY);
-  const hasSlots = !!(rawSlots && typeof rawSlots === 'object' && (rawSlots.standard || rawSlots.asaan));
   const stores = ensureArray(await getAppStores()).map((s) => ({ ...s }));
   const list = ensureArray(batch.get(STORE_KEY)).filter((f) => f && f.id);
-  const slots = hasSlots ? { standard: rawSlots.standard || null, asaan: rawSlots.asaan || null } : { standard: null, asaan: null };
+  const slots = { standard: (rawSlots && rawSlots.standard) || null, asaan: (rawSlots && rawSlots.asaan) || null };
+  const formulas = batch.get('factory_default_formulas') || {};
+  const costs = batch.get('factory_additional_costs') || {};
+  const factors = batch.get('factory_cost_adjustment_factor') || {};
   const now = getTimestamp();
+  let listChanged = false;
   let slotsChanged = false;
-  if (!hasSlots) {
-    const formulas = batch.get('factory_default_formulas') || {};
-    const costs = batch.get('factory_additional_costs') || {};
-    const factors = batch.get('factory_cost_adjustment_factor') || {};
-    SLOT_KEYS.forEach((k) => {
-      const ings = ensureArray(formulas[k]);
-      if (!ings.length) return;
-      const id = 'fml_legacy_' + k;
-      if (!list.find((f) => f.id === id)) list.push({ id, name: FALLBACK[k], ingredients: ings, additionalCost: _num(costs[k], 0), costAdjustmentFactor: _num(factors[k], 1) || 1, createdAt: now, updatedAt: now });
+  SLOT_KEYS.forEach((k) => {
+    const exists = slots[k] && list.find((f) => String(f.id) === String(slots[k]));
+    if (exists) return;
+    const ings = ensureArray(formulas[k]);
+    if (!ings.length) return;
+    const id = slots[k] || 'fml_legacy_' + k;
+    if (!list.find((f) => String(f.id) === String(id))) {
+      list.push({ id, name: FALLBACK[k], ingredients: ings, additionalCost: _num(costs[k], 0), costAdjustmentFactor: _num(factors[k], 1) || 1, createdAt: now, updatedAt: now });
+      listChanged = true;
+    }
+    if (slots[k] !== id) {
       slots[k] = id;
       slotsChanged = true;
-    });
-  }
+    }
+  });
   let storesChanged = false;
   stores.forEach((s) => {
-    if (s.formulaId) return;
+    const valid = s.formulaId && list.find((f) => String(f.id) === String(s.formulaId));
+    if (valid) return;
     const id = slots[s.formulaType || 'standard'];
-    if (!id) return;
+    if (!id || s.formulaId === id) return;
     s.formulaId = id;
     storesChanged = true;
   });
-  if (!slotsChanged && !storesChanged) return;
+  if (!listChanged && !slotsChanged && !storesChanged) return;
   await _freezeLegacyRecords();
   const writes = [];
-  if (slotsChanged) writes.push([STORE_KEY, list], [STORE_TS_KEY, now], [SLOTS_KEY, slots], [SLOTS_TS_KEY, now]);
+  if (listChanged) writes.push([STORE_KEY, list], [STORE_TS_KEY, now]);
+  if (slotsChanged) writes.push([SLOTS_KEY, slots], [SLOTS_TS_KEY, now]);
   if (storesChanged) writes.push(['app_stores', stores], ['app_stores_timestamp', Date.now()]);
   await sqliteStore.setBatch(writes);
   _invalidateStoresCache();
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
 }
 export function ensureFormulaStoreMigrated() {
-  if (!_migration) _migration = _runMigration().catch(() => {}).finally(() => { _migration = null; });
+  if (!_migration) _migration = _runMigration().catch((e) => { console.warn('[formula-store] migration failed', e && e.message); }).finally(() => { _migration = null; });
   return _migration;
 }
 export async function commitStoresWithFormulas(stores) {

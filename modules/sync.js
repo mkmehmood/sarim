@@ -1846,12 +1846,7 @@ export async function subscribeToRealtime() {
           })
         );
 
-        if (Array.isArray(cfs.formula_store) && (cfs.formula_store_timestamp || 0) > ((await sqliteStore.get('factory_formula_store_timestamp')) || 0)) {
-          await sqliteStore.setBatch([['factory_formula_store', cfs.formula_store], ['factory_formula_store_timestamp', cfs.formula_store_timestamp]]);
-        }
-        if (cfs.formula_slots && typeof cfs.formula_slots === 'object' && (cfs.formula_slots_timestamp || 0) > ((await sqliteStore.get('factory_formula_slots_timestamp')) || 0)) {
-          await sqliteStore.setBatch([['factory_formula_slots', cfs.formula_slots], ['factory_formula_slots_timestamp', cfs.formula_slots_timestamp]]);
-        }
+        await _applyFormulaStoreFromCloud(cfs);
         if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         emitSyncUpdate({ factorySettings: null});
         flashLivePulse();
@@ -2684,6 +2679,24 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   if (lines.length > 5) showToast(`+${lines.length - 5} more new transactions`, 'info', 4500);
 }
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
+async function _applyFormulaStoreFromCloud(cloud) {
+  if (!cloud || typeof cloud !== 'object') return;
+  const localList = await sqliteStore.get('factory_formula_store');
+  const localListTs = (await sqliteStore.get('factory_formula_store_timestamp')) || 0;
+  const cloudList = Array.isArray(cloud.formula_store) ? cloud.formula_store.filter(f => f && f.id) : [];
+  const localHas = Array.isArray(localList) && localList.length > 0;
+  if (cloudList.length > 0 && (!localHas || (cloud.formula_store_timestamp || 0) > localListTs)) {
+    await sqliteStore.setBatch([['factory_formula_store', cloudList], ['factory_formula_store_timestamp', cloud.formula_store_timestamp || Date.now()]]);
+  }
+  const localSlots = await sqliteStore.get('factory_formula_slots');
+  const localSlotsTs = (await sqliteStore.get('factory_formula_slots_timestamp')) || 0;
+  const cs = cloud.formula_slots;
+  const cloudHasSlots = !!(cs && typeof cs === 'object' && (cs.standard || cs.asaan));
+  const localHasSlots = !!(localSlots && (localSlots.standard || localSlots.asaan));
+  if (cloudHasSlots && (!localHasSlots || (cloud.formula_slots_timestamp || 0) > localSlotsTs)) {
+    await sqliteStore.setBatch([['factory_formula_slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['factory_formula_slots_timestamp', cloud.formula_slots_timestamp || Date.now()]]);
+  }
+}
 export async function _mergeAndPersist(cloudData) {
 
   try {
@@ -2964,12 +2977,7 @@ export async function _syncSettings(cloudData) {
         const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
         await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || ts]]);
       }
-      if (Array.isArray(fsData.formula_store)) {
-        await sqliteStore.setBatch([['factory_formula_store', fsData.formula_store], ['factory_formula_store_timestamp', fsData.formula_store_timestamp || ts]]);
-      }
-      if (fsData.formula_slots && typeof fsData.formula_slots === 'object') {
-        await sqliteStore.setBatch([['factory_formula_slots', fsData.formula_slots], ['factory_formula_slots_timestamp', fsData.formula_slots_timestamp || ts]]);
-      }
+      await _applyFormulaStoreFromCloud(fsData);
       if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
     }
   }
@@ -3141,10 +3149,8 @@ export async function _uploadChanges(userRef) {
       cost_adjustment_factor_timestamp:localFactorTs  || _nowTs,
       unit_tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
       unit_tracking_timestamp:         localUnitTs    || _nowTs,
-      formula_store:                   Array.isArray(_ffs) ? _ffs : [],
-      formula_store_timestamp:         localStoreTs   || _nowTs,
-      formula_slots:                   _ffsl && typeof _ffsl === 'object' ? _ffsl : { standard: null, asaan: null },
-      formula_slots_timestamp:         localSlotsTs   || _nowTs,
+      ...(Array.isArray(_ffs) && _ffs.length ? { formula_store: _ffs, formula_store_timestamp: localStoreTs || _nowTs } : {}),
+      ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { formula_slots: _ffsl, formula_slots_timestamp: localSlotsTs || _nowTs } : {}),
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -3525,12 +3531,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
           await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || Date.now()]]);
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         }
-        if (Array.isArray(fsData.formula_store)) {
-          await sqliteStore.setBatch([['factory_formula_store', fsData.formula_store], ['factory_formula_store_timestamp', fsData.formula_store_timestamp || Date.now()]]);
-        }
-        if (fsData.formula_slots && typeof fsData.formula_slots === 'object') {
-          await sqliteStore.setBatch([['factory_formula_slots', fsData.formula_slots], ['factory_formula_slots_timestamp', fsData.formula_slots_timestamp || Date.now()]]);
-        }
+        await _applyFormulaStoreFromCloud(fsData);
       }
     }
 
