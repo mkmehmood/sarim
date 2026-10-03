@@ -1,6 +1,5 @@
 const _plugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
 const _isNative = () => !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-const _TITLES = { success: 'Success', warning: 'Warning', error: 'Error', info: 'Gull & Zubair' };
 let _nativeGranted = null;
 let _lastKey = '';
 let _lastAt = 0;
@@ -49,10 +48,6 @@ export async function sendDeviceNotification(title, body, tag) {
   if (_isNative()) await _showNative(title, text);
   else await _showWeb(title, text, tag || 'app-toast');
 }
-export function notifyFromToast(message, type) {
-  const title = _TITLES[type] || _TITLES.info;
-  sendDeviceNotification(title, message).catch(() => {});
-}
 export function primeNotificationPermission() {
   if (_isNative()) {
     const { LocalNotifications } = _plugins();
@@ -64,5 +59,4 @@ export function primeNotificationPermission() {
   }
 }
 window.sendDeviceNotification = sendDeviceNotification;
-window.notifyFromToast = notifyFromToast;
 primeNotificationPermission();

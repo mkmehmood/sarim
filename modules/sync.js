@@ -1,4 +1,5 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
+import { sendDeviceNotification } from './notify.js';
 import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateAllDataOnStartup, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, closeYearInProgress, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
@@ -191,7 +192,10 @@ return false;
 }
 
 export async function unifiedSave(sqliteKey, dataArray, specificRecord = null, linkedIds = null) {
-
+let _newTx = [];
+if (_LOCAL_TX_KEYS.has(sqliteKey)) {
+  try { _newTx = await _collectNewTransactions(sqliteKey, dataArray, specificRecord, linkedIds); } catch (_) { _newTx = []; }
+}
 if (specificRecord && specificRecord.id) {
   await saveWithTracking(sqliteKey, dataArray, specificRecord);
 
@@ -241,6 +245,7 @@ if (specificRecord && specificRecord.id) {
 } else {
   await saveWithTracking(sqliteKey, dataArray);
 }
+if (_newTx.length) _notifyLocalTransactions(sqliteKey, _newTx);
 triggerAutoSync();
 return true;
 }
@@ -2662,30 +2667,68 @@ function _describeRemoteTx(key, r) {
   if (key === 'rep_sales') {
     const rep = r.salesRep;
     if (!rep || rep === 'NONE' || rep === 'admin') return null;
-    return r.isCollection ? `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` : `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}`;
+    return r.isCollection ? { title: 'Collection', body: `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` } : { title: 'Sale', body: `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
   }
   const who = r.createdBy;
   if (!who) return null;
-  if (key === 'customer_sales') return `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}`;
+  if (key === 'customer_sales') return { title: 'Sale', body: `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
   if (key === 'payment_transactions') {
     if (r.isExpense) return null;
-    return `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}`;
+    return { title: 'Payment', body: `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
   }
-  return `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}`;
+  return { title: 'Expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
+}
+function _pushTxNotification(item) {
+  showToast(item.body, 'info', 4500);
+  sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {});
 }
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   if (appMode !== 'admin') return;
-  const lines = [];
+  const items = [];
   for (const key of _REMOTE_TX_KEYS) {
     const known = new Set(ensureArray(localBatch.get(key)).map(r => String(r && r.id)));
     for (const r of ensureArray(merged[key])) {
       if (!r || known.has(String(r.id))) continue;
-      const line = _describeRemoteTx(key, r);
-      if (line) lines.push(line);
+      const item = _describeRemoteTx(key, r);
+      if (item) items.push({ ...item, id: r.id });
     }
   }
-  lines.slice(0, 5).forEach(line => showToast(line, 'info', 4500));
-  if (lines.length > 5) showToast(`+${lines.length - 5} more new transactions`, 'info', 4500);
+  items.slice(0, 5).forEach(_pushTxNotification);
+  if (items.length > 5) _pushTxNotification({ title: 'Transactions', body: `+${items.length - 5} more new transactions`, id: 'more' });
+}
+const _LOCAL_TX_KEYS = new Set(['rep_sales', 'customer_sales', 'payment_transactions', 'expenses', 'mfg_pro_pkr']);
+function _describeLocalTx(key, r) {
+  if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
+  const who = r.customerName || 'customer';
+  if (key === 'rep_sales') return r.isCollection ? { title: 'Collection', body: `Collected ${fmtAmt(r.totalValue)} from ${who}` } : { title: 'Sale', body: `Sold to ${who} — ${fmtAmt(r.totalValue)}` };
+  if (key === 'customer_sales') return { title: 'Sale', body: `${who} — ${fmtAmt(r.totalValue)}` };
+  if (key === 'payment_transactions') {
+    if (r.isExpense) return null;
+    if (r.isTransfer) return r.type === 'OUT' ? { title: 'Transfer', body: `${r.entityName || 'entity'} → ${r.transferPeerEntityName || 'entity'} — ${fmtAmt(r.amount)}` } : null;
+    return { title: 'Payment', body: `${r.type === 'IN' ? 'Received from' : 'Paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
+  }
+  if (key === 'expenses') return { title: 'Expense', body: `${r.name || r.description || 'Expense'} — ${fmtAmt(r.amount)}` };
+  const kg = Math.abs(Number(r.net) || 0);
+  if (r.isTransfer) return r.transferDirection === 'out' ? { title: 'Stock transfer', body: `${kg} kg transferred` } : null;
+  if (r.isReturn) return { title: 'Stock return', body: `${kg} kg returned` };
+  return { title: 'Production', body: `${kg} kg produced` };
+}
+async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds) {
+  let candidates = [];
+  if (specificRecord && specificRecord.id) candidates = [specificRecord];
+  else if (Array.isArray(linkedIds) && linkedIds.length > 0) candidates = ensureArray(dataArray).filter(r => r && linkedIds.includes(r.id));
+  if (!candidates.length) return [];
+  const previous = new Set(ensureArray(await sqliteStore.get(key)).map(r => String(r && r.id)));
+  return candidates.filter(r => !previous.has(String(r.id)));
+}
+function _notifyLocalTransactions(key, records) {
+  const items = [];
+  records.forEach(r => {
+    const item = _describeLocalTx(key, r);
+    if (item) items.push({ ...item, id: r.id });
+  });
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {}));
+  if (items.length > 3) sendDeviceNotification('Transactions', `+${items.length - 3} more new transactions`, 'tx-more').catch(() => {});
 }
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
 async function _applyFormulaStoreFromCloud(cloud) {

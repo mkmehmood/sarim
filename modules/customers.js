@@ -1,4 +1,3 @@
-import { notifyFromToast } from './notify.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -767,7 +766,6 @@ const typeMap = { danger: 'error', warn: 'warning', ok: 'success' };
 type = typeMap[type] || (['success','warning','error','info'].includes(type) ? type : 'info');
 _toastQueue.push({ message, type, duration });
 _playNextToast();
-notifyFromToast(message, type);
 }
 window.showToast = showToast;
 
