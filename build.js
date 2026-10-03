@@ -83,6 +83,10 @@ html = html.replace(
 
 write(join(DIST, 'index.html'), html);
 
+mkdirSync(join(DIST, 'fonts'), { recursive: true });
+const FONT_FILES = [['@fontsource-variable/playfair-display', 'playfair-display-latin-wght-normal.woff2'], ['@fontsource-variable/playfair-display', 'playfair-display-latin-wght-italic.woff2'], ['@fontsource-variable/plus-jakarta-sans', 'plus-jakarta-sans-latin-wght-normal.woff2'], ['@fontsource-variable/manrope', 'manrope-latin-wght-normal.woff2'], ['@fontsource-variable/jetbrains-mono', 'jetbrains-mono-latin-wght-normal.woff2'], ['@fontsource-variable/cinzel', 'cinzel-latin-wght-normal.woff2'], ['@fontsource/noto-nastaliq-urdu', 'noto-nastaliq-urdu-arabic-400-normal.woff2'], ['@fontsource/noto-nastaliq-urdu', 'noto-nastaliq-urdu-arabic-700-normal.woff2']];
+for (const [pkg, file] of FONT_FILES) copyFileSync(join(ROOT, 'node_modules', pkg, 'files', file), join(DIST, 'fonts', file));
+
 mkdirSync(join(DIST, 'vendor'), { recursive: true });
 copyFileSync(join(ROOT, 'node_modules/jspdf/dist/jspdf.umd.min.js'), join(DIST, 'vendor/jspdf.umd.min.js'));
 copyFileSync(join(ROOT, 'node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.min.js'), join(DIST, 'vendor/jspdf.plugin.autotable.min.js'));
@@ -101,7 +105,8 @@ const ASSETS_TO_CACHE_BLOCK =
   './sql-wasm.wasm',
   './sql.js',
   './vendor/jspdf.umd.min.js',
-  './vendor/jspdf.plugin.autotable.min.js'
+  './vendor/jspdf.plugin.autotable.min.js',
+  ${FONT_FILES.map(f => `'./fonts/${f[1]}'`).join(',\n  ')}
 ];`;
 
 let sw = read(join(ROOT, 'sw.js'));

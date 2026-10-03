@@ -1,8 +1,17 @@
+@font-face { font-family: 'Playfair Display'; font-style: normal; font-weight: 400 900; font-display: swap; src: url('fonts/playfair-display-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Playfair Display'; font-style: italic; font-weight: 400 900; font-display: swap; src: url('fonts/playfair-display-latin-wght-italic.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap; src: url('fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 200 800; font-display: swap; src: url('fonts/manrope-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 100 800; font-display: swap; src: url('fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 400 900; font-display: swap; src: url('fonts/cinzel-latin-wght-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Noto Nastaliq Urdu'; font-style: normal; font-weight: 400 500; font-display: swap; src: url('fonts/noto-nastaliq-urdu-arabic-400-normal.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F; }
+@font-face { font-family: 'Noto Nastaliq Urdu'; font-style: normal; font-weight: 600 900; font-display: swap; src: url('fonts/noto-nastaliq-urdu-arabic-700-normal.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F; }
 :root {
---font-display: 'Fraunces', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
---font-ui: 'Geist', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
---font-num: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
---font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+--font-display: 'Playfair Display', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+--font-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
+--font-ui: 'Plus Jakarta Sans', 'Noto Nastaliq Urdu', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+--font-num: 'Manrope', 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+--font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
 --bg-gradient: linear-gradient(145deg, #0F172A 0%, #0c1628 40%, #061019 70%, #020617 100%);
 --glass: rgba(30, 41, 59, 0.40);
@@ -858,7 +867,7 @@ align-items: center;
 gap: 2px;
 }
 .splash-brand-main {
-font-family: var(--font-display);
+font-family: var(--font-brand);
 font-size: clamp(2.2rem, 8.5vw, 3.6rem);
 font-weight: 600;
 font-style: normal;
@@ -6287,7 +6296,7 @@ body.offline-active .system-controls { top: var(--sys-top) !important; }
 .auth-logo { width: clamp(150px, 46vw, 230px); height: clamp(150px, 46vw, 230px); border-radius: 50%; padding: 5px; background: linear-gradient(135deg, #10B981, #0891B2); box-shadow: 0 16px 44px rgba(16, 185, 129, 0.38); margin-bottom: 20px; }
 .auth-logo img { width: 100%; height: 100%; display: block; border-radius: 50%; object-fit: cover; background: #fff; border: 3px solid #fff; box-sizing: border-box; }
 .auth-brand-main {
-  font-family: var(--font-display); font-weight: 600; font-size: clamp(1.9rem, 8.4vw, 2.7rem); letter-spacing: 0.08em; line-height: 1;
+  font-family: var(--font-brand); font-weight: 700; font-size: clamp(1.35rem, 6.1vw, 2.3rem); letter-spacing: 0.05em; white-space: nowrap; line-height: 1;
   background: linear-gradient(135deg, #059669 0%, #10B981 42%, #34D399 76%, #0891B2 100%); -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 14px rgba(16, 185, 129, 0.22));
 }
@@ -6340,3 +6349,25 @@ body.offline-active .system-controls { top: var(--sys-top) !important; }
 .auth-secure svg { color: #10B981; flex-shrink: 0; }
 @media (max-height: 720px) { .auth-logo { width: 104px; height: 104px; margin-bottom: 10px; } .auth-hero { padding: 12px 24px 16px; min-height: 0; } .auth-sheet { padding-top: 20px; } }
 @media (min-width: 560px) { .auth-sheet { border-radius: 30px; margin-bottom: 24px; } .auth-wrap { justify-content: center; } .auth-sheet { flex: 0 0 auto; } }
+
+h1, h2, h3, .screen-title, .overlay-title, .modal-title { font-feature-settings: 'lnum' 1, 'kern' 1, 'liga' 1; }
+body { font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1; }
+.tabular, td, th, .qty-val, .cost-val, .amount, [class*="amount"], [id$="-total"], [id*="balance"] { font-family: var(--font-num); font-variant-numeric: tabular-nums lining-nums; }
+code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
+
+/* sign-in screen: beat the global input/label rules and show the full logo */
+.auth-screen .auth-logo {
+  width: min(86vw, 400px); height: auto; border-radius: 24px; padding: 0; background: #fff; overflow: hidden;
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.22), 0 0 0 4px rgba(255, 255, 255, 0.9); margin-bottom: 18px;
+}
+.auth-screen .auth-logo img { width: 100%; height: auto; max-height: none; border: 0; border-radius: 0; object-fit: contain; display: block; background: #fff; }
+.auth-screen .auth-field input {
+  background: #f8fafc !important; border: 1.5px solid #dbe2ea !important; border-radius: 16px !important; padding: 22px 46px 8px 46px !important;
+  height: 58px !important; color: #0f172a !important; font-size: 1rem !important; font-weight: 500 !important; width: 100% !important; box-sizing: border-box !important;
+}
+.auth-screen .auth-field input:focus { border-color: #10B981 !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15) !important; }
+.auth-screen .auth-field label {
+  text-transform: none !important; letter-spacing: 0 !important; margin: 0 !important; font-size: 0.95rem !important; font-weight: 500 !important; color: #94a3b8 !important;
+}
+.auth-screen .auth-field input:focus + label, .auth-screen .auth-field input:not(:placeholder-shown) + label { color: #059669 !important; }
+@media (max-height: 720px) { .auth-screen .auth-logo { width: min(70vw, 260px); margin-bottom: 10px; } }
