@@ -142,8 +142,8 @@ try {
       fsFields:['type','triggeredAt','triggeredBy','fyCloseCount'],
       listener:'_handleYearCloseSignal' },
     { path:'factorySettings/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, unit tracking',
-      sqlite:[['factory_default_formulas','default_formulas'],['factory_additional_costs','additional_costs'],['factory_cost_adjustment_factor','cost_adjustment_factor'],['factory_unit_tracking','unit_tracking']],
-      fsFields:['default_formulas','additional_costs','cost_adjustment_factor','unit_tracking','default_formulas_timestamp'],
+      sqlite:[['factory_default_formulas','default_formulas'],['factory_additional_costs','additional_costs'],['factory_cost_adjustment_factor','cost_adjustment_factor'],['factory_unit_tracking','unit_tracking'],['factory_formula_store','formula_store']],
+      fsFields:['default_formulas','additional_costs','cost_adjustment_factor','unit_tracking','formula_store','default_formulas_timestamp','formula_store_timestamp'],
       listener:'_handleFactorySettingsSnapshot' },
     { path:'expenseCategories/categories', doc:expenseCategoriesDoc, desc:'Expense category definitions',
       sqlite:[['expense_categories','categories']],
@@ -2822,7 +2822,7 @@ await sqliteStore.set(collection.name, data);
 }
 const settingsKeys = [
 'factory_default_formulas', 'factory_additional_costs',
-'factory_cost_adjustment_factor',
+'factory_cost_adjustment_factor', 'factory_formula_store',
 'factory_unit_tracking', 'naswar_default_settings'
 ];
 for (const key of settingsKeys) {

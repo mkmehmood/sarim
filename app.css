@@ -6373,3 +6373,7 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 }
 .auth-screen .auth-field input:focus + label, .auth-screen .auth-field input:not(:placeholder-shown) + label { color: #059669 !important; }
 @media (max-height: 720px) { .auth-screen .auth-logo { width: min(70vw, 260px); margin-bottom: 10px; } }
+.formula-store-card { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+.formula-store-card:active { background: var(--highlight-bg); }
+.formula-store-card-name { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
+.formula-store-card-meta { margin-top: 3px; font-size: 0.75rem; color: var(--text-muted); }

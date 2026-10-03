@@ -1801,6 +1801,7 @@ export async function subscribeToRealtime() {
           { cloud: cfs.additional_costs_timestamp,       local: await sqliteStore.get('factory_additional_costs_timestamp') },
           { cloud: cfs.cost_adjustment_factor_timestamp, local: await sqliteStore.get('factory_cost_adjustment_factor_timestamp') },
           { cloud: cfs.unit_tracking_timestamp,          local: await sqliteStore.get('factory_unit_tracking_timestamp') },
+          { cloud: cfs.formula_store_timestamp,          local: await sqliteStore.get('factory_formula_store_timestamp') },
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
@@ -1844,6 +1845,10 @@ export async function subscribeToRealtime() {
           })
         );
 
+        if (Array.isArray(cfs.formula_store) && (cfs.formula_store_timestamp || 0) > ((await sqliteStore.get('factory_formula_store_timestamp')) || 0)) {
+          await sqliteStore.setBatch([['factory_formula_store', cfs.formula_store], ['factory_formula_store_timestamp', cfs.formula_store_timestamp]]);
+          if (typeof window.refreshFormulaStoreScreens === 'function') window.refreshFormulaStoreScreens();
+        }
         refreshFactorySettingsOverlay();
         emitSyncUpdate({ factorySettings: null});
         flashLivePulse();
@@ -2383,7 +2388,7 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       if (sanitizedValue !== null && sanitizedValue !== undefined) {
         if (typeof sanitizedValue === 'object' && !Array.isArray(sanitizedValue)) {
           const isFactorySettings = ['default_formulas', 'additional_costs', 'cost_adjustment_factor',
-            'unit_tracking', 'standard', 'asaan'].includes(cleanKey);
+            'unit_tracking', 'standard', 'asaan', 'formula_store'].includes(cleanKey);
           if (Object.keys(sanitizedValue).length > 0 || isFactorySettings) sanitized[cleanKey] = sanitizedValue;
         } else {
           sanitized[cleanKey] = sanitizedValue;
@@ -2955,6 +2960,10 @@ export async function _syncSettings(cloudData) {
         const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
         await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || ts]]);
       }
+      if (Array.isArray(fsData.formula_store)) {
+        await sqliteStore.setBatch([['factory_formula_store', fsData.formula_store], ['factory_formula_store_timestamp', fsData.formula_store_timestamp || ts]]);
+        if (typeof window.refreshFormulaStoreScreens === 'function') window.refreshFormulaStoreScreens();
+      }
       refreshFactorySettingsOverlay();
     }
   }
@@ -3101,16 +3110,18 @@ export async function _uploadChanges(userRef) {
   const localCostsTs   = await sqliteStore.get('factory_additional_costs_timestamp');
   const localFactorTs  = await sqliteStore.get('factory_cost_adjustment_factor_timestamp');
   const localUnitTs    = await sqliteStore.get('factory_unit_tracking_timestamp');
+  const localStoreTs   = await sqliteStore.get('factory_formula_store_timestamp');
 
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factorySettings');
-  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs]
+  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
-    const [_fdf, _fac, _fcaf, _fut] = await Promise.all([
+    const [_fdf, _fac, _fcaf, _fut, _ffs] = await Promise.all([
       sqliteStore.get('factory_default_formulas'),
       sqliteStore.get('factory_additional_costs'),
       sqliteStore.get('factory_cost_adjustment_factor'),
       sqliteStore.get('factory_unit_tracking'),
+      sqliteStore.get('factory_formula_store'),
     ]);
     const _nowTs = Date.now();
     const fsPayload = {
@@ -3122,6 +3133,8 @@ export async function _uploadChanges(userRef) {
       cost_adjustment_factor_timestamp:localFactorTs  || _nowTs,
       unit_tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
       unit_tracking_timestamp:         localUnitTs    || _nowTs,
+      formula_store:                   Array.isArray(_ffs) ? _ffs : [],
+      formula_store_timestamp:         localStoreTs   || _nowTs,
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -3501,6 +3514,10 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
           const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
           await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || Date.now()]]);
           refreshFactorySettingsOverlay();
+        }
+        if (Array.isArray(fsData.formula_store)) {
+          await sqliteStore.setBatch([['factory_formula_store', fsData.formula_store], ['factory_formula_store_timestamp', fsData.formula_store_timestamp || Date.now()]]);
+          if (typeof window.refreshFormulaStoreScreens === 'function') window.refreshFormulaStoreScreens();
         }
       }
     }

@@ -9,6 +9,7 @@ import './utilities-sales.js';
 import './prod-photos.js';
 import './utilities-payments.js';
 import './customers.js';
+import './formula-store.js';
 
 let _factoryLoad = null;
 let _repLoad = null;
