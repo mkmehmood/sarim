@@ -1,7 +1,7 @@
 import { ensureArray, esc, generateUUID, getTimestamp, sqliteStore } from './business.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
-import { _invalidateStoresCache, getAppStores } from './utilities-sales.js';
+import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 const STORE_KEY = 'factory_formula_store';
 const STORE_TS_KEY = 'factory_formula_store_timestamp';
 const SLOTS_KEY = 'factory_formula_slots';
@@ -28,6 +28,7 @@ export async function getFormulaSlotLabels() {
     const f = list.find((x) => String(x.id) === String(slots[k]));
     out[k] = f && f.name ? f.name : FALLBACK[k];
   });
+  if (out.standard === out.asaan) out.asaan = out.asaan + ' (2)';
   return out;
 }
 export async function getStoreFormulaNames() {
@@ -45,9 +46,11 @@ function _slotOfStore(key, typeMap) {
   return typeMap[key] || (key === 'STORE_C' ? 'asaan' : 'standard');
 }
 async function _freezeLegacyRecords() {
-  const [stores, labels, batch] = await Promise.all([getAppStores(), getFormulaSlotLabels(), sqliteStore.getBatch(['factory_production_history', 'mfg_pro_pkr'])]);
+  const [stores, labels, batch] = await Promise.all([getAppStores(), getFormulaSlotLabels(), sqliteStore.getBatch(['factory_production_history', 'mfg_pro_pkr', 'factory_default_formulas', 'factory_inventory_data'])]);
   const typeMap = {};
   stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });
+  const formulas = batch.get('factory_default_formulas') || {};
+  const inventory = ensureArray(batch.get('factory_inventory_data'));
   const now = getTimestamp();
   const history = ensureArray(batch.get('factory_production_history'));
   const production = ensureArray(batch.get('mfg_pro_pkr'));
@@ -62,8 +65,16 @@ async function _freezeLegacyRecords() {
     historyChanged = true;
   });
   production.forEach((r) => {
-    if (!r || r.formulaStore) return;
-    r.formulaStore = _slotOfStore(r.store, typeMap);
+    if (!r) return;
+    const needSlot = !r.formulaStore;
+    const needSnap = !r.isReturn && !Array.isArray(r.formulaMaterials);
+    if (!needSlot && !needSnap) return;
+    const slot = r.formulaStore || _slotOfStore(r.store, typeMap);
+    r.formulaStore = slot;
+    if (needSnap) {
+      r.formulaName = labels[slot] || FALLBACK[slot];
+      r.formulaMaterials = ensureArray(formulas[slot]).map((i) => ({ id: i.id, name: i.name, quantity: _num(i.quantity, 0), cost: _liveCost(i, inventory) }));
+    }
     r.updatedAt = now;
     productionChanged = true;
   });
@@ -454,40 +465,78 @@ export async function openStoreFormulaPicker(btn) {
     pop.style.overflowY = 'auto';
   }
 }
-function _setOption(el, label, visible) {
-  if (!el) return;
-  el.textContent = label;
-  el.style.display = visible ? '' : 'none';
+function _setLabel(btnId, text) {
+  const btn = _el(btnId);
+  const sp = btn ? btn.querySelector('span') : null;
+  if (sp) sp.textContent = text;
+}
+function _setField(id, show) {
+  const el = _el(id);
+  if (el) el.style.display = show ? '' : 'none';
+}
+export function syncFactoryFormulaPicker(slot) {
+  const view = window._formulaSlotView;
+  const input = _el('factory-formula-value');
+  if (input) input.value = slot;
+  _setLabel('factoryFormulaBtn', view && view.labels[slot] ? view.labels[slot] : 'Select formula');
+}
+export function syncFactoryAvailPicker(slot) {
+  const view = window._formulaSlotView;
+  const input = _el('factory-avail-value');
+  if (input) input.value = slot;
+  _setLabel('factoryAvailBtn', view && view.labels[slot] ? view.labels[slot] : 'Select formula');
+}
+function _openSlotPicker(btn, popId, key, onPick, alignLeft) {
+  const old = document.getElementById(popId);
+  const wasOpen = !!old && old.style.display !== 'none';
+  if (old) old.remove();
+  if (wasOpen) return;
+  const view = window._formulaSlotView;
+  const order = view ? view[key] : [];
+  if (!order || !order.length) return;
+  window._mkPopover(btn.parentNode, popId, order.map((k) => ({ value: k, label: view.labels[k] })), onPick);
+  const pop = document.getElementById(popId);
+  if (!pop) return;
+  pop.style.maxHeight = '220px';
+  pop.style.overflowY = 'auto';
+  if (alignLeft) {
+    pop.style.left = '0';
+    pop.style.right = 'auto';
+    pop.style.minWidth = '100%';
+  }
+}
+export function openFactoryFormulaPicker(btn) {
+  _openSlotPicker(btn, '_pop_factoryFormula', 'entryOrder', (k) => window.selectFactoryFormula(k), true);
+}
+export function openFactoryAvailPicker(btn) {
+  _openSlotPicker(btn, '_pop_factoryAvail', 'availOrder', (k) => window.setFactoryAvailableStore(k), false);
 }
 export async function refreshFormulaDependentUI() {
   await ensureFormulaStoreMigrated();
-  const [labels, slots, stores] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores()]);
+  const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('factory_unit_tracking')]);
   const used = new Set(stores.map((s) => s.formulaType || 'standard'));
-  const visible = {};
-  SLOT_KEYS.forEach((k) => { visible[k] = !!slots[k] && used.has(k); });
-  if (!visible.standard && !visible.asaan) { visible.standard = true; visible.asaan = true; }
-  window._formulaSlotLabels = labels;
   const typeMap = {};
   stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });
-  const activeSlot = _slotOfStore(window.currentFactoryEntryStore || 'STORE_A', typeMap);
-  SLOT_KEYS.forEach((k) => {
-    const opt = _el('factory-formula-opt-' + k);
-    _setOption(opt, labels[k], visible[k]);
-    if (opt) opt.classList.toggle('active', k === activeSlot && visible[k]);
-  });
-  const toggle = _el('factory-avail-store-toggle');
-  if (toggle) {
-    const opts = toggle.querySelectorAll('.toggle-opt');
-    let hasActive = false;
-    SLOT_KEYS.forEach((k, i) => {
-      _setOption(opts[i], labels[k], visible[k]);
-      if (opts[i] && visible[k] && opts[i].classList.contains('active')) hasActive = true;
-    });
-    if (!hasActive) {
-      const first = SLOT_KEYS.findIndex((k) => visible[k]);
-      if (first >= 0 && opts[first] && typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(SLOT_KEYS[first], opts[first]);
-    }
-  }
+  const entryOrder = SLOT_KEYS.filter((k) => !!slots[k] && used.has(k));
+  const availOrder = SLOT_KEYS.filter((k) => !!slots[k] && (used.has(k) || _num(tracking && tracking[k] && tracking[k].available, 0) > 0));
+  if (!entryOrder.length) entryOrder.push(SLOT_KEYS[0]);
+  if (!availOrder.length) availOrder.push(SLOT_KEYS[0]);
+  const shown = {};
+  SLOT_KEYS.forEach((k) => { shown[k] = slots[k] ? labels[k] : 'No formula'; });
+  window._formulaSlotLabels = labels;
+  window._formulaSlotView = { labels: shown, entryOrder, availOrder };
+  let activeSlot = _slotOfStore(window.currentFactoryEntryStore || 'STORE_A', typeMap);
+  if (!entryOrder.includes(activeSlot)) activeSlot = entryOrder[0];
+  const rep = stores.find((s) => (s.formulaType || 'standard') === activeSlot);
+  if (rep && typeMap[window.currentFactoryEntryStore] !== activeSlot) _set_currentFactoryEntryStore(rep.key);
+  syncFactoryFormulaPicker(activeSlot);
+  _setField('factory-formula-field', entryOrder.length > 1);
+  const availInput = _el('factory-avail-value');
+  let availSlot = availInput ? availInput.value : availOrder[0];
+  if (!availOrder.includes(availSlot)) availSlot = availOrder[0];
+  _setField('factory-avail-field', availOrder.length > 1);
+  if (typeof window.setFactoryAvailableStore === 'function') await window.setFactoryAvailableStore(availSlot);
+  else syncFactoryAvailPicker(availSlot);
   refreshFormulaStoreScreens();
   if (typeof window.renderStoreList === 'function' && _el('store-manager-screen') && _el('store-manager-screen').style.display !== 'none') window.renderStoreList();
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
@@ -497,4 +546,4 @@ export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
-Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, ensureFormulaStoreMigrated, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });
+Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, openFactoryFormulaPicker, openFactoryAvailPicker, ensureFormulaStoreMigrated, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });

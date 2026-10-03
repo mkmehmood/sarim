@@ -2685,7 +2685,7 @@ async function _applyFormulaStoreFromCloud(cloud) {
   const localListTs = (await sqliteStore.get('factory_formula_store_timestamp')) || 0;
   const cloudList = Array.isArray(cloud.formula_store) ? cloud.formula_store.filter(f => f && f.id) : [];
   const localHas = Array.isArray(localList) && localList.length > 0;
-  if (cloudList.length > 0 && (!localHas || (cloud.formula_store_timestamp || 0) > localListTs)) {
+  if (Array.isArray(cloud.formula_store) && (cloudList.length > 0 || (cloud.formula_store_timestamp || 0) > localListTs) && (!localHas || (cloud.formula_store_timestamp || 0) > localListTs)) {
     await sqliteStore.setBatch([['factory_formula_store', cloudList], ['factory_formula_store_timestamp', cloud.formula_store_timestamp || Date.now()]]);
   }
   const localSlots = await sqliteStore.get('factory_formula_slots');
@@ -3149,7 +3149,7 @@ export async function _uploadChanges(userRef) {
       cost_adjustment_factor_timestamp:localFactorTs  || _nowTs,
       unit_tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
       unit_tracking_timestamp:         localUnitTs    || _nowTs,
-      ...(Array.isArray(_ffs) && _ffs.length ? { formula_store: _ffs, formula_store_timestamp: localStoreTs || _nowTs } : {}),
+      ...(Array.isArray(_ffs) && localStoreTs ? { formula_store: _ffs, formula_store_timestamp: localStoreTs } : {}),
       ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { formula_slots: _ffsl, formula_slots_timestamp: localSlotsTs || _nowTs } : {}),
     };
     configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });

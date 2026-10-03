@@ -2306,9 +2306,10 @@ No records found
 <input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" style="font-size:0.8rem; padding:5px 8px;">
 </div>
 </div>
-<div class="factory-store-selector" id="factory-formula-selector">
-<div class="factory-store-opt active" id="factory-formula-opt-standard" onclick="selectFactoryFormula('standard', this)">Standard</div>
-<div class="factory-store-opt" id="factory-formula-opt-asaan" onclick="selectFactoryFormula('asaan', this)">Asaan</div>
+<div class="field u-mb-15" id="factory-formula-field">
+<label>Formula</label>
+<input type="hidden" id="factory-formula-value" value="standard">
+<button type="button" id="factoryFormulaBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="openFactoryFormulaPicker(this)"><span>Select formula</span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
 <div class="grid-inputs">
 <div class="field">
@@ -2328,119 +2329,120 @@ Select a store...
 <div class="section liquid-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Units Available <span class="update-indicator" id="unitsUpdateIndicator"></span></h3>
-<div class="toggle-group" id="factory-avail-store-toggle">
-<div class="toggle-opt active" onclick="setFactoryAvailableStore('standard', this)">Standard</div>
-<div class="toggle-opt" onclick="setFactoryAvailableStore('asaan', this)">Asaan</div>
+<div id="factory-avail-field" style="min-width:150px;">
+<input type="hidden" id="factory-avail-value" value="standard">
+<button type="button" id="factoryAvailBtn" class="store-selector" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px;cursor:pointer;" onclick="openFactoryAvailPicker(this)"><span>Select formula</span><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 </div>
 </div>
-<div id="factoryAvailStatsStandard">
+</div>
+<div id="factoryAvailStatsS1">
 <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
-<span class="qty-val" id="factoryStdUnits" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="qty-val" id="factoryS1Units" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
-<span class="qty-val" id="factoryStdUsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="qty-val" id="factoryS1UsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
-<span class="qty-val" id="factoryStdOutput" style="font-size:1.05rem;font-weight:700;">0 kg</span>
+<span class="qty-val" id="factoryS1Output" style="font-size:1.05rem;font-weight:700;">0 kg</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
-<span class="qty-val" id="factoryStdRawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
+<span class="qty-val" id="factoryS1RawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
-<span class="cost-val" id="factoryStdUnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="cost-val" id="factoryS1UnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="rev-val" id="factoryStdTotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="rev-val" id="factoryS1TotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Materials</span>
-<span class="cost-val" id="factoryStdMatVal" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="cost-val" id="factoryS1MatVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="profit-val" id="factoryStdProfit" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="profit-val" id="factoryS1Profit" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
-<span class="profit-val" id="factoryStdProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="profit-val" id="factoryS1ProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 </div>
 </div>
-<div id="factoryAvailStatsAsaan" class="hidden">
+<div id="factoryAvailStatsS2" class="hidden">
 <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
-<span class="qty-val" id="factoryAsaanUnits" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="qty-val" id="factoryS2Units" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
-<span class="qty-val" id="factoryAsaanUsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="qty-val" id="factoryS2UsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
-<span class="qty-val" id="factoryAsaanOutput" style="font-size:1.05rem;font-weight:700;">0 kg</span>
+<span class="qty-val" id="factoryS2Output" style="font-size:1.05rem;font-weight:700;">0 kg</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
-<span class="qty-val" id="factoryAsaanRawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
+<span class="qty-val" id="factoryS2RawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
-<span class="cost-val" id="factoryAsaanUnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="cost-val" id="factoryS2UnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="rev-val" id="factoryAsaanTotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="rev-val" id="factoryS2TotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Materials</span>
-<span class="cost-val" id="factoryAsaanMatVal" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="cost-val" id="factoryS2MatVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="profit-val" id="factoryAsaanProfit" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="profit-val" id="factoryS2Profit" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
-<span class="profit-val" id="factoryAsaanProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="profit-val" id="factoryS2ProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 </div>

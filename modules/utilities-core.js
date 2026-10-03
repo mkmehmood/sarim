@@ -1209,7 +1209,11 @@ showToast(` Cannot reduce this entry: ${fmtNum(soldOld - prodOld - retOld)} kg a
 return;
 }
 }
-const costData = await calculateDynamicCost(store, formulaUnits, net);
+let costData = await calculateDynamicCost(store, formulaUnits, net);
+if (_ed && _ed.original.formulaStore === costData.formulaStore && Array.isArray(_ed.original.formulaMaterials) && _ed.original.formulaUnits > 0 && _ed.original.formulaCost > 0 && net > 0) {
+const _frozenUnit = _ed.original.formulaCost / _ed.original.formulaUnits;
+costData = { ...costData, costPerUnit: _frozenUnit, totalFormulaCost: _frozenUnit * formulaUnits, dynamicCostPerKg: (_frozenUnit * formulaUnits) / net, formulaName: _ed.original.formulaName || costData.formulaName, formulaMaterials: _ed.original.formulaMaterials };
+}
 if (net <= 0) {
 showToast('Net production must be greater than zero. Please check weights.', 'warning', 4000);
 return;
@@ -1258,6 +1262,8 @@ totalSale,
 profit,
 formulaUnits: formulaUnits,
 formulaStore: costData.formulaStore,
+formulaName: costData.formulaName,
+formulaMaterials: costData.formulaMaterials,
 formulaCost: costData.totalFormulaCost,
 grossWt: grossWt || 0,
 contWt: contWt || 0,

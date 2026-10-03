@@ -6,7 +6,7 @@ import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, pendingFi
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, selectReturnStore, setSalesSummaryMode, updateSalesCharts } from './utilities-payments.js';
-import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, selectFactoryEntryStore, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
+import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 
@@ -1637,20 +1637,6 @@ export async function rebuildStoreUI() {
     });
     if (!storeHidden.value && stores.length) storeHidden.value = stores[0].key;
     else if (!stores.find(s => s.key === cur) && stores.length) storeHidden.value = stores[0].key;
-  }
-
-  const factoryStoreSel = document.getElementById('factory-store-selector');
-  if (factoryStoreSel) {
-    const curFactory = factoryStoreSel.dataset.current || 'standard';
-    factoryStoreSel.innerHTML = '';
-    stores.forEach((s, i) => {
-      const div = document.createElement('div');
-      div.className = 'factory-store-opt' + (i === 0 ? ' active' : '');
-      div.dataset.storeKey = s.key;
-      div.textContent = s.name;
-      div.onclick = function() { selectFactoryEntryStore(s.key, this); };
-      factoryStoreSel.appendChild(div);
-    });
   }
 
   if (typeof window.refreshFormulaDependentUI === 'function') await window.refreshFormulaDependentUI();
@@ -5290,6 +5276,14 @@ totalWeight += item.quantity;
 return totalWeight;
 }
 
+function _recordUnitWeight(item, fallbackWeight) {
+if (item && Array.isArray(item.formulaMaterials)) return item.formulaMaterials.reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0);
+return fallbackWeight;
+}
+function _prodSlot(entry, storeFormulaMap) {
+const ft = entry.formulaStore || storeFormulaMap[entry.store] || (entry.store === 'STORE_C' ? 'asaan' : 'standard');
+return ft === 'asaan' ? 'asaan' : 'standard';
+}
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -5330,14 +5324,8 @@ const stdAvailableUnits = stdTracking.available;
 const asaanProducedUnits = asaanTracking.produced;
 const asaanUsedUnits = asaanTracking.consumed;
 const asaanAvailableUnits = asaanTracking.available;
-const stdProductionData = db.filter(item => {
-const ft = item.formulaStore || storeFormulaMap[item.store] || (item.store === 'STORE_C' ? 'asaan' : 'standard');
-return ft === 'standard' && item.isReturn !== true;
-});
-const asaanProductionData = db.filter(item => {
-const ft = item.formulaStore || storeFormulaMap[item.store] || (item.store === 'STORE_C' ? 'asaan' : 'standard');
-return ft === 'asaan' && item.isReturn !== true;
-});
+const stdProductionData = db.filter(item => item.isReturn !== true && _prodSlot(item, storeFormulaMap) === 'standard');
+const asaanProductionData = db.filter(item => item.isReturn !== true && _prodSlot(item, storeFormulaMap) === 'asaan');
 const stdOutputQuantity = stdProductionData.reduce((sum, item) => sum + (item.net || 0), 0);
 const stdTotalCost = stdProductionData.reduce((sum, item) => sum + (item.totalCost || 0), 0);
 const stdTotalSaleValue = stdProductionData.reduce((sum, item) => sum + (item.totalSale || 0), 0);
@@ -5346,18 +5334,18 @@ const stdCostPerUnit = await getCostPerUnit('standard');
 const stdTotalCostValue = stdCostPerUnit * stdAvailableUnits;
 const stdProfitPerKg = stdOutputQuantity > 0 ? stdTotalProfit / stdOutputQuantity : 0;
 const stdWeightPerUnit = await getWeightPerUnit('standard');
-const stdRawMaterialsUsed = stdWeightPerUnit * stdUsedUnits;
+const stdRawMaterialsUsed = stdProductionData.reduce((sum, item) => sum + _recordUnitWeight(item, stdWeightPerUnit) * (item.formulaUnits || 0), 0);
 const stdMaterialsValue = stdProductionData.reduce((sum, item) => sum + (item.formulaCost || item.totalCost || 0), 0);
 const _setFac = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
-_setFac('factoryStdUnits', fmtNum(safeNumber(stdAvailableUnits, 0)));
-_setFac('factoryStdUsedUnits', fmtNum(safeNumber(stdUsedUnits, 0)));
-_setFac('factoryStdUnitCost', await formatCurrency(stdCostPerUnit));
-_setFac('factoryStdTotalVal', await formatCurrency(stdTotalCostValue));
-_setFac('factoryStdOutput', fmtNum(safeNumber(stdOutputQuantity, 0)) + ' kg');
-_setFac('factoryStdRawUsed', fmtNum(safeNumber(stdRawMaterialsUsed, 0)) + ' kg');
-_setFac('factoryStdMatVal', await formatCurrency(stdMaterialsValue));
-_setFac('factoryStdProfit', await formatCurrency(stdTotalProfit));
-_setFac('factoryStdProfitUnit', await formatCurrency(stdProfitPerKg) + '/kg');
+_setFac('factoryS1Units', fmtNum(safeNumber(stdAvailableUnits, 0)));
+_setFac('factoryS1UsedUnits', fmtNum(safeNumber(stdUsedUnits, 0)));
+_setFac('factoryS1UnitCost', await formatCurrency(stdCostPerUnit));
+_setFac('factoryS1TotalVal', await formatCurrency(stdTotalCostValue));
+_setFac('factoryS1Output', fmtNum(safeNumber(stdOutputQuantity, 0)) + ' kg');
+_setFac('factoryS1RawUsed', fmtNum(safeNumber(stdRawMaterialsUsed, 0)) + ' kg');
+_setFac('factoryS1MatVal', await formatCurrency(stdMaterialsValue));
+_setFac('factoryS1Profit', await formatCurrency(stdTotalProfit));
+_setFac('factoryS1ProfitUnit', await formatCurrency(stdProfitPerKg) + '/kg');
 const asaanOutputQuantity = asaanProductionData.reduce((sum, item) => sum + (item.net || 0), 0);
 const asaanTotalCost = asaanProductionData.reduce((sum, item) => sum + (item.totalCost || 0), 0);
 const asaanTotalSaleValue = asaanProductionData.reduce((sum, item) => sum + (item.totalSale || 0), 0);
@@ -5366,17 +5354,17 @@ const asaanCostPerUnit = await getCostPerUnit('asaan');
 const asaanTotalCostValue = asaanCostPerUnit * asaanAvailableUnits;
 const asaanProfitPerKg = asaanOutputQuantity > 0 ? asaanTotalProfit / asaanOutputQuantity : 0;
 const asaanWeightPerUnit = await getWeightPerUnit('asaan');
-const asaanRawMaterialsUsed = asaanWeightPerUnit * asaanUsedUnits;
+const asaanRawMaterialsUsed = asaanProductionData.reduce((sum, item) => sum + _recordUnitWeight(item, asaanWeightPerUnit) * (item.formulaUnits || 0), 0);
 const asaanMaterialsValue = asaanProductionData.reduce((sum, item) => sum + (item.formulaCost || item.totalCost || 0), 0);
-_setFac('factoryAsaanUnits', fmtNum(safeNumber(asaanAvailableUnits, 0)));
-_setFac('factoryAsaanUsedUnits', fmtNum(safeNumber(asaanUsedUnits, 0)));
-_setFac('factoryAsaanUnitCost', await formatCurrency(asaanCostPerUnit));
-_setFac('factoryAsaanTotalVal', await formatCurrency(asaanTotalCostValue));
-_setFac('factoryAsaanOutput', fmtNum(safeNumber(asaanOutputQuantity, 0)) + ' kg');
-_setFac('factoryAsaanRawUsed', fmtNum(safeNumber(asaanRawMaterialsUsed, 0)) + ' kg');
-_setFac('factoryAsaanMatVal', await formatCurrency(asaanMaterialsValue));
-_setFac('factoryAsaanProfit', await formatCurrency(asaanTotalProfit));
-_setFac('factoryAsaanProfitUnit', await formatCurrency(asaanProfitPerKg) + '/kg');
+_setFac('factoryS2Units', fmtNum(safeNumber(asaanAvailableUnits, 0)));
+_setFac('factoryS2UsedUnits', fmtNum(safeNumber(asaanUsedUnits, 0)));
+_setFac('factoryS2UnitCost', await formatCurrency(asaanCostPerUnit));
+_setFac('factoryS2TotalVal', await formatCurrency(asaanTotalCostValue));
+_setFac('factoryS2Output', fmtNum(safeNumber(asaanOutputQuantity, 0)) + ' kg');
+_setFac('factoryS2RawUsed', fmtNum(safeNumber(asaanRawMaterialsUsed, 0)) + ' kg');
+_setFac('factoryS2MatVal', await formatCurrency(asaanMaterialsValue));
+_setFac('factoryS2Profit', await formatCurrency(asaanTotalProfit));
+_setFac('factoryS2ProfitUnit', await formatCurrency(asaanProfitPerKg) + '/kg');
 }
 
 export async function updateFactorySummaryCard() {
@@ -5404,6 +5392,9 @@ if (mode === 'monthly') return entryDate.getMonth() === selectedMonth && entryDa
 if (mode === 'yearly') return entryDate.getFullYear() === selectedYear;
 return true;
 }
+const _sfStores = typeof getAppStores === 'function' ? await getAppStores() : [];
+const _sfMap = {};
+_sfStores.forEach(s => { _sfMap[s.key] = s.formulaType || 'standard'; });
 const allTimeRecomp = { standard: { produced: 0, consumed: 0 }, asaan: { produced: 0, consumed: 0 } };
 for (const entry of factoryProductionHistory) {
 const store = (entry.formulaType || await getStoreFormulaType(entry.store)) === 'asaan' ? 'asaan' : 'standard';
@@ -5411,7 +5402,7 @@ allTimeRecomp[store].produced += entry.units || 0;
 }
 db.forEach(entry => {
 if (entry.isReturn === true) return;
-const store = (entry.formulaStore === 'asaan' || entry.store === 'STORE_C') ? 'asaan' : 'standard';
+const store = _prodSlot(entry, _sfMap);
 allTimeRecomp[store].consumed += entry.formulaUnits || 0;
 });
 const stdAvailable = Math.max(0, allTimeRecomp.standard.produced - allTimeRecomp.standard.consumed);
@@ -5421,12 +5412,16 @@ let stdConsumed = 0, asaanConsumed = 0;
 let totalCost = 0, totalOutput = 0, totalProfit = 0;
 let totalSaleValue = 0, totalRawMatCost = 0;
 let totalRawUsed = 0;
+let frozenUnitCostTotal = 0;
+const stdCostPerUnit = await getCostPerUnit('standard');
+const asaanCostPerUnit = await getCostPerUnit('asaan');
 const rawByMaterial = {};
 for (const entry of db) {
 if (entry.isReturn === true) continue;
 if (!isInRange(entry.date)) continue;
-const formulaStore = (entry.formulaStore === 'asaan' || entry.store === 'STORE_C') ? 'asaan' : 'standard';
+const formulaStore = _prodSlot(entry, _sfMap);
 const units = entry.formulaUnits || 0;
+frozenUnitCostTotal += (entry.formulaCost > 0 && units > 0) ? entry.formulaCost : units * (formulaStore === 'asaan' ? asaanCostPerUnit : stdCostPerUnit);
 if (formulaStore === 'asaan') asaanConsumed += units;
 else stdConsumed += units;
 totalOutput += entry.net || 0;
@@ -5434,15 +5429,14 @@ totalCost += entry.totalCost || 0;
 totalSaleValue += entry.totalSale || 0;
 totalProfit += entry.profit || 0;
 totalRawMatCost += entry.formulaCost || entry.totalCost || 0;
-const weightPerUnit = await getWeightPerUnit(formulaStore);
+const weightPerUnit = _recordUnitWeight(entry, await getWeightPerUnit(formulaStore));
 totalRawUsed += weightPerUnit * units;
-
-const formula = factoryDefaultFormulas[formulaStore] || [];
+const _frozenMats = Array.isArray(entry.formulaMaterials);
+const formula = _frozenMats ? entry.formulaMaterials : (factoryDefaultFormulas[formulaStore] || []);
 formula.forEach(f => {
-  const matId = f.id || f.name || 'Unknown';
-  const inv = factoryInventoryData.find(i => String(i.id) === String(f.id)) ||
-               (f.name ? factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase()) : null);
-  const matName = inv?.name || f.name || 'Unknown';
+  const inv = _frozenMats ? null : (factoryInventoryData.find(i => String(i.id) === String(f.id)) ||
+               (f.name ? factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase()) : null));
+  const matName = (inv && inv.name) || f.name || 'Unknown';
   const qtyUsed = f.quantity * units;
   const unitCost = inv ? inv.cost : (f.cost || 0);
   const matCost = unitCost * qtyUsed;
@@ -5452,11 +5446,7 @@ formula.forEach(f => {
 });
 }
 const totalConsumed = stdConsumed + asaanConsumed;
-const stdCostPerUnit = await getCostPerUnit('standard');
-const asaanCostPerUnit = await getCostPerUnit('asaan');
-const avgCostPerUnit = totalConsumed > 0
-? (stdConsumed * stdCostPerUnit + asaanConsumed * asaanCostPerUnit) / totalConsumed
-: 0;
+const avgCostPerUnit = totalConsumed > 0 ? frozenUnitCostTotal / totalConsumed : 0;
 const totalMatValue = totalRawMatCost;
 const avgProfitPerKg = totalOutput > 0 ? totalProfit / totalOutput : 0;
 let totalAdditionalCostProd = 0;
@@ -5659,17 +5649,11 @@ factoryDateInput.value = today;
 currentFactoryDate = today; window.currentFactoryDate = currentFactoryDate;
 }
 currentFactoryEntryStore = 'STORE_A'; window.currentFactoryEntryStore = currentFactoryEntryStore;
-const formulaSelector = document.getElementById('factory-formula-selector');
-if (formulaSelector) {
-formulaSelector.querySelectorAll('.factory-store-opt').forEach((opt, i) => {
-if (i === 0) opt.classList.add('active');
-else opt.classList.remove('active');
-});
-}
 document.querySelectorAll('#tab-factory .toggle-group .toggle-opt').forEach((opt, index) => {
 if (index === 0) opt.classList.add('active');
 else opt.classList.remove('active');
 });
+if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
 refreshFactoryTab();
 }
 
