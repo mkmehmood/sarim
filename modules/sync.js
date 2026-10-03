@@ -192,9 +192,9 @@ return false;
 }
 
 export async function unifiedSave(sqliteKey, dataArray, specificRecord = null, linkedIds = null) {
-let _newTx = [];
+let _newTx = { created: [], edited: [] };
 if (_LOCAL_TX_KEYS.has(sqliteKey)) {
-  try { _newTx = await _collectNewTransactions(sqliteKey, dataArray, specificRecord, linkedIds); } catch (_) { _newTx = []; }
+  try { _newTx = await _collectNewTransactions(sqliteKey, dataArray, specificRecord, linkedIds); } catch (_) { _newTx = { created: [], edited: [] }; }
 }
 if (specificRecord && specificRecord.id) {
   await saveWithTracking(sqliteKey, dataArray, specificRecord);
@@ -245,7 +245,8 @@ if (specificRecord && specificRecord.id) {
 } else {
   await saveWithTracking(sqliteKey, dataArray);
 }
-if (_newTx.length) _notifyLocalTransactions(sqliteKey, _newTx);
+if (_newTx.created.length) _notifyLocalTransactions(sqliteKey, _newTx.created);
+if (_newTx.edited.length) _notifyEditedTransactions(sqliteKey, _newTx.edited);
 triggerAutoSync();
 return true;
 }
@@ -2760,13 +2761,24 @@ function _describeLocalTx(key, r) {
   if (r.isReturn) return { title: 'Stock return', body: `${kg} kg returned` };
   return { title: 'Production', body: `${kg} kg produced` };
 }
+const _EDIT_FIELDS = ['totalValue', 'amount', 'quantity', 'net', 'customerName', 'entityName', 'name', 'description', 'date', 'type', 'paymentType', 'price'];
+function _txChanged(before, after) {
+  return _EDIT_FIELDS.some(f => String(before && before[f] == null ? '' : before[f]) !== String(after && after[f] == null ? '' : after[f]));
+}
 async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds) {
   let candidates = [];
   if (specificRecord && specificRecord.id) candidates = [specificRecord];
   else if (Array.isArray(linkedIds) && linkedIds.length > 0) candidates = ensureArray(dataArray).filter(r => r && linkedIds.includes(r.id));
-  if (!candidates.length) return [];
-  const previous = new Set(ensureArray(await sqliteStore.get(key)).map(r => String(r && r.id)));
-  return candidates.filter(r => !previous.has(String(r.id)));
+  if (!candidates.length) return { created: [], edited: [] };
+  const previous = new Map(ensureArray(await sqliteStore.get(key)).filter(r => r && r.id != null).map(r => [String(r.id), r]));
+  const created = [];
+  const edited = [];
+  candidates.forEach(r => {
+    const old = previous.get(String(r.id));
+    if (!old) created.push(r);
+    else if (_txChanged(old, r)) edited.push(r);
+  });
+  return { created, edited };
 }
 function _notifyLocalTransactions(key, records) {
   const items = [];
@@ -2776,6 +2788,15 @@ function _notifyLocalTransactions(key, records) {
   });
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('Transactions', `+${items.length - 3} more new transactions`, 'tx-more').catch(() => {});
+}
+function _notifyEditedTransactions(key, records) {
+  const items = [];
+  records.forEach(r => {
+    const item = _describeLocalTx(key, r);
+    if (item) items.push({ title: item.title + ' updated', body: item.body, id: r.id });
+  });
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
+  if (items.length > 3) sendDeviceNotification('Transactions updated', `+${items.length - 3} more transactions were updated`, 'tx-edit-more').catch(() => {});
 }
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
 async function _applyFormulaStoreFromCloud(cloud) {

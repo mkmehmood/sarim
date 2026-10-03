@@ -26,7 +26,7 @@ function decodeString(raw) {
         let oct = n;
         while (oct.length < 3 && raw[i + 1] >= '0' && raw[i + 1] <= '7') oct += raw[++i];
         out += String.fromCharCode(parseInt(oct, 8));
-      } else if (n === '\n') { /* line continuation */ }
+      } else if (n === '\n') {}
       else out += n;
     } else out += ch;
   }

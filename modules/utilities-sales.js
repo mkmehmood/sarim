@@ -4446,6 +4446,7 @@ if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArr
   } catch(e) { console.warn('[restore] person_photos merge failed', e); }
 }
 showToast(`Restore complete${syncMessage}! ${statsMessage}`, 'success', 5000);
+if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Backup restored', 'Your data was restored from the backup file.', 'backup-restored').catch(() => {});
 }
 
 export async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {

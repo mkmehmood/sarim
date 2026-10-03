@@ -4626,6 +4626,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const ok = await recoverRecord(id, collectionName);
   if (ok) {
     showToast(isTransferPair ? `${label} recovered — both sides of the transfer restored!` : `${label} recovered successfully!`, 'success');
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label, 'recover-' + id).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();
@@ -4679,6 +4680,7 @@ export async function emptyRecycleBin() {
     showToast(`Emptied recycle bin with ${failCount} error${failCount !== 1 ? 's' : ''}. Some records may need a retry.`, 'warning', 6000);
   } else {
     showToast('Recycle bin emptied.', 'success');
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Recycle bin emptied', targets.length + ' record' + (targets.length !== 1 ? 's' : '') + ' permanently deleted', 'recycle-emptied').catch(() => {});
   }
 }
 window.emptyRecycleBin = emptyRecycleBin;
@@ -4822,6 +4824,7 @@ export async function attemptHardDeleteRecord(id, collectionName) {
   const ok = await hardDeleteRecord(id, collectionName);
   if (ok) {
     showToast(isTransferPair ? `${label} and its paired transfer record permanently deleted.` : `${label} permanently deleted.`, 'success');
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Permanently deleted', label, 'hard-del-' + id).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();

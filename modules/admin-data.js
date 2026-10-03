@@ -196,7 +196,6 @@ try {
   let html = `
 <div id="dbv-root" style="background:var(--glass);border-radius:20px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
 
-  <!-- title bar -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0">
     <div style="display:flex;align-items:center;gap:10px">
       <span style="display:flex;align-items:center;"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="5" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="15" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.4"/><rect x="5" y="25" width="26" height="7" rx="2.5" fill="var(--accent)" fill-opacity="0.08" stroke="var(--accent)" stroke-width="1.4"/><circle cx="27" cy="8.5" r="1.5" fill="var(--accent)"/><circle cx="27" cy="18.5" r="1.5" fill="var(--accent)" opacity="0.7"/><circle cx="27" cy="28.5" r="1.5" fill="var(--accent)" opacity="0.5"/></svg></span>
@@ -211,7 +210,6 @@ try {
       style="background:rgba(255,255,255,0.07);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="10" y1="10" x2="26" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="26" y1="10" x2="10" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
   </div>
 
-  <!-- tab bar -->
   <div style="display:flex;gap:4px;padding:14px 20px 0;flex-shrink:0">
     ${['Collections','Config Docs','Listeners','Summary'].map((t,i) =>
       `<button id="dbv-tab-${i}" onclick="dbvShowTab(${i})"
@@ -221,7 +219,6 @@ try {
     ).join('')}
   </div>
 
-  <!-- scrollable body -->
   <div id="dbv-body" style="overflow-y:auto;padding:16px 20px 20px;flex:1;min-height:0">
 `;
 
@@ -273,9 +270,9 @@ try {
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
         <span style="font-weight:700;font-size:0.82rem;color:var(--text);font-family:var(--font-mono)">${col.fsName}</span>
-        ${hasLiveListener ? badge('LIVE','#30d158','rgba(48,209,88,0.12)') : badge('SNAPSHOT','#f59e0b','rgba(245,158,11,0.12)')}
-        ${col.lock ? badge('LOCKED ON CLOSE','#888','rgba(128,128,128,0.1)') : ''}
-        ${isDirty ? badge('PENDING','#f59e0b','rgba(245,158,11,0.15)') : ''}
+        ${hasLiveListener ? badge('LIVE','#30d158') : badge('SNAPSHOT','#f59e0b')}
+        ${col.lock ? badge('LOCKED ON CLOSE','#888') : ''}
+        ${isDirty ? badge('PENDING','#f59e0b') : ''}
       </div>
       <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:4px">${col.desc}</div>
       <div style="font-size:0.63rem;font-family:var(--font-mono);display:flex;flex-wrap:wrap;gap:6px">
@@ -315,7 +312,7 @@ try {
       <div style="font-size:0.62rem;color:var(--text-muted)">Listener: ${pill(doc.listener, '#30d158')}</div>
     </div>
     <div style="flex-shrink:0">
-      ${exists ? badge('EXISTS','#30d158','rgba(48,209,88,0.12)') : badge('MISSING','#ff453a','rgba(255,69,58,0.12)')}
+      ${exists ? badge('EXISTS','#30d158') : badge('MISSING','#ff453a')}
     </div>
   </div>`;
 
@@ -380,7 +377,7 @@ try {
     html += `
 <div style="margin-bottom:8px;padding:10px 12px;background:var(--input-bg);border-radius:13px;border:1px solid var(--glass-border)">
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap">
-    ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2', l.type==='col'?'rgba(0,122,255,0.1)':'rgba(191,90,242,0.1)')}
+    ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2')}
     <span style="font-weight:700;font-size:0.78rem;color:var(--text);font-family:var(--font-mono)">${l.name}</span>
   </div>
   <div style="font-size:0.67rem;color:var(--text-muted);margin-bottom:3px">${l.purpose}</div>
@@ -450,7 +447,6 @@ try {
     </div>
   </div>
 
-  <!-- FY close status -->
   ${(() => {
     const fy = settingsDoc.exists ? (settingsDoc.data().naswar_default_settings || {}) : {};
     const fyCount = fy.fyCloseCount || 0;
@@ -1773,6 +1769,7 @@ if (completeSection) {
   </div>`;
   completeSection.style.display = 'block';
   showToast('Financial Year closed successfully!', 'success');
+  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close completed successfully.', 'year-closed').catch(() => {});
 }
 } catch (error) {
 if (error.name === 'AbortError') {

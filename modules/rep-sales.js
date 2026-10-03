@@ -62,35 +62,32 @@ const splash = document.getElementById('splash-screen');
 if (!splash) return;
 window.__appLocked = true;
 splash.classList.add('splash-locked');
-let hint = document.getElementById('splash-unlock');
-if (!hint) {
-hint = document.createElement('div');
-hint.id = 'splash-unlock';
-hint.className = 'splash-unlock';
-hint.setAttribute('role', 'button');
-const holder = splash.querySelector('.splash-content') || splash;
-holder.appendChild(hint);
-}
-const setHint = (t) => { hint.textContent = t; };
-setHint('Unlocking\u2026');
 let busy = false;
+let failures = 0;
+let retryTimer = null;
+const scheduleRetry = (delay) => {
+if (retryTimer) clearTimeout(retryTimer);
+retryTimer = setTimeout(() => { retryTimer = null; unlock(); }, delay);
+};
 const unlock = async () => {
 if (busy || !window.__appLocked) return;
 busy = true;
-setHint('Unlocking\u2026');
 try {
 await BiometricAuth.authenticate();
 window.__appLocked = false;
+failures = 0;
+if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
 splash.style.transition = 'opacity 0.35s ease';
 splash.style.opacity = '0';
 splash.style.pointerEvents = 'none';
 setTimeout(() => { splash.style.display = 'none'; splash.classList.remove('splash-locked'); }, 380);
 } catch (e) {
 const errName = e && e.name ? e.name : '';
-setHint('Tap to unlock');
-if (errName !== 'NotAllowedError') {
+failures++;
+if (errName !== 'NotAllowedError' && failures === 1) {
 showToast((e && e.message) ? e.message : 'Authentication failed', 'error', 4000);
 }
+if (failures < 5) scheduleRetry(errName === 'NotAllowedError' ? 1200 : 2000);
 } finally {
 busy = false;
 }
@@ -98,9 +95,11 @@ busy = false;
 window.triggerUnlock = unlock;
 if (!splash.__unlockBound) {
 splash.__unlockBound = true;
-splash.addEventListener('pointerdown', () => { if (window.__appLocked) unlock(); });
+document.addEventListener('visibilitychange', () => {
+if (document.visibilityState === 'visible' && window.__appLocked) { failures = 0; scheduleRetry(250); }
+});
 }
-setTimeout(unlock, 350);
+setTimeout(unlock, 150);
 }
 
 function _resetRepForm() {

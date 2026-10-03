@@ -1133,30 +1133,68 @@ export const splashQuotes = [
 { quote: "The details are not the details. They make the design.", author: "Charles Eames" },
 { quote: "Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.", author: "Antoine de Saint-Exupéry" },
 { quote: "Price is what you pay. Value is what you get.", author: "Warren Buffett" },
-{ quote: "It is not the strongest of the species that survives, nor the most intelligent — it is the one most adaptable to change.", author: "Charles Darwin" },
-{ quote: "The secret of getting ahead is getting started. The secret of getting started is breaking your complex overwhelming tasks into small manageable ones.", author: "Mark Twain" },
+{ quote: "It is not the strongest of the species that survives, but the one most adaptable to change.", author: "Leon C. Megginson" },
 { quote: "An investment in knowledge pays the best interest.", author: "Benjamin Franklin" },
 { quote: "What gets measured gets managed.", author: "Peter Drucker" },
-{ quote: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
 { quote: "The purpose of a business is to create a customer who creates customers.", author: "Shiv Singh" },
 { quote: "Simplicity is the ultimate sophistication.", author: "Leonardo da Vinci" },
-{ quote: "Without data, you are just another person with an opinion.", author: "W. Edwards Deming" },
-{ quote: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
 { quote: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
 { quote: "The best way to predict the future is to create it.", author: "Peter Drucker" },
 { quote: "Chase the vision, not the money. The money will end up following you.", author: "Tony Hsieh" },
-{ quote: "A small business is an amazing way to serve and leave an impact on the world you live in.", author: "Nicole Snow" },
 { quote: "Build something 100 people love, not something 1 million people kind of like.", author: "Brian Chesky" },
-{ quote: "The secret of change is to focus all of your energy not on fighting the old, but on building the new.", author: "Socrates" },
-{ quote: "Excellence is never an accident. It is always the result of high intention, sincere effort, and intelligent execution.", author: "Aristotle" },
-{ quote: "Your most unhappy customers are your greatest source of learning.", author: "Bill Gates" }
+{ quote: "Excellence is not an act but a habit.", author: "Will Durant" },
+{ quote: "Your most unhappy customers are your greatest source of learning.", author: "Bill Gates" },
+{ quote: "Well done is better than well said.", author: "Benjamin Franklin" },
+{ quote: "Honesty is the first chapter in the book of wisdom.", author: "Thomas Jefferson" },
+{ quote: "It takes twenty years to build a reputation and five minutes to ruin it.", author: "Warren Buffett" },
+{ quote: "Do not save what is left after spending; spend what is left after saving.", author: "Warren Buffett" },
+{ quote: "Be fearful when others are greedy, and greedy when others are fearful.", author: "Warren Buffett" },
+{ quote: "Risk comes from not knowing what you are doing.", author: "Warren Buffett" },
+{ quote: "A penny saved is a penny earned.", author: "Benjamin Franklin" },
+{ quote: "Beware of little expenses; a small leak will sink a great ship.", author: "Benjamin Franklin" },
+{ quote: "The best advertisement is a satisfied customer.", author: "Philip Kotler" },
+{ quote: "Efficiency is doing things right; effectiveness is doing the right things.", author: "Peter Drucker" },
+{ quote: "Quality means doing it right when no one is looking.", author: "Henry Ford" },
+{ quote: "Coming together is a beginning; keeping together is progress; working together is success.", author: "Henry Ford" },
+{ quote: "Whether you think you can or you think you can't, you're right.", author: "Henry Ford" },
+{ quote: "Genius is one percent inspiration and ninety-nine percent perspiration.", author: "Thomas Edison" },
+{ quote: "There is no substitute for hard work.", author: "Thomas Edison" },
+{ quote: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+{ quote: "Small deeds done are better than great deeds planned.", author: "Peter Marshall" },
+{ quote: "Start where you are. Use what you have. Do what you can.", author: "Arthur Ashe" },
+{ quote: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+{ quote: "Trust is the glue of life.", author: "Stephen Covey" },
+{ quote: "Customers don't expect you to be perfect. They expect you to fix things when they go wrong.", author: "Donald Porter" },
+{ quote: "A journey of a thousand miles begins with a single step.", author: "Lao Tzu" },
+{ quote: "Do the difficult things while they are easy and the great things while they are small.", author: "Lao Tzu" },
+{ quote: "Knowing is not enough; we must apply.", author: "Johann Wolfgang von Goethe" },
+{ quote: "It always seems impossible until it is done.", author: "Nelson Mandela" },
+{ quote: "Courage is not the absence of fear, but the triumph over it.", author: "Nelson Mandela" },
+{ quote: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+{ quote: "Nothing will work unless you do.", author: "Maya Angelou" },
+{ quote: "Make each day your masterpiece.", author: "John Wooden" },
+{ quote: "Quality is never an accident; it is always the result of intelligent effort.", author: "John Ruskin" },
+{ quote: "Little by little, one travels far.", author: "J.R.R. Tolkien" },
+{ quote: "Slow and steady wins the race.", author: "Aesop" },
+{ quote: "No act of kindness, no matter how small, is ever wasted.", author: "Aesop" },
+{ quote: "Well begun is half done.", author: "Aristotle" },
+{ quote: "The best time to plant a tree was twenty years ago. The second best time is now.", author: "Chinese Proverb" },
+{ quote: "If you want to go fast, go alone. If you want to go far, go together.", author: "African Proverb" },
+{ quote: "Fall seven times, stand up eight.", author: "Japanese Proverb" },
+{ quote: "Never let the fear of striking out keep you from playing the game.", author: "Babe Ruth" },
+{ quote: "The expert in anything was once a beginner.", author: "Helen Hayes" },
+{ quote: "A smooth sea never made a skilled sailor.", author: "Franklin D. Roosevelt" },
+{ quote: "Do what you can, with what you have, where you are.", author: "Theodore Roosevelt" },
+{ quote: "Change your thoughts and you change your world.", author: "Norman Vincent Peale" },
+{ quote: "Whoever is happy will make others happy too.", author: "Anne Frank" },
+{ quote: "He who has a why to live can bear almost any how.", author: "Friedrich Nietzsche" },
+{ quote: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" },
+{ quote: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" }
 ];
 export function initSplashScreen() {
 const randomQuote = splashQuotes[Math.floor(Math.random() * splashQuotes.length)];
 document.getElementById('splash-quote').textContent = `"${randomQuote.quote || ''}"`;
 document.getElementById('splash-author').textContent = `— ${randomQuote.author || 'Unknown'}`;
-setTimeout(() => {
-}, 3800);
 }
 
 export function updatePaymentStatusVisibility() {
@@ -1321,7 +1359,6 @@ calculateNetCash();
 calculateCashTracker();
 showToast(_ed ? "Production record updated!" : "Production record saved successfully!", "success");
 }
-
 
 export function _dedupDeletionRecordsLocal(arr) {
   if (!Array.isArray(arr)) return [];
