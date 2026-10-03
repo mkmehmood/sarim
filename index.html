@@ -1079,7 +1079,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       <span></span>
     </div>
     <div id="factoryRawMaterialsContainer"></div>
-    <button class="btn btn-theme u-add-row-btn" onclick="addFactoryMaterialRow()">+ Add Ingredient Row</button>
+    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow('standard')">+ Add Ingredient Row</button>
     <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15" style="margin-top:12px;">
       <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="factorySettingsUnitWeight">0 kg</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="factorySettingsRawCostPerUnit">0</span></div>
@@ -1114,7 +1114,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       <span></span>
     </div>
     <div id="factoryRawMaterialsContainerAsaan"></div>
-    <button class="btn btn-theme u-add-row-btn" onclick="addFactoryMaterialRowAsaan()">+ Add Ingredient Row</button>
+    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow('asaan')">+ Add Ingredient Row</button>
     <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15" style="margin-top:12px;">
       <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="factorySettingsUnitWeightAsaan">0 kg</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="factorySettingsRawCostPerUnitAsaan">0</span></div>
@@ -1131,9 +1131,11 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
     <h2 class="screen-title">Formula Store</h2>
   </div>
   <div class="screen-body">
-    <button class="btn btn-theme u-add-row-btn" onclick="openFormulaStoreEditor(null)">+ New Formula</button>
-    <div id="formulaStoreList" style="margin-top:12px;"></div>
+    <div id="formulaStoreList"></div>
   </div>
+  <button type="button" class="formula-fab" onclick="openFormulaStoreEditor(null)" aria-label="Add formula">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
 </div>
 <div id="formula-store-edit-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
@@ -1162,7 +1164,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
       <span></span>
     </div>
     <div id="fsEditContainer"></div>
-    <button class="btn btn-theme u-add-row-btn" onclick="addFormulaStoreRow()">+ Add Ingredient Row</button>
+    <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow('store')">+ Add Ingredient Row</button>
     <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15" style="margin-top:12px;">
       <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="fsSummaryWeight">0 kg</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="fsSummaryRaw">0</span></div>
@@ -3444,6 +3446,9 @@ async function _loadFormulaScreen(store) {
 }
 
 window.openFactorySettings = async function(store) {
+  if (typeof window.createFactorySettingRow !== 'function' && typeof window._lazyLoadFactory === 'function') {
+    await new Promise(function(resolve) { window._lazyLoadFactory(resolve); });
+  }
   var targetScreen = (store === 'asaan') ? 'formula-asaan-screen' : 'formula-standard-screen';
   openStandaloneScreen(targetScreen);
   await _loadFormulaScreen(store || 'standard');

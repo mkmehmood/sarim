@@ -28,18 +28,44 @@ function _totals(ingredients, additionalCost, factor) {
   const perKg = factor > 0 ? perUnit / factor : perUnit;
   return { raw, weight, perUnit, perKg };
 }
+function _liveCost(ing, inventory) {
+  let live = inventory.find((i) => String(i.id) === String(ing.id));
+  if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
+  const c = live ? Number(live.cost) : NaN;
+  return Number.isFinite(c) && c > 0 ? c : _num(ing.cost, 0);
+}
+function _money(v) {
+  return typeof window.formatCurrency === 'function' ? window.formatCurrency(v) : _fmt(v);
+}
+function _row(label, value, extra) {
+  return `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;${extra || ''}"><span>${label}</span><span>${value}</span></div>`;
+}
+function _card(f, inventory) {
+  const ings = ensureArray(f.ingredients).map((i) => ({ ...i, cost: _liveCost(i, inventory) }));
+  const addl = _num(f.additionalCost, 0);
+  const factor = _num(f.costAdjustmentFactor, 1) || 1;
+  const t = _totals(ings, addl, factor);
+  let html = `<h4 style="margin:0 0 6px 0;font-size:0.9rem;">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
+  html += ings.length ? ings.map((i) => _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_num(i.cost, 0) * _num(i.quantity, 0)))).join('') : '<div class="u-text-muted">No ingredients.</div>';
+  if (addl > 0) html += _row(`Additional Cost (${addl} per unit)`, _money(addl), 'color:var(--danger);');
+  html += '<div style="border-top:1px dashed var(--glass-border);margin:8px 0 6px 0;"></div>';
+  html += _row('Unit Weight', _fmt(t.weight) + ' kg');
+  html += _row('Raw Material Cost per Unit', _money(t.raw));
+  html += _row('Total Cost per Unit', _money(t.perUnit), 'font-weight:700;');
+  html += _row('Cost per kg (Sales/Calc)', _money(t.perKg));
+  html += '<div class="formula-store-edit-hint">Tap to edit or swap</div>';
+  return `<div class="formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;
+}
 export async function renderFormulaStoreList() {
   const box = _el('formulaStoreList');
   if (!box) return;
   const list = await getFormulaStore();
   if (!list.length) {
-    box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap "+ New Formula" to add one.</div>';
+    box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
-  box.innerHTML = list.map((f) => {
-    const t = _totals(ensureArray(f.ingredients), _num(f.additionalCost, 0), _num(f.costAdjustmentFactor, 1));
-    return `<div class="formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')"><div class="formula-store-card-name">${esc(f.name || 'Untitled')}</div><div class="formula-store-card-meta">${ensureArray(f.ingredients).length} ingredients · ${_fmt(t.weight)} kg · ${_fmt(t.perUnit)} / unit</div></div>`;
-  }).join('');
+  const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  box.innerHTML = list.map((f) => _card(f, inventory)).join('');
 }
 export async function openFormulaStore() {
   await renderFormulaStoreList();
@@ -88,12 +114,16 @@ export function updateFormulaStoreSummary() {
   set('fsSummaryPerUnit', _fmt(t.perUnit));
   set('fsSummaryPerKg', _fmt(t.perKg));
 }
-function _bindEditor() {
-  const container = _el('fsEditContainer');
+function _bindContainer(id, refresh) {
+  const container = _el(id);
   if (!container || container.dataset.bound === '1') return;
   container.dataset.bound = '1';
-  const refresh = () => setTimeout(updateFormulaStoreSummary, 0);
-  ['input', 'mousedown', 'click', 'focusout'].forEach((evt) => container.addEventListener(evt, refresh));
+  const run = () => setTimeout(refresh, 0);
+  ['input', 'mousedown', 'click', 'focusout'].forEach((evt) => container.addEventListener(evt, run));
+}
+function _bindEditor() {
+  _bindContainer('fsEditContainer', updateFormulaStoreSummary);
+  _bindContainer('factoryRawMaterialsContainerAsaan', () => { if (typeof window.updateFactoryFormulasSummaryAsaan === 'function') window.updateFactoryFormulasSummaryAsaan(); });
 }
 export async function openFormulaStoreEditor(id) {
   _editingId = id || null;
@@ -110,8 +140,29 @@ export async function openFormulaStoreEditor(id) {
   if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen('formula-store-edit-screen');
   await _fillEditor(entry || { name: '', ingredients: [], additionalCost: 0, costAdjustmentFactor: 1 });
 }
+const _ROW_TARGETS = { standard: 'factoryRawMaterialsContainer', asaan: 'factoryRawMaterialsContainerAsaan', store: 'fsEditContainer' };
+function _refreshFor(kind) {
+  if (kind === 'store') updateFormulaStoreSummary();
+  else if (kind === 'asaan' && typeof window.updateFactoryFormulasSummaryAsaan === 'function') window.updateFactoryFormulasSummaryAsaan();
+  else if (typeof window.updateFactoryFormulasSummary === 'function') window.updateFactoryFormulasSummary();
+}
+export async function addFormulaIngredientRow(kind) {
+  const container = _el(_ROW_TARGETS[kind]);
+  if (!container) return;
+  await _ensureRowBuilder();
+  if (typeof window.createFactorySettingRow !== 'function') { showToast('Formula editor is still loading, try again', 'warning'); return; }
+  _bindEditor();
+  const before = container.children.length;
+  await window.createFactorySettingRow(container, '', '', null, '', null);
+  if (container.children.length === before) return;
+  const row = container.lastElementChild;
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  const inp = row.querySelector('.factory-mat-search-input');
+  if (inp) setTimeout(() => inp.focus(), 200);
+  _refreshFor(kind);
+}
 export function addFormulaStoreRow() {
-  _ensureRowBuilder().then(() => window.createFactorySettingRow(_el('fsEditContainer'), '', '', null, '', null));
+  return addFormulaIngredientRow('store');
 }
 export async function saveFormulaStoreEntry(silent) {
   const c = _collectEditor();
@@ -196,4 +247,5 @@ export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
-Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaStoreRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, toggleFormulaStoreSwap, swapFormulaStoreWith, updateFormulaStoreSummary, refreshFormulaStoreScreens });
+Object.assign(window, { addFormulaIngredientRow, ensureFormulaEditorReady: _ensureRowBuilder, openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaStoreRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, toggleFormulaStoreSwap, swapFormulaStoreWith, updateFormulaStoreSummary, refreshFormulaStoreScreens });
+_bindEditor();

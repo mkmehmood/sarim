@@ -6373,7 +6373,8 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 }
 .auth-screen .auth-field input:focus + label, .auth-screen .auth-field input:not(:placeholder-shown) + label { color: #059669 !important; }
 @media (max-height: 720px) { .auth-screen .auth-logo { width: min(70vw, 260px); margin-bottom: 10px; } }
-.formula-store-card { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
-.formula-store-card:active { background: var(--highlight-bg); }
-.formula-store-card-name { font-weight: 700; color: var(--text-main); font-size: 0.95rem; }
-.formula-store-card-meta { margin-top: 3px; font-size: 0.75rem; color: var(--text-muted); }
+.formula-store-card { margin: 0 0 12px 0; cursor: pointer; }
+.formula-store-edit-hint { margin-top: 8px; font-size: 0.68rem; color: var(--text-muted); text-align: right; }
+#formula-store-screen .screen-body { padding-bottom: 96px; }
+.formula-fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); cursor: pointer; z-index: 5; transition: transform 0.12s; }
+.formula-fab:active { transform: scale(0.92); }
