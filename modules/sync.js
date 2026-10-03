@@ -1912,12 +1912,13 @@ export async function subscribeToRealtime() {
         if (!cloud || !Array.isArray(cloud.stores)) return;
         const cloudTs = cloud.stores_timestamp || 0;
         const localTs = (await sqliteStore.get('app_stores_timestamp')) || 0;
-        if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
+        if (localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
         const local = await sqliteStore.get('app_stores') || [];
-        const cloudSorted = [...cloud.stores].sort((a, b) => (a.key || '').localeCompare(b.key || ''));
+        const cloudStores = _keepLocalSalePrices(cloud.stores, local);
+        const cloudSorted = [...cloudStores].sort((a, b) => (a.key || '').localeCompare(b.key || ''));
         const localSorted = [...local].sort((a, b) => (a.key || '').localeCompare(b.key || ''));
         if (JSON.stringify(cloudSorted) !== JSON.stringify(localSorted)) {
-          await sqliteStore.set('app_stores', cloud.stores);
+          await sqliteStore.set('app_stores', cloudStores);
           if (cloudTs) await sqliteStore.set('app_stores_timestamp', cloudTs);
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           emitSyncUpdate({ appStores: null });
@@ -2333,6 +2334,14 @@ export function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
   return Array.from(mergedMap.values());
 }
 
+function _keepLocalSalePrices(cloudStores, localStores) {
+  const local = Array.isArray(localStores) ? localStores : [];
+  return cloudStores.map((c) => {
+    if (!c || (c.salePrice > 0)) return c;
+    const l = local.find((x) => x && x.key === c.key);
+    return l && l.salePrice > 0 ? { ...c, salePrice: l.salePrice } : c;
+  });
+}
 export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   if (depth > 20) return null;
   if (obj === null || obj === undefined) return null;
@@ -2993,8 +3002,8 @@ export async function _syncSettings(cloudData) {
     if (asd && Array.isArray(asd.stores)) {
       const cloudStoresTs = asd.stores_timestamp || 0;
       const localStoresTs = (await sqliteStore.get('app_stores_timestamp')) || 0;
-      if (cloudStoresTs >= localStoresTs) {
-        await sqliteStore.set('app_stores', asd.stores);
+      if (cloudStoresTs > localStoresTs || !localStoresTs) {
+        await sqliteStore.set('app_stores', _keepLocalSalePrices(asd.stores, await sqliteStore.get('app_stores')));
         if (cloudStoresTs) await sqliteStore.set('app_stores_timestamp', cloudStoresTs);
         if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
       }
@@ -3189,7 +3198,7 @@ export async function _uploadChanges(userRef) {
     const _as = await sqliteStore.get('app_stores');
     configBatch.set(
       userRef.collection('appStores').doc('stores'),
-      sanitizeForFirestore({ stores: _as || [] }),
+      sanitizeForFirestore({ stores: _as || [], stores_timestamp: localStoresTs }),
       { merge: true }
     );
     operationCount++;

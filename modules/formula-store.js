@@ -466,11 +466,30 @@ function _renderChoice(hostId, items, active, onPick, emptyText) {
 }
 export async function setStoreFormulaSelection(id) {
   const list = await getFormulaStore();
-  const items = list.map((f) => ({ value: String(f.id), label: f.name || 'Untitled' }));
-  const picked = items.find((x) => x.value === String(id)) || (items.length === 1 ? items[0] : null);
+  const f = list.find((x) => String(x.id) === String(id));
   const input = _el('store-formula-select');
-  if (input) input.value = picked ? picked.value : '';
-  _renderChoice('storeFormulaToggle', items, picked ? picked.value : '', (v) => { setStoreFormulaSelection(v); }, 'Add a formula in the Formula Store first');
+  if (input) input.value = f ? String(f.id) : '';
+  const btn = _el('store-formula-btn');
+  const sp = btn ? btn.querySelector('span') : null;
+  if (sp) sp.textContent = f ? (f.name || 'Untitled') : 'Select formula';
+}
+export async function openStoreFormulaPicker(btn) {
+  const old = document.getElementById('_pop_storeFormula');
+  const wasOpen = !!old && old.style.display !== 'none';
+  if (old) old.remove();
+  if (wasOpen) return;
+  const list = await getFormulaStore();
+  if (!list.length) { showToast('Add a formula in the Formula Store first', 'warning'); return; }
+  window._mkPopover(btn.parentNode, '_pop_storeFormula', list.map((f) => ({ value: String(f.id), label: f.name || 'Untitled' })), (v) => {
+    const input = _el('store-formula-select');
+    if (input) input.value = v;
+  });
+  const pop = document.getElementById('_pop_storeFormula');
+  if (pop) {
+    pop.style.left = '0';
+    pop.style.maxHeight = '220px';
+    pop.style.overflowY = 'auto';
+  }
 }
 function _slotItems(view, order) {
   return view ? order.map((k) => ({ value: k, label: view.labels[k] })) : [];
@@ -512,8 +531,6 @@ export async function refreshFormulaDependentUI() {
   if (typeof window.setFactoryAvailableStore === 'function') await window.setFactoryAvailableStore(availSlot);
   else syncFactoryAvailPicker(availSlot);
   refreshFormulaStoreScreens();
-  const storeFormulaInput = _el('store-formula-select');
-  if (storeFormulaInput) await setStoreFormulaSelection(storeFormulaInput.value);
   if (typeof window.renderStoreList === 'function' && _el('store-manager-screen') && _el('store-manager-screen').style.display !== 'none') window.renderStoreList();
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
   if (typeof window.renderFactoryHistory === 'function') window.renderFactoryHistory();
@@ -522,4 +539,4 @@ export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
-Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, ensureFormulaStoreMigrated, commitStoresWithFormulas, setStoreFormulaSelection, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });
+Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, ensureFormulaStoreMigrated, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });
