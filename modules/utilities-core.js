@@ -1193,8 +1193,17 @@ export const splashQuotes = [
 ];
 export function initSplashScreen() {
 const randomQuote = splashQuotes[Math.floor(Math.random() * splashQuotes.length)];
-document.getElementById('splash-quote').textContent = `"${randomQuote.quote || ''}"`;
-document.getElementById('splash-author').textContent = `— ${randomQuote.author || 'Unknown'}`;
+const q = document.getElementById('splash-quote');
+const a = document.getElementById('splash-author');
+if (q) q.textContent = `"${randomQuote.quote || ''}"`;
+if (a) a.textContent = randomQuote.author || 'Unknown';
+const d = document.getElementById('splash-date');
+if (d) {
+const now = new Date();
+const p = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).formatToParts(now)
+.reduce((o, x) => (o[x.type] = x.value, o), {});
+d.textContent = `${p.weekday} · ${p.day} ${p.month} ${p.year}`.toUpperCase();
+}
 }
 
 export function updatePaymentStatusVisibility() {

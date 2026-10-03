@@ -1541,26 +1541,45 @@ window._showLogoutConfirmDialog = async function() {
     <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="rep-cust-edit-save-btn" onclick="(async()=>{await saveRepCustomerDetails()})()">Update Details</button>
   </div>
 </div>
-<div id="splash-screen">
-<div class="flower flower1"></div>
-<div class="flower flower2"></div>
-<div class="flower flower3"></div>
-<div class="flower flower4"></div>
-<div class="flower flower5"></div>
-<div class="flower flower6"></div>
-<div class="flower flower7"></div>
-<div class="flower flower8"></div>
-<div class="splash-ornament ornament-top"></div>
-<div class="splash-content">
-<div class="splash-brand">
-<div class="splash-brand-main">GULL AND ZUBAIR</div>
-<div class="splash-brand-sub">Naswar Dealers</div>
+<div id="splash-screen" role="status" aria-label="Loading">
+<div class="splash-margin" aria-hidden="true"></div>
+<div class="splash-head">
+<span class="splash-kicker" id="splash-kicker">Hodiernal</span>
+<span class="splash-date" id="splash-date"></span>
 </div>
+<div class="splash-stamp-wrap">
+<svg class="splash-stamp" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gull and Zubair Naswar Dealers seal">
+<defs>
+<filter id="stamp-rough" x="-5%" y="-5%" width="110%" height="110%">
+<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="3" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 2.05" result="m"/>
+<feComposite in="d" in2="m" operator="in"/>
+</filter>
+<path id="stamp-ring" d="M200,348 A148,148 0 1,1 200,52 A148,148 0 1,1 200,348"/>
+</defs>
+<g class="stamp-ink" filter="url(#stamp-rough)">
+<circle cx="200" cy="200" r="194" fill="none" stroke-width="5"/>
+<circle cx="200" cy="200" r="184" fill="none" stroke-width="1.6"/>
+<circle cx="200" cy="200" r="127" fill="none" stroke-width="1.3"/>
+<circle cx="200" cy="200" r="120" fill="none" stroke-width="1" stroke-dasharray="1.5 3.5" stroke-linecap="round"/>
+<text class="stamp-ring-text" font-size="31" letter-spacing="6"><textPath href="#stamp-ring" startOffset="150" textLength="745" lengthAdjust="spacing">✦ GULL AND ZUBAIR ✦ NASWAR DEALERS</textPath></text>
+<path d="M200 128 C186 118 168 114 156 122 C158 140 172 152 192 150 C196 146 199 138 200 128 Z"/>
+<path d="M200 128 C214 118 232 114 244 122 C242 140 228 152 208 150 C204 146 201 138 200 128 Z"/>
+<path d="M200 126 L200 112" fill="none" stroke-width="2.4" stroke-linecap="round"/>
+<text x="200" y="228" text-anchor="middle" class="stamp-mono" font-size="92">GZ</text>
+<path d="M170 252 L228 246" fill="none" stroke-width="2" stroke-linecap="round"/>
+<path d="M200 262 l5 6 -5 6 -5 -6 z"/>
+</g>
+</svg>
+</div>
+<div class="splash-foot">
 <div class="splash-quote" id="splash-quote">wisdom</div>
-<div class="splash-author" id="splash-author">— Inspiring Minds</div>
-<div class="splash-loader"></div>
+<div class="splash-author-row"><span class="splash-author-rule" aria-hidden="true"></span><span class="splash-author" id="splash-author">Inspiring Minds</span></div>
+<div class="splash-status">Opening your books</div>
+<div class="splash-progress" aria-hidden="true"><i></i><i></i></div>
 </div>
-<div class="splash-ornament ornament-bottom"></div>
 </div>
 <div id="sys-header" aria-hidden="true"></div>
 <div class="system-controls">
