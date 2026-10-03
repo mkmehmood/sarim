@@ -3544,6 +3544,46 @@ export function capturePhotoFromCamera() {
   }, 120);
 }
 
+export function openCameraGallery() {
+  const input = document.getElementById('cam-gallery-input');
+  if (input) input.click();
+}
+
+function _readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+export async function handleCameraGalleryFiles(event) {
+  const files = Array.from((event.target.files || [])).filter(f => !f.type || f.type.startsWith('image/'));
+  event.target.value = '';
+  const target = _photoCaptureTarget;
+  if (!files.length || !target) return;
+  closePhotoCapture();
+  try {
+    if (target === 'prod' && typeof window.addProdPhotos === 'function') {
+      await window.addProdPhotos(files);
+      return;
+    }
+    const dataUrl = await _readFileAsDataUrl(files[0]);
+    if (target === 'expense') {
+      _applyExpensePendingPhoto(dataUrl);
+    } else if (target === 'paytransfer') {
+      if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(dataUrl);
+    } else if (target === 'prod') {
+      if (typeof window.addProdPhotoDataUrl === 'function') window.addProdPhotoDataUrl(dataUrl);
+    } else {
+      applyPersonPhoto(target, dataUrl);
+    }
+  } catch (e) {
+    showToast('Could not load the selected photo', 'warning');
+  }
+}
+
 window._expensePendingPhoto = null;
 
 export function openExpensePhotoCapture() {
@@ -4112,6 +4152,8 @@ window.flipCamera = flipCamera;
 window.setCameraZoom = setCameraZoom;
 window.stepCameraZoom = stepCameraZoom;
 window.capturePhotoFromCamera = capturePhotoFromCamera;
+window.openCameraGallery = openCameraGallery;
+window.handleCameraGalleryFiles = handleCameraGalleryFiles;
 window.openExpensePhotoCapture = openExpensePhotoCapture;
 window.handleExpensePhotoFile = handleExpensePhotoFile;
 window._applyExpensePendingPhoto = _applyExpensePendingPhoto;

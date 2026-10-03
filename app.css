@@ -6235,7 +6235,9 @@ font-feature-settings: "tnum" 1;
 }
 .cam-pill.on { background: var(--accent, #1de9b6); color: #06251f; border-color: transparent; }
 .cam-shutter-row { display: flex; align-items: center; justify-content: space-between; padding-top: 2px; }
-.cam-cancel { background: none; border: none; color: #e2e8f0; font-size: 0.9rem; font-weight: 600; cursor: pointer; width: 76px; text-align: left; padding: 10px 0; }
+.cam-gallery { background: none; border: none; color: #e2e8f0; font-size: 0.72rem; font-weight: 600; cursor: pointer; width: 76px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 4px 0; }
+.cam-gallery-ico { width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center; }
+.cam-gallery:active .cam-gallery-ico { background: rgba(255, 255, 255, 0.18); }
 .cam-spacer { width: 76px; }
 .cam-shutter {
   width: 74px; height: 74px; border-radius: 50%; border: 4px solid #f8fafc; background: transparent; padding: 4px; cursor: pointer;

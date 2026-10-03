@@ -1649,7 +1649,11 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div class="cam-pills" id="cam-pills"></div>
     <div class="cam-shutter-row">
-      <button type="button" class="cam-cancel" onclick="closePhotoCapture()">Cancel</button>
+      <button type="button" class="cam-gallery" onclick="openCameraGallery()" aria-label="Choose from gallery">
+        <span class="cam-gallery-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-8 9"/></svg></span>
+        <span>Gallery</span>
+      </button>
+      <input type="file" id="cam-gallery-input" accept="image/*" multiple style="display:none" onchange="handleCameraGalleryFiles(event)">
       <button type="button" class="cam-shutter" onclick="capturePhotoFromCamera()" aria-label="Capture photo"><span></span></button>
       <span class="cam-spacer"></span>
     </div>
