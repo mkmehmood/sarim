@@ -108,9 +108,6 @@ function _afterChange() {
 async function _runMigration() {
   const batch = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, ..._FEED_KEYS]);
   const rawSlots = batch.get(SLOTS_KEY);
-  const savedStores = await sqliteStore.get('app_stores');
-  const hasSavedStores = Array.isArray(savedStores) && savedStores.length > 0;
-  const stores = ensureArray(hasSavedStores ? savedStores : await getAppStores()).map((s) => ({ ...s }));
   const list = ensureArray(batch.get(STORE_KEY)).filter((f) => f && f.id);
   const slots = { standard: (rawSlots && rawSlots.standard) || null, asaan: (rawSlots && rawSlots.asaan) || null };
   const formulas = batch.get('factory_default_formulas') || {};
@@ -134,25 +131,12 @@ async function _runMigration() {
       slotsChanged = true;
     }
   });
-  let storesChanged = false;
-  stores.forEach((s) => {
-    if (!hasSavedStores) return;
-    const valid = s.formulaId && list.find((f) => String(f.id) === String(s.formulaId));
-    if (valid) return;
-    const id = slots[s.formulaType || 'standard'];
-    if (!id || s.formulaId === id) return;
-    s.formulaId = id;
-    storesChanged = true;
-  });
-  if (!listChanged && !slotsChanged && !storesChanged) return;
+  if (!listChanged && !slotsChanged) return;
   await _freezeLegacyRecords();
   const writes = [];
-  if (listChanged) writes.push([STORE_KEY, list], [STORE_TS_KEY, now]);
-  if (slotsChanged) writes.push([SLOTS_KEY, slots], [SLOTS_TS_KEY, now]);
-  if (storesChanged) writes.push(['app_stores', stores]);
+  if (listChanged) writes.push([STORE_KEY, list]);
+  if (slotsChanged) writes.push([SLOTS_KEY, slots]);
   await sqliteStore.setBatch(writes);
-  _invalidateStoresCache();
-  if (typeof triggerAutoSync === 'function') triggerAutoSync();
 }
 export function ensureFormulaStoreMigrated() {
   if (!_migration) _migration = _runMigration().catch((e) => { console.warn('[formula-store] migration failed', e && e.message); }).finally(() => { _migration = null; });
@@ -161,6 +145,11 @@ export function ensureFormulaStoreMigrated() {
 export async function commitStoresWithFormulas(stores) {
   await ensureFormulaStoreMigrated();
   const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('factory_unit_tracking')]);
+  stores = stores.map((s) => {
+    if (s.formulaId) return s;
+    const inherited = slots[s.formulaType || 'standard'];
+    return inherited ? { ...s, formulaId: inherited } : s;
+  });
   const ids = [];
   stores.forEach((s) => { if (s.formulaId && !ids.includes(String(s.formulaId))) ids.push(String(s.formulaId)); });
   if (ids.some((id) => !list.find((f) => String(f.id) === id))) return { ok: false, error: 'Selected formula no longer exists in the Formula Store' };
