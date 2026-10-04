@@ -2081,60 +2081,184 @@ export async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
   showToast('No photo attached to this transaction', 'warning', 2000);
 }
 
+const _supplierMatOriginal = (m) => parseFloat((m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : (m.quantity || 0) * (m.cost || 0)) || 0).toFixed(2));
+const _txMaterialIds = (t) => {
+const ids = new Set();
+if (t && t.materialId) ids.add(String(t.materialId));
+if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
+return ids;
+};
+const _clearMaterialSupplier = (m) => {
+delete m.supplierId;
+delete m.supplierName;
+delete m.supplierContact;
+delete m.supplierType;
+delete m.totalPayable;
+delete m.paidDate;
+m.paymentStatus = 'pending';
+m.updatedAt = getTimestamp();
+ensureRecordIntegrity(m, true);
+};
+async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
+const saved = [];
+for (const sid of supplierIds) {
+const payments = transactions
+.filter(t => !excludeIds.has(String(t.id)) && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(sid))
+.sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
+const ids = new Set(extraMaterialIds || []);
+payments.forEach(t => _txMaterialIds(t).forEach(i => ids.add(i)));
+const skip = skipMaterialIds || new Set();
+const mats = inventory.filter(m => !skip.has(String(m.id)) && (String(m.supplierId) === String(sid) || (!m.supplierId && ids.has(String(m.id)))));
+if (mats.length === 0) continue;
+mats.sort((a, b) => new Date(a.purchaseDate || a.createdAt || 0) - new Date(b.purchaseDate || b.createdAt || 0));
+mats.forEach(m => {
+m.totalPayable = _supplierMatOriginal(m);
+m.paymentStatus = 'pending';
+delete m.paidDate;
+});
+payments.forEach(pay => {
+let remaining = parseFloat(pay.amount) || 0;
+for (const m of mats) {
+if (remaining <= 0) break;
+if (m.totalPayable <= 0) continue;
+if (remaining >= m.totalPayable) {
+remaining -= m.totalPayable;
+m.totalPayable = 0;
+m.paymentStatus = 'paid';
+m.paidDate = pay.date;
+} else {
+m.totalPayable = parseFloat((m.totalPayable - remaining).toFixed(2));
+remaining = 0;
+}
+}
+});
+for (const m of mats) {
+m.updatedAt = getTimestamp();
+ensureRecordIntegrity(m, true);
+await unifiedSave('factory_inventory_data', inventory, m);
+saved.push(m);
+}
+}
+return saved;
+}
+
+export function _describeSupplierLinkImpact(tx, transactions, inventory) {
+const out = { materialNames: [], paymentCount: 0, paymentTotal: 0 };
+const seen = new Set();
+if (!tx || !tx.isPayable || tx.type !== 'IN') return out;
+const ids = _txMaterialIds(tx);
+const inv = ensureArray(inventory);
+const txs = ensureArray(transactions);
+inv.filter(m => ids.has(String(m.id)) && String(m.supplierId) === String(tx.entityId)).forEach(m => {
+out.materialNames.push(m.name || 'Material');
+txs.filter(t => String(t.id) !== String(tx.id) && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(tx.entityId) && _txMaterialIds(t).size > 0 && [..._txMaterialIds(t)].every(i => ids.has(i))).forEach(t => {
+if (seen.has(String(t.id))) return;
+seen.add(String(t.id));
+out.paymentCount++;
+out.paymentTotal += parseFloat(t.amount) || 0;
+});
+});
+return out;
+}
+
+export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory) {
+const result = { unlinked: [], recomputed: [], removedTxs: [], changed: false };
+const txs = (Array.isArray(deletedTxs) ? deletedTxs : [deletedTxs]).filter(t => t && (t.isPayable || t.materialId));
+if (txs.length === 0) return result;
+const inventory = allInventory || ensureArray(await sqliteStore.get('factory_inventory_data'));
+const transactions = allTransactions || ensureArray(await sqliteStore.get('payment_transactions'));
+const deletingIds = new Set(txs.map(t => String(t.id)));
+const supplierIds = new Set();
+const extraMaterialIds = new Set();
+const unlinkIds = new Set();
+txs.forEach(t => {
+if (!t.isPayable) return;
+if (t.type === 'IN') _txMaterialIds(t).forEach(i => unlinkIds.add(i));
+else if (t.type === 'OUT') {
+supplierIds.add(String(t.entityId));
+_txMaterialIds(t).forEach(i => extraMaterialIds.add(i));
+}
+});
+for (const id of unlinkIds) {
+const mat = inventory.find(m => String(m.id) === id);
+if (!mat || !mat.supplierId) continue;
+const oldSupplier = String(mat.supplierId);
+const entityMatches = txs.some(t => t.type === 'IN' && t.isPayable && String(t.entityId) === oldSupplier && _txMaterialIds(t).has(id));
+if (!entityMatches) continue;
+const linked = transactions.filter(t => !deletingIds.has(String(t.id)) && t.isPayable === true && String(t.entityId) === oldSupplier && _txMaterialIds(t).has(id));
+for (const lt of linked) {
+const ids = _txMaterialIds(lt);
+const exclusive = lt.type === 'IN' || [...ids].every(i => unlinkIds.has(i));
+if (!exclusive) continue;
+const idx = transactions.findIndex(t => String(t.id) === String(lt.id));
+if (idx === -1) continue;
+transactions.splice(idx, 1);
+await unifiedDelete('payment_transactions', transactions, lt.id, { strict: true }, lt);
+result.removedTxs.push(lt);
+}
+_clearMaterialSupplier(mat);
+await unifiedSave('factory_inventory_data', inventory, mat);
+result.unlinked.push(mat);
+supplierIds.add(oldSupplier);
+}
+const removedIds = new Set(result.removedTxs.map(t => String(t.id)));
+const exclude = new Set([...deletingIds, ...removedIds]);
+result.recomputed = await _recomputeSupplierPayables([...supplierIds], inventory, transactions, exclude, extraMaterialIds, new Set(result.unlinked.map(m => String(m.id))));
+result.changed = result.unlinked.length > 0 || result.recomputed.length > 0 || result.removedTxs.length > 0;
+return result;
+}
+
+export async function _reconcileSupplierLinkAfterRecovery(tx) {
+if (!tx || !tx.isPayable) return false;
+const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const transactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const entities = ensureArray(await sqliteStore.get('payment_entities'));
+let changed = false;
+if (tx.type === 'IN') {
+const ent = entities.find(e => String(e.id) === String(tx.entityId));
+for (const id of _txMaterialIds(tx)) {
+const mat = inventory.find(m => String(m.id) === id);
+if (!mat || mat.supplierId || !ent) continue;
+mat.supplierId = ent.id;
+mat.supplierName = ent.name;
+mat.supplierContact = ent.phone || '';
+mat.supplierType = 'payee';
+mat.paymentStatus = 'pending';
+mat.totalPayable = _supplierMatOriginal(mat);
+mat.updatedAt = getTimestamp();
+ensureRecordIntegrity(mat, true);
+await unifiedSave('factory_inventory_data', inventory, mat);
+changed = true;
+}
+}
+const saved = await _recomputeSupplierPayables([String(tx.entityId)], inventory, transactions, new Set(), _txMaterialIds(tx));
+return changed || saved.length > 0;
+}
+
+export async function _refreshSupplierLinkViews() {
+try { notifyDataChange('all'); } catch (_) {}
+try { if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductionStats(); } catch (_) {}
+try { if (typeof renderFactoryInventory === 'function') await renderFactoryInventory(); } catch (_) {}
+try { if (typeof updateFactorySummaryCard === 'function') updateFactorySummaryCard(); } catch (_) {}
+try { if (typeof updateFactoryUnitsAvailableStats === 'function') updateFactoryUnitsAvailableStats(); } catch (_) {}
+try { if (typeof refreshPaymentTab === 'function') await refreshPaymentTab(true); } catch (_) {}
+try { if (typeof renderEntityTable === 'function') await renderEntityTable(); } catch (_) {}
+try { if (typeof calculateNetCash === 'function') calculateNetCash(); } catch (_) {}
+try { if (typeof calculateCashTracker === 'function') calculateCashTracker(); } catch (_) {}
+try { if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1); } catch (_) {}
+try {
+if (currentEntityId) {
+const ents = ensureArray(await sqliteStore.get('payment_entities'));
+const ent = ents.find(e => String(e.id) === String(currentEntityId));
+if (ent) await renderEntityOverlayContent(ent);
+}
+} catch (_) {}
+}
+
 export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory) {
 if (!tx || !tx.isPayable) return false;
-const factoryInventoryData = allInventory || ensureArray(await sqliteStore.get('factory_inventory_data'));
-const paymentTransactions = allTransactions || ensureArray(await sqliteStore.get('payment_transactions'));
-if (tx.type === 'OUT') {
-const supplierId = tx.entityId;
-const supplierMaterials = factoryInventoryData.filter(m => String(m.supplierId) === String(supplierId));
-if (supplierMaterials.length === 0) return false;
-const remainingPayments = paymentTransactions
-.filter(t => t.id !== tx.id && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(supplierId))
-.sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
-const sortedMaterials = supplierMaterials.slice().sort((a, b) =>
-new Date(a.purchaseDate || a.createdAt || 0) - new Date(b.purchaseDate || b.createdAt || 0)
-);
-sortedMaterials.forEach(mat => {
-const original = parseFloat((
-mat.totalValue ||
-(mat.purchaseCost && mat.purchaseQuantity ? mat.purchaseCost * mat.purchaseQuantity : (mat.quantity || 0) * (mat.cost || 0)) ||
-0
-).toFixed(2));
-mat.totalPayable = original;
-mat.paymentStatus = 'pending';
-delete mat.paidDate;
-mat.updatedAt = getTimestamp();
-});
-remainingPayments.forEach(payment => {
-let remaining = parseFloat(payment.amount) || 0;
-for (const mat of sortedMaterials) {
-if (remaining <= 0) break;
-if (mat.totalPayable <= 0) continue;
-if (remaining >= mat.totalPayable) {
-remaining -= mat.totalPayable;
-mat.totalPayable = 0;
-mat.paymentStatus = 'paid';
-mat.paidDate = payment.date;
-mat.updatedAt = getTimestamp();
-} else {
-mat.totalPayable = parseFloat((mat.totalPayable - remaining).toFixed(2));
-remaining = 0;
-mat.updatedAt = getTimestamp();
-}
-ensureRecordIntegrity(mat, true);
-}
-});
-for (const mat of sortedMaterials) {
-ensureRecordIntegrity(mat, true);
-await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
-}
-return true;
-}
-if (tx.type === 'IN') {
-return true;
-}
-return false;
+const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory);
+return res.changed || tx.type === 'IN';
 }
 
 export async function deleteEntityTransaction(id) {
@@ -2177,7 +2301,9 @@ if (_dt.isPayable && _dt.type === 'OUT') {
 _dtMsg += `\n\n↩ Supplier payable status will be restored — material will revert to pending payment.`;
 }
 if (_dt.isPayable && _dt.type === 'IN') {
-_dtMsg += `\n\n↩ Credit purchase record removed — supplier will be unlinked from material.`;
+const _dtImpact = _describeSupplierLinkImpact(_dt, paymentTransactions, factoryInventoryData);
+_dtMsg += `\n\n↩ Credit purchase record removed — supplier will be unlinked from ${_dtImpact.materialNames.length ? _dtImpact.materialNames.join(', ') : 'the material'}.`;
+if (_dtImpact.paymentCount > 0) _dtMsg += `\n↩ ${_dtImpact.paymentCount} supplier payment${_dtImpact.paymentCount !== 1 ? 's' : ''} (${fmtAmt(_dtImpact.paymentTotal)}) for it will also be reversed.`;
 }
 _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
@@ -2202,13 +2328,11 @@ if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_)
 }
 } catch(_etPhErr) { console.warn('[deleteEntityTransaction] photo cleanup failed', _etPhErr); }
 }
-const _dtEntityRefreshed = paymentEntities.find(e => String(e.id) === String(_dt.entityId));
-if (_dtEntityRefreshed) renderEntityOverlayContent(_dtEntityRefreshed);
-if (typeof calculateNetCash === 'function') calculateNetCash();
-if (typeof calculateCashTracker === 'function') calculateCashTracker();
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
-if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
-showToast(" Transaction deleted and all balances restored!", "success");
+notifyDataChange('payments');
+await _refreshSupplierLinkViews();
+const _dtEntityRefreshed = ensureArray(await sqliteStore.get('payment_entities')).find(e => String(e.id) === String(_dt.entityId));
+if (_dtEntityRefreshed) await renderEntityOverlayContent(_dtEntityRefreshed);
+showToast(_dt.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
 showToast('Failed to delete transaction. Please try again.', 'error');
 }
@@ -2247,15 +2371,10 @@ msg += `\n\n\u21a9 ${_linkedMaterials.length} linked material${_linkedMaterials.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: `Delete Entity Permanently`, confirmText: "Delete", danger: true }))) return;
 try {
+await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), paymentTransactions, factoryInventoryData);
 for (const mat of _linkedMaterials) {
-delete mat.supplierId;
-delete mat.supplierName;
-delete mat.supplierContact;
-delete mat.supplierType;
-mat.paymentStatus = 'pending';
-delete mat.paidDate;
-mat.updatedAt = getTimestamp();
-ensureRecordIntegrity(mat, true);
+if (!mat.supplierId) continue;
+_clearMaterialSupplier(mat);
 await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
 }
 const txsToDelete = _entityTxs.slice();
@@ -2299,11 +2418,8 @@ if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_)
 }
 } catch(_delEntPhErr) { console.warn('[deleteCurrentEntity] photo cleanup failed', _delEntPhErr); }
 notifyDataChange('entities');
-if (typeof calculateNetCash === 'function') calculateNetCash();
-if (typeof calculateCashTracker === 'function') calculateCashTracker();
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 closeEntityDetailsOverlay();
-if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
+await _refreshSupplierLinkViews();
 showToast(`"${_entityName}" and all its transactions deleted.`, 'success');
 } catch (error) {
 showToast('Failed to delete entity. Please try again.', 'error');
@@ -4099,6 +4215,8 @@ window.renderEntityOverlayContent = renderEntityOverlayContent;
 window.filterEntityManagementHistory = filterEntityManagementHistory;
 window._toggleEntityTxnPanel = _toggleEntityTxnPanel;
 window._restorePayableFromDeletedTransaction = _restorePayableFromDeletedTransaction;
+window._reconcileSupplierLinksForDeletedTransactions = _reconcileSupplierLinksForDeletedTransactions;
+window._refreshSupplierLinkViews = _refreshSupplierLinkViews;
 window.deleteEntityTransaction = deleteEntityTransaction;
 window.deleteCurrentEntity = deleteCurrentEntity;
 window.exportEntityData = exportEntityData;

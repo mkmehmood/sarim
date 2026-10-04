@@ -4,7 +4,7 @@ import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHand
 import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _readFileAsText, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { SarimChart, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
+import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, selectReturnStore, setSalesSummaryMode, updateSalesCharts } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
@@ -404,6 +404,7 @@ hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
 let isPayable = false;
 let materialId = null;
+const materialIds = [];
 let materialPayableReduction = 0;
 if (type === 'OUT') {
 const isPendingMatCheck = (m) => (m.paymentStatus === 'pending' || !m.paymentStatus) && parseFloat(m.totalPayable || 0) > 0;
@@ -462,6 +463,7 @@ mat.updatedAt = getTimestamp();
 ensureRecordIntegrity(mat, true);
 materialsToSave.push(mat);
 if (!materialId) materialId = mat.id;
+materialIds.push(mat.id);
 }
 if (materialsToSave.length > 0) {
 isPayable = true;
@@ -489,6 +491,7 @@ amount: amount,
 description: description,
 type: type,
 materialId: materialId,
+materialIds: materialIds,
 isPayable: isPayable,
 timestamp: payCreatedAt,
 syncedAt: new Date().toISOString(),
@@ -553,7 +556,9 @@ if (_dpTx?.isPayable && _dpTx.type === 'OUT') {
 _dpMsg += `\n\n\u21a9 Supplier payable status will be restored — material will revert to pending payment.`;
 }
 if (_dpTx?.isPayable && _dpTx.type === 'IN') {
-_dpMsg += `\n\n\u21a9 Credit purchase record removed — supplier will be unlinked from material.`;
+const _dpImpact = _describeSupplierLinkImpact(_dpTx, paymentTransactions, factoryInventoryData);
+_dpMsg += `\n\n\u21a9 Credit purchase record removed — supplier will be unlinked from ${_dpImpact.materialNames.length ? _dpImpact.materialNames.join(', ') : 'the material'}.`;
+if (_dpImpact.paymentCount > 0) _dpMsg += `\n\u21a9 ${_dpImpact.paymentCount} supplier payment${_dpImpact.paymentCount !== 1 ? 's' : ''} (${fmtAmt(_dpImpact.paymentTotal)}) for it will also be reversed.`;
 }
 _dpMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dpMsg, { title: `Delete ${_dpTx?.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
@@ -585,12 +590,8 @@ if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_)
 } catch(_dpPhErr) { console.warn('[deletePaymentTransaction] photo cleanup failed', _dpPhErr); }
 }
 notifyDataChange('payments');
-if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
-if (typeof calculateNetCash === 'function') calculateNetCash();
-if (typeof calculateCashTracker === 'function') calculateCashTracker();
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
-if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
-showToast(" Transaction deleted and all balances restored!", "success");
+await _refreshSupplierLinkViews();
+showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
 showToast(" Failed to delete transaction. Please try again.", "error");
 }

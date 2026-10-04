@@ -2,7 +2,7 @@ import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { OfflineQueue, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
+import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
 import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
@@ -2299,6 +2299,7 @@ materialsToSave.push(mat);
 if (materialsToSave.length > 0) {
 transaction.isPayable = true;
 transaction.materialId = materialsToSave[0].id;
+transaction.materialIds = materialsToSave.map(m => m.id);
 for (const mat of materialsToSave) {
 await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
 }
@@ -3831,63 +3832,12 @@ confirmMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(confirmMsg, { title: `Delete ${categoryLabel}`, confirmText: "Delete", danger: true }))) return;
 try {
 const txToDelete = paymentTransactions.filter(t => t.expenseId === expenseId);
-const payableOuts = txToDelete.filter(t => t.type === 'OUT' && t.isPayable === true);
-const affectedSupplierIds = [...new Set(payableOuts.map(t => String(t.entityId)))];
-const deletingIds = new Set(txToDelete.map(t => t.id));
-for (const supplierId of affectedSupplierIds) {
-const supplierMaterials = factoryInventoryData.filter(m =>
-String(m.supplierId) === String(supplierId)
-);
-supplierMaterials.forEach(mat => {
-const originalAmount = parseFloat((
-mat.totalValue ||
-(mat.purchaseCost && mat.purchaseQuantity ? mat.purchaseCost * mat.purchaseQuantity : mat.quantity * mat.cost) ||
-0
-).toFixed(2));
-mat.totalPayable = originalAmount;
-mat.paymentStatus = 'pending';
-delete mat.paidDate;
-mat.updatedAt = getTimestamp();
-ensureRecordIntegrity(mat, true);
-});
-const remainingPayments = paymentTransactions
-.filter(t =>
-!deletingIds.has(t.id) &&
-t.isPayable === true &&
-t.type === 'OUT' &&
-String(t.entityId) === String(supplierId)
-)
-.sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
-const sortedMaterials = supplierMaterials.slice().sort((a, b) =>
-new Date(a.purchaseDate || a.date || a.createdAt || 0) -
-new Date(b.purchaseDate || b.date || b.createdAt || 0)
-);
-remainingPayments.forEach(payment => {
-let remaining = parseFloat(payment.amount) || 0;
-for (const mat of sortedMaterials) {
-if (remaining <= 0) break;
-if (mat.totalPayable <= 0) continue;
-if (remaining >= mat.totalPayable) {
-remaining -= mat.totalPayable;
-mat.totalPayable = 0;
-mat.paymentStatus = 'paid';
-mat.paidDate = payment.date;
-mat.updatedAt = getTimestamp();
-} else {
-mat.totalPayable = parseFloat((mat.totalPayable - remaining).toFixed(2));
-remaining = 0;
-mat.updatedAt = getTimestamp();
-}
-ensureRecordIntegrity(mat, true);
-}
-});
-for (const mat of supplierMaterials) {
-await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
-}
-}
+await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), paymentTransactions, factoryInventoryData);
 if (txToDelete.length > 0) {
+let _expRemaining = paymentTransactions.slice();
 for (const trans of txToDelete) {
-await unifiedDelete('payment_transactions', paymentTransactions, trans.id, { strict: true }, trans);
+_expRemaining = _expRemaining.filter(t => t.id !== trans.id);
+await unifiedDelete('payment_transactions', _expRemaining, trans.id, { strict: true }, trans);
 }
 }
 const _expRecFiltered = expenseRecords.filter(e => e.id !== expenseId);
@@ -3911,11 +3861,7 @@ try {
 
 notifyDataChange('expenses');
 renderRecentExpenses();
-if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
-if (typeof calculateNetCash === 'function') calculateNetCash();
-if (typeof calculateCashTracker === 'function') calculateCashTracker();
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
-if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
+await _refreshSupplierLinkViews();
 const label = expense.category === 'operating' ? 'Expense' : `Payment ${expense.category}`;
 showToast(` ${label} deleted — all balances and views restored!`, 'success');
 } catch (error) {
@@ -4148,6 +4094,12 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     }
     if (typeof invalidateAllCaches === 'function') {
       await invalidateAllCaches();
+    }
+    if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && cleanRecord && cleanRecord.isPayable) {
+      try {
+        await _reconcileSupplierLinkAfterRecovery(cleanRecord);
+        await _refreshSupplierLinkViews();
+      } catch (_slErr) { console.warn('[recoverRecord] supplier link reconcile failed', _safeErr(_slErr)); }
     }
     if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
       try {

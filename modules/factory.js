@@ -1,7 +1,7 @@
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
-import { OfflineQueue, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
+import { OfflineQueue, _refreshSupplierLinkViews, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
 import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, deleteStockTransfer, getAppStores, getStoreFormulaType, getStoreLabel, refreshFactoryTab, refreshUI, updateAllTabsWithFactoryCosts, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
@@ -390,11 +390,8 @@ material.updatedAt = getTimestamp();
 ensureRecordIntegrity(material, true);
 if (!skipSideEffects) {
 await unifiedSave('factory_inventory_data', factoryInventoryData, material);
-notifyDataChange('all');
 triggerAutoSync();
-await renderFactoryInventory();
-await refreshPaymentTab();
-calculateNetCash();
+await _refreshSupplierLinkViews();
 showToast(`Unlinked from ${esc(material.name)}`, 'success');
 }
 }
