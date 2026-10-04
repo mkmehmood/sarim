@@ -1191,17 +1191,87 @@ export const splashQuotes = [
 { quote: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" },
 { quote: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" }
 ];
+function renderSplashDay(el) {
+const now = new Date();
+const H = now.getHours() + now.getMinutes() / 60;
+const hour = now.getHours();
+const minute = now.getMinutes();
+const isDay = H >= 6 && H < 18;
+const f = isDay ? (H - 6) / 12 : ((H - 18 + 24) % 24) / 12;
+const period = H < 5 ? 'night' : H < 8 ? 'dawn' : H < 16 ? 'day' : H < 18 ? 'dusk' : 'night';
+const palette = {
+dawn: ['rgba(251,191,36,.34)', 'rgba(16,185,129,.16)', '#F59E0B'],
+day: ['rgba(16,185,129,.26)', 'rgba(8,145,178,.14)', '#F59E0B'],
+dusk: ['rgba(251,146,60,.32)', 'rgba(8,145,178,.16)', '#F97316'],
+night: ['rgba(99,102,241,.30)', 'rgba(16,185,129,.12)', '#E2E8F0']
+}[period];
+el.style.setProperty('--sp-g1', palette[0]);
+el.style.setProperty('--sp-g2', palette[1]);
+el.style.setProperty('--sp-dot', palette[2]);
+const arc = document.getElementById('splash-arc');
+if (arc) {
+arc.setAttribute('stroke-dasharray', `${f * 100} 100`);
+arc.style.setProperty('--sp-len', String(f * 100));
+}
+const dot = document.getElementById('splash-dot');
+if (dot) {
+const x = 150 - 124 * Math.cos(Math.PI * f);
+const y = 150 - 124 * Math.sin(Math.PI * f);
+dot.setAttribute('transform', `translate(${x} ${y})`);
+dot.innerHTML = isDay
+? `<g class="splash-dot-in"><circle r="22" fill="url(#splash-sun-glow)"/><circle r="9.5" fill="${palette[2]}"/><circle r="9.5" fill="none" stroke="var(--sp-solid)" stroke-width="2.5"/></g>`
+: '<g class="splash-dot-in"><circle r="22" fill="url(#splash-sun-glow)"/><g mask="url(#splash-moon-mask)"><circle r="9.5" fill="#E2E8F0"/></g></g>';
+}
+const ticks = document.getElementById('splash-ticks');
+if (ticks && !ticks.firstChild) {
+for (let k = 0; k <= 12; k++) {
+const a = Math.PI * (k / 12);
+const long = k % 6 === 0;
+const r1 = long ? 130 : 131;
+const r2 = long ? 141 : 136;
+const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+line.setAttribute('class', 'splash-tick');
+line.setAttribute('x1', String(150 - r1 * Math.cos(a)));
+line.setAttribute('y1', String(150 - r1 * Math.sin(a)));
+line.setAttribute('x2', String(150 - r2 * Math.cos(a)));
+line.setAttribute('y2', String(150 - r2 * Math.sin(a)));
+line.setAttribute('stroke-width', long ? '1.8' : '1');
+ticks.appendChild(line);
+}
+}
+const l0 = document.getElementById('splash-l0');
+const l1 = document.getElementById('splash-l1');
+if (l0) l0.textContent = isDay ? '06' : '18';
+if (l1) l1.textContent = isDay ? '18' : '06';
+const greet = document.getElementById('splash-greet');
+if (greet) greet.textContent = H < 5 ? 'Early hours' : H < 12 ? 'Good morning' : H < 17 ? 'Good afternoon' : 'Good evening';
+const clock = document.getElementById('splash-clock');
+if (clock) {
+const h12 = ((hour + 11) % 12) + 1;
+clock.textContent = `${h12}:${String(minute).padStart(2, '0')}`;
+const ampm = document.createElement('small');
+ampm.textContent = hour < 12 ? 'AM' : 'PM';
+clock.appendChild(ampm);
+}
+const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const date = document.getElementById('splash-date');
+if (date) date.textContent = `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]}`;
+}
 export function initSplashScreen() {
 const randomQuote = splashQuotes[Math.floor(Math.random() * splashQuotes.length)];
-document.getElementById('splash-quote').textContent = `"${randomQuote.quote || ''}"`;
-document.getElementById('splash-author').textContent = randomQuote.author || 'Unknown';
-const splashDate = document.getElementById('splash-date');
-if (splashDate) {
-const now = new Date();
-const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-splashDate.textContent = `${days[now.getDay()]} · ${String(now.getDate()).padStart(2, '0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
-}
+const q = document.getElementById('splash-quote');
+const a = document.getElementById('splash-author');
+if (q) q.textContent = `"${randomQuote.quote || ''}"`;
+if (a) a.textContent = `— ${randomQuote.author || 'Unknown'}`;
+const el = document.getElementById('splash-screen');
+if (!el) return;
+renderSplashDay(el);
+const timer = setInterval(() => {
+const live = document.getElementById('splash-screen');
+if (!live || live.style.display === 'none') { clearInterval(timer); return; }
+renderSplashDay(live);
+}, 30000);
 }
 
 export function updatePaymentStatusVisibility() {
