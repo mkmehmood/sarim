@@ -1541,50 +1541,40 @@ window._showLogoutConfirmDialog = async function() {
     <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="rep-cust-edit-save-btn" onclick="(async()=>{await saveRepCustomerDetails()})()">Update Details</button>
   </div>
 </div>
-<div id="splash-screen" role="status" aria-label="Loading">
-<div class="splash-col">
-<div class="splash-margin" aria-hidden="true"></div>
-<div class="splash-head">
-<span class="splash-kicker" id="splash-kicker">Hodiernal</span>
-<span class="splash-date" id="splash-date"></span>
-</div>
-<div class="splash-stamp-wrap">
-<svg class="splash-stamp" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gull and Zubair Naswar Dealers seal">
+<div id="splash-screen">
+<div class="splash-head"><span>Hodie</span><span id="splash-date"></span></div>
+<div class="splash-seal">
+<svg viewBox="0 0 220 220" aria-hidden="true">
 <defs>
-<filter id="stamp-rough" x="-4%" y="-4%" width="108%" height="108%">
-<feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="n"/>
-<feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" result="d"/>
-<feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="1" seed="3" result="g"/>
-<feColorMatrix in="g" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 2.15" result="m"/>
-<feComposite in="d" in2="m" operator="in"/>
+<path id="splash-ring-path" d="M110,110 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/>
+<filter id="splash-ink" x="-5%" y="-5%" width="110%" height="110%">
+<feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="2" seed="7" result="n"/>
+<feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.6 2.15" result="m"/>
+<feComposite in="SourceGraphic" in2="m" operator="in" result="c"/>
+<feTurbulence type="turbulence" baseFrequency="0.5" numOctaves="1" seed="3" result="t"/>
+<feDisplacementMap in="c" in2="t" scale="1.8" xChannelSelector="R" yChannelSelector="G"/>
 </filter>
-<path id="stamp-ring" d="M200,343.5 A143.5,143.5 0 1,1 200,56.5 A143.5,143.5 0 1,1 200,343.5 A143.5,143.5 0 1,1 200,56.5 A143.5,143.5 0 1,1 200,343.5"/>
 </defs>
-<g class="stamp-ink" filter="url(#stamp-rough)">
-<circle cx="200" cy="200" r="196" fill="none" stroke-width="5.4"/>
-<circle cx="200" cy="200" r="185" fill="none" stroke-width="2"/>
-<circle cx="200" cy="200" r="126" fill="none" stroke-width="1.8"/>
-<circle cx="200" cy="200" r="116" fill="none" stroke-width="1.5" stroke-dasharray="1.2 3.4" stroke-linecap="round"/>
-<text class="stamp-ring-text" font-size="27"><textPath href="#stamp-ring" startOffset="215" textLength="386" lengthAdjust="spacing">GULL AND ZUBAIR</textPath></text>
-<text class="stamp-ring-text" font-size="27"><textPath href="#stamp-ring" startOffset="676" textLength="363" lengthAdjust="spacing">NASWAR DEALERS</textPath></text>
-<path transform="translate(53.2 239.3)" d="M0 -7.5 L1.65 -1.65 L7.5 0 L1.65 1.65 L0 7.5 L-1.65 1.65 L-7.5 0 L-1.65 -1.65Z"/>
-<path transform="translate(346.1 158.1)" d="M0 -7.5 L1.65 -1.65 L7.5 0 L1.65 1.65 L0 7.5 L-1.65 1.65 L-7.5 0 L-1.65 -1.65Z"/>
-<path d="M192 167 C177 169 160 157 152 134 C163 125 177 120 187 124 C196 130 197 150 192 167 Z"/>
-<path d="M194 167 C197 146 204 130 215 123 C224 119 232 122 234 129 C233 149 215 165 194 167 Z"/>
-<path d="M193 168 L193 118" fill="none" stroke-width="2" stroke-linecap="round"/>
-<text x="196" y="226" text-anchor="middle" class="stamp-mono" font-size="72" textLength="116" lengthAdjust="spacingAndGlyphs">GZ</text>
-<path d="M172 261 L245 250" fill="none" stroke-width="2.2" stroke-linecap="round"/>
-<path transform="translate(211 267)" d="M0 -8 L1.65 -1.65 L7.5 0 L1.65 1.65 L0 7.5 L-1.65 1.65 L-7.5 0 L-1.65 -1.65Z"/>
+<g filter="url(#splash-ink)" fill="none" stroke="currentColor">
+<circle cx="110" cy="110" r="104" stroke-width="3.2"/>
+<circle cx="110" cy="110" r="98" stroke-width="1"/>
+<circle cx="110" cy="110" r="67" stroke-width="1.2"/>
+<circle cx="110" cy="110" r="62" stroke-width=".8" stroke-dasharray="1.2 3.6"/>
+<text fill="currentColor" stroke="none" font-family="Cinzel, serif" font-weight="700" font-size="13.5"><textPath href="#splash-ring-path" textLength="486" lengthAdjust="spacing">GULL AND ZUBAIR  ✦  NASWAR DEALERS  ✦  </textPath></text>
+<text x="110" y="124" text-anchor="middle" fill="currentColor" stroke="none" font-family="Cinzel, serif" font-weight="700" font-size="40" letter-spacing="2">GZ</text>
+<g transform="translate(110 84)">
+<path d="M0 8 C-14 6 -20 -6 -22 -14 C-8 -14 0 -6 0 8Z" fill="currentColor" stroke="none"/>
+<path d="M0 8 C14 6 20 -6 22 -14 C8 -14 0 -6 0 8Z" fill="currentColor" stroke="none"/>
+<path d="M0 10 V-16" stroke-width="1.6" stroke-linecap="round"/>
+</g>
+<path d="M90 140 h40" stroke-width="1"/>
+<rect x="107" y="143" width="6" height="6" transform="rotate(45 110 146)" fill="currentColor" stroke="none"/>
 </g>
 </svg>
 </div>
-<div class="splash-foot">
-<div class="splash-quote" id="splash-quote">wisdom</div>
-<div class="splash-author-row"><span class="splash-author-rule" aria-hidden="true"></span><span class="splash-author" id="splash-author">Inspiring Minds</span></div>
-<div class="splash-status">Opening your books</div>
-<div class="splash-progress" aria-hidden="true"><i></i><i></i></div>
-</div>
-</div>
+<div class="splash-quote" id="splash-quote"></div>
+<div class="splash-author" id="splash-author"></div>
+<div class="splash-total"><small>Opening your books</small><div class="splash-dbl"><i></i></div></div>
 </div>
 <div id="sys-header" aria-hidden="true"></div>
 <div class="system-controls">

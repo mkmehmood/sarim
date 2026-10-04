@@ -1193,16 +1193,14 @@ export const splashQuotes = [
 ];
 export function initSplashScreen() {
 const randomQuote = splashQuotes[Math.floor(Math.random() * splashQuotes.length)];
-const q = document.getElementById('splash-quote');
-const a = document.getElementById('splash-author');
-if (q) q.textContent = `"${randomQuote.quote || ''}"`;
-if (a) a.textContent = randomQuote.author || 'Unknown';
-const d = document.getElementById('splash-date');
-if (d) {
+document.getElementById('splash-quote').textContent = `"${randomQuote.quote || ''}"`;
+document.getElementById('splash-author').textContent = randomQuote.author || 'Unknown';
+const splashDate = document.getElementById('splash-date');
+if (splashDate) {
 const now = new Date();
-const p = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).formatToParts(now)
-.reduce((o, x) => (o[x.type] = x.value, o), {});
-d.textContent = `${p.weekday} · ${p.day} ${p.month} ${p.year}`.toUpperCase();
+const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+splashDate.textContent = `${days[now.getDay()]} · ${String(now.getDate()).padStart(2, '0')} ${months[now.getMonth()]} ${now.getFullYear()}`;
 }
 }
 

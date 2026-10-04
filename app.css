@@ -444,6 +444,142 @@ background-size: 200% auto;
 background-clip: text;
 animation: shimmer 3s ease-in-out infinite;
 }
+#splash-screen {
+--sp-ink: #4ADE80;
+--sp-text: #F8FAFC;
+--sp-muted: #94A3B8;
+--sp-rule: rgba(148, 163, 184, 0.11);
+--sp-margin: rgba(248, 113, 113, 0.30);
+--sp-soft: rgba(74, 222, 128, 0.16);
+--sp-shade: rgba(0, 0, 0, 0.35);
+--sp-bg: linear-gradient(145deg, #0F172A 0%, #0C1628 40%, #061019 70%, #020617 100%);
+position: fixed;
+inset: 0;
+overflow: hidden;
+display: flex;
+flex-direction: column;
+padding: env(safe-area-inset-top, 0px) 26px 56px 62px;
+z-index: var(--z-screen, 10200);
+color: var(--sp-text);
+font-family: var(--font-ui);
+background:
+linear-gradient(to right, transparent 35px, var(--sp-margin) 35px 36px, transparent 36px 39px, var(--sp-margin) 39px 40px, transparent 40px),
+repeating-linear-gradient(to top, var(--sp-rule) 0 1px, transparent 1px 28px),
+radial-gradient(120% 90% at 50% 40%, transparent 55%, var(--sp-shade) 100%),
+var(--sp-bg);
+animation: fadeOut 0.6s ease-in-out 3s forwards;
+}
+[data-theme="light"] #splash-screen {
+--sp-ink: #059669;
+--sp-text: #1E293B;
+--sp-muted: #64748B;
+--sp-rule: rgba(100, 116, 139, 0.17);
+--sp-margin: rgba(220, 38, 38, 0.26);
+--sp-soft: rgba(16, 185, 129, 0.16);
+--sp-shade: rgba(15, 23, 42, 0.07);
+--sp-bg: linear-gradient(150deg, #EEF1F4 0%, #F1F4F7 40%, #E9EDF1 100%);
+}
+.splash-head {
+height: 56px;
+margin-top: 28px;
+display: flex;
+justify-content: space-between;
+align-items: flex-end;
+padding-bottom: 2px;
+font-size: 0.64rem;
+font-weight: 700;
+letter-spacing: 0.2em;
+text-transform: uppercase;
+color: var(--sp-muted);
+}
+.splash-head span:last-child { color: var(--sp-ink); }
+.splash-seal {
+flex: 1;
+display: grid;
+place-items: center;
+min-height: 0;
+}
+.splash-seal svg {
+height: min(236px, 62vw);
+max-height: 100%;
+aspect-ratio: 1;
+width: auto;
+color: var(--sp-ink);
+transform: rotate(-8deg);
+overflow: visible;
+animation: splashStamp 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.15) 0.15s both !important;
+}
+.splash-quote {
+font-family: var(--font-display);
+font-style: italic;
+font-weight: 500;
+font-size: 1.1rem;
+line-height: 28px;
+color: var(--sp-text);
+padding-left: 2px;
+}
+.splash-author {
+height: 28px;
+line-height: 28px;
+text-align: right;
+font-size: 0.68rem;
+font-weight: 700;
+letter-spacing: 0.16em;
+text-transform: uppercase;
+color: var(--sp-muted);
+}
+.splash-author::before {
+content: '';
+display: inline-block;
+width: 34px;
+height: 1px;
+margin-right: 10px;
+vertical-align: middle;
+background: var(--sp-ink);
+opacity: 0.7;
+}
+.splash-total {
+height: 56px;
+display: flex;
+flex-direction: column;
+justify-content: flex-end;
+}
+.splash-total small {
+display: block;
+height: 28px;
+line-height: 24px;
+font-size: 0.62rem;
+font-weight: 700;
+letter-spacing: 0.22em;
+text-transform: uppercase;
+color: var(--sp-muted);
+}
+.splash-dbl {
+position: relative;
+height: 7px;
+margin-bottom: 21px;
+border-top: 1.5px solid var(--sp-soft);
+border-bottom: 1.5px solid var(--sp-soft);
+}
+.splash-dbl i {
+position: absolute;
+left: 0;
+top: -1.5px;
+bottom: -1.5px;
+width: 100%;
+border-top: 1.5px solid var(--sp-ink);
+border-bottom: 1.5px solid var(--sp-ink);
+transform-origin: left center;
+animation: splashFill 3s cubic-bezier(0.4, 0, 0.2, 1) both !important;
+}
+@keyframes splashStamp {
+from { opacity: 0; transform: rotate(-8deg) scale(1.2); }
+to { opacity: 1; transform: rotate(-8deg) scale(1); }
+}
+@keyframes splashFill {
+from { transform: scaleX(0.04); }
+to { transform: scaleX(1); }
+}
 @keyframes cy-fade-in {
 from { opacity:0; transform:translateY(-6px) scale(0.98); }
 to   { opacity:1; transform:translateY(0) scale(1); }
@@ -6288,52 +6424,3 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 #formula-store-screen .screen-body { padding-bottom: 96px; }
 .formula-fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); cursor: pointer; z-index: 5; transition: transform 0.12s; }
 .formula-fab:active { transform: scale(0.92); }
-
-/* ── Splash: ruled ledger page ───────────────────────────── */
-#splash-screen {
-  --sp-bg1: #EEF1F5; --sp-bg2: #EEF1F5; --sp-bg3: #E1E5EA; --sp-rule: #D6DCE2; --sp-margin: #EABDBF;
-  --sp-ink: #059669; --sp-label: #64748B; --sp-quote: #1E293B; --sp-author: #64748B; --sp-track: rgba(5,150,105,0.20);
-  position: fixed; inset: 0; z-index: var(--z-screen, 10200); overflow: hidden;
-  font-family: var(--font-ui);
-  background:
-    repeating-linear-gradient(to bottom, transparent 0, transparent 23px, var(--sp-rule) 23px, var(--sp-rule) 24px, transparent 24px, transparent 28px),
-    linear-gradient(165deg, var(--sp-bg1) 0%, var(--sp-bg2) 60%, var(--sp-bg3) 100%);
-  animation: fadeOut 0.6s ease-in-out 3s forwards;
-}
-html:not([data-theme="light"]) #splash-screen {
-  --sp-bg1: #0E1528; --sp-bg2: #08121E; --sp-bg3: #020513; --sp-rule: #1C2538; --sp-margin: #54313E;
-  --sp-ink: #4ADE80; --sp-label: #94A3B8; --sp-quote: #F8FAFC; --sp-author: #94A3B8; --sp-track: rgba(74,222,128,0.16);
-}
-.splash-col {
-  position: absolute; top: 0; bottom: 0; left: 0; right: 0; max-width: 390px; margin: 0 auto;
-  display: flex; flex-direction: column;
-  padding: calc(env(safe-area-inset-top, 0px) + 68px) 27px calc(env(safe-area-inset-bottom, 0px) + 75px) 62px;
-}
-.splash-margin { position: absolute; top: 0; bottom: 0; left: 35px; width: 5px; border-left: 1px solid var(--sp-margin); border-right: 1px solid var(--sp-margin); box-sizing: border-box; }
-#splash-screen .splash-kicker, #splash-screen .splash-date, #splash-screen .splash-status, #splash-screen .splash-author {
-  font-size: 10px; line-height: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.2em; margin-right: -0.2em;
-}
-.splash-head { display: flex; justify-content: space-between; align-items: baseline; position: relative; z-index: 2; }
-.splash-kicker { color: var(--sp-label); }
-.splash-date { color: var(--sp-ink); white-space: nowrap; }
-.splash-stamp-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; position: relative; z-index: 2; }
-.splash-stamp { width: min(58.7vw, 229px); height: auto; overflow: visible; animation: stampIn 0.7s cubic-bezier(.2,.9,.3,1.2) both; }
-.stamp-ink { fill: var(--sp-ink); stroke: var(--sp-ink); }
-.stamp-ink text { stroke: none; }
-.stamp-ring-text { font-family: var(--font-display); font-weight: 700; fill: var(--sp-ink); }
-.stamp-mono { font-family: var(--font-display); font-weight: 700; fill: var(--sp-ink); }
-@keyframes stampIn { from { opacity: 0; transform: scale(1.1) rotate(-3deg); } to { opacity: 1; transform: none; } }
-.splash-foot { position: relative; z-index: 2; }
-.splash-quote { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 18px; line-height: 28px; color: var(--sp-quote); text-align: left; margin: 0; }
-.splash-author-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 28px; }
-.splash-author-rule { width: 34px; height: 1px; background: var(--sp-ink); opacity: .7; flex: none; transform: translateY(-2px); }
-.splash-author { color: var(--sp-author); letter-spacing: 0.22em !important; white-space: nowrap; }
-.splash-status { color: var(--sp-label); margin: 6px 0 9px; }
-.splash-progress { position: relative; height: 8px; }
-.splash-progress i { position: absolute; left: 0; width: 100%; height: 1px; background: var(--sp-track); overflow: hidden; }
-.splash-progress i:first-child { top: 0; }
-.splash-progress i:last-child { top: 7px; }
-.splash-progress i::after { content: ''; position: absolute; inset: 0; background: var(--sp-ink); transform-origin: left; transform: scaleX(0.05); animation: splashFill 3s cubic-bezier(.3,.6,.3,1) forwards; }
-.splash-progress i:last-child::after { animation-delay: .15s; }
-@keyframes splashFill { to { transform: scaleX(0.62); } }
-@media (prefers-reduced-motion: reduce) { .splash-stamp, .splash-progress i::after { animation: none; transform: scaleX(0.62); } .splash-stamp { transform: none; } }
