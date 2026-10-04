@@ -2604,14 +2604,31 @@ function _urduValue(v) {
   return out.replace(/\s+/g, ' ').trim();
 }
 
+const _RLM = '\u200F';
+const _LRI = '\u2066';
+const _PDI = '\u2069';
+const _HAS_URDU = /[\u0600-\u06FF]/;
+const _AMOUNT_ONLY = /^(Rs\.?\s*)?[\d,]+(\.\d+)?$/i;
+function _ltr(v) {
+  const t = String(v == null ? '' : v);
+  return t ? _LRI + t + _PDI : t;
+}
+function _bidiValue(v) {
+  const t = String(v == null ? '' : v);
+  if (!t) return t;
+  if (_AMOUNT_ONLY.test(t) || !_HAS_URDU.test(t)) return _ltr(t);
+  return t;
+}
+
 export function _buildStatementText({ title, name, phone, rangeName, tables }) {
   const lines = [];
-  lines.push('*گل اینڈ زبیر نسوار ڈیلرز*');
-  lines.push(`${_URDU_TITLES[title] || title} \u00b7 ${_URDU_RANGES[rangeName] || rangeName}`);
-  lines.push('');
-  lines.push(`نام: ${name}`);
-  if (phone && phone !== 'N/A') lines.push(`فون: ${phone}`);
-  lines.push(`تاریخ اجراء: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`);
+  const add = (t) => lines.push(t === '' ? '' : _RLM + t);
+  add('*گل اینڈ زبیر نسوار ڈیلرز*');
+  add(`${_URDU_TITLES[title] || title} \u00b7 ${_URDU_RANGES[rangeName] || rangeName}`);
+  add('');
+  add(`نام: ${_bidiValue(name)}`);
+  if (phone && phone !== 'N/A') add(`فون: ${_ltr(phone)}`);
+  add(`تاریخ اجراء: ${_ltr(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))}`);
   let closing = '';
   (tables || []).forEach(t => {
     const headRaw = Array.isArray(t.head) && Array.isArray(t.head[0]) ? t.head[0].map(_stmtCellText) : [];
@@ -2621,8 +2638,8 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
     const skip = new Set();
     headKey.forEach((h, i) => { if (h === 'type') skip.add(i); });
     const isMoney = (i) => /amt|debit|credit|payment|balance|outstanding|settled|remaining|paid/.test(headKey[i] || '');
-    lines.push('');
-    lines.push('------------------------');
+    add('');
+    add('------------------------');
     body.forEach(row => {
       const cells = (Array.isArray(row) ? row : []).map(_stmtCellText);
       const parts = [];
@@ -2631,9 +2648,9 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
         const v = _urduValue(raw);
         if (!v || v === '-' || v === '\u2014') return;
         const label = _URDU_HEADS[headKey[i]];
-        parts.push(label && isMoney(i) ? `${label}: ${v}` : v);
+        parts.push(label && isMoney(i) ? `${label}: ${_bidiValue(v)}` : _bidiValue(v));
       });
-      lines.push(`\u2022 ${_urduValue(cells[0] || '')}${parts.length ? ' | ' + parts.join(' | ') : ''}`);
+      add(`\u2022 ${_bidiValue(_urduValue(cells[0] || ''))}${parts.length ? ' | ' + parts.join(' | ') : ''}`);
     });
     const lastIdx = headKey.length - 1;
     if (lastIdx >= 0 && /balance/.test(headKey[lastIdx])) {
@@ -2643,9 +2660,9 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
     }
   });
   if (closing) {
-    lines.push('');
-    lines.push('------------------------');
-    lines.push(`*کل بیلنس: ${closing}*`);
+    add('');
+    add('------------------------');
+    add(`*کل بیلنس: ${_bidiValue(closing)}*`);
   }
   return lines.join('\n');
 }
