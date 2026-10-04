@@ -41,6 +41,7 @@ export async function enableBiometricLock() {
 try {
 const success = await BiometricAuth.register("Manager");
 if (success) {
+if (window.__setBioHint) window.__setBioHint(true);
 showToast("Biometric Lock Enabled! ", "success");
 await syncBiometricButton();
 }
@@ -55,6 +56,7 @@ if (await showGlassConfirm(_bioMsg, { title: "Remove Biometric Lock", confirmTex
 await sqliteStore.set('bio_enabled', 'false');
 await sqliteStore.remove('bio_cred_id');
 window.__appLocked = false;
+if (window.__setBioHint) window.__setBioHint(false);
 try { await sqliteStore.flush(); } catch (_) {}
 showToast("Biometric Lock Removed", "info");
 await syncBiometricButton();
@@ -64,7 +66,8 @@ await syncBiometricButton();
 export async function checkBiometricLock() {
 const isEnabled = await sqliteStore.get('bio_enabled');
 syncBiometricButton();
-if (!(isEnabled === 'true' || isEnabled === true)) { window.__appLocked = false; return; }
+if (!(isEnabled === 'true' || isEnabled === true)) { window.__appLocked = false; if (window.__setBioHint) window.__setBioHint(false); return; }
+if (window.__setBioHint) window.__setBioHint(true);
 const splash = document.getElementById('splash-screen');
 if (!splash) return;
 window.__appLocked = true;

@@ -55,7 +55,7 @@
 <meta property="og:title" content="Gull and Zubair Naswar Dealers">
 <meta property="og:description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits.">
 
-<script>(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#ffffff":"#000000");try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();</script>
+<script>(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#ffffff":"#000000");try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();</script>
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/cinzel-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/playfair-display-latin-wght-italic.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/plus-jakarta-sans-latin-wght-normal.woff2">
@@ -271,6 +271,37 @@ animation: splashBlink 1.4s ease-in-out infinite !important;
 @keyframes splashBlink {
 0%, 100% { opacity: 1; }
 50% { opacity: 0.35; }
+}
+/* Biometric lock ON: lift content into the area above the system prompt sheet */
+#splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
+html[data-bio="1"] #splash-screen {
+--sp-sheet: clamp(300px, 44vh, 420px);
+justify-content: center;
+padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px var(--sp-sheet);
+}
+@supports (height: 100dvh) {
+html[data-bio="1"] #splash-screen { --sp-sheet: clamp(300px, 44dvh, 420px); }
+}
+html[data-bio="1"] .splash-glow { top: 40px; width: 420px; height: 420px; margin-left: -210px; }
+html[data-bio="1"] .splash-dial { width: min(250px, 66vw); }
+html[data-bio="1"] .splash-clock { font-size: 2.35rem; margin-top: 2px; }
+html[data-bio="1"] .splash-clock small { font-size: 0.75rem; }
+html[data-bio="1"] .splash-greet { font-size: 0.58rem; }
+html[data-bio="1"] .splash-date { font-size: 0.62rem; margin-top: 4px; }
+html[data-bio="1"] .splash-brand { margin-top: 22px; }
+html[data-bio="1"] .splash-brand b { font-size: 1.2rem; }
+html[data-bio="1"] .splash-brand span { margin-top: 6px; font-size: 0.62rem; }
+html[data-bio="1"] .splash-rule { margin: 14px 0; }
+html[data-bio="1"] .splash-quote { max-width: 290px; font-size: 0.98rem; line-height: 1.45; }
+html[data-bio="1"] .splash-author { margin-top: 8px; font-size: 0.62rem; }
+html[data-bio="1"] .splash-foot { display: none; }
+@media (max-height: 700px) {
+html[data-bio="1"] .splash-rule,
+html[data-bio="1"] .splash-quote,
+html[data-bio="1"] .splash-author { display: none; }
+}
+@media (max-height: 560px) {
+html[data-bio="1"] .splash-brand { display: none; }
 }
 #splash-screen.splash-locked {
   animation: none !important;
