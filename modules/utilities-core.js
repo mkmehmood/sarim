@@ -7,7 +7,7 @@ import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealt
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, currentCashTrackerMode, currentCustomerChartMode, currentFactoryDate, currentFactoryEntryStore, currentIndMetric, currentIndMode, currentMfgMode, currentOverviewMode, currentProductionView, currentStoreComparisonMetric, custTransactionMode, getStoreFormulaType, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, currentExpenseOverlayName, currentPerfOverviewMode, currentSalesSummaryMode, deletePaymentTransfer, editEntityBasicInfo, editingEntityId, entityViewMode, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, selectedEntityId, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
-import { showChoiceToast, showGlassConfirm, showToast } from './customers.js';
+import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, currentRepAnalyticsMode, refreshRepUI, renderRepCustomerTable, repTransactionMode } from './rep-sales.js';
 
 export let currentEntityId;
@@ -2617,12 +2617,16 @@ export async function _shareStatementText(text, phone) {
   showToast(hasPhone ? 'Opening WhatsApp with the statement message\u2026' : 'Opening WhatsApp \u2014 choose a contact to send to', 'success');
 }
 
+const _SHARE_ICON_IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>';
+const _SHARE_ICON_TEXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg>';
+const _SHARE_ICON_HEAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>';
+
 export async function promptStatementShare(kind) {
-  const choice = await showChoiceToast('Share statement as:', [
-    { label: '\ud83d\uddbc\ufe0f PDF / Image', value: 'image' },
-    { label: '\ud83d\udcac Text message', value: 'text' }
-  ]);
-  if (!choice) { showToast('Statement sharing cancelled', 'info'); return; }
+  const choice = await showChoiceDialog('Choose how you want to share this statement.', [
+    { label: 'PDF / Image', value: 'image', icon: _SHARE_ICON_IMAGE },
+    { label: 'Text message', value: 'text', icon: _SHARE_ICON_TEXT }
+  ], { title: 'Share Statement', icon: _SHARE_ICON_HEAD });
+  if (!choice) return;
   const opts = { mode: choice };
   if (kind === 'entity') return exportEntityToPDF(opts);
   if (kind === 'customer') return exportCustomerToPDF(opts);

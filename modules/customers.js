@@ -769,53 +769,49 @@ _playNextToast();
 }
 window.showToast = showToast;
 
-export function showChoiceToast(message, choices, { duration = 12000, type = 'info' } = {}) {
+export function showChoiceDialog(message, choices, { title = 'Choose', cancelText = 'Cancel', icon = null } = {}) {
   return new Promise(resolve => {
     const list = Array.isArray(choices) ? choices : [];
-    const toast = document.createElement('div');
-    toast.className = `liquid-toast toast-${type}`;
-    toast.style.cssText = 'border-radius:18px;flex-direction:column;align-items:stretch;cursor:default;max-width:min(340px,calc(100vw - 28px));';
-    const msgEl = document.createElement('div');
-    msgEl.className = 'toast-text';
-    msgEl.style.cssText = 'white-space:normal;padding:10px 14px 6px;text-align:center;font-weight:600;';
-    msgEl.textContent = String(message);
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:8px;padding:4px 10px 12px;';
-    toast.appendChild(msgEl);
-    toast.appendChild(row);
-    const bar = document.createElement('div');
-    bar.className = 'toast-progress-bar';
-    toast.appendChild(bar);
+    const svgIcon = icon || _gcIcons.confirm;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'glass-confirm-backdrop';
+    backdrop.innerHTML = `
+<div class="glass-confirm-box" role="alertdialog" aria-modal="true">
+<div class="glass-confirm-head">
+<div class="glass-confirm-icon icon-primary">${svgIcon}</div>
+<div class="glass-confirm-title">${esc(String(title).trim())}</div>
+</div>
+<div class="glass-confirm-msg">${_gcFormatMessage(message)}</div>
+<div class="glass-confirm-divider"></div>
+<div class="glass-confirm-btns" style="flex-direction:column;gap:8px;">
+${list.map((c, i) => `<button class="glass-confirm-btn ${i === 0 ? 'primary ' : ''}gc-choice" data-i="${i}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;">${c.icon ? `<span style="display:inline-flex;width:18px;height:18px;">${c.icon}</span>` : ''}<span>${esc(c.label)}</span></button>`).join('')}
+<button class="glass-confirm-btn gc-cancel" style="width:100%;">${esc(cancelText)}</button>
+</div>
+</div>
+`;
+    document.body.appendChild(backdrop);
     let settled = false;
-    const finish = (value) => {
+    const cleanup = (result) => {
       if (settled) return;
       settled = true;
-      toast.classList.add('hiding');
-      toast.style.pointerEvents = 'none';
-      setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 350);
-      resolve(value);
+      window._glassConfirmClosing = true;
+      const box = backdrop.querySelector('.glass-confirm-box');
+      backdrop.classList.add('closing');
+      if (box) box.classList.add('closing');
+      setTimeout(() => { backdrop.remove(); resolve(result); }, 200);
+      setTimeout(() => { window._glassConfirmClosing = false; }, 400);
+      document.removeEventListener('keydown', onKey);
     };
-    list.forEach(c => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = c.label;
-      b.style.cssText = 'flex:1;padding:8px 10px;border-radius:12px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text-main);font-size:0.74rem;font-weight:700;cursor:pointer;font-family:var(--font-ui);';
-      b.addEventListener('click', (e) => { e.stopPropagation(); finish(c.value); });
-      row.appendChild(b);
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); cleanup(null); } };
+    document.addEventListener('keydown', onKey);
+    backdrop.querySelectorAll('.gc-choice').forEach(btn => {
+      btn.addEventListener('click', () => cleanup(list[Number(btn.dataset.i)].value), { once: true });
     });
-    toast.classList.add('pre-show');
-    _ensureToastOnTop();
-    toastContainer.appendChild(toast);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      toast.classList.remove('pre-show');
-      toast.classList.add('show');
-      bar.style.animationDuration = duration + 'ms';
-      bar.classList.add('animating');
-    }));
-    setTimeout(() => finish(null), duration);
+    backdrop.querySelector('.gc-cancel').addEventListener('click', () => cleanup(null), { once: true });
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(null); });
   });
 }
-window.showChoiceToast = showChoiceToast;
+window.showChoiceDialog = showChoiceDialog;
 
 export const _gcIcons = {
   delete:   '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 11 L10 31 A2 2 0 0 0 12 33 H24 A2 2 0 0 0 26 31 L28 11 Z" fill="var(--danger)" fill-opacity="0.12" stroke="var(--danger)" stroke-width="1.5" stroke-linejoin="round"/><line x1="6" y1="11" x2="30" y2="11" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round"/><path d="M14 8 H22 M14 8 A1 1 0 0 1 15 7 H21 A1 1 0 0 1 22 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.65"/><line x1="14" y1="17" x2="14" y2="27" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/><line x1="22" y1="17" x2="22" y2="27" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/></svg>',
