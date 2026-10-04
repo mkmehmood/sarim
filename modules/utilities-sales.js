@@ -1922,7 +1922,7 @@ const commissionPaid = parseFloat(document.getElementById('commissionPaid').valu
 
 const netSold = Math.max(0, sold - ret - exp - shared);
 const cashQty = Math.max(0, netSold - cred);
-const expected = (cashQty * salePrice) + prev - fieldExp;
+const expected = (cashQty * salePrice) + prev - fieldExp - commissionPaid;
 document.getElementById('totalExpectedCash').textContent = fmtAmt(safeValue(expected));
 const diff = rec - expected;
 const box = document.getElementById('discrepancyBox');
@@ -2624,7 +2624,7 @@ const creditValue = cred * salePrice;
 const revenue = netSold * salePrice;
 const totalCost = netSold * costPerKg;
 const profit = revenue - totalCost;
-const totalExpected = (cashQty * salePrice) + prev - fieldExp;
+const totalExpected = (cashQty * salePrice) + prev - fieldExp - commissionPaid;
 const diff = rec - totalExpected;
 const grossCommission = commissionPerUnit * netSold;
 const commissionPayable = Math.max(0, grossCommission - commissionPaid);
