@@ -6,7 +6,7 @@ import { OfflineQueue, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _
 import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
-import { calculateRepCustomerStatsForDisplay, checkBiometricLock, disableBiometricLock, openRepCustomerEditModal, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
+import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
 
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 
@@ -902,15 +902,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   });
   updateCalcRangeLabel();
   _set_currentFactoryDate(today);
-  if (await sqliteStore.get('bio_enabled') === 'true') {
-    const bioBtn = document.getElementById('bio-toggle-btn');
-    if (bioBtn) {
-      const lbl = document.getElementById('bio-toggle-label');
-      if (lbl) lbl.textContent = 'Disable Lock';
-      bioBtn.onclick = () => { closeSidebar && closeSidebar(); disableBiometricLock(); };
-      bioBtn.classList.add('active');
-    }
-  }
+  syncBiometricButton();
   const factoryDateEl = document.getElementById('factory-date');
   if (factoryDateEl) {
     factoryDateEl.addEventListener('change', function() {

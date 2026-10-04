@@ -19,18 +19,30 @@ export function _set_currentRepAnalyticsMode(v) { currentRepAnalyticsMode = v; w
   try { const v = window.repTransactionMode; if (v !== undefined) repTransactionMode = v; } catch (_) {}
 });
 
+const _bioIsOn = (v) => v === true || v === 'true';
+export async function syncBiometricButton() {
+const btn = document.getElementById('bio-toggle-btn');
+if (!btn) return;
+let on = false;
+try { on = _bioIsOn(await sqliteStore.get('bio_enabled')); } catch (_) {}
+const lbl = document.getElementById('bio-toggle-label');
+if (lbl) lbl.textContent = on ? 'Disable Fingerprint Lock' : 'Enable Fingerprint Lock';
+btn.classList.toggle('active', on);
+btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+export async function toggleBiometricLock() {
+let on = false;
+try { on = _bioIsOn(await sqliteStore.get('bio_enabled')); } catch (_) {}
+if (on) await disableBiometricLock();
+else await enableBiometricLock();
+await syncBiometricButton();
+}
 export async function enableBiometricLock() {
 try {
 const success = await BiometricAuth.register("Manager");
-if(success) {
+if (success) {
 showToast("Biometric Lock Enabled! ", "success");
-const _bioBtn = document.getElementById('bio-toggle-btn');
-if (_bioBtn) {
-  const lbl = document.getElementById('bio-toggle-label');
-  if (lbl) lbl.textContent = 'Disable Lock';
-  _bioBtn.onclick = () => { if(typeof closeSidebar==='function') closeSidebar(); disableBiometricLock(); };
-  _bioBtn.classList.add('active');
-}
+await syncBiometricButton();
 }
 } catch (e) {
 if (!(e && e.name === 'NotAllowedError')) showToast("Setup failed: " + e.message, "error");
@@ -45,18 +57,13 @@ await sqliteStore.remove('bio_cred_id');
 window.__appLocked = false;
 try { await sqliteStore.flush(); } catch (_) {}
 showToast("Biometric Lock Removed", "info");
-const _bioBtnD = document.getElementById('bio-toggle-btn');
-if (_bioBtnD) {
-  const lbl = document.getElementById('bio-toggle-label');
-  if (lbl) lbl.textContent = 'Fingerprint Lock';
-  _bioBtnD.onclick = () => { if(typeof closeSidebar==='function') closeSidebar(); enableBiometricLock(); };
-  _bioBtnD.classList.remove('active');
-}
+await syncBiometricButton();
 }
 }
 
 export async function checkBiometricLock() {
 const isEnabled = await sqliteStore.get('bio_enabled');
+syncBiometricButton();
 if (!(isEnabled === 'true' || isEnabled === true)) { window.__appLocked = false; return; }
 const splash = document.getElementById('splash-screen');
 if (!splash) return;
@@ -1800,6 +1807,8 @@ setTimeout(updateRepLiveMap, 200);
 
 window.enableBiometricLock = enableBiometricLock;
 window.disableBiometricLock = disableBiometricLock;
+window.toggleBiometricLock = toggleBiometricLock;
+window.syncBiometricButton = syncBiometricButton;
 window.checkBiometricLock = checkBiometricLock;
 window.setRepMode = setRepMode;
 window.selectRepCustomer = selectRepCustomer;
