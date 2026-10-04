@@ -7,7 +7,7 @@ import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealt
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, currentCashTrackerMode, currentCustomerChartMode, currentFactoryDate, currentFactoryEntryStore, currentIndMetric, currentIndMode, currentMfgMode, currentOverviewMode, currentProductionView, currentStoreComparisonMetric, custTransactionMode, getStoreFormulaType, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, currentExpenseOverlayName, currentPerfOverviewMode, currentSalesSummaryMode, deletePaymentTransfer, editEntityBasicInfo, editingEntityId, entityViewMode, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, selectedEntityId, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
-import { showGlassConfirm, showToast } from './customers.js';
+import { showChoiceToast, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, currentRepAnalyticsMode, refreshRepUI, renderRepCustomerTable, repTransactionMode } from './rep-sales.js';
 
 export let currentEntityId;
@@ -2545,7 +2545,92 @@ export async function _exportDocAsImageAndOpenWhatsApp(doc, phone, filenameBase)
   }
 }
 
-export async function exportEntityToPDF() {
+export function _captureAutoTables(doc) {
+  const captured = [];
+  const orig = doc.autoTable.bind(doc);
+  doc.autoTable = function(opts) {
+    try { captured.push({ head: opts && opts.head, body: opts && opts.body }); } catch (_) {}
+    return orig(opts);
+  };
+  return captured;
+}
+
+function _stmtCellText(c) {
+  if (c == null) return '';
+  if (typeof c === 'object') c = c.content != null ? c.content : '';
+  return String(c).replace(/\s*\n\s*/g, ' ').trim();
+}
+
+export function _buildStatementText({ title, name, phone, rangeName, tables }) {
+  const AMT_RE = /^(Rs\.?\s*)?[\d,]+(\.\d+)?$|^(SETTLED|OVERPAID)/i;
+  const lines = [];
+  lines.push('*GULL AND ZUBAIR NASWAR DEALERS*');
+  lines.push(`${title} \u00b7 ${rangeName}`);
+  lines.push('');
+  lines.push(`Name: ${name}`);
+  if (phone && phone !== 'N/A') lines.push(`Phone: ${phone}`);
+  lines.push(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+  let closing = '';
+  (tables || []).forEach(t => {
+    const head = Array.isArray(t.head) && Array.isArray(t.head[0]) ? t.head[0].map(_stmtCellText) : [];
+    const body = Array.isArray(t.body) ? t.body : [];
+    if (!body.length) return;
+    lines.push('');
+    lines.push('------------------------');
+    body.forEach(row => {
+      const cells = (Array.isArray(row) ? row : []).map(_stmtCellText);
+      const parts = [];
+      cells.forEach((v, i) => {
+        if (i === 0 || !v || v === '-' || v === '\u2014') return;
+        parts.push(AMT_RE.test(v) && head[i] ? `${head[i]}: ${v}` : v);
+      });
+      lines.push(`\u2022 ${cells[0] || ''}${parts.length ? ' | ' + parts.join(' | ') : ''}`);
+    });
+    if (head.length && /balance/i.test(head[head.length - 1])) {
+      const last = body[body.length - 1];
+      const v = _stmtCellText(Array.isArray(last) ? last[last.length - 1] : '');
+      if (v) closing = v;
+    }
+  });
+  if (closing) {
+    lines.push('');
+    lines.push('------------------------');
+    lines.push(`*Closing Balance: ${closing}*`);
+  }
+  return lines.join('\n');
+}
+
+export async function _shareStatementText(text, phone) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ text, title: 'Account Statement' });
+      showToast('Statement shared successfully', 'success');
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') { showToast('Share cancelled', 'info'); return; }
+      console.warn('[statement text share] Web Share failed, falling back to WhatsApp link:', _safeErr(err));
+    }
+  }
+  const hasPhone = phone && phone !== 'N/A' && String(phone).trim() !== '';
+  const cleaned = hasPhone ? String(phone).trim().replace(/[^\d]/g, '') : '';
+  window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`, '_blank');
+  showToast(hasPhone ? 'Opening WhatsApp with the statement message\u2026' : 'Opening WhatsApp \u2014 choose a contact to send to', 'success');
+}
+
+export async function promptStatementShare(kind) {
+  const choice = await showChoiceToast('Share statement as:', [
+    { label: '\ud83d\uddbc\ufe0f PDF / Image', value: 'image' },
+    { label: '\ud83d\udcac Text message', value: 'text' }
+  ]);
+  if (!choice) { showToast('Statement sharing cancelled', 'info'); return; }
+  const opts = { mode: choice };
+  if (kind === 'entity') return exportEntityToPDF(opts);
+  if (kind === 'customer') return exportCustomerToPDF(opts);
+  if (kind === 'rep' && typeof window.exportRepCustomerToPDF === 'function') return window.exportRepCustomerToPDF(opts);
+}
+window.promptStatementShare = promptStatementShare;
+
+export async function exportEntityToPDF(opts = {}) {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -2561,7 +2646,8 @@ return;
 }
 const rangeSelect = document.getElementById('entityPdfRange');
 const range = rangeSelect ? rangeSelect.value : 'all';
-showToast("Generating PDF...", "info");
+const _textMode = !!(opts && opts.mode === 'text');
+showToast(_textMode ? "Preparing message..." : "Generating PDF...", "info");
 try {
 if (!window.jspdf) {
 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -2606,6 +2692,7 @@ const supplierMaterials = isSupplier
 : [];
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+const _capTables = _textMode ? _captureAutoTables(doc) : null;
 const pageW = doc.internal.pageSize.getWidth();
 doc.setFillColor(...headerColor);
 doc.rect(0, 0, pageW, 22, 'F');
@@ -2925,7 +3012,9 @@ doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
 await new Promise(r => setTimeout(r, 100));
 const dateStamp  = localDateStr();
 const safeName   = entity.name.replace(/[^a-z0-9]/gi, '_');
-if (pageCount === 1) {
+if (_textMode) {
+  await _shareStatementText(_buildStatementText({ title: 'Account Statement', name: entity.name, phone: (entity.phone || ''), rangeName, tables: _capTables }), (entity.phone || ''));
+} else if (pageCount === 1) {
   showToast('Single-page statement — converting to image…', 'info');
   await _exportDocAsImageAndOpenWhatsApp(
     doc,
@@ -2941,7 +3030,7 @@ showToast("Error generating PDF: " + error.message, "error");
 }
 }
 
-export async function exportCustomerToPDF() {
+export async function exportCustomerToPDF(opts = {}) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -2953,7 +3042,8 @@ const customerName = nameMatch ? nameMatch[1].trim() : titleElement.innerText.sp
 if (!customerName) { showToast("No customer selected", "warning"); return; }
 const rangeSelect = document.getElementById('customerPdfRange');
 const range = rangeSelect ? rangeSelect.value : 'all';
-showToast("Generating PDF...", "info");
+const _textMode = !!(opts && opts.mode === 'text');
+showToast(_textMode ? "Preparing message..." : "Generating PDF...", "info");
 try {
 if (!window.jspdf) {
 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -3023,6 +3113,7 @@ const phone = salesContact?.phone || transactions.find(t => t.customerPhone)?.cu
 const address = salesContact?.address || transactions.find(t => t.customerAddress)?.customerAddress || 'N/A';
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+const _capTables = _textMode ? _captureAutoTables(doc) : null;
 const pageW = doc.internal.pageSize.getWidth();
 const hdrColor = [40, 167, 69];
 doc.setFillColor(...hdrColor);
@@ -3276,7 +3367,9 @@ doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
 await new Promise(r => setTimeout(r, 100));
 const dateStamp    = localDateStr();
 const safeCustName = customerName.replace(/[^a-z0-9]/gi, '_');
-if (pageCount === 1) {
+if (_textMode) {
+  await _shareStatementText(_buildStatementText({ title: 'Customer Account Statement', name: customerName, phone: phone, rangeName, tables: _capTables }), phone);
+} else if (pageCount === 1) {
   showToast('Single-page statement — converting to image…', 'info');
   await _exportDocAsImageAndOpenWhatsApp(
     doc,

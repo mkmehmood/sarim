@@ -2,7 +2,7 @@ import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRec
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
-import { _exportDocAsImageAndOpenWhatsApp, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
+import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
 import { _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
@@ -1371,7 +1371,7 @@ setTimeout(() => { if (!settled && best) finish(best); }, GPS_MAX_WAIT_MS);
 });
 }
 
-export async function exportRepCustomerToPDF() {
+export async function exportRepCustomerToPDF(opts = {}) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (!currentManagingRepCustomer) { showToast('No rep customer selected', 'warning'); return; }
@@ -1379,7 +1379,8 @@ const customerName = currentManagingRepCustomer.trim();
 if (!customerName) { showToast('No rep customer selected', 'warning'); return; }
 const rangeSelect = document.getElementById('repCustomerPdfRange');
 const range = rangeSelect ? rangeSelect.value : 'all';
-showToast('Generating PDF...', 'info');
+const _textMode = !!(opts && opts.mode === 'text');
+showToast(_textMode ? 'Preparing message...' : 'Generating PDF...', 'info');
 try {
 if (!window.jspdf) {
 await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
@@ -1449,6 +1450,7 @@ const phone = repContact?.phone || transactions.find(t => t.customerPhone)?.cust
 const address = repContact?.address || 'N/A';
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+const _capTables = _textMode ? _captureAutoTables(doc) : null;
 const pageW = doc.internal.pageSize.getWidth();
 const hdrColor = [79, 70, 229];
 doc.setFillColor(...hdrColor);
@@ -1644,7 +1646,9 @@ doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
 await new Promise(r => setTimeout(r, 100));
 const dateStamp  = localDateStr();
 const safeRepName = customerName.replace(/[^a-z0-9]/gi, '_');
-if (pageCount === 1) {
+if (_textMode) {
+  await _shareStatementText(_buildStatementText({ title: 'Rep Customer Account Statement', name: customerName, phone, rangeName, tables: _capTables }), phone);
+} else if (pageCount === 1) {
   showToast('Single-page statement — converting to image…', 'info');
   await _exportDocAsImageAndOpenWhatsApp(
     doc,
