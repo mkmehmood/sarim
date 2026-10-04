@@ -813,6 +813,7 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
+  initSplashScreen();
   const urlParams = new URLSearchParams(window.location.search);
   const _action = urlParams.get('action');
   if (_action) {
@@ -914,7 +915,6 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   if (sellerSelect) sellerSelect.addEventListener('change', autoFillTotalSoldQuantity);
   if (saleDate2) saleDate2.addEventListener('change', autoFillTotalSoldQuantity);
 
-  initSplashScreen();
   setProductionView('store');
   requestAnimationFrame(async () => {
     await syncFactoryProductionStats().catch(e => console.warn('[refreshFactoryTab] stats failed:', _safeErr(e)));
@@ -945,10 +945,8 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   window._perfMonitorInterval = setInterval(() => {
     if (typeof PerformanceMonitor !== 'undefined') PerformanceMonitor.report();
   }, 60000);
-  setTimeout(() => {
-    const splash = document.getElementById('splash-screen');
-    if (splash && !window.__appLocked) splash.style.display = 'none';
-  }, 800);
+  window.__splashBooted = true;
+  if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 });
 export function _filterFactoryHistoryByMode(mode) {
 const selectedDateVal = (document.getElementById('factory-date') || {}).value || localDateStr();

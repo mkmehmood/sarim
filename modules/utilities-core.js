@@ -1258,20 +1258,40 @@ const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const date = document.getElementById('splash-date');
 if (date) date.textContent = `${days[now.getDay()]} · ${now.getDate()} ${months[now.getMonth()]}`;
 }
+const SPLASH_HOLD_MS = 2800;
+const SPLASH_FADE_MS = 550;
+const SPLASH_MAX_MS = 9000;
 export function initSplashScreen() {
+const el = document.getElementById('splash-screen');
+if (!el || el.__splashInit) return;
+el.__splashInit = true;
 const randomQuote = splashQuotes[Math.floor(Math.random() * splashQuotes.length)];
 const q = document.getElementById('splash-quote');
 const a = document.getElementById('splash-author');
 if (q) q.textContent = `"${randomQuote.quote || ''}"`;
 if (a) a.textContent = `— ${randomQuote.author || 'Unknown'}`;
-const el = document.getElementById('splash-screen');
-if (!el) return;
 renderSplashDay(el);
 const timer = setInterval(() => {
 const live = document.getElementById('splash-screen');
 if (!live || live.style.display === 'none') { clearInterval(timer); return; }
 renderSplashDay(live);
 }, 30000);
+let holdDone = false;
+let hidden = false;
+const tryHide = () => {
+if (hidden || !holdDone || window.__appLocked) return;
+if (!window.__splashBooted && !window.__splashForce) return;
+hidden = true;
+el.classList.add('splash-out');
+setTimeout(() => { if (!window.__appLocked) el.style.display = 'none'; }, SPLASH_FADE_MS + 30);
+};
+window.__splashTryHide = tryHide;
+void el.offsetWidth;
+requestAnimationFrame(() => {
+el.classList.add('splash-ready');
+setTimeout(() => { holdDone = true; tryHide(); }, SPLASH_HOLD_MS);
+});
+setTimeout(() => { window.__splashForce = true; tryHide(); }, SPLASH_MAX_MS);
 }
 
 export function updatePaymentStatusVisibility() {
