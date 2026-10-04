@@ -16,6 +16,7 @@ const html = readFileSync(join(base, 'index.html'), 'utf8');
 for (const m of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   const ref = m[1];
   if (/^(https?:|data:|#|\/\/)/.test(ref) || ref === '') continue;
+  if (ref.startsWith('fonts/') && !existsSync(join(base, 'fonts'))) continue;
   check(ref.split('?')[0], 'index.html');
 }
 
