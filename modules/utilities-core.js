@@ -2561,41 +2561,91 @@ function _stmtCellText(c) {
   return String(c).replace(/\s*\n\s*/g, ' ').trim();
 }
 
+const _URDU_HEADS = {
+  'date': 'تاریخ', 'invoice date': 'تاریخ',
+  'description': 'تفصیل', 'details': 'تفصیل', 'year period / summary': 'تفصیل', 'material': 'مال',
+  'qty': 'مقدار',
+  'payment out': 'ادائیگی', 'payment in': 'وصولی',
+  'debit (sale)': 'بل', 'credit (rcvd)': 'وصولی', 'debit': 'بل', 'credit': 'وصولی',
+  'balance': 'بیلنس', 'running balance': 'بیلنس',
+  'outstanding': 'بقایا', 'settled': 'ادا شدہ',
+  'invoice amt': 'انوائس رقم', 'paid so far': 'اب تک ادا', 'remaining': 'باقی', 'status': 'حالت'
+};
+const _URDU_RANGES = {
+  'All Time': 'تمام وقت', 'Today': 'آج', 'This Week': 'اس ہفتے', 'This Month': 'اس مہینے', 'This Year': 'اس سال'
+};
+const _URDU_TITLES = {
+  'Account Statement': 'اکاؤنٹ اسٹیٹمنٹ',
+  'Customer Account Statement': 'کسٹمر اکاؤنٹ اسٹیٹمنٹ',
+  'Rep Customer Account Statement': 'ریپ کسٹمر اکاؤنٹ اسٹیٹمنٹ'
+};
+const _URDU_VALUE_RULES = [
+  [/^[\u21a9\u2714]\s*(Credit Purchase|Supplier Pmt)\s*/i, ''],
+  [/Opening Balance\s*\(All activity before this period\)/i, 'ابتدائی بیلنس (اس مدت سے پہلے کا)'],
+  [/Brought forward from previous records/i, 'پچھلے ریکارڈ سے آگے لایا گیا'],
+  [/Cash payment received/i, 'نقد رقم وصول'],
+  [/Partial payment received/i, 'جزوی رقم وصول'],
+  [/(\d+) txns? merged/i, '$1 لین دین یکجا'],
+  [/year-end merge/i, 'سال کے آخر کا انضمام'],
+  [/Prev\. Year/i, 'پچھلا سال'],
+  [/Cash sales:/gi, 'نقد فروخت:'],
+  [/Net due:/gi, 'واجب الادا:'],
+  [/\bOVERPAID\b/g, 'زائد ادائیگی'],
+  [/\bSETTLED\b/g, 'حساب صاف'],
+  [/\bSettled\b/g, 'ادا شدہ'],
+  [/\bPaid:/g, 'ادا:'],
+  [/\bDue:/g, 'باقی:'],
+  [/\bkg\b/gi, 'کلو'],
+  [/^Prior$/, 'پچھلا']
+];
+function _urduValue(v) {
+  let out = String(v == null ? '' : v);
+  _URDU_VALUE_RULES.forEach(([re, rep]) => { out = out.replace(re, rep); });
+  return out.replace(/\s+/g, ' ').trim();
+}
+
 export function _buildStatementText({ title, name, phone, rangeName, tables }) {
-  const AMT_RE = /^(Rs\.?\s*)?[\d,]+(\.\d+)?$|^(SETTLED|OVERPAID)/i;
   const lines = [];
-  lines.push('*GULL AND ZUBAIR NASWAR DEALERS*');
-  lines.push(`${title} \u00b7 ${rangeName}`);
+  lines.push('*گل اینڈ زبیر نسوار ڈیلرز*');
+  lines.push(`${_URDU_TITLES[title] || title} \u00b7 ${_URDU_RANGES[rangeName] || rangeName}`);
   lines.push('');
-  lines.push(`Name: ${name}`);
-  if (phone && phone !== 'N/A') lines.push(`Phone: ${phone}`);
-  lines.push(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+  lines.push(`نام: ${name}`);
+  if (phone && phone !== 'N/A') lines.push(`فون: ${phone}`);
+  lines.push(`تاریخ اجراء: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`);
   let closing = '';
   (tables || []).forEach(t => {
-    const head = Array.isArray(t.head) && Array.isArray(t.head[0]) ? t.head[0].map(_stmtCellText) : [];
+    const headRaw = Array.isArray(t.head) && Array.isArray(t.head[0]) ? t.head[0].map(_stmtCellText) : [];
     const body = Array.isArray(t.body) ? t.body : [];
     if (!body.length) return;
+    const headKey = headRaw.map(h => h.toLowerCase());
+    const skip = new Set();
+    headKey.forEach((h, i) => { if (h === 'type') skip.add(i); });
+    const isMoney = (i) => /amt|debit|credit|payment|balance|outstanding|settled|remaining|paid/.test(headKey[i] || '');
     lines.push('');
     lines.push('------------------------');
     body.forEach(row => {
       const cells = (Array.isArray(row) ? row : []).map(_stmtCellText);
       const parts = [];
-      cells.forEach((v, i) => {
-        if (i === 0 || !v || v === '-' || v === '\u2014') return;
-        parts.push(AMT_RE.test(v) && head[i] ? `${head[i]}: ${v}` : v);
+      cells.forEach((raw, i) => {
+        if (i === 0 || skip.has(i)) return;
+        const v = _urduValue(raw);
+        if (!v || v === '-' || v === '\u2014') return;
+        const label = _URDU_HEADS[headKey[i]];
+        parts.push(label && isMoney(i) ? `${label}: ${v}` : v);
       });
-      lines.push(`\u2022 ${cells[0] || ''}${parts.length ? ' | ' + parts.join(' | ') : ''}`);
+      lines.push(`\u2022 ${_urduValue(cells[0] || '')}${parts.length ? ' | ' + parts.join(' | ') : ''}`);
     });
-    if (head.length && /balance/i.test(head[head.length - 1])) {
+    const lastIdx = headKey.length - 1;
+    if (lastIdx >= 0 && /balance/.test(headKey[lastIdx])) {
       const last = body[body.length - 1];
-      const v = _stmtCellText(Array.isArray(last) ? last[last.length - 1] : '');
+      const v = _urduValue(_stmtCellText(Array.isArray(last) ? last[last.length - 1] : ''));
       if (v) closing = v;
     }
   });
   if (closing) {
     lines.push('');
     lines.push('------------------------');
-    lines.push(`*Closing Balance: ${closing}*`);
+    lines.push(`*کل بیلنس: ${closing}*`);
   }
   return lines.join('\n');
 }
@@ -2603,7 +2653,7 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
 export async function _shareStatementText(text, phone) {
   if (navigator.share) {
     try {
-      await navigator.share({ text, title: 'Account Statement' });
+      await navigator.share({ text, title: 'اکاؤنٹ اسٹیٹمنٹ' });
       showToast('Statement shared successfully', 'success');
       return;
     } catch (err) {
