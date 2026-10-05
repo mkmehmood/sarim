@@ -59,4 +59,49 @@ export function primeNotificationPermission() {
   }
 }
 window.sendDeviceNotification = sendDeviceNotification;
+
+const _bootAt = Date.now();
+const _STARTUP_QUIET_MS = 25000;
+const _BURST_MAX = 4;
+const _BURST_WINDOW_MS = 30000;
+let _burst = [];
+const _NOISE_RE = new RegExp([
+  '^\\s*(please|enter|select|choose|add at least|no .* (selected|found|data)|nothing)',
+  '\\b(is|are) required\\b',
+  '\\bcannot be (edited|deleted|toggled|negative)\\b',
+  '\\b(invalid|valid) (date|amount|quantity|name|number|phone|input)\\b',
+  '^\\s*access denied',
+  'not logged in|please sign in',
+  'cancel(l)?ed',
+  'welcome',
+  'loading|syncing|sync (started|complete)|preparing|generating|opening|checking|connecting',
+  'shared|copied|downloaded|uploaded|exported|saved to|saved as|pdf|image',
+  'back online|you are offline|offline mode|connection restored',
+  'refreshed|updated successfully!?$'
+].join('|'), 'i');
+const _TITLES = { success: 'Done', warning: 'Warning', error: 'Error' };
+
+function _cleanToastText(message) {
+  let t = String(message == null ? '' : message).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  t = t.replace(/^[^\p{L}\p{N}"'(]+/u, '').trim();
+  return t.length > 180 ? t.slice(0, 177) + '\u2026' : t;
+}
+
+export function notifyFromToast(message, type) {
+  try {
+    if (type !== 'success' && type !== 'warning' && type !== 'error') return;
+    try { if (localStorage.getItem('toastNotifications') === 'off') return; } catch (_) {}
+    if (Date.now() - _bootAt < _STARTUP_QUIET_MS) return;
+    const text = _cleanToastText(message);
+    if (!text || text.length < 6) return;
+    if (type !== 'error' && _NOISE_RE.test(text)) return;
+    if (type === 'error' && /^\s*(please|enter|select)|\b(is|are) required\b|not logged in/i.test(text)) return;
+    const now = Date.now();
+    _burst = _burst.filter(ts => now - ts < _BURST_WINDOW_MS);
+    if (_burst.length >= _BURST_MAX) return;
+    _burst.push(now);
+    sendDeviceNotification(_TITLES[type], text, 'toast-' + type).catch(() => {});
+  } catch (_) {}
+}
+window.notifyFromToast = notifyFromToast;
 primeNotificationPermission();
