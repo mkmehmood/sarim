@@ -52,7 +52,7 @@ function _feedWrites(list, slots, base, now) {
   SLOT_KEYS.forEach((k) => {
     const f = list.find((x) => String(x.id) === String(slots[k]));
     if (!f) return;
-    formulas[k] = ensureArray(f.ingredients).map((i) => ({ id: i.id, name: i.name, cost: _num(i.cost, 0), quantity: _num(i.quantity, 0) }));
+    formulas[k] = ensureArray(f.ingredients).map((i) => ({ id: i.id, name: i.name, cost: _num(i.cost, 0), quantity: _num(i.quantity, 0), ...(i.custom ? { custom: true } : {}) }));
     costs[k] = _num(f.additionalCost, 0);
     factors[k] = _num(f.costAdjustmentFactor, 1) || 1;
   });
@@ -115,6 +115,7 @@ function _totals(ingredients, additionalCost, factor) {
   return { raw, weight, perUnit, perKg };
 }
 function _liveCost(ing, inventory) {
+  if (ing && ing.custom) return _num(ing.cost, 0);
   let live = inventory.find((i) => String(i.id) === String(ing.id));
   if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
   const c = live ? Number(live.cost) : NaN;
@@ -157,7 +158,8 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   let currentCost = costVal !== null ? costVal : 0;
   const currentId = selectedId ? String(selectedId) : '';
   let currentName = savedName || '';
-  if (currentId) {
+  const isCustomInit = /^custom_/.test(currentId);
+  if (currentId && !isCustomInit) {
     const match = inventory.find((i) => String(i.id) === currentId);
     if (match) {
       currentName = match.name;
@@ -178,6 +180,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   searchInput.value = currentName;
   searchInput.dataset.matId = currentId;
   searchInput.dataset.matCost = String(currentCost);
+  if (isCustomInit) searchInput.dataset.custom = '1';
   searchInput.autocomplete = 'off';
   searchInput.style.cssText = 'width:100%;box-sizing:border-box;';
   const dropdown = document.createElement('div');
@@ -188,20 +191,55 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   costInput.className = 'factory-mat-cost';
   costInput.placeholder = 'Cost';
   costInput.value = currentCost;
-  costInput.readOnly = true;
-  costInput.style.cssText = 'background:rgba(0,0,0,0.05);color:var(--text-muted);cursor:default;';
+  const setCostMode = (custom) => {
+    if (custom) {
+      costInput.readOnly = false;
+      costInput.placeholder = 'Cost/kg';
+      costInput.style.cssText = '';
+    } else {
+      costInput.readOnly = true;
+      costInput.placeholder = 'Cost';
+      costInput.style.cssText = 'background:rgba(0,0,0,0.05);color:var(--text-muted);cursor:default;';
+    }
+  };
+  setCostMode(isCustomInit);
+  const makeCustom = (nm) => {
+    const clean = String(nm || '').trim();
+    if (!clean) return;
+    if (!searchInput.dataset.custom || !searchInput.dataset.matId) {
+      searchInput.dataset.matId = 'custom_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+    searchInput.dataset.custom = '1';
+    searchInput.value = clean;
+    if (costInput.readOnly) costInput.value = '';
+    setCostMode(true);
+    notify();
+  };
+  costInput.addEventListener('input', () => { if (searchInput.dataset.custom === '1') notify(); });
   const renderDropdown = (query) => {
     const q = (query || '').toLowerCase();
     const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;
+    const typed = (query || '').trim();
+    const exact = typed && inventory.some((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
+    const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom" data-custom="1" data-name="${esc(typed)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.78rem;font-weight:700;color:var(--accent);">+ Use "${esc(typed)}" as custom ingredient</div>` : '';
     if (!filtered.length) {
-      dropdown.innerHTML = '<div class="u-search-empty">No materials found</div>';
+      dropdown.innerHTML = (customOpt || '<div class="u-search-empty">No materials found</div>');
     } else {
-      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);background:var(--input-bg);">${esc(i.name)}</div>`).join('');
+      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);background:var(--input-bg);">${esc(i.name)}</div>`).join('') + customOpt;
     }
     dropdown.classList.remove('hidden');
     dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {
       opt.addEventListener('mousedown', (e) => {
         e.preventDefault();
+        if (opt.dataset.custom === '1') {
+          delete searchInput.dataset.custom;
+          searchInput.dataset.matId = '';
+          makeCustom(opt.dataset.name);
+          dropdown.classList.add('hidden');
+          return;
+        }
+        delete searchInput.dataset.custom;
+        setCostMode(false);
         searchInput.value = opt.dataset.name;
         searchInput.dataset.matId = opt.dataset.id;
         searchInput.dataset.matCost = opt.dataset.cost;
@@ -212,12 +250,29 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     });
   };
   searchInput.addEventListener('focus', () => renderDropdown(searchInput.value));
-  searchInput.addEventListener('input', () => renderDropdown(searchInput.value));
+  searchInput.addEventListener('input', () => {
+    if (searchInput.dataset.custom === '1') { searchInput.dataset.matId = ''; delete searchInput.dataset.custom; setCostMode(false); costInput.value = ''; notify(); }
+    renderDropdown(searchInput.value);
+  });
   searchInput.addEventListener('blur', () => {
     setTimeout(() => dropdown.classList.add('hidden'), 150);
     if (!searchInput.dataset.matId) {
-      searchInput.value = '';
-      costInput.value = '';
+      const typed = searchInput.value.trim();
+      if (typed) {
+        const inv = inventory.find((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
+        if (inv) {
+          searchInput.value = inv.name;
+          searchInput.dataset.matId = String(inv.id);
+          searchInput.dataset.matCost = String(inv.cost);
+          costInput.value = inv.cost;
+          setCostMode(false);
+          notify();
+        } else {
+          makeCustom(typed);
+        }
+      } else {
+        costInput.value = '';
+      }
     }
   });
   searchWrap.appendChild(searchInput);
@@ -249,7 +304,7 @@ async function _fillEditor(entry) {
   const container = _el('fsEditContainer');
   if (!container) return;
   container.replaceChildren();
-  ensureArray(entry.ingredients).forEach((ing) => _createRow(container, ing.id, ing.quantity, ing.cost, ing.name, inventory));
+  ensureArray(entry.ingredients).forEach((ing) => _createRow(container, ing.custom && !/^custom_/.test(String(ing.id)) ? 'custom_' + String(ing.id) : ing.id, ing.quantity, ing.cost, ing.name, inventory));
   _el('fs-edit-name').value = entry.name || '';
   _el('fs-additional-cost').value = _num(entry.additionalCost, 0);
   _el('fs-cost-factor').value = _num(entry.costAdjustmentFactor, 1);
@@ -265,7 +320,7 @@ function _collectEditor() {
       const qtyIn = row.querySelector('.factory-mat-qty');
       const name = inp ? inp.value.trim() : '';
       if (inp && inp.dataset.matId && name && qtyIn && _num(qtyIn.value, 0) > 0) {
-        ingredients.push({ id: inp.dataset.matId, name, cost: _num(costIn ? costIn.value : 0, 0), quantity: _num(qtyIn.value, 0) });
+        ingredients.push({ id: inp.dataset.matId, name, cost: _num(costIn ? costIn.value : 0, 0), quantity: _num(qtyIn.value, 0), ...(inp.dataset.custom === '1' ? { custom: true } : {}) });
       }
     });
   }
