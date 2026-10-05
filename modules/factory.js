@@ -23,7 +23,6 @@ export function _set_currentStore(v) { currentStore = v; window.currentStore = v
 });
 
 export function resolveLiveCost(item, inventory) {
-if (item && item.custom) return Number(item.cost) || 0;
 const list = Array.isArray(inventory) ? inventory : [];
 let live = list.find(i => String(i.id) === String(item.id));
 if (!live && item.name) live = list.find(i => i.name && i.name.trim().toLowerCase() === item.name.trim().toLowerCase());
@@ -749,7 +748,7 @@ throw new Error(`Cannot change this batch: its units are already used in manufac
 }
 const restore = (Array.isArray(o.materialsUsed) && o.materialsUsed.length > 0)
 ? o.materialsUsed
-: (factoryDefaultFormulas[oType] || []).filter(m => !m.custom).map(m => ({ id: m.id, name: m.name, quantity: m.quantity * (o.units || 0) }));
+: (factoryDefaultFormulas[oType] || []).map(m => ({ id: m.id, name: m.name, quantity: m.quantity * (o.units || 0) }));
 for (const m of restore) {
 let inv = factoryInventoryData.find(i => String(i.id) === String(m.id));
 if (!inv && m.name) inv = factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === m.name.trim().toLowerCase());
@@ -768,7 +767,6 @@ let baseCost = 0;
 let rawMat = 0;
 if (settings) {
 baseCost = settings.reduce((acc, cur) => {
-if (cur.custom) return acc + ((Number(cur.cost) || 0) * cur.quantity);
 let liveItem = factoryInventoryData.find(i => String(i.id) === String(cur.id));
 if (!liveItem && cur.name) liveItem = factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === cur.name.trim().toLowerCase());
 const liveCost = liveItem ? liveItem.cost : cur.cost;
@@ -779,14 +777,13 @@ rawMat = settings.reduce((acc, cur) => acc + cur.quantity, 0) * units;
 const totalCost = baseCost + (additionalCost * units);
 let inventoryUpdated = false;
 const materialsUsed = [];
-const customMaterials = [];
 if (settings && settings.length > 0) {
+const _notInInventory = settings.filter(it => !factoryInventoryData.find(i => String(i.id) === String(it.id)) && !(it.name && factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === it.name.trim().toLowerCase())));
+if (_notInInventory.length) {
+throw new Error(`Cannot produce: ${_notInInventory.map(m => '"' + m.name + '"').join(', ')} ${_notInInventory.length === 1 ? 'is' : 'are'} not in Raw Material Inventory. Add ${_notInInventory.length === 1 ? 'it' : 'them'} with the Add Raw Material button first.`);
+}
 for (const item of settings) {
 const materialUsed = item.quantity * units;
-if (item.custom) {
-customMaterials.push({ id: item.id, name: item.name, quantity: materialUsed, cost: Number(item.cost) || 0, custom: true });
-continue;
-}
 let inventoryItem = factoryInventoryData.find(i => String(i.id) === String(item.id));
 if (!inventoryItem && item.name) {
 inventoryItem = factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === item.name.trim().toLowerCase());
@@ -826,7 +823,6 @@ materialsCost: baseCost,
 additionalCost: additionalCost * units,
 rawMaterialsUsed: rawMat,
 materialsUsed,
-...(customMaterials.length ? { customMaterials } : {}),
 createdAt: factProdCreatedAt,
 updatedAt: factProdCreatedAt,
 timestamp: factProdCreatedAt,
@@ -936,12 +932,12 @@ const additionalCostPerUnit = factoryAdditionalCosts[_histFtype] || factoryAddit
 const totalAdditionalCost = entry.additionalCost != null ? (parseFloat(entry.additionalCost) || 0) : additionalCostPerUnit * entry.units;
 
 const _hasUsed = Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0;
-const formula = _hasUsed ? entry.materialsUsed.concat(Array.isArray(entry.customMaterials) ? entry.customMaterials : []) : (factoryDefaultFormulas[_histFtype] || factoryDefaultFormulas[entry.store] || []);
+const formula = _hasUsed ? entry.materialsUsed : (factoryDefaultFormulas[_histFtype] || factoryDefaultFormulas[entry.store] || []);
 let matsBreakdownHtml = '';
 if (formula.length > 0) {
 const rowsHtml = formula.map(f => {
-let inv = f.custom ? null : factoryInventoryData.find(i => String(i.id) === String(f.id));
-if (!inv && !f.custom && f.name) inv = factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase());
+let inv = factoryInventoryData.find(i => String(i.id) === String(f.id));
+if (!inv && f.name) inv = factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase());
 const matName = esc(f.name || inv?.name || 'Material');
 const qtyUsed = fmtNum(_hasUsed ? f.quantity : f.quantity * entry.units);
 const unitCost = _hasUsed ? (f.cost != null ? f.cost : (inv ? inv.cost : 0)) : (inv ? inv.cost : (f.cost || 0));
@@ -1016,7 +1012,7 @@ const _feStoreLabel = getStoreLabel(entry.store) || entry.store;
 const _feFormulaKey = entry.formulaType || (typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(entry.store) : entry.store);
 const _feRestore = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
 ? entry.materialsUsed.map(m => ({ id: m.id, name: m.name, quantity: m.quantity }))
-: (factoryDefaultFormulas[_feFormulaKey] || factoryDefaultFormulas[entry.store] || []).filter(f => !f.custom).map(f => ({ id: f.id, name: f.name, quantity: f.quantity * entry.units }));
+: (factoryDefaultFormulas[_feFormulaKey] || factoryDefaultFormulas[entry.store] || []).map(f => ({ id: f.id, name: f.name, quantity: f.quantity * entry.units }));
 const _feMatsDetail = _feRestore.length > 0
 ? _feRestore.map(f => {
 let inv = factoryInventoryData.find(i => String(i.id) === String(f.id));
