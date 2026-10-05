@@ -5,7 +5,7 @@ import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _readFileA
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
-import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, selectReturnStore, setSalesSummaryMode, updateSalesCharts } from './utilities-payments.js';
+import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
@@ -1601,22 +1601,7 @@ export async function rebuildStoreUI() {
     if (hidden && stores.length) hidden.value = stores[0].key;
   }
 
-  const retSection = document.getElementById('returnStoreSection');
-  if (retSection) {
-    const retGroup = retSection.querySelector('.toggle-group');
-    if (retGroup) {
-      retGroup.innerHTML = '';
-      const returnStores = stores.filter(s => s.key === 'STORE_A' || s.key === 'STORE_B');
-      returnStores.forEach((s, i) => {
-        const btn = document.createElement('button');
-        btn.className = 'toggle-opt' + (i === 0 ? ' active' : '');
-        btn.id = 'ret-store-' + s.key.toLowerCase();
-        btn.textContent = s.name;
-        btn.onclick = () => selectReturnStore(s.key, btn);
-        retGroup.appendChild(btn);
-      });
-    }
-  }
+  if (typeof renderReturnTargets === 'function') await renderReturnTargets();
 
   const storeHidden = document.getElementById('storeSelector');
   const storeTglGrp = document.getElementById('storeSelectorToggleGroup');
@@ -2542,6 +2527,7 @@ const retQty = parseFloat(document.getElementById('returnedQuantity').value) || 
 const section = document.getElementById('returnStoreSection');
 if (retQty > 0) {
 section.classList.remove('hidden');
+if (typeof renderReturnTargets === 'function') renderReturnTargets();
 } else {
 section.classList.add('hidden');
 }
@@ -2571,6 +2557,44 @@ showTab(targetTab);
 }
 }
 
+export async function processRepTransfer(targetRep, quantity, date, seller) {
+const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const sel = await getCalcCycleSelection(seller);
+const withStore = (sel.selected || []).filter(x => x.supplyStore);
+const store = withStore.length ? withStore[withStore.length - 1].supplyStore : 'STORE_A';
+const costData = await calculateSalesCost(store, quantity);
+const unitPrice = await getEffectiveSalePriceForCustomer(targetRep, store);
+if (!unitPrice || unitPrice <= 0) throw new Error('Sale price not configured for this store. Set prices in Factory Formulas first.');
+const totalValue = quantity * unitPrice;
+const now = new Date();
+const p2 = n => String(n).padStart(2, '0');
+const h12 = now.getHours() % 12 || 12;
+const timeString = `${p2(h12)}:${p2(now.getMinutes())}:${p2(now.getSeconds())} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+const deviceDate = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`;
+let id = generateUUID('sale');
+if (!validateUUID(id)) id = generateUUID('sale');
+const ts = getTimestamp();
+let rec = {
+id, timestamp: ts, createdAt: ts, updatedAt: ts,
+date: deviceDate, supplyDate: date, time: timeString,
+customerName: targetRep, customerPhone: '',
+quantity, supplyStore: store, paymentType: 'CREDIT',
+salesRep: targetRep, currentRepProfile: 'admin',
+totalCost: costData.totalCost, totalValue, profit: totalValue - costData.totalCost,
+unitPrice, creditReceived: false,
+isTransfer: true, transferFrom: seller,
+syncedAt: new Date().toISOString(),
+createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
+};
+rec = ensureRecordIntegrity(rec, false);
+customerSales.push(rec);
+await unifiedSave('customer_sales', customerSales, rec);
+await processReturnToProduction(store, quantity, date, seller, `Transferred to ${targetRep} (stock-neutral)`);
+notifyDataChange('sales');
+emitSyncUpdate({ customer_sales: null });
+return { saleId: id, store };
+}
+
 export async function saveTransaction() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -2594,12 +2618,16 @@ const fieldExp = parseFloat(document.getElementById('fieldExpenses').value) || 0
 const commissionPerUnit = parseFloat(document.getElementById('commissionPerUnit').value) || 0;
 const commissionPaid = parseFloat(document.getElementById('commissionPaid').value) || 0;
 let selectedStore = null;
+let selectedRep = null;
 if (ret > 0) {
-if (!window._returnStore) {
-showToast('Please select a store (ZUBAIR or MAHMOOD) for the returned stock!', 'warning', 3000);
+if (window._returnRep && window._returnRep !== seller) {
+selectedRep = window._returnRep;
+} else if (window._returnStore) {
+selectedStore = { value: window._returnStore };
+} else {
+showToast('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning', 3000);
 return;
 }
-selectedStore = { value: window._returnStore };
 }
 const costPerKg = (await getCostPriceForStore('STORE_A')) || 0;
 const salePrice = await getSalePriceForStore('STORE_A');
@@ -2639,8 +2667,16 @@ statusText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 statusClass = "result-box discrepancy-ok";
 }
 }
+let transferInfo = null;
 if (ret > 0 && selectedStore) {
 await processReturnToProduction(selectedStore.value, ret, date, seller);
+} else if (ret > 0 && selectedRep) {
+try {
+transferInfo = await processRepTransfer(selectedRep, ret, date, seller);
+} catch (e) {
+showToast('Transfer failed: ' + ((e && e.message) || 'unknown error'), 'error', 5000);
+return;
+}
 }
 if (exp > 0) {
 await processExpiredToChora(exp, date, seller);
@@ -2665,6 +2701,9 @@ totalCost: Number(safeNumber(totalCost, 0).toFixed(2)),
 totalSold: Number(safeNumber(sold, 0).toFixed(2)),
 returned: Number(safeNumber(ret, 0).toFixed(2)),
 returnStore: selectedStore ? selectedStore.value : null,
+returnRep: selectedRep || null,
+returnType: selectedRep ? 'TRANSFER' : (selectedStore ? 'RETURN' : null),
+transferSaleId: transferInfo ? transferInfo.saleId : null,
 expired: Number(safeNumber(exp, 0).toFixed(2)),
 shared: Number(safeNumber(shared, 0).toFixed(2)),
 creditQty: Number(safeNumber(cred, 0).toFixed(2)),
@@ -2715,13 +2754,15 @@ document.getElementById('receivedCash').value = '';
 document.getElementById('fieldExpenses').value = '';
 document.getElementById('commissionPerUnit').value = '';
 document.getElementById('commissionPaid').value = '';
+window._returnStore = null;
+window._returnRep = null;
 document.getElementById('returnStoreSection').classList.add('hidden');
 document.getElementById('expiredSection').classList.add('hidden');
 window._calcFromManual = false;
 showToast(`Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');
 await loadSalesData(currentCompMode);
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);
-if (entry.returned > 0 && entry.returnStore) {
+if (entry.returned > 0 && (entry.returnStore || entry.returnRep)) {
 if (typeof refreshUI === 'function') await refreshUI();
 }
 if (entry.expired > 0) {
@@ -6396,6 +6437,9 @@ let repBadge = '';
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') {
 repBadge = `<span class="sales-rep-badge"> ${esc(item.salesRep.split(' ')[0])}</span>`;
 }
+if (item.isTransfer && item.transferFrom) {
+repBadge += `<span class="sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.transferFrom).split(' ')[0])}</span>`;
+}
 let mergedBadge = '';
 if (item.isMerged) {
 mergedBadge = _mergedBadgeHtml(item, {inline:true});
@@ -6777,6 +6821,7 @@ window.UUIDSyncRegistry = UUIDSyncRegistry;
 window.addSignOutButton = addSignOutButton;
 window.removeSignOutButton = removeSignOutButton;
 window.handleReturnQtyInput = handleReturnQtyInput;
+window.processRepTransfer = processRepTransfer;
 window.handleExpiredQtyInput = handleExpiredQtyInput;
 window.handleTripleTap = handleTripleTap;
 window.saveTransaction = saveTransaction;

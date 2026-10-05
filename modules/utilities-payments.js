@@ -142,6 +142,7 @@ const dateAttr = (isHistory && data._rawDate) ? ` data-date="${data._rawDate}"` 
 let html = `<div class="card liquid-card ${highlightClass}"${dateAttr}>${badge}<h4>${esc(title)}${mergedBadge}</h4>
 <p><span>Total Sold:</span> <span class="qty-val">${fmtNum(safeValue(data.sold))}</span></p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(safeValue(data.ret))}</span></p>
+${data.returnRep && safeValue(data.ret) > 0 ? `<p><span>Transferred to:</span> <span class="qty-val">${esc(data.returnRep)}</span></p>` : ''}
 ${safeValue(data.expired) > 0 ? `<p><span>Expired (→ CHORA):</span> <span class="cost-val">${fmtNum(safeValue(data.expired))}</span></p>` : ''}
 ${safeValue(data.shared) > 0 ? `<p><span>Shared (Deduction):</span> <span class="cost-val">${fmtNum(safeValue(data.shared))}</span></p>` : ''}
 <p><span>Cash Qty:</span> <span class="qty-val">${fmtNum(safeValue(data.cash))}</span></p>
@@ -330,6 +331,7 @@ recoveredField.value = safeNumber(recoveredCash, 0).toFixed(2);
 styleAutoFilledField(recoveredField);
 }
 calculateSales();
+if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
 
 export function styleAutoFilledField(field) {
@@ -392,6 +394,8 @@ dateTitle,
 {
 sold: h.totalSold,
 ret: h.returned,
+returnRep: h.returnRep,
+returnStore: h.returnStore,
 expired: h.expired,
 shared: h.shared,
 cash: h.cashQty,
@@ -584,7 +588,7 @@ font: { size: 13, weight: 'bold' }
 }));
 }
 
-export async function processReturnToProduction(storeKey, quantity, date, seller) {
+export async function processReturnToProduction(storeKey, quantity, date, seller, note) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const now = new Date();
@@ -624,7 +628,7 @@ updatedAt: retCreatedAt,
 timestamp: retCreatedAt,
 isReturn: true,
 returnedBy: seller,
-returnNote: `Returned by ${seller}`,
+returnNote: note || `Returned by ${seller}`,
 syncedAt: new Date().toISOString()
 };
 returnEntry = ensureRecordIntegrity(returnEntry, false);
@@ -1092,12 +1096,17 @@ confirmMsg += `\nDate: ${entryToDelete.date}`;
 confirmMsg += `\nTotal Sold: ${entryToDelete.sold || 0} kg`;
 confirmMsg += `\nCash Received: ${(entryToDelete.received||0)}`;
 if (entryToDelete.credit) confirmMsg += `\nCredit Recovered: ${entryToDelete.credit}`;
-const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore) || entryToDelete.expired > 0;
+if (entryToDelete.transferSaleId) {
+const _trUsed = (Array.isArray(salesHistory) ? salesHistory : []).some(h => h.id !== id && Array.isArray(h.linkedSalesIds) && h.linkedSalesIds.includes(entryToDelete.transferSaleId));
+if (_trUsed) { showToast(`Cannot delete: the transferred stock was already settled in ${entryToDelete.returnRep}'s calculator record. Delete that record first.`, 'warning', 5000); return; }
+}
+const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore) || (entryToDelete.transferSaleId) || entryToDelete.expired > 0;
 if (_dsHasImpact) {
 confirmMsg += `\n\n The following cascading changes will occur:`;
 if (linkedCount > 0) confirmMsg += `\n • ${linkedCount} linked sale${linkedCount !== 1 ? 's' : ''} will REVERT to "Pending Credit" status.`;
 if (linkedRepCount > 0) confirmMsg += `\n • ${linkedRepCount} rep sale${linkedRepCount !== 1 ? 's' : ''} will be RESTORED to calculator fields.`;
 if (entryToDelete.returned > 0 && entryToDelete.returnStore) confirmMsg += `\n • ${entryToDelete.returned} kg will be REMOVED from ${getStoreLabel(entryToDelete.returnStore)} inventory (return reversal).`;
+if (entryToDelete.transferSaleId) confirmMsg += `\n • ${entryToDelete.returned} kg transferred to ${entryToDelete.returnRep} will be REMOVED from their allocation.`;
 if (entryToDelete.expired > 0) confirmMsg += `\n • ${entryToDelete.expired} kg will be REMOVED from CHORA raw material (expired reversal).`;
 }
 if (await showGlassConfirm(confirmMsg, { title: `Delete ${entryToDelete.seller || "Sales"} Record`, confirmText: "Delete", danger: true })) {
@@ -1113,6 +1122,15 @@ revertedRepSalesCount = await revertRepSalesEntries(entryToDelete.linkedRepSales
 if (entryToDelete.returned > 0 && entryToDelete.returnStore) {
 reversedReturnQty = entryToDelete.returned;
 await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date);
+}
+if (entryToDelete.transferSaleId) {
+const _csAll = ensureArray(await sqliteStore.get('customer_sales'));
+const _trRec = _csAll.find(x => x.id === entryToDelete.transferSaleId);
+if (_trRec) {
+await unifiedDelete('customer_sales', _csAll.filter(x => x.id !== _trRec.id), _trRec.id, { strict: true }, _trRec);
+await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, entryToDelete.date);
+reversedReturnQty = entryToDelete.returned;
+}
 }
 if (entryToDelete.expired > 0) {
 await reverseExpiredFromChora(entryToDelete.expired, entryToDelete.date);
@@ -1945,6 +1963,7 @@ document.getElementById('expenseAmount').focus();
 }
 window._expenseCategory = 'OUT';
 window._returnStore = null;
+window._returnRep = null;
 export function selectExpenseCategory(value, clickedBtn) {
 window._expenseCategory = value;
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
@@ -1956,11 +1975,45 @@ if (clickedBtn) clickedBtn.classList.add('active');
 
 export function selectReturnStore(value, clickedBtn) {
 window._returnStore = value;
-['ret-store-a','ret-store-b'].forEach(id => {
-const btn = document.getElementById(id);
-if (btn) btn.classList.remove('active');
-});
+window._returnRep = null;
+_markReturnTargetActive(clickedBtn);
+}
+
+export function selectReturnRep(repName, clickedBtn) {
+window._returnRep = repName;
+window._returnStore = null;
+_markReturnTargetActive(clickedBtn);
+}
+
+function _markReturnTargetActive(clickedBtn) {
+const grp = document.querySelector('#returnStoreSection .toggle-group');
+if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
 if (clickedBtn) clickedBtn.classList.add('active');
+}
+
+export async function renderReturnTargets() {
+const sec = document.getElementById('returnStoreSection');
+const grp = sec && sec.querySelector('.toggle-group');
+if (!grp) return;
+const seller = (document.getElementById('sellerSelect') || {}).value;
+let stores = (typeof getAppStores === 'function' ? await getAppStores() : []).filter(st => st.key === 'STORE_A' || st.key === 'STORE_B');
+if (!stores.length) stores = [{ key: 'STORE_A', name: 'ZUBAIR' }, { key: 'STORE_B', name: 'MAHMOOD' }];
+const reps = (Array.isArray(window.salesRepsList) ? window.salesRepsList : []).filter(r => r && r !== seller);
+if (window._returnRep && !reps.includes(window._returnRep)) window._returnRep = null;
+grp.innerHTML = '';
+grp.style.flexWrap = 'wrap';
+const mk = (label, active, fn) => {
+const b = document.createElement('button');
+b.type = 'button';
+b.className = 'toggle-opt' + (active ? ' active' : '');
+b.textContent = label;
+b.onclick = () => fn(b);
+grp.appendChild(b);
+};
+stores.forEach(st => mk(st.name, window._returnStore === st.key, b => selectReturnStore(st.key, b)));
+reps.forEach(r => mk(r, window._returnRep === r, b => selectReturnRep(r, b)));
+const hint = sec.querySelector('.u-field-hint');
+if (hint) hint.textContent = '* Store = product return (adds stock back, no new production record). Sales representative = product transfer (counted as a new allocation to that representative).';
 }
 
 function _resetExpenseForm() {
@@ -7992,6 +8045,8 @@ window.selectExpense = selectExpense;
 window.hideExpenseSearch = hideExpenseSearch;
 window.selectExpenseCategory = selectExpenseCategory;
 window.selectReturnStore = selectReturnStore;
+window.selectReturnRep = selectReturnRep;
+window.renderReturnTargets = renderReturnTargets;
 window.saveExpense = saveExpense;
 window.createExpenseTransaction = createExpenseTransaction;
 window.renderRecentExpenses = renderRecentExpenses;

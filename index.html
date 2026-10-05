@@ -2539,13 +2539,13 @@ No records found
 <div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
 <div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
-<label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
+<label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return To Store / Transfer To Sales Rep:</label>
 <div class="toggle-group" style="margin-top: 8px;">
 <button id="ret-store-a" class="toggle-opt" onclick="selectReturnStore('STORE_A', this)">ZUBAIR</button>
 <button id="ret-store-b" class="toggle-opt" onclick="selectReturnStore('STORE_B', this)">MAHMOOD</button>
 </div>
 <div class="u-field-hint" >
-* This will increase the store's stock level without creating a new production record.
+* Store = product return (adds stock back, no new production record). Sales representative = product transfer (counted as a new allocation to that representative).
 </div>
 </div>
 <div id="expiredSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(220, 38, 38, 0.08); border-radius: 10px; border: 1px solid var(--danger, #dc2626);">
