@@ -1953,7 +1953,7 @@ export async function subscribeToRealtime() {
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           emitSyncUpdate({ appStores: null });
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
-          if (localTs) sendDeviceNotification('Stores updated', 'Store prices or formulas were changed on another device and have been applied here.', 'stores-remote').catch(() => {});
+          if (localTs) sendDeviceNotification('Stores updated', 'Another phone changed store prices or formulas. They are now updated on this phone too.', 'stores-remote').catch(() => {});
           flashLivePulse();
         }
         recordSuccessfulConnection();

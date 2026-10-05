@@ -26,6 +26,8 @@
               wss://*.firebaseio.com
               https://*.firebaseapp.com
               https://nominatim.openstreetmap.org
+              https://dummyjson.com
+              https://api.quotable.io
               https://firestore.googleapis.com
               https://*.google.com
               https://cdnjs.cloudflare.com
@@ -414,7 +416,7 @@ function _showUpdateDialog(reg) {
     return;
   }
   window._swDialogShown = true;
-  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('App update available', 'A new version is ready. Open the app to update.', 'app-update').catch(function(){});
+  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('App update available', 'A newer version of the app is ready. Open the app to get it.', 'app-update').catch(function(){});
   showGlassConfirm(
     'A new version of the app is ready.'
     + '\n\nWhat happens when you update:'
@@ -756,7 +758,44 @@ var D=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],M
 var d=$("splash-date");
 if(d)d.textContent=D[now.getDay()]+" \u00b7 "+now.getDate()+" "+M[now.getMonth()];
 }
-var rq=Q[Math.floor(Math.random()*Q.length)];
+var QK="splashQuotePool",QS="splashQuoteSeen";
+function lsGet(k){try{var v=JSON.parse(localStorage.getItem(k)||"null");return Array.isArray(v)?v:[]}catch(e){return []}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var qPool=lsGet(QK),rq=null;
+while(qPool.length&&!rq){var qc=qPool.shift();if(qc&&qc.q&&qc.a)rq=[qc.q,qc.a];}
+lsSet(QK,qPool);
+if(!rq)rq=Q[Math.floor(Math.random()*Q.length)];
+function refillQuotes(){
+try{
+if(lsGet(QK).length>=15||(navigator.onLine===false))return;
+var seen=lsGet(QS);
+var add=function(items){
+var pool=lsGet(QK),n=0;
+items.forEach(function(it){
+if(!it||!it.q||!it.a||it.q.length<20||it.q.length>150)return;
+if(seen.indexOf(it.id)>-1)return;
+seen.push(it.id);pool.push({id:it.id,q:it.q,a:it.a});n++;
+});
+if(seen.length>500)seen=seen.slice(-500);
+lsSet(QS,seen);lsSet(QK,pool.slice(-60));
+return n;
+};
+var tm=function(url){
+var ctl=typeof AbortController==="function"?new AbortController():null;
+var t=setTimeout(function(){if(ctl)ctl.abort()},7000);
+return fetch(url,ctl?{signal:ctl.signal}:{}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error("http");return r.json()});
+};
+tm("https://dummyjson.com/quotes?limit=30&skip="+Math.floor(Math.random()*1420)).then(function(d){
+return add((d.quotes||[]).map(function(x){return{id:"d"+x.id,q:x.quote,a:x.author}}));
+}).then(function(n){
+if(n)return;
+return tm("https://api.quotable.io/quotes/random?limit=20&maxLength=150").then(function(d){
+add((Array.isArray(d)?d:[]).map(function(x){return{id:"q"+x._id,q:x.content,a:x.author}}));
+});
+}).catch(function(){});
+}catch(e){}
+}
+setTimeout(refillQuotes,4000);
 $("splash-quote").textContent='"'+rq[0]+'"';
 $("splash-author").textContent="\u2014 "+rq[1];
 render();
