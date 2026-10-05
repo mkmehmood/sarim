@@ -320,17 +320,55 @@ export async function shareProdPhotos(ids) {
   }
   if (!files.length) { _toast('No photos found for the selected entries.', 'warning'); return; }
   const text = textLines.join('\n\n');
-  if (navigator.canShare && navigator.canShare({ files })) {
+  const plural = files.length === 1 ? '' : 's';
+  const isAbort = (err) => !!err && (err.name === 'AbortError' || /cancel/i.test(String(err.message || err)));
+
+  const tryShare = async (withText) => {
+    const data = withText ? { files, title: 'Production photos', text } : { files, title: 'Production photos' };
+    if (typeof window.nativeShareFiles === 'function' && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
+      await window.nativeShareFiles(files, data);
+    } else {
+      await navigator.share(data);
+    }
+  };
+
+  const canShareFiles = !!(navigator.canShare && navigator.canShare({ files }));
+  if (canShareFiles) {
     try {
-      await navigator.share({ files, title: 'Production photos', text });
-      _toast(`Shared ${files.length} photo${files.length === 1 ? '' : 's'}`, 'success');
+      await tryShare(true);
+      _toast(`Shared ${files.length} photo${plural}`, 'success');
       clearProdPhotoSelection();
       return;
     } catch (err) {
-      if (err && err.name === 'AbortError') { _toast('Share cancelled', 'info'); return; }
-      console.warn('[prod photo] Web Share failed, falling back', err);
+      if (isAbort(err)) { _toast('Share cancelled', 'info'); return; }
+      console.warn('[prod photo] share failed:', err && (err.name + ': ' + err.message));
+      if (err && err.name === 'NotAllowedError' && typeof window.showGlassConfirm === 'function') {
+        const go = await window.showGlassConfirm(`${files.length} photo${plural} ready to share.`, { title: 'Share Photos', confirmText: 'Share', cancelText: 'Cancel' });
+        if (!go) return;
+        try {
+          await tryShare(true);
+          _toast(`Shared ${files.length} photo${plural}`, 'success');
+          clearProdPhotoSelection();
+          return;
+        } catch (err2) {
+          if (isAbort(err2)) { _toast('Share cancelled', 'info'); return; }
+          console.warn('[prod photo] retry failed:', err2 && (err2.name + ': ' + err2.message));
+        }
+      }
+      try {
+        await tryShare(false);
+        _toast(`Shared ${files.length} photo${plural}`, 'success');
+        clearProdPhotoSelection();
+        return;
+      } catch (err3) {
+        if (isAbort(err3)) { _toast('Share cancelled', 'info'); return; }
+        console.warn('[prod photo] share without text failed:', err3 && (err3.name + ': ' + err3.message));
+        _toast('Could not open the share sheet: ' + ((err3 && err3.message) || 'unknown error'), 'error', 5000);
+        return;
+      }
     }
   }
+
   files.forEach((f, i) => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(f);
@@ -338,7 +376,7 @@ export async function shareProdPhotos(ids) {
     document.body.appendChild(a);
     setTimeout(() => { a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, i * 250);
   });
-  _toast(`Saved ${files.length} photo${files.length === 1 ? '' : 's'} — opening WhatsApp…`, 'success', 4000);
+  _toast(`Sharing isn't supported here \u2014 saved ${files.length} photo${plural}. Opening WhatsApp\u2026`, 'info', 4000);
   setTimeout(() => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'), files.length * 250 + 500);
   clearProdPhotoSelection();
 }
