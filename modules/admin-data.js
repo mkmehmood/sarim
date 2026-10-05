@@ -1769,7 +1769,7 @@ if (completeSection) {
   </div>`;
   completeSection.style.display = 'block';
   showToast('Financial Year closed successfully!', 'success');
-  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close completed successfully.', 'year-closed').catch(() => {});
+  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close finished. Balances were carried forward and old records were merged.', 'year-closed').catch(() => {});
 }
 } catch (error) {
 if (error.name === 'AbortError') {

@@ -267,7 +267,7 @@ function _notifyDeletion(key, r) {
       if (amt != null && amt !== '' && !isNaN(Number(amt))) parts.push(fmtAmt(amt));
       else if (r.net != null && !isNaN(Number(r.net))) parts.push(Math.abs(Number(r.net)) + ' kg');
     }
-    sendDeviceNotification(label + ' deleted', parts.length ? parts.join(' — ') : label + ' was removed', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
+    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
   } catch (_) {}
 }
 export async function unifiedDelete(sqliteKey, dataArray, deletedRecordId, opts = {}, preDeletedRecord = null) {
@@ -1953,7 +1953,7 @@ export async function subscribeToRealtime() {
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           emitSyncUpdate({ appStores: null });
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
-          if (localTs) sendDeviceNotification('Stores updated', 'Store prices or formulas were changed on another device', 'stores-remote').catch(() => {});
+          if (localTs) sendDeviceNotification('Stores updated', 'Store prices or formulas were changed on another device and have been applied here.', 'stores-remote').catch(() => {});
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -2715,16 +2715,16 @@ function _describeRemoteTx(key, r) {
   if (key === 'rep_sales') {
     const rep = r.salesRep;
     if (!rep || rep === 'NONE' || rep === 'admin') return null;
-    return r.isCollection ? { title: 'Collection', body: `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` } : { title: 'Sale', body: `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
+    return r.isCollection ? { title: 'New collection', body: `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` } : { title: 'New sale', body: `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
   }
   const who = r.createdBy;
   if (!who) return null;
-  if (key === 'customer_sales') return { title: 'Sale', body: `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
+  if (key === 'customer_sales') return { title: 'New sale', body: `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
   if (key === 'payment_transactions') {
     if (r.isExpense) return null;
-    return { title: 'Payment', body: `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
+    return { title: 'New payment', body: `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
   }
-  return { title: 'Expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
+  return { title: 'New expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
 }
 function _pushTxNotification(item) {
   showToast(item.body, 'info', 4500);
@@ -2742,7 +2742,7 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
     }
   }
   items.slice(0, 5).forEach(_pushTxNotification);
-  if (items.length > 5) _pushTxNotification({ title: 'Transactions', body: `+${items.length - 5} more new transactions`, id: 'more' });
+  if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
 }
 const _LOCAL_TX_KEYS = new Set(['rep_sales', 'customer_sales', 'payment_transactions', 'expenses', 'mfg_pro_pkr']);
 function _describeLocalTx(key, r) {
@@ -2786,17 +2786,17 @@ function _notifyLocalTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ ...item, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {}));
-  if (items.length > 3) sendDeviceNotification('Transactions', `+${items.length - 3} more new transactions`, 'tx-more').catch(() => {});
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id).catch(() => {}));
+  if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
 function _notifyEditedTransactions(key, records) {
   const items = [];
   records.forEach(r => {
     const item = _describeLocalTx(key, r);
-    if (item) items.push({ title: item.title + ' updated', body: item.body, id: r.id });
+    if (item) items.push({ title: item.title + ' updated', body: 'Details were changed: ' + item.body, id: r.id });
   });
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
-  if (items.length > 3) sendDeviceNotification('Transactions updated', `+${items.length - 3} more transactions were updated`, 'tx-edit-more').catch(() => {});
+  if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
 async function _applyFormulaStoreFromCloud(cloud) {

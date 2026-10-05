@@ -371,7 +371,7 @@ export async function saveFormulaStoreEntry() {
   const inSlot = SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId));
   await _saveFormulaStore(list, inSlot ? _feedWrites(list, slots, batch, now) : []);
   showToast('Formula saved', 'success');
-  sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `${c.name} — ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}`, 'formula-' + _editingId).catch(() => {});
+  sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `"${c.name}" was saved with ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}.`, 'formula-' + _editingId).catch(() => {});
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   return true;
 }
@@ -389,7 +389,7 @@ export async function deleteFormulaStoreEntry() {
   const removed = fullList.find((f) => String(f.id) === String(_editingId));
   const list = fullList.filter((f) => String(f.id) !== String(_editingId));
   await _saveFormulaStore(list);
-  sendDeviceNotification('Formula deleted', removed && removed.name ? removed.name : 'A formula was removed', 'formula-del-' + _editingId).catch(() => {});
+  sendDeviceNotification('Formula deleted', removed && removed.name ? `"${removed.name}" was removed from your formulas.` : 'A formula was removed.', 'formula-del-' + _editingId).catch(() => {});
   _editingId = null;
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   showToast('Formula deleted', 'success');

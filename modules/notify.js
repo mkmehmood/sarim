@@ -77,9 +77,50 @@ const _NOISE_RE = new RegExp([
   'loading|syncing|sync (started|complete)|preparing|generating|opening|checking|connecting',
   'shared|copied|downloaded|uploaded|exported|saved to|saved as|pdf|image',
   'back online|you are offline|offline mode|connection restored',
-  'refreshed|updated successfully!?$'
+  'refreshed|updated successfully!?$',
+  'deleted successfully|all records deleted|permanently deleted|recovered|restore complete|^(transferred|transfer updated)\\b'
 ].join('|'), 'i');
-const _TITLES = { success: 'Done', warning: 'Warning', error: 'Error' };
+const _FALLBACK = {
+  success: { title: 'Completed', hint: '' },
+  warning: { title: 'Needs your attention', hint: ' Open the app to review it.' },
+  error: { title: 'Something went wrong', hint: ' Open the app and try again.' }
+};
+const _EXPLAIN = [
+  [/failed to save (production|data locally|data)/i, () => ['Could not save your data', 'The latest entry was NOT saved on this phone. Open the app, check the entry and save it again.']],
+  [/failed to save (transaction|expense)/i, (m) => ['Could not save the ' + m[1].toLowerCase(), 'The ' + m[1].toLowerCase() + ' was NOT saved. Open the app, check the details and try again.']],
+  [/failed to (delete|remove) (.+?)[.!]?( please.*)?$/i, (m) => ['Could not delete ' + m[2].replace(/\.$/, ''), 'Nothing was deleted. Open the app and try again.']],
+  [/failed to update (.+?)[.!]?( please.*)?$/i, (m) => ['Could not update ' + m[1].replace(/\.$/, ''), 'The change was not applied. Open the app and try again.']],
+  [/insufficient cash in hand\.?\s*available:\s*(.+?)\s*[\u2014-]\s*(?:extra )?required(?: \(net\))?:\s*(.+)$/i, (m) => ['Not enough cash in hand', 'Only ' + m[1] + ' is available but ' + m[2] + ' is needed. Add cash or lower the amount, then try again.']],
+  [/cannot delete:\s*(.+)/i, (m) => ['Batch cannot be deleted', m[1].replace(/\.$/, '') + '.']],
+  [/storage nearly full \(([\d.,]+) MB free\)/i, (m) => ['Phone storage almost full', 'Only ' + m[1] + ' MB of space is left. Create a backup and free some space, otherwise new data may not save.']],
+  [/approaching the browser'?s local storage limit/i, (m, t) => ['Local storage almost full', t]],
+  [/saved locally.*sync will retry/i, () => ['Saved offline', 'Your change is saved on this phone and will upload automatically once you are back online.']],
+  [/transaction saved!\s*(\d+) sales entries reconciled/i, (m) => ['Payment saved', 'The payment was recorded and ' + m[1] + ' related sales ' + (m[1] === '1' ? 'entry was' : 'entries were') + ' marked as settled.']],
+  [/material saved successfully/i, () => ['Raw material saved', 'Raw material inventory was updated with the new stock and cost.']],
+  [/^(.+?) added as user$/i, (m) => ['New user added', m[1] + ' was added as a user.']],
+  [/^(.+?) added$/i, (m) => ['New entry added', m[1] + ' was added successfully.']],
+  [/emptied recycle bin with (\d+) error/i, (m) => ['Recycle bin partly emptied', m[1] + ' record' + (m[1] === '1' ? '' : 's') + ' could not be removed. Open the recycle bin to review.']],
+  [/location confirmed for (.+?) after/i, (m) => ['Customer location confirmed', m[1] + '\u2019s location was saved after 3 consistent visits.']],
+  [/unlinked from (.+)/i, (m) => ['Supplier unlinked', 'The material is no longer linked to ' + m[1] + '.']],
+  [/linked to (.+)/i, (m) => ['Supplier linked', 'The material is now linked to ' + m[1] + '.']],
+  [/remote command sent:\s*(.+)/i, (m) => ['Command sent', 'A request to switch to ' + m[1] + ' was sent to the device.']],
+  [/encryption failed/i, () => ['Encryption failed', 'Your data could not be encrypted, so nothing was exported. Open the app and try again.']],
+  [/error generating pdf/i, () => ['PDF could not be created', 'The statement was not generated. Open the app and try again.']],
+  [/address lookup failed/i, () => ['Address lookup failed', 'The street address could not be found, so GPS coordinates were saved instead.']],
+  [/unexpected error/i, () => ['Something went wrong', 'The app hit an unexpected problem. Reopen the app; if it keeps happening, create a backup.']],
+  [/(rep sales|customer data) operation failed/i, (m) => ['Action did not complete', 'The last ' + m[1].toLowerCase() + ' action failed. Open the app, check the entry and try again.']],
+  [/table failed to render|calculation failed/i, () => ['A screen failed to load', 'Part of the app could not be displayed. Reload the app to fix it.']],
+  [/invalid transaction id/i, () => ['Transaction not found', 'This transaction could not be found. It may have been deleted on another device.']]
+];
+function _explainToast(text, type) {
+  for (const [re, fn] of _EXPLAIN) {
+    const m = re.exec(text);
+    if (m) { try { const out = fn(m, text); if (out) return { title: out[0], body: out[1] }; } catch (_) {} }
+  }
+  const f = _FALLBACK[type] || _FALLBACK.warning;
+  const body = /[.!?]$/.test(text) ? text : text + '.';
+  return { title: f.title, body: body + f.hint };
+}
 
 function _cleanToastText(message) {
   let t = String(message == null ? '' : message).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -100,7 +141,8 @@ export function notifyFromToast(message, type) {
     _burst = _burst.filter(ts => now - ts < _BURST_WINDOW_MS);
     if (_burst.length >= _BURST_MAX) return;
     _burst.push(now);
-    sendDeviceNotification(_TITLES[type], text, 'toast-' + type).catch(() => {});
+    const note = _explainToast(text, type);
+    sendDeviceNotification(note.title, note.body, 'toast-' + type).catch(() => {});
   } catch (_) {}
 }
 window.notifyFromToast = notifyFromToast;
