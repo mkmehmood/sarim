@@ -5,10 +5,14 @@
 //   customer_sales / rep_sales : relatedSaleId  (partial payment -> parent credit sale)
 //   rep_sales                  : usedInCalcId   (rep sale consumed by a calculator record)
 //   noman_history              : linkedSalesIds[], linkedRepSalesIds[], transferSaleId, returnEntryId, returnLogId
+ fix/link-aware-save-delete-restore
 //   payment_transactions       : expenseId      (payment -> expense record)
 //                                entityId / transferPeerEntityId (payment -> payment_entities)
 //                                materialId / materialIds[]      (supplier payment -> factory_inventory_data)
 //   factory_inventory_data     : supplierId     (material -> payment_entities)
+
+//   payment_transactions       : expenseId      (payment -> expense record), entityId (payment -> entity)
+ main
 // Recovering a record from the recycle bin gives it a NEW id (so cloud tombstones on other devices
 // cannot re-delete it). Every field above therefore has to be re-pointed at the new id.
 
@@ -139,6 +143,19 @@ export function getEditLinkIssue(original, next, children) {
     return `${paid} has already been collected against this sale, so its value cannot be reduced below that.`;
   }
   return null;
+}
+
+// ---- payment transaction <-> expense record --------------------------------------------------------
+
+// Delete side: deleting a payment must also remove the expense record that was created with it, but only
+// when no OTHER payment still points at that expense. Pure: returns the expense to remove, or null.
+// excludeIds = ids of payments that are being deleted in the same operation.
+export function planExpenseCascade(tx, allTxs, expenses, excludeIds) {
+  if (!tx || !tx.expenseId) return null;
+  const skip = new Set([String(tx.id), ...(excludeIds ? [...excludeIds].map(String) : [])]);
+  const stillUsed = (Array.isArray(allTxs) ? allTxs : []).some(t => t && !skip.has(String(t.id)) && String(t.expenseId) === String(tx.expenseId));
+  if (stillUsed) return null;
+  return (Array.isArray(expenses) ? expenses : []).find(e => e && String(e.id) === String(tx.expenseId)) || null;
 }
 
 // ---- deletion groups ---------------------------------------------------------------------------

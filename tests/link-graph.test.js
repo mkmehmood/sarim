@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
-  getEditLinkIssue, stampGroup, newGroupId, orderForRestore, findGroupMembers, GROUP_FIELD,
+  getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers, GROUP_FIELD,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -96,5 +96,49 @@ describe('deletion groups', () => {
     assert.equal(members.length, 3);
     assert.deepEqual(orderForRestore(members).map(t => t.id), ['k', 'p', 'c']);
     assert.equal(findGroupMembers(tombs[3], tombs).length, 1);
+  });
+});
+
+describe('payment <-> expense cascade', () => {
+  const exp = { id: 'e1', category: 'OUT' };
+  it('removes the expense record created with a lone payment', () => {
+    const tx = { id: 't1', expenseId: 'e1' };
+    assert.equal(planExpenseCascade(tx, [tx], [exp]), exp);
+  });
+  it('keeps the expense while another payment still points at it', () => {
+    const tx = { id: 't1', expenseId: 'e1' };
+    assert.equal(planExpenseCascade(tx, [tx, { id: 't2', expenseId: 'e1' }], [exp]), null);
+  });
+  it('lets payments deleted in the same operation not keep the expense alive', () => {
+    const tx = { id: 't1', expenseId: 'e1' };
+    assert.equal(planExpenseCascade(tx, [tx, { id: 't2', expenseId: 'e1' }], [exp], ['t2']), exp);
+  });
+  it('does nothing for payments without an expense or with a missing expense', () => {
+    assert.equal(planExpenseCascade({ id: 't1' }, [], [exp]), null);
+    assert.equal(planExpenseCascade({ id: 't1', expenseId: 'gone' }, [], [exp]), null);
+  });
+});
+
+describe('entity restore keeps payments attached', () => {
+  it('re-points payments at a recovered entity and at a recovered expense', () => {
+    const stores = { payment_transactions: [{ id: 't1', entityId: 'oldEnt', expenseId: 'oldExp' }] };
+    remapReferences(stores, 'oldEnt', 'newEnt');
+    remapReferences(stores, 'oldExp', 'newExp');
+    assert.equal(stores.payment_transactions[0].entityId, 'newEnt');
+    assert.equal(stores.payment_transactions[0].expenseId, 'newExp');
+  });
+  it('re-points a recovered payment snapshot at an entity recovered earlier', () => {
+    const snap = { id: 't1', entityId: 'oldEnt', expenseId: 'oldExp' };
+    resolveOwnLinks('transactions', snap, { oldEnt: 'newEnt', oldExp: 'newExp' });
+    assert.equal(snap.entityId, 'newEnt');
+    assert.equal(snap.expenseId, 'newExp');
+  });
+  it('restores the entity and expense before the payment that points at them', () => {
+    const order = orderForRestore([
+      { recordId: 't1', collection: 'transactions', snapshot: { entityId: 'e', expenseId: 'x' } },
+      { recordId: 'x', collection: 'expenses', snapshot: {} },
+      { recordId: 'e', collection: 'entities', snapshot: {} },
+    ]).map(t => t.recordId);
+    assert.equal(order[order.length - 1], 't1');
   });
 });

@@ -1,9 +1,13 @@
 import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity } from './business.js';
-import { unifiedSave } from './sync.js';
+import { unifiedSave, unifiedDelete } from './sync.js';
 import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
+ fix/link-aware-save-delete-restore
   planGroupRecovery, applyEntityRename, factoryEntryMaterialUsage, findUsageItem,
+
+  planExpenseCascade, newGroupId, stampGroup,
+ main
 } from './link-graph.js';
 
 // Calculator history entries (noman_history) link to other records through these real fields:
@@ -361,4 +365,48 @@ export function createRollback() {
       saved.clear();
     },
   };
+}
+
+
+// ---------------------------------------------------------------------------------------------------
+// Payment <-> expense record: one shared delete path
+// ---------------------------------------------------------------------------------------------------
+
+async function _dropExpensePhoto(expenseId) {
+  if (!expenseId) return;
+  try {
+    const key = 'expense:' + expenseId;
+    const photos = (await sqliteStore.get('person_photos')) || {};
+    if (photos[key] === undefined) return;
+    delete photos[key];
+    await sqliteStore.set('person_photos', photos);
+    const ts = (await sqliteStore.get('person_photos_timestamps')) || {};
+    delete ts[key];
+    await sqliteStore.set('person_photos_timestamps', ts);
+    const dk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    if (!dk.includes(key)) dk.push(key);
+    await sqliteStore.set('person_photos_dirty_keys', dk);
+  } catch (e) { console.warn('[deletePaymentTxWithLinks] photo cleanup failed', e); }
+}
+
+// DELETE: remove one payment transaction together with the expense record that was created with it
+// (unless another payment still uses that expense). Both tombstones carry the same deletion group, so
+// recovering either one from the recycle bin brings back both, with the link re-pointed at the new ids.
+// opts.groupId     reuse a group created by the caller (entity delete, bulk expense delete ...)
+// opts.excludeIds  other payments deleted in the same operation (they do not keep the expense alive)
+// Returns { tx, expense } (expense is null when nothing else was removed).
+export async function deletePaymentTxWithLinks(tx, opts = {}) {
+  if (!tx || !tx.id) return { tx: null, expense: null };
+  const allTxs = ensureArray(await sqliteStore.get('payment_transactions'));
+  const expenses = ensureArray(await sqliteStore.get('expenses'));
+  const expense = planExpenseCascade(tx, allTxs, expenses, opts.excludeIds);
+  const groupId = opts.groupId || (expense ? newGroupId('pay') : null);
+  const remaining = allTxs.filter(t => t && String(t.id) !== String(tx.id));
+  await unifiedDelete('payment_transactions', remaining, tx.id, { strict: true }, groupId ? stampGroup(tx, groupId) : tx);
+  if (expense) {
+    const remainingExp = expenses.filter(e => e && String(e.id) !== String(expense.id));
+    await unifiedDelete('expenses', remainingExp, expense.id, { strict: true }, stampGroup(expense, groupId));
+  }
+  await _dropExpensePhoto(tx.expenseId);
+  return { tx, expense };
 }

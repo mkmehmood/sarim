@@ -1,4 +1,8 @@
+ fix/link-aware-save-delete-restore
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, createRollback } from './link-guards.js';
+
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks } from './link-guards.js';
+ main
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -574,7 +578,12 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 return;
 }
+ fix/link-aware-save-delete-restore
 await deletePaymentRecordsLinked([transaction]);
+
+await _restorePayableFromDeletedTransaction(transaction, paymentTransactions, factoryInventoryData);
+await deletePaymentTxWithLinks(transaction);
+ main
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");

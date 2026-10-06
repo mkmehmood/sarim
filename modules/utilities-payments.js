@@ -2198,12 +2198,19 @@ showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _seAvailCa
 return;
 }
 }
-let expensesSnapshot = [...expenseRecords];
+const _seDeep = (a) => JSON.parse(JSON.stringify(a));
+let expensesSnapshot = _seDeep(expenseRecords);
 let categoriesSnapshot = [...expenseCategories];
+ fix/link-aware-save-delete-restore
 let entitiesSnapshot = [...paymentEntities];
 let transactionsSnapshot = [...paymentTransactions];
 const _rb = createRollback();
 let _createdExpenseId = null;
+
+let entitiesSnapshot = _seDeep(paymentEntities);
+let transactionsSnapshot = _seDeep(paymentTransactions);
+let inventorySnapshot = _seDeep(factoryInventoryData);
+ main
 try {
 if (category === 'operating') {
 let expenseId = generateUUID('exp');
@@ -2480,12 +2487,15 @@ paymentEntities.length = 0;
 paymentEntities.push(...entitiesSnapshot);
 paymentTransactions.length = 0;
 paymentTransactions.push(...transactionsSnapshot);
+factoryInventoryData.length = 0;
+factoryInventoryData.push(...inventorySnapshot);
 try {
 await sqliteStore.setBatch([
 ['expenses', expenseRecords],
 ['expense_categories', expenseCategories],
 ['payment_entities', paymentEntities],
-['payment_transactions', paymentTransactions]
+['payment_transactions', paymentTransactions],
+['factory_inventory_data', factoryInventoryData]
 ]);
 } catch (rollbackError) {
 console.error('Failed to render data.', _safeErr(rollbackError));
@@ -3646,9 +3656,42 @@ _daeMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(_daeMsg, { title: `Delete All "${expenseName}" Records`, confirmText: "Delete All", danger: true }))) return;
 try {
 for (const exp of toDelete) {
+ fix/link-aware-save-delete-restore
 const linked = paymentTransactions.filter(t => t.expenseId === exp.id);
 await deletePaymentRecordsLinked(linked, { extraExpenses: [exp] });
 }
+
+const linked = ensureArray(await sqliteStore.get('payment_transactions')).filter(t => t && t.expenseId === exp.id);
+const _bulkGroup = linked.length ? newGroupId('exp') : null;
+for (const tx of linked) {
+const _ptFilteredExp = ensureArray(await sqliteStore.get('payment_transactions')).filter(t => t.id !== tx.id);
+await unifiedDelete('payment_transactions', _ptFilteredExp, tx.id, { strict: true }, stampGroup(tx, _bulkGroup));
+}
+const _expFiltered = ensureArray(await sqliteStore.get('expenses')).filter(e => e.id !== exp.id);
+await unifiedDelete('expenses', _expFiltered, exp.id, { strict: true }, _bulkGroup ? stampGroup(exp, _bulkGroup) : exp);
+_bulkPhotoKeysToDelete.push('expense:' + exp.id);
+}
+try {
+  const _bulkPh = (await sqliteStore.get('person_photos')) || {};
+  const _bulkPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+  const _bulkDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+  let _bulkPhChanged = false;
+  for (const _bKey of _bulkPhotoKeysToDelete) {
+    if (_bulkPh[_bKey] !== undefined) {
+      delete _bulkPh[_bKey];
+      delete _bulkPhTs[_bKey];
+      if (!_bulkDk.includes(_bKey)) _bulkDk.push(_bKey);
+      _bulkPhChanged = true;
+    }
+  }
+  if (_bulkPhChanged) {
+    await sqliteStore.set('person_photos', _bulkPh);
+    await sqliteStore.set('person_photos_timestamps', _bulkPhTs);
+    await sqliteStore.set('person_photos_dirty_keys', _bulkDk);
+    if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
+  }
+} catch(_bulkPhErr) { console.warn('[deleteAllExpenses] photo batch cleanup failed', _bulkPhErr); }
+ main
 notifyDataChange('expenses');
 showToast(` All "${expenseName}" expense records deleted`, 'success');
 closeExpenseDetailsOverlay();
