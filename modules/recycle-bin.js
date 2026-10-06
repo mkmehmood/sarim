@@ -12,6 +12,7 @@ import { notifyDataChange, triggerAutoSync, OfflineQueue } from './utilities-cor
 import { COLLECTION_TO_KEY, GROUP_FIELD, orderForRestore, findGroupMembers } from './link-graph.js';
 import {
   getRecoverBlockReason, getRecoverLinkBlockReason, applyRecoveryLinks,
+  applyRenameOnRecovery, findLiveSameNameRecord,
 } from './link-guards.js';
 import { showToast, showGlassConfirm } from './customers.js';
 
@@ -181,6 +182,17 @@ export async function recoverDeletedRecord(deletedId) {
       if (!validateUUID(newId)) newId = generateUUID('recovered');
       const clean = _cleanSnapshot(m.snapshot);
       clean.id = newId;
+
+      // Customer renamed while this record sat in the bin: bring it back under the new name.
+      await applyRenameOnRecovery(collection, clean);
+      // A same-name contact/entity is already live: reuse it instead of creating a duplicate.
+      const dupe = await findLiveSameNameRecord(collection, clean);
+      if (dupe) {
+        await applyRecoveryLinks(collection, oldId, dupe.id, null);
+        await _purgeAfterRecover(oldId);
+        touchedTypes.add(key);
+        continue;
+      }
 
       // Re-point every link (other records -> new id, this record -> earlier-recovered parents),
       // and re-attach a partial payment to its parent sale.
