@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.29.09.2026';
+const BUILD_HASH = 'V.07.10.2026';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -19,6 +19,7 @@ const ASSETS_TO_CACHE = [
   './modules/custom-date-picker.js',
   './modules/link-guards.js',
   './modules/link-graph.js',
+  './modules/recycle-bin.js',
   './manifest.json',
   './192.png',
   './512.png',
@@ -450,7 +451,7 @@ self.addEventListener('fetch', function (event) {
             revalidateInBackground(cache, event.request);
             return cached;
           }
-          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS)
+          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS, opts)
             .then(function (res) { if (res.ok) cache.put(event.request, res.clone()); return res; })
             .catch(function () {
 
@@ -477,7 +478,7 @@ self.addEventListener('fetch', function (event) {
             revalidateInBackground(cache, event.request);
             return cached;
           }
-          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS)
+          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS, opts)
             .then(function (res) { if (res.ok) cache.put(event.request, res.clone()); return res; })
             .catch(function () {
               return new Response(JSON.stringify({ error: 'offline' }), {
