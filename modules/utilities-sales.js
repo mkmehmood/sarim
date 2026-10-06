@@ -1820,8 +1820,12 @@ if (recordToDelete.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
+if (recordToDelete.isTransfer) {
+showToast(`This is a stock transfer from ${recordToDelete.transferFrom}. Delete the originating calculator record to remove it.`, 'warning', 5000);
+return;
+}
 const recordDate = recordToDelete.date || 'Unknown date';
-const _dcStoreLabel = recordToDelete.supplyStore ? getStoreLabel(recordToDelete.supplyStore) : '';
+const _dcStoreLabel = recordToDelete.supplyStore && !recordToDelete.isTransfer ? getStoreLabel(recordToDelete.supplyStore) : '';
 const _dcIsCollection = recordToDelete.paymentType === 'COLLECTION' && recordToDelete.currentRepProfile === 'admin';
 const _dcIsCredit = recordToDelete.paymentType === 'CREDIT';
 const _dcIsPaid = _dcIsCredit && recordToDelete.creditReceived;
@@ -2559,13 +2563,11 @@ showTab(targetTab);
 
 export async function processRepTransfer(targetRep, quantity, date, seller) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const sel = await getCalcCycleSelection(seller);
-const withStore = (sel.selected || []).filter(x => x.supplyStore);
-const store = withStore.length ? withStore[withStore.length - 1].supplyStore : 'STORE_A';
-const costData = await calculateSalesCost(store, quantity);
-const unitPrice = await getEffectiveSalePriceForCustomer(targetRep, store);
-if (!unitPrice || unitPrice <= 0) throw new Error('Sale price not configured for this store. Set prices in Factory Formulas first.');
-const totalValue = quantity * unitPrice;
+const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const _contact = salesCustomers.find(c => c && c.name && c.name.toLowerCase() === String(targetRep).toLowerCase());
+const unitPrice = _contact && _contact.customSalePrice > 0 ? _contact.customSalePrice : 0;
+if (!unitPrice) throw new Error(`No sale price set for ${targetRep}. Set it in Customer Manager first.`);
+const totalValue = round2(quantity * unitPrice);
 const now = new Date();
 const p2 = n => String(n).padStart(2, '0');
 const h12 = now.getHours() % 12 || 12;
@@ -2578,9 +2580,9 @@ let rec = {
 id, timestamp: ts, createdAt: ts, updatedAt: ts,
 date: deviceDate, supplyDate: date, time: timeString,
 customerName: targetRep, customerPhone: '',
-quantity, supplyStore: store, paymentType: 'CREDIT',
+quantity, supplyStore: 'N/A', paymentType: 'CREDIT',
 salesRep: targetRep, currentRepProfile: 'admin',
-totalCost: costData.totalCost, totalValue, profit: totalValue - costData.totalCost,
+totalCost: totalValue, totalValue, profit: 0,
 unitPrice, creditReceived: false,
 isTransfer: true, transferFrom: seller,
 syncedAt: new Date().toISOString(),
@@ -2589,10 +2591,9 @@ createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._ass
 rec = ensureRecordIntegrity(rec, false);
 customerSales.push(rec);
 await unifiedSave('customer_sales', customerSales, rec);
-await processReturnToProduction(store, quantity, date, seller, `Transferred to ${targetRep} (stock-neutral)`);
 notifyDataChange('sales');
 emitSyncUpdate({ customer_sales: null });
-return { saleId: id, store };
+return { saleId: id };
 }
 
 export async function saveTransaction() {
@@ -6429,9 +6430,9 @@ const badgeClass = creditReceived ? 'received' : (paymentType ? paymentType.toLo
 const badgeText = creditReceived ? 'RECEIVED' : paymentType;
 const isOldDebtItem = item.transactionType === 'OLD_DEBT';
 const isAdminCollItem = !((item.salesRep && item.salesRep !== 'NONE')) && paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
-const supplyTagClass = item.supplyStore === 'STORE_A' ? 'store-a' :
+const supplyTagClass = item.isTransfer ? 'store-c' : item.supplyStore === 'STORE_A' ? 'store-a' :
 item.supplyStore === 'STORE_B' ? 'store-b' : 'store-c';
-const supplyTagText = item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
+const supplyTagText = item.isTransfer ? 'TRANSFER' : item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
 item.supplyStore === 'STORE_B' ? 'MAHMOOD' : 'ASAAN';
 let repBadge = '';
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') {

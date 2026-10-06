@@ -653,23 +653,16 @@ stockReturns.push(returnLogEntry);
 await unifiedSave('stock_returns', stockReturns, returnLogEntry);
 }
 
-export async function reverseReturnFromProduction(storeKey, quantity, date) {
+export async function reverseReturnFromProduction(storeKey, quantity, date, seller) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-const returnEntry = db.find(item =>
-item.store === storeKey &&
-item.net === quantity &&
-item.date === date &&
-item.isReturn === true
-);
+const _retMatch = item => item.store === storeKey && item.net === quantity && item.date === date && item.isReturn === true;
+const returnEntry = (seller && db.find(item => _retMatch(item) && item.returnedBy === seller)) || db.find(_retMatch);
 if (returnEntry) {
 await unifiedDelete('mfg_pro_pkr', db, returnEntry.id, { strict: true }, returnEntry);
 }
-const returnLogEntry = stockReturns.find(r =>
-r.store === storeKey &&
-r.quantity === quantity &&
-r.date === date
-);
+const _logMatch = r => r.store === storeKey && r.quantity === quantity && r.date === date;
+const returnLogEntry = (seller && stockReturns.find(r => _logMatch(r) && r.seller === seller)) || stockReturns.find(_logMatch);
 if (returnLogEntry) {
 await unifiedDelete('stock_returns', stockReturns, returnLogEntry.id, { strict: true }, returnLogEntry);
 }
@@ -1106,7 +1099,7 @@ confirmMsg += `\n\n The following cascading changes will occur:`;
 if (linkedCount > 0) confirmMsg += `\n • ${linkedCount} linked sale${linkedCount !== 1 ? 's' : ''} will REVERT to "Pending Credit" status.`;
 if (linkedRepCount > 0) confirmMsg += `\n • ${linkedRepCount} rep sale${linkedRepCount !== 1 ? 's' : ''} will be RESTORED to calculator fields.`;
 if (entryToDelete.returned > 0 && entryToDelete.returnStore) confirmMsg += `\n • ${entryToDelete.returned} kg will be REMOVED from ${getStoreLabel(entryToDelete.returnStore)} inventory (return reversal).`;
-if (entryToDelete.transferSaleId) confirmMsg += `\n • ${entryToDelete.returned} kg transferred to ${entryToDelete.returnRep} will be REMOVED from their allocation.`;
+if (entryToDelete.transferSaleId) confirmMsg += `\n • ${entryToDelete.returned} kg transferred to ${entryToDelete.returnRep} will be REMOVED from their sales allocation (store stock is not affected).`;
 if (entryToDelete.expired > 0) confirmMsg += `\n • ${entryToDelete.expired} kg will be REMOVED from CHORA raw material (expired reversal).`;
 }
 if (await showGlassConfirm(confirmMsg, { title: `Delete ${entryToDelete.seller || "Sales"} Record`, confirmText: "Delete", danger: true })) {
@@ -1121,15 +1114,13 @@ revertedRepSalesCount = await revertRepSalesEntries(entryToDelete.linkedRepSales
 }
 if (entryToDelete.returned > 0 && entryToDelete.returnStore) {
 reversedReturnQty = entryToDelete.returned;
-await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date);
+await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date, entryToDelete.seller);
 }
 if (entryToDelete.transferSaleId) {
 const _csAll = ensureArray(await sqliteStore.get('customer_sales'));
 const _trRec = _csAll.find(x => x.id === entryToDelete.transferSaleId);
 if (_trRec) {
 await unifiedDelete('customer_sales', _csAll.filter(x => x.id !== _trRec.id), _trRec.id, { strict: true }, _trRec);
-await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, entryToDelete.date);
-reversedReturnQty = entryToDelete.returned;
 }
 }
 if (entryToDelete.expired > 0) {
@@ -1995,25 +1986,19 @@ export async function renderReturnTargets() {
 const sec = document.getElementById('returnStoreSection');
 const grp = sec && sec.querySelector('.toggle-group');
 if (!grp) return;
+grp.querySelectorAll('.ret-rep-btn').forEach(b => b.remove());
 const seller = (document.getElementById('sellerSelect') || {}).value;
-let stores = (typeof getAppStores === 'function' ? await getAppStores() : []).filter(st => st.key === 'STORE_A' || st.key === 'STORE_B');
-if (!stores.length) stores = [{ key: 'STORE_A', name: 'ZUBAIR' }, { key: 'STORE_B', name: 'MAHMOOD' }];
-const reps = (Array.isArray(window.salesRepsList) ? window.salesRepsList : []).filter(r => r && r !== seller);
+const reps = (Array.isArray(window.salesRepsList) ? window.salesRepsList : []).filter(r => r && r !== seller && r !== 'NONE' && r !== 'ADMIN');
 if (window._returnRep && !reps.includes(window._returnRep)) window._returnRep = null;
-grp.innerHTML = '';
 grp.style.flexWrap = 'wrap';
-const mk = (label, active, fn) => {
+reps.forEach(r => {
 const b = document.createElement('button');
 b.type = 'button';
-b.className = 'toggle-opt' + (active ? ' active' : '');
-b.textContent = label;
-b.onclick = () => fn(b);
+b.className = 'toggle-opt ret-rep-btn' + (window._returnRep === r ? ' active' : '');
+b.textContent = r;
+b.onclick = () => selectReturnRep(r, b);
 grp.appendChild(b);
-};
-stores.forEach(st => mk(st.name, window._returnStore === st.key, b => selectReturnStore(st.key, b)));
-reps.forEach(r => mk(r, window._returnRep === r, b => selectReturnRep(r, b)));
-const hint = sec.querySelector('.u-field-hint');
-if (hint) hint.textContent = '* Store = product return (adds stock back, no new production record). Sales representative = product transfer (counted as a new allocation to that representative).';
+});
 }
 
 function _resetExpenseForm() {
