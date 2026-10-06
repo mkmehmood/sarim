@@ -12,7 +12,7 @@
     "lint": "node --check modules/*.js scripts/*.js tests/*.test.js sw.js build.js && node scripts/verify.js",
     "build": "node build.js",
     "verify": "node scripts/verify.js",
-    "test": "node --test --experimental-test-module-mocks tests/*.test.js",
+    "test": "node --test tests/*.test.js",
     "check": "npm run verify && npm test && npm run build && npm run verify -- dist",
     "serve": "node scripts/serve.js",
     "serve:dist": "node scripts/serve.js dist",
