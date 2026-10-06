@@ -92,3 +92,32 @@ export async function getExpiredDeleteBlockReason(entry) {
   }
   return null;
 }
+
+// Records whose creation had side effects (stock, CHORA, settled sales) cannot be brought back from the
+// recycle bin on their own, because deleting the calculator record already reversed those side effects.
+export function getRecoverBlockReason(collectionName, snapshot) {
+  const s = snapshot || {};
+  if (collectionName === 'calculator_history') {
+    return 'Calculator records cannot be recovered: deleting one already reversed its settled sales, returns, transfers and expired stock. Please enter the calculation again.';
+  }
+  if (collectionName === 'sales' && (s.isRepTransfer || (s.isTransfer && s.transferFrom))) {
+    return 'This is a rep stock transfer created by a calculator record. Recover is not allowed; enter the calculation again.';
+  }
+  if (collectionName === 'production' && s.isReturn === true && s.returnedBy) {
+    return 'This stock return was created by a calculator record. Recover is not allowed; enter the calculation again.';
+  }
+  if (collectionName === 'returns' && s.seller) {
+    return 'This return log was created by a calculator record. Recover is not allowed; enter the calculation again.';
+  }
+  return null;
+}
+
+// Sales still allocated to a rep (unsettled credit) – the rep should not be removed while these exist.
+export async function getPendingAllocationCount(repName) {
+  const sales = ensureArray(await sqliteStore.get('customer_sales'));
+  const hist = await _calcHistory();
+  const settled = new Set();
+  hist.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(i => settled.add(i)); });
+  return sales.filter(s => s && !s.deletedAt && s.customerName === repName && s.currentRepProfile === 'admin' &&
+    s.paymentType === 'CREDIT' && !s.creditReceived && s.transactionType !== 'OLD_DEBT' && !settled.has(s.id)).length;
+}

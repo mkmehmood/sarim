@@ -1267,6 +1267,13 @@ const _lk = await findCalcLinkForReturn(entryToDelete);
 if (_lk) { showToast(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning', 6000); return; }
 }
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
+if ((entryToDelete.net || 0) > 0 && typeof window.computeStoreStockSnapshot === 'function') {
+const _snap = await window.computeStoreStockSnapshot(entryToDelete.store, entryToDelete.date);
+if (_snap.available - entryToDelete.net < -0.0001) {
+showToast(`Cannot delete: ${fmtNum(entryToDelete.net)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning', 6000);
+return;
+}
+}
 const _dpSalesOnDate = (typeof customerSales !== 'undefined' ? customerSales : []).filter(s => s.date === entryToDelete.date && s.store === entryToDelete.store).length;
 let confirmMsg;
 if (isReturn) {

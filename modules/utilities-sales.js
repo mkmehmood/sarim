@@ -6463,16 +6463,16 @@ const badgeClass = creditReceived ? 'received' : (paymentType ? paymentType.toLo
 const badgeText = creditReceived ? 'RECEIVED' : paymentType;
 const isOldDebtItem = item.transactionType === 'OLD_DEBT';
 const isAdminCollItem = !((item.salesRep && item.salesRep !== 'NONE')) && paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
-const supplyTagClass = item.isRepTransfer ? 'store-c' : item.supplyStore === 'STORE_A' ? 'store-a' :
+const supplyTagClass = (item.isRepTransfer || (item.isTransfer && item.transferFrom)) ? 'store-c' : item.supplyStore === 'STORE_A' ? 'store-a' :
 item.supplyStore === 'STORE_B' ? 'store-b' : 'store-c';
-const supplyTagText = item.isRepTransfer ? 'TRANSFER' : item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
+const supplyTagText = (item.isRepTransfer || (item.isTransfer && item.transferFrom)) ? 'TRANSFER' : item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
 item.supplyStore === 'STORE_B' ? 'MAHMOOD' : 'ASAAN';
 let repBadge = '';
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') {
 repBadge = `<span class="sales-rep-badge"> ${esc(item.salesRep.split(' ')[0])}</span>`;
 }
-if (item.isRepTransfer && item.repTransferFrom) {
-repBadge += `<span class="sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.repTransferFrom).split(' ')[0])}</span>`;
+if ((item.isRepTransfer && item.repTransferFrom) || (item.isTransfer && item.transferFrom)) {
+repBadge += `<span class="sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.repTransferFrom || item.transferFrom).split(' ')[0])}</span>`;
 }
 let mergedBadge = '';
 if (item.isMerged) {
@@ -6778,6 +6778,13 @@ const inSide = entries.find(e => e.transferDirection === 'in');
 const qty = Math.abs((outSide && outSide.net) || (inSide && inSide.net) || 0);
 const fromLabel = outSide ? getStoreLabel(outSide.store) : (inSide ? getStoreLabel(inSide.transferPeerStore) : '?');
 const toLabel = inSide ? getStoreLabel(inSide.store) : (outSide ? getStoreLabel(outSide.transferPeerStore) : '?');
+if (inSide && inSide.store && (inSide.net || 0) > 0) {
+const _snap = await computeStoreStockSnapshot(inSide.store, inSide.date);
+if (_snap.available - (inSide.net || 0) < -0.0001) {
+showToast(`Cannot remove: ${fmtNum(inSide.net)} kg received in ${getStoreLabel(inSide.store)} on ${inSide.date} was already sold.`, 'warning', 6000);
+return;
+}
+}
 const confirmMsg = `Remove this stock transfer?\n${fromLabel} → ${toLabel}\nQuantity: ${fmtNum(qty)} kg\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(confirmMsg, { title: 'Remove Transfer', confirmText: 'Remove', danger: true }))) return;
 try {

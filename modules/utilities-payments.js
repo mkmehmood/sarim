@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount } from './link-guards.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -1097,7 +1097,11 @@ confirmMsg += `\nTotal Sold: ${entryToDelete.sold || 0} kg`;
 confirmMsg += `\nCash Received: ${(entryToDelete.received||0)}`;
 if (entryToDelete.credit) confirmMsg += `\nCredit Recovered: ${entryToDelete.credit}`;
 {
-const _blk = (await getTransferDeleteBlockReason(entryToDelete)) || (await getExpiredDeleteBlockReason(entryToDelete));
+let _blk = (await getTransferDeleteBlockReason(entryToDelete)) || (await getExpiredDeleteBlockReason(entryToDelete));
+if (!_blk && entryToDelete.returned > 0 && entryToDelete.returnStore && typeof window.computeStoreStockSnapshot === 'function') {
+const _snap = await window.computeStoreStockSnapshot(entryToDelete.returnStore, entryToDelete.date);
+if (_snap.available - entryToDelete.returned < -0.0001) _blk = `${getStoreLabel(entryToDelete.returnStore)} stock on ${entryToDelete.date} was already sold. Removing the ${entryToDelete.returned} kg return would make stock negative.`;
+}
 if (_blk) { showToast(`Cannot delete: ${_blk}`, 'warning', 6000); return; }
 }
 const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore) || (entryToDelete.transferSaleId) || entryToDelete.expired > 0;
@@ -1128,6 +1132,9 @@ const _csAll = ensureArray(await sqliteStore.get('customer_sales'));
 const _trRec = _csAll.find(x => x.id === entryToDelete.transferSaleId);
 if (_trRec) {
 await unifiedDelete('customer_sales', _csAll.filter(x => x.id !== _trRec.id), _trRec.id, { strict: true }, _trRec);
+if (_trRec.supplyStore && _trRec.supplyStore !== 'N/A') {
+await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, entryToDelete.date, entryToDelete.seller);
+}
 }
 }
 if (entryToDelete.expired > 0 && entryToDelete.expiredApplied !== false) {
@@ -4093,6 +4100,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     if (tombstoneLocal && tombstoneLocal.snapshot) {
       recoveredData = tombstoneLocal.snapshot;
     }
+    if (getRecoverBlockReason(collectionName, recoveredData)) return false;
     if (!recoveredData && firebaseDB && currentUser) {
       try {
         const userRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -4605,6 +4613,10 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const label = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
   const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
   const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
+  {
+    const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
+    if (_rb) { showToast(_rb, 'warning', 6000); return; }
+  }
   const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
   if (!(await showGlassConfirm(
     `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}`,
@@ -6789,6 +6801,10 @@ export async function removeSalesRep(index) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (salesRepsList.length <= 1) { showToast('Must have at least one representative', 'warning'); return; }
 const name = salesRepsList[index];
+{
+const _pend = await getPendingAllocationCount(name);
+if (_pend > 0) { showToast(`${name} still has ${_pend} unsettled allocation${_pend !== 1 ? 's' : ''}. Settle them in the calculator first.`, 'warning', 6000); return; }
+}
 const _rsrSales = (typeof repSales !== 'undefined' ? repSales : []).filter(s => s.salesRep === name).length;
 let _rsrMsg = `Remove ${name} from the sales team?`;
 _rsrMsg += `\n\nThey will no longer appear as an available rep in the app.`;
