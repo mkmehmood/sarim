@@ -1,10 +1,10 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks } from './link-guards.js';
-import { newGroupId, stampGroup, findGroupMembers, orderForRestore, GROUP_FIELD } from './link-graph.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks, planRecoverySet, applyFactoryRecovery, cascadeEntityRename, createRollback } from './link-guards.js';
+import { newGroupId, stampGroup, findRecoveryClosure, orderForRestore, GROUP_FIELD, LINKED_MATERIALS_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
+import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _relinkMaterialsToSupplier, deletePaymentRecordsLinked, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
 import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
@@ -1419,6 +1419,10 @@ const savedEntity = editingEntityId
 ? paymentEntities.find(e => e.id === editingEntityId)
 : paymentEntities[paymentEntities.length - 1];
 await unifiedSave('payment_entities', paymentEntities, savedEntity);
+if (existingEntity && savedEntity && existingEntity.name !== savedEntity.name) {
+try { await cascadeEntityRename(savedEntity, existingEntity.name, savedEntity.name); notifyDataChange('payments'); }
+catch (_rnErr) { console.warn('[saveEntity] rename cascade failed', _safeErr(_rnErr)); }
+}
 if (savedEntity) await savePersonPhoto('entity', 'entity:' + String(savedEntity.id));
 emitSyncUpdate({ payment_entities: null});
 notifyDataChange('entities');
@@ -1700,11 +1704,12 @@ if (await showGlassConfirm(_diMsg, { title: `Delete "${_diName}"`, confirmText: 
 try {
 const material = factoryInventoryData.find(i => i.id === editingFactoryInventoryId);
 
-const _materialToDelete = material ? { ...material } : null;
+const _matGroup = newGroupId('mat');
+const _materialToDelete = material ? stampGroup({ ...material }, _matGroup) : null;
 if (material && material.supplierId) {
-await unlinkSupplierFromMaterial(material, false, true);
+await unlinkSupplierFromMaterial(material, false, true, _matGroup);
 }
-const filteredForDelete = factoryInventoryData.filter(i => i.id !== editingFactoryInventoryId);
+const filteredForDelete = ensureArray(await sqliteStore.get('factory_inventory_data')).filter(i => i.id !== editingFactoryInventoryId);
 await unifiedDelete('factory_inventory_data', filteredForDelete, editingFactoryInventoryId, { strict: true }, _materialToDelete);
 notifyDataChange('inventory');
 triggerAutoSync();
@@ -2054,6 +2059,9 @@ if (!_proceed) return;
 const tBefore = { ...t };
 const e = o.expenseId ? expenseRecords.find(x => x && x.id === o.expenseId) : null;
 const eBefore = e ? { ...e } : null;
+const _editRb = createRollback();
+_editRb.remember('payment_transactions', t);
+if (e) _editRb.remember('expenses', e);
 try {
 let entity = paymentEntities.find(x => String(x.id) === String(o.entityId));
 let createdEntity = null;
@@ -2100,6 +2108,7 @@ showToast('Transaction updated', 'success');
 } catch (err) {
 Object.assign(t, tBefore);
 if (e && eBefore) Object.assign(e, eBefore);
+try { await _editRb.undo(); } catch (_erErr) { console.warn('[edit payment] rollback failed', _erErr); }
 console.warn('[edit payment] failed', err);
 showToast('Failed to update transaction. Please try again.', 'error');
 }
@@ -2192,9 +2201,16 @@ return;
 const _seDeep = (a) => JSON.parse(JSON.stringify(a));
 let expensesSnapshot = _seDeep(expenseRecords);
 let categoriesSnapshot = [...expenseCategories];
+ fix/link-aware-save-delete-restore
+let entitiesSnapshot = [...paymentEntities];
+let transactionsSnapshot = [...paymentTransactions];
+const _rb = createRollback();
+let _createdExpenseId = null;
+
 let entitiesSnapshot = _seDeep(paymentEntities);
 let transactionsSnapshot = _seDeep(paymentTransactions);
 let inventorySnapshot = _seDeep(factoryInventoryData);
+ main
 try {
 if (category === 'operating') {
 let expenseId = generateUUID('exp');
@@ -2215,6 +2231,7 @@ syncedAt: new Date().toISOString()
 };
 expense = ensureRecordIntegrity(expense, false);
 expenseRecords.push(expense);
+_createdExpenseId = expense.id;
 if (!expenseCategories.includes(name)) {
 expenseCategories.push(name);
 }
@@ -2261,6 +2278,7 @@ syncedAt: new Date().toISOString()
 };
 payExpenseRecord = ensureRecordIntegrity(payExpenseRecord, false);
 expenseRecords.push(payExpenseRecord);
+_createdExpenseId = payExpenseRecord.id;
 await unifiedSave('expenses', expenseRecords, payExpenseRecord);
 if (window._expensePendingPhoto) {
   try {
@@ -2338,6 +2356,7 @@ if (pendingMaterials.length > 0) {
 const materialsToSave = [];
 for (const mat of pendingMaterials) {
 if (remaining <= 0) break;
+_rb.remember('factory_inventory_data', mat);
 if (remaining >= mat.totalPayable) {
 remaining -= mat.totalPayable;
 mat.totalPayable = 0;
@@ -2372,6 +2391,7 @@ parseFloat(t.supplierCreditAmount || 0) > 0
 .sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
 for (const ct of openCredits) {
 if (remaining <= 0) break;
+_rb.remember('payment_transactions', ct);
 const open = parseFloat(ct.supplierCreditAmount);
 if (remaining >= open) {
 remaining -= open;
@@ -2480,6 +2500,14 @@ await sqliteStore.setBatch([
 } catch (rollbackError) {
 console.error('Failed to render data.', _safeErr(rollbackError));
 showToast('Expense rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+}
+try { await _rb.undo(); } catch (_ubErr) { console.warn('[saveExpense] material/credit rollback failed', _ubErr); }
+if (_createdExpenseId) {
+try {
+if (typeof window.deleteRecordFromFirestore === 'function') await window.deleteRecordFromFirestore('expenses', _createdExpenseId, true);
+const _rbPh = (await sqliteStore.get('person_photos')) || {};
+if (_rbPh['expense:' + _createdExpenseId] !== undefined) { delete _rbPh['expense:' + _createdExpenseId]; await sqliteStore.set('person_photos', _rbPh); }
+} catch (_rcErr) { console.warn('[saveExpense] could not clean up half-saved expense', _rcErr); }
 }
 showToast('Failed to save expense. Please try again.', 'error');
 }
@@ -3627,8 +3655,12 @@ if (_daeTxCount > 0) _daeMsg += `\n\n↩ ${_daeTxCount} linked payment transacti
 _daeMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(_daeMsg, { title: `Delete All "${expenseName}" Records`, confirmText: "Delete All", danger: true }))) return;
 try {
-const _bulkPhotoKeysToDelete = [];
 for (const exp of toDelete) {
+ fix/link-aware-save-delete-restore
+const linked = paymentTransactions.filter(t => t.expenseId === exp.id);
+await deletePaymentRecordsLinked(linked, { extraExpenses: [exp] });
+}
+
 const linked = ensureArray(await sqliteStore.get('payment_transactions')).filter(t => t && t.expenseId === exp.id);
 const _bulkGroup = linked.length ? newGroupId('exp') : null;
 for (const tx of linked) {
@@ -3659,6 +3691,7 @@ try {
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   }
 } catch(_bulkPhErr) { console.warn('[deleteAllExpenses] photo batch cleanup failed', _bulkPhErr); }
+ main
 notifyDataChange('expenses');
 showToast(` All "${expenseName}" expense records deleted`, 'success');
 closeExpenseDetailsOverlay();
@@ -3852,11 +3885,7 @@ const expense = expenseRecords.find(e => e.id === expenseId);
 if (!expense) {
 const orphans = paymentTransactions.filter(t => t.expenseId === expenseId);
 if (orphans.length > 0) {
-const orphansCopy = orphans.slice();
-for (const tx of orphansCopy) {
-const _ptFilteredDelExp = paymentTransactions.filter(t => t.id !== tx.id);
-await unifiedDelete('payment_transactions', _ptFilteredDelExp, tx.id, { strict: true }, tx);
-}
+await deletePaymentRecordsLinked(orphans.slice());
 }
 renderRecentExpenses();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
@@ -3887,33 +3916,7 @@ confirmMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(confirmMsg, { title: `Delete ${categoryLabel}`, confirmText: "Delete", danger: true }))) return;
 try {
 const txToDelete = paymentTransactions.filter(t => t.expenseId === expenseId);
-const _expGroup = newGroupId('exp');
-await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), paymentTransactions, factoryInventoryData);
-if (txToDelete.length > 0) {
-let _expRemaining = paymentTransactions.slice();
-for (const trans of txToDelete) {
-_expRemaining = _expRemaining.filter(t => t.id !== trans.id);
-await unifiedDelete('payment_transactions', _expRemaining, trans.id, { strict: true }, stampGroup(trans, _expGroup));
-}
-}
-const _expRecFiltered = expenseRecords.filter(e => e.id !== expenseId);
-await unifiedDelete('expenses', _expRecFiltered, expenseId, { strict: true }, txToDelete.length ? stampGroup(expense, _expGroup) : expense);
-
-try {
-  const _delPhotoKey = 'expense:' + expenseId;
-  const _delPhotos = (await sqliteStore.get('person_photos')) || {};
-  if (_delPhotos[_delPhotoKey] !== undefined) {
-    delete _delPhotos[_delPhotoKey];
-    await sqliteStore.set('person_photos', _delPhotos);
-    const _delPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-    delete _delPhTs[_delPhotoKey];
-    await sqliteStore.set('person_photos_timestamps', _delPhTs);
-    const _delDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
-    if (!_delDk.includes(_delPhotoKey)) _delDk.push(_delPhotoKey);
-    await sqliteStore.set('person_photos_dirty_keys', _delDk);
-    if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
-  }
-} catch(_delPhErr) { console.warn('[deleteExpense] photo cleanup failed', _delPhErr); }
+await deletePaymentRecordsLinked(txToDelete, { extraExpenses: [expense] });
 
 notifyDataChange('expenses');
 renderRecentExpenses();
@@ -4077,7 +4080,7 @@ export async function _findPairedTransferTombstone(currentId, transferPairId) {
   ) || null;
 }
 
-export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false) {
+export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false, _ctx = null) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -4096,13 +4099,20 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
   try {
     if (!_isPairRecovery) {
       const _grpTomb = deletionRecords.find(r => String(r.id) === String(deletedId) || String(r.recordId || r.id) === String(deletedId));
-      const _grp = findGroupMembers(_grpTomb, deletionRecords);
+      const _grp = _grpTomb ? findRecoveryClosure(_grpTomb, deletionRecords) : [];
       if (_grp.length > 1) {
+        // Check the WHOLE set before touching anything: a block must never leave a half-restored group.
+        for (const m of _grp) {
+          if (getRecoverBlockReason(m.collection || m.recordType || collectionName, m.snapshot)) return false;
+        }
+        const _plan = await planRecoverySet(_grp);
+        if (_plan.block) return false;
         let _selfOk = false;
         for (const m of orderForRestore(_grp)) {
           const mid = m.recordId || m.id;
-          const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true);
+          const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true, { skipReattach: _plan.skipReattach.has(String(mid)) });
           if (String(mid) === String(deletedId)) _selfOk = ok;
+          if (!ok) return false;
         }
         return _selfOk;
       }
@@ -4117,7 +4127,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       recoveredData = tombstoneLocal.snapshot;
     }
     if (getRecoverBlockReason(collectionName, recoveredData)) return false;
-    if (recoveredData && await getRecoverLinkBlockReason(collectionName, recoveredData)) return false;
+    if (recoveredData && !_isPairRecovery && await getRecoverLinkBlockReason(collectionName, recoveredData)) return false;
     if (!recoveredData && firebaseDB && currentUser) {
       try {
         const userRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -4142,6 +4152,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       delete cleanRecord.recoveredAt;
       delete cleanRecord._placeholder;
       delete cleanRecord[GROUP_FIELD];
+      delete cleanRecord[LINKED_MATERIALS_FIELD];
       delete cleanRecord.isDeleted;
       delete cleanRecord.softDeleted;
       cleanRecord.updatedAt   = Date.now();
@@ -4152,6 +4163,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       ? generateUUID('recovered')
       : String(deletedId);
     const oldId = String(deletedId);
+    const _relinkMatIds = (collectionName === 'entities' && recoveredData && Array.isArray(recoveredData[LINKED_MATERIALS_FIELD])) ? recoveredData[LINKED_MATERIALS_FIELD].slice() : [];
     if (cleanRecord) {
       cleanRecord.id = newId;
       delete cleanRecord.originalId;
@@ -4165,8 +4177,16 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       localArr.push(cleanRecord);
       await sqliteStore.set(sqliteKey, localArr);
     }
-    try { await applyRecoveryLinks(collectionName, oldId, newId, cleanRecord); }
+    try { await applyRecoveryLinks(collectionName, oldId, newId, cleanRecord, { skipReattach: !!(_ctx && _ctx.skipReattach) }); }
     catch (_lkErr) { console.warn('[recoverRecord] link re-pointing failed', _safeErr(_lkErr)); }
+    if (collectionName === 'factory_history') {
+      try { await applyFactoryRecovery(collectionName, cleanRecord); }
+      catch (_fhErr) { console.warn('[recoverRecord] factory stock re-deduction failed', _safeErr(_fhErr)); }
+    }
+    if (collectionName === 'entities' && cleanRecord && _relinkMatIds.length) {
+      try { await _relinkMaterialsToSupplier(cleanRecord, _relinkMatIds); await _refreshSupplierLinkViews(); }
+      catch (_rmErr) { console.warn('[recoverRecord] supplier material re-link failed', _safeErr(_rmErr)); }
+    }
     if (typeof invalidateAllCaches === 'function') {
       await invalidateAllCaches();
     }
@@ -4175,6 +4195,23 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
         await _reconcileSupplierLinkAfterRecovery(cleanRecord);
         await _refreshSupplierLinkViews();
       } catch (_slErr) { console.warn('[recoverRecord] supplier link reconcile failed', _safeErr(_slErr)); }
+    }
+    if (collectionName === 'entities') {
+      try {
+        const _tombE = (Array.isArray(localDeletionRecords) ? localDeletionRecords : deletionRecords).find(r => r.id === deletedId || r.recordId === deletedId);
+        const _entPhoto = _tombE && _tombE._photos && _tombE._photos['entity:' + oldId];
+        if (_entPhoto) {
+          const _eph = (await sqliteStore.get('person_photos')) || {};
+          const _epts = (await sqliteStore.get('person_photos_timestamps')) || {};
+          const _edk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+          const _ek = 'entity:' + newId;
+          _eph[_ek] = _entPhoto; _epts[_ek] = Date.now();
+          if (!_edk.includes(_ek)) _edk.push(_ek);
+          await sqliteStore.set('person_photos', _eph);
+          await sqliteStore.set('person_photos_timestamps', _epts);
+          await sqliteStore.set('person_photos_dirty_keys', _edk);
+        }
+      } catch (_epErr) { console.warn('[recoverRecord] entity photo restore failed', _epErr); }
     }
     if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
       try {
@@ -4638,8 +4675,15 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
     if (_rb) { showToast(_rb, 'warning', 6000); return; }
   }
-  const _grpMembers = findGroupMembers(ownTomb, deletionRecords);
-  if (_grpMembers.length <= 1 && ownTomb && ownTomb.snapshot) {
+  const _grpMembers = ownTomb ? findRecoveryClosure(ownTomb, deletionRecords) : [];
+  if (_grpMembers.length > 1) {
+    for (const m of _grpMembers) {
+      const _mb = getRecoverBlockReason(m.collection || m.recordType, m.snapshot);
+      if (_mb) { showToast(_mb, 'warning', 6000); return; }
+    }
+    const _plan = await planRecoverySet(_grpMembers);
+    if (_plan.block) { showToast(_plan.block, 'warning', 6500); return; }
+  } else if (ownTomb && ownTomb.snapshot) {
     const _lb = await getRecoverLinkBlockReason(collectionName, ownTomb.snapshot);
     if (_lb) { showToast(_lb, 'warning', 6500); return; }
   }
@@ -7967,7 +8011,7 @@ list.replaceChildren(fragment);
 }
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 
-export async function deletePaymentTransfer(pairId, skipConfirm = false) {
+export async function deletePaymentTransfer(pairId, skipConfirm = false, groupId = null) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const entries = paymentTransactions.filter(t => t.transferPairId === pairId);
 if (entries.length === 0) return;
@@ -7981,32 +8025,7 @@ const confirmMsg = `Remove this payment transfer?\n${fromName} → ${toName}\nAm
 if (!(await showGlassConfirm(confirmMsg, { title: 'Remove Transfer', confirmText: 'Remove', danger: true }))) return;
 }
 try {
-let working = paymentTransactions.slice();
-for (const entry of entries) {
-working = working.filter(t => t.id !== entry.id);
-await unifiedDelete('payment_transactions', working, entry.id, { strict: true }, entry);
-}
-try {
-const _trfPh = (await sqliteStore.get('person_photos')) || {};
-const _trfPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-const _trfDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
-let _trfPhChanged = false;
-for (const entry of entries) {
-const _pk = 'expense:' + entry.id;
-if (_trfPh[_pk] !== undefined) {
-delete _trfPh[_pk];
-delete _trfPhTs[_pk];
-if (!_trfDk.includes(_pk)) _trfDk.push(_pk);
-_trfPhChanged = true;
-}
-}
-if (_trfPhChanged) {
-await sqliteStore.set('person_photos', _trfPh);
-await sqliteStore.set('person_photos_timestamps', _trfPhTs);
-await sqliteStore.set('person_photos_dirty_keys', _trfDk);
-if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
-}
-} catch (_trfPhErr) { console.warn('[deletePaymentTransfer] photo cleanup failed', _trfPhErr); }
+await deletePaymentRecordsLinked(entries, { groupId });
 notifyDataChange('payments');
 if (typeof renderPaymentTransferHistory === 'function') await renderPaymentTransferHistory();
 if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(true); } catch (_) {} }

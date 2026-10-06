@@ -10,6 +10,7 @@ import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCas
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, currentExpenseOverlayName, currentPerfOverviewMode, currentSalesSummaryMode, deletePaymentTransfer, editEntityBasicInfo, editingEntityId, entityViewMode, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, selectedEntityId, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
+import { LINKED_MATERIALS_FIELD, newGroupId, stampGroup } from './link-graph.js';
 import { calculateRepAnalytics, currentRepAnalyticsMode, refreshRepUI, renderRepCustomerTable, repTransactionMode } from './rep-sales.js';
 
 export let currentEntityId;
@@ -1435,10 +1436,10 @@ displayDetail: _snapshot.displayDetail || null,
 displayAmount: _snapshot.displayAmount || null,
 snapshot: _snapshot.record || null,
 };
-if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
+if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions' || collectionName === 'entities') {
   try {
     const _regPh = (await sqliteStore.get('person_photos')) || {};
-    const _regKeys = ['expense:' + id];
+    const _regKeys = collectionName === 'entities' ? ['entity:' + id] : ['expense:' + id];
     const _snapRec = _snapshot.record || null;
     if (_snapRec && _snapRec.expenseId) _regKeys.push('expense:' + _snapRec.expenseId);
     const _regPhotos = {};
@@ -1447,7 +1448,7 @@ if (collectionName === 'expenses' || collectionName === 'transactions' || collec
       const v = _regPh[k];
       if (v && _regBytes + String(v).length < 700000) { _regPhotos[k] = v; _regBytes += String(v).length; }
     }
-    if (_regPh['expense:' + id]) deletionRecord._photoDataUrl = _regPh['expense:' + id];
+    if (collectionName !== 'entities' && _regPh['expense:' + id]) deletionRecord._photoDataUrl = _regPh['expense:' + id];
     if (Object.keys(_regPhotos).length) deletionRecord._photos = _regPhotos;
   } catch(_regPhErr) { console.warn('[registerDeletion] photo snapshot failed', _regPhErr); }
 }
@@ -2101,7 +2102,7 @@ m.paymentStatus = 'pending';
 m.updatedAt = getTimestamp();
 ensureRecordIntegrity(m, true);
 };
-async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
+export async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
 const saved = [];
 for (const sid of supplierIds) {
 const payments = transactions
@@ -2163,7 +2164,7 @@ out.paymentTotal += parseFloat(t.amount) || 0;
 return out;
 }
 
-export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory) {
+export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory, groupId = null) {
 const result = { unlinked: [], recomputed: [], removedTxs: [], changed: false };
 const txs = (Array.isArray(deletedTxs) ? deletedTxs : [deletedTxs]).filter(t => t && (t.isPayable || t.materialId));
 if (txs.length === 0) return result;
@@ -2195,7 +2196,7 @@ if (!exclusive) continue;
 const idx = transactions.findIndex(t => String(t.id) === String(lt.id));
 if (idx === -1) continue;
 transactions.splice(idx, 1);
-await unifiedDelete('payment_transactions', transactions, lt.id, { strict: true }, lt);
+await unifiedDelete('payment_transactions', transactions, lt.id, { strict: true }, groupId ? stampGroup(lt, groupId) : lt);
 result.removedTxs.push(lt);
 }
 _clearMaterialSupplier(mat);
@@ -2257,6 +2258,83 @@ if (ent) await renderEntityOverlayContent(ent);
 } catch (_) {}
 }
 
+// A recovered supplier gets its materials back (they were unlinked when the supplier was deleted) and the
+// payables are recomputed from the payments that are live again.
+export async function _relinkMaterialsToSupplier(entity, materialIds) {
+if (!entity || !entity.id || !Array.isArray(materialIds) || materialIds.length === 0) return [];
+const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const transactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const relinked = [];
+for (const id of materialIds) {
+const mat = inventory.find(m => m && String(m.id) === String(id));
+if (!mat || mat.supplierId) continue;
+mat.supplierId = entity.id;
+mat.supplierName = entity.name;
+mat.supplierContact = entity.phone || '';
+mat.supplierType = 'payee';
+mat.paymentStatus = 'pending';
+mat.totalPayable = _supplierMatOriginal(mat);
+mat.updatedAt = getTimestamp();
+ensureRecordIntegrity(mat, true);
+relinked.push(mat);
+}
+if (relinked.length === 0) return [];
+const saved = await _recomputeSupplierPayables([String(entity.id)], inventory, transactions, new Set(), new Set(relinked.map(m => String(m.id))));
+if (saved.length === 0) await unifiedSave('factory_inventory_data', inventory, null, relinked.map(m => m.id));
+return relinked;
+}
+
+// Payments + expense records that were rolled into one entry go away as one unit.
+// rootTxs      : the payment transactions the user chose to delete
+// opts.groupId : share a deletion group with records deleted in the same action (entity, bulk delete...)
+// opts.extraExpenses : expense records to delete along with them
+// Everything removed (cascaded supplier payments, the paired expense, both sides of a transfer) is
+// stamped with one group id so the recycle bin brings the exact same set back together.
+export async function deletePaymentRecordsLinked(rootTxs, opts = {}) {
+const groupId = opts.groupId || newGroupId('pay');
+const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const transactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const expenses = ensureArray(await sqliteStore.get('expenses'));
+const plan = collectPaymentDeletionSet(rootTxs, transactions, expenses);
+(opts.extraExpenses || []).forEach(e => { if (e && !plan.expenses.some(x => x.id === e.id)) plan.expenses.push(e); });
+await _reconcileSupplierLinksForDeletedTransactions(plan.txs.filter(t => t.isPayable === true), transactions, inventory, groupId);
+const deletedTxs = [];
+for (const tx of plan.txs) {
+const idx = transactions.findIndex(t => t && t.id === tx.id);
+if (idx === -1) continue;
+transactions.splice(idx, 1);
+await unifiedDelete('payment_transactions', transactions, tx.id, { strict: true }, stampGroup(tx, groupId));
+deletedTxs.push(tx);
+}
+const deletedExpenses = [];
+for (const exp of plan.expenses) {
+const idx = expenses.findIndex(e => e && e.id === exp.id);
+if (idx === -1) continue;
+expenses.splice(idx, 1);
+await unifiedDelete('expenses', expenses, exp.id, { strict: true }, stampGroup(exp, groupId));
+deletedExpenses.push(exp);
+}
+try {
+const photoKeys = new Set();
+plan.expenses.forEach(e => photoKeys.add('expense:' + e.id));
+plan.txs.forEach(t => { if (t.expenseId) photoKeys.add('expense:' + t.expenseId); if (t.isTransfer === true) photoKeys.add('expense:' + t.id); });
+const ph = (await sqliteStore.get('person_photos')) || {};
+const phTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+const dk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+let changed = false;
+for (const k of photoKeys) {
+if (ph[k] !== undefined) { delete ph[k]; delete phTs[k]; if (!dk.includes(k)) dk.push(k); changed = true; }
+}
+if (changed) {
+await sqliteStore.set('person_photos', ph);
+await sqliteStore.set('person_photos_timestamps', phTs);
+await sqliteStore.set('person_photos_dirty_keys', dk);
+if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch (_) {} }
+}
+} catch (e) { console.warn('[deletePaymentRecordsLinked] photo cleanup failed', e); }
+return { groupId, txs: deletedTxs, expenses: deletedExpenses };
+}
+
 export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory) {
 if (!tx || !tx.isPayable) return false;
 const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory);
@@ -2307,11 +2385,16 @@ const _dtImpact = _describeSupplierLinkImpact(_dt, paymentTransactions, factoryI
 _dtMsg += `\n\n↩ Credit purchase record removed — supplier will be unlinked from ${_dtImpact.materialNames.length ? _dtImpact.materialNames.join(', ') : 'the material'}.`;
 if (_dtImpact.paymentCount > 0) _dtMsg += `\n↩ ${_dtImpact.paymentCount} supplier payment${_dtImpact.paymentCount !== 1 ? 's' : ''} (${fmtAmt(_dtImpact.paymentTotal)}) for it will also be reversed.`;
 }
+if (_dt.expenseId && ensureArray(await sqliteStore.get('expenses')).some(e => e && e.id === _dt.expenseId)) _dtMsg += `\n\u21a9 The linked expense record will be removed with it.`;
 _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
+ fix/link-aware-save-delete-restore
+await deletePaymentRecordsLinked([_dt]);
+
 await _restorePayableFromDeletedTransaction(_dt, paymentTransactions, factoryInventoryData);
 await deletePaymentTxWithLinks(_dt);
+ main
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 const _dtEntityRefreshed = ensureArray(await sqliteStore.get('payment_entities')).find(e => String(e.id) === String(_dt.entityId));
@@ -2355,10 +2438,18 @@ msg += `\n\n\u21a9 ${_linkedMaterials.length} linked material${_linkedMaterials.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: `Delete Entity Permanently`, confirmText: "Delete", danger: true }))) return;
 try {
-await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), paymentTransactions, factoryInventoryData);
-for (const mat of _linkedMaterials) {
-if (!mat.supplierId) continue;
+const _entGroup = newGroupId('ent');
+const _linkedMaterialIds = _linkedMaterials.map(m => m.id);
+await deletePaymentRecordsLinked(_entityTxs, { groupId: _entGroup });
+const _invNow = ensureArray(await sqliteStore.get('factory_inventory_data'));
+for (const mat of _invNow.filter(m => m && String(m.supplierId) === String(currentEntityId))) {
 _clearMaterialSupplier(mat);
+ fix/link-aware-save-delete-restore
+await unifiedSave('factory_inventory_data', _invNow, mat);
+}
+const filteredEntities = ensureArray(await sqliteStore.get('payment_entities')).filter(e => String(e.id) !== String(currentEntityId));
+await unifiedDelete('payment_entities', filteredEntities, _entityToDel.id, { strict: true }, stampGroup({ ..._entityToDel, [LINKED_MATERIALS_FIELD]: _linkedMaterialIds }, _entGroup));
+
 await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
 }
 const txsToDelete = _entityTxs.slice();
@@ -2377,6 +2468,7 @@ await deletePaymentTxWithLinks(tx, { groupId: _entGroup, excludeIds: _entTxIds }
 }
 const filteredEntities = ensureArray(await sqliteStore.get('payment_entities')).filter(e => String(e.id) !== String(currentEntityId));
 await unifiedDelete('payment_entities', filteredEntities, _entityToDel.id, { strict: true }, stampGroup(_entityToDel, _entGroup));
+ main
 try {
 const _delEntPh = (await sqliteStore.get('person_photos')) || {};
 const _delEntPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
@@ -2384,7 +2476,7 @@ const _delEntDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
 let _delEntPhChanged = false;
 const _entityPhotoKeys = [
 'entity:' + String(currentEntityId),
-...txsToDelete.filter(tx => tx.expenseId).map(tx => 'expense:' + tx.expenseId)
+...(_entityTxs || []).filter(tx => tx.expenseId).map(tx => 'expense:' + tx.expenseId)
 ];
 for (const _epk of _entityPhotoKeys) {
 if (_delEntPh[_epk] !== undefined) {

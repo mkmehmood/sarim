@@ -1,8 +1,9 @@
 import { findCalcLinkForReturn } from './link-guards.js';
+import { paymentsExclusiveToMaterial, stampGroup } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
-import { OfflineQueue, _refreshSupplierLinkViews, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
+import { OfflineQueue, _recomputeSupplierPayables, _refreshSupplierLinkViews, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
 import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, deleteStockTransfer, getAppStores, getStoreFormulaType, getStoreLabel, refreshFactoryTab, refreshUI, updateAllTabsWithFactoryCosts, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
@@ -362,7 +363,7 @@ showToast('Failed to save material. Please try again.', 'error');
 }
 }
 
-export async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false) {
+export async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false, groupId = null) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 if (!material) { showToast('Invalid material data', 'error'); return; }
@@ -371,13 +372,13 @@ if (showToastOnNoSupplier) showToast('No supplier to unlink', 'info');
 return;
 }
 const materialId = material.id;
-const linkedTransactions = paymentTransactions.filter(t => t.materialId === materialId && t.entityId === material.supplierId && t.isPayable === true);
-if (linkedTransactions.length > 0) {
-const removedTransactions = linkedTransactions.slice();
+const oldSupplierId = material.supplierId;
+const linkedTransactions = paymentsExclusiveToMaterial(material, paymentTransactions);
 let filteredTx = paymentTransactions.slice();
-for (const tx of removedTransactions) {
+if (linkedTransactions.length > 0) {
+for (const tx of linkedTransactions) {
 filteredTx = filteredTx.filter(t => t.id !== tx.id);
-await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, tx);
+await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, groupId ? stampGroup(tx, groupId) : tx);
 }
 }
 delete material.supplierId;
@@ -389,8 +390,16 @@ delete material.totalPayable;
 delete material.paidDate;
 material.updatedAt = getTimestamp();
 ensureRecordIntegrity(material, true);
+// payments that also settled other materials of this supplier stay; re-spread them over what is left
+try {
+const _freshInv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+await _recomputeSupplierPayables([String(oldSupplierId)], _freshInv, filteredTx, new Set(), new Set(), new Set([String(materialId)]));
+} catch (_rcErr) { console.warn('[unlinkSupplierFromMaterial] payable recompute failed', _rcErr); }
 if (!skipSideEffects) {
-await unifiedSave('factory_inventory_data', factoryInventoryData, material);
+const _invAfter = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const _selfIdx = _invAfter.findIndex(m => m && m.id === materialId);
+if (_selfIdx !== -1) _invAfter[_selfIdx] = material;
+await unifiedSave('factory_inventory_data', _selfIdx !== -1 ? _invAfter : factoryInventoryData, material);
 triggerAutoSync();
 await _refreshSupplierLinkViews();
 showToast(`Unlinked from ${esc(material.name)}`, 'success');

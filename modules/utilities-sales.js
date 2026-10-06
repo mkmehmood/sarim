@@ -1,11 +1,15 @@
+ fix/link-aware-save-delete-restore
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, createRollback } from './link-guards.js';
+
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks } from './link-guards.js';
+ main
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _readFileAsText, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
+import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, deletePaymentRecordsLinked, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
@@ -433,6 +437,7 @@ showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _spAvailCa
 return;
 }
 }
+const _spRb = createRollback();
 try {
 if (type === 'OUT') {
 const isPendingMat = (m) => (m.paymentStatus === 'pending' || !m.paymentStatus) && parseFloat(m.totalPayable || 0) > 0;
@@ -450,6 +455,7 @@ let remaining = amount;
 const materialsToSave = [];
 for (const mat of pendingMaterials) {
 if (remaining <= 0) break;
+_spRb.remember('factory_inventory_data', mat);
 if (remaining >= mat.totalPayable) {
 remaining -= mat.totalPayable;
 mat.totalPayable = 0;
@@ -520,6 +526,7 @@ if (isPayable) {
 message += ' (Material purchase settled - liability reduced)';
 }
 } catch (error) {
+try { await _spRb.undo(); } catch (_spErr) { console.warn('[savePaymentTransaction] rollback failed', _spErr); }
 showToast('Failed to save payment transaction. Please try again.', 'error');
 return;
 }
@@ -561,6 +568,7 @@ const _dpImpact = _describeSupplierLinkImpact(_dpTx, paymentTransactions, factor
 _dpMsg += `\n\n\u21a9 Credit purchase record removed — supplier will be unlinked from ${_dpImpact.materialNames.length ? _dpImpact.materialNames.join(', ') : 'the material'}.`;
 if (_dpImpact.paymentCount > 0) _dpMsg += `\n\u21a9 ${_dpImpact.paymentCount} supplier payment${_dpImpact.paymentCount !== 1 ? 's' : ''} (${fmtAmt(_dpImpact.paymentTotal)}) for it will also be reversed.`;
 }
+if (_dpTx?.expenseId && ensureArray(await sqliteStore.get('expenses')).some(e => e && e.id === _dpTx.expenseId)) _dpMsg += `\n\u21a9 The linked expense record will be removed with it.`;
 _dpMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dpMsg, { title: `Delete ${_dpTx?.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
@@ -570,8 +578,12 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 return;
 }
+ fix/link-aware-save-delete-restore
+await deletePaymentRecordsLinked([transaction]);
+
 await _restorePayableFromDeletedTransaction(transaction, paymentTransactions, factoryInventoryData);
 await deletePaymentTxWithLinks(transaction);
+ main
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");

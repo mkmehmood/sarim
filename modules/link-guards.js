@@ -3,7 +3,11 @@ import { unifiedSave, unifiedDelete } from './sync.js';
 import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
+ fix/link-aware-save-delete-restore
+  planGroupRecovery, applyEntityRename, factoryEntryMaterialUsage, findUsageItem,
+
   planExpenseCascade, newGroupId, stampGroup,
+ main
 } from './link-graph.js';
 
 // Calculator history entries (noman_history) link to other records through these real fields:
@@ -167,32 +171,46 @@ export async function getSaleEditLinkIssue(kind, original, next) {
   return getEditLinkIssue(original, next, children);
 }
 
-// RECOVER (check): can this tombstone be brought back without corrupting a link?
+// RECOVER (check): what is live right now, as the plain arrays planGroupRecovery works on.
+async function _liveForRecovery() {
+  const get = async (k) => ensureArray(await sqliteStore.get(k)).filter(r => r && !r.deletedAt);
+  return {
+    customer_sales: await get('customer_sales'),
+    rep_sales: await get('rep_sales'),
+    payment_entities: await get('payment_entities'),
+    expenses: await get('expenses'),
+    factory_inventory_data: await get('factory_inventory_data'),
+  };
+}
+
+// RECOVER (check): can this ONE tombstone be brought back without corrupting a link?
 export async function getRecoverLinkBlockReason(collectionName, snapshot) {
   if (!snapshot) return null;
-  if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
-    const key = COLLECTION_TO_KEY[collectionName];
-    const idMap = await _loadIdMap();
-    const parentId = resolveId(snapshot.relatedSaleId, idMap);
-    const parent = ensureArray(await sqliteStore.get(key)).find(s => s && !s.deletedAt && s.id === parentId);
-    const { block } = planChildReattach(parent, snapshot);
-    return block || null;
+  const { block } = planGroupRecovery([{ id: snapshot.id, recordId: snapshot.id, collection: collectionName, snapshot }], await _liveForRecovery(), await _loadIdMap());
+  return block || await getFactoryRecoverBlockReason(collectionName, snapshot);
+}
+
+// RECOVER (check): can this WHOLE set of tombstones come back? Run before anything is written so a
+// block never leaves a half-restored group behind.
+// Returns { block: string|null, skipReattach: Set<tombstoneId> }
+export async function planRecoverySet(members) {
+  const plan = planGroupRecovery(members, await _liveForRecovery(), await _loadIdMap());
+  if (plan.block) return plan;
+  for (const m of members) {
+    const b = await getFactoryRecoverBlockReason(m.collection || m.recordType, m.snapshot);
+    if (b) return { block: b, skipReattach: plan.skipReattach };
   }
-  if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && snapshot.expenseId && !snapshot.isTransfer) {
-    // The payment points at an expense record. Either it still exists, or it is being recovered with
-    // this payment as part of the same deletion group (handled by the caller).
-    return null;
-  }
-  return null;
+  return plan;
 }
 
 // RECOVER (apply): the record came back under newId. Keep every link alive:
 //  1. remember oldId -> newId so siblings recovered later can find it
 //  2. re-point live records that still reference oldId (payments, calculator entries, rep sales ...)
 //  3. re-point the recovered record's own outgoing links (its parent may have been recovered earlier)
-//  4. a recovered partial payment is added back to its parent sale
+//  4. a recovered partial payment is added back to its parent sale, unless the parent came back in the
+//     same recovery (opts.skipReattach): then the parent's snapshot already contains that amount
 // Returns the (possibly adjusted) record to store.
-export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord) {
+export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord, opts = {}) {
   const idMap = await _loadIdMap();
   idMap[String(oldId)] = String(newId);
   await sqliteStore.set(_ID_MAP_KEY, idMap);
@@ -209,7 +227,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     await unifiedSave(k, stores[k], null, changed[k].map(r => r.id));
   }
 
-  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
+  if (!opts.skipReattach && cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
       cleanRecord.paymentType === 'PARTIAL_PAYMENT' && cleanRecord.relatedSaleId) {
     const key = COLLECTION_TO_KEY[collectionName];
     const arr = ensureArray(await sqliteStore.get(key));
@@ -225,10 +243,128 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
   return cleanRecord;
 }
 
-// RECOVER (pre-upload): re-point the snapshot's own links at records that were recovered earlier.
+const _SUPPLIER_FIELDS = ['supplierId', 'supplierName', 'supplierContact', 'supplierType', 'totalPayable', 'paidDate'];
+
+// RECOVER (pre-upload): re-point the snapshot's own links at records that were recovered earlier, and
+// drop links whose target no longer exists anywhere (never leave a dangling id in a stored record).
 export async function resolveSnapshotLinks(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
-  return resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
+  resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
+  if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && cleanRecord.expenseId) {
+    const exp = ensureArray(await sqliteStore.get('expenses')).find(e => e && !e.deletedAt && String(e.id) === String(cleanRecord.expenseId));
+    if (!exp) delete cleanRecord.expenseId;
+  }
+  if (collectionName === 'inventory' && cleanRecord.supplierId) {
+    const ent = ensureArray(await sqliteStore.get('payment_entities')).find(e => e && !e.deletedAt && String(e.id) === String(cleanRecord.supplierId));
+    if (!ent) {
+      _SUPPLIER_FIELDS.forEach(f => { delete cleanRecord[f]; });
+      cleanRecord.paymentStatus = 'pending';
+    } else if (ent.name && cleanRecord.supplierName !== ent.name) {
+      cleanRecord.supplierName = ent.name;
+    }
+  }
+  return cleanRecord;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Factory batches: deleting one hands its raw materials back to inventory, so bringing one back has to
+// take them out again (and must not go through when the stock is no longer there).
+// ---------------------------------------------------------------------------------------------------
+
+async function _factoryUsage(entry) {
+  const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+  let key = entry.formulaType || entry.store;
+  if (!entry.formulaType && typeof window !== 'undefined' && typeof window.getStoreFormulaType === 'function') {
+    try { key = (await window.getStoreFormulaType(entry.store)) || key; } catch (_) {}
+  }
+  return factoryEntryMaterialUsage(entry, formulas, key);
+}
+
+export async function getFactoryRecoverBlockReason(collectionName, snapshot) {
+  if (collectionName !== 'factory_history' || !snapshot || snapshot.isMerged) return null;
+  const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  for (const u of await _factoryUsage(snapshot)) {
+    const item = findUsageItem(inv, u);
+    if (item && (item.quantity || 0) + 1e-6 < u.quantity) {
+      return `Not enough ${item.name || u.name || 'raw material'} in stock to bring this batch back: it used ${u.quantity} kg and only ${item.quantity || 0} kg is left. Add stock first, then recover.`;
+    }
+  }
+  return null;
+}
+
+export async function applyFactoryRecovery(collectionName, cleanRecord) {
+  if (collectionName !== 'factory_history' || !cleanRecord || cleanRecord.isMerged) return [];
+  const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  const touched = [];
+  for (const u of await _factoryUsage(cleanRecord)) {
+    const item = findUsageItem(inv, u);
+    if (!item) continue;
+    item.quantity = Math.max(0, parseFloat(((item.quantity || 0) - u.quantity).toFixed(6)));
+    item.totalValue = item.quantity * (item.cost || 0);
+    if (item.conversionFactor && item.conversionFactor !== 1) item.purchaseQuantity = item.quantity / item.conversionFactor;
+    item.updatedAt = getTimestamp();
+    ensureRecordIntegrity(item, true);
+    touched.push(item);
+  }
+  if (touched.length) await unifiedSave('factory_inventory_data', inv, null, touched.map(i => i.id));
+  return touched;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// SAVE: rename an entity -> every stored copy of its name follows
+// ---------------------------------------------------------------------------------------------------
+
+export async function cascadeEntityRename(entity, oldName, newName) {
+  if (!entity || !oldName || oldName === newName) return {};
+  const stores = {
+    payment_transactions: ensureArray(await sqliteStore.get('payment_transactions')),
+    factory_inventory_data: ensureArray(await sqliteStore.get('factory_inventory_data')),
+    expenses: ensureArray(await sqliteStore.get('expenses')),
+  };
+  const changed = applyEntityRename(stores, entity, oldName, newName);
+  const now = getTimestamp();
+  for (const k of Object.keys(changed)) {
+    changed[k].forEach(r => { r.updatedAt = now; ensureRecordIntegrity(r, true); });
+    await unifiedSave(k, stores[k], null, changed[k].map(r => r.id));
+  }
+  return changed;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// SAVE: multi-record saves put back what they touched when a later step fails
+// ---------------------------------------------------------------------------------------------------
+
+export function createRollback() {
+  const saved = new Map();
+  return {
+    // call BEFORE mutating a record that already exists
+    remember(storeKey, rec) {
+      if (!rec || !rec.id) return;
+      const k = storeKey + '::' + rec.id;
+      if (!saved.has(k)) saved.set(k, { storeKey, id: rec.id, copy: JSON.parse(JSON.stringify(rec)) });
+    },
+    get size() { return saved.size; },
+    // put every remembered record back and persist it (so the cloud copy is corrected too)
+    async undo() {
+      const byStore = new Map();
+      for (const e of saved.values()) { if (!byStore.has(e.storeKey)) byStore.set(e.storeKey, []); byStore.get(e.storeKey).push(e); }
+      for (const [storeKey, entries] of byStore) {
+        try {
+          const arr = ensureArray(await sqliteStore.get(storeKey));
+          const restored = [];
+          for (const e of entries) {
+            const rec = arr.find(r => r && r.id === e.id);
+            if (!rec || JSON.stringify(rec) === JSON.stringify(e.copy)) continue;
+            Object.keys(rec).forEach(f => { delete rec[f]; });
+            Object.assign(rec, e.copy);
+            restored.push(e.id);
+          }
+          if (restored.length) await unifiedSave(storeKey, arr, null, restored);
+        } catch (err) { console.warn('[rollback] could not restore', storeKey, err); }
+      }
+      saved.clear();
+    },
+  };
 }
 
 
