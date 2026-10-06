@@ -1,4 +1,4 @@
-import { getSaleBlockReason } from './link-guards.js';
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue } from './link-guards.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -1198,6 +1198,10 @@ saleRecord.time = o.time;
 saleRecord.currentRepProfile = o.currentRepProfile || 'admin';
 if (o.partialPaymentReceived) saleRecord.partialPaymentReceived = o.partialPaymentReceived;
 }
+if (_ed) {
+const _linkIssue = await getSaleEditLinkIssue('customer', _ed.original, saleRecord);
+if (_linkIssue) { showToast(_linkIssue, 'warning', 6000); return; }
+}
 const validatedRecord = ensureRecordIntegrity(saleRecord, !!_ed);
 const salesSnapshot = [...customerSales];
 try {
@@ -1458,6 +1462,10 @@ const hours = now.getHours(), mins = now.getMinutes(), secs = now.getSeconds();
 const ampm = hours >= 12 ? 'PM' : 'AM';
 const h12 = hours % 12 || 12;
 const timeString = `${String(h12).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')} ${ampm}`;
+if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - amount) > 0.001) {
+showToast('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 6000);
+restoreBtn(); return;
+}
 const recordId = _ed ? _ed.id : generateUUID('sale');
 if (!validateUUID(recordId)) {
 showToast('Error generating transaction ID. Please try again.', 'error');
@@ -1857,21 +1865,7 @@ _dcMsg += `\n\n\u21a9 ${fmtNum(recordToDelete.quantity||0)} kg will be restored 
 _dcMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dcMsg, { title: `Delete ${_dcPayLabel}`, confirmText: "Delete", danger: true })) {
 try {
-const wasPartialPayment = recordToDelete.paymentType === 'PARTIAL_PAYMENT';
-const paymentAmount = recordToDelete.totalValue || 0;
-if (wasPartialPayment && recordToDelete.relatedSaleId) {
-const relatedSale = customerSales.find(s => s.id === recordToDelete.relatedSaleId);
-if (relatedSale) {
-relatedSale.partialPaymentReceived = Math.max(0, (relatedSale.partialPaymentReceived || 0) - paymentAmount);
-if (relatedSale.partialPaymentReceived === 0) {
-relatedSale.creditReceived = false;
-delete relatedSale.creditReceivedDate;
-}
-relatedSale.updatedAt = getTimestamp();
-ensureRecordIntegrity(relatedSale, true);
-await unifiedSave('customer_sales', customerSales, relatedSale);
-}
-}
+await detachChildPayment('customer', recordToDelete, customerSales);
 const customerSalesFiltered = customerSales.filter(s => s.id !== id);
 await unifiedDelete('customer_sales', customerSalesFiltered, id, { strict: true }, recordToDelete);
 await refreshCustomerSales();

@@ -1,4 +1,5 @@
-import { getSaleBlockReason } from './link-guards.js';
+import { getSaleBlockReason, detachChildPayment } from './link-guards.js';
+import { newGroupId, stampGroup } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -227,9 +228,10 @@ msg += `\n\nAll sales history for this customer will be permanently deleted.`;
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: 'Delete Customer', confirmText: 'Delete Permanently', danger: true }))) return;
 try {
+const _custGroup = newGroupId('cust');
 const contactIdx = salesCustomers.findIndex(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
 if (contactIdx !== -1) {
-const contactRecord = salesCustomers[contactIdx];
+const contactRecord = stampGroup(salesCustomers[contactIdx], _custGroup);
 const contactId = contactRecord.id;
 const filteredContacts = salesCustomers.filter((_, i) => i !== contactIdx);
 await unifiedDelete('sales_customers', filteredContacts, contactId, { strict: true }, contactRecord);
@@ -240,7 +242,7 @@ const idsToDelete = new Set(txsToDelete.map(t => t.id));
 let prunedSales = customerSales.filter(s => !idsToDelete.has(s.id));
 for (const tx of txsToDelete) {
 prunedSales = prunedSales.filter(s => s.id !== tx.id);
-await unifiedDelete('customer_sales', prunedSales, tx.id, { strict: true }, tx);
+await unifiedDelete('customer_sales', prunedSales, tx.id, { strict: true }, stampGroup(tx, _custGroup));
 }
 notifyDataChange('sales');
 triggerAutoSync();
@@ -578,17 +580,7 @@ if (!(await showGlassConfirm(_txMsg, { title: _txTitle || `Delete ${_txType}`, c
 try {
 const item = customerSales.find(s => s.id === id);
 if (!item) { renderCustomerTransactions(currentManagingCustomer); return; }
-const wasPartialPayment = item.paymentType === 'PARTIAL_PAYMENT';
-const paymentAmount = item.totalValue || 0;
-if (wasPartialPayment && item.relatedSaleId) {
-const rel = customerSales.find(s => s.id === item.relatedSaleId);
-if (rel) {
-rel.partialPaymentReceived = Math.max(0, (rel.partialPaymentReceived || 0) - paymentAmount);
-if (rel.partialPaymentReceived === 0) { rel.creditReceived = false; delete rel.creditReceivedDate; }
-rel.updatedAt = getTimestamp();
-ensureRecordIntegrity(rel, true);
-}
-}
+await detachChildPayment('customer', item, customerSales);
 const customerSalesFiltered = customerSales.filter(s => s.id !== id);
 await unifiedDelete('customer_sales', customerSalesFiltered, id, { strict: true }, item);
 refreshAllCalculations();
@@ -667,17 +659,7 @@ if (!(await showGlassConfirm(_rMsg, { title: _rTitle || `Delete ${_rType}`, conf
 try {
 const item = repSales.find(s => s.id === id);
 if (!item) { renderRepCustomerTransactions(currentManagingRepCustomer); return; }
-const wasPartialPayment = item.paymentType === 'PARTIAL_PAYMENT';
-const paymentAmount = item.totalValue || 0;
-if (wasPartialPayment && item.relatedSaleId) {
-const rel = repSales.find(s => s.id === item.relatedSaleId);
-if (rel) {
-rel.partialPaymentReceived = Math.max(0, (rel.partialPaymentReceived || 0) - paymentAmount);
-if (rel.partialPaymentReceived === 0) { rel.creditReceived = false; delete rel.creditReceivedDate; }
-rel.updatedAt = getTimestamp();
-ensureRecordIntegrity(rel, true);
-}
-}
+await detachChildPayment('rep', item, repSales);
 const repSalesFiltered = repSales.filter(s => s.id !== id);
 await unifiedDelete('rep_sales', repSalesFiltered, id, { strict: true }, item);
 renderRepCustomerTransactions(currentManagingRepCustomer);

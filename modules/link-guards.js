@@ -1,4 +1,9 @@
-import { sqliteStore, ensureArray } from './business.js';
+import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity } from './business.js';
+import { unifiedSave } from './sync.js';
+import {
+  COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
+  planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
+} from './link-graph.js';
 
 // Calculator history entries (noman_history) link to other records through these real fields:
 //   linkedSalesIds     -> customer_sales settled by the calculator
@@ -120,4 +125,107 @@ export async function getPendingAllocationCount(repName) {
   hist.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(i => settled.add(i)); });
   return sales.filter(s => s && !s.deletedAt && s.customerName === repName && s.currentRepProfile === 'admin' &&
     s.paymentType === 'CREDIT' && !s.creditReceived && s.transactionType !== 'OLD_DEBT' && !settled.has(s.id)).length;
+}
+
+
+// ---------------------------------------------------------------------------------------------------
+// Smart link handling shared by every save / delete / recover path
+// ---------------------------------------------------------------------------------------------------
+
+const _ID_MAP_KEY = 'recovered_id_map';
+
+async function _loadIdMap() {
+  const m = await sqliteStore.get(_ID_MAP_KEY, {});
+  return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+}
+
+// DELETE: a partial payment is being deleted -> take its amount back off the parent credit sale and
+// persist the parent on its own (so the cloud and other devices see the parent change too).
+// kind: 'customer' | 'rep'.  `all` is the in-memory array the caller already loaded.
+export async function detachChildPayment(kind, child, all) {
+  if (!child || child.paymentType !== 'PARTIAL_PAYMENT' || !child.relatedSaleId) return null;
+  const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
+  const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
+  const parent = arr.find(s => s && s.id === child.relatedSaleId);
+  if (!parent) return null;
+  const patch = planChildDetach(parent, child);
+  if (!patch) return null;
+  applyPatch(parent, patch);
+  parent.updatedAt = getTimestamp();
+  ensureRecordIntegrity(parent, true);
+  await unifiedSave(key, arr, parent);
+  return parent;
+}
+
+// SAVE (edit): refuse edits that would leave payment records out of step with the sale.
+export async function getSaleEditLinkIssue(kind, original, next) {
+  if (!original || !original.id) return null;
+  const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
+  const all = ensureArray(await sqliteStore.get(key));
+  const children = all.filter(s => s && s.id !== original.id && s.relatedSaleId === original.id);
+  return getEditLinkIssue(original, next, children);
+}
+
+// RECOVER (check): can this tombstone be brought back without corrupting a link?
+export async function getRecoverLinkBlockReason(collectionName, snapshot) {
+  if (!snapshot) return null;
+  if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
+    const key = COLLECTION_TO_KEY[collectionName];
+    const idMap = await _loadIdMap();
+    const parentId = resolveId(snapshot.relatedSaleId, idMap);
+    const parent = ensureArray(await sqliteStore.get(key)).find(s => s && !s.deletedAt && s.id === parentId);
+    const { block } = planChildReattach(parent, snapshot);
+    return block || null;
+  }
+  if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && snapshot.expenseId && !snapshot.isTransfer) {
+    // The payment points at an expense record. Either it still exists, or it is being recovered with
+    // this payment as part of the same deletion group (handled by the caller).
+    return null;
+  }
+  return null;
+}
+
+// RECOVER (apply): the record came back under newId. Keep every link alive:
+//  1. remember oldId -> newId so siblings recovered later can find it
+//  2. re-point live records that still reference oldId (payments, calculator entries, rep sales ...)
+//  3. re-point the recovered record's own outgoing links (its parent may have been recovered earlier)
+//  4. a recovered partial payment is added back to its parent sale
+// Returns the (possibly adjusted) record to store.
+export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord) {
+  const idMap = await _loadIdMap();
+  idMap[String(oldId)] = String(newId);
+  await sqliteStore.set(_ID_MAP_KEY, idMap);
+
+  if (cleanRecord) resolveOwnLinks(collectionName, cleanRecord, idMap);
+
+  const keys = Object.keys(REF_FIELDS);
+  const stores = {};
+  for (const k of keys) stores[k] = ensureArray(await sqliteStore.get(k));
+  const changed = remapReferences(stores, oldId, newId);
+  for (const k of Object.keys(changed)) {
+    const now = getTimestamp();
+    changed[k].forEach(r => { r.updatedAt = now; });
+    await unifiedSave(k, stores[k], null, changed[k].map(r => r.id));
+  }
+
+  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
+      cleanRecord.paymentType === 'PARTIAL_PAYMENT' && cleanRecord.relatedSaleId) {
+    const key = COLLECTION_TO_KEY[collectionName];
+    const arr = ensureArray(await sqliteStore.get(key));
+    const parent = arr.find(s => s && s.id === cleanRecord.relatedSaleId);
+    const { patch } = planChildReattach(parent, cleanRecord);
+    if (parent && patch) {
+      applyPatch(parent, patch);
+      parent.updatedAt = getTimestamp();
+      ensureRecordIntegrity(parent, true);
+      await unifiedSave(key, arr, parent);
+    }
+  }
+  return cleanRecord;
+}
+
+// RECOVER (pre-upload): re-point the snapshot's own links at records that were recovered earlier.
+export async function resolveSnapshotLinks(collectionName, cleanRecord) {
+  if (!cleanRecord) return cleanRecord;
+  return resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
 }

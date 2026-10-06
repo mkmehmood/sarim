@@ -1,4 +1,5 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks } from './link-guards.js';
+import { newGroupId, stampGroup, findGroupMembers, orderForRestore, GROUP_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -3885,16 +3886,17 @@ confirmMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(confirmMsg, { title: `Delete ${categoryLabel}`, confirmText: "Delete", danger: true }))) return;
 try {
 const txToDelete = paymentTransactions.filter(t => t.expenseId === expenseId);
+const _expGroup = newGroupId('exp');
 await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), paymentTransactions, factoryInventoryData);
 if (txToDelete.length > 0) {
 let _expRemaining = paymentTransactions.slice();
 for (const trans of txToDelete) {
 _expRemaining = _expRemaining.filter(t => t.id !== trans.id);
-await unifiedDelete('payment_transactions', _expRemaining, trans.id, { strict: true }, trans);
+await unifiedDelete('payment_transactions', _expRemaining, trans.id, { strict: true }, stampGroup(trans, _expGroup));
 }
 }
 const _expRecFiltered = expenseRecords.filter(e => e.id !== expenseId);
-await unifiedDelete('expenses', _expRecFiltered, expenseId, { strict: true }, expense);
+await unifiedDelete('expenses', _expRecFiltered, expenseId, { strict: true }, txToDelete.length ? stampGroup(expense, _expGroup) : expense);
 
 try {
   const _delPhotoKey = 'expense:' + expenseId;
@@ -4091,6 +4093,19 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_prod
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
   if (!deletedId || !collectionName) return false;
   try {
+    if (!_isPairRecovery) {
+      const _grpTomb = deletionRecords.find(r => String(r.id) === String(deletedId) || String(r.recordId || r.id) === String(deletedId));
+      const _grp = findGroupMembers(_grpTomb, deletionRecords);
+      if (_grp.length > 1) {
+        let _selfOk = false;
+        for (const m of orderForRestore(_grp)) {
+          const mid = m.recordId || m.id;
+          const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true);
+          if (String(mid) === String(deletedId)) _selfOk = ok;
+        }
+        return _selfOk;
+      }
+    }
     const sqliteKey = getSQLiteKey(collectionName);
     let recoveredData = null;
     const localDeletionRecords = await sqliteStore.get('deletion_records', []);
@@ -4101,6 +4116,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       recoveredData = tombstoneLocal.snapshot;
     }
     if (getRecoverBlockReason(collectionName, recoveredData)) return false;
+    if (recoveredData && await getRecoverLinkBlockReason(collectionName, recoveredData)) return false;
     if (!recoveredData && firebaseDB && currentUser) {
       try {
         const userRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -4124,6 +4140,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       delete cleanRecord.deletion_version;
       delete cleanRecord.recoveredAt;
       delete cleanRecord._placeholder;
+      delete cleanRecord[GROUP_FIELD];
       delete cleanRecord.isDeleted;
       delete cleanRecord.softDeleted;
       cleanRecord.updatedAt   = Date.now();
@@ -4137,6 +4154,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     if (cleanRecord) {
       cleanRecord.id = newId;
       delete cleanRecord.originalId;
+      await resolveSnapshotLinks(collectionName, cleanRecord);
     }
     await purgeRecoveredId(oldId, collectionName, cleanRecord, newId);
     if (cleanRecord && sqliteKey) {
@@ -4146,6 +4164,8 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       localArr.push(cleanRecord);
       await sqliteStore.set(sqliteKey, localArr);
     }
+    try { await applyRecoveryLinks(collectionName, oldId, newId, cleanRecord); }
+    catch (_lkErr) { console.warn('[recoverRecord] link re-pointing failed', _safeErr(_lkErr)); }
     if (typeof invalidateAllCaches === 'function') {
       await invalidateAllCaches();
     }
@@ -4617,9 +4637,15 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
     if (_rb) { showToast(_rb, 'warning', 6000); return; }
   }
+  const _grpMembers = findGroupMembers(ownTomb, deletionRecords);
+  if (_grpMembers.length <= 1 && ownTomb && ownTomb.snapshot) {
+    const _lb = await getRecoverLinkBlockReason(collectionName, ownTomb.snapshot);
+    if (_lb) { showToast(_lb, 'warning', 6500); return; }
+  }
+  const groupNote = _grpMembers.length > 1 ? `\n\nThis was deleted together with ${_grpMembers.length - 1} other record${_grpMembers.length - 1 !== 1 ? 's' : ''}. All ${_grpMembers.length} will be recovered together so their links stay correct.` : '';
   const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
   if (!(await showGlassConfirm(
-    `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}`,
+    `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}${groupNote}`,
     { title: 'Recover Record', confirmText: 'Recover', danger: false }
   ))) return;
   showToast('Recovering record…', 'info', 1500);
@@ -5877,26 +5903,13 @@ confirmMsg += `\n\n\u21a9 ${_rtQty} kg will be restored to inventory.`;
 confirmMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(confirmMsg, { title: confirmTitle || 'Delete Rep Transaction', confirmText: "Delete", danger: true })) {
 try {
-const wasCredit = transaction.paymentType === 'CREDIT';
 const wasPartialPayment = transaction.paymentType === 'PARTIAL_PAYMENT';
 const wasCollection = transaction.paymentType === 'COLLECTION';
+const wasCredit = transaction.paymentType === 'CREDIT';
 const paymentAmount = transaction.totalValue || 0;
-const relatedSaleId = transaction.relatedSaleId;
-if (wasPartialPayment && relatedSaleId) {
-const relatedSale = repSales.find(s => s.id === relatedSaleId);
-if (relatedSale) {
-relatedSale.partialPaymentReceived = Math.max(0, (relatedSale.partialPaymentReceived || 0) - paymentAmount);
-if (relatedSale.partialPaymentReceived === 0) { relatedSale.creditReceived = false; delete relatedSale.creditReceivedDate; }
-relatedSale.updatedAt = getTimestamp();
-ensureRecordIntegrity(relatedSale, true);
-}
-}
+await detachChildPayment('rep', transaction, repSales);
 const repSalesFiltered = repSales.filter(s => s.id !== id);
 await unifiedDelete('rep_sales', repSalesFiltered, id, { strict: true }, transaction);
-if (wasPartialPayment && relatedSaleId) {
-const relatedSale = repSales.find(s => s.id === relatedSaleId);
-if (relatedSale) await unifiedSave('rep_sales', repSales, relatedSale);
-}
 await refreshRepUI(true);
 if (currentManagingRepCustomer && typeof renderRepCustomerTransactions === 'function') {
 await renderRepCustomerTransactions(currentManagingRepCustomer);

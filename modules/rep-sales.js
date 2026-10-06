@@ -1,4 +1,5 @@
-import { getSaleBlockReason } from './link-guards.js';
+import { getSaleBlockReason, getSaleEditLinkIssue } from './link-guards.js';
+import { newGroupId, stampGroup } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
@@ -377,7 +378,12 @@ syncedAt: new Date().toISOString()
 };
 transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 }
+if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - (transactionRecord.totalValue || 0)) > 0.001) {
+showToast('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 6000); restoreBtn(); return;
+}
 if (_ed) {
+const _linkIssue = await getSaleEditLinkIssue('rep', _ed.original, transactionRecord);
+if (_linkIssue) { showToast(_linkIssue, 'warning', 6000); restoreBtn(); return; }
 const o = _ed.original;
 stampEdit(transactionRecord, o);
 transactionRecord.time = o.time;
@@ -880,6 +886,7 @@ msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: 'Delete Rep Customer', confirmText: 'Delete Permanently', danger: true }))) return;
 try {
 const _lcDelName = name.toLowerCase();
+const _repCustGroup = newGroupId('repcust');
 const contactIdx = repCustomers.findIndex(c => {
 if (!c || !c.name) return false;
 if (c.name.toLowerCase() !== _lcDelName) return false;
@@ -887,7 +894,7 @@ if (c.salesRep) return c.salesRep === currentRepProfile;
 return repSales.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcDelName);
 });
 if (contactIdx !== -1) {
-const contactRecord = repCustomers[contactIdx];
+const contactRecord = stampGroup(repCustomers[contactIdx], _repCustGroup);
 const contactId = contactRecord.id;
 const filteredContacts = repCustomers.filter((_, i) => i !== contactIdx);
 await unifiedDelete('rep_customers', filteredContacts, contactId, { strict: true }, contactRecord);
@@ -897,7 +904,7 @@ const repTxsToDelete = txs.slice();
 let prunedRepSales = repSales.slice();
 for (const tx of repTxsToDelete) {
 prunedRepSales = prunedRepSales.filter(s => s.id !== tx.id);
-await unifiedDelete('rep_sales', prunedRepSales, tx.id, { strict: true }, tx);
+await unifiedDelete('rep_sales', prunedRepSales, tx.id, { strict: true }, stampGroup(tx, _repCustGroup));
 }
 try {
 const _rcPhKey = 'rep-cust:' + (currentRepProfile || '') + ':' + name.toLowerCase();

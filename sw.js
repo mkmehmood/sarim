@@ -17,6 +17,8 @@ const ASSETS_TO_CACHE = [
   './modules/rep-sales.js',
   './modules/admin-data.js',
   './modules/custom-date-picker.js',
+  './modules/link-guards.js',
+  './modules/link-graph.js',
   './manifest.json',
   './192.png',
   './512.png',
