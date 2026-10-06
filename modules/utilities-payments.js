@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { newGroupId, stampGroup, findGroupMembers, orderForRestore, GROUP_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -4155,6 +4155,15 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     if (cleanRecord) {
       cleanRecord.id = newId;
       delete cleanRecord.originalId;
+      await applyRenameOnRecovery(collectionName, cleanRecord);
+      const _dupe = await findLiveSameNameRecord(collectionName, cleanRecord);
+      if (_dupe) {
+        await purgeRecoveredId(oldId, collectionName, null, _dupe.id);
+        await applyRecoveryLinks(collectionName, oldId, _dupe.id, null);
+        if (typeof invalidateAllCaches === 'function') await invalidateAllCaches();
+        triggerAutoSync();
+        return true;
+      }
       await resolveSnapshotLinks(collectionName, cleanRecord);
     }
     await purgeRecoveredId(oldId, collectionName, cleanRecord, newId);

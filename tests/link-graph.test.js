@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers, GROUP_FIELD,
+  remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -140,5 +141,93 @@ describe('entity restore keeps payments attached', () => {
       { recordId: 'e', collection: 'entities', snapshot: {} },
     ]).map(t => t.recordId);
     assert.equal(order[order.length - 1], 't1');
+  });
+});
+
+describe('more id references', () => {
+  it('re-points materials -> supplier and payments -> material', () => {
+    const stores = {
+      factory_inventory_data: [{ id: 'm1', supplierId: 'oldS' }, { id: 'm2', supplierId: 'other' }],
+      payment_transactions: [{ id: 't', materialId: 'oldM', materialIds: ['oldM', 'z'], entityId: 'oldS' }],
+    };
+    remapReferences(stores, 'oldS', 'newS');
+    remapReferences(stores, 'oldM', 'newM');
+    assert.equal(stores.factory_inventory_data[0].supplierId, 'newS');
+    assert.equal(stores.factory_inventory_data[1].supplierId, 'other');
+    assert.equal(stores.payment_transactions[0].entityId, 'newS');
+    assert.equal(stores.payment_transactions[0].materialId, 'newM');
+    assert.deepEqual(stores.payment_transactions[0].materialIds, ['newM', 'z']);
+  });
+  it('re-points factory batches and formulas at a recovered material', () => {
+    const hist = [{ id: 'h', materialsUsed: [{ id: 'oldM', quantity: 2 }] }, { id: 'h2', materialsUsed: [{ id: 'x' }] }];
+    const formulas = { standard: [{ id: 'oldM', quantity: 1 }], asaan: [{ id: 'y' }] };
+    const r = remapMaterialRefs(hist, formulas, 'oldM', 'newM');
+    assert.equal(hist[0].materialsUsed[0].id, 'newM');
+    assert.equal(formulas.standard[0].id, 'newM');
+    assert.equal(r.historyChanged.length, 1);
+    assert.equal(r.formulasChanged, true);
+  });
+});
+
+describe('factory batch restore takes materials back out of inventory', () => {
+  const inv = () => [{ id: 'a', name: 'Sugar', quantity: 100 }, { id: 'b', name: 'Flour', quantity: 5 }];
+  it('deducts exactly what delete added back', () => {
+    const { updates } = planMaterialDeduction({ materialsUsed: [{ id: 'a', name: 'Sugar', quantity: 30 }] }, inv(), {}, 'standard');
+    assert.deepEqual(updates, [{ id: 'a', quantity: 70 }]);
+  });
+  it('blocks when inventory no longer has enough', () => {
+    assert.match(planMaterialDeduction({ materialsUsed: [{ id: 'b', name: 'Flour', quantity: 9 }] }, inv(), {}, 'standard').block, /Not enough Flour/);
+  });
+  it('blocks when the material was deleted', () => {
+    assert.match(planMaterialDeduction({ materialsUsed: [{ id: 'gone', name: 'Salt', quantity: 1 }] }, inv(), {}, 'standard').block, /no longer in your inventory/);
+  });
+  it('falls back to the formula x units, matching deleteFactoryEntry', () => {
+    const { updates } = planMaterialDeduction({ units: 4, store: 'standard' }, inv(), { standard: [{ id: 'a', name: 'Sugar', quantity: 2.5 }] }, 'standard');
+    assert.deepEqual(updates, [{ id: 'a', quantity: 90 }]);
+  });
+});
+
+describe('stock overdraw on restore', () => {
+  it('blocks a sale that would use more than is available', () => {
+    assert.match(getStockOverdrawIssue('Store A', 50, 20), /only 20 kg/);
+  });
+  it('allows when stock covers it, or when there is no quantity', () => {
+    assert.equal(getStockOverdrawIssue('Store A', 20, 20), null);
+    assert.equal(getStockOverdrawIssue('Store A', 0, 0), null);
+  });
+});
+
+describe('customer rename map', () => {
+  it('records and follows renames, case-insensitively and through chains', () => {
+    const m = {};
+    recordRename(m, 'sales', 'Ali', 'Ali Khan');
+    recordRename(m, 'sales', 'ali khan', 'Ali K. Traders');
+    assert.equal(resolveRename(m, 'sales', 'ALI'), 'Ali K. Traders');
+    assert.equal(resolveRename(m, 'sales', 'Bilal'), 'Bilal');
+  });
+  it('keeps rep-specific renames separate', () => {
+    const m = {};
+    recordRename(m, 'rep|R1', 'Ali', 'Ali Khan');
+    assert.equal(resolveRename(m, 'rep|R2', 'Ali'), 'Ali');
+    assert.equal(resolveRename(m, 'rep|R1', 'Ali'), 'Ali Khan');
+  });
+  it('ignores no-op renames and cycles', () => {
+    const m = {};
+    recordRename(m, 'sales', 'Ali', 'ali');
+    assert.deepEqual(m, {});
+    recordRename(m, 'sales', 'A', 'B'); recordRename(m, 'sales', 'B', 'A');
+    assert.equal(typeof resolveRename(m, 'sales', 'A'), 'string');
+  });
+});
+
+describe('old balance edits', () => {
+  const kids = [{ totalValue: 300 }, { totalValue: 200 }];
+  it('blocks lowering below what was collected', () => {
+    assert.match(getOldDebtEditIssue(400, kids), /500 has already been collected/);
+  });
+  it('allows raising it and reports the collected sum', () => {
+    assert.equal(getOldDebtEditIssue(900, kids), null);
+    assert.equal(sumChildPayments(kids), 500);
+    assert.equal(getOldDebtEditIssue(10, []), null);
   });
 });

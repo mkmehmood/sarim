@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getSaleEditLinkIssue } from './link-guards.js';
+import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename } from './link-guards.js';
 import { newGroupId, stampGroup } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
@@ -1202,6 +1202,7 @@ salesArray = Array.from(mSales.values());
 }
 const renamedRecords = [];
 if (nameChanged) {
+await recordCustomerRename('rep|' + currentRepProfile, originalName, name);
 salesArray.forEach(s => {
 if (s.customerName && s.customerName.toLowerCase() === originalName.toLowerCase() && s.salesRep === currentRepProfile) {
 s.customerName = name;

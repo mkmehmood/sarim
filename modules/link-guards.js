@@ -4,6 +4,8 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
+  remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue,
+  recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from './link-graph.js';
 
 // Calculator history entries (noman_history) link to other records through these real fields:
@@ -178,6 +180,29 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot) {
     const { block } = planChildReattach(parent, snapshot);
     return block || null;
   }
+  // Stock consumers: a recovered sale or transfer-out must not overdraw that store on that day.
+  if (collectionName === 'sales' && Number(snapshot.quantity) > 0 && snapshot.supplyStore &&
+      !['COLLECTION', 'PARTIAL_PAYMENT'].includes(snapshot.paymentType) && snapshot.transactionType !== 'OLD_DEBT' &&
+      typeof window !== 'undefined' && typeof window.computeStoreStockSnapshot === 'function') {
+    const snap = await window.computeStoreStockSnapshot(snapshot.supplyStore, snapshot.supplyDate || snapshot.date);
+    const label = typeof window.getStoreLabel === 'function' ? (window.getStoreLabel(snapshot.supplyStore) || snapshot.supplyStore) : snapshot.supplyStore;
+    return getStockOverdrawIssue(label, snapshot.quantity, snap.available);
+  }
+  if (collectionName === 'production' && snapshot.isTransfer === true && snapshot.transferDirection === 'out' &&
+      typeof window !== 'undefined' && typeof window.computeStoreStockSnapshot === 'function') {
+    const snap = await window.computeStoreStockSnapshot(snapshot.store, snapshot.date);
+    const label = typeof window.getStoreLabel === 'function' ? (window.getStoreLabel(snapshot.store) || snapshot.store) : snapshot.store;
+    return getStockOverdrawIssue(label, Math.abs(Number(snapshot.net) || 0), snap.available);
+  }
+  // Factory batch: its raw materials have to come back OUT of inventory.
+  if (collectionName === 'factory_history') {
+    const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+    const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+    const idMap = await _loadIdMap();
+    const entry = { ...snapshot, materialsUsed: (snapshot.materialsUsed || []).map(m => ({ ...m, id: resolveId(m.id, idMap) })) };
+    const { block } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
+    return block || null;
+  }
   if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && snapshot.expenseId && !snapshot.isTransfer) {
     // The payment points at an expense record. Either it still exists, or it is being recovered with
     // this payment as part of the same deletion group (handled by the caller).
@@ -207,6 +232,40 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     const now = getTimestamp();
     changed[k].forEach(r => { r.updatedAt = now; });
     await unifiedSave(k, stores[k], null, changed[k].map(r => r.id));
+  }
+
+  if (collectionName === 'inventory') {
+    const hist = ensureArray(await sqliteStore.get('factory_production_history'));
+    const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+    const r = remapMaterialRefs(hist, formulas, oldId, newId);
+    if (r.historyChanged.length) {
+      const now = getTimestamp();
+      r.historyChanged.forEach(h => { h.updatedAt = now; });
+      await unifiedSave('factory_production_history', hist, null, r.historyChanged.map(h => h.id));
+    }
+    if (r.formulasChanged) {
+      await sqliteStore.set('factory_default_formulas', formulas);
+      await sqliteStore.set('factory_default_formulas_timestamp', Date.now());
+    }
+  }
+
+  if (collectionName === 'factory_history' && cleanRecord) {
+    const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+    const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+    const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaType || cleanRecord.store);
+    if (updates && updates.length) {
+      const now = getTimestamp();
+      for (const u of updates) {
+        const item = inv.find(i => i && i.id === u.id);
+        if (!item) continue;
+        item.quantity = u.quantity;
+        item.totalValue = item.quantity * (item.cost || 0);
+        if (item.conversionFactor && item.conversionFactor !== 1) item.purchaseQuantity = item.quantity / item.conversionFactor;
+        item.updatedAt = now;
+        ensureRecordIntegrity(item, true);
+      }
+      await unifiedSave('factory_inventory_data', inv, null, updates.map(u => u.id));
+    }
   }
 
   if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
@@ -273,4 +332,41 @@ export async function deletePaymentTxWithLinks(tx, opts = {}) {
   }
   await _dropExpensePhoto(tx.expenseId);
   return { tx, expense };
+}
+
+// SAVE (rename): remember old -> new so records still in the recycle bin come back under the new name.
+export async function recordCustomerRename(kind, from, to) {
+  const map = (await sqliteStore.get('customer_rename_map')) || {};
+  await sqliteStore.set('customer_rename_map', recordRename(map, kind, from, to));
+}
+
+// RECOVER (pre-upload): apply renames made while the record sat in the recycle bin.
+export async function applyRenameOnRecovery(collectionName, cleanRecord) {
+  if (!cleanRecord) return cleanRecord;
+  const kind = (collectionName === 'sales' || collectionName === 'sales_customers') ? 'sales'
+    : (collectionName === 'rep_sales' || collectionName === 'rep_customers') ? ('rep|' + (cleanRecord.salesRep || '')) : null;
+  if (!kind) return cleanRecord;
+  const map = (await sqliteStore.get('customer_rename_map')) || {};
+  if (cleanRecord.customerName) cleanRecord.customerName = resolveRename(map, kind, cleanRecord.customerName);
+  if ((collectionName === 'sales_customers' || collectionName === 'rep_customers') && cleanRecord.name) {
+    cleanRecord.name = resolveRename(map, kind, cleanRecord.name);
+  }
+  return cleanRecord;
+}
+
+// RECOVER: a contact/entity with the same name is already live -> merge into it instead of duplicating.
+export async function findLiveSameNameRecord(collectionName, snapshot) {
+  if (!snapshot || !snapshot.name) return null;
+  if (!['sales_customers', 'rep_customers', 'entities'].includes(collectionName)) return null;
+  const arr = ensureArray(await sqliteStore.get(COLLECTION_TO_KEY[collectionName]));
+  const nm = String(snapshot.name).trim().toLowerCase();
+  return arr.find(r => r && !r.deletedAt && r.name && String(r.name).trim().toLowerCase() === nm) || null;
+}
+
+// SAVE (old debt): changing the opening balance must keep payments that were already collected.
+export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
+  if (!oldDebtRecord || !oldDebtRecord.id) return { issue: null, collected: 0 };
+  const all = ensureArray(await sqliteStore.get('customer_sales'));
+  const kids = all.filter(s => s && s.relatedSaleId === oldDebtRecord.id);
+  return { issue: getOldDebtEditIssue(newAmount, kids), collected: sumChildPayments(kids) };
 }

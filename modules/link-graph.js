@@ -15,7 +15,8 @@ export const REF_FIELDS = {
   customer_sales:       { scalar: ['relatedSaleId'], array: [] },
   rep_sales:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
   noman_history:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
-  payment_transactions: { scalar: ['expenseId', 'entityId'], array: [] },
+  payment_transactions: { scalar: ['expenseId', 'entityId', 'materialId'], array: ['materialIds'] },
+  factory_inventory_data: { scalar: ['supplierId'], array: [] },
 };
 
 // Tombstone collection name -> storage key
@@ -186,4 +187,92 @@ export function findGroupMembers(tomb, allTombstones) {
   if (!gid) return [tomb];
   const members = allTombstones.filter(t => t && t.snapshot && t.snapshot[GROUP_FIELD] === gid);
   return members.length ? members : [tomb];
+}
+
+// ---- nested material references (factory batches + formulas point at inventory item ids) -------------
+
+// history: factory_production_history[], formulas: { formulaKey: [{id,...}] }
+export function remapMaterialRefs(history, formulas, oldId, newId) {
+  const o = String(oldId), nw = String(newId);
+  const historyChanged = [];
+  for (const h of Array.isArray(history) ? history : []) {
+    let hit = false;
+    for (const m of Array.isArray(h && h.materialsUsed) ? h.materialsUsed : []) {
+      if (m && m.id != null && String(m.id) === o) { m.id = nw; hit = true; }
+    }
+    if (hit) historyChanged.push(h);
+  }
+  let formulasChanged = false;
+  if (formulas && typeof formulas === 'object') {
+    for (const k of Object.keys(formulas)) {
+      for (const f of Array.isArray(formulas[k]) ? formulas[k] : []) {
+        if (f && f.id != null && String(f.id) === o) { f.id = nw; formulasChanged = true; }
+      }
+    }
+  }
+  return { historyChanged, formulasChanged };
+}
+
+// ---- restoring a factory batch must take its raw materials out of inventory again --------------------
+// Deleting a batch ADDED the materials back; restoring it must remove them, or they are counted twice.
+export function planMaterialDeduction(entry, inventory, formulas, formulaKey) {
+  if (!entry) return { updates: [] };
+  const used = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
+    ? entry.materialsUsed.map(m => ({ id: m.id, name: m.name, quantity: _n(m.quantity) }))
+    : ((formulas && (formulas[formulaKey] || formulas[entry.store])) || []).map(f => ({ id: f.id, name: f.name, quantity: _n(f.quantity) * _n(entry.units) }));
+  const updates = [];
+  for (const u of used) {
+    if (!(u.quantity > 0)) continue;
+    let item = (inventory || []).find(i => i && u.id != null && String(i.id) === String(u.id));
+    if (!item && u.name) item = (inventory || []).find(i => i && i.name && i.name.trim().toLowerCase() === String(u.name).trim().toLowerCase());
+    if (!item) return { block: `"${u.name || 'A raw material'}" used in this batch is no longer in your inventory. Recover that material first, then recover the batch.` };
+    const have = _n(item.quantity);
+    if (have + 1e-9 < u.quantity) {
+      return { block: `Not enough ${item.name || u.name} in inventory to recover this batch: it used ${u.quantity} kg and only ${have} kg is in stock.` };
+    }
+    updates.push({ id: item.id, quantity: parseFloat((have - u.quantity).toFixed(6)) });
+  }
+  return { updates };
+}
+
+// ---- restoring something that CONSUMES store stock must not overdraw that store/day -------------------
+export function getStockOverdrawIssue(label, qty, availableNow) {
+  const q = _n(qty);
+  if (q <= 0) return null;
+  if (_n(availableNow) - q < -0.0001) {
+    return `Recovering this would use ${q} kg of ${label} stock but only ${Math.max(0, _n(availableNow))} kg is available on that date. Recover or add the stock first.`;
+  }
+  return null;
+}
+
+// ---- customer renames: records deleted before a rename must come back under the new name -------------
+export function recordRename(map, kind, from, to) {
+  const m = map && typeof map === 'object' ? map : {};
+  const f = String(from || '').trim().toLowerCase();
+  const t = String(to || '').trim();
+  if (!f || !t || f === t.toLowerCase()) return m;
+  m[`${kind}:${f}`] = t;
+  return m;
+}
+export function resolveRename(map, kind, name) {
+  if (!map || !name) return name;
+  let cur = String(name);
+  const seen = new Set();
+  while (Object.prototype.hasOwnProperty.call(map, `${kind}:${cur.trim().toLowerCase()}`) && !seen.has(cur.trim().toLowerCase())) {
+    seen.add(cur.trim().toLowerCase());
+    cur = map[`${kind}:${cur.trim().toLowerCase()}`];
+  }
+  return cur;
+}
+
+// ---- old-debt edits: changing the amount must not erase payments that were already collected ---------
+export function getOldDebtEditIssue(newAmount, children) {
+  const paid = (Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0);
+  if (paid > 0 && _n(newAmount) + 0.01 < paid) {
+    return `${_r2(paid)} has already been collected against this old balance, so it cannot be set below that. Delete those payment records first.`;
+  }
+  return null;
+}
+export function sumChildPayments(children) {
+  return _r2((Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0));
 }

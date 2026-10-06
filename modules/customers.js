@@ -1,4 +1,4 @@
-import { getSaleBlockReason, detachChildPayment } from './link-guards.js';
+import { getSaleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
 import { newGroupId, stampGroup } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
@@ -1062,6 +1062,7 @@ salesArray = Array.from(mSales.values());
 }
 const renamedRecords = [];
 if (nameChanged) {
+await recordCustomerRename('sales', originalName, name);
 salesArray.forEach(s => {
 if (s && s.customerName && s.customerName.toLowerCase() === originalName.toLowerCase()) {
 s.customerName = name;
@@ -1079,10 +1080,16 @@ if (oldDebtIdx !== -1) {
 const tx = salesArray[oldDebtIdx];
 if (!validateUUID(String(tx.id || ''))) { tx.id = generateUUID('old_debt'); }
 const amountChanged = tx.totalValue !== oldDebit;
+let _odCollected = 0;
+if (amountChanged) {
+const _odChk = await getOldDebtChangeIssue(tx, oldDebit);
+if (_odChk.issue) { showToast(_odChk.issue, 'warning', 6000); return; }
+_odCollected = _odChk.collected;
+}
 tx.totalValue = oldDebit; tx.customerPhone = phone; tx.timestamp = getTimestamp();
 tx.updatedAt = getTimestamp();
 tx.currentRepProfile = 'admin';
-if (amountChanged) { tx.creditReceived = false; tx.partialPaymentReceived = 0; }
+if (amountChanged) { tx.partialPaymentReceived = _odCollected; tx.creditReceived = _odCollected >= oldDebit && oldDebit > 0; }
 if (!tx.time) tx.time = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true});
 ensureRecordIntegrity(tx, true);
 oldDebtModified = true; oldDebtRecord = tx;
