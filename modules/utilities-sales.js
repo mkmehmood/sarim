@@ -1,4 +1,4 @@
-import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue } from './link-guards.js';
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks } from './link-guards.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -571,25 +571,7 @@ if (typeof calculateNetCash === 'function') calculateNetCash();
 return;
 }
 await _restorePayableFromDeletedTransaction(transaction, paymentTransactions, factoryInventoryData);
-const _ptFiltered2 = paymentTransactions.filter(t => t.id !== id);
-await unifiedDelete('payment_transactions', _ptFiltered2, id, { strict: true }, transaction);
-if (transaction.expenseId) {
-try {
-const _dpPhKey = 'expense:' + transaction.expenseId;
-const _dpPh = (await sqliteStore.get('person_photos')) || {};
-if (_dpPh[_dpPhKey] !== undefined) {
-delete _dpPh[_dpPhKey];
-await sqliteStore.set('person_photos', _dpPh);
-const _dpPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-delete _dpPhTs[_dpPhKey];
-await sqliteStore.set('person_photos_timestamps', _dpPhTs);
-const _dpDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
-if (!_dpDk.includes(_dpPhKey)) _dpDk.push(_dpPhKey);
-await sqliteStore.set('person_photos_dirty_keys', _dpDk);
-if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
-}
-} catch(_dpPhErr) { console.warn('[deletePaymentTransaction] photo cleanup failed', _dpPhErr); }
-}
+await deletePaymentTxWithLinks(transaction);
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");

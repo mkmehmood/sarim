@@ -2189,10 +2189,12 @@ showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _seAvailCa
 return;
 }
 }
-let expensesSnapshot = [...expenseRecords];
+const _seDeep = (a) => JSON.parse(JSON.stringify(a));
+let expensesSnapshot = _seDeep(expenseRecords);
 let categoriesSnapshot = [...expenseCategories];
-let entitiesSnapshot = [...paymentEntities];
-let transactionsSnapshot = [...paymentTransactions];
+let entitiesSnapshot = _seDeep(paymentEntities);
+let transactionsSnapshot = _seDeep(paymentTransactions);
+let inventorySnapshot = _seDeep(factoryInventoryData);
 try {
 if (category === 'operating') {
 let expenseId = generateUUID('exp');
@@ -2465,12 +2467,15 @@ paymentEntities.length = 0;
 paymentEntities.push(...entitiesSnapshot);
 paymentTransactions.length = 0;
 paymentTransactions.push(...transactionsSnapshot);
+factoryInventoryData.length = 0;
+factoryInventoryData.push(...inventorySnapshot);
 try {
 await sqliteStore.setBatch([
 ['expenses', expenseRecords],
 ['expense_categories', expenseCategories],
 ['payment_entities', paymentEntities],
-['payment_transactions', paymentTransactions]
+['payment_transactions', paymentTransactions],
+['factory_inventory_data', factoryInventoryData]
 ]);
 } catch (rollbackError) {
 console.error('Failed to render data.', _safeErr(rollbackError));
@@ -3624,18 +3629,14 @@ if (!(await showGlassConfirm(_daeMsg, { title: `Delete All "${expenseName}" Reco
 try {
 const _bulkPhotoKeysToDelete = [];
 for (const exp of toDelete) {
-const _expFiltered = expenseRecords.filter(e => e.id !== exp.id);
-await unifiedDelete('expenses', _expFiltered, exp.id, { strict: true }, exp);
-expenseRecords.length = 0; expenseRecords.push(..._expFiltered);
-const linked = paymentTransactions.filter(t => t.expenseId === exp.id);
-if (linked.length > 0) {
-const linkedToDelete = linked.slice();
-for (const tx of linkedToDelete) {
-const _ptFilteredExp = paymentTransactions.filter(t => t.id !== tx.id);
-await unifiedDelete('payment_transactions', _ptFilteredExp, tx.id, { strict: true }, tx);
-paymentTransactions.length = 0; paymentTransactions.push(..._ptFilteredExp);
+const linked = ensureArray(await sqliteStore.get('payment_transactions')).filter(t => t && t.expenseId === exp.id);
+const _bulkGroup = linked.length ? newGroupId('exp') : null;
+for (const tx of linked) {
+const _ptFilteredExp = ensureArray(await sqliteStore.get('payment_transactions')).filter(t => t.id !== tx.id);
+await unifiedDelete('payment_transactions', _ptFilteredExp, tx.id, { strict: true }, stampGroup(tx, _bulkGroup));
 }
-}
+const _expFiltered = ensureArray(await sqliteStore.get('expenses')).filter(e => e.id !== exp.id);
+await unifiedDelete('expenses', _expFiltered, exp.id, { strict: true }, _bulkGroup ? stampGroup(exp, _bulkGroup) : exp);
 _bulkPhotoKeysToDelete.push('expense:' + exp.id);
 }
 try {

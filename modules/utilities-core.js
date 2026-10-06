@@ -1,4 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
+import { deletePaymentTxWithLinks } from './link-guards.js';
+import { newGroupId, stampGroup } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-photos.js';
@@ -2309,25 +2311,7 @@ _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
 await _restorePayableFromDeletedTransaction(_dt, paymentTransactions, factoryInventoryData);
-const _ptFiltered1 = paymentTransactions.filter(t => t.id !== id);
-await unifiedDelete('payment_transactions', _ptFiltered1, id, { strict: true }, _dt);
-if (_dt.expenseId) {
-try {
-const _etPhKey = 'expense:' + _dt.expenseId;
-const _etPh = (await sqliteStore.get('person_photos')) || {};
-if (_etPh[_etPhKey] !== undefined) {
-delete _etPh[_etPhKey];
-await sqliteStore.set('person_photos', _etPh);
-const _etPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-delete _etPhTs[_etPhKey];
-await sqliteStore.set('person_photos_timestamps', _etPhTs);
-const _etDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
-if (!_etDk.includes(_etPhKey)) _etDk.push(_etPhKey);
-await sqliteStore.set('person_photos_dirty_keys', _etDk);
-if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
-}
-} catch(_etPhErr) { console.warn('[deleteEntityTransaction] photo cleanup failed', _etPhErr); }
-}
+await deletePaymentTxWithLinks(_dt);
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 const _dtEntityRefreshed = ensureArray(await sqliteStore.get('payment_entities')).find(e => String(e.id) === String(_dt.entityId));
@@ -2386,13 +2370,13 @@ if (_processedPairIds.has(tx.transferPairId)) continue;
 _processedPairIds.add(tx.transferPairId);
 if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(tx.transferPairId, true);
 }
-let filteredTx = ensureArray(await sqliteStore.get('payment_transactions'));
+const _entGroup = newGroupId('ent');
+const _entTxIds = new Set(_normalTxs.map(t => String(t.id)));
 for (const tx of _normalTxs) {
-filteredTx = filteredTx.filter(t => t.id !== tx.id);
-await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, tx);
+await deletePaymentTxWithLinks(tx, { groupId: _entGroup, excludeIds: _entTxIds });
 }
-const filteredEntities = paymentEntities.filter(e => String(e.id) !== String(currentEntityId));
-await unifiedDelete('payment_entities', filteredEntities, _entityToDel.id, { strict: true }, _entityToDel);
+const filteredEntities = ensureArray(await sqliteStore.get('payment_entities')).filter(e => String(e.id) !== String(currentEntityId));
+await unifiedDelete('payment_entities', filteredEntities, _entityToDel.id, { strict: true }, stampGroup(_entityToDel, _entGroup));
 try {
 const _delEntPh = (await sqliteStore.get('person_photos')) || {};
 const _delEntPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
