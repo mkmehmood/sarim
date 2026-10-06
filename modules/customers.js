@@ -1,3 +1,4 @@
+import { getSaleBlockReason } from './link-guards.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -210,6 +211,10 @@ const name = currentManagingCustomer;
 const txs = customerSales.filter(s =>
 s && s.customerName === name
 );
+for (const _t of txs) {
+const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true });
+if (_blk) { showToast(`Cannot delete "${name}": ${_blk}`, 'warning', 6000); return; }
+}
 let totalDebt = 0;
 for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
 totalDebt = Math.max(0, totalDebt);
@@ -433,7 +438,7 @@ itemContent = `
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     <div class="u-fs-sm2 u-text-muted">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_displayUnitPrice)} = ${await formatCurrency(_txValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${t.isTransfer ? `⇄ Stock transfer from ${esc(t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${t.isRepTransfer ? `⇄ Stock transfer from ${esc(t.repTransferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -519,9 +524,9 @@ if (_txItem?.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
-if (_txItem?.isTransfer) {
-showToast(`This is a stock transfer from ${_txItem.transferFrom}. Delete the originating calculator record to remove it.`, 'warning', 5000);
-return;
+{
+const _blk = await getSaleBlockReason(id, 'customer');
+if (_blk) { showToast(_blk, 'warning', 6000); return; }
 }
 const _isOldDebt = _txItem?.transactionType === 'OLD_DEBT';
 const _txType = _isOldDebt ? 'Old Debt Record' : _txItem ? (_txItem.paymentType === 'CREDIT' ? 'Credit Sale' : _txItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _txItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
@@ -529,7 +534,7 @@ const _txDate = _txItem ? (_txItem.date || 'Unknown date') : '';
 const _txQty = _txItem ? ((_txItem.quantity || 0) > 0 ? `${_txItem.quantity} kg` : '') : '';
 const _txAmt = _txItem ? ((_txItem.totalValue || 0) > 0 ? ` — ${fmtAmt(_txItem.totalValue||0)}` : '') : '';
 const _txCust = _txItem ? (_txItem.customerName || '') : '';
-const _txStore = _txItem?.supplyStore && !_txItem.isTransfer ? getStoreLabel(_txItem.supplyStore) : '';
+const _txStore = _txItem?.supplyStore && !_txItem.isRepTransfer ? getStoreLabel(_txItem.supplyStore) : '';
 const _partialPaid = _txItem?.partialPaymentReceived || 0;
 let _txMsg, _txTitle;
 if (_isOldDebt) {
@@ -609,6 +614,10 @@ const _rItem = repSales.find(s => s.id === id);
 if (_rItem?.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
+}
+{
+const _blk = await getSaleBlockReason(id, 'rep');
+if (_blk) { showToast(_blk, 'warning', 6000); return; }
 }
 const _rIsOldDebt = _rItem?.transactionType === 'OLD_DEBT';
 const _rType = _rIsOldDebt ? 'Old Debt Record' : _rItem ? (_rItem.paymentType === 'CREDIT' ? 'Credit Sale' : _rItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _rItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';

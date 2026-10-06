@@ -1,3 +1,4 @@
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -651,18 +652,23 @@ syncedAt: new Date().toISOString()
 returnLogEntry = ensureRecordIntegrity(returnLogEntry, false);
 stockReturns.push(returnLogEntry);
 await unifiedSave('stock_returns', stockReturns, returnLogEntry);
+return { returnEntryId: returnEntry.id, returnLogId: returnLogEntry.id };
 }
 
-export async function reverseReturnFromProduction(storeKey, quantity, date, seller) {
+export async function reverseReturnFromProduction(storeKey, quantity, date, seller, ids) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const _retMatch = item => item.store === storeKey && item.net === quantity && item.date === date && item.isReturn === true;
-const returnEntry = (seller && db.find(item => _retMatch(item) && item.returnedBy === seller)) || db.find(_retMatch);
+const returnEntry = (ids && ids.returnEntryId && db.find(item => item.id === ids.returnEntryId))
+|| (seller && db.find(item => _retMatch(item) && item.returnedBy === seller))
+|| db.find(_retMatch);
 if (returnEntry) {
 await unifiedDelete('mfg_pro_pkr', db, returnEntry.id, { strict: true }, returnEntry);
 }
 const _logMatch = r => r.store === storeKey && r.quantity === quantity && r.date === date;
-const returnLogEntry = (seller && stockReturns.find(r => _logMatch(r) && r.seller === seller)) || stockReturns.find(_logMatch);
+const returnLogEntry = (ids && ids.returnLogId && stockReturns.find(r => r.id === ids.returnLogId))
+|| (seller && stockReturns.find(r => _logMatch(r) && r.seller === seller))
+|| stockReturns.find(_logMatch);
 if (returnLogEntry) {
 await unifiedDelete('stock_returns', stockReturns, returnLogEntry.id, { strict: true }, returnLogEntry);
 }
@@ -682,7 +688,7 @@ choraMaterial = factoryInventoryData.find(m => m.name && m.name.toUpperCase() ==
 }
 if (!choraMaterial) {
 showToast(` CHORA material not found in factory inventory. Expired qty (${quantity}) was recorded but not added to raw materials.`, 'warning', 5000);
-return;
+return false;
 }
 choraMaterial.quantity = (choraMaterial.quantity || 0) + quantity;
 choraMaterial.totalValue = choraMaterial.quantity * (choraMaterial.cost || 0);
@@ -693,6 +699,7 @@ ensureRecordIntegrity(choraMaterial, true);
 await unifiedSave('factory_inventory_data', factoryInventoryData, choraMaterial);
 emitSyncUpdate({ factory_inventory_data: null});
 notifyDataChange('factory');
+return true;
 }
 
 export async function reverseExpiredFromChora(quantity, date) {
@@ -1089,9 +1096,9 @@ confirmMsg += `\nDate: ${entryToDelete.date}`;
 confirmMsg += `\nTotal Sold: ${entryToDelete.sold || 0} kg`;
 confirmMsg += `\nCash Received: ${(entryToDelete.received||0)}`;
 if (entryToDelete.credit) confirmMsg += `\nCredit Recovered: ${entryToDelete.credit}`;
-if (entryToDelete.transferSaleId) {
-const _trUsed = (Array.isArray(salesHistory) ? salesHistory : []).some(h => h.id !== id && Array.isArray(h.linkedSalesIds) && h.linkedSalesIds.includes(entryToDelete.transferSaleId));
-if (_trUsed) { showToast(`Cannot delete: the transferred stock was already settled in ${entryToDelete.returnRep}'s calculator record. Delete that record first.`, 'warning', 5000); return; }
+{
+const _blk = (await getTransferDeleteBlockReason(entryToDelete)) || (await getExpiredDeleteBlockReason(entryToDelete));
+if (_blk) { showToast(`Cannot delete: ${_blk}`, 'warning', 6000); return; }
 }
 const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore) || (entryToDelete.transferSaleId) || entryToDelete.expired > 0;
 if (_dsHasImpact) {
@@ -1114,7 +1121,7 @@ revertedRepSalesCount = await revertRepSalesEntries(entryToDelete.linkedRepSales
 }
 if (entryToDelete.returned > 0 && entryToDelete.returnStore) {
 reversedReturnQty = entryToDelete.returned;
-await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date, entryToDelete.seller);
+await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date, entryToDelete.seller, { returnEntryId: entryToDelete.returnEntryId, returnLogId: entryToDelete.returnLogId });
 }
 if (entryToDelete.transferSaleId) {
 const _csAll = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1123,7 +1130,7 @@ if (_trRec) {
 await unifiedDelete('customer_sales', _csAll.filter(x => x.id !== _trRec.id), _trRec.id, { strict: true }, _trRec);
 }
 }
-if (entryToDelete.expired > 0) {
+if (entryToDelete.expired > 0 && entryToDelete.expiredApplied !== false) {
 await reverseExpiredFromChora(entryToDelete.expired, entryToDelete.date);
 }
 const newHistory = history.filter(h => h.id !== id);
@@ -1179,6 +1186,7 @@ sale.paymentType = 'CREDIT';
 if (!sale.currentRepProfile) sale.currentRepProfile = 'admin';
 delete sale.creditReceivedDate;
 delete sale.creditReceivedTime;
+delete sale.creditReceivedManually;
 sale.updatedAt = getTimestamp();
 ensureRecordIntegrity(sale, true);
 revertedCount++;
@@ -5814,6 +5822,10 @@ return;
 if (transaction.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
+}
+{
+const _blk = await getSaleBlockReason(id, 'rep');
+if (_blk) { showToast(_blk, 'warning', 6000); return; }
 }
 const _rtIsOldDebt = transaction.transactionType === 'OLD_DEBT';
 const _rtPayType = transaction.paymentType;

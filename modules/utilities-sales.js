@@ -1,3 +1,4 @@
+import { getSaleBlockReason } from './link-guards.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -5,7 +6,7 @@ import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _readFileA
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
-import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts } from './utilities-payments.js';
+import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
@@ -1266,7 +1267,11 @@ setSaleMode('sale');
 export async function startEditSale(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const rec = customerSales.find(s => s && String(s.id) === String(id));
-if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning'); return; }
+if (!rec || rec.isMerged || rec.isRepTransfer) { showToast('This entry cannot be edited.', 'warning'); return; }
+{
+const _blk = await getSaleBlockReason(rec.id, 'customer', { forEdit: true });
+if (_blk) { showToast(_blk, 'warning', 6000); return; }
+}
 if (rec.paymentType === 'COLLECTION' || rec.paymentType === 'PARTIAL_PAYMENT') { await startEditCollection(id); return; }
 if (typeof showTab === 'function') showTab('sales');
 setSaleMode('sale');
@@ -1820,12 +1825,12 @@ if (recordToDelete.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
-if (recordToDelete.isTransfer) {
-showToast(`This is a stock transfer from ${recordToDelete.transferFrom}. Delete the originating calculator record to remove it.`, 'warning', 5000);
-return;
+{
+const _blk = await getSaleBlockReason(id, 'customer');
+if (_blk) { showToast(_blk, 'warning', 6000); return; }
 }
 const recordDate = recordToDelete.date || 'Unknown date';
-const _dcStoreLabel = recordToDelete.supplyStore && !recordToDelete.isTransfer ? getStoreLabel(recordToDelete.supplyStore) : '';
+const _dcStoreLabel = recordToDelete.supplyStore && !recordToDelete.isRepTransfer ? getStoreLabel(recordToDelete.supplyStore) : '';
 const _dcIsCollection = recordToDelete.paymentType === 'COLLECTION' && recordToDelete.currentRepProfile === 'admin';
 const _dcIsCredit = recordToDelete.paymentType === 'CREDIT';
 const _dcIsPaid = _dcIsCredit && recordToDelete.creditReceived;
@@ -2584,7 +2589,7 @@ quantity, supplyStore: 'N/A', paymentType: 'CREDIT',
 salesRep: targetRep, currentRepProfile: 'admin',
 totalCost: totalValue, totalValue, profit: 0,
 unitPrice, creditReceived: false,
-isTransfer: true, transferFrom: seller,
+isRepTransfer: true, repTransferFrom: seller,
 syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
 };
@@ -2669,18 +2674,36 @@ statusClass = "result-box discrepancy-ok";
 }
 }
 let transferInfo = null;
-if (ret > 0 && selectedStore) {
-await processReturnToProduction(selectedStore.value, ret, date, seller);
-} else if (ret > 0 && selectedRep) {
+let _retIds = null;
+let _expApplied = null;
+let linkedIds = [];
+let linkedRepIds = [];
+const _rollbackCalc = async () => {
 try {
-transferInfo = await processRepTransfer(selectedRep, ret, date, seller);
-} catch (e) {
-showToast('Transfer failed: ' + ((e && e.message) || 'unknown error'), 'error', 5000);
-return;
+if (_retIds && selectedStore) await reverseReturnFromProduction(selectedStore.value, ret, date, seller, _retIds);
+if (transferInfo) {
+const _all = ensureArray(await sqliteStore.get('customer_sales'));
+const _r = _all.find(x => x.id === transferInfo.saleId);
+if (_r) await unifiedDelete('customer_sales', _all.filter(x => x.id !== _r.id), _r.id, { strict: true }, _r);
 }
+if (_expApplied) await reverseExpiredFromChora(exp, date);
+if (linkedIds.length) await revertSpecificSalesEntries(linkedIds);
+if (linkedRepIds.length) await revertRepSalesEntries(linkedRepIds);
+} catch (_) {}
+};
+try {
+if (ret > 0 && selectedStore) {
+_retIds = await processReturnToProduction(selectedStore.value, ret, date, seller);
+} else if (ret > 0 && selectedRep) {
+transferInfo = await processRepTransfer(selectedRep, ret, date, seller);
 }
 if (exp > 0) {
-await processExpiredToChora(exp, date, seller);
+_expApplied = await processExpiredToChora(exp, date, seller);
+}
+} catch (e) {
+await _rollbackCalc();
+showToast('Could not save: ' + ((e && e.message) || 'unknown error'), 'error', 5000);
+return;
 }
 let calcId = generateUUID('calc');
 if (!validateUUID(calcId)) {
@@ -2702,6 +2725,9 @@ totalCost: Number(safeNumber(totalCost, 0).toFixed(2)),
 totalSold: Number(safeNumber(sold, 0).toFixed(2)),
 returned: Number(safeNumber(ret, 0).toFixed(2)),
 returnStore: selectedStore ? selectedStore.value : null,
+returnEntryId: _retIds ? _retIds.returnEntryId : null,
+returnLogId: _retIds ? _retIds.returnLogId : null,
+expiredApplied: exp > 0 ? !!_expApplied : null,
 returnRep: selectedRep || null,
 returnType: selectedRep ? 'TRANSFER' : (selectedStore ? 'RETURN' : null),
 transferSaleId: transferInfo ? transferInfo.saleId : null,
@@ -2731,10 +2757,16 @@ if (Array.isArray(salesHistory)) {
   salesHistory.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(id => reconciledCustomerIds.add(id)); });
 }
 const _cycSel = await getCalcCycleSelection(seller);
-const linkedIds = await markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, _cycSel.selectedIds);
+try {
+linkedIds = await markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, _cycSel.selectedIds);
 entry.linkedSalesIds = linkedIds;
-const linkedRepIds = await markRepSalesEntriesAsUsed(seller, date, calcId, _cycSel.from);
+linkedRepIds = await markRepSalesEntriesAsUsed(seller, date, calcId, _cycSel.from);
 entry.linkedRepSalesIds = linkedRepIds;
+} catch (e) {
+await _rollbackCalc();
+showToast('Failed to save transaction. Nothing was changed.', 'error', 4000);
+return;
+}
 try {
 let history = await sqliteStore.get('noman_history', []);
 if (!Array.isArray(history)) history = [];
@@ -2770,7 +2802,8 @@ if (entry.expired > 0) {
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 }
 } catch (error) {
-showToast('Failed to save transaction. Please try again.', 'error', 4000);
+await _rollbackCalc();
+showToast('Failed to save transaction. Nothing was changed.', 'error', 4000);
 }
 }
 
@@ -6430,16 +6463,16 @@ const badgeClass = creditReceived ? 'received' : (paymentType ? paymentType.toLo
 const badgeText = creditReceived ? 'RECEIVED' : paymentType;
 const isOldDebtItem = item.transactionType === 'OLD_DEBT';
 const isAdminCollItem = !((item.salesRep && item.salesRep !== 'NONE')) && paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
-const supplyTagClass = item.isTransfer ? 'store-c' : item.supplyStore === 'STORE_A' ? 'store-a' :
+const supplyTagClass = item.isRepTransfer ? 'store-c' : item.supplyStore === 'STORE_A' ? 'store-a' :
 item.supplyStore === 'STORE_B' ? 'store-b' : 'store-c';
-const supplyTagText = item.isTransfer ? 'TRANSFER' : item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
+const supplyTagText = item.isRepTransfer ? 'TRANSFER' : item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
 item.supplyStore === 'STORE_B' ? 'MAHMOOD' : 'ASAAN';
 let repBadge = '';
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') {
 repBadge = `<span class="sales-rep-badge"> ${esc(item.salesRep.split(' ')[0])}</span>`;
 }
-if (item.isTransfer && item.transferFrom) {
-repBadge += `<span class="sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.transferFrom).split(' ')[0])}</span>`;
+if (item.isRepTransfer && item.repTransferFrom) {
+repBadge += `<span class="sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.repTransferFrom).split(' ')[0])}</span>`;
 }
 let mergedBadge = '';
 if (item.isMerged) {

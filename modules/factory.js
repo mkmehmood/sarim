@@ -1,3 +1,4 @@
+import { findCalcLinkForReturn } from './link-guards.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
@@ -1261,6 +1262,10 @@ if (typeof deleteStockTransfer === 'function') await deleteStockTransfer(entryTo
 return;
 }
 const isReturn = entryToDelete.isReturn === true;
+if (isReturn) {
+const _lk = await findCalcLinkForReturn(entryToDelete);
+if (_lk) { showToast(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning', 6000); return; }
+}
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
 const _dpSalesOnDate = (typeof customerSales !== 'undefined' ? customerSales : []).filter(s => s.date === entryToDelete.date && s.store === entryToDelete.store).length;
 let confirmMsg;

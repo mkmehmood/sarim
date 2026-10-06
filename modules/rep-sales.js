@@ -1,3 +1,4 @@
+import { getSaleBlockReason } from './link-guards.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
@@ -122,6 +123,10 @@ export async function startEditRepSale(id) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const rec = repSales.find(s => s && String(s.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning'); return; }
+{
+const _blk = await getSaleBlockReason(rec.id, 'rep', { forEdit: true });
+if (_blk) { showToast(_blk, 'warning', 6000); return; }
+}
 if (rec.transactionType === 'OLD_DEBT') { showToast('Opening balances are edited from the customer details.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('rep');
 const isColl = rec.paymentType === 'COLLECTION' || rec.paymentType === 'PARTIAL_PAYMENT';
@@ -858,6 +863,10 @@ const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if (!currentManagingRepCustomer) return;
 const name = currentManagingRepCustomer;
 const txs = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+for (const _t of txs) {
+const _blk = await getSaleBlockReason(_t.id, 'rep', { ignoreChildren: true });
+if (_blk) { showToast(`Cannot delete "${name}": ${_blk}`, 'warning', 6000); return; }
+}
 let totalDebt = 0;
 for (const s of txs) totalDebt = round2(totalDebt + debtDelta(s, s.totalValue));
 totalDebt = Math.max(0, totalDebt);
