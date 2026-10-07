@@ -8,7 +8,7 @@
 
 import { sqliteStore, ensureArray, generateUUID, validateUUID, getTimestamp, esc, fmtAmt } from './business.js';
 import { unifiedSave } from './sync.js';
-import { notifyDataChange, triggerAutoSync, OfflineQueue } from './utilities-core.js';
+import { notifyDataChange, triggerAutoSync, OfflineQueue, _reconcileSupplierLinkAfterRecovery, _refreshSupplierLinkViews } from './utilities-core.js';
 import { COLLECTION_TO_KEY, GROUP_FIELD, orderForRestore, findGroupMembers } from './link-graph.js';
 import {
   getRecoverBlockReason, getRecoverLinkBlockReason, applyRecoveryLinks,
@@ -78,8 +78,14 @@ async function _purgeExpired(tombs) {
 
 // After a successful recover: the old id is no longer deleted and any queued cloud
 // delete for it is stale.
-async function _purgeAfterRecover(oldId) {
+async function _purgeAfterRecover(oldId, collection, newId) {
   const sid = String(oldId);
+  // Also removes the CLOUD tombstone (users/<uid>/deletions/<id>) — otherwise the sync listener brings
+  // the recovered record back into the bin as a ghost on the next sync.
+  if (typeof window !== 'undefined' && typeof window.purgeRecoveredId === 'function') {
+    try { await window.purgeRecoveredId(sid, collection, null, newId); return; }
+    catch (e) { console.warn('[RecycleBin] cloud purge failed, falling back to local purge', e && e.message); }
+  }
   const tombs = ensureArray(await sqliteStore.get('deletion_records'))
     .filter(r => String(r.id) !== sid && String(r.recordId) !== sid);
   await sqliteStore.set('deletion_records', tombs);
@@ -133,6 +139,40 @@ function _cleanSnapshot(snapshot) {
   return clean;
 }
 
+// Expense / payment photos live outside the record (person_photos). Deleting stashed them on the
+// tombstone; put them back under the NEW id so the picture is not lost by recovering.
+async function _restorePhotos(collection, oldId, newId, clean, tomb) {
+  if (!['expenses', 'transactions', 'payment_transactions'].includes(collection)) return;
+  try {
+    const ph = (await sqliteStore.get('person_photos')) || {};
+    const ts = (await sqliteStore.get('person_photos_timestamps')) || {};
+    const dirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    const stash = (tomb && tomb._photos) || {};
+    const now = Date.now();
+    const put = (key, data) => {
+      if (!data) return;
+      ph[key] = data; ts[key] = now;
+      if (!dirty.includes(key)) dirty.push(key);
+    };
+    const ownOld = 'expense:' + oldId;
+    const own = stash[ownOld] || (tomb && tomb._photoDataUrl) || ph[ownOld] || null;
+    if (own) {
+      put('expense:' + newId, own);
+      delete ph[ownOld]; delete ts[ownOld];
+      if (!dirty.includes(ownOld)) dirty.push(ownOld);
+    }
+    if (clean && clean.expenseId) {
+      const linkedKey = 'expense:' + clean.expenseId;
+      const linked = stash['expense:' + (tomb && tomb.snapshot && tomb.snapshot.expenseId)] || stash[linkedKey] || ph[linkedKey] || null;
+      if (linked && !ph[linkedKey]) put(linkedKey, linked);
+    }
+    await sqliteStore.set('person_photos', ph);
+    await sqliteStore.set('person_photos_timestamps', ts);
+    await sqliteStore.set('person_photos_dirty_keys', dirty);
+    await sqliteStore.set('person_photos_timestamp', now);
+  } catch (e) { console.warn('[RecycleBin] photo restore failed', e && e.message); }
+}
+
 // Recover one tombstone — together with every record deleted in the same operation.
 export async function recoverDeletedRecord(deletedId) {
   if (!deletedId) return;
@@ -149,8 +189,9 @@ export async function recoverDeletedRecord(deletedId) {
     return;
   }
 
-  // Block checks BEFORE touching anything.
-  for (const m of members) {
+  // Block checks BEFORE touching anything. ctx makes the stock/material checks cumulative across the group.
+  const ctx = { stockUsed: new Map(), inv: null };
+  for (const m of orderForRestore(members)) {
     const collection = _tombCollection(m);
     const hard = getRecoverBlockReason(collection, m.snapshot);
     if (hard) { showToast(hard, 'warning', 7000); return; }
@@ -158,7 +199,7 @@ export async function recoverDeletedRecord(deletedId) {
     const s = m.snapshot || {};
     const parentInGroup = s.relatedSaleId && groupIds.has(String(s.relatedSaleId));
     if (!parentInGroup) {
-      const link = await getRecoverLinkBlockReason(collection, s);
+      const link = await getRecoverLinkBlockReason(collection, s, ctx);
       if (link) { showToast(link, 'warning', 7000); return; }
     }
   }
@@ -189,7 +230,7 @@ export async function recoverDeletedRecord(deletedId) {
       const dupe = await findLiveSameNameRecord(collection, clean);
       if (dupe) {
         await applyRecoveryLinks(collection, oldId, dupe.id, null);
-        await _purgeAfterRecover(oldId);
+        await _purgeAfterRecover(oldId, collection, dupe.id);
         touchedTypes.add(key);
         continue;
       }
@@ -201,7 +242,12 @@ export async function recoverDeletedRecord(deletedId) {
       const arr = ensureArray(await sqliteStore.get(key)).filter(r => r && String(r.id) !== oldId && String(r.id) !== String(newId));
       arr.push(clean);
       await unifiedSave(key, arr, clean);
-      await _purgeAfterRecover(oldId);
+      await _restorePhotos(collection, oldId, newId, clean, m);
+      if ((collection === 'transactions' || collection === 'payment_transactions') && clean.isPayable) {
+        try { await _reconcileSupplierLinkAfterRecovery(clean); await _refreshSupplierLinkViews(); }
+        catch (e) { console.warn('[RecycleBin] supplier link reconcile failed', e && e.message); }
+      }
+      await _purgeAfterRecover(oldId, collection, newId);
       touchedTypes.add(key);
     }
     notifyDataChange('all');

@@ -183,10 +183,17 @@ export function orderForRestore(tombstones) {
 
 // All tombstones that belong to the same deletion as `tomb` (including itself).
 export function findGroupMembers(tomb, allTombstones) {
-  const gid = tomb && tomb.snapshot && tomb.snapshot[GROUP_FIELD];
-  if (!gid) return [tomb];
-  const members = allTombstones.filter(t => t && t.snapshot && t.snapshot[GROUP_FIELD] === gid);
-  return members.length ? members : [tomb];
+  const snap = (tomb && tomb.snapshot) || {};
+  const gid = snap[GROUP_FIELD];
+  const pairId = snap.transferPairId;
+  if (!gid && !pairId) return [tomb];
+  const members = (allTombstones || []).filter(t => {
+    const s = t && t.snapshot;
+    if (!s) return false;
+    return (gid && s[GROUP_FIELD] === gid) || (pairId && s.transferPairId === pairId);
+  });
+  if (!members.some(t => t === tomb)) members.push(tomb);
+  return members;
 }
 
 // ---- nested material references (factory batches + formulas point at inventory item ids) -------------

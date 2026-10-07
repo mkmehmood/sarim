@@ -231,3 +231,20 @@ describe('old balance edits', () => {
     assert.equal(getOldDebtEditIssue(10, []), null);
   });
 });
+
+describe('transfer halves recover together even without a deletion group', () => {
+  it('pairs both sides of a transfer by transferPairId', () => {
+    const out = { id: 'o', snapshot: { transferPairId: 'P1', transferDirection: 'out' } };
+    const inn = { id: 'i', snapshot: { transferPairId: 'P1', transferDirection: 'in' } };
+    const other = { id: 'x', snapshot: { transferPairId: 'P2' } };
+    const members = findGroupMembers(out, [out, inn, other]);
+    assert.deepEqual(members.map(t => t.id).sort(), ['i', 'o']);
+  });
+  it('combines a deletion group with a transfer pair and never loses the record itself', () => {
+    const a = { id: 'a', snapshot: { [GROUP_FIELD]: 'g', transferPairId: 'P' } };
+    const b = { id: 'b', snapshot: { transferPairId: 'P' } };
+    const c = { id: 'c', snapshot: { [GROUP_FIELD]: 'g' } };
+    assert.deepEqual(findGroupMembers(a, [a, b, c]).map(t => t.id).sort(), ['a', 'b', 'c']);
+    assert.deepEqual(findGroupMembers(a, []).map(t => t.id), ['a']);
+  });
+});

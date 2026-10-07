@@ -170,7 +170,7 @@ export async function getSaleEditLinkIssue(kind, original, next) {
 }
 
 // RECOVER (check): can this tombstone be brought back without corrupting a link?
-export async function getRecoverLinkBlockReason(collectionName, snapshot) {
+export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   if (!snapshot) return null;
   if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
     const key = COLLECTION_TO_KEY[collectionName];
@@ -184,24 +184,39 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot) {
   if (collectionName === 'sales' && Number(snapshot.quantity) > 0 && snapshot.supplyStore &&
       !['COLLECTION', 'PARTIAL_PAYMENT'].includes(snapshot.paymentType) && snapshot.transactionType !== 'OLD_DEBT' &&
       typeof window !== 'undefined' && typeof window.computeStoreStockSnapshot === 'function') {
-    const snap = await window.computeStoreStockSnapshot(snapshot.supplyStore, snapshot.supplyDate || snapshot.date);
+    const day = snapshot.supplyDate || snapshot.date;
+    const snap = await window.computeStoreStockSnapshot(snapshot.supplyStore, day);
     const label = typeof window.getStoreLabel === 'function' ? (window.getStoreLabel(snapshot.supplyStore) || snapshot.supplyStore) : snapshot.supplyStore;
-    return getStockOverdrawIssue(label, snapshot.quantity, snap.available);
+    // ctx = records recovered together in one go: earlier ones already use up part of the stock.
+    const k = `${snapshot.supplyStore}|${day}`;
+    const used = ctx && ctx.stockUsed ? (ctx.stockUsed.get(k) || 0) : 0;
+    const issue = getStockOverdrawIssue(label, Number(snapshot.quantity) + used, snap.available);
+    if (!issue && ctx && ctx.stockUsed) ctx.stockUsed.set(k, used + Number(snapshot.quantity));
+    return issue;
   }
   if (collectionName === 'production' && snapshot.isTransfer === true && snapshot.transferDirection === 'out' &&
       typeof window !== 'undefined' && typeof window.computeStoreStockSnapshot === 'function') {
     const snap = await window.computeStoreStockSnapshot(snapshot.store, snapshot.date);
     const label = typeof window.getStoreLabel === 'function' ? (window.getStoreLabel(snapshot.store) || snapshot.store) : snapshot.store;
-    return getStockOverdrawIssue(label, Math.abs(Number(snapshot.net) || 0), snap.available);
+    const q = Math.abs(Number(snapshot.net) || 0);
+    const k = `${snapshot.store}|${snapshot.date}`;
+    const used = ctx && ctx.stockUsed ? (ctx.stockUsed.get(k) || 0) : 0;
+    const issue = getStockOverdrawIssue(label, q + used, snap.available);
+    if (!issue && ctx && ctx.stockUsed) ctx.stockUsed.set(k, used + q);
+    return issue;
   }
   // Factory batch: its raw materials have to come back OUT of inventory.
   if (collectionName === 'factory_history') {
-    const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+    if (ctx && !ctx.inv) ctx.inv = JSON.parse(JSON.stringify(ensureArray(await sqliteStore.get('factory_inventory_data'))));
+    const inv = ctx && ctx.inv ? ctx.inv : ensureArray(await sqliteStore.get('factory_inventory_data'));
     const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
     const idMap = await _loadIdMap();
     const entry = { ...snapshot, materialsUsed: (snapshot.materialsUsed || []).map(m => ({ ...m, id: resolveId(m.id, idMap) })) };
-    const { block } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
-    return block || null;
+    const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
+    if (block) return block;
+    // Earlier batches in the same recovery already took their share of each material.
+    if (ctx && updates) updates.forEach(u => { const it = inv.find(i => i && i.id === u.id); if (it) it.quantity = u.quantity; });
+    return null;
   }
   if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && snapshot.expenseId && !snapshot.isTransfer) {
     // The payment points at an expense record. Either it still exists, or it is being recovered with
