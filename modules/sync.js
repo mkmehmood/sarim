@@ -3330,7 +3330,16 @@ export async function _uploadChanges(userRef) {
     collectionsUploaded.add('appStores');
   }
 
+  // Photos go in their own batches, capped by bytes (Firestore rejects commits
+  // near 10 MiB) and committed separately so a photo failure never blocks records.
+  if (operationCount > 0) { batches.push(currentBatch); currentBatch = firebaseDB.batch(); operationCount = 0; }
+  const PHOTO_DOC_MAX_CHARS = 900000;      // stay safely under the 1 MiB doc limit
+  const PHOTO_BATCH_MAX_CHARS = 4000000;   // ~4 MB of base64 per batch
+  const photoBatches = [];
+  let _photoBatch = firebaseDB.batch();
+  let _photoBatchOps = 0, _photoBatchChars = 0;
   let _uploadedPhotoKeys = [];
+  let _pendingPhotoKeys = [];
   try {
     const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
     if (_dirtyPhotoKeys.length > 0) {
@@ -3338,25 +3347,45 @@ export async function _uploadChanges(userRef) {
       const _photosRef = userRef.collection('personPhotos');
       for (const _photoKey of _dirtyPhotoKeys) {
         const _safeDocId = btoa(unescape(encodeURIComponent(_photoKey))).replace(/[+/=]/g, c => ({'+':'-','/':'_','=':''})[c] || '');
-        const _photoVal = _allPhotos[_photoKey];
-        const _photoBatch = getOrNewBatch();
+        let _photoVal = _allPhotos[_photoKey];
+        if (_photoVal && String(_photoVal).length > PHOTO_DOC_MAX_CHARS && typeof window._compressPhoto === 'function') {
+          try { _photoVal = await window._compressPhoto(_photoVal, 1024, 0.6); } catch (_) {}
+        }
+        if (_photoVal && String(_photoVal).length > PHOTO_DOC_MAX_CHARS) {
+          console.warn('[uploadChanges] photo too large for Firestore, skipped:', _photoKey);
+          continue;
+        }
+        const _chars = _photoVal ? String(_photoVal).length : 0;
+        if (_photoBatchOps > 0 && (_photoBatchOps >= 400 || _photoBatchChars + _chars > PHOTO_BATCH_MAX_CHARS)) {
+          photoBatches.push({ batch: _photoBatch, keys: _pendingPhotoKeys });
+          _photoBatch = firebaseDB.batch(); _photoBatchOps = 0; _photoBatchChars = 0; _pendingPhotoKeys = [];
+        }
         if (_photoVal) {
           _photoBatch.set(_photosRef.doc(_safeDocId), { key: _photoKey, data: _photoVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
         } else {
           _photoBatch.set(_photosRef.doc(_safeDocId), { key: _photoKey, data: null, deleted: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: false });
         }
-        operationCount++;
+        _photoBatchOps++; _photoBatchChars += _chars;
+        _pendingPhotoKeys.push(_photoKey);
         totalItemsToWrite++;
         trackFirestoreWrite(1);
-        _uploadedPhotoKeys.push(_photoKey);
       }
-      collectionsUploaded.add('personPhotos');
+      if (_photoBatchOps > 0) photoBatches.push({ batch: _photoBatch, keys: _pendingPhotoKeys });
     }
   } catch(_photoUploadErr) { console.warn('[uploadChanges] person_photos upload error', _photoUploadErr); }
 
   if (operationCount > 0) batches.push(currentBatch);
   for (const batch of batches) {
     await batch.commit();
+  }
+  for (const { batch, keys } of photoBatches) {
+    try {
+      await batch.commit();
+      _uploadedPhotoKeys.push(...keys);
+      collectionsUploaded.add('personPhotos');
+    } catch (_pbErr) {
+      console.warn('[uploadChanges] photo batch commit failed; will retry next sync', _pbErr);
+    }
   }
 
   for (const { collectionName, id } of _pendingUploadMarks) {

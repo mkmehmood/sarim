@@ -2235,7 +2235,7 @@ if (window._expensePendingPhoto) {
   try {
     const _photoKey = 'expense:' + expense.id;
     const _storedPh = (await sqliteStore.get('person_photos')) || {};
-    _storedPh[_photoKey] = await _compressPhoto(window._expensePendingPhoto, 1600, 0.88);
+    _storedPh[_photoKey] = await _compressPhoto(window._expensePendingPhoto, 1280, 0.75);
     await sqliteStore.set('person_photos', _storedPh);
     const _expPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
     _expPhTs[_photoKey] = Date.now();
@@ -2272,7 +2272,7 @@ if (window._expensePendingPhoto) {
   try {
     const _payPhotoKey = 'expense:' + payExpenseRecord.id;
     const _payStoredPh = (await sqliteStore.get('person_photos')) || {};
-    _payStoredPh[_payPhotoKey] = await _compressPhoto(window._expensePendingPhoto, 1600, 0.88);
+    _payStoredPh[_payPhotoKey] = await _compressPhoto(window._expensePendingPhoto, 1280, 0.75);
     await sqliteStore.set('person_photos', _payStoredPh);
     const _payPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
     _payPhTs[_payPhotoKey] = Date.now();
@@ -7839,7 +7839,7 @@ await unifiedSave('payment_transactions', paymentTransactions, null, [outTx.id, 
 if (window._paymentTransferPendingPhoto) {
 try {
 const _storedPh = (await sqliteStore.get('person_photos')) || {};
-const _compressed = await _compressPhoto(window._paymentTransferPendingPhoto, 1600, 0.88);
+const _compressed = await _compressPhoto(window._paymentTransferPendingPhoto, 1280, 0.75);
 _storedPh['expense:' + outTx.id] = _compressed;
 _storedPh['expense:' + inTx.id] = _compressed;
 await sqliteStore.set('person_photos', _storedPh);

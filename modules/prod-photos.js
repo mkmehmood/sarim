@@ -20,7 +20,7 @@ function _readFile(file) {
   });
 }
 
-async function _compress(dataUrl, maxDim = 1400, quality = 0.82) {
+async function _compress(dataUrl, maxDim = 1280, quality = 0.75) {
   if (typeof window._compressPhoto === 'function') return window._compressPhoto(dataUrl, maxDim, quality);
   return dataUrl;
 }
@@ -94,7 +94,7 @@ export async function addProdPhotos(fileList) {
 
 export async function addProdPhotoDataUrl(dataUrl) {
   if (_picker.length >= MAX_PHOTOS) { _toast(`You can attach up to ${MAX_PHOTOS} photos per entry.`, 'warning'); return; }
-  const small = await _compress(dataUrl, 1400, 0.82);
+  const small = await _compress(dataUrl, 1280, 0.75);
   _picker.push({ key: null, dataUrl: small, isNew: true });
   _renderPicker();
 }

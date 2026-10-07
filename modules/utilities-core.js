@@ -1447,7 +1447,7 @@ if (collectionName === 'expenses' || collectionName === 'transactions' || collec
       const v = _regPh[k];
       if (v && _regBytes + String(v).length < 700000) { _regPhotos[k] = v; _regBytes += String(v).length; }
     }
-    if (_regPh['expense:' + id]) deletionRecord._photoDataUrl = _regPh['expense:' + id];
+    if (_regPh['expense:' + id] && String(_regPh['expense:' + id]).length < 700000) deletionRecord._photoDataUrl = _regPh['expense:' + id];
     if (Object.keys(_regPhotos).length) deletionRecord._photos = _regPhotos;
   } catch(_regPhErr) { console.warn('[registerDeletion] photo snapshot failed', _regPhErr); }
 }
@@ -3520,7 +3520,7 @@ export async function savePersonPhoto(prefix, storageKey) {
     const timestamps = (await sqliteStore.get('person_photos_timestamps')) || {};
     const now = Date.now();
     if (pending) {
-      const compressed = await _compressPhoto(pending, 1600, 0.88);
+      const compressed = await _compressPhoto(pending, 1280, 0.75);
       photos[storageKey] = compressed;
       timestamps[storageKey] = now;
     } else {
@@ -3546,6 +3546,8 @@ export async function getPersonPhoto(storageKey) {
   } catch(e) { return null; }
 }
 
+export const PHOTO_MAX_CHARS = 700000;
+
 export async function _compressPhoto(dataUrl, maxDim, quality) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -3557,8 +3559,22 @@ export async function _compressPhoto(dataUrl, maxDim, quality) {
       }
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', quality));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      let out = canvas.toDataURL('image/jpeg', quality);
+      // Firestore docs are capped at 1 MiB: keep each photo under PHOTO_MAX_CHARS
+      // by lowering quality, then dimensions, until it fits.
+      let q = quality, cw = w, ch = h;
+      for (let i = 0; i < 6 && out.length > PHOTO_MAX_CHARS; i++) {
+        if (q > 0.5) q = Math.max(0.5, q - 0.1);
+        else {
+          cw = Math.round(cw * 0.85); ch = Math.round(ch * 0.85);
+          canvas.width = cw; canvas.height = ch;
+          canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+        }
+        out = canvas.toDataURL('image/jpeg', q);
+      }
+      resolve(out);
     };
     img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
