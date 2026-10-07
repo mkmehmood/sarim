@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
-  resolveSelectedFormula, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -371,5 +371,36 @@ describe('new production card always shows the selected formula, freshly', () =>
     const r = resolveSelectedFormula({ list, slots: { standard: 'F1', asaan: 'F2' }, inventory: inv }, 'STORE_C');
     assert.equal(r.type, 'asaan'); assert.equal(r.name, 'Basic');
     assert.equal(resolveSelectedFormula({ list, slots: { asaan: 'F2' }, inventory: inv }, 'asaan').name, 'Basic');
+  });
+});
+
+describe('credit settlement keeps its date in step with its flag', () => {
+  it('marking paid sets the settled date; marking unpaid clears every settled field', () => {
+    const rec = { paymentType: 'CREDIT', creditReceived: false };
+    applySettlement(rec, planCreditToggle(rec, '2026-03-01', '10:00 AM'));
+    assert.deepEqual([rec.creditReceived, rec.creditReceivedDate, rec.creditReceivedManually], [true, '2026-03-01', true]);
+    applySettlement(rec, planCreditToggle(rec, '2026-03-02', '11:00 AM'));
+    assert.equal(rec.creditReceived, false);
+    assert.equal(rec.creditReceivedDate, undefined);
+    assert.equal(rec.creditReceivedManually, undefined);
+  });
+  it('only credit and old-debt records can be settled', () => {
+    assert.equal(isSettleableSale({ paymentType: 'CREDIT' }), true);
+    assert.equal(isSettleableSale({ transactionType: 'OLD_DEBT', paymentType: 'CASH' }), true);
+    assert.equal(isSettleableSale({ paymentType: 'CASH' }), false);
+    assert.equal(isSettleableSale({ paymentType: 'COLLECTION' }), false);
+  });
+  it('editing a paid credit sale keeps it paid, with its settled date', () => {
+    const orig = { paymentType: 'CREDIT', creditReceived: true, creditReceivedDate: '2026-02-10', creditReceivedManually: true };
+    const edited = applySettlement({ paymentType: 'CREDIT', creditReceived: false }, planEditSettlement(orig, 'CREDIT'));
+    assert.equal(edited.creditReceived, true);
+    assert.equal(edited.creditReceivedDate, '2026-02-10');
+  });
+  it('editing an unpaid credit sale stays unpaid; switching type follows the new type', () => {
+    assert.equal(planEditSettlement({ paymentType: 'CREDIT', creditReceived: false }, 'CREDIT').set.creditReceived, false);
+    assert.equal(planEditSettlement({ paymentType: 'CREDIT', creditReceived: false }, 'CASH').set.creditReceived, true);
+    const toCredit = applySettlement({ creditReceived: true, creditReceivedDate: 'x' }, planEditSettlement({ paymentType: 'CASH', creditReceived: true }, 'CREDIT'));
+    assert.equal(toCredit.creditReceived, false);
+    assert.equal(toCredit.creditReceivedDate, undefined);
   });
 });

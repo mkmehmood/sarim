@@ -1,7 +1,7 @@
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename } from './link-guards.js';
 import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
-import { newGroupId, stampGroup } from './link-graph.js';
+import { newGroupId, stampGroup, planEditSettlement, applySettlement } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
@@ -388,6 +388,7 @@ const _linkIssue = await getSaleEditLinkIssue('rep', _ed.original, transactionRe
 if (_linkIssue) { showToast(_linkIssue, 'warning', 6000); restoreBtn(); return; }
 const o = _ed.original;
 stampEdit(transactionRecord, o);
+if (transactionRecord.paymentType === 'CREDIT' || transactionRecord.paymentType === 'CASH') applySettlement(transactionRecord, planEditSettlement(o, transactionRecord.paymentType));
 transactionRecord.time = o.time;
 transactionRecord.gps = o.gps || transactionRecord.gps;
 transactionRecord.salesRep = o.salesRep;

@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  isSettleableSale, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from './link-graph.js';
 
@@ -404,4 +404,14 @@ export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   const all = ensureArray(await sqliteStore.get('customer_sales'));
   const kids = all.filter(s => s && s.relatedSaleId === oldDebtRecord.id);
   return { issue: getOldDebtEditIssue(newAmount, kids), collected: sumChildPayments(kids) };
+}
+
+// SAVE (mark paid / unpaid): a sale settled by a calculator record, or a cash sale / collection,
+// must not be flipped by hand - that would double-count or erase money the calculator already booked.
+export async function getSettleToggleBlockReason(id, kind = 'customer') {
+  const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
+  const rec = ensureArray(await sqliteStore.get(key)).find(s => s && s.id === id);
+  if (!rec) return null;
+  if (!isSettleableSale(rec)) return 'Only credit sales can be marked paid or unpaid.';
+  return await getSaleBlockReason(id, kind, { forEdit: true });
 }

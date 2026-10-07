@@ -1,4 +1,5 @@
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks } from './link-guards.js';
+import { planEditSettlement, applySettlement } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -1034,7 +1035,15 @@ cashRatioElement.textContent = (cashRatio === null || cashRatio === undefined) ?
 }
 }
 
+let _saleSaveInFlight = false;
+// A second tap while the first save is still running would record the sale twice.
 export async function saveCustomerSale() {
+if (_saleSaveInFlight) return;
+_saleSaveInFlight = true;
+try { return await _saveCustomerSaleImpl(); } finally { _saleSaveInFlight = false; }
+}
+
+async function _saveCustomerSaleImpl() {
 const _ed = getEditCtx('sale');
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1181,6 +1190,8 @@ saleRecord.date = o.date;
 saleRecord.time = o.time;
 saleRecord.currentRepProfile = o.currentRepProfile || 'admin';
 if (o.partialPaymentReceived) saleRecord.partialPaymentReceived = o.partialPaymentReceived;
+// Editing must not silently un-pay a credit sale that was already settled.
+applySettlement(saleRecord, planEditSettlement(o, paymentType));
 }
 if (_ed) {
 const _linkIssue = await getSaleEditLinkIssue('customer', _ed.original, saleRecord);
@@ -1484,6 +1495,7 @@ const o = _ed.original;
 stampEdit(collRecord, o);
 collRecord.date = o.date;
 collRecord.time = o.time;
+if (!collRecord.gps && o.gps) collRecord.gps = o.gps;
 }
 const validated = ensureRecordIntegrity(collRecord, !!_ed);
 const snapshot = [...customerSales];

@@ -410,3 +410,38 @@ export function resolveSelectedFormula(data, storeKey) {
   const costs = data.costs || {};
   return { source: 'feed', type, formulaId: null, name: _SLOT_LABEL[type] || 'Formula', additionalCost: _n(costs[type] != null ? costs[type] : costs[storeKey]), ingredients: (Array.isArray(feed[type] || feed[storeKey]) ? (feed[type] || feed[storeKey]) : []).map(resolve) };
 }
+
+// ---- credit settlement (Sales tab) ------------------------------------------------------------------------
+// The customer statement shows creditReceivedDate as the "settled on" date and sorts by it, so every path
+// that flips creditReceived has to set or clear it together with the flag.
+const _SETTLE_FIELDS = ['creditReceivedDate', 'creditReceivedTime', 'creditReceivedManually'];
+
+export function isSettleableSale(rec) {
+  return !!rec && (rec.paymentType === 'CREDIT' || rec.transactionType === 'OLD_DEBT');
+}
+
+// Manual "mark paid / mark unpaid" toggle. Returns the fields to apply (and the ones to clear).
+export function planCreditToggle(rec, today, nowTime) {
+  const next = !rec.creditReceived;
+  return next
+    ? { set: { creditReceived: true, creditReceivedManually: true, creditReceivedDate: today, creditReceivedTime: nowTime }, clear: [] }
+    : { set: { creditReceived: false }, clear: _SETTLE_FIELDS.slice() };
+}
+
+// Editing a sale must not silently un-pay it. CREDIT -> CREDIT keeps the settlement, anything else follows the new type.
+export function planEditSettlement(original, newPaymentType) {
+  if (newPaymentType === 'CASH') return { set: { creditReceived: true }, clear: _SETTLE_FIELDS.slice() };
+  if (original && original.paymentType === 'CREDIT' && newPaymentType === 'CREDIT') {
+    const set = { creditReceived: !!original.creditReceived };
+    _SETTLE_FIELDS.forEach(f => { if (original[f] !== undefined) set[f] = original[f]; });
+    return { set, clear: original.creditReceived ? [] : _SETTLE_FIELDS.slice() };
+  }
+  return { set: { creditReceived: false }, clear: _SETTLE_FIELDS.slice() };
+}
+
+export function applySettlement(rec, plan) {
+  if (!rec || !plan) return rec;
+  Object.assign(rec, plan.set);
+  (plan.clear || []).forEach(f => { delete rec[f]; });
+  return rec;
+}

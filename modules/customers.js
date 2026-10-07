@@ -1,6 +1,6 @@
-import { getSaleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
+import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
 import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
-import { newGroupId, stampGroup } from './link-graph.js';
+import { newGroupId, stampGroup, planCreditToggle, applySettlement } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -467,11 +467,13 @@ if (record?.isMerged) {
 showToast('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 4000);
 return;
 }
+const _tgBlock = await getSettleToggleBlockReason(id, 'customer');
+if (_tgBlock) { showToast(_tgBlock, 'warning', 6000); return; }
 const snapshot = [...customerSales];
 try {
 const idx = customerSales.findIndex(s => s.id === id);
 if (idx !== -1) {
-customerSales[idx].creditReceived = !customerSales[idx].creditReceived;
+applySettlement(customerSales[idx], planCreditToggle(customerSales[idx], localDateStr(), new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })));
 customerSales[idx].updatedAt = getTimestamp();
 customerSales[idx] = ensureRecordIntegrity(customerSales[idx], true);
 await unifiedSave('customer_sales', customerSales, customerSales[idx]);
@@ -495,11 +497,13 @@ if (record?.isMerged) {
 showToast('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 4000);
 return;
 }
+const _tgBlock = await getSettleToggleBlockReason(id, 'rep');
+if (_tgBlock) { showToast(_tgBlock, 'warning', 6000); return; }
 const snapshot = [...repSales];
 try {
 const idx = repSales.findIndex(s => s.id === id);
 if (idx !== -1) {
-repSales[idx].creditReceived = !repSales[idx].creditReceived;
+applySettlement(repSales[idx], planCreditToggle(repSales[idx], localDateStr(), new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })));
 repSales[idx].updatedAt = getTimestamp();
 repSales[idx] = ensureRecordIntegrity(repSales[idx], true);
 await unifiedSave('rep_sales', repSales, repSales[idx]);
