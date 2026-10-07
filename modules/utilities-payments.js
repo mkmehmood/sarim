@@ -652,7 +652,13 @@ syncedAt: new Date().toISOString()
 };
 returnLogEntry = ensureRecordIntegrity(returnLogEntry, false);
 stockReturns.push(returnLogEntry);
+try {
 await unifiedSave('stock_returns', stockReturns, returnLogEntry);
+} catch (_logErr) {
+// The two halves must exist together: take the first one back out rather than leave an orphan.
+try { await unifiedDelete('mfg_pro_pkr', db, returnEntry.id, { strict: true }, returnEntry); } catch (_) {}
+throw _logErr;
+}
 return { returnEntryId: returnEntry.id, returnLogId: returnLogEntry.id };
 }
 

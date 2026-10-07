@@ -1,4 +1,5 @@
 import { findCalcLinkForReturn } from './link-guards.js';
+import { findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
@@ -1267,10 +1268,13 @@ const _lk = await findCalcLinkForReturn(entryToDelete);
 if (_lk) { showToast(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning', 6000); return; }
 }
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
-if ((entryToDelete.net || 0) > 0 && typeof window.computeStoreStockSnapshot === 'function') {
+// A return is two records. Only its stock_returns LOG counts toward stock, so find it: both go together.
+const _retLog = isReturn ? findReturnLogFor(entryToDelete, ensureArray(await sqliteStore.get('stock_returns'))) : null;
+const _stockDrop = isReturn ? getReturnStockDrop(entryToDelete, _retLog) : (entryToDelete.net || 0);
+if (_stockDrop > 0 && typeof window.computeStoreStockSnapshot === 'function') {
 const _snap = await window.computeStoreStockSnapshot(entryToDelete.store, entryToDelete.date);
-if (_snap.available - entryToDelete.net < -0.0001) {
-showToast(`Cannot delete: ${fmtNum(entryToDelete.net)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning', 6000);
+if (_snap.available - _stockDrop < -0.0001) {
+showToast(`Cannot delete: ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning', 6000);
 return;
 }
 }
@@ -1279,7 +1283,9 @@ let confirmMsg;
 if (isReturn) {
 confirmMsg = `Remove this stock return record?`;
 confirmMsg += `\nStore: ${_dpStoreLabel}\nDate: ${entryToDelete.date}\nQty Returned: ${entryToDelete.net} kg`;
-confirmMsg += `\n\n↩ This will DECREASE available stock by ${entryToDelete.net} kg on ${entryToDelete.date}.`;
+confirmMsg += _retLog
+? `\n\n↩ This will DECREASE available stock by ${_stockDrop} kg on ${entryToDelete.date} (its return log is removed with it).`
+: `\n\nNo return log is attached to this record, so available stock will not change.`;
 if (_dpSalesOnDate > 0) confirmMsg += ` ${_dpSalesOnDate} sale${_dpSalesOnDate !== 1 ? 's' : ''} exist on this date — those records may be affected.`;
 } else {
 confirmMsg = `Permanently delete this production record?`;
@@ -1294,7 +1300,17 @@ try {
 const record = db.find(item => item.id === id);
 if (record) { record.deletedAt = getTimestamp(); record.updatedAt = getTimestamp(); ensureRecordIntegrity(record, true); }
 const dbWithoutDeleted = db.filter(item => item.id !== id);
-await unifiedDelete('mfg_pro_pkr', dbWithoutDeleted, id, { strict: true }, record || null);
+let _snapRec = record || null;
+if (isReturn && record) {
+// Deleted from the Production tab (not by reversing a calculator record): it may be recovered as a pair.
+const _grp = newGroupId('ret');
+_snapRec = stampGroup({ ...record, [DELETE_ORIGIN_FIELD]: 'prod-tab' }, _grp);
+if (_retLog) {
+const _logs = ensureArray(await sqliteStore.get('stock_returns'));
+await unifiedDelete('stock_returns', _logs.filter(l => l.id !== _retLog.id), _retLog.id, { strict: true }, stampGroup({ ..._retLog, [DELETE_ORIGIN_FIELD]: 'prod-tab' }, _grp));
+}
+}
+await unifiedDelete('mfg_pro_pkr', dbWithoutDeleted, id, { strict: true }, _snapRec);
 notifyDataChange('production');
 void syncFactoryProductionStats().catch(() => {});
 await refreshUI();

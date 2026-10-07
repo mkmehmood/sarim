@@ -9,7 +9,8 @@
 import { sqliteStore, ensureArray, generateUUID, validateUUID, getTimestamp, esc, fmtAmt } from './business.js';
 import { unifiedSave } from './sync.js';
 import { notifyDataChange, triggerAutoSync, OfflineQueue, _reconcileSupplierLinkAfterRecovery, _refreshSupplierLinkViews } from './utilities-core.js';
-import { COLLECTION_TO_KEY, GROUP_FIELD, orderForRestore, findGroupMembers } from './link-graph.js';
+import { COLLECTION_TO_KEY, GROUP_FIELD, DELETE_ORIGIN_FIELD, orderForRestore, findGroupMembers } from './link-graph.js';
+import { deleteProdPhotos } from './prod-photos.js';
 import {
   getRecoverBlockReason, getRecoverLinkBlockReason, applyRecoveryLinks,
   applyRenameOnRecovery, findLiveSameNameRecord,
@@ -63,16 +64,29 @@ async function _loadTombstones() {
 
 // Remove bin entries older than 90 days (the cloud tombstone in deleted_records stays,
 // so other devices still apply the delete — only the recoverable snapshot is gone).
+// Production photos are kept while the entry sits in the bin (so recovering still shows them) and are
+// removed once the entry is gone for good.
+async function _dropProdPhotos(tombs) {
+  for (const t of tombs || []) {
+    try {
+      if ((t.collection || t.recordType) === 'production' && t.snapshot && Array.isArray(t.snapshot.photoKeys) && t.snapshot.photoKeys.length) {
+        await deleteProdPhotos(t.snapshot);
+      }
+    } catch (e) { console.warn('[RecycleBin] photo cleanup failed', e && e.message); }
+  }
+}
+
 async function _purgeExpired(tombs) {
   const now = Date.now();
   const keep = [];
+  const gone = [];
   let changed = false;
   for (const t of tombs) {
     const ts = t.deletedAt || t.tombstoned_at || 0;
-    if (ts && now - ts > EXPIRY_MS) { changed = true; continue; }
+    if (ts && now - ts > EXPIRY_MS) { changed = true; gone.push(t); continue; }
     keep.push(t);
   }
-  if (changed) await sqliteStore.set('deletion_records', keep);
+  if (changed) { await _dropProdPhotos(gone); await sqliteStore.set('deletion_records', keep); }
   return keep;
 }
 
@@ -132,6 +146,7 @@ function _cleanSnapshot(snapshot) {
   delete clean.softDeleted;
   delete clean.originalId;
   delete clean[GROUP_FIELD];
+  delete clean[DELETE_ORIGIN_FIELD];
   const now = getTimestamp();
   clean.updatedAt = now;
   clean.recoveredAt = now;
@@ -190,7 +205,7 @@ export async function recoverDeletedRecord(deletedId) {
   }
 
   // Block checks BEFORE touching anything. ctx makes the stock/material checks cumulative across the group.
-  const ctx = { stockUsed: new Map(), inv: null };
+  const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null };
   for (const m of orderForRestore(members)) {
     const collection = _tombCollection(m);
     const hard = getRecoverBlockReason(collection, m.snapshot);
@@ -250,6 +265,11 @@ export async function recoverDeletedRecord(deletedId) {
       await _purgeAfterRecover(oldId, collection, newId);
       touchedTypes.add(key);
     }
+    // Production, returns, batches and materials all feed the factory unit totals: refresh them.
+    const _factoryKeys = ['mfg_pro_pkr', 'factory_production_history', 'stock_returns', 'factory_inventory_data'];
+    if (_factoryKeys.some(k => touchedTypes.has(k)) && typeof window.syncFactoryProductionStats === 'function') {
+      try { await window.syncFactoryProductionStats(); } catch (e) { console.warn('[RecycleBin] factory stats refresh failed', e && e.message); }
+    }
     notifyDataChange('all');
     triggerAutoSync();
     showToast(members.length > 1 ? `${members.length} linked records recovered` : 'Record recovered', 'success');
@@ -287,6 +307,7 @@ export async function deleteForever(deletedId) {
     { title: 'Delete Forever', confirmText: 'Delete Forever', cancelText: 'Cancel', danger: true }
   );
   if (!ok) return;
+  await _dropProdPhotos(members);
   await _eraseTombstones(members.map(_tombId));
   showToast(members.length > 1 ? `${members.length} records erased permanently` : 'Record erased permanently', 'success');
   await renderRecycleBin(document.getElementById('recycleBinFilter')?.value || 'all');
@@ -300,6 +321,7 @@ export async function emptyRecycleBin() {
     { title: 'Empty Recycle Bin', confirmText: 'Empty Bin', cancelText: 'Cancel', danger: true }
   );
   if (!ok) return;
+  await _dropProdPhotos(tombs);
   await sqliteStore.set('deletion_records', []);
   showToast('Recycle bin emptied', 'success');
   await renderRecycleBin('all');

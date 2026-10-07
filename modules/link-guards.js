@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue,
+  remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from './link-graph.js';
 
@@ -111,10 +111,12 @@ export function getRecoverBlockReason(collectionName, snapshot) {
   if (collectionName === 'sales' && (s.isRepTransfer || (s.isTransfer && s.transferFrom))) {
     return 'This is a rep stock transfer created by a calculator record. Recover is not allowed; enter the calculation again.';
   }
-  if (collectionName === 'production' && s.isReturn === true && s.returnedBy) {
+  // A return deleted straight from the Production tab (orphan, no calculator record) can come back as a pair.
+  const _fromProdTab = s[DELETE_ORIGIN_FIELD] === 'prod-tab';
+  if (collectionName === 'production' && s.isReturn === true && s.returnedBy && !_fromProdTab) {
     return 'This stock return was created by a calculator record. Recover is not allowed; enter the calculation again.';
   }
-  if (collectionName === 'returns' && s.seller) {
+  if (collectionName === 'returns' && s.seller && !_fromProdTab) {
     return 'This return log was created by a calculator record. Recover is not allowed; enter the calculation again.';
   }
   return null;
@@ -203,6 +205,15 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const used = ctx && ctx.stockUsed ? (ctx.stockUsed.get(k) || 0) : 0;
     const issue = getStockOverdrawIssue(label, q + used, snap.available);
     if (!issue && ctx && ctx.stockUsed) ctx.stockUsed.set(k, used + q);
+    return issue;
+  }
+  // Production entry: it uses up factory formula units again, so the factory must still have them.
+  if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
+    const ft = snapshot.formulaStore || 'standard';
+    const tracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+    const used = ctx && ctx.unitsUsed ? (ctx.unitsUsed.get(ft) || 0) : 0;
+    const issue = getUnitsShortIssue(snapshot.formulaName || ft, Number(snapshot.formulaUnits) + used, (tracking[ft] && tracking[ft].available) || 0);
+    if (!issue && ctx && ctx.unitsUsed) ctx.unitsUsed.set(ft, used + Number(snapshot.formulaUnits));
     return issue;
   }
   // Factory batch: its raw materials have to come back OUT of inventory.

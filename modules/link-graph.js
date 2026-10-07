@@ -283,3 +283,33 @@ export function getOldDebtEditIssue(newAmount, children) {
 export function sumChildPayments(children) {
   return _r2((Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0));
 }
+
+// ---- production returns --------------------------------------------------------------------------------
+// A return is TWO records: the production-tab entry (mfg_pro_pkr, isReturn) and the stock_returns log.
+// Only the log counts toward store stock, so the pair must always be deleted / restored together.
+export const DELETE_ORIGIN_FIELD = '_deleteOrigin';
+
+export function findReturnLogFor(entry, logs) {
+  if (!entry) return null;
+  const cands = (Array.isArray(logs) ? logs : []).filter(l => l && !l.deletedAt &&
+    l.store === entry.store && l.date === entry.date && _n(l.quantity) === _n(entry.net));
+  if (!cands.length) return null;
+  return cands.find(l => entry.createdAt != null && l.createdAt === entry.createdAt)
+    || cands.find(l => entry.returnedBy && l.seller === entry.returnedBy)
+    || cands[0];
+}
+
+// How many kg of store stock disappear when this return is deleted (0 when no log counts it).
+export function getReturnStockDrop(entry, log) {
+  return entry && log ? _n(log.quantity) : 0;
+}
+
+// ---- factory formula units consumed by a production entry -------------------------------------------
+export function getUnitsShortIssue(label, requested, available) {
+  const r = _n(requested);
+  if (r <= 0) return null;
+  if (_n(available) + 1e-9 < r) {
+    return `Recovering this would use ${r} formula unit${r === 1 ? '' : 's'} of ${label}, but only ${Math.max(0, _n(available))} ${_n(available) === 1 ? 'is' : 'are'} available in the factory. Add or recover factory batches first.`;
+  }
+  return null;
+}

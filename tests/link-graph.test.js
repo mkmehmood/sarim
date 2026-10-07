@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers, GROUP_FIELD,
-  remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
+  remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop, getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -246,5 +246,36 @@ describe('transfer halves recover together even without a deletion group', () =>
     const c = { id: 'c', snapshot: { [GROUP_FIELD]: 'g' } };
     assert.deepEqual(findGroupMembers(a, [a, b, c]).map(t => t.id).sort(), ['a', 'b', 'c']);
     assert.deepEqual(findGroupMembers(a, []).map(t => t.id), ['a']);
+  });
+});
+
+describe('production returns are a pair', () => {
+  const entry = { id: 'e', store: 'A', date: '2026-01-05', net: 12, createdAt: 111, returnedBy: 'Ali' };
+  it('finds the stock_returns log that belongs to the entry', () => {
+    const logs = [
+      { id: 'l1', store: 'A', date: '2026-01-05', quantity: 12, createdAt: 999, seller: 'Bilal' },
+      { id: 'l2', store: 'A', date: '2026-01-05', quantity: 12, createdAt: 111, seller: 'Ali' },
+      { id: 'l3', store: 'B', date: '2026-01-05', quantity: 12, createdAt: 111 },
+    ];
+    assert.equal(findReturnLogFor(entry, logs).id, 'l2');
+    // no matching timestamp: fall back to the seller, then to the first same store/date/qty log
+    assert.equal(findReturnLogFor({ ...entry, createdAt: 5, returnedBy: 'Ali' }, logs).id, 'l2');
+    assert.equal(findReturnLogFor({ ...entry, createdAt: 5, returnedBy: 'Nobody' }, logs).id, 'l1');
+  });
+  it('returns null when no log counts it, and ignores deleted logs', () => {
+    assert.equal(findReturnLogFor(entry, []), null);
+    assert.equal(findReturnLogFor(entry, [{ id: 'x', store: 'A', date: '2026-01-05', quantity: 12, deletedAt: 1 }]), null);
+    assert.equal(getReturnStockDrop(entry, null), 0);
+    assert.equal(getReturnStockDrop(entry, { quantity: 12 }), 12);
+  });
+});
+
+describe('restoring production needs factory units', () => {
+  it('blocks when the factory no longer has enough units', () => {
+    assert.match(getUnitsShortIssue('Standard', 5, 2), /only 2 are available/);
+  });
+  it('allows when enough, or when no units are used', () => {
+    assert.equal(getUnitsShortIssue('Standard', 5, 5), null);
+    assert.equal(getUnitsShortIssue('Standard', 0, 0), null);
   });
 });
