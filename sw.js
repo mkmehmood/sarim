@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.07.10.2026';
+const BUILD_HASH = 'V.07.10.2026-r1';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 
 const ASSETS_TO_CACHE = [
@@ -19,7 +19,6 @@ const ASSETS_TO_CACHE = [
   './modules/custom-date-picker.js',
   './modules/link-guards.js',
   './modules/link-graph.js',
-  './modules/recycle-bin.js',
   './manifest.json',
   './192.png',
   './512.png',

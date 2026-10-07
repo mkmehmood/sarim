@@ -10,7 +10,6 @@ import './prod-photos.js';
 import './utilities-payments.js';
 import './customers.js';
 import './formula-store.js';
-import './recycle-bin.js';
 
 let _factoryLoad = null;
 let _repLoad = null;
