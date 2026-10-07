@@ -1,5 +1,6 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
+import { deleteProdPhotos } from './prod-photos.js';
 import { newGroupId, stampGroup, findGroupMembers, orderForRestore, GROUP_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -4084,6 +4085,70 @@ export async function _findPairedTransferTombstone(currentId, transferPairId) {
   ) || null;
 }
 
+// ---- Recycle bin safety helpers ---------------------------------------------------------------------------
+// One recycle-bin action at a time: a double tap on Recover / Delete Forever / Empty used to run the same
+// action twice (two recovered copies, or a second erase racing the first).
+let _recycleBusy = false;
+async function _withRecycleLock(fn) {
+  if (_recycleBusy) { showToast('Please wait, another recycle bin action is still running.', 'info', 2500); return; }
+  _recycleBusy = true;
+  try { return await fn(); } finally { _recycleBusy = false; }
+}
+
+// Records deleted together recover together, so check the WHOLE group before touching anything. Otherwise one
+// blocked member left the others recovered and the group half restored. ctx makes the stock / material /
+// factory-unit checks cumulative across the group.
+async function _getGroupRecoverBlockReason(members) {
+  const ids = new Set(members.map(m => String(m.recordId || m.id)));
+  const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null };
+  for (const m of orderForRestore(members)) {
+    const snap = m && m.snapshot;
+    if (!snap) continue; // snapshot is fetched from the cloud at recover time
+    const col = m.collection || m.recordType || 'unknown';
+    const hard = getRecoverBlockReason(col, snap);
+    if (hard) return hard;
+    if (snap.relatedSaleId && ids.has(String(snap.relatedSaleId))) continue; // parent comes back in the same group
+    const link = await getRecoverLinkBlockReason(col, snap, ctx);
+    if (link) return link;
+  }
+  return null;
+}
+
+// Production, returns, batches and materials all feed the factory unit totals: refresh them after a recover.
+const _FACTORY_RECOVER_COLLECTIONS = new Set(['production', 'returns', 'factory_history', 'inventory']);
+async function _refreshFactoryAfterRecover(collections) {
+  if (!collections.some(c => _FACTORY_RECOVER_COLLECTIONS.has(c))) return;
+  try { await syncFactoryProductionStats(); } catch (e) { console.warn('[RecycleBin] factory stats refresh failed', _safeErr(e)); }
+}
+
+// Ids erased from the bin whose cloud tombstone delete is not confirmed yet. Sync skips them, so an erased entry
+// can never come back after the app is closed and reopened (offline erase, failed cloud write, slow queue).
+async function _clearErasedIds(ids) {
+  try {
+    const gone = new Set(ids.map(String));
+    const left = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String).filter(i => !gone.has(i));
+    await sqliteStore.set('erased_deletion_ids', left);
+  } catch (e) { console.warn('[RecycleBin] clear erased ids failed', _safeErr(e)); }
+}
+export async function flushErasedTombstones() {
+  try {
+    const pending = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String);
+    if (!pending.length || !firebaseDB || !currentUser) return;
+    if (window._firestoreNetworkDisabled || navigator.onLine === false) return;
+    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    for (let i = 0; i < pending.length; i += 400) {
+      const chunk = pending.slice(i, i + 400);
+      try {
+        const batch = firebaseDB.batch();
+        chunk.forEach(id => batch.delete(userRef.collection('deletions').doc(id)));
+        await batch.commit();
+        await _clearErasedIds(chunk);
+      } catch (e) { console.warn('[RecycleBin] cloud erase retry failed', _safeErr(e)); }
+    }
+  } catch (e) { console.warn('[RecycleBin] flushErasedTombstones failed', _safeErr(e)); }
+}
+window.flushErasedTombstones = flushErasedTombstones;
+
 export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4105,11 +4170,20 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       const _grpTomb = deletionRecords.find(r => String(r.id) === String(deletedId) || String(r.recordId || r.id) === String(deletedId));
       const _grp = findGroupMembers(_grpTomb, deletionRecords);
       if (_grp.length > 1) {
+        const _blk = await _getGroupRecoverBlockReason(_grp);
+        if (_blk) { showToast(_blk, 'warning', 7000); return false; }
         let _selfOk = false;
+        let _groupFailed = false;
         for (const m of orderForRestore(_grp)) {
           const mid = m.recordId || m.id;
           const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true);
           if (String(mid) === String(deletedId)) _selfOk = ok;
+          if (!ok) { _groupFailed = true; break; }
+        }
+        await _refreshFactoryAfterRecover(_grp.map(m => m.collection || m.recordType || collectionName));
+        if (_groupFailed) {
+          showToast('Not every linked record could be recovered. The ones left over are still in the recycle bin.', 'warning', 7000);
+          return false;
         }
         return _selfOk;
       }
@@ -4240,6 +4314,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
         }
       } catch (_pairErr) { console.warn('[RecycleBin] paired transfer recovery failed', _safeErr(_pairErr)); }
     }
+    if (!_isPairRecovery) await _refreshFactoryAfterRecover([collectionName]);
     return true;
   } catch(e) {
     console.error('[RecycleBin] recoverRecord error:', _safeErr(e));
@@ -4358,8 +4433,10 @@ export async function renderRecycleBin(filterCollection = 'all') {
   container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</div>';
   try {
     let localDeletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
+    const _erasedPending = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
     localDeletionRecords = localDeletionRecords.filter(r =>
-      !_recoveredThisSession.has(r.id) && !_recoveredThisSession.has(r.recordId)
+      !_recoveredThisSession.has(r.id) && !_recoveredThisSession.has(r.recordId) &&
+      !_erasedPending.has(String(r.id)) && !_erasedPending.has(String(r.recordId))
     );
     if (firebaseDB && currentUser) {
       try {
@@ -4373,6 +4450,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
           const docId = String(doc.id);
           const recId = String(d.recordId || d.id || doc.id);
           if (_recoveredThisSession.has(docId) || _recoveredThisSession.has(recId)) return;
+          if (_erasedPending.has(docId) || _erasedPending.has(recId)) return;
           if (seenIds.has(docId) || seenRecordIds.has(docId) ||
               seenIds.has(recId)  || seenRecordIds.has(recId)) return;
           seenIds.add(docId);
@@ -4643,6 +4721,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
 }
 
 export async function attemptRecoverRecord(id, collectionName) {
+  return _withRecycleLock(() => _attemptRecoverRecordImpl(id, collectionName));
+}
+async function _attemptRecoverRecordImpl(id, collectionName) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const tabKey = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
@@ -4650,14 +4731,17 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const label = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
   const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
   const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
-  {
+  const _grpMembers = ownTomb ? findGroupMembers(ownTomb, deletionRecords) : [];
+  if (_grpMembers.length > 1) {
+    const _gb = await _getGroupRecoverBlockReason(_grpMembers);
+    if (_gb) { showToast(_gb, 'warning', 7000); return; }
+  } else {
     const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
     if (_rb) { showToast(_rb, 'warning', 6000); return; }
-  }
-  const _grpMembers = findGroupMembers(ownTomb, deletionRecords);
-  if (_grpMembers.length <= 1 && ownTomb && ownTomb.snapshot) {
-    const _lb = await getRecoverLinkBlockReason(collectionName, ownTomb.snapshot);
-    if (_lb) { showToast(_lb, 'warning', 6500); return; }
+    if (ownTomb && ownTomb.snapshot) {
+      const _lb = await getRecoverLinkBlockReason(collectionName, ownTomb.snapshot);
+      if (_lb) { showToast(_lb, 'warning', 6500); return; }
+    }
   }
   const groupNote = _grpMembers.length > 1 ? `\n\nThis was deleted together with ${_grpMembers.length - 1} other record${_grpMembers.length - 1 !== 1 ? 's' : ''}. All ${_grpMembers.length} will be recovered together so their links stay correct.` : '';
   const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
@@ -4678,6 +4762,9 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     await renderRecycleBin(current);
   } else {
     showToast('Recovery failed. The record may have been permanently purged from cloud.', 'error');
+    notifyDataChange('all');
+    const _fs = document.getElementById('recycleBinFilter');
+    await renderRecycleBin(_fs ? _fs.value : 'all');
   }
 }
 window.openRecycleBin = openRecycleBin;
@@ -4686,6 +4773,9 @@ window.renderRecycleBin = renderRecycleBin;
 window.attemptRecoverRecord = attemptRecoverRecord;
 
 export async function emptyRecycleBin() {
+  return _withRecycleLock(_emptyRecycleBinImpl);
+}
+async function _emptyRecycleBinImpl() {
   const currentFilter = window._recycleBinCurrentFilterKey || (document.getElementById('recycleBinFilter') || {}).value || 'all';
   const targets = (window._recycleBinCurrentFiltered || []).slice();
   if (targets.length === 0) {
@@ -4742,6 +4832,10 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
     const pruned = deletionRecords.filter(r => String(r.id) !== sid && String(r.recordId || r.id) !== sid);
     await sqliteStore.set('deletion_records', pruned);
 
+    const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
+    _erasedIds.add(sid);
+    await sqliteStore.set('erased_deletion_ids', Array.from(_erasedIds));
+
     _recoveredThisSession.add(sid);
 
     const sqliteKey = getSQLiteKey(collectionName);
@@ -4783,6 +4877,7 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
           }
           await batch.commit();
           trackFirestoreWrite(2);
+          await _clearErasedIds([sid]);
         } catch(e) {
           console.warn('[RecycleBin] Hard delete cloud failed — queuing:', _safeErr(e));
           if (typeof OfflineQueue !== 'undefined') {
@@ -4807,17 +4902,9 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
         }
       } catch(_hdOffErr) { console.warn('[hardDeleteRecord] offline queue failed', _hdOffErr); }
     }
-    if (collectionName === 'mfg_pro_pkr' && ownTombstone && ownTombstone.snapshot && Array.isArray(ownTombstone.snapshot.photoKeys)) {
-      try {
-        const _pk = ownTombstone.snapshot.photoKeys;
-        const _pph = (await sqliteStore.get('person_photos')) || {};
-        const _pts = (await sqliteStore.get('person_photos_timestamps')) || {};
-        const _pdk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
-        _pk.forEach(k => { delete _pph[k]; delete _pts[k]; if (!_pdk.includes(k)) _pdk.push(k); });
-        await sqliteStore.set('person_photos', _pph);
-        await sqliteStore.set('person_photos_timestamps', _pts);
-        await sqliteStore.set('person_photos_dirty_keys', _pdk);
-      } catch(_ppErr) { console.warn('[hardDeleteRecord] production photo cleanup failed', _ppErr); }
+    if ((collectionName === 'production' || collectionName === 'mfg_pro_pkr') && ownTombstone && ownTombstone.snapshot) {
+      try { await deleteProdPhotos(ownTombstone.snapshot); }
+      catch (_ppErr) { console.warn('[hardDeleteRecord] production photo cleanup failed', _safeErr(_ppErr)); }
     }
     if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
       try {
@@ -4851,6 +4938,9 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
 }
 
 export async function attemptHardDeleteRecord(id, collectionName) {
+  return _withRecycleLock(() => _attemptHardDeleteImpl(id, collectionName));
+}
+async function _attemptHardDeleteImpl(id, collectionName) {
   const tabKey   = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
   const label    = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;

@@ -4,6 +4,7 @@ import { newGroupId, stampGroup } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-photos.js';
+import { deleteProdPhotos } from './prod-photos.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, currentCashTrackerMode, currentCustomerChartMode, currentFactoryDate, currentFactoryEntryStore, currentIndMetric, currentIndMode, currentMfgMode, currentOverviewMode, currentProductionView, currentStoreComparisonMetric, custTransactionMode, getStoreFormulaType, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
@@ -1756,9 +1757,12 @@ const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_reco
 const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
 const validDeletions = deletionRecords.filter(record => record.deletedAt > threeMonthsAgo);
 if (validDeletions.length !== deletionRecords.length) {
-const expiredIds = new Set(
-  deletionRecords.filter(r => r.deletedAt <= threeMonthsAgo).map(r => r.id)
-);
+const expiredRecs = deletionRecords.filter(r => r.deletedAt <= threeMonthsAgo);
+const expiredIds = new Set(expiredRecs.map(r => r.id));
+for (const r of expiredRecs) {
+  try { if ((r.collection || r.recordType) === 'production' && r.snapshot) await deleteProdPhotos(r.snapshot); }
+  catch (_e) { console.warn('[cleanupOldDeletions] photo cleanup failed', _safeErr(_e)); }
+}
 expiredIds.forEach(id => deletedRecordIds.delete(id));
 await sqliteStore.set('deletion_records', validDeletions);
 await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
