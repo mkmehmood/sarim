@@ -1,4 +1,5 @@
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename } from './link-guards.js';
+import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
@@ -133,7 +134,7 @@ if (typeof showTab === 'function') showTab('rep');
 const isColl = rec.paymentType === 'COLLECTION' || rec.paymentType === 'PARTIAL_PAYMENT';
 setRepMode(isColl ? 'collection' : 'sale');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
-set('rep-date', rec.date);
+set('rep-date', editDateValue(rec));
 set('rep-cust-name', rec.customerName || '');
 if (isColl) {
 set('rep-amount-collected', rec.totalValue);

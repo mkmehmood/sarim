@@ -1,4 +1,5 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, findGroupMembers, orderForRestore, GROUP_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -2127,7 +2128,7 @@ selectExpenseCategory(cat, document.getElementById('btn-category-' + (cat === 'o
 const set = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
 set('expenseName', t.entityName || '');
 set('expenseAmount', t.amount);
-set('expenseDate', t.date);
+set('expenseDate', editDateValue(t));
 set('expenseDescription', t.description || '');
 beginEditMode('payment', t, { buttonId: 'btn-save-expense', watchIds: ['expenseName','expenseAmount','expenseDate','expenseDescription'], label: 'Update Transaction', anchorId: 'expenseName', cancelFn: _resetExpenseForm });
 }
@@ -7887,7 +7888,7 @@ const fs = document.getElementById('payment-transfer-from-search'); if (fs) fs.s
 set('payment-transfer-to-value', inn.entityId);
 set('payment-transfer-to-search', inn.entityName);
 const ts = document.getElementById('payment-transfer-to-search'); if (ts) ts.setAttribute('data-entity-id', inn.entityId);
-set('payment-transfer-date', out.date);
+set('payment-transfer-date', editDateValue(out));
 set('payment-transfer-amount', out.amount);
 const prefix = `Transfer to ${inn.entityName}: `;
 set('payment-transfer-note', (out.description || '').startsWith(prefix) ? out.description.slice(prefix.length) : '');

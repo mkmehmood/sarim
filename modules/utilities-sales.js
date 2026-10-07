@@ -1,4 +1,5 @@
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks } from './link-guards.js';
+import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -1262,7 +1263,7 @@ if (rec.paymentType === 'COLLECTION' || rec.paymentType === 'PARTIAL_PAYMENT') {
 if (typeof showTab === 'function') showTab('sales');
 setSaleMode('sale');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
-set('cust-date', rec.supplyDate || rec.date);
+set('cust-date', editDateValue(rec, ['supplyDate','date','createdAt','timestamp']));
 selectSupplyStore(document.getElementById('btn-supply-store-' + String(rec.supplyStore || '').toLowerCase()), rec.supplyStore);
 set('supply-store-value', rec.supplyStore);
 selectPaymentType(document.getElementById(rec.paymentType === 'CASH' ? 'btn-payment-cash' : 'btn-payment-credit'), rec.paymentType === 'CASH' ? 'CASH' : 'CREDIT');
@@ -1287,7 +1288,7 @@ if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning')
 if (typeof showTab === 'function') showTab('sales');
 setSaleMode('collection');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
-set('cust-date', rec.supplyDate || rec.date);
+set('cust-date', editDateValue(rec, ['supplyDate','date','createdAt','timestamp']));
 set('cust-name', rec.customerName || '');
 set('cust-amount-collected', rec.totalValue);
 if (rec.customerPhone) {
@@ -1313,7 +1314,7 @@ const rec = db.find(r => r && String(r.id) === String(id));
 if (!rec || rec.isMerged || rec.isReturn || rec.isTransfer) { showToast('This entry cannot be edited.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('prod');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
-set('sys-date', rec.date);
+set('sys-date', editDateValue(rec));
 const stores = await getAppStores();
 const idx = stores.findIndex(s => s.key === rec.store);
 const grp = document.getElementById('storeSelectorToggleGroup');
@@ -6707,7 +6708,7 @@ set('stock-transfer-from-value', out.store);
 set('stock-transfer-to-value', inn.store);
 const fsp = document.querySelector('#stockTransferFromBtn span'); if (fsp) fsp.textContent = getStoreLabel(out.store) + ' ';
 const tsp = document.querySelector('#stockTransferToBtn span'); if (tsp) tsp.textContent = getStoreLabel(inn.store) + ' ';
-set('stock-transfer-date', out.date);
+set('stock-transfer-date', editDateValue(out));
 set('stock-transfer-qty', Math.abs(out.net));
 set('stock-transfer-note', out.transferNote || '');
 beginEditMode('stocktransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-stock-transfer', watchIds: ['stock-transfer-from-value','stock-transfer-to-value','stock-transfer-date','stock-transfer-qty','stock-transfer-note'], label: 'Update Transfer', anchorId: 'stock-transfer-qty', cancelFn: _resetStockTransferForm });
