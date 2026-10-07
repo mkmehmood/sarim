@@ -196,6 +196,20 @@ export function findGroupMembers(tomb, allTombstones) {
   return members;
 }
 
+// Every tombstone that must be erased / recovered with the given ones: each record plus the other members of
+// its deletion group or transfer pair, de-duplicated by record id. `all` is every tombstone known to the bin.
+export function expandGroups(recs, all) {
+  const out = new Map();
+  for (const r of recs || []) {
+    if (!r) continue;
+    for (const m of findGroupMembers(r, all)) {
+      const k = String(m.recordId || m.id);
+      if (!out.has(k)) out.set(k, m);
+    }
+  }
+  return Array.from(out.values());
+}
+
 // ---- nested material references (factory batches + formulas point at inventory item ids) -------------
 
 // history: factory_production_history[], formulas: { formulaKey: [{id,...}] }
