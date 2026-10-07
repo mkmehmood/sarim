@@ -11,6 +11,7 @@ import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculate
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
+import { collectAuxBackupFields } from './data-keys.js';
 
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 
@@ -1849,6 +1850,7 @@ expenseRecords
 )];
 const expCatMerged = [...new Set([...savedCategories, ...categoriesFromRecords])];
 await store.set('expense_categories', expCatMerged);
+if (expCatMerged.length !== (Array.isArray(savedCategories) ? savedCategories.length : 0)) await store.set('expense_categories_timestamp', Date.now());
 const expenseDateInput = document.getElementById('expenseDate');
 if (expenseDateInput) {
 expenseDateInput.value = localDateStr();
@@ -2098,6 +2100,7 @@ await unifiedSave('payment_transactions', paymentTransactions, t);
 if (o.isExpense && !expenseCategories.includes(v.name)) {
 expenseCategories.push(v.name);
 await sqliteStore.set('expense_categories', expenseCategories);
+await sqliteStore.set('expense_categories_timestamp', Date.now());
 }
 notifyDataChange('payments');
 notifyDataChange('expenses');
@@ -2234,6 +2237,7 @@ expenseCategories.push(name);
 }
 await unifiedSave('expenses', expenseRecords, expense);
 await sqliteStore.set('expense_categories', expenseCategories);
+await sqliteStore.set('expense_categories_timestamp', Date.now());
 notifyDataChange('expenses');
 emitSyncUpdate({
 expenses: null,
@@ -5043,8 +5047,7 @@ expenses: await sqliteStore.get('expenses', []),
 stockReturns: stockReturns,
 settings: await sqliteStore.get('naswar_default_settings', defaultSettings),
 deleted_records: Array.from(deletedRecordIds),
-person_photos: (await sqliteStore.get('person_photos')) || {},
-person_photos_timestamps: (await sqliteStore.get('person_photos_timestamps')) || {},
+...(await collectAuxBackupFields(sqliteStore)),
 _meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 },
 backupMetadata: {
 version: '3.0',

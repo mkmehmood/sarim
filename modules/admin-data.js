@@ -5,6 +5,7 @@ import { DeltaSync, UUIDSyncRegistry, trackFirestoreWrite, verifyAccountPassword
 import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
+import { collectAuxBackupFields } from './data-keys.js';
 
 export async function updateDeltaSyncStatsDisplay() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -1481,8 +1482,7 @@ try {
     expenses: expenseRecords,
     settings: _settingsSnapshot,
     deleted_records: Array.from(deletedRecordIds),
-    person_photos: (await sqliteStore.get('person_photos')) || {},
-    person_photos_timestamps: (await sqliteStore.get('person_photos_timestamps')) || {},
+    ...(await collectAuxBackupFields(sqliteStore)),
     _meta: {
       encryptedFor:        currentUser.email,
       createdAt:           Date.now(),

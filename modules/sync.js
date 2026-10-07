@@ -7,6 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
+import { resolveExpenseCategories } from './data-keys.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await sqliteStore.set(key, data);
@@ -1782,6 +1783,7 @@ export async function subscribeToRealtime() {
           if (ct > lt) {
             _set_currentRepProfile(cloudSettings.repProfile);
             await sqliteStore.setBatch([
+              ['repProfile', currentRepProfile],
               ['current_rep_profile', currentRepProfile],
               ['repProfile_timestamp', ct],
             ]);
@@ -1909,11 +1911,10 @@ export async function subscribeToRealtime() {
         if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
 
         const local = await sqliteStore.get('expense_categories') || [];
-        const cloudSorted = [...cloud.categories].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
-        const localSorted = [...local].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
-        if (JSON.stringify(cloudSorted) !== JSON.stringify(localSorted)) {
-          await sqliteStore.set('expense_categories', cloud.categories);
-          if (cloudTs) await sqliteStore.set('expense_categories_timestamp', cloudTs);
+        const _ecRes = resolveExpenseCategories(local, cloud.categories, localTs, cloudTs);
+        if (_ecRes.changed) {
+          await sqliteStore.set('expense_categories', _ecRes.value);
+          if (_ecRes.ts) await sqliteStore.set('expense_categories_timestamp', _ecRes.ts);
           emitSyncUpdate({ expenseCategories: null});
           flashLivePulse();
         }
@@ -3109,7 +3110,13 @@ export async function _syncSettings(cloudData) {
   if (expCatSnap && expCatSnap.exists) {
     const ecd = expCatSnap.data();
     if (ecd && Array.isArray(ecd.categories)) {
-      await sqliteStore.set('expense_categories', ecd.categories);
+      const _ecLocal   = await sqliteStore.get('expense_categories');
+      const _ecLocalTs = (await sqliteStore.get('expense_categories_timestamp')) || 0;
+      const _ecRes = resolveExpenseCategories(_ecLocal, ecd.categories, _ecLocalTs, ecd.categories_timestamp || 0);
+      if (_ecRes.changed || !Array.isArray(_ecLocal)) {
+        await sqliteStore.set('expense_categories', _ecRes.value);
+        if (_ecRes.ts) await sqliteStore.set('expense_categories_timestamp', _ecRes.ts);
+      }
     }
   }
 
@@ -3288,7 +3295,7 @@ export async function _uploadChanges(userRef) {
     const _ds = await sqliteStore.get('naswar_default_settings');
     configBatch.set(
       userRef.collection('settings').doc('config'),
-      sanitizeForFirestore({ naswar_default_settings: _ds || {} }),
+      sanitizeForFirestore({ naswar_default_settings: _ds || {}, naswar_default_settings_timestamp: localSettingsTs }),
       { merge: true }
     );
     operationCount++;
@@ -3301,7 +3308,7 @@ export async function _uploadChanges(userRef) {
     const _ec = await sqliteStore.get('expense_categories');
     configBatch.set(
       userRef.collection('expenseCategories').doc('categories'),
-      sanitizeForFirestore({ categories: _ec || [] }),
+      sanitizeForFirestore({ categories: _ec || [], categories_timestamp: localExpCatTs }),
       { merge: true }
     );
     operationCount++;
@@ -3712,6 +3719,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       ['factory_unit_tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
       ['naswar_default_settings', defaultSettings],
       ['appMode', appMode],
+      ['repProfile', currentRepProfile],
       ['current_rep_profile', currentRepProfile],
     ]);
 

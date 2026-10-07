@@ -11,6 +11,7 @@ import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalance
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
+import { normaliseBackupFields as _normaliseBackupFieldsShared, collectAuxBackupFields, applyAuxBackupFields } from './data-keys.js';
 
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 
@@ -3930,6 +3931,7 @@ stockReturns: stockReturns,
 settings: await sqliteStore.get('naswar_default_settings', defaultSettings),
 appStores: await sqliteStore.get('app_stores') || [],
 deleted_records: Array.from(deletedRecordIds),
+...(await collectAuxBackupFields(sqliteStore)),
 _meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 }
 };
 const encEmail = currentUser.email;
@@ -4101,13 +4103,7 @@ showToast("Error reading file: " + err.message, 'error');
 }
 
 export function normaliseBackupFields(data) {
-  if (!data || typeof data !== 'object') return data;
-  if (data.mfg && !data.mfg_pro_pkr)    data.mfg_pro_pkr   = data.mfg;
-  if (data.mfg_pro_pkr && !data.mfg)    data.mfg           = data.mfg_pro_pkr;
-  if (data.sales && !data.noman_history) data.noman_history = data.sales;
-  if (data.noman_history && !data.sales) data.sales         = data.noman_history;
-
-  return data;
+  return _normaliseBackupFieldsShared(data);
 }
 
 export async function _doRestoreMerge(data) {
@@ -4341,6 +4337,7 @@ await sqliteStore.set('app_stores', merged);
 await sqliteStore.set('app_stores_timestamp', settingsTimestamp);
 if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
 }
+try { await applyAuxBackupFields(data, sqliteStore, settingsTimestamp, 'merge'); } catch (_auxErr) { console.warn('[restore] aux settings restore failed', _safeErr(_auxErr)); }
 await loadAllData();
 try { syncFactoryProductionStats(); } catch(e) { console.error('Factory stats error:', _safeErr(e)); }
 try { await invalidateAllCaches(); } catch(e) { console.error('Cache invalidation error:', _safeErr(e)); }
@@ -4681,6 +4678,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   if (data.factoryCostAdjustmentFactor) { await sqliteStore.set('factory_cost_adjustment_factor', data.factoryCostAdjustmentFactor); await sqliteStore.set('factory_cost_adjustment_factor_timestamp', settingsTimestamp); factoryCostAdjustmentFactor = data.factoryCostAdjustmentFactor; }
   if (data.factoryUnitTracking) { await sqliteStore.set('factory_unit_tracking', data.factoryUnitTracking); await sqliteStore.set('factory_unit_tracking_timestamp', settingsTimestamp); factoryUnitTracking = data.factoryUnitTracking; }
   if (Array.isArray(data.appStores) && data.appStores.length > 0) { await sqliteStore.set('app_stores', data.appStores); await sqliteStore.set('app_stores_timestamp', settingsTimestamp); if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache(); }
+  try { await applyAuxBackupFields(data, sqliteStore, settingsTimestamp, 'replace'); } catch (_auxErr) { console.warn('[ycRestore] aux settings restore failed', _safeErr(_auxErr)); }
   try {
     const currentSettings = await sqliteStore.get('naswar_default_settings', {});
     const snap = (data._meta && data._meta.fyCloseSnapshot) || {};
