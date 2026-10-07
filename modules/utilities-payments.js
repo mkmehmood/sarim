@@ -1,7 +1,7 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { newGroupId, stampGroup, findGroupMembers, orderForRestore, GROUP_FIELD } from './link-graph.js';
+import { newGroupId, stampGroup, findGroupMembers, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -4223,6 +4223,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       delete cleanRecord.recoveredAt;
       delete cleanRecord._placeholder;
       delete cleanRecord[GROUP_FIELD];
+      delete cleanRecord[DELETE_ORIGIN_FIELD];
       delete cleanRecord.isDeleted;
       delete cleanRecord.softDeleted;
       cleanRecord.updatedAt   = Date.now();
@@ -4777,11 +4778,13 @@ export async function emptyRecycleBin() {
 }
 async function _emptyRecycleBinImpl() {
   const currentFilter = window._recycleBinCurrentFilterKey || (document.getElementById('recycleBinFilter') || {}).value || 'all';
-  const targets = (window._recycleBinCurrentFiltered || []).slice();
-  if (targets.length === 0) {
+  const shown = (window._recycleBinCurrentFiltered || []).slice();
+  if (shown.length === 0) {
     showToast('Recycle bin is already empty.', 'info');
     return;
   }
+  // Records deleted together (payment + expense, transfer halves, return + log ...) go together.
+  const targets = expandGroups(shown, ensureArray(await sqliteStore.get('deletion_records')).concat(shown));
   const scopeLabel = currentFilter === 'all' ? 'the entire recycle bin' : `all "${RECYCLE_TAB_LABELS[currentFilter] || currentFilter}" items`;
   const confirmed = await showGlassConfirm(
     `Permanently delete ${targets.length} record${targets.length !== 1 ? 's' : ''} from ${scopeLabel}?\n\nThis action CANNOT be undone. Any linked transfer pairs will be deleted together. All records will be erased from local storage and the cloud.`,
@@ -4797,7 +4800,7 @@ async function _emptyRecycleBinImpl() {
     if (!rid) continue;
     const col = rec.collection || 'unknown';
     try {
-      const ok = await hardDeleteRecord(rid, col);
+      const ok = await hardDeleteRecord(rid, col, true);
       if (!ok) failCount++;
     } catch (e) {
       failCount++;
@@ -4946,17 +4949,33 @@ async function _attemptHardDeleteImpl(id, collectionName) {
   const label    = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
   const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
+  const members = ownTomb ? findGroupMembers(ownTomb, deletionRecords) : [];
+  const isGroup = members.length > 1;
   const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
-  const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be permanently deleted together.' : '';
+  const pairNote = isGroup
+    ? (isTransferPair && members.length === 2
+        ? '\n\nThis is one side of a linked transfer — both sides will be permanently deleted together.'
+        : `\n\nThis was deleted together with ${members.length - 1} other record${members.length - 1 !== 1 ? 's' : ''}. All ${members.length} will be permanently deleted together.`)
+    : '';
   const confirmed = await showGlassConfirm(
     `Permanently delete this ${label}?\n\nThis action CANNOT be undone. The record will be erased from all local storage and the cloud.${pairNote}`,
     { title: 'Delete Forever', confirmText: 'Delete Forever', danger: true }
   );
   if (!confirmed) return;
   showToast('Deleting permanently…', 'info', 1500);
-  const ok = await hardDeleteRecord(id, collectionName);
+  let ok = true;
+  if (isGroup) {
+    for (const m of members) {
+      const mid = m.recordId || m.id;
+      if (!mid) continue;
+      const done = await hardDeleteRecord(mid, m.collection || m.recordType || collectionName, true);
+      if (!done) ok = false;
+    }
+  } else {
+    ok = await hardDeleteRecord(id, collectionName);
+  }
   if (ok) {
-    showToast(isTransferPair ? `${label} and its paired transfer record permanently deleted.` : `${label} permanently deleted.`, 'success');
+    showToast(isGroup ? `${label} and ${members.length - 1} linked record${members.length - 1 !== 1 ? 's' : ''} permanently deleted.` : `${label} permanently deleted.`, 'success');
     if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Permanently deleted', label + ' was permanently deleted and cannot be recovered.', 'hard-del-' + id).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
@@ -4966,6 +4985,8 @@ async function _attemptHardDeleteImpl(id, collectionName) {
     await renderRecycleBin(current);
   } else {
     showToast('Hard delete failed. Please try again.', 'error');
+    const filterSel = document.getElementById('recycleBinFilter');
+    await renderRecycleBin(filterSel ? filterSel.value : 'all');
   }
 }
 window.hardDeleteRecord = hardDeleteRecord;

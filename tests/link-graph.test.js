@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
-  getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers, GROUP_FIELD,
+  getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers, expandGroups, GROUP_FIELD,
   remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop, getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from '../modules/link-graph.js';
 
@@ -277,5 +277,21 @@ describe('restoring production needs factory units', () => {
   it('allows when enough, or when no units are used', () => {
     assert.equal(getUnitsShortIssue('Standard', 5, 5), null);
     assert.equal(getUnitsShortIssue('Standard', 0, 0), null);
+  });
+});
+
+describe('expandGroups (erase / recover together)', () => {
+  const tomb = (id, snapshot) => ({ id, recordId: id, snapshot });
+  it('adds group and transfer-pair mates once, keeps loners alone', () => {
+    const all = [
+      tomb('p1', { [GROUP_FIELD]: 'g1' }), tomb('e1', { [GROUP_FIELD]: 'g1' }),
+      tomb('t1', { transferPairId: 'x' }), tomb('t2', { transferPairId: 'x' }),
+      tomb('solo', {}),
+    ];
+    const ids = (r) => r.map(t => t.id).sort();
+    assert.deepEqual(ids(expandGroups([all[0]], all)), ['e1', 'p1']);
+    assert.deepEqual(ids(expandGroups([all[0], all[1], all[2]], all)), ['e1', 'p1', 't1', 't2']);
+    assert.deepEqual(ids(expandGroups([all[4]], all)), ['solo']);
+    assert.deepEqual(expandGroups([], all), []);
   });
 });
