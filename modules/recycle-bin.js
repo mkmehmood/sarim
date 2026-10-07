@@ -6,7 +6,7 @@
 //   - records whose deletion already reversed side effects (calculator entries, transfers,
 //     returns) are blocked from recovery, as are partial payments whose parent is gone.
 
-import { sqliteStore, ensureArray, generateUUID, validateUUID, getTimestamp, esc, fmtAmt } from './business.js';
+import { sqliteStore, ensureArray, generateUUID, validateUUID, getTimestamp, esc, fmtAmt, firebaseDB, currentUser } from './business.js';
 import { unifiedSave } from './sync.js';
 import { notifyDataChange, triggerAutoSync, OfflineQueue, _reconcileSupplierLinkAfterRecovery, _refreshSupplierLinkViews } from './utilities-core.js';
 import { COLLECTION_TO_KEY, GROUP_FIELD, DELETE_ORIGIN_FIELD, orderForRestore, findGroupMembers } from './link-graph.js';
@@ -284,14 +284,48 @@ export async function recoverDeletedRecord(deletedId) {
 // Delete forever / empty bin
 // -------------------------------------------------------------------------------------------------------------
 
-// Erase the recoverable snapshot. The id STAYS in deleted_records so the cloud tombstone
-// is preserved and other devices still apply the deletion.
+// Erase the recoverable snapshot locally AND in the cloud. The cloud `deletions` doc is what the sync
+// re-downloads on every app start, so leaving it behind makes erased entries reappear after a restart.
+// Erased ids are remembered in `erased_deletion_ids` until the cloud delete is confirmed, so a sync that
+// runs before (or without) the cloud delete can never resurrect them.
 async function _eraseTombstones(ids) {
-  const idSet = new Set(ids.map(String));
+  const idSet = new Set(ids.map(String).filter(Boolean));
   const tombs = ensureArray(await sqliteStore.get('deletion_records'))
     .filter(r => !idSet.has(String(r.id)) && !idSet.has(String(r.recordId)));
   await sqliteStore.set('deletion_records', tombs);
+  const erased = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
+  idSet.forEach(i => erased.add(i));
+  await sqliteStore.set('erased_deletion_ids', Array.from(erased));
+  await flushErasedTombstones();
 }
+
+// Push pending erasures to Firestore. Safe to call any time (offline / signed out = no-op, retried on
+// the next sync because the ids stay in `erased_deletion_ids`).
+export async function flushErasedTombstones() {
+  try {
+    const pending = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String);
+    if (!pending.length) return;
+    if (!firebaseDB || !currentUser) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    if (typeof window !== 'undefined' && window._firestoreNetworkDisabled) return;
+    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const done = new Set();
+    for (let i = 0; i < pending.length; i += 400) {
+      const chunk = pending.slice(i, i + 400);
+      try {
+        const batch = firebaseDB.batch();
+        chunk.forEach(id => batch.delete(userRef.collection('deletions').doc(id)));
+        await batch.commit();
+        chunk.forEach(id => done.add(id));
+      } catch (e) { console.warn('[RecycleBin] cloud erase failed, will retry on next sync', e && e.message); }
+    }
+    if (done.size) {
+      const left = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String).filter(id => !done.has(id));
+      await sqliteStore.set('erased_deletion_ids', left);
+    }
+  } catch (e) { console.warn('[RecycleBin] flushErasedTombstones failed', e && e.message); }
+}
+if (typeof window !== 'undefined') window.flushErasedTombstones = flushErasedTombstones;
 
 export async function deleteForever(deletedId) {
   if (!deletedId) return;
@@ -308,7 +342,7 @@ export async function deleteForever(deletedId) {
   );
   if (!ok) return;
   await _dropProdPhotos(members);
-  await _eraseTombstones(members.map(_tombId));
+  await _eraseTombstones(members.map(_tombId).concat(members.map(t => String(t.id || ''))));
   showToast(members.length > 1 ? `${members.length} records erased permanently` : 'Record erased permanently', 'success');
   await renderRecycleBin(document.getElementById('recycleBinFilter')?.value || 'all');
 }
@@ -322,6 +356,7 @@ export async function emptyRecycleBin() {
   );
   if (!ok) return;
   await _dropProdPhotos(tombs);
+  await _eraseTombstones(tombs.map(_tombId).concat(tombs.map(t => String(t.id || ''))));
   await sqliteStore.set('deletion_records', []);
   showToast('Recycle bin emptied', 'success');
   await renderRecycleBin('all');

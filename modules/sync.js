@@ -2002,9 +2002,12 @@ export async function subscribeToRealtime() {
         let deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
         const deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
         const deletedSet = new Set(deletedArr);
+        const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
         for (const change of changes) {
           try {
             const docData = { id: change.doc.id, ...change.doc.data() };
+            if ((change.type === 'added' || change.type === 'modified') &&
+                (_erasedIds.has(String(change.doc.id)) || _erasedIds.has(String(docData.recordId || '')))) continue;
             if (change.type === 'added' || change.type === 'modified') {
               if (docData.recordId || docData.id) {
                 const _rid = docData.recordId || docData.id;
@@ -2820,12 +2823,14 @@ async function _applyFormulaStoreFromCloud(cloud) {
 export async function _mergeAndPersist(cloudData) {
 
   try {
+    if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
+    const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
     const deletionsSnap = await firebaseDB
       .collection('users').doc(currentUser.uid)
       .collection('deletions').get();
     const threeMonthsAgo = Date.now() - APP_CONFIG.TOMBSTONE_EXPIRY_MS;
     const cloudDels = deletionsSnap.docs
-      .filter(d => d.id !== '_placeholder_' && !d.data()._placeholder)
+      .filter(d => d.id !== '_placeholder_' && !d.data()._placeholder && !_erasedIds.has(String(d.id)))
       .map(d => {
         const data = d.data();
         return {
