@@ -1,4 +1,5 @@
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename } from './link-guards.js';
+import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -954,7 +955,7 @@ transactions = repSales.filter(s => s.customerName === name && s.salesRep === cu
 const _repDelta = (t) => debtDelta(t, t.totalValue);
 const _runBal = new Map();
 let _runTotal = 0;
-const _ascTx = transactions.map((t, i) => ({ t, i })).sort((a, b) => ((a.t.timestamp || 0) - (b.t.timestamp || 0)) || (a.i - b.i));
+const _ascTx = transactions.map((t, i) => ({ t, i })).sort((a, b) => txChronoCompare(a.t, b.t) || (a.i - b.i));
 for (const { t } of _ascTx) {
 _runTotal = round2(_runTotal + _repDelta(t));
 _runBal.set(t, _runTotal);
@@ -964,8 +965,9 @@ const range = rangeSelect ? rangeSelect.value : 'all';
 if (range !== 'all') {
 const today = new Date(); today.setHours(0,0,0,0);
 transactions = transactions.filter(t => {
-if (!t.date) return false;
-const d = new Date(t.date);
+const _txEff = txEffectiveDate(t);
+if (!_txEff) return false;
+const d = new Date(_txEff + 'T00:00:00');
 if (range === 'today') return d >= today;
 if (range === 'week') { const w = new Date(today); w.setDate(w.getDate() - 7); return d >= w; }
 if (range === 'month') { const m = new Date(today); m.setMonth(m.getMonth() - 1); return d >= m; }
@@ -999,7 +1001,7 @@ ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` 
 let currentDebt = _runTotal;
 currentDebt = Math.max(0, currentDebt);
 const _repMCS = document.getElementById('repManageCustomerStats'); if (_repMCS) _repMCS.innerText = `Current Debt: ${await formatCurrency(currentDebt)}`;
-transactions.sort((a, b) => b.timestamp - a.timestamp);
+transactions.sort((a, b) => txChronoCompare(b, a));
 if (transactions.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), {className:'u-empty-state-sm',textContent:'No history found'}));
 return;
@@ -1052,7 +1054,7 @@ if (isPartialPayment || isCollection) {
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}${_mergedBadgeHtml(t, {inline:true})}</div>
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
     <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}</div>
   </div>
@@ -1065,7 +1067,7 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">
-      ${formatDisplayDateTime(t.date, t.time || null)}
+      ${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
     </div>
     <div style="font-size:0.75rem;color:var(--warning);">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
@@ -1082,7 +1084,7 @@ const _repDisplayUnitPrice = lockedUnitPrice(t) > 0
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}${_mergedBadgeHtml(t, {inline:true})}</div>
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
     <div style="font-size:0.75rem;color:var(--text-muted);">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_repDisplayUnitPrice)} = ${await formatCurrency(t.totalValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)}</div>` : ''}
   </div>
