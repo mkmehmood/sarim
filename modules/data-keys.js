@@ -19,7 +19,7 @@ export const RECORD_STORES = Object.freeze([
   { sqlite: 'payment_entities',            collection: 'entities',           backup: 'paymentEntities',          aliases: ['payment_entities'] },
   { sqlite: 'factory_inventory_data',      collection: 'inventory',          backup: 'factoryInventoryData',     aliases: ['factory_inventory_data'] },
   { sqlite: 'factory_production_history',  collection: 'factory_history',    backup: 'factoryProductionHistory', aliases: ['factory_production_history'] },
-  { sqlite: 'expenses',                    collection: 'expenses',           backup: 'expenses',                 aliases: ['expenseRecords'] },
+  { sqlite: 'expenses',                    collection: 'expenses',           backup: 'expenses',                 aliases: ['expenseRecords', 'expense_records'] },
   { sqlite: 'stock_returns',               collection: 'returns',            backup: 'stockReturns',             aliases: ['stock_returns'] },
 ]);
 
@@ -74,6 +74,8 @@ export function normaliseBackupFields(data) {
   if (data.mfg_pro_pkr && !data.mfg)     data.mfg           = data.mfg_pro_pkr;
   if (data.sales && !data.noman_history) data.noman_history = data.sales;
   if (data.noman_history && !data.sales) data.sales         = data.noman_history;
+  if (data.app_stores && !data.appStores) data.appStores    = data.app_stores;
+  if (data.appStores && !data.app_stores) data.app_stores   = data.appStores;
 
   for (const s of [...RECORD_STORES, ...AUX_STATE]) {
     if (data[s.backup] !== undefined && data[s.backup] !== null) continue;

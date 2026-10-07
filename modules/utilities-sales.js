@@ -4426,7 +4426,7 @@ try {
     if (Array.isArray(_restoreStores) && _restoreStores.length > 0) {
       currentBatch.set(
         userRef.collection('appStores').doc('stores'),
-        sanitizeForFirestore({ stores: _restoreStores }),
+        sanitizeForFirestore({ stores: _restoreStores, stores_timestamp: settingsTimestamp }),
         { merge: true }
       );
       operationCount++;

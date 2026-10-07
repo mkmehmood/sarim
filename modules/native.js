@@ -274,8 +274,19 @@ function installGeolocationBridge() {
 
 async function requestStartupPermissions() {
   try {
-    if (localStorage.getItem('perm_asked_v2') === '1') return;
-    localStorage.setItem('perm_asked_v2', '1');
+    let asked = false;
+    if (typeof window !== 'undefined' && window.sqliteStore && typeof window.sqliteStore.get === 'function') {
+      const val = await window.sqliteStore.get('perm_asked_v2').catch(() => null);
+      asked = val === '1' || val === 1;
+    }
+    if (!asked) {
+      asked = localStorage.getItem('perm_asked_v2') === '1';
+    }
+    if (asked) return;
+    if (typeof window !== 'undefined' && window.sqliteStore && typeof window.sqliteStore.set === 'function') {
+      await window.sqliteStore.set('perm_asked_v2', '1').catch(() => {});
+    }
+    try { localStorage.setItem('perm_asked_v2', '1'); } catch (_) {}
   } catch (_) {}
   const { Camera } = P();
   try { if (Camera) await Camera.requestPermissions({ permissions: ['camera'] }); } catch (_) {}

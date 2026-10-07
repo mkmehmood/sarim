@@ -58,13 +58,85 @@ function _renderPicker() {
   const dot = document.getElementById('prod-photo-dot');
   const btn = document.getElementById('prod-photo-btn');
   const clr = document.getElementById('prod-photo-clear');
+  const sec = document.getElementById('prod-photo-preview-section');
+  const grid = document.getElementById('prod-photo-thumbs-grid');
+  const countEl = document.getElementById('prod-photo-count');
   const n = _picker.length;
-  if (dot) { dot.style.display = n ? '' : 'none'; dot.textContent = n > 1 ? String(n) : ''; dot.classList.toggle('pp-dot-count', n > 1); }
+
+  if (dot) {
+    dot.style.display = n ? '' : 'none';
+    dot.textContent = n > 1 ? String(n) : '';
+    dot.classList.toggle('pp-dot-count', n > 1);
+  }
   if (btn) {
     btn.style.borderColor = n ? 'var(--accent)' : 'var(--glass-border)';
     btn.title = n ? `${n} photo${n === 1 ? '' : 's'} attached — tap to add another` : 'Attach photo';
   }
   if (clr) clr.style.display = n ? '' : 'none';
+
+  if (sec) sec.style.display = n ? 'block' : 'none';
+  if (countEl) countEl.textContent = String(n);
+
+  if (grid) {
+    grid.innerHTML = '';
+    _picker.forEach((p, idx) => {
+      const card = document.createElement('div');
+      card.className = 'pp-thumb-card';
+
+      const img = document.createElement('img');
+      img.src = p.dataUrl;
+      img.alt = `Photo ${idx + 1}`;
+      img.className = 'pp-thumb-img';
+      img.title = 'Click to view enlarged';
+      img.addEventListener('click', () => {
+        if (typeof window.openPhotoLightbox === 'function') window.openPhotoLightbox(p.dataUrl);
+      });
+      card.appendChild(img);
+
+      const num = document.createElement('span');
+      num.className = 'pp-thumb-num';
+      num.textContent = `#${idx + 1}`;
+      card.appendChild(num);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'pp-thumb-del';
+      del.title = 'Remove this photo';
+      del.setAttribute('aria-label', `Remove photo ${idx + 1}`);
+      del.innerHTML = '&times;';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeProdPhoto(idx);
+      });
+      card.appendChild(del);
+
+      grid.appendChild(card);
+    });
+
+    if (n < MAX_PHOTOS) {
+      const addCard = document.createElement('button');
+      addCard.type = 'button';
+      addCard.className = 'pp-thumb-add-card';
+      addCard.title = 'Add another photo';
+      addCard.setAttribute('aria-label', 'Add another photo');
+      addCard.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add</span>
+      `;
+      addCard.addEventListener('click', () => openProdPhotoCapture());
+      grid.appendChild(addCard);
+    }
+  }
+}
+
+export function openProdPhotoPreview(index) {
+  const item = _picker[index];
+  if (item && item.dataUrl && typeof window.openPhotoLightbox === 'function') {
+    window.openPhotoLightbox(item.dataUrl);
+  }
 }
 
 export function clearProdPhotos() {
@@ -165,7 +237,8 @@ export function prodPhotoStripHtml(item) {
   const id = String(item.id).replace(/[^a-z0-9_-]/gi, '');
   const thumbs = keys.map(k => `<img class="pp-strip-img" data-photo-key="${esc(k)}" alt="Product photo" onclick="openProdPhoto('${esc(k)}')">`).join('');
   const checked = _selected.has(item.id);
-  return `<div class="pp-actions"><button type="button" class="pp-badge" title="View photos" onclick="toggleProdPhotoPanel(this,'${id}'${keys.length === 1 ? `,'${esc(keys[0])}'` : ''})">${VIEW_SVG}Photo${keys.length > 1 ? ' \u00d7' + keys.length : ''}</button><button type="button" class="pp-box${checked ? ' on' : ''}" data-pp-box="${esc(item.id)}" aria-pressed="${checked ? 'true' : 'false'}" title="Tap to mark \u2022 hold 3 seconds to share" aria-label="Mark or share">${BOX_SVG}</button></div><div class="pp-strip" id="pp-panel-${id}" style="display:none;">${thumbs}</div>`;
+  const waIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:middle;margin-right:2px;"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>';
+  return `<div class="pp-actions"><button type="button" class="pp-badge" title="View photos" onclick="toggleProdPhotoPanel(this,'${id}'${keys.length === 1 ? `,'${esc(keys[0])}'` : ''})">${VIEW_SVG}Photo${keys.length > 1 ? ' \u00d7' + keys.length : ''}</button><div style="display:flex;align-items:center;gap:6px;"><button type="button" class="pp-share-quick-btn" title="Share photos on WhatsApp" onclick="shareProdPhotos(['${esc(item.id)}'])">${waIcon}Share</button><button type="button" class="pp-box${checked ? ' on' : ''}" data-pp-box="${esc(item.id)}" aria-pressed="${checked ? 'true' : 'false'}" title="Tap to select for multi-share" aria-label="Mark or share">${BOX_SVG}</button></div></div><div class="pp-strip" id="pp-panel-${id}" style="display:none;">${thumbs}</div>`;
 }
 
 export async function hydrateProdPhotoThumbs(root = document) {

@@ -68,7 +68,7 @@ try {
     salesCustomersSnap, transactionsSnap, entitiesSnap, inventorySnap,
     factoryHistorySnap, returnsSnap, expensesSnap, deletionsSnap, personPhotosSnap,
     settingsDoc, factorySettingsDoc, expenseCategoriesDoc, teamDoc,
-    deviceDoc, accountInfoDoc, yearCloseSignalDoc
+    deviceDoc, accountInfoDoc, yearCloseSignalDoc, appStoresDoc
   ] = await Promise.all([
     userRef.collection('production').get(),
     userRef.collection('sales').get(),
@@ -91,6 +91,7 @@ try {
     userRef.collection('devices').doc(deviceId).get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('account').doc('info').get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('settings').doc('yearCloseSignal').get().catch(() => ({ exists: false, data: () => null })),
+    userRef.collection('appStores').doc('stores').get().catch(() => ({ exists: false, data: () => null })),
   ]);
 
   const stats      = await DeltaSync.getSyncStats();
@@ -104,7 +105,7 @@ try {
   const sqliteCounts = {};
   const sqliteKeys = ['mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
     'sales_customers','payment_transactions','payment_entities','factory_inventory_data',
-    'factory_production_history','stock_returns','expenses','deletion_records','person_photos'];
+    'factory_production_history','stock_returns','expenses','deletion_records','person_photos','app_stores'];
   await Promise.all(sqliteKeys.map(async k => {
     const arr = await sqliteStore.get(k, []);
     sqliteCounts[k] = Array.isArray(arr) ? arr.length : (arr && typeof arr === 'object' ? Object.keys(arr).length : 0);
@@ -150,6 +151,10 @@ try {
       sqlite:[['expense_categories','categories']],
       fsFields:['categories','categories_timestamp'],
       listener:'_handleExpenseCategoriesSnapshot' },
+    { path:'appStores/stores',                 doc:appStoresDoc,         desc:'Store catalog, formulas & per-store sale prices',
+      sqlite:[['app_stores','stores'],['app_stores_timestamp','stores_timestamp']],
+      fsFields:['stores','stores_timestamp'],
+      listener:'_handleAppStoresSnapshot' },
     { path:`devices/${deviceId}`,          doc:deviceDoc,            desc:'This device: mode, fingerprint, heartbeat, remote commands',
       sqlite:[['appMode','currentMode'],['appMode_timestamp','appMode_timestamp'],['device_id','deviceId']],
       fsFields:['currentMode','appMode_timestamp','assignedRep','assignedManager','remoteAppliedMode','lastSeen','online','fingerprint'],

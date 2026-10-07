@@ -10,6 +10,8 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png',
   '.wasm': 'application/wasm', '.webp': 'image/webp', '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf',
+  '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json',
 };
 
 createServer(async (req, res) => {

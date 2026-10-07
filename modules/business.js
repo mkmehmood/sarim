@@ -311,6 +311,12 @@ try {
     const parsed = JSON.parse(persistentLogin);
     if (parsed && parsed.uid) return true;
   }
+  if (typeof sqliteStore !== 'undefined' && sqliteStore && typeof sqliteStore.get === 'function') {
+    const sqlActive = await sqliteStore.get('session_active').catch(() => null);
+    if (sqlActive === 1 || sqlActive === '1') return true;
+    const sqlLogin = await sqliteStore.get('persistent_login').catch(() => null);
+    if (sqlLogin && sqlLogin.uid) return true;
+  }
 } catch(e) {}
 return false;
 } catch(e) {
@@ -356,9 +362,11 @@ export const SQLiteCrypto = (() => {
       await _OPFSStore.write(_SESSION_FILE, _SESSION_LS, all);
       if (id === 'active') {
         try { localStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
+        try { if (sqliteStore && sqliteStore.set) sqliteStore.set('session_active', 1).catch(() => {}); } catch(_) {}
       }
       if (id === 'login') {
         try { localStorage.setItem('persistentLogin', JSON.stringify(value)); } catch(e) {}
+        try { if (sqliteStore && sqliteStore.set) sqliteStore.set('persistent_login', value).catch(() => {}); } catch(_) {}
       }
     } catch (e) {}
   }
@@ -366,7 +374,12 @@ export const SQLiteCrypto = (() => {
   async function _sqliteSessionGet(id) {
     try {
       const all = await _OPFSStore.read(_SESSION_FILE, _SESSION_LS) || {};
-      return all[id] || null;
+      if (all && all[id] !== undefined) return all[id];
+      if (sqliteStore && sqliteStore.get) {
+        if (id === 'active') return await sqliteStore.get('session_active').catch(() => null);
+        if (id === 'login') return await sqliteStore.get('persistent_login').catch(() => null);
+      }
+      return null;
     } catch (e) { return null; }
   }
 
@@ -375,6 +388,10 @@ export const SQLiteCrypto = (() => {
       const all = await _OPFSStore.read(_SESSION_FILE, _SESSION_LS) || {};
       delete all[id];
       await _OPFSStore.write(_SESSION_FILE, _SESSION_LS, all);
+      if (sqliteStore && sqliteStore.set) {
+        if (id === 'active') sqliteStore.set('session_active', null).catch(() => {});
+        if (id === 'login') sqliteStore.set('persistent_login', null).catch(() => {});
+      }
     } catch(e) {}
   }
 
@@ -701,6 +718,8 @@ export const sqliteStore = (() => {
     'repProfile', 'repProfile_timestamp',
     'assignedManager', 'assignedUserTabs',
     'bio_enabled', 'bio_cred_id',
+    'perm_asked_v2', 'persistent_login', 'session_active',
+    'splashQuotePool', 'splashQuoteSeen',
   ]);
 
   const _PLAINTEXT_KEYS = new Set([
@@ -711,6 +730,8 @@ export const sqliteStore = (() => {
     'last_synced', 'firestore_initialized', 'firestore_init_timestamp',
     'ui_state', 'firestore_stats', 'session_start',
     'bio_enabled', 'bio_cred_id',
+    'perm_asked_v2', 'persistent_login', 'session_active',
+    'splashQuotePool', 'splashQuoteSeen',
   ]);
 
   const _IDB_KEY_TO_COLLECTION = {
@@ -737,7 +758,8 @@ export const sqliteStore = (() => {
     'expense_categories', 'sales_reps_list', 'user_roles_list',
     'offline_operation_queue', 'offline_dead_letter_queue',
     'ui_state', 'app_theme', 'firestore_stats', 'session_start',
-    'app_stores',
+    'app_stores', 'perm_asked_v2', 'persistent_login', 'session_active',
+    'splashQuotePool', 'splashQuoteSeen',
   ]);
 
   function _rowType(key) {
@@ -792,10 +814,11 @@ export const sqliteStore = (() => {
     if (_hasOPFS) {
       sources.push({ name: 'OPFS primary', load: () => _opfsRead(SQLITE_DB_NAME) });
       sources.push({ name: 'OPFS backup',  load: () => _opfsRead(SQLITE_DB_NAME + '.bak') });
-    } else {
-      sources.push({ name: 'localStorage primary', load: async () => _lsBlobRead(_LS_BLOB_KEY)     });
-      sources.push({ name: 'localStorage backup',  load: async () => _lsBlobRead(_LS_BLOB_KEY_BAK) });
     }
+    sources.push({ name: 'IndexedDB primary', load: () => _idbRead('primary') });
+    sources.push({ name: 'IndexedDB backup',  load: () => _idbRead('backup') });
+    sources.push({ name: 'localStorage primary', load: async () => _lsBlobRead(_LS_BLOB_KEY)     });
+    sources.push({ name: 'localStorage backup',  load: async () => _lsBlobRead(_LS_BLOB_KEY_BAK) });
     for (const src of sources) {
       try {
         const bytes = await src.load();
@@ -856,6 +879,46 @@ export const sqliteStore = (() => {
 
   async function _opfsShadowWrite(data) {
     await _opfsWrite(SQLITE_DB_NAME, data);
+  }
+
+  function _openIDB() {
+    return new Promise((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') return reject(new Error('IndexedDB unavailable'));
+      const req = indexedDB.open('gznd_sqlite_store', 1);
+      req.onupgradeneeded = () => {
+        try { req.result.createObjectStore('blobs'); } catch (_) {}
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function _idbWrite(key, data) {
+    try {
+      const db = await _openIDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('blobs', 'readwrite');
+        tx.objectStore('blobs').put(data, key);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      });
+    } catch (e) {
+      console.warn('[SQLite] IndexedDB write failed:', _safeErr(e));
+    }
+  }
+
+  async function _idbRead(key) {
+    try {
+      const db = await _openIDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction('blobs', 'readonly');
+        const req = tx.objectStore('blobs').get(key);
+        req.onsuccess = () => { db.close(); resolve(req.result || null); };
+        req.onerror = () => { db.close(); resolve(null); };
+      });
+    } catch {
+      return null;
+    }
   }
 
   const _LS_BLOB_KEY     = '_gznd_sqlite_db';
@@ -963,7 +1026,14 @@ export const sqliteStore = (() => {
           .then(() => { if (shouldWriteBackup) _lastBackupWriteAt = now; })
           .catch(e => console.warn('[SQLite] OPFS write failed:', _safeErr(e)))
       );
-    } else {
+    }
+    writes.push(
+      _idbWrite('primary', data)
+        .then(() => shouldWriteBackup ? _idbWrite('backup', data) : null)
+        .then(() => { if (shouldWriteBackup) _lastBackupWriteAt = now; })
+        .catch(e => console.warn('[SQLite] IndexedDB write failed:', _safeErr(e)))
+    );
+    if (!_hasOPFS && data.byteLength <= _LS_SAFE_RAW_BYTES) {
       writes.push(
         _lsBlobWrite(_LS_BLOB_KEY, data)
           .then(() => shouldWriteBackup ? _lsBlobWrite(_LS_BLOB_KEY_BAK, data) : null)
@@ -1008,10 +1078,11 @@ export const sqliteStore = (() => {
     if (_hasOPFS) {
       sources.push({ name: 'OPFS primary', load: () => _opfsRead(SQLITE_DB_NAME) });
       sources.push({ name: 'OPFS backup',  load: () => _opfsRead(SQLITE_DB_NAME + '.bak') });
-    } else {
-      sources.push({ name: 'localStorage primary', load: async () => _lsBlobRead(_LS_BLOB_KEY)     });
-      sources.push({ name: 'localStorage backup',  load: async () => _lsBlobRead(_LS_BLOB_KEY_BAK) });
     }
+    sources.push({ name: 'IndexedDB primary', load: () => _idbRead('primary') });
+    sources.push({ name: 'IndexedDB backup',  load: () => _idbRead('backup') });
+    sources.push({ name: 'localStorage primary', load: async () => _lsBlobRead(_LS_BLOB_KEY)     });
+    sources.push({ name: 'localStorage backup',  load: async () => _lsBlobRead(_LS_BLOB_KEY_BAK) });
     for (const src of sources) {
       try {
         const bytes = await src.load();

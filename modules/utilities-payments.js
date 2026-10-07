@@ -5125,6 +5125,7 @@ factory_production_history: data.factoryProductionHistory || data.factory_produc
 payment_entities: data.paymentEntities || data.payment_entities || [],
 payment_transactions: data.paymentTransactions || data.payment_transactions || [],
 stock_returns: data.stockReturns || data.stock_returns || [],
+expenses: data.expenses || data.expenseRecords || data.expense_records || [],
 factory_default_formulas: data.factoryDefaultFormulas || data.factory_default_formulas || { standard: [], asaan: [] },
 factory_additional_costs: data.factoryAdditionalCosts || data.factory_additional_costs || { standard: 0, asaan: 0 },
 factory_cost_adjustment_factor: data.factoryCostAdjustmentFactor || data.factory_cost_adjustment_factor || { standard: 1, asaan: 1 },
@@ -5158,6 +5159,7 @@ normalized.factory_production_history = filterAlive(normalized.factory_productio
 normalized.payment_entities = filterAlive(normalized.payment_entities);
 normalized.payment_transactions = filterAlive(normalized.payment_transactions);
 normalized.stock_returns = filterAlive(normalized.stock_returns);
+normalized.expenses = filterAlive(normalized.expenses);
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const buildDeltaQuery = async (collection, collectionName) => {
 const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(collectionName);
@@ -5287,11 +5289,14 @@ mfg_pro_pkr: mergeArrays(cloudData.mfg_pro_pkr, normalized.mfg_pro_pkr),
 noman_history: mergeArrays(cloudData.noman_history, normalized.noman_history),
 customer_sales: mergeArrays(cloudData.customer_sales, normalized.customer_sales),
 rep_sales: mergeArrays(cloudData.rep_sales, normalized.rep_sales),
+rep_customers: mergeArrays(cloudData.rep_customers, normalized.rep_customers),
+sales_customers: mergeArrays(cloudData.sales_customers, normalized.sales_customers),
 factory_inventory_data: mergeArrays(cloudData.factory_inventory_data, normalized.factory_inventory_data),
 factory_production_history: mergeArrays(cloudData.factory_production_history, normalized.factory_production_history),
 payment_entities: mergeArrays(cloudData.payment_entities, normalized.payment_entities),
 payment_transactions: mergeArrays(cloudData.payment_transactions, normalized.payment_transactions),
 stock_returns: mergeArrays(cloudData.stock_returns, normalized.stock_returns),
+expenses: mergeArrays(cloudData.expenses, normalized.expenses),
 factory_default_formulas: (() => {
 const cloudFormulas = cloudData.factory_default_formulas;
 const fileFormulas = normalized.factory_default_formulas;
@@ -5379,12 +5384,15 @@ const collections = {
 'production': merged.mfg_pro_pkr,
 'sales': (merged.customer_sales || []),
 'rep_sales': merged.rep_sales,
+'rep_customers': merged.rep_customers,
+'sales_customers': merged.sales_customers,
 'calculator_history': merged.noman_history,
 'inventory': merged.factory_inventory_data,
 'factory_history': merged.factory_production_history,
 'entities': merged.payment_entities,
 'transactions': merged.payment_transactions,
-'returns': merged.stock_returns
+'returns': merged.stock_returns,
+'expenses': merged.expenses
 };
 for (const [collectionName, dataArray] of Object.entries(collections)) {
 if (Array.isArray(dataArray)) {
@@ -5467,14 +5475,37 @@ for (let _bi = 0; _bi < batches.length; _bi++) {
 	}
 	await new Promise(r => setTimeout(r, 0));
 }
+try {
+  await sqliteStore.setBatch([
+    ['mfg_pro_pkr',                merged.mfg_pro_pkr],
+    ['noman_history',              merged.noman_history],
+    ['customer_sales',             merged.customer_sales],
+    ['rep_sales',                  merged.rep_sales],
+    ['rep_customers',              merged.rep_customers],
+    ['sales_customers',            merged.sales_customers],
+    ['factory_inventory_data',     merged.factory_inventory_data],
+    ['factory_production_history', merged.factory_production_history],
+    ['stock_returns',              merged.stock_returns],
+    ['payment_transactions',       merged.payment_transactions],
+    ['payment_entities',           merged.payment_entities],
+    ['expenses',                   merged.expenses],
+  ]);
+  if (Array.isArray(merged.app_stores) && merged.app_stores.length > 0) {
+    await sqliteStore.set('app_stores', merged.app_stores);
+    await sqliteStore.set('app_stores_timestamp', Date.now());
+  }
+} catch(_localWbErr) { console.warn('[uploadOldDataToCloud] Local SQLite write-back error:', _safeErr(_localWbErr)); }
 const counts = {
 production: normalized.mfg_pro_pkr.length,
 sales: normalized.noman_history.length,
 customerSales: normalized.customer_sales.length,
 repSales: normalized.rep_sales.length,
+repCustomers: normalized.rep_customers.length,
+salesCustomers: normalized.sales_customers.length,
 factory: normalized.factory_inventory_data.length + normalized.factory_production_history.length,
 payments: normalized.payment_entities.length + normalized.payment_transactions.length,
-returns: normalized.stock_returns.length
+returns: normalized.stock_returns.length,
+expenses: normalized.expenses.length
 };
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
 showToast('Upload Complete! ' + total + ' records merged to cloud.', 'success');
