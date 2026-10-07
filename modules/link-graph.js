@@ -327,3 +327,86 @@ export function getUnitsShortIssue(label, requested, available) {
   }
   return null;
 }
+
+// ---- supplier payables (Factory raw materials <-> Payment tab) ---------------------------------------------
+// A linked material owes its supplier the amount that was INVOICED (the IN payable transaction), not its
+// current stock value: batches use stock up, which lowers totalValue, but the debt does not shrink.
+const _txMatIds = (t) => {
+  const ids = new Set();
+  if (t && t.materialId) ids.add(String(t.materialId));
+  if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
+  return ids;
+};
+const _stockValueFallback = (m) => _r2(m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : _n(m.quantity) * _n(m.cost)) || 0);
+
+export function findPayableInTxs(txs, materialId, supplierId) {
+  return (Array.isArray(txs) ? txs : []).filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'IN' &&
+    (supplierId == null || String(t.entityId) === String(supplierId)) && _txMatIds(t).has(String(materialId)));
+}
+
+// inTxs: payable IN transactions of the material's supplier (already excluding any being deleted).
+export function materialOriginalPayable(material, inTxs) {
+  const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);
+  if (direct.length) return _r2(direct.reduce((s, t) => s + _n(t.amount), 0));
+  return _stockValueFallback(material || {});
+}
+
+// Pay oldest materials first. Mutates the materials; originalOf(m) gives each one's invoiced amount.
+export function allocatePayments(mats, payments, originalOf) {
+  mats.forEach(m => { m.totalPayable = originalOf(m); m.paymentStatus = 'pending'; delete m.paidDate; });
+  payments.forEach(pay => {
+    let remaining = parseFloat(pay.amount) || 0;
+    for (const m of mats) {
+      if (remaining <= 0) break;
+      if (m.totalPayable <= 0) continue;
+      if (remaining >= m.totalPayable) {
+        remaining -= m.totalPayable;
+        m.totalPayable = 0;
+        m.paymentStatus = 'paid';
+        m.paidDate = pay.date;
+      } else {
+        m.totalPayable = parseFloat((m.totalPayable - remaining).toFixed(2));
+        remaining = 0;
+      }
+    }
+  });
+  return mats;
+}
+
+// Editing a linked material's stock value by `delta` moves the invoiced amount by the same delta.
+export function planPayableAdjustment(currentInvoiced, delta) {
+  const next = Math.max(0, _r2(_n(currentInvoiced) + _n(delta)));
+  return { next, change: _r2(next - _n(currentInvoiced)) };
+}
+
+// ---- which formula will a store actually use? (pure; callers pass freshly-read data) -------------------------
+const _SLOTS = ['standard', 'asaan'];
+const _SLOT_LABEL = { standard: 'Standard', asaan: 'Asaan' };
+export function resolveSelectedFormula(data, storeKey) {
+  const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
+  const slots = data.slots || {};
+  const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === storeKey);
+  const type = _SLOTS.includes(storeKey) ? storeKey : ((st && st.formulaType) || (storeKey === 'STORE_C' ? 'asaan' : 'standard'));
+  const formulaId = (st && st.formulaId) || slots[type] || null;
+  const f = formulaId ? list.find(x => String(x.id) === String(formulaId)) : null;
+  const inv = (Array.isArray(data.inventory) ? data.inventory : []).filter(i => i && !i.deletedAt);
+  const resolve = (i) => {
+    let live = inv.find(x => String(x.id) === String(i.id));
+    if (!live && i.name) live = inv.find(x => x.name && x.name.trim().toLowerCase() === String(i.name).trim().toLowerCase());
+    const liveCost = live ? Number(live.cost) : NaN;
+    return {
+      id: i.id,
+      name: (live && live.name) || i.name || 'Material',
+      quantity: _n(i.quantity),
+      cost: Number.isFinite(liveCost) && liveCost > 0 ? liveCost : _n(i.cost),
+      missing: !live,
+      stock: live ? _n(live.quantity) : 0,
+    };
+  };
+  if (f) {
+    return { source: 'store', type, formulaId: f.id, name: f.name || _SLOT_LABEL[type], additionalCost: _n(f.additionalCost), ingredients: (Array.isArray(f.ingredients) ? f.ingredients : []).map(resolve) };
+  }
+  const feed = data.feed || {};
+  const costs = data.costs || {};
+  return { source: 'feed', type, formulaId: null, name: _SLOT_LABEL[type] || 'Formula', additionalCost: _n(costs[type] != null ? costs[type] : costs[storeKey]), ingredients: (Array.isArray(feed[type] || feed[storeKey]) ? (feed[type] || feed[storeKey]) : []).map(resolve) };
+}

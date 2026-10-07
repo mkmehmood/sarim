@@ -1,13 +1,13 @@
 import { findCalcLinkForReturn } from './link-guards.js';
-import { findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
-import { OfflineQueue, _refreshSupplierLinkViews, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
+import { OfflineQueue, _refreshSupplierLinkViews, _recomputeSupplierPayables, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
 import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, deleteStockTransfer, getAppStores, getStoreFormulaType, getStoreLabel, refreshFactoryTab, refreshUI, updateAllTabsWithFactoryCosts, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { getFormulaSlotLabels } from './formula-store.js';
+import { getFormulaSlotLabels, getSelectedFormula } from './formula-store.js';
 
 export let editingFactoryInventoryId;
 window.editingFactoryInventoryId = editingFactoryInventoryId;
@@ -300,11 +300,13 @@ const costPerKg = conversionFactor > 0 ? cost / conversionFactor : cost;
 const totalValue = qty * cost;
 let materialId;
 let _supplierUnchanged = false;
+let _oldStockValue = 0;
 if (editingFactoryInventoryId) {
 materialId = editingFactoryInventoryId;
 const idx = factoryInventoryData.findIndex(i => i.id === editingFactoryInventoryId);
 if (idx !== -1) {
 const existingMaterial = factoryInventoryData[idx];
+_oldStockValue = Number(existingMaterial.totalValue) || 0;
 const oldSupplierId = existingMaterial.supplierId;
 const supplierInput = document.getElementById('factoryExistingSupplier');
 const newSupplierId = (supplierInput && supplierInput.getAttribute('data-supplier-id')) || '';
@@ -351,6 +353,27 @@ if (newSupplier && newSupplier.id) await linkMaterialToSupplier(materialId, newS
 }
 const savedMaterial = factoryInventoryData.find(m => m.id === materialId);
 await unifiedSave('factory_inventory_data', factoryInventoryData, savedMaterial);
+if (editingFactoryInventoryId && _supplierUnchanged && savedMaterial && savedMaterial.supplierId) {
+const _delta = (Number(savedMaterial.totalValue) || 0) - _oldStockValue;
+if (Math.abs(_delta) > 0.01) {
+const _allTx = ensureArray(await sqliteStore.get('payment_transactions'));
+const _inv = findPayableInTxs(_allTx, savedMaterial.id, savedMaterial.supplierId).filter(t => t.materialId === savedMaterial.id && !(t.materialIds && t.materialIds.length > 1));
+if (_inv.length > 0) {
+const _tx = _inv[_inv.length - 1];
+const _plan = planPayableAdjustment(_tx.amount, _delta);
+if (_plan.change !== 0) {
+const _go = await showGlassConfirm(`You changed the stock value of ${savedMaterial.name} by ${fmtAmt(_delta)}.\n\nWhat you owe ${savedMaterial.supplierName || 'the supplier'} for it is ${fmtAmt(_tx.amount)}. Update it to ${fmtAmt(_plan.next)}?`, { title: 'Update supplier payable?', confirmText: 'Update payable', cancelText: 'Keep as is' });
+if (_go) {
+_tx.amount = _plan.next; _tx.updatedAt = getTimestamp();
+ensureRecordIntegrity(_tx, true);
+await unifiedSave('payment_transactions', _allTx, _tx);
+await _recomputeSupplierPayables([String(savedMaterial.supplierId)], ensureArray(await sqliteStore.get('factory_inventory_data')), _allTx, new Set(), new Set([String(savedMaterial.id)]));
+await _refreshSupplierLinkViews();
+}
+}
+}
+}
+}
 notifyDataChange('inventory');
 emitSyncUpdate({ factory_inventory_data: null});
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
@@ -363,7 +386,7 @@ showToast('Failed to save material. Please try again.', 'error');
 }
 }
 
-export async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false) {
+export async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false, groupId = null) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 if (!material) { showToast('Invalid material data', 'error'); return; }
@@ -378,7 +401,7 @@ const removedTransactions = linkedTransactions.slice();
 let filteredTx = paymentTransactions.slice();
 for (const tx of removedTransactions) {
 filteredTx = filteredTx.filter(t => t.id !== tx.id);
-await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, tx);
+await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, groupId ? stampGroup(tx, groupId) : tx);
 }
 }
 delete material.supplierId;
@@ -552,6 +575,11 @@ return;
 if (material.supplierId && String(material.supplierId) !== String(supplierId)) {
 await unlinkSupplierFromMaterial(material, false, true);
 }
+// Already invoiced by this supplier: a second payable would count the same debt twice.
+if (findPayableInTxs(paymentTransactions, material.id, supplier.id).length > 0) {
+if (!skipSideEffects) showToast(`${esc(material.name)} is already linked to ${esc(supplier.name)}.`, 'info');
+return;
+}
 material.supplierId = supplier.id;
 material.supplierName = supplier.name;
 material.supplierContact = supplier.phone || '';
@@ -657,36 +685,40 @@ const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustm
 return { salePrice: await getSalePriceForStore(store), costPrice: await getCostPriceForStore(store) };
 }
 
+let _cfpToken = 0;
 export async function calculateFactoryProduction() {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const _previewInv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+// Newest call wins: a slower, older render must never overwrite a newer one.
+const token = ++_cfpToken;
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 1;
-const _cfesType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : (currentFactoryEntryStore === 'STORE_C' ? 'asaan' : 'standard');
-const _cfesLabel = esc((await getFormulaSlotLabels())[_cfesType] || 'Selected');
-const settings = factoryDefaultFormulas[_cfesType] || factoryDefaultFormulas[currentFactoryEntryStore];
-const additionalCost = factoryAdditionalCosts[_cfesType] || factoryAdditionalCosts[currentFactoryEntryStore] || 0;
+const sel = await getSelectedFormula(currentFactoryEntryStore);
+const lines = [];
 let baseCost = 0;
-let rawMaterialsUsed = 0;
-let html = `<h4 style="margin:0 0 5px 0;font-size:0.9rem;">${_cfesLabel} Formula (${units} Units)</h4>`;
-if (settings && settings.length > 0) {
-for (const i of settings) {
-const lineTotal = resolveLiveCost(i, _previewInv) * i.quantity * units;
+for (const i of sel.ingredients) {
+const qty = i.quantity * units;
+const lineTotal = i.cost * qty;
 baseCost += lineTotal;
-rawMaterialsUsed += i.quantity * units;
-html += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;"><span>${i.name} (${fmtNum(i.quantity * units)} kg)</span><span>${await formatCurrency(lineTotal)}</span></div>`;
+let note = '';
+if (i.missing) note = ' <span style="color:var(--danger);">(not in inventory)</span>';
+else if (i.stock + 1e-6 < qty) note = ` <span style="color:var(--danger);">(short ${fmtNum(qty - i.stock)} kg)</span>`;
+lines.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;"><span>${esc(i.name)} (${fmtNum(qty)} kg)${note}</span><span>${await formatCurrency(lineTotal)}</span></div>`);
 }
-const totalAdditionalCost = additionalCost * units;
+let html = `<h4 style="margin:0 0 5px 0;font-size:0.9rem;">${esc(sel.name)} Formula (${units} Units)</h4>`;
+if (lines.length > 0) {
+html += lines.join('');
+const totalAdditionalCost = sel.additionalCost * units;
 if (totalAdditionalCost > 0) {
-html += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;color:var(--danger);"><span>Additional Cost (${additionalCost} per unit)</span><span>${await formatCurrency(totalAdditionalCost)}</span></div>`;
+html += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;color:var(--danger);"><span>Additional Cost (${sel.additionalCost} per unit)</span><span>${await formatCurrency(totalAdditionalCost)}</span></div>`;
 baseCost += totalAdditionalCost;
 }
 } else {
 html += `<div class="u-text-muted">No formula set.</div>`;
 }
-document.getElementById('factoryFormulaDisplay').innerHTML = html;
+const totalText = await formatCurrency(baseCost);
+if (token !== _cfpToken) return;
+const _fd = document.getElementById('factoryFormulaDisplay');
+if (_fd) _fd.innerHTML = html;
 const _prodCostEl = document.getElementById('factoryTotalProductionCostDisplay');
-if (_prodCostEl) _prodCostEl.innerText = await formatCurrency(baseCost);
+if (_prodCostEl) _prodCostEl.innerText = totalText;
 }
 
 function _resetFactoryForm() {
@@ -733,7 +765,8 @@ const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
 try {
 const _sfpeType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : (currentFactoryEntryStore === 'STORE_C' ? 'asaan' : 'standard');
-const settings = factoryDefaultFormulas[_sfpeType] || factoryDefaultFormulas[currentFactoryEntryStore];
+const _freshFormula = await getSelectedFormula(currentFactoryEntryStore);
+const settings = _freshFormula.ingredients.filter(i => i.quantity > 0);
 if (!settings || settings.length === 0) {
 showToast('No formula configured for this store. Assign a formula to it in Store Manager first.', 'warning', 5000);
 return;
@@ -764,7 +797,7 @@ inv.updatedAt = getTimestamp();
 _edHistIdx = factoryProductionHistory.findIndex(h => h && h.id === o.id);
 if (_edHistIdx >= 0) factoryProductionHistory.splice(_edHistIdx, 1);
 }
-const additionalCost = factoryAdditionalCosts[_sfpeType] || factoryAdditionalCosts[currentFactoryEntryStore] || 0;
+const additionalCost = _freshFormula.additionalCost;
 let baseCost = 0;
 let rawMat = 0;
 if (settings) {

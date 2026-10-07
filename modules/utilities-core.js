@@ -1,6 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { deletePaymentTxWithLinks } from './link-guards.js';
-import { newGroupId, stampGroup } from './link-graph.js';
+import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-photos.js';
@@ -884,6 +884,7 @@ if (typeof loadSalesData === 'function') setTimeout(() => loadSalesData(currentC
 export async function syncFactoryTab() {
 try {
 if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductionStats();
+if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
 if (typeof updateFactoryUnitsAvailableStats === 'function') updateFactoryUnitsAvailableStats();
 if (typeof updateFactorySummaryCard === 'function') updateFactorySummaryCard();
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
@@ -2105,7 +2106,7 @@ m.paymentStatus = 'pending';
 m.updatedAt = getTimestamp();
 ensureRecordIntegrity(m, true);
 };
-async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
+export async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
 const saved = [];
 for (const sid of supplierIds) {
 const payments = transactions
@@ -2117,27 +2118,9 @@ const skip = skipMaterialIds || new Set();
 const mats = inventory.filter(m => !skip.has(String(m.id)) && (String(m.supplierId) === String(sid) || (!m.supplierId && ids.has(String(m.id)))));
 if (mats.length === 0) continue;
 mats.sort((a, b) => new Date(a.purchaseDate || a.createdAt || 0) - new Date(b.purchaseDate || b.createdAt || 0));
-mats.forEach(m => {
-m.totalPayable = _supplierMatOriginal(m);
-m.paymentStatus = 'pending';
-delete m.paidDate;
-});
-payments.forEach(pay => {
-let remaining = parseFloat(pay.amount) || 0;
-for (const m of mats) {
-if (remaining <= 0) break;
-if (m.totalPayable <= 0) continue;
-if (remaining >= m.totalPayable) {
-remaining -= m.totalPayable;
-m.totalPayable = 0;
-m.paymentStatus = 'paid';
-m.paidDate = pay.date;
-} else {
-m.totalPayable = parseFloat((m.totalPayable - remaining).toFixed(2));
-remaining = 0;
-}
-}
-});
+// What a material owes is what was INVOICED (its IN payable), not its shrinking stock value.
+const invoices = transactions.filter(t => !excludeIds.has(String(t.id)) && String(t.entityId) === String(sid));
+allocatePayments(mats, payments, m => materialOriginalPayable(m, invoices));
 for (const m of mats) {
 m.updatedAt = getTimestamp();
 ensureRecordIntegrity(m, true);

@@ -1690,6 +1690,7 @@ const _diName = _diMat?.name || 'this item';
 const _diQty = (_diMat?.quantity || 0).toFixed(2);
 const _diVal = fmtAmt(_diMat?.totalValue || 0);
 const _diSupplier = _diMat?.supplierName || null;
+const _diPaidTx = _diMat?.supplierId ? paymentTransactions.filter(t => t && t.isPayable === true && t.type === 'OUT' && (String(t.materialId) === String(editingFactoryInventoryId) || (Array.isArray(t.materialIds) && t.materialIds.map(String).includes(String(editingFactoryInventoryId))))) : [];
 const _diLinkedTx = _diMat?.supplierId ? paymentTransactions.filter(t => String(t.materialId) === String(editingFactoryInventoryId) && t.isPayable === true) : [];
 let _diMsg = `Permanently delete inventory item "${_diName}"?`;
 _diMsg += `\nCurrent Stock: ${_diQty} kg`;
@@ -1702,6 +1703,10 @@ const _diTxTotal = _diLinkedTx.reduce((s, t) => s + (parseFloat(t.amount) || 0),
 _diMsg += ` ${_diLinkedTx.length} payment transaction${_diLinkedTx.length !== 1 ? 's' : ''} totaling ${fmtAmt(_diTxTotal)} will be reversed and the supplier\'s payable status reset.`;
 }
 }
+if (_diPaidTx.length > 0) {
+const _diPaidTotal = _diPaidTx.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+_diMsg += `\n\n${_diPaidTx.length} payment${_diPaidTx.length !== 1 ? 's' : ''} already made (${fmtAmt(_diPaidTotal)}) will stay on the supplier ledger.`;
+}
 _diMsg += `\n\n\u26a0 If this material is used in production formulas, those formulas will be affected.`;
 _diMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_diMsg, { title: `Delete "${_diName}"`, confirmText: "Delete", danger: true })) {
@@ -1709,11 +1714,12 @@ try {
 const material = factoryInventoryData.find(i => i.id === editingFactoryInventoryId);
 
 const _materialToDelete = material ? { ...material } : null;
+const _matGroup = (material && material.supplierId) ? newGroupId('mat') : null;
 if (material && material.supplierId) {
-await unlinkSupplierFromMaterial(material, false, true);
+await unlinkSupplierFromMaterial(material, false, true, _matGroup);
 }
 const filteredForDelete = factoryInventoryData.filter(i => i.id !== editingFactoryInventoryId);
-await unifiedDelete('factory_inventory_data', filteredForDelete, editingFactoryInventoryId, { strict: true }, _materialToDelete);
+await unifiedDelete('factory_inventory_data', filteredForDelete, editingFactoryInventoryId, { strict: true }, _matGroup ? stampGroup(_materialToDelete, _matGroup) : _materialToDelete);
 notifyDataChange('inventory');
 triggerAutoSync();
 closeFactoryInventoryModal();

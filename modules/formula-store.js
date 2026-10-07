@@ -2,6 +2,7 @@ import { ensureArray, esc, generateUUID, getTimestamp, sqliteStore } from './bus
 import { showGlassConfirm, showToast } from './customers.js';
 import { sendDeviceNotification } from './notify.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
+import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 const STORE_KEY = 'factory_formula_store';
 const STORE_TS_KEY = 'factory_formula_store_timestamp';
@@ -21,6 +22,18 @@ export async function getFormulaSlots() {
   const v = await sqliteStore.get(SLOTS_KEY);
   return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
 }
+// The formula a store will actually use, read FRESH from the Formula Store on every call (never from a
+// cached or derived copy): the store's own formulaId first, else the formula assigned to its slot.
+// Ingredient names, ids and costs are resolved against live inventory. Falls back to the derived
+// factory_default_formulas feed only when the Formula Store no longer has the formula.
+export async function getSelectedFormula(storeKey) {
+  const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'app_stores', 'factory_default_formulas', 'factory_additional_costs', 'factory_inventory_data']);
+  return resolveSelectedFormula({
+    list: ensureArray(b.get(STORE_KEY)), slots: b.get(SLOTS_KEY) || {}, stores: ensureArray(b.get('app_stores')),
+    feed: b.get('factory_default_formulas') || {}, costs: b.get('factory_additional_costs') || {}, inventory: ensureArray(b.get('factory_inventory_data')),
+  }, storeKey);
+}
+
 export async function getFormulaSlotLabels() {
   const [list, slots] = await Promise.all([getFormulaStore(), getFormulaSlots()]);
   const out = {};

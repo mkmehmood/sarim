@@ -5602,6 +5602,7 @@ const factoryDefaultFormulas = _rftBatch.get('factory_default_formulas') || {};
 const factoryAdditionalCosts = _rftBatch.get('factory_additional_costs') || {};
 const factoryCostAdjustmentFactor = _rftBatch.get('factory_cost_adjustment_factor') || {};
 const factoryUnitTracking = _rftBatch.get('factory_unit_tracking') || {};
+if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
 if (sqliteStore && sqliteStore.getBatch) {
 try {
 const factoryKeys = [

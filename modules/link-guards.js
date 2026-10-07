@@ -216,6 +216,15 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     if (!issue && ctx && ctx.unitsUsed) ctx.unitsUsed.set(ft, used + Number(snapshot.formulaUnits));
     return issue;
   }
+  // Raw material that was linked to a supplier: the supplier has to exist, or the link points at nothing.
+  if (collectionName === 'inventory' && snapshot.supplierId) {
+    const idMap = await _loadIdMap();
+    const sid = resolveId(snapshot.supplierId, idMap);
+    const ents = ensureArray(await sqliteStore.get('payment_entities'));
+    if (!ents.some(e => e && !e.deletedAt && String(e.id) === String(sid))) {
+      return `This material was linked to ${snapshot.supplierName || 'a supplier'} who is no longer in your payments. Recover that supplier first, then recover the material.`;
+    }
+  }
   // Factory batch: its raw materials have to come back OUT of inventory.
   if (collectionName === 'factory_history') {
     if (ctx && !ctx.inv) ctx.inv = JSON.parse(JSON.stringify(ensureArray(await sqliteStore.get('factory_inventory_data'))));

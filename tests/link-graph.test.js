@@ -2,8 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
-  getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers, expandGroups, GROUP_FIELD,
-  remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop, getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
+  getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
+  expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
+  getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
+  resolveSelectedFormula, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -293,5 +295,81 @@ describe('expandGroups (erase / recover together)', () => {
     assert.deepEqual(ids(expandGroups([all[0], all[1], all[2]], all)), ['e1', 'p1', 't1', 't2']);
     assert.deepEqual(ids(expandGroups([all[4]], all)), ['solo']);
     assert.deepEqual(expandGroups([], all), []);
+  });
+});
+
+describe('supplier payables stay tied to what was invoiced', () => {
+  const inTx = (id, mat, amt) => ({ id, type: 'IN', isPayable: true, entityId: 'S', materialId: mat, amount: amt });
+  it('uses the invoiced amount even after batches used the stock up', () => {
+    const mat = { id: 'm1', totalValue: 200, quantity: 20, cost: 10 }; // was 1000 when bought
+    assert.equal(materialOriginalPayable(mat, [inTx('t', 'm1', 1000)]), 1000);
+  });
+  it('falls back to stock value only when nothing was invoiced', () => {
+    assert.equal(materialOriginalPayable({ id: 'm', totalValue: 300 }, []), 300);
+  });
+  it('ignores multi-material invoices and deleted ones', () => {
+    const multi = { id: 'x', type: 'IN', isPayable: true, entityId: 'S', materialIds: ['m1', 'm2'], amount: 900 };
+    assert.equal(materialOriginalPayable({ id: 'm1', totalValue: 50 }, [multi]), 50);
+    assert.equal(findPayableInTxs([{ ...inTx('d', 'm1', 5), deletedAt: 1 }], 'm1', 'S').length, 0);
+  });
+  it('a payment cannot settle more than was invoiced because stock was consumed', () => {
+    const m1 = { id: 'm1', totalValue: 200 }; // consumed down from 1000
+    const txs = [inTx('t', 'm1', 1000)];
+    allocatePayments([m1], [{ amount: 400, date: '2026-02-01' }], m => materialOriginalPayable(m, txs));
+    assert.equal(m1.totalPayable, 600);
+    assert.equal(m1.paymentStatus, 'pending');
+  });
+  it('pays oldest first and marks fully settled materials paid', () => {
+    const a = { id: 'a' }, b = { id: 'b' };
+    const orig = { a: 100, b: 300 };
+    allocatePayments([a, b], [{ amount: 250, date: 'D' }], m => orig[m.id]);
+    assert.equal(a.paymentStatus, 'paid'); assert.equal(a.totalPayable, 0); assert.equal(a.paidDate, 'D');
+    assert.equal(b.totalPayable, 150); assert.equal(b.paymentStatus, 'pending');
+  });
+  it('moves the payable by the same amount the stock value changed, never below zero', () => {
+    assert.deepEqual(planPayableAdjustment(1000, 250), { next: 1250, change: 250 });
+    assert.deepEqual(planPayableAdjustment(1000, -400), { next: 600, change: -400 });
+    assert.deepEqual(planPayableAdjustment(100, -500), { next: 0, change: -100 });
+  });
+});
+
+describe('new production card always shows the selected formula, freshly', () => {
+  const inv = [{ id: 'sug', name: 'Sugar (new name)', cost: 12, quantity: 50 }, { id: 'fl', name: 'Flour', cost: 5, quantity: 3 }];
+  const list = [
+    { id: 'F1', name: 'Premium', additionalCost: 7, ingredients: [{ id: 'sug', name: 'Sugar', cost: 1, quantity: 2 }, { id: 'fl', name: 'Flour', cost: 1, quantity: 4 }, { id: 'gone', name: 'Salt', cost: 3, quantity: 1 }] },
+    { id: 'F2', name: 'Basic', additionalCost: 0, ingredients: [{ id: 'fl', name: 'Flour', quantity: 1 }] },
+  ];
+  it('reads the formula from the formula store, with live names, costs and stock', () => {
+    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores: [], inventory: inv, feed: { standard: [{ id: 'old', name: 'Stale', quantity: 9 }] } }, 'STORE_A');
+    assert.equal(r.source, 'store');
+    assert.equal(r.name, 'Premium');
+    assert.equal(r.additionalCost, 7);
+    assert.deepEqual(r.ingredients.map(i => i.name), ['Sugar (new name)', 'Flour', 'Salt']);
+    assert.equal(r.ingredients[0].cost, 12);
+    assert.equal(r.ingredients[2].missing, true);
+    assert.equal(r.ingredients[1].stock, 3);
+  });
+  it("uses the store's own selected formula before the slot's formula", () => {
+    const stores = [{ key: 'STORE_A', formulaType: 'standard', formulaId: 'F2' }];
+    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores, inventory: inv }, 'STORE_A');
+    assert.equal(r.name, 'Basic');
+  });
+  it('picks up an edited formula immediately (no stale copy kept anywhere)', () => {
+    const before = resolveSelectedFormula({ list, slots: { standard: 'F2' }, inventory: inv }, 'STORE_A');
+    const edited = list.map(f => f.id === 'F2' ? { ...f, ingredients: [{ id: 'fl', name: 'Flour', quantity: 6 }] } : f);
+    const after = resolveSelectedFormula({ list: edited, slots: { standard: 'F2' }, inventory: inv }, 'STORE_A');
+    assert.equal(before.ingredients[0].quantity, 1);
+    assert.equal(after.ingredients[0].quantity, 6);
+  });
+  it('falls back to the derived feed only when the formula no longer exists', () => {
+    const r = resolveSelectedFormula({ list: [], slots: { standard: 'F1' }, inventory: inv, feed: { standard: [{ id: 'fl', name: 'Flour', quantity: 2 }] }, costs: { standard: 4 } }, 'STORE_A');
+    assert.equal(r.source, 'feed');
+    assert.equal(r.additionalCost, 4);
+    assert.equal(r.ingredients.length, 1);
+  });
+  it('maps the asaan slot and slot-key inputs correctly', () => {
+    const r = resolveSelectedFormula({ list, slots: { standard: 'F1', asaan: 'F2' }, inventory: inv }, 'STORE_C');
+    assert.equal(r.type, 'asaan'); assert.equal(r.name, 'Basic');
+    assert.equal(resolveSelectedFormula({ list, slots: { asaan: 'F2' }, inventory: inv }, 'asaan').name, 'Basic');
   });
 });
