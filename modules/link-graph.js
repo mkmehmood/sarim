@@ -356,6 +356,12 @@ export function isOrphanSupplierTx(t, inventory) {
   return !inv.some(m => m && !m.deletedAt && ids.has(String(m.id)) && m.supplierId && String(m.supplierId) === String(t.entityId));
 }
 
+// A linked material only contributes to its supplier's outstanding balance while the supplier still has a live
+// invoice (payable IN transaction) for it. A stale totalPayable left behind by re-linking / sync must not count.
+export function hasLiveSupplierInvoice(material, txs) {
+  return !!(material && material.supplierId && findPayableInTxs(txs, material.id, material.supplierId).length > 0);
+}
+
 // inTxs: payable IN transactions of the material's supplier (already excluding any being deleted).
 export function materialOriginalPayable(material, inTxs) {
   const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);

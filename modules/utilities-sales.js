@@ -1,5 +1,5 @@
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales } from './link-guards.js';
-import { isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
+import { hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -873,7 +873,7 @@ if (factoryInventoryData && factoryInventoryData.length > 0) {
 const pendingPerSupplier = {};
 factoryInventoryData.forEach(material => {
 const isPending = material.paymentStatus === 'pending' || !material.paymentStatus;
-if (material.supplierId && isPending && material.totalPayable > 0) {
+if (material.supplierId && isPending && material.totalPayable > 0 && hasLiveSupplierInvoice(material, paymentTransactions)) {
 const sid = String(material.supplierId);
 pendingPerSupplier[sid] = (pendingPerSupplier[sid] || 0) + material.totalPayable;
 } else if (!material.supplierId && isPending) {

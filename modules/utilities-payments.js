@@ -1,7 +1,7 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -1279,7 +1279,7 @@ balances[entity.id] = 0;
 });
 if (typeof factoryInventoryData !== 'undefined') {
 factoryInventoryData.forEach(material => {
-if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0) {
+if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0 && hasLiveSupplierInvoice(material, paymentTransactions)) {
 const sid = String(material.supplierId);
 for (const entityId in balances) {
 if (String(entityId) === sid) {
@@ -2754,7 +2754,7 @@ supplierIdSet.add(String(t.entityId));
 const supplierBalances = {};
 if (typeof factoryInventoryData !== 'undefined') {
 factoryInventoryData.forEach(material => {
-if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0) {
+if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0 && hasLiveSupplierInvoice(material, paymentTransactions)) {
 const sid = String(material.supplierId);
 supplierBalances[sid] = (supplierBalances[sid] || 0) + material.totalPayable;
 }
@@ -2868,7 +2868,7 @@ supplierIds.add(String(t.entityId));
 const supplierEntityBalances = {};
 if (typeof factoryInventoryData !== 'undefined') {
 factoryInventoryData.forEach(material => {
-if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0) {
+if (material.supplierId && material.paymentStatus === 'pending' && material.totalPayable > 0 && hasLiveSupplierInvoice(material, paymentTransactions)) {
 const sid = String(material.supplierId);
 supplierEntityBalances[sid] = (supplierEntityBalances[sid] || 0) + material.totalPayable;
 }
@@ -3169,7 +3169,7 @@ const supplierIdSet = new Set();
 factoryInventoryData.forEach(m => { if (m.supplierId) supplierIdSet.add(String(m.supplierId)); });
 const supplierBalances = {};
 factoryInventoryData.forEach(mat => {
-if (mat.supplierId && mat.paymentStatus === 'pending' && mat.totalPayable > 0) {
+if (mat.supplierId && mat.paymentStatus === 'pending' && mat.totalPayable > 0 && hasLiveSupplierInvoice(mat, paymentTransactions)) {
 const sid = String(mat.supplierId);
 supplierBalances[sid] = (supplierBalances[sid] || 0) + mat.totalPayable;
 }
