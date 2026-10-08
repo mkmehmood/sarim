@@ -331,7 +331,7 @@ export async function shareProdPhotos(ids) {
   };
 
   const tryShare = async () => {
-    const data = { files };
+    const data = { files, title: 'Production photos' };
     if (typeof window.nativeShareFiles === 'function' && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
       await window.nativeShareFiles(files, data);
     } else {
@@ -381,8 +381,25 @@ export async function shareProdPhotos(ids) {
     document.body.appendChild(a);
     setTimeout(() => { a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, i * 250);
   });
-  const copied = await copyText();
-  _toast(`Saved ${files.length} photo${plural}` + (copied ? ', details copied' : '') + '. Attach the photos in WhatsApp.', 'info', 5000);
+  // Put the captioned image (image/png) on the clipboard so Ctrl+V in WhatsApp attaches it.
+  // The clipboard holds one image, so the first photo is copied; all photos are downloaded.
+  let imageCopied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {
+      const bmp = await createImageBitmap(files[0]);
+      const c = document.createElement('canvas');
+      c.width = bmp.width; c.height = bmp.height;
+      c.getContext('2d').drawImage(bmp, 0, 0);
+      const png = await new Promise(r => c.toBlob(r, 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({
+        'image/png': png,
+        'text/plain': new Blob([text], { type: 'text/plain' })
+      })]);
+      imageCopied = true;
+    }
+  } catch (e) { console.warn('[prod photo] image clipboard failed', e); }
+  const copied = imageCopied || await copyText();
+  _toast(`Saved ${files.length} photo${plural}` + (imageCopied ? '. Photo copied \u2014 press Ctrl+V in WhatsApp' : (copied ? ', details copied. Attach the photos in WhatsApp' : '. Attach the photos in WhatsApp')), 'info', 6000);
   setTimeout(() => window.open('https://wa.me/', '_blank'), files.length * 250 + 500);
   clearProdPhotoSelection();
 }
