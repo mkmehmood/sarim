@@ -1,5 +1,5 @@
-import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales } from './link-guards.js';
-import { hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentDeleteBlockReason } from './link-guards.js';
+import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -7,7 +7,7 @@ import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHand
 import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _readFileAsText, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
+import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
@@ -359,7 +359,9 @@ document.getElementById('entityTransactionsOverlay').style.display = 'none';
 });
 }
 
-export async function savePaymentTransaction() {
+export function savePaymentTransaction(...a) { return runExclusive('savePaymentTransaction', () => _savePaymentTransactionImpl(...a)); }
+
+async function _savePaymentTransactionImpl() {
 let message = '';
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -437,6 +439,10 @@ showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _spAvailCa
 return;
 }
 }
+const _matSnap = JSON.parse(JSON.stringify(factoryInventoryData));
+const _savedMatIds = [];
+let _payPersisted = false;
+let _payRecord = null;
 try {
 if (type === 'OUT') {
 const isPendingMat = (m) => (m.paymentStatus === 'pending' || !m.paymentStatus) && parseFloat(m.totalPayable || 0) > 0;
@@ -473,6 +479,7 @@ materialIds.push(mat.id);
 if (materialsToSave.length > 0) {
 isPayable = true;
 for (const mat of materialsToSave) {
+_savedMatIds.push(mat.id);
 await unifiedSave('factory_inventory_data', factoryInventoryData, mat);
 }
 }
@@ -504,7 +511,9 @@ createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._ass
 };
 payment = ensureRecordIntegrity(payment, false);
 paymentTransactions.push(payment);
+_payRecord = payment;
 await unifiedSave('payment_transactions', paymentTransactions, payment);
+_payPersisted = true;
 notifyDataChange('payments');
 emitSyncUpdate({ payment_transactions: null});
 if (amountEl) amountEl.value = '';
@@ -524,8 +533,23 @@ if (isPayable) {
 message += ' (Material purchase settled - liability reduced)';
 }
 } catch (error) {
-showToast('Failed to save payment transaction. Please try again.', 'error');
+if (_payPersisted) {
+// The payment IS saved. A screen refresh failing must not be reported as a failed payment.
+console.warn('[savePaymentTransaction] saved, but a screen refresh failed:', error && error.message);
+message = (message || 'Payment saved') + ' (some screens could not refresh - reload to see everything)';
+} else {
+// Put the supplier materials back exactly as they were: they were settled before the payment was written.
+try {
+if (_payRecord) { const pi = paymentTransactions.findIndex(t => t && t.id === _payRecord.id); if (pi !== -1) paymentTransactions.splice(pi, 1); }
+for (const mid of _savedMatIds) {
+const orig = _matSnap.find(m => m && m.id === mid);
+const live = factoryInventoryData.find(m => m && m.id === mid);
+if (orig && live) { Object.keys(live).forEach(k => delete live[k]); Object.assign(live, orig); await unifiedSave('factory_inventory_data', factoryInventoryData, live); }
+}
+} catch (rbErr) { console.error('[savePaymentTransaction] rollback failed', rbErr); }
+showToast('Failed to save payment transaction. Nothing was changed.', 'error');
 return;
+}
 }
 showToast(message, 'success');
 }
@@ -547,6 +571,8 @@ if (_dpTx && _dpTx.isTransfer === true) {
 if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dpTx.transferPairId);
 return;
 }
+const _dpCashBlock = await getPaymentDeleteBlockReason(_dpTx);
+if (_dpCashBlock) { showToast(_dpCashBlock, 'warning', 6000); return; }
 const _dpEntity = _dpTx ? paymentEntities.find(e => String(e.id) === String(_dpTx.entityId)) : null;
 const _dpEntityName = _dpEntity ? _dpEntity.name : 'Unknown Entity';
 const _dpTypeLabel = _dpTx?.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';
@@ -580,6 +606,15 @@ notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
+// The supplier payables are derived from the payment records, so re-derive them: whatever step failed, the
+// materials and the payments agree again afterwards.
+try {
+const _healTx = ensureArray(await sqliteStore.get('payment_transactions'));
+const _healInv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const _healTarget = _healTx.find(t => t && t.id === id);
+if (_healTarget && _healTarget.entityId) await _recomputeSupplierPayables([String(_healTarget.entityId)], _healInv, _healTx, new Set(), new Set((_healTarget.materialIds || []).map(String)));
+await _refreshSupplierLinkViews();
+} catch (_) { /* best effort */ }
 showToast(" Failed to delete transaction. Please try again.", "error");
 }
 }
@@ -6641,7 +6676,9 @@ el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
 window.updateStockTransferAvailability = updateStockTransferAvailability;
 
-export async function saveStockTransfer() {
+export function saveStockTransfer(...a) { return runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)); }
+
+async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
 showToast('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 3000);

@@ -1,6 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { deletePaymentTxWithLinks } from './link-guards.js';
-import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs } from './link-graph.js';
+import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-photos.js';
@@ -1141,7 +1141,9 @@ if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 export function updatePaymentStatusVisibility() {
 }
 
-export async function recordEntry() {
+export function recordEntry(...a) { return runExclusive('recordEntry', () => _recordEntryImpl(...a)); }
+
+async function _recordEntryImpl() {
 const _ed = getEditCtx('prod');
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));

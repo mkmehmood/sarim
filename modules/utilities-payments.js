@@ -1,7 +1,7 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { runExclusive, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -1387,7 +1387,9 @@ if (entity) renderEntityOverlayContent(entity);
 }
 }
 
-export async function saveEntity() {
+export function saveEntity(...a) { return runExclusive('saveEntity', () => _saveEntityImpl(...a)); }
+
+async function _saveEntityImpl() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const name = document.getElementById('entityName').value.trim();
@@ -1410,9 +1412,11 @@ showToast("An entity with this name already exists", "warning");
 return;
 }
 try {
+let _renameFrom = null;
 if (editingEntityId) {
 const index = paymentEntities.findIndex(e => e.id === editingEntityId);
 if (index !== -1) {
+if (paymentEntities[index].name !== name) _renameFrom = paymentEntities[index].name;
 paymentEntities[index] = ensureRecordIntegrity({
 ...paymentEntities[index],
 name,
@@ -1446,6 +1450,8 @@ const savedEntity = editingEntityId
 ? paymentEntities.find(e => e.id === editingEntityId)
 : paymentEntities[paymentEntities.length - 1];
 await unifiedSave('payment_entities', paymentEntities, savedEntity);
+// Transactions and supplier-linked materials keep a copy of the entity's name: they follow the rename.
+if (_renameFrom && savedEntity) await cascadeEntityRename(savedEntity.id, _renameFrom, name);
 if (savedEntity) await savePersonPhoto('entity', 'entity:' + String(savedEntity.id));
 emitSyncUpdate({ payment_entities: null});
 notifyDataChange('entities');
@@ -2136,6 +2142,11 @@ showToast('Transaction updated', 'success');
 } catch (err) {
 Object.assign(t, tBefore);
 if (e && eBefore) Object.assign(e, eBefore);
+// Anything already written before the failure is written back too, so the cloud copy does not keep the half-edit.
+try {
+if (e && eBefore) await unifiedSave('expenses', expenseRecords, e);
+await unifiedSave('payment_transactions', paymentTransactions, t);
+} catch (_) { /* best effort */ }
 console.warn('[edit payment] failed', err);
 showToast('Failed to update transaction. Please try again.', 'error');
 }
@@ -2171,7 +2182,9 @@ await startEditPayment(t.id);
 registerEditHandler('payment', startEditPayment);
 registerEditHandler('expense', startEditExpenseRecord);
 
-export async function saveExpense() {
+export function saveExpense(...a) { return runExclusive('saveExpense', () => _saveExpenseImpl(...a)); }
+
+async function _saveExpenseImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
@@ -8139,7 +8152,9 @@ await renderPaymentTransferHistory();
 }
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
 
-export async function saveEntityTransfer() {
+export function saveEntityTransfer(...a) { return runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)); }
+
+async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
 showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);

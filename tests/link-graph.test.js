@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
-  resolveSelectedFormula, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -536,5 +536,67 @@ describe('legacy partly-paid sales are detected exactly', () => {
     assert.deepEqual(findPartialConflicts([parent('p'), child('k', 'p', 300)]), []);
     assert.deepEqual(findPartialConflicts([parent('p', { partialPaymentReceived: 300 }), { ...child('k', 'p', 300), deletedAt: 1 }]), []);
     assert.deepEqual(findPartialConflicts(null), []);
+  });
+});
+
+describe('one save at a time', () => {
+  it('ignores a second call while the first is still running, then allows it again', async () => {
+    let runs = 0;
+    const slow = () => new Promise(r => setTimeout(() => { runs++; r('done'); }, 20));
+    const [a, b] = await Promise.all([runExclusive('k', slow), runExclusive('k', slow)]);
+    assert.equal(runs, 1);
+    assert.equal(a, 'done');
+    assert.equal(b, undefined);
+    assert.equal(await runExclusive('k', slow), 'done');
+    assert.equal(runs, 2);
+  });
+  it('releases the lock when the action fails, and keeps different actions apart', async () => {
+    await assert.rejects(runExclusive('f', async () => { throw new Error('boom'); }), /boom/);
+    assert.equal(await runExclusive('f', async () => 'ok'), 'ok');
+    const [x, y] = await Promise.all([runExclusive('p', async () => 1), runExclusive('q', async () => 2)]);
+    assert.deepEqual([x, y], [1, 2]);
+  });
+});
+
+describe('cash in hand guards for deleting and recovering payments', () => {
+  it('deleting a payment received takes cash away; credit purchases and transfers do not', () => {
+    assert.equal(getDeleteCashDrop({ type: 'IN', amount: 500 }), 500);
+    assert.equal(getDeleteCashDrop({ type: 'IN', amount: 500, isPayable: true }), 0);
+    assert.equal(getDeleteCashDrop({ type: 'IN', amount: 500, isTransfer: true }), 0);
+    assert.equal(getDeleteCashDrop({ type: 'OUT', amount: 500 }), 0);
+  });
+  it('recovering a payment made or an expense uses cash; supplier payable payments and transfers do not', () => {
+    assert.equal(getRestoreCashNeed({ type: 'OUT', amount: 300 }), 300);
+    assert.equal(getRestoreCashNeed({ type: 'OUT', amount: 300, isExpense: true }), 300);
+    assert.equal(getRestoreCashNeed({ type: 'OUT', amount: 300, isPayable: true }), 0);
+    assert.equal(getRestoreCashNeed({ type: 'OUT', amount: 300, isTransfer: true }), 0);
+    assert.equal(getRestoreCashNeed({ type: 'IN', amount: 300 }), 0);
+  });
+  it('explains the shortfall and allows exactly-enough cash', () => {
+    assert.match(getCashShortIssue(500, 200, 'Recovering this'), /only 200 is available/);
+    assert.equal(getCashShortIssue(500, 500, 'x'), null);
+    assert.equal(getCashShortIssue(0, 0, 'x'), null);
+  });
+});
+
+describe('renaming an entity updates every copy of its name', () => {
+  it('renames its transactions, transfer peers and linked materials, and nothing else', () => {
+    const txs = [
+      { id: 't1', entityId: 'E', entityName: 'Old' },
+      { id: 't2', entityId: 'X', entityName: 'Other', transferPeerEntityId: 'E', transferPeerEntityName: 'Old' },
+      { id: 't3', entityId: 'Y', entityName: 'Else' },
+      { id: 't4', entityId: 'E', entityName: 'New' },
+    ];
+    const mats = [{ id: 'm1', supplierId: 'E', supplierName: 'Old' }, { id: 'm2', supplierId: 'Z', supplierName: 'Z' }];
+    const plan = planEntityRename('E', 'New', txs, mats);
+    assert.deepEqual(plan.txIds.sort(), ['t1', 't2']);
+    assert.deepEqual(plan.materialIds, ['m1']);
+    applyEntityRename('E', 'New', txs, mats, plan);
+    assert.equal(txs[0].entityName, 'New');
+    assert.equal(txs[1].transferPeerEntityName, 'New');
+    assert.equal(txs[1].entityName, 'Other');
+    assert.equal(txs[2].entityName, 'Else');
+    assert.equal(mats[0].supplierName, 'New');
+    assert.equal(mats[1].supplierName, 'Z');
   });
 });

@@ -764,3 +764,57 @@ export function getCollectionReapplyIssue(collection, sales) {
   }
   return null;
 }
+
+// ---- Payments tab ----------------------------------------------------------------------------------------
+// One save at a time per action: a second tap while the first is still running is ignored, not queued.
+const _held = new Set();
+export function runExclusive(key, fn) {
+  if (_held.has(key)) return Promise.resolve(undefined);
+  _held.add(key);
+  return Promise.resolve().then(fn).finally(() => _held.delete(key));
+}
+
+// Cash in hand = production + sales + calculator + payments IN - payments OUT - expenses. Transfers move money
+// between entities (an OUT and an IN of the same amount) and a credit-purchase record is a liability, not cash.
+const _cashRelevant = (tx) => !!tx && !tx.isTransfer && !tx.isMerged && !(tx.isPayable && tx.type === 'IN');
+
+// Cash that DELETING this transaction takes away (a payment received).
+export function getDeleteCashDrop(tx) {
+  return _cashRelevant(tx) && tx.type === 'IN' ? _n(tx.amount) : 0;
+}
+// Cash that RECOVERING this transaction uses up (a payment made or an expense). Paying down a supplier payable
+// is not cash-checked when saved, so it is not checked here either.
+export function getRestoreCashNeed(tx) {
+  return _cashRelevant(tx) && tx.type === 'OUT' && !tx.isPayable ? _n(tx.amount) : 0;
+}
+export function getCashShortIssue(need, available, what) {
+  const n = _n(need);
+  if (n <= 0 || _n(available) - n >= -0.0001) return null;
+  return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
+}
+
+// Renaming an entity: every record that stores a COPY of its name has to follow.
+export function planEntityRename(entityId, newName, txs, materials) {
+  const id = String(entityId);
+  const tx = [], mat = [];
+  (Array.isArray(txs) ? txs : []).forEach(t => {
+    if (!t) return;
+    let hit = false;
+    if (String(t.entityId) === id && t.entityName !== newName) { hit = true; }
+    if (String(t.transferPeerEntityId) === id && t.transferPeerEntityName !== newName) { hit = true; }
+    if (hit) tx.push(t.id);
+  });
+  (Array.isArray(materials) ? materials : []).forEach(m => {
+    if (m && String(m.supplierId) === id && m.supplierName !== newName) mat.push(m.id);
+  });
+  return { txIds: tx, materialIds: mat };
+}
+export function applyEntityRename(entityId, newName, txs, materials, plan) {
+  const id = String(entityId);
+  const T = new Set(plan.txIds.map(String)), M = new Set(plan.materialIds.map(String));
+  (txs || []).forEach(t => { if (t && T.has(String(t.id))) {
+    if (String(t.entityId) === id) t.entityName = newName;
+    if (String(t.transferPeerEntityId) === id) t.transferPeerEntityName = newName;
+  } });
+  (materials || []).forEach(m => { if (m && M.has(String(m.id))) m.supplierName = newName; });
+}

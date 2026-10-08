@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
@@ -256,10 +256,17 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     if (ctx && updates) updates.forEach(u => { const it = inv.find(i => i && i.id === u.id); if (it) it.quantity = u.quantity; });
     return null;
   }
-  if ((collectionName === 'transactions' || collectionName === 'payment_transactions') && snapshot.expenseId && !snapshot.isTransfer) {
-    // The payment points at an expense record. Either it still exists, or it is being recovered with
-    // this payment as part of the same deletion group (handled by the caller).
-    return null;
+  if (collectionName === 'transactions' || collectionName === 'payment_transactions') {
+    // A payment made / expense uses cash again. (The expense it points at either still exists or comes back
+    // in the same deletion group, which the caller handles.)
+    const need = getRestoreCashNeed(snapshot);
+    if (need > 0 && typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
+      const used = ctx && typeof ctx.cashUsed === 'number' ? ctx.cashUsed : 0;
+      const avail = await window.getAvailableCashInHand();
+      const issue = getCashShortIssue(need + used, avail, 'Recovering this payment');
+      if (!issue && ctx) ctx.cashUsed = used + need;
+      return issue;
+    }
   }
   return null;
 }
@@ -420,6 +427,16 @@ export async function recordCustomerRename(kind, from, to) {
 // RECOVER (pre-upload): apply renames made while the record sat in the recycle bin.
 export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
+  if (collectionName === 'entities' || collectionName === 'transactions' || collectionName === 'payment_transactions' || collectionName === 'inventory') {
+    const emap = (await sqliteStore.get('customer_rename_map')) || {};
+    if (collectionName === 'entities' && cleanRecord.name) cleanRecord.name = resolveRename(emap, 'entity', cleanRecord.name);
+    if ((collectionName === 'transactions' || collectionName === 'payment_transactions')) {
+      if (cleanRecord.entityName) cleanRecord.entityName = resolveRename(emap, 'entity', cleanRecord.entityName);
+      if (cleanRecord.transferPeerEntityName) cleanRecord.transferPeerEntityName = resolveRename(emap, 'entity', cleanRecord.transferPeerEntityName);
+    }
+    if (collectionName === 'inventory' && cleanRecord.supplierName) cleanRecord.supplierName = resolveRename(emap, 'entity', cleanRecord.supplierName);
+    return cleanRecord;
+  }
   const kind = (collectionName === 'sales' || collectionName === 'sales_customers') ? 'sales'
     : (collectionName === 'rep_sales' || collectionName === 'rep_customers') ? ('rep|' + (cleanRecord.salesRep || '')) : null;
   if (!kind) return cleanRecord;
@@ -632,4 +649,35 @@ export async function applyCollectionToSales(opts) {
   }
   const allocated = plan.allocs.reduce((t, a) => t + a.amount, 0);
   return { changedIds, allocated, paidCount: plan.allocs.filter(a => a.full).length, partialCount: plan.allocs.filter(a => !a.full).length, undo };
+}
+
+// DELETE (payment received): its money may already have been spent, so cash in hand must still cover it.
+export async function getPaymentDeleteBlockReason(tx) {
+  const drop = getDeleteCashDrop(tx);
+  if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
+  return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
+}
+
+// SAVE (rename an entity): every record that keeps a copy of the name follows, and records still in the
+// recycle bin come back under the new name.
+export async function cascadeEntityRename(entityId, oldName, newName) {
+  if (!entityId || !newName || oldName === newName) return { tx: 0, materials: 0 };
+  const map = (await sqliteStore.get('customer_rename_map')) || {};
+  await sqliteStore.set('customer_rename_map', recordRename(map, 'entity', oldName, newName));
+  const txs = ensureArray(await sqliteStore.get('payment_transactions'));
+  const mats = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  const plan = planEntityRename(entityId, newName, txs, mats);
+  applyEntityRename(entityId, newName, txs, mats, plan);
+  const now = getTimestamp();
+  if (plan.txIds.length) {
+    const ids = new Set(plan.txIds.map(String));
+    txs.forEach(t => { if (t && ids.has(String(t.id))) t.updatedAt = now; });
+    await unifiedSave('payment_transactions', txs, null, plan.txIds);
+  }
+  if (plan.materialIds.length) {
+    const ids = new Set(plan.materialIds.map(String));
+    mats.forEach(m => { if (m && ids.has(String(m.id))) m.updatedAt = now; });
+    await unifiedSave('factory_inventory_data', mats, null, plan.materialIds);
+  }
+  return { tx: plan.txIds.length, materials: plan.materialIds.length };
 }

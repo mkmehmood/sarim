@@ -1,5 +1,5 @@
 import { findCalcLinkForReturn } from './link-guards.js';
-import { findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment } from './link-graph.js';
+import { runExclusive, findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
@@ -279,7 +279,9 @@ renderFactoryInventory();
 }
 }
 
-export async function saveFactoryInventoryItem() {
+export function saveFactoryInventoryItem(...a) { return runExclusive('saveFactoryInventoryItem', () => _saveFactoryInventoryItemImpl(...a)); }
+
+async function _saveFactoryInventoryItemImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -740,7 +742,9 @@ beginEditMode('factory', rec, { buttonId: 'btn-save-factory-production', watchId
 }
 registerEditHandler('factory', startEditFactoryEntry);
 
-export async function saveFactoryProductionEntry() {
+export function saveFactoryProductionEntry(...a) { return runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)); }
+
+async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
 
 if (!currentFactoryEntryStore) {
