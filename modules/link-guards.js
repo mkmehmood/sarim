@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from './link-graph.js';
 
@@ -491,4 +491,28 @@ export async function loadCalcRestoreContext(entry) {
 
 export async function getCalcRestoreBlockReason(entry) {
   return planCalcRestore(entry, await loadCalcRestoreContext(entry)).block;
+}
+
+// AUDIT: old partly-paid sales that statements and trackers count twice. Read-only: it never changes data.
+// Runs a few seconds after start-up, reports at most once a day, and is also callable as window.auditLegacyPartialPayments().
+export async function auditLegacyPartialPayments(opts = {}) {
+  const customer = findPartialConflicts(ensureArray(await sqliteStore.get('customer_sales')));
+  const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep_sales')));
+  const all = [...customer.map(c => ({ ...c, where: 'customer' })), ...rep.map(c => ({ ...c, where: 'rep' }))];
+  const debt = all.filter(c => c.kind === 'debt-reduced-twice').reduce((t, c) => t + c.amount, 0);
+  const cash = all.filter(c => c.kind === 'cash-counted-twice').reduce((t, c) => t + c.amount, 0);
+  const report = { count: all.length, debtUnderstatedBy: Math.round(debt * 100) / 100, cashOverstatedBy: Math.round(cash * 100) / 100, items: all };
+  if (typeof window !== 'undefined') window._partialAudit = report;
+  if (all.length && !opts.silent) {
+    const today = new Date().toISOString().slice(0, 10);
+    if ((await sqliteStore.get('partial_audit_last')) !== today) {
+      await sqliteStore.set('partial_audit_last', today);
+      const names = [...new Set(all.map(c => c.customerName).filter(Boolean))].slice(0, 3).join(', ');
+      if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
+        window.showToast(`${all.length} old partly-paid sale${all.length !== 1 ? 's' : ''} (${names}) are counted twice: customer debt is understated by ${report.debtUnderstatedBy} and cash overstated by ${report.cashOverstatedBy}. Details: window._partialAudit`, 'warning', 12000);
+      }
+      console.table(all);
+    }
+  }
+  return report;
 }

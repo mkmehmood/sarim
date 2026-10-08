@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
-  resolveSelectedFormula, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -517,5 +517,24 @@ describe('calculator record restore preconditions', () => {
   it('ignores its own earlier claims and deleted competitors', () => {
     const r = planCalcRestore(entry, ctx({ history: [{ id: 'c1', linkedSalesIds: ['s1', 's2'] }, { id: 'old', deletedAt: 1, linkedSalesIds: ['s1'] }] }));
     assert.equal(r.block, null);
+  });
+});
+
+describe('legacy partly-paid sales are detected exactly', () => {
+  const parent = (id, extra = {}) => ({ id, paymentType: 'CREDIT', customerName: 'Ali', totalValue: 1000, creditReceived: false, ...extra });
+  const child = (id, rel, amt) => ({ id, paymentType: 'PARTIAL_PAYMENT', relatedSaleId: rel, totalValue: amt });
+  it('flags an unpaid sale whose payment is applied both ways', () => {
+    const r = findPartialConflicts([parent('p', { partialPaymentReceived: 300 }), child('k', 'p', 300)]);
+    assert.deepEqual(r.map(x => [x.kind, x.amount]), [['debt-reduced-twice', 300]]);
+  });
+  it('flags a paid sale whose payment records are counted again', () => {
+    const r = findPartialConflicts([parent('p', { creditReceived: true, partialPaymentReceived: 300 }), child('k', 'p', 300), child('k2', 'p', 100)]);
+    assert.deepEqual(r.map(x => [x.kind, x.amount, x.children]), [['cash-counted-twice', 400, 2]]);
+  });
+  it('leaves clean data alone', () => {
+    assert.deepEqual(findPartialConflicts([parent('p', { partialPaymentReceived: 300 })]), []);
+    assert.deepEqual(findPartialConflicts([parent('p'), child('k', 'p', 300)]), []);
+    assert.deepEqual(findPartialConflicts([parent('p', { partialPaymentReceived: 300 }), { ...child('k', 'p', 300), deletedAt: 1 }]), []);
+    assert.deepEqual(findPartialConflicts(null), []);
   });
 });

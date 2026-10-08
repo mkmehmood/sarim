@@ -3015,11 +3015,12 @@ showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
 
-export async function markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, onlyIds) {
+export async function markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, onlyIds, settledAt) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 if (!seller || seller === 'COMBINED') return [];
 const linkedIds = [];
-const now = new Date();
+// settledAt lets a recovered calculator record keep the date its sales were originally settled on.
+const now = (settledAt instanceof Date && !isNaN(settledAt.getTime())) ? settledAt : new Date();
 const receivedDate = localDateStr(now);
 const receivedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 customerSales.forEach(sale => {

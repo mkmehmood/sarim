@@ -612,3 +612,34 @@ export function planCalcRestore(entry, ctx) {
   }
   return { block: problems.length ? `This calculator record cannot be recovered because ${problems.join('; ')}. Enter the calculation again.` : null };
 }
+
+// ---- legacy partly-paid sales -----------------------------------------------------------------------------
+// Old versions saved a partial payment twice: a PARTIAL_PAYMENT record AND a running total on the credit sale.
+// Statements and trackers apply both, so such a sale is counted twice. This finds exactly those sales.
+export function findPartialConflicts(sales) {
+  const list = (Array.isArray(sales) ? sales : []).filter(s => s && !s.deletedAt);
+  const kids = new Map();
+  list.forEach(s => {
+    if (s.paymentType === 'PARTIAL_PAYMENT' && s.relatedSaleId) {
+      const k = String(s.relatedSaleId);
+      if (!kids.has(k)) kids.set(k, []);
+      kids.get(k).push(s);
+    }
+  });
+  const out = [];
+  list.forEach(p => {
+    const c = kids.get(String(p.id));
+    if (!c || p.paymentType !== 'CREDIT') return;
+    const childSum = _r2(c.reduce((t, x) => t + _n(x.totalValue), 0));
+    if (childSum <= 0) return;
+    const parentPaid = _n(p.partialPaymentReceived);
+    if (p.creditReceived) {
+      // Marked paid: its full value is already counted as received, and the payment records add it again.
+      out.push({ id: p.id, customerName: p.customerName, kind: 'cash-counted-twice', amount: childSum, children: c.length });
+    } else if (parentPaid > 0) {
+      // Unpaid: the running total and the payment records both reduce what the customer owes.
+      out.push({ id: p.id, customerName: p.customerName, kind: 'debt-reduced-twice', amount: _r2(Math.min(parentPaid, childSum)), children: c.length });
+    }
+  });
+  return out;
+}

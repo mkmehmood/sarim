@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
@@ -825,6 +825,8 @@ window.addEventListener('unhandledrejection', function(event) {
 
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   initSplashScreen();
+  // Read-only data check, a few seconds after start-up so it never slows loading.
+  setTimeout(() => { auditLegacyPartialPayments().catch(() => {}); }, 9000);
   const urlParams = new URLSearchParams(window.location.search);
   const _action = urlParams.get('action');
   if (_action) {
@@ -1126,21 +1128,28 @@ if (await showGlassConfirm(confirmMsg, { title: `Delete ${entryToDelete.seller |
 let revertedSalesCount = 0;
 let revertedRepSalesCount = 0;
 let reversedReturnQty = 0;
+const _doneSteps = [];
+const _liveEntry = history.find(h => h.id === id);
+try {
 if (entryToDelete.linkedSalesIds && entryToDelete.linkedSalesIds.length > 0) {
 revertedSalesCount = await revertSpecificSalesEntries(entryToDelete.linkedSalesIds);
+_doneSteps.push('sales');
 }
 if (entryToDelete.linkedRepSalesIds && entryToDelete.linkedRepSalesIds.length > 0) {
 revertedRepSalesCount = await revertRepSalesEntries(entryToDelete.linkedRepSalesIds);
+_doneSteps.push('rep');
 }
 if (entryToDelete.returned > 0 && entryToDelete.returnStore) {
 reversedReturnQty = entryToDelete.returned;
 await reverseReturnFromProduction(entryToDelete.returnStore, entryToDelete.returned, entryToDelete.date, entryToDelete.seller, { returnEntryId: entryToDelete.returnEntryId, returnLogId: entryToDelete.returnLogId });
+_doneSteps.push('return');
 }
 if (entryToDelete.transferSaleId) {
 const _csAll = ensureArray(await sqliteStore.get('customer_sales'));
 const _trRec = _csAll.find(x => x.id === entryToDelete.transferSaleId);
 if (_trRec) {
 await unifiedDelete('customer_sales', _csAll.filter(x => x.id !== _trRec.id), _trRec.id, { strict: true }, _trRec);
+_doneSteps.push('transfer');
 if (_trRec.supplyStore && _trRec.supplyStore !== 'N/A') {
 await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, entryToDelete.date, entryToDelete.seller);
 }
@@ -1148,13 +1157,18 @@ await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, en
 }
 if (entryToDelete.expired > 0 && entryToDelete.expiredApplied !== false) {
 await reverseExpiredFromChora(entryToDelete.expired, entryToDelete.date);
-// Taking CHORA back out twice would be wrong, so remember it is done in case a later step fails and the
-// delete is tried again. The recycle-bin copy keeps the original flag.
-const _live = history.find(h => h.id === id);
-if (_live) { _live.expiredApplied = false; _live.updatedAt = getTimestamp(); try { await unifiedSave('noman_history', history, _live); } catch (_) { /* best effort */ } }
+_doneSteps.push('expired');
+// Taking CHORA back out twice would be wrong, so remember it is done.
+if (_liveEntry) { _liveEntry.expiredApplied = false; _liveEntry.updatedAt = getTimestamp(); try { await unifiedSave('noman_history', history, _liveEntry); } catch (_) { /* best effort */ } }
 }
 const newHistory = history.filter(h => h.id !== id);
 await unifiedDelete('noman_history', newHistory, id, { strict: true }, entryToDelete);
+} catch (_stepErr) {
+// A step failed part-way: put back everything already reversed so the record and what it touched agree again.
+await _reapplyCalcEffects(entryToDelete, _doneSteps, _liveEntry);
+showToast('Could not delete the record: ' + ((_stepErr && _stepErr.message) || 'a step failed') + ' Everything was put back as it was.', 'error', 7000);
+return;
+}
 if (Array.isArray(salesHistory)) {
 const idx = salesHistory.findIndex(h => h.id === id);
 if (idx !== -1) salesHistory.splice(idx, 1);
@@ -4211,6 +4225,43 @@ async function _recreateCalcTransferSale(snap) {
   return { saleId: r.saleId, oldId: null };
 }
 
+// The moment the calculator record first settled its sales (it was saved at that moment).
+function _calcOriginalMoment(snap) {
+  const d = new Date(snap && (snap.syncedAt || snap.createdAt));
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
+// Put back the effects of a calculator record that a failed delete had already reversed, so the record and
+// everything it touched stay consistent. `done` lists the steps that were reversed, in order.
+async function _reapplyCalcEffects(snap, done, liveEntry) {
+  let entryChanged = false;
+  for (const step of done.slice().reverse()) {
+    try {
+      if (step === 'expired') {
+        await processExpiredToChora(snap.expired, snap.date, snap.seller);
+        if (liveEntry) { liveEntry.expiredApplied = true; entryChanged = true; }
+      } else if (step === 'transfer') {
+        const t = await _recreateCalcTransferSale(snap);
+        if (liveEntry) { liveEntry.transferSaleId = t.saleId; entryChanged = true; }
+        try { await purgeRecoveredId(String(snap.transferSaleId), 'sales', null, t.saleId); } catch (_) { /* no stale tombstone */ }
+      } else if (step === 'return') {
+        const r = await processReturnToProduction(snap.returnStore, snap.returned, snap.date, snap.seller);
+        if (liveEntry) { liveEntry.returnEntryId = r.returnEntryId; liveEntry.returnLogId = r.returnLogId; entryChanged = true; }
+        try { if (snap.returnEntryId) await purgeRecoveredId(String(snap.returnEntryId), 'production', null, r.returnEntryId); } catch (_) { /* none */ }
+        try { if (snap.returnLogId) await purgeRecoveredId(String(snap.returnLogId), 'returns', null, r.returnLogId); } catch (_) { /* none */ }
+      } else if (step === 'rep') {
+        await _claimRepSalesForCalc(snap.linkedRepSalesIds || [], snap.id);
+      } else if (step === 'sales') {
+        await markAllPendingCreditSalesAsCash(snap.seller, new Set(), new Set(snap.linkedSalesIds || []), _calcOriginalMoment(snap));
+      }
+    } catch (e) { console.error('[deleteSalesEntry] could not put back step', step, _safeErr(e)); }
+  }
+  if (entryChanged && liveEntry) {
+    liveEntry.updatedAt = getTimestamp();
+    try { const h = ensureArray(await sqliteStore.get('noman_history')); await unifiedSave('noman_history', h, liveEntry); } catch (_) { /* best effort */ }
+  }
+}
+
 async function _claimRepSalesForCalc(repIds, calcId) {
   const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   const claimed = [];
@@ -4252,7 +4303,7 @@ async function recoverCalcEntry(deletedId, snap) {
     else if (snap.transferSaleId) transfer = await _recreateCalcTransferSale(snap);
     if (snap.expired > 0 && snap.expiredApplied !== false) expApplied = await processExpiredToChora(snap.expired, snap.date, snap.seller);
     if (ids.length) {
-      linked = await markAllPendingCreditSalesAsCash(snap.seller, new Set(), new Set(ids));
+      linked = await markAllPendingCreditSalesAsCash(snap.seller, new Set(), new Set(ids), _calcOriginalMoment(snap));
       if (linked.length !== ids.length) throw new Error('Some of the credit sales changed while recovering.');
     }
     if (repIds.length) {
@@ -4320,15 +4371,27 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
         if (_plan.skipped.length) showToast(`${_plan.skipped.length} linked record${_plan.skipped.length !== 1 ? 's' : ''} stay in the recycle bin:\n${_skippedSummary(_plan)}`, 'warning', 9000);
         let _selfOk = false;
         let _groupFailed = false;
+        let _doneCount = 0;
+        let _failedLabel = '';
         for (const m of _grp) {
           const mid = m.recordId || m.id;
           const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true);
           if (String(mid) === String(deletedId)) _selfOk = ok;
-          if (!ok) { _groupFailed = true; break; }
+          if (!ok) {
+            _groupFailed = true;
+            const fs = m.snapshot || {};
+            _failedLabel = fs.customerName || fs.name || fs.description || m.collection || 'a record';
+            break;
+          }
+          _doneCount++;
         }
         await _refreshFactoryAfterRecover(_grp.map(m => m.collection || m.recordType || collectionName));
         if (_groupFailed) {
-          showToast('Not every linked record could be recovered. The ones left over are still in the recycle bin.', 'warning', 7000);
+          // Every record is recovered completely (with its links) before the next one starts, so what was done is
+          // consistent and the rest is still in the bin: recovering again simply continues from here.
+          showToast(_doneCount === 0
+            ? `Nothing was recovered: "${_failedLabel}" could not be recovered.`
+            : `Recovered ${_doneCount} of ${_grp.length}. "${_failedLabel}" could not be recovered, so the other ${_grp.length - _doneCount} stay in the recycle bin. What was recovered is complete and linked correctly; recover again to continue.`, 'warning', 9000);
           return false;
         }
         return _selfOk;
@@ -8367,6 +8430,7 @@ window.setSalesSummaryMode = setSalesSummaryMode;
 window.setPerfOverviewMode = setPerfOverviewMode;
 window.setOverviewMode = setOverviewMode;
 window.deleteSalesEntry = deleteSalesEntry;
+window.auditLegacyPartialPayments = auditLegacyPartialPayments;
 window.revertSpecificSalesEntries = revertSpecificSalesEntries;
 window.toggleEntityViewMode = toggleEntityViewMode;
 window.calculateEntityBalances = calculateEntityBalances;
