@@ -1,6 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { deletePaymentTxWithLinks } from './link-guards.js';
-import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable } from './link-graph.js';
+import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-photos.js';
@@ -1933,6 +1933,7 @@ editEntityBasicInfo(id);
 }
 
 export async function renderEntityOverlayContent(entity) {
+await _ensureSupplierInvoices();
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -2222,6 +2223,62 @@ changed = true;
 }
 const saved = await _recomputeSupplierPayables([String(tx.entityId)], inventory, transactions, new Set(), _txMaterialIds(tx));
 return changed || saved.length > 0;
+}
+
+let _ensuringSupplierInvoices = false;
+// Every raw material linked to a supplier must be visible in that supplier's entity details and payment history.
+// If a linked, still-owed material has no live invoice (Payment IN) transaction, recreate it.
+export async function _ensureSupplierInvoices() {
+if (_ensuringSupplierInvoices) return 0;
+_ensuringSupplierInvoices = true;
+let created = 0;
+try {
+const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const transactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const entities = ensureArray(await sqliteStore.get('payment_entities'));
+for (const m of inventory) {
+if (!m || m.deletedAt || !m.supplierId) continue;
+if (m.paymentStatus && m.paymentStatus !== 'pending') continue;
+const owed = parseFloat(m.totalPayable) || 0;
+if (owed <= 0) continue;
+const ent = entities.find(e => e && !e.deletedAt && String(e.id) === String(m.supplierId));
+if (!ent) continue;
+if (findPayableInTxs(transactions, m.id, m.supplierId).length > 0) continue;
+const paid = transactions
+.filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(m.supplierId) && _txMaterialIds(t).size === 1 && _txMaterialIds(t).has(String(m.id)))
+.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+const amount = parseFloat((owed + paid).toFixed(2));
+const when = new Date(m.purchaseDate || m.createdAt || Date.now());
+const d = isNaN(when.getTime()) ? new Date() : when;
+const stamp = getTimestamp();
+let tx = {
+id: generateUUID('pay'),
+entityId: ent.id,
+entityName: ent.name,
+entityType: 'payee',
+date: localDateStr(d),
+time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+amount,
+description: `Material purchase: ${m.name}`,
+type: 'IN',
+isPayable: true,
+materialId: m.id,
+createdAt: stamp,
+updatedAt: stamp,
+timestamp: stamp,
+syncedAt: new Date().toISOString()
+};
+tx = ensureRecordIntegrity(tx, false);
+transactions.push(tx);
+await unifiedSave('payment_transactions', transactions, tx);
+created++;
+}
+} catch (e) {
+console.warn('ensureSupplierInvoices failed', e);
+} finally {
+_ensuringSupplierInvoices = false;
+}
+return created;
 }
 
 export async function _refreshSupplierLinkViews() {
