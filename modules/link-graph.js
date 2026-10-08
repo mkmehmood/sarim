@@ -344,6 +344,18 @@ export function findPayableInTxs(txs, materialId, supplierId) {
     (supplierId == null || String(t.entityId) === String(supplierId)) && _txMatIds(t).has(String(materialId)));
 }
 
+
+// A payable transaction that names raw material(s) is only a live debt/payment while at least one of those
+// materials is still linked to that same supplier. Once the material is deleted or unlinked the transaction is
+// an orphan and must not inflate (or reduce) the entity's outstanding balance.
+export function isOrphanSupplierTx(t, inventory) {
+  if (!t || t.isPayable !== true) return false;
+  const ids = _txMatIds(t);
+  if (ids.size === 0) return false;
+  const inv = Array.isArray(inventory) ? inventory : [];
+  return !inv.some(m => m && !m.deletedAt && ids.has(String(m.id)) && m.supplierId && String(m.supplierId) === String(t.entityId));
+}
+
 // inTxs: payable IN transactions of the material's supplier (already excluding any being deleted).
 export function materialOriginalPayable(material, inTxs) {
   const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);

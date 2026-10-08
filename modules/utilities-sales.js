@@ -1,5 +1,5 @@
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales } from './link-guards.js';
-import { planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
+import { isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -860,6 +860,7 @@ entityBalances[entity.id] = 0;
 paymentTransactions.forEach(transaction => {
 if (transaction.isExpense === true) return;
 if (rawMaterialSupplierIds.has(String(transaction.entityId))) return;
+if (isOrphanSupplierTx(transaction, factoryInventoryData)) return;
 if (entityBalances[transaction.entityId] !== undefined) {
 if (transaction.type === 'OUT') {
 entityBalances[transaction.entityId] -= parseFloat(transaction.amount) || 0;

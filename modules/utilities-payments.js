@@ -1,7 +1,7 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -1294,6 +1294,7 @@ if (typeof paymentTransactions !== 'undefined') {
 paymentTransactions.forEach(transaction => {
 if (transaction.isExpense === true) return;
 if (supplierIdSet.has(String(transaction.entityId))) return;
+if (isOrphanSupplierTx(transaction, factoryInventoryData)) return;
 if (balances[transaction.entityId] !== undefined) {
 if (transaction.type === 'OUT') {
 balances[transaction.entityId] -= parseFloat(transaction.amount) || 0;
@@ -2769,6 +2770,7 @@ if (typeof paymentTransactions !== 'undefined') {
 paymentTransactions.forEach(transaction => {
 if (transaction.isExpense === true) return;
 if (supplierIdSet.has(String(transaction.entityId))) return;
+if (isOrphanSupplierTx(transaction, factoryInventoryData)) return;
 if (entityBalances[transaction.entityId] !== undefined) {
 if (transaction.type === 'OUT') {
 entityBalances[transaction.entityId] -= parseFloat(transaction.amount) || 0;
@@ -2892,6 +2894,7 @@ if (typeof paymentTransactions !== 'undefined') {
 paymentTransactions.forEach(transaction => {
 if (transaction.isExpense === true) return;
 if (supplierIds.has(String(transaction.entityId))) return;
+if (isOrphanSupplierTx(transaction, factoryInventoryData)) return;
 if (entityBalances[transaction.entityId] !== undefined) {
 if (transaction.type === 'OUT') {
 entityBalances[transaction.entityId] -= parseFloat(transaction.amount) || 0;
