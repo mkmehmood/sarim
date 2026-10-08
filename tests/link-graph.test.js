@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
-  resolveSelectedFormula, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -485,5 +485,37 @@ describe('marking a partly-paid sale as paid', () => {
   it('is refused while separate payment records exist, allowed otherwise', () => {
     assert.match(getPartialPaidIssue(400), /400 was already collected/);
     assert.equal(getPartialPaidIssue(0), null);
+  });
+});
+
+describe('calculator record restore preconditions', () => {
+  const sale = (id, extra = {}) => ({ id, paymentType: 'CREDIT', creditReceived: false, ...extra });
+  const entry = { id: 'c1', linkedSalesIds: ['s1', 's2'], linkedRepSalesIds: ['r1'], returned: 5, returnStore: 'A', expired: 2 };
+  const ctx = (over = {}) => ({ sales: [sale('s1'), sale('s2')], repSales: [{ id: 'r1' }], history: [], storeKeys: ['A'], ...over });
+
+  it('allows restore when everything is exactly as the delete left it', () => {
+    assert.equal(planCalcRestore(entry, ctx()).block, null);
+  });
+  it('blocks when a settled sale was deleted, paid since, or settled by another record', () => {
+    const r = planCalcRestore(entry, ctx({ sales: [sale('s1', { creditReceived: true })], history: [{ id: 'other', linkedSalesIds: ['s2'] }] }));
+    assert.match(r.block, /2 of the 2 credit sales/);
+    assert.match(r.block, /already paid or changed/);
+    const gone = planCalcRestore(entry, ctx({ sales: [sale('s1')] }));
+    assert.match(gone.block, /1 deleted/);
+  });
+  it('blocks when a rep sale was used by another record or removed', () => {
+    assert.match(planCalcRestore(entry, ctx({ repSales: [{ id: 'r1', usedInCalcId: 'x' }] })).block, /rep sale/);
+    assert.match(planCalcRestore(entry, ctx({ repSales: [] })).block, /rep sale/);
+  });
+  it('blocks when the return store is gone or a transfer cannot be re-created', () => {
+    assert.match(planCalcRestore(entry, ctx({ storeKeys: ['B'] })).block, /store it returned stock to/);
+    const tr = { id: 'c2', transferSaleId: 't1', returnRep: 'Ali', returned: 3 };
+    assert.match(planCalcRestore(tr, ctx()).block, /no sale price is set for Ali/);
+    assert.equal(planCalcRestore(tr, ctx({ repPriceOk: true })).block, null);
+    assert.equal(planCalcRestore(tr, ctx({ transferSnapshot: { id: 't1' } })).block, null);
+  });
+  it('ignores its own earlier claims and deleted competitors', () => {
+    const r = planCalcRestore(entry, ctx({ history: [{ id: 'c1', linkedSalesIds: ['s1', 's2'] }, { id: 'old', deletedAt: 1, linkedSalesIds: ['s1'] }] }));
+    assert.equal(r.block, null);
   });
 });

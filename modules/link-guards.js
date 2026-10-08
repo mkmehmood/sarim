@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from './link-graph.js';
 
@@ -105,9 +105,8 @@ export async function getExpiredDeleteBlockReason(entry) {
 // recycle bin on their own, because deleting the calculator record already reversed those side effects.
 export function getRecoverBlockReason(collectionName, snapshot) {
   const s = snapshot || {};
-  if (collectionName === 'calculator_history') {
-    return 'Calculator records cannot be recovered: deleting one already reversed its settled sales, returns, transfers and expired stock. Please enter the calculation again.';
-  }
+  // Calculator records CAN be recovered: getCalcRestoreBlockReason checks that every record they touched is
+  // still as the delete left it, and the recover re-applies all of their effects together.
   if (collectionName === 'sales' && (s.isRepTransfer || (s.isTransfer && s.transferFrom))) {
     return 'This is a rep stock transfer created by a calculator record. Recover is not allowed; enter the calculation again.';
   }
@@ -182,6 +181,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const { block } = planChildReattach(parent, snapshot);
     return block || null;
   }
+  if (collectionName === 'calculator_history') return await getCalcRestoreBlockReason(snapshot);
   // Stock consumers: a recovered sale or transfer-out must not overdraw that store on that day.
   if (collectionName === 'sales' && Number(snapshot.quantity) > 0 && snapshot.supplyStore &&
       !['COLLECTION', 'PARTIAL_PAYMENT'].includes(snapshot.paymentType) && snapshot.transactionType !== 'OLD_DEBT' &&
@@ -463,4 +463,32 @@ export async function ensureContactForRecoveredSale(collectionName, rec) {
   arr.push(contact);
   await unifiedSave(key, arr, contact);
   return contact;
+}
+
+// RECOVER (calculator record): everything it settled / claimed / created must be re-appliable.
+export async function loadCalcRestoreContext(entry) {
+  const tombs = ensureArray(await sqliteStore.get('deletion_records'));
+  const tt = entry && entry.transferSaleId
+    ? tombs.find(t => t && String(t.recordId || t.id) === String(entry.transferSaleId) && (t.collection || t.recordType) === 'sales')
+    : null;
+  const contacts = ensureArray(await sqliteStore.get('sales_customers'));
+  const rep = entry && entry.returnRep ? String(entry.returnRep).toLowerCase() : null;
+  const repContact = rep ? contacts.find(c => c && !c.deletedAt && c.name && c.name.toLowerCase() === rep) : null;
+  let storeKeys;
+  try {
+    const st = typeof window !== 'undefined' && typeof window.getAppStores === 'function' ? await window.getAppStores() : null;
+    if (Array.isArray(st) && st.length) storeKeys = st.map(s => s.key);
+  } catch (_) { /* store list unavailable: skip that check */ }
+  return {
+    sales: ensureArray(await sqliteStore.get('customer_sales')),
+    repSales: ensureArray(await sqliteStore.get('rep_sales')),
+    history: ensureArray(await sqliteStore.get('noman_history')),
+    storeKeys,
+    transferSnapshot: tt && tt.snapshot ? tt.snapshot : null,
+    repPriceOk: !!(repContact && Number(repContact.customSalePrice) > 0),
+  };
+}
+
+export async function getCalcRestoreBlockReason(entry) {
+  return planCalcRestore(entry, await loadCalcRestoreContext(entry)).block;
 }

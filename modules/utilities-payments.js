@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
@@ -7,7 +7,7 @@ import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditC
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
-import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable,  revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
@@ -1089,7 +1089,9 @@ return;
 }
 try {
 let history; history = await sqliteStore.get('noman_history', []);
-const entryToDelete = history.find(h => h.id === id);
+const _foundEntry = history.find(h => h.id === id);
+// Work on a copy: the recycle-bin snapshot must keep the entry exactly as it was before the delete.
+const entryToDelete = _foundEntry ? JSON.parse(JSON.stringify(_foundEntry)) : _foundEntry;
 if (entryToDelete && entryToDelete.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
 return;
@@ -1146,6 +1148,10 @@ await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, en
 }
 if (entryToDelete.expired > 0 && entryToDelete.expiredApplied !== false) {
 await reverseExpiredFromChora(entryToDelete.expired, entryToDelete.date);
+// Taking CHORA back out twice would be wrong, so remember it is done in case a later step fails and the
+// delete is tried again. The recycle-bin copy keeps the original flag.
+const _live = history.find(h => h.id === id);
+if (_live) { _live.expiredApplied = false; _live.updatedAt = getTimestamp(); try { await unifiedSave('noman_history', history, _live); } catch (_) { /* best effort */ } }
 }
 const newHistory = history.filter(h => h.id !== id);
 await unifiedDelete('noman_history', newHistory, id, { strict: true }, entryToDelete);
@@ -4182,6 +4188,110 @@ export async function flushErasedTombstones() {
 }
 window.flushErasedTombstones = flushErasedTombstones;
 
+// ---- Calculator record recovery ------------------------------------------------------------------------------
+// Deleting a calculator record reversed everything it did. Recovering it re-applies ALL of it together, using the
+// same functions the calculator save uses, and undoes the lot again if any step fails.
+async function _recreateCalcTransferSale(snap) {
+  const tombs = ensureArray(await sqliteStore.get('deletion_records'));
+  const t = tombs.find(x => x && String(x.recordId || x.id) === String(snap.transferSaleId) && (x.collection || x.recordType) === 'sales');
+  if (t && t.snapshot) {
+    const all = ensureArray(await sqliteStore.get('customer_sales'));
+    const rec = { ...t.snapshot };
+    ['deletedAt', 'tombstoned_at', 'deleted_by', 'deletion_version', 'recoveredAt', '_placeholder', 'isDeleted', 'softDeleted', GROUP_FIELD, DELETE_ORIGIN_FIELD].forEach(k => delete rec[k]);
+    let id = generateUUID('sale');
+    if (!validateUUID(id)) id = generateUUID('sale');
+    rec.id = id;
+    rec.updatedAt = getTimestamp();
+    all.push(rec);
+    await unifiedSave('customer_sales', all, rec);
+    notifyDataChange('sales');
+    return { saleId: id, oldId: String(snap.transferSaleId) };
+  }
+  const r = await processRepTransfer(snap.returnRep, snap.returned, snap.date, snap.seller);
+  return { saleId: r.saleId, oldId: null };
+}
+
+async function _claimRepSalesForCalc(repIds, calcId) {
+  const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+  const claimed = [];
+  repIds.forEach(id => {
+    const s = repSales.find(x => x && x.id === id && !x.deletedAt);
+    if (s && !s.usedInCalcId) {
+      s.usedInCalcId = calcId;
+      s.updatedAt = getTimestamp();
+      ensureRecordIntegrity(s, true);
+      claimed.push(id);
+    }
+  });
+  if (claimed.length) await unifiedSave('rep_sales', repSales, null, claimed);
+  return claimed;
+}
+
+async function recoverCalcEntry(deletedId, snap) {
+  const oldId = String(deletedId);
+  const ids = Array.isArray(snap.linkedSalesIds) ? snap.linkedSalesIds : [];
+  const repIds = Array.isArray(snap.linkedRepSalesIds) ? snap.linkedRepSalesIds : [];
+  let calcId = generateUUID('calc');
+  if (!validateUUID(calcId)) calcId = generateUUID('calc');
+  let retIds = null, transfer = null, expApplied = null, linked = [], linkedRep = [];
+  const undo = async () => {
+    try {
+      if (retIds && snap.returnStore) await reverseReturnFromProduction(snap.returnStore, snap.returned, snap.date, snap.seller, retIds);
+      if (transfer) {
+        const all = ensureArray(await sqliteStore.get('customer_sales'));
+        const r = all.find(x => x.id === transfer.saleId);
+        if (r) await unifiedDelete('customer_sales', all.filter(x => x.id !== r.id), r.id, { strict: true }, r);
+      }
+      if (expApplied) await reverseExpiredFromChora(snap.expired, snap.date);
+      if (linked.length) await revertSpecificSalesEntries(linked);
+      if (linkedRep.length) await revertRepSalesEntries(linkedRep);
+    } catch (e) { console.error('[recoverCalcEntry] undo failed', _safeErr(e)); }
+  };
+  try {
+    if (snap.returned > 0 && snap.returnStore) retIds = await processReturnToProduction(snap.returnStore, snap.returned, snap.date, snap.seller);
+    else if (snap.transferSaleId) transfer = await _recreateCalcTransferSale(snap);
+    if (snap.expired > 0 && snap.expiredApplied !== false) expApplied = await processExpiredToChora(snap.expired, snap.date, snap.seller);
+    if (ids.length) {
+      linked = await markAllPendingCreditSalesAsCash(snap.seller, new Set(), new Set(ids));
+      if (linked.length !== ids.length) throw new Error('Some of the credit sales changed while recovering.');
+    }
+    if (repIds.length) {
+      linkedRep = await _claimRepSalesForCalc(repIds, calcId);
+      if (linkedRep.length !== repIds.length) throw new Error('Some of the rep sales changed while recovering.');
+    }
+    const rec = { ...snap };
+    ['deletedAt', 'tombstoned_at', 'deleted_by', 'deletion_version', '_placeholder', 'isDeleted', 'softDeleted', 'originalId', GROUP_FIELD, DELETE_ORIGIN_FIELD].forEach(k => delete rec[k]);
+    rec.id = calcId;
+    rec.returnEntryId = retIds ? retIds.returnEntryId : null;
+    rec.returnLogId = retIds ? retIds.returnLogId : null;
+    rec.transferSaleId = transfer ? transfer.saleId : null;
+    rec.expiredApplied = snap.expired > 0 ? (snap.expiredApplied === false ? false : !!expApplied) : null;
+    rec.linkedSalesIds = linked;
+    rec.linkedRepSalesIds = linkedRep;
+    rec.recoveredAt = Date.now();
+    rec.updatedAt = getTimestamp();
+    rec.syncedAt = new Date().toISOString();
+    const history = ensureArray(await sqliteStore.get('noman_history'));
+    history.push(rec);
+    await unifiedSave('noman_history', history, rec);
+    // The old tombstone and the tombstones of the records it created are now stale: hide them so nobody
+    // recovers a second copy.
+    await purgeRecoveredId(oldId, 'calculator_history', null, calcId);
+    const stale = [[snap.returnEntryId, 'production', retIds && retIds.returnEntryId], [snap.returnLogId, 'returns', retIds && retIds.returnLogId], [snap.transferSaleId, 'sales', transfer && transfer.saleId]];
+    for (const [sid, col, nid] of stale) {
+      if (sid) { try { await purgeRecoveredId(String(sid), col, null, nid || null); } catch (_) { /* tombstone may already be gone */ } }
+    }
+    if (typeof invalidateAllCaches === 'function') await invalidateAllCaches();
+    notifyDataChange('calculator');
+    triggerAutoSync();
+    return true;
+  } catch (e) {
+    await undo();
+    showToast('Could not recover the calculator record: ' + ((e && e.message) || 'unknown error') + ' Nothing was changed.', 'error', 7000);
+    return false;
+  }
+}
+
 export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4235,6 +4345,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     }
     if (getRecoverBlockReason(collectionName, recoveredData)) return false;
     if (recoveredData && await getRecoverLinkBlockReason(collectionName, recoveredData)) return false;
+    if (collectionName === 'calculator_history' && recoveredData) return await recoverCalcEntry(deletedId, recoveredData);
     if (!recoveredData && firebaseDB && currentUser) {
       try {
         const userRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -4782,9 +4893,20 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   }
   const _skipNote = _recov.plan.skipped.length ? `\n\nThese cannot be recovered right now and will stay in the recycle bin:\n${_skippedSummary(_recov.plan)}` : '';
   const groupNote = (_grpMembers.length > 1 ? `\n\nThis was deleted together with ${_grpMembers.length - 1} other record${_grpMembers.length - 1 !== 1 ? 's' : ''}. All ${_grpMembers.length} will be recovered together so their links stay correct.` : '') + _skipNote;
+  let calcNote = '';
+  if (collectionName === 'calculator_history' && ownTomb && ownTomb.snapshot) {
+    const cs = ownTomb.snapshot;
+    const parts = [];
+    if ((cs.linkedSalesIds || []).length) parts.push(`settle ${cs.linkedSalesIds.length} credit sale${cs.linkedSalesIds.length !== 1 ? 's' : ''} again`);
+    if ((cs.linkedRepSalesIds || []).length) parts.push(`claim ${cs.linkedRepSalesIds.length} rep sale${cs.linkedRepSalesIds.length !== 1 ? 's' : ''} again`);
+    if (cs.returned > 0 && cs.returnStore) parts.push(`add ${cs.returned} kg back to ${getStoreLabel(cs.returnStore)} stock`);
+    if (cs.transferSaleId) parts.push(`re-create the ${cs.returned} kg transfer to ${cs.returnRep}`);
+    if (cs.expired > 0 && cs.expiredApplied !== false) parts.push(`add ${cs.expired} kg back to CHORA`);
+    if (parts.length) calcNote = `\n\nRecovering this record will also: ${parts.join('; ')}. If anything has changed since it was deleted, nothing is recovered.`;
+  }
   const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
   if (!(await showGlassConfirm(
-    `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}${groupNote}`,
+    `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}${groupNote}${calcNote}`,
     { title: 'Recover Record', confirmText: 'Recover', danger: false }
   ))) return;
   showToast('Recovering record…', 'info', 1500);

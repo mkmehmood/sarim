@@ -2591,7 +2591,15 @@ emitSyncUpdate({ customer_sales: null });
 return { saleId: id };
 }
 
+let _calcSaveInFlight = false;
+// A second tap while the first save is running would record the settlement, return, transfer and CHORA twice.
 export async function saveTransaction() {
+if (_calcSaveInFlight) return;
+_calcSaveInFlight = true;
+try { return await _saveTransactionImpl(); } finally { _calcSaveInFlight = false; }
+}
+
+async function _saveTransactionImpl() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -2757,11 +2765,13 @@ await _rollbackCalc();
 showToast('Failed to save transaction. Nothing was changed.', 'error', 4000);
 return;
 }
+let _persisted = false;
 try {
 let history = await sqliteStore.get('noman_history', []);
 if (!Array.isArray(history)) history = [];
 history.push(entry);
 await unifiedSave('noman_history', history, entry);
+_persisted = true;
 notifyDataChange('calculator');
 emitSyncUpdate({ noman_history: null});
 if (Array.isArray(salesHistory)) {
@@ -2792,8 +2802,14 @@ if (entry.expired > 0) {
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 }
 } catch (error) {
+if (_persisted) {
+// The record IS saved. A screen refresh failing must never undo the return, transfer, CHORA and settled sales it claims.
+console.warn('[saveTransaction] saved, but a screen refresh failed:', error && error.message);
+showToast('Saved. Some screens could not refresh - reload to see everything.', 'warning', 5000);
+} else {
 await _rollbackCalc();
 showToast('Failed to save transaction. Nothing was changed.', 'error', 4000);
+}
 }
 }
 

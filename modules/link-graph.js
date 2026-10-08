@@ -560,3 +560,55 @@ export function getPartialPaidIssue(childTotal) {
     ? `${_r2(c)} was already collected through separate payment records on this sale. Marking it paid would count that money twice. Delete those payment records first.`
     : null;
 }
+
+// ---- calculator entry restore ----------------------------------------------------------------------------
+// A calculator record settles credit sales, claims rep sales, and may create a return, a rep transfer and
+// CHORA stock. Deleting it reverses all of that, so restoring it has to re-apply ALL of it - and only when
+// every record it touched is still exactly as the delete left it. Otherwise nothing is restored.
+export function planCalcRestore(entry, ctx) {
+  const e = entry || {};
+  const c = ctx || {};
+  const sales = Array.isArray(c.sales) ? c.sales : [];
+  const repSales = Array.isArray(c.repSales) ? c.repSales : [];
+  const history = Array.isArray(c.history) ? c.history : [];
+  const claimed = new Set();
+  const claimedRep = new Set();
+  history.forEach(h => {
+    if (!h || h.deletedAt || String(h.id) === String(e.id)) return;
+    (Array.isArray(h.linkedSalesIds) ? h.linkedSalesIds : []).forEach(i => claimed.add(String(i)));
+    (Array.isArray(h.linkedRepSalesIds) ? h.linkedRepSalesIds : []).forEach(i => claimedRep.add(String(i)));
+  });
+  const problems = [];
+
+  const ids = Array.isArray(e.linkedSalesIds) ? e.linkedSalesIds : [];
+  let missing = 0, paid = 0, other = 0;
+  ids.forEach(id => {
+    const sale = sales.find(x => x && String(x.id) === String(id) && !x.deletedAt);
+    if (!sale) missing++;
+    else if (claimed.has(String(id))) other++;
+    else if (sale.paymentType !== 'CREDIT' || sale.creditReceived) paid++;
+  });
+  if (missing || paid || other) {
+    const parts = [];
+    if (missing) parts.push(`${missing} deleted`);
+    if (paid) parts.push(`${paid} already paid or changed`);
+    if (other) parts.push(`${other} settled by another calculator record`);
+    problems.push(`${missing + paid + other} of the ${ids.length} credit sale${ids.length !== 1 ? 's' : ''} this record settled can no longer be settled again (${parts.join(', ')})`);
+  }
+
+  const repIds = Array.isArray(e.linkedRepSalesIds) ? e.linkedRepSalesIds : [];
+  let repBad = 0;
+  repIds.forEach(id => {
+    const sale = repSales.find(x => x && String(x.id) === String(id) && !x.deletedAt);
+    if (!sale || sale.usedInCalcId || claimedRep.has(String(id))) repBad++;
+  });
+  if (repBad) problems.push(`${repBad} of the ${repIds.length} rep sale${repIds.length !== 1 ? 's' : ''} it used ${repBad !== 1 ? 'are' : 'is'} deleted or already used by another record`);
+
+  if (_n(e.returned) > 0 && e.returnStore && Array.isArray(c.storeKeys) && !c.storeKeys.includes(e.returnStore)) {
+    problems.push('the store it returned stock to no longer exists');
+  }
+  if (e.transferSaleId && !c.transferSnapshot && !c.repPriceOk) {
+    problems.push(`no sale price is set for ${e.returnRep || 'the rep'} to re-create the stock transfer`);
+  }
+  return { block: problems.length ? `This calculator record cannot be recovered because ${problems.join('; ')}. Enter the calculation again.` : null };
+}
