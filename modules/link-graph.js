@@ -445,3 +445,118 @@ export function applySettlement(rec, plan) {
   (plan.clear || []).forEach(f => { delete rec[f]; });
   return rec;
 }
+
+// ---- recovery planning -----------------------------------------------------------------------------------
+// Records deleted before deletion groups existed have no group id, but they still point at what they depend
+// on. Recovering a record therefore also brings back the PARENT it needs (never the other way round, so
+// recovering one payment does not drag back every other payment of that supplier).
+const _tid = (t) => String((t && (t.recordId || t.id)) || '');
+const _tcol = (t) => (t && (t.collection || t.recordType)) || '';
+const _lc = (v) => String(v || '').trim().toLowerCase();
+
+function _returnPairMatches(entry, log) {
+  if (!entry || !log) return false;
+  return entry.store === log.store && entry.date === log.date && _n(log.quantity) === _n(entry.net) &&
+    ((entry.createdAt != null && log.createdAt === entry.createdAt) || (entry.returnedBy && log.seller === entry.returnedBy));
+}
+
+// live = { ids: Set<string> of live record ids, contacts: { sales: Set<lowercase name>, rep: Set<lowercase name> } }
+export function findParentTombstones(tomb, allTombs, live) {
+  const all = Array.isArray(allTombs) ? allTombs : [];
+  const snap = (tomb && tomb.snapshot) || {};
+  const col = _tcol(tomb);
+  const liveIds = (live && live.ids) || new Set();
+  const out = [];
+  const byId = (id, cols) => all.find(t => t && _tid(t) === String(id) && cols.includes(_tcol(t)));
+  const need = (id, cols) => { if (id && !liveIds.has(String(id))) { const p = byId(id, cols); if (p) out.push(p); } };
+  need(snap.relatedSaleId, ['sales', 'rep_sales']);
+  need(snap.expenseId, ['expenses']);
+  need(snap.entityId, ['entities']);
+  if (col === 'inventory') need(snap.supplierId, ['entities']);
+  if ((col === 'sales' || col === 'rep_sales') && snap.customerName && !snap.isRepTransfer && !(col === 'sales' && snap.salesRep && snap.salesRep !== 'NONE')) {
+    const kind = col === 'sales' ? 'sales' : 'rep';
+    const names = (live && live.contacts && live.contacts[kind]) || new Set();
+    if (!names.has(_lc(snap.customerName))) {
+      const ccol = kind === 'sales' ? 'sales_customers' : 'rep_customers';
+      const c = all.find(t => t && _tcol(t) === ccol && t.snapshot && _lc(t.snapshot.name) === _lc(snap.customerName));
+      if (c) out.push(c);
+    }
+  }
+  if (col === 'production' && snap.isReturn) {
+    const l = all.find(t => t && _tcol(t) === 'returns' && _returnPairMatches(snap, t.snapshot));
+    if (l) out.push(l);
+  }
+  if (col === 'returns') {
+    const e = all.find(t => t && _tcol(t) === 'production' && t.snapshot && t.snapshot.isReturn && _returnPairMatches(t.snapshot, snap));
+    if (e) out.push(e);
+  }
+  return out;
+}
+
+// Everything that has to come back together with `tomb`: its deletion group, its transfer / return partner,
+// and any parent it needs that is still sitting in the bin.
+export function expandRecoveryMembers(tomb, allTombs, live) {
+  if (!tomb) return [];
+  const seen = new Map();
+  const queue = [tomb];
+  while (queue.length) {
+    const t = queue.pop();
+    const id = _tid(t);
+    if (!id || seen.has(id)) continue;
+    seen.set(id, t);
+    findGroupMembers(t, allTombs).forEach(m => { if (m) queue.push(m); });
+    findParentTombstones(t, allTombs, live).forEach(p => queue.push(p));
+  }
+  return Array.from(seen.values());
+}
+
+// Decide what can be recovered now. blocked: Map<recordId, reason>. A blocked record is skipped, and so is
+// everything that depends on it (its payments, its customer's sales...) or must travel with it (pairs).
+export function planGroupRecovery(members, blocked, requestedId) {
+  const list = (members || []).filter(Boolean);
+  const byId = new Map(list.map(t => [_tid(t), t]));
+  const skip = new Map();
+  for (const t of list) if (blocked && blocked.has(_tid(t))) skip.set(_tid(t), blocked.get(_tid(t)));
+  const label = (t) => (t.snapshot && (t.snapshot.name || t.snapshot.customerName || t.snapshot.id)) || _tid(t);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const t of list) {
+      const id = _tid(t);
+      if (skip.has(id)) continue;
+      const s = t.snapshot || {};
+      let why = null;
+      for (const pid of [s.relatedSaleId, s.expenseId, s.entityId, _tcol(t) === 'inventory' ? s.supplierId : null]) {
+        if (pid && skip.has(String(pid)) && byId.has(String(pid))) { why = `it depends on "${label(byId.get(String(pid)))}", which cannot be recovered yet`; break; }
+      }
+      if (!why && s.transferPairId) {
+        const partner = list.find(x => x !== t && x.snapshot && x.snapshot.transferPairId === s.transferPairId && skip.has(_tid(x)));
+        if (partner) why = 'the other side of this transfer cannot be recovered yet';
+      }
+      if (!why && (_tcol(t) === 'returns' || (_tcol(t) === 'production' && s.isReturn))) {
+        const partner = list.find(x => x !== t && skip.has(_tid(x)) && (
+          (_tcol(t) === 'production' && _tcol(x) === 'returns' && _returnPairMatches(s, x.snapshot)) ||
+          (_tcol(t) === 'returns' && _tcol(x) === 'production' && x.snapshot && x.snapshot.isReturn && _returnPairMatches(x.snapshot, s))));
+        if (partner) why = 'its matching return record cannot be recovered yet';
+      }
+      if (!why && (_tcol(t) === 'sales' || _tcol(t) === 'rep_sales') && s.customerName) {
+        const cc = _tcol(t) === 'sales' ? 'sales_customers' : 'rep_customers';
+        const contact = list.find(x => skip.has(_tid(x)) && _tcol(x) === cc && x.snapshot && _lc(x.snapshot.name) === _lc(s.customerName));
+        if (contact) why = `its customer "${s.customerName}" cannot be recovered yet`;
+      }
+      if (why) { skip.set(id, why); changed = true; }
+    }
+  }
+  const restore = orderForRestore(list.filter(t => !skip.has(_tid(t))));
+  const skipped = list.filter(t => skip.has(_tid(t))).map(t => ({ tomb: t, reason: skip.get(_tid(t)) }));
+  const requestedSkipped = requestedId != null && skip.has(String(requestedId)) ? skip.get(String(requestedId)) : null;
+  return { restore, skipped, requestedSkipped };
+}
+
+// Marking a sale paid while payment records exist against it would count that money twice.
+export function getPartialPaidIssue(childTotal) {
+  const c = _n(childTotal);
+  return c > 0
+    ? `${_r2(c)} was already collected through separate payment records on this sale. Marking it paid would count that money twice. Delete those payment records first.`
+    : null;
+}

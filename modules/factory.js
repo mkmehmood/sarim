@@ -763,6 +763,7 @@ const units = parseInt(document.getElementById('factoryProductionUnits').value) 
 if (units <= 0) return showToast('Invalid units', 'warning', 3000);
 const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
+let _histSavedRec = null;
 try {
 const _sfpeType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : (currentFactoryEntryStore === 'STORE_C' ? 'asaan' : 'standard');
 const _freshFormula = await getSelectedFormula(currentFactoryEntryStore);
@@ -875,6 +876,7 @@ if (o.managedBy) productionRecord.managedBy = o.managedBy;
 const validatedRecord = ensureRecordIntegrity(productionRecord, !!_ed);
 if (_ed && _edHistIdx >= 0) factoryProductionHistory.splice(_edHistIdx, 0, validatedRecord); else factoryProductionHistory.unshift(validatedRecord);
 await unifiedSave('factory_production_history', factoryProductionHistory, validatedRecord);
+_histSavedRec = validatedRecord;
 if (inventoryUpdated) {
 const inventoryIds = factoryInventoryData.filter(i => i && i.id).map(i => i.id);
 await unifiedSave('factory_inventory_data', factoryInventoryData, null, inventoryIds);
@@ -904,6 +906,14 @@ await sqliteStore.setBatch([
 } catch (rollbackError) {
 console.error('Failed to save data locally.', _safeErr(rollbackError));
 showToast('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+}
+// The batch record was already saved (and queued for the cloud) before the inventory write failed. Undo that
+// too, or other devices would see a batch whose materials were never taken out of inventory.
+if (_histSavedRec) {
+try {
+if (_ed) await unifiedSave('factory_production_history', factoryProductionHistory, _ed.original);
+else await unifiedDelete('factory_production_history', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
+} catch (_undoErr) { console.error('Could not undo the saved batch record.', _safeErr(_undoErr)); }
 }
 showToast(error.message || 'Failed to save production data. Please try again.', 'error', 4000);
 }

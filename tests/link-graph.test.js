@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
-  resolveSelectedFormula, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 
 describe('recovered-id remapping', () => {
@@ -402,5 +402,88 @@ describe('credit settlement keeps its date in step with its flag', () => {
     const toCredit = applySettlement({ creditReceived: true, creditReceivedDate: 'x' }, planEditSettlement({ paymentType: 'CASH', creditReceived: true }, 'CREDIT'));
     assert.equal(toCredit.creditReceived, false);
     assert.equal(toCredit.creditReceivedDate, undefined);
+  });
+});
+
+describe('old bin records come back with what they depend on', () => {
+  const tomb = (id, collection, snapshot) => ({ id, recordId: id, collection, snapshot });
+  const live = (ids = [], sales = [], rep = []) => ({ ids: new Set(ids), contacts: { sales: new Set(sales), rep: new Set(rep) } });
+
+  it('a payment brings back its deleted expense and supplier, not their other payments', () => {
+    const exp = tomb('e1', 'expenses', {});
+    const sup = tomb('s1', 'entities', { name: 'Supplier' });
+    const pay = tomb('t1', 'transactions', { expenseId: 'e1', entityId: 's1' });
+    const other = tomb('t2', 'transactions', { entityId: 's1' });
+    const ids = expandRecoveryMembers(pay, [exp, sup, pay, other], live()).map(t => t.id).sort();
+    assert.deepEqual(ids, ['e1', 's1', 't1']);
+  });
+  it('does not pull parents that are still live', () => {
+    const pay = tomb('t1', 'transactions', { expenseId: 'e1', entityId: 's1' });
+    assert.deepEqual(expandRecoveryMembers(pay, [pay, tomb('e1', 'expenses', {})], live(['e1', 's1'])).map(t => t.id), ['t1']);
+  });
+  it('a sale brings back its deleted customer contact, matched by name', () => {
+    const contact = tomb('c1', 'sales_customers', { name: 'Ali Khan' });
+    const sale = tomb('x1', 'sales', { customerName: 'ali khan', salesRep: 'NONE' });
+    assert.deepEqual(expandRecoveryMembers(sale, [contact, sale], live()).map(t => t.id).sort(), ['c1', 'x1']);
+    assert.deepEqual(expandRecoveryMembers(sale, [contact, sale], live([], ['ali khan'])).map(t => t.id), ['x1']);
+  });
+  it('a partial payment brings back its credit sale, and a material its supplier', () => {
+    const parent = tomb('p1', 'sales', { customerName: 'A' });
+    const child = tomb('k1', 'sales', { relatedSaleId: 'p1', paymentType: 'PARTIAL_PAYMENT' });
+    assert.ok(expandRecoveryMembers(child, [parent, child], live([], ['a'])).some(t => t.id === 'p1'));
+    const sup = tomb('s9', 'entities', {});
+    const mat = tomb('m1', 'inventory', { supplierId: 's9' });
+    assert.ok(expandRecoveryMembers(mat, [sup, mat], live()).some(t => t.id === 's9'));
+  });
+  it('pairs an old return entry with its stock log even without a group', () => {
+    const entry = tomb('r1', 'production', { isReturn: true, store: 'A', date: 'D', net: 5, createdAt: 77 });
+    const log = tomb('r2', 'returns', { store: 'A', date: 'D', quantity: 5, createdAt: 77 });
+    assert.deepEqual(expandRecoveryMembers(entry, [entry, log], live()).map(t => t.id).sort(), ['r1', 'r2']);
+    assert.deepEqual(expandRecoveryMembers(log, [entry, log], live()).map(t => t.id).sort(), ['r1', 'r2']);
+  });
+});
+
+describe('recover what can be recovered, skip what cannot', () => {
+  const tomb = (id, collection, snapshot) => ({ id, recordId: id, collection, snapshot });
+  it('skips the blocked record and everything that depends on it, restores the rest', () => {
+    const contact = tomb('c', 'sales_customers', { name: 'Ali' });
+    const parent = tomb('p', 'sales', { customerName: 'Ali', quantity: 90 });
+    const child = tomb('k', 'sales', { customerName: 'Ali', relatedSaleId: 'p' });
+    const free = tomb('f', 'sales', { customerName: 'Ali', quantity: 1 });
+    const plan = planGroupRecovery([contact, parent, child, free], new Map([['p', 'Not enough stock']]), 'f');
+    assert.deepEqual(plan.restore.map(t => t.id).sort(), ['c', 'f']);
+    assert.deepEqual(plan.skipped.map(x => x.tomb.id).sort(), ['k', 'p']);
+    assert.equal(plan.requestedSkipped, null);
+    assert.match(plan.skipped.find(x => x.tomb.id === 'k').reason, /depends on/);
+  });
+  it('skips every sale of a customer whose contact cannot come back', () => {
+    const contact = tomb('c', 'sales_customers', { name: 'Ali' });
+    const sale = tomb('s', 'sales', { customerName: 'Ali' });
+    const plan = planGroupRecovery([contact, sale], new Map([['c', 'blocked']]), 's');
+    assert.equal(plan.restore.length, 0);
+    assert.match(plan.requestedSkipped, /customer "Ali"/);
+  });
+  it('keeps transfer halves and return pairs together', () => {
+    const out = tomb('o', 'production', { isTransfer: true, transferPairId: 'P' });
+    const inn = tomb('i', 'production', { isTransfer: true, transferPairId: 'P' });
+    const p1 = planGroupRecovery([out, inn], new Map([['o', 'no stock']]), 'i');
+    assert.equal(p1.restore.length, 0);
+    const entry = tomb('r1', 'production', { isReturn: true, store: 'A', date: 'D', net: 5, createdAt: 1 });
+    const log = tomb('r2', 'returns', { store: 'A', date: 'D', quantity: 5, createdAt: 1 });
+    assert.equal(planGroupRecovery([entry, log], new Map([['r2', 'x']]), 'r1').restore.length, 0);
+  });
+  it('restores everything when nothing is blocked, parents first', () => {
+    const parent = tomb('p', 'sales', {});
+    const child = tomb('k', 'sales', { relatedSaleId: 'p' });
+    const plan = planGroupRecovery([child, parent], new Map(), 'k');
+    assert.deepEqual(plan.restore.map(t => t.id), ['p', 'k']);
+    assert.equal(plan.skipped.length, 0);
+  });
+});
+
+describe('marking a partly-paid sale as paid', () => {
+  it('is refused while separate payment records exist, allowed otherwise', () => {
+    assert.match(getPartialPaidIssue(400), /400 was already collected/);
+    assert.equal(getPartialPaidIssue(0), null);
   });
 });

@@ -1,7 +1,7 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -4105,20 +4105,46 @@ async function _withRecycleLock(fn) {
 // Records deleted together recover together, so check the WHOLE group before touching anything. Otherwise one
 // blocked member left the others recovered and the group half restored. ctx makes the stock / material /
 // factory-unit checks cumulative across the group.
-async function _getGroupRecoverBlockReason(members) {
+async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
   const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null };
+  const blocked = new Map();
   for (const m of orderForRestore(members)) {
     const snap = m && m.snapshot;
     if (!snap) continue; // snapshot is fetched from the cloud at recover time
     const col = m.collection || m.recordType || 'unknown';
+    const mid = String(m.recordId || m.id);
     const hard = getRecoverBlockReason(col, snap);
-    if (hard) return hard;
+    if (hard) { blocked.set(mid, hard); continue; }
     if (snap.relatedSaleId && ids.has(String(snap.relatedSaleId))) continue; // parent comes back in the same group
+    if (col === 'inventory' && snap.supplierId && ids.has(String(snap.supplierId))) continue; // supplier comes back too
     const link = await getRecoverLinkBlockReason(col, snap, ctx);
-    if (link) return link;
+    if (link) blocked.set(mid, link);
   }
-  return null;
+  return blocked;
+}
+
+// Everything that has to come back with this record: its deletion group, its transfer / return partner and any
+// parent it needs that is still in the bin (this also covers records deleted before groups existed).
+async function _collectRecoveryMembers(tomb, deletionRecords) {
+  if (!tomb) return [];
+  const live = await getLiveRecoveryRefs();
+  return expandRecoveryMembers(tomb, deletionRecords, live);
+}
+
+// What can be recovered right now, and what has to wait (with the reason for each).
+async function _planRecovery(tomb, deletionRecords) {
+  const members = await _collectRecoveryMembers(tomb, deletionRecords);
+  const blocked = await _getGroupBlockedMap(members);
+  const plan = planGroupRecovery(members, blocked, String(tomb.recordId || tomb.id));
+  return { members, blocked, plan };
+}
+
+function _skippedSummary(plan) {
+  return plan.skipped.map(x => {
+    const s = x.tomb.snapshot || {};
+    return `\u2022 ${s.customerName || s.name || s.description || x.tomb.collection || 'Record'}: ${x.reason}`;
+  }).join('\n');
 }
 
 // Production, returns, batches and materials all feed the factory unit totals: refresh them after a recover.
@@ -4175,13 +4201,16 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
   try {
     if (!_isPairRecovery) {
       const _grpTomb = deletionRecords.find(r => String(r.id) === String(deletedId) || String(r.recordId || r.id) === String(deletedId));
-      const _grp = findGroupMembers(_grpTomb, deletionRecords);
-      if (_grp.length > 1) {
-        const _blk = await _getGroupRecoverBlockReason(_grp);
-        if (_blk) { showToast(_blk, 'warning', 7000); return false; }
+      const _members = _grpTomb ? await _collectRecoveryMembers(_grpTomb, deletionRecords) : [];
+      if (_members.length > 1) {
+        const _blocked = await _getGroupBlockedMap(_members);
+        const _plan = planGroupRecovery(_members, _blocked, String(_grpTomb.recordId || _grpTomb.id));
+        if (_plan.requestedSkipped) { showToast(_plan.requestedSkipped, 'warning', 7000); return false; }
+        const _grp = _plan.restore;
+        if (_plan.skipped.length) showToast(`${_plan.skipped.length} linked record${_plan.skipped.length !== 1 ? 's' : ''} stay in the recycle bin:\n${_skippedSummary(_plan)}`, 'warning', 9000);
         let _selfOk = false;
         let _groupFailed = false;
-        for (const m of orderForRestore(_grp)) {
+        for (const m of _grp) {
           const mid = m.recordId || m.id;
           const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true);
           if (String(mid) === String(deletedId)) _selfOk = ok;
@@ -4739,10 +4768,10 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const label = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
   const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
   const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
-  const _grpMembers = ownTomb ? findGroupMembers(ownTomb, deletionRecords) : [];
-  if (_grpMembers.length > 1) {
-    const _gb = await _getGroupRecoverBlockReason(_grpMembers);
-    if (_gb) { showToast(_gb, 'warning', 7000); return; }
+  const _recov = ownTomb ? await _planRecovery(ownTomb, deletionRecords) : { members: [], plan: { restore: [], skipped: [], requestedSkipped: null } };
+  const _grpMembers = _recov.plan.restore.length > 0 ? _recov.plan.restore : _recov.members;
+  if (_recov.members.length > 1) {
+    if (_recov.plan.requestedSkipped) { showToast(_recov.plan.requestedSkipped, 'warning', 7000); return; }
   } else {
     const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
     if (_rb) { showToast(_rb, 'warning', 6000); return; }
@@ -4751,7 +4780,8 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
       if (_lb) { showToast(_lb, 'warning', 6500); return; }
     }
   }
-  const groupNote = _grpMembers.length > 1 ? `\n\nThis was deleted together with ${_grpMembers.length - 1} other record${_grpMembers.length - 1 !== 1 ? 's' : ''}. All ${_grpMembers.length} will be recovered together so their links stay correct.` : '';
+  const _skipNote = _recov.plan.skipped.length ? `\n\nThese cannot be recovered right now and will stay in the recycle bin:\n${_skippedSummary(_recov.plan)}` : '';
+  const groupNote = (_grpMembers.length > 1 ? `\n\nThis was deleted together with ${_grpMembers.length - 1} other record${_grpMembers.length - 1 !== 1 ? 's' : ''}. All ${_grpMembers.length} will be recovered together so their links stay correct.` : '') + _skipNote;
   const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
   if (!(await showGlassConfirm(
     `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}${groupNote}`,

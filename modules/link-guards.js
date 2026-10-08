@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  isSettleableSale, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
 } from './link-graph.js';
 
@@ -316,6 +316,11 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave(key, arr, parent);
     }
   }
+  // A recovered sale must have its customer back in the customer list (no-op when the contact exists).
+  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales')) {
+    try { await ensureContactForRecoveredSale(collectionName, cleanRecord); }
+    catch (e) { console.warn('[recover] contact re-create failed', e && e.message); }
+  }
   return cleanRecord;
 }
 
@@ -413,5 +418,49 @@ export async function getSettleToggleBlockReason(id, kind = 'customer') {
   const rec = ensureArray(await sqliteStore.get(key)).find(s => s && s.id === id);
   if (!rec) return null;
   if (!isSettleableSale(rec)) return 'Only credit sales can be marked paid or unpaid.';
-  return await getSaleBlockReason(id, kind, { forEdit: true });
+  const calc = await getSaleBlockReason(id, kind, { forEdit: true });
+  if (calc) return calc;
+  if (!rec.creditReceived) {
+    // About to be marked PAID: money already collected through separate payment records would count twice.
+    const kids = ensureArray(await sqliteStore.get(key)).filter(s => s && !s.deletedAt && s.relatedSaleId === id && s.paymentType === 'PARTIAL_PAYMENT');
+    return getPartialPaidIssue(kids.reduce((t, c) => t + (Number(c.totalValue) || 0), 0));
+  }
+  return null;
+}
+
+// RECOVER (plan): what is live right now, so the planner knows which parents still have to come back.
+export async function getLiveRecoveryRefs() {
+  const ids = new Set();
+  for (const k of ['customer_sales', 'rep_sales', 'expenses', 'payment_entities']) {
+    ensureArray(await sqliteStore.get(k)).forEach(r => { if (r && r.id && !r.deletedAt) ids.add(String(r.id)); });
+  }
+  const names = async (k) => new Set(ensureArray(await sqliteStore.get(k)).filter(c => c && c.name && !c.deletedAt).map(c => String(c.name).trim().toLowerCase()));
+  return { ids, contacts: { sales: await names('sales_customers'), rep: await names('rep_customers') } };
+}
+
+// RECOVER (apply): a recovered sale must have its customer in the customer list again, or it shows up in
+// statements but nowhere in the customer screen. Re-creates the contact only when none exists.
+export async function ensureContactForRecoveredSale(collectionName, rec) {
+  if (!rec || !rec.customerName || !String(rec.customerName).trim()) return null;
+  let key, extra = {};
+  if (collectionName === 'sales') {
+    if (rec.isRepTransfer || (rec.salesRep && rec.salesRep !== 'NONE')) return null;
+    key = 'sales_customers';
+    extra = { customSalePrice: 0 };
+  } else if (collectionName === 'rep_sales') {
+    key = 'rep_customers';
+    extra = { salesRep: rec.salesRep };
+  } else return null;
+  const arr = ensureArray(await sqliteStore.get(key));
+  const nm = String(rec.customerName).trim().toLowerCase();
+  const exists = arr.some(c => c && !c.deletedAt && c.name && String(c.name).trim().toLowerCase() === nm &&
+    (key !== 'rep_customers' || !c.salesRep || !rec.salesRep || c.salesRep === rec.salesRep));
+  if (exists) return null;
+  const now = getTimestamp();
+  const contact = { id: `${key === 'sales_customers' ? 'cust' : 'rep_cust'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+    name: String(rec.customerName).trim(), phone: rec.customerPhone || '', address: '', oldDebit: 0, createdAt: now, updatedAt: now, timestamp: now, ...extra };
+  ensureRecordIntegrity(contact, false);
+  arr.push(contact);
+  await unifiedSave(key, arr, contact);
+  return contact;
 }
