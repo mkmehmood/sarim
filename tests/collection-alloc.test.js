@@ -41,7 +41,8 @@ describe('applying a collection to sales keeps the balance exact', () => {
     plan.allocs.forEach(a => applyCollectionAlloc(sales.find(s => s.id === a.saleId), a, 'col1', { date: '2026-02-01', time: '10:00 AM' }));
     assert.equal(owed(sales), before - 250);
     assert.equal(sales[0].creditReceived, true);
-    assert.equal(sales[0].creditReceivedDate, '2026-02-01');
+    assert.equal(sales[0].creditReceivedDate, undefined);
+    assert.equal(sales[0].date, '2026-01-01');
     assert.equal(sales[1].creditReceived, true);
     assert.equal(sales[2].creditReceived, false);
     assert.equal(sales[2].partialPaymentReceived, 50);
@@ -49,7 +50,7 @@ describe('applying a collection to sales keeps the balance exact', () => {
     sales.forEach(s => revertCollectionAlloc(s, 'col1'));
     assert.equal(owed(sales), before);
     assert.equal(sales[0].creditReceived, false);
-    assert.equal(sales[0].creditReceivedDate, undefined);
+    assert.equal(sales[0].date, '2026-01-01');
     assert.equal(sales[2].partialPaymentReceived, 0);
     assert.equal(sales[2].collectionAllocs, undefined);
   });
@@ -83,5 +84,32 @@ describe('applying a collection to sales keeps the balance exact', () => {
   it('collectionCollected falls back to totalValue for older collections', () => {
     assert.equal(collectionCollected({ totalValue: 70 }), 70);
     assert.equal(collectionCollected({ totalValue: 0, collectedAmount: 250 }), 250);
+  });
+});
+
+describe('old debt (opening balance)', () => {
+  const od = () => ({ id: 'od', date: '2025-12-31', timestamp: 1, paymentType: 'CREDIT', transactionType: 'OLD_DEBT', creditReceived: false, partialPaymentReceived: 0, totalValue: 300 });
+  it('is paid first, keeps its date, and statement credit reaches the full total', () => {
+    const sales = [credit('a', '2026-01-01', 100), od()];
+    const dues = sortForCollection(sales).map(s => ({ id: s.id, due: debtDelta(s, s.totalValue) }));
+    assert.equal(dues[0].id, 'od');
+    const plan = planCollectionAllocation(350, dues);
+    plan.allocs.forEach(a => applyCollectionAlloc(sales.find(s => s.id === a.saleId), a, 'c1', { date: '2026-02-01' }));
+    const o = sales.find(s => s.id === 'od');
+    assert.equal(o.creditReceived, true);
+    assert.equal(o.partialPaymentReceived, 300);
+    assert.equal(o.date, '2025-12-31');
+    assert.equal(o.creditReceivedDate, undefined);
+    assert.equal(debtDelta(o, 300), 0);
+    assert.equal(sales.find(s => s.id === 'a').partialPaymentReceived, 50);
+    sales.forEach(s => revertCollectionAlloc(s, 'c1'));
+    assert.equal(o.creditReceived, false);
+    assert.equal(o.partialPaymentReceived, 0);
+    assert.equal(debtDelta(o, 300), 300);
+  });
+  it('a part payment on old debt reduces what is owed', () => {
+    const o = od();
+    applyCollectionAlloc(o, { amount: 120, full: false }, 'c1', {});
+    assert.equal(debtDelta(o, 300), 180);
   });
 });

@@ -593,8 +593,9 @@ export async function revertCollectionToSales(kind, collection, all) {
 export async function applyCollectionToSales(opts) {
   const { kind, arr, record, amount, name, repName, original, when, getGross } = opts;
   const lname = String(name || '').trim().toLowerCase();
+  // Opening balances (old debt) are saved with salesRep 'ADMIN', so they are matched by type, not by rep.
   const mine = arr.filter(s => s && !s.deletedAt && !s.isMerged && s.customerName && String(s.customerName).trim().toLowerCase() === lname &&
-    (kind === 'rep' ? s.salesRep === repName : (s.currentRepProfile === 'admin' && (!s.salesRep || s.salesRep === 'NONE'))));
+    (kind === 'rep' ? s.salesRep === repName : (s.currentRepProfile === 'admin' && (s.transactionType === 'OLD_DEBT' || !s.salesRep || s.salesRep === 'NONE'))));
   const snaps = _snapshotSales(mine);
   const undo = () => _restoreSales(snaps);
   const changed = new Set();

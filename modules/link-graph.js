@@ -687,11 +687,13 @@ export function applyCollectionAlloc(sale, alloc, cid, when) {
   if (!sale || !alloc) return sale;
   if (!Array.isArray(sale.collectionAllocs)) sale.collectionAllocs = [];
   sale.collectionAllocs.push({ cid, amount: _r2(alloc.amount), full: !!alloc.full });
+  // The sale's own dates are never touched: it keeps the date it was made on (no creditReceivedDate is set).
+  // An opening balance (old debt) is shown as debit = total, credit = partialPaymentReceived, so when it becomes
+  // PAID its received amount must reach the full total or statements would still show a balance.
   if (alloc.full) {
     sale.creditReceived = true;
     sale.creditReceivedManually = true;
-    if (when && when.date) sale.creditReceivedDate = when.date;
-    if (when && when.time) sale.creditReceivedTime = when.time;
+    if (sale.transactionType === 'OLD_DEBT') sale.partialPaymentReceived = _r2(_n(sale.partialPaymentReceived) + _n(alloc.amount));
   } else {
     sale.partialPaymentReceived = _r2(_n(sale.partialPaymentReceived) + _n(alloc.amount));
   }
@@ -705,7 +707,8 @@ export function revertCollectionAlloc(sale, cid) {
   const [a] = sale.collectionAllocs.splice(i, 1);
   if (a.full) {
     sale.creditReceived = false;
-    delete sale.creditReceivedDate; delete sale.creditReceivedTime; delete sale.creditReceivedManually;
+    delete sale.creditReceivedManually;
+    if (sale.transactionType === 'OLD_DEBT') sale.partialPaymentReceived = _r2(Math.max(0, _n(sale.partialPaymentReceived) - _n(a.amount)));
   } else {
     sale.partialPaymentReceived = _r2(Math.max(0, _n(sale.partialPaymentReceived) - _n(a.amount)));
   }
