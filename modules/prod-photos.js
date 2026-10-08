@@ -323,8 +323,15 @@ export async function shareProdPhotos(ids) {
   const plural = files.length === 1 ? '' : 's';
   const isAbort = (err) => !!err && (err.name === 'AbortError' || /cancel/i.test(String(err.message || err)));
 
-  const tryShare = async (withText) => {
-    const data = withText ? { files, title: 'Production photos', text } : { files, title: 'Production photos' };
+  // WhatsApp's share receiver keeps only the text when a payload carries both files and
+  // text, dropping every file stream. Photos already have their details burned into the
+  // caption band, so share FILES ONLY and put the text on the clipboard instead.
+  const copyText = async () => {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; }
+  };
+
+  const tryShare = async () => {
+    const data = { files };
     if (typeof window.nativeShareFiles === 'function' && window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) {
       await window.nativeShareFiles(files, data);
     } else {
@@ -334,10 +341,14 @@ export async function shareProdPhotos(ids) {
 
   const canShareFiles = !!(navigator.canShare && navigator.canShare({ files }));
   if (canShareFiles) {
-    try {
-      await tryShare(true);
-      _toast(`Shared ${files.length} photo${plural}`, 'success');
+    const done = async () => {
+      const copied = await copyText();
+      _toast(`Shared ${files.length} photo${plural}` + (copied ? ' \u2014 details copied, paste if needed' : ''), 'success');
       clearProdPhotoSelection();
+    };
+    try {
+      await tryShare();
+      await done();
       return;
     } catch (err) {
       if (isAbort(err)) { _toast('Share cancelled', 'info'); return; }
@@ -346,29 +357,23 @@ export async function shareProdPhotos(ids) {
         const go = await window.showGlassConfirm(`${files.length} photo${plural} ready to share.`, { title: 'Share Photos', confirmText: 'Share', cancelText: 'Cancel' });
         if (!go) return;
         try {
-          await tryShare(true);
-          _toast(`Shared ${files.length} photo${plural}`, 'success');
-          clearProdPhotoSelection();
+          await tryShare();
+          await done();
           return;
         } catch (err2) {
           if (isAbort(err2)) { _toast('Share cancelled', 'info'); return; }
           console.warn('[prod photo] retry failed:', err2 && (err2.name + ': ' + err2.message));
+          _toast('Could not open the share sheet: ' + ((err2 && err2.message) || 'unknown error'), 'error', 5000);
+          return;
         }
       }
-      try {
-        await tryShare(false);
-        _toast(`Shared ${files.length} photo${plural}`, 'success');
-        clearProdPhotoSelection();
-        return;
-      } catch (err3) {
-        if (isAbort(err3)) { _toast('Share cancelled', 'info'); return; }
-        console.warn('[prod photo] share without text failed:', err3 && (err3.name + ': ' + err3.message));
-        _toast('Could not open the share sheet: ' + ((err3 && err3.message) || 'unknown error'), 'error', 5000);
-        return;
-      }
+      _toast('Could not open the share sheet: ' + ((err && err.message) || 'unknown error'), 'error', 5000);
+      return;
     }
   }
 
+  // Desktop / unsupported browsers: wa.me can only carry text, never images. Save the photos,
+  // copy the details, and open WhatsApp so the saved photos can be attached there.
   files.forEach((f, i) => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(f);
@@ -376,8 +381,9 @@ export async function shareProdPhotos(ids) {
     document.body.appendChild(a);
     setTimeout(() => { a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, i * 250);
   });
-  _toast(`Sharing isn't supported here \u2014 saved ${files.length} photo${plural}. Opening WhatsApp\u2026`, 'info', 4000);
-  setTimeout(() => window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'), files.length * 250 + 500);
+  const copied = await copyText();
+  _toast(`Saved ${files.length} photo${plural}` + (copied ? ', details copied' : '') + '. Attach the photos in WhatsApp.', 'info', 5000);
+  setTimeout(() => window.open('https://wa.me/', '_blank'), files.length * 250 + 500);
   clearProdPhotoSelection();
 }
 
