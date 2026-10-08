@@ -1,6 +1,6 @@
 import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
 import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
-import { newGroupId, stampGroup, planCreditToggle, applySettlement } from './link-graph.js';
+import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -408,8 +408,8 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(t.totalValue)}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Entered: ${formatDisplayDate(t.date)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -556,8 +556,8 @@ _txMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance from
 _txTitle = 'Delete Bulk Collection';
 _txMsg = `Delete this bulk collection payment from ${_txCust || 'customer'}?`;
 if (_txDate) _txMsg += `\nDate: ${_txDate}`;
-_txMsg += `\nAmount Collected: ${fmtAmt(_txItem.totalValue||0)}`;
-_txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored.`;
+_txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
+_txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
 } else if (_txItem?.paymentType === 'PARTIAL_PAYMENT') {
 _txTitle = 'Delete Partial Payment';
 _txMsg = `Delete this partial payment from ${_txCust || 'customer'}?`;
@@ -637,8 +637,8 @@ _rMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance perma
 _rTitle = 'Delete Rep Collection';
 _rMsg = `Delete this bulk collection from ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;
 if (_rDate) _rMsg += `\nDate: ${_rDate}`;
-_rMsg += `\nAmount Collected: ${fmtAmt(_rItem.totalValue||0)}`;
-_rMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding rep balance restored.`;
+_rMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_rItem))}`;
+_rMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding rep balance restored${(_rItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
 } else if (_rItem?.paymentType === 'PARTIAL_PAYMENT') {
 _rTitle = 'Delete Rep Partial Payment';
 _rMsg = `Delete this partial payment from ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;

@@ -3226,7 +3226,7 @@ const buildSaleRow = async (t, runBal) => {
   } else if (pt === 'COLLECTION') {
     credit = parseFloat(t.totalValue) || 0;
     typeLabel = 'COLLECTION';
-    detailLabel = 'Cash payment received';
+    detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : 'Cash payment received';
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {
     credit = parseFloat(t.totalValue) || 0;

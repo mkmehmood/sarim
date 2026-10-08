@@ -1,7 +1,7 @@
-import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename } from './link-guards.js';
+import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales } from './link-guards.js';
 import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
-import { newGroupId, stampGroup, planEditSettlement, applySettlement } from './link-graph.js';
+import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
@@ -138,7 +138,7 @@ const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.va
 set('rep-date', editDateValue(rec));
 set('rep-cust-name', rec.customerName || '');
 if (isColl) {
-set('rep-amount-collected', rec.totalValue);
+set('rep-amount-collected', collectionCollected(rec));
 } else {
 set('rep-quantity', rec.quantity);
 window.selectRepPaymentType(document.getElementById(rec.paymentType === 'CASH' ? 'btn-rep-pay-cash' : 'btn-rep-pay-credit'), rec.paymentType === 'CASH' ? 'CASH' : 'CREDIT');
@@ -333,6 +333,7 @@ s && !(_ed && s.id === _ed.id) && s.customerName && s.customerName.toLowerCase()
 s.salesRep === currentRepProfile
 );
 for (const h of _repHistory) _repOutstanding = round2(_repOutstanding + debtDelta(h, parseFloat(h.totalValue) || 0));
+if (_ed && Array.isArray(_ed.original.allocations)) _repOutstanding = round2(_repOutstanding + _ed.original.allocations.reduce((t, a) => t + (Number(a.amount) || 0), 0));
 _repOutstanding = Math.max(0, _repOutstanding);
 } catch (_e) { _repOutstanding = -1; }
 if (_repOutstanding === 0 && !_ed) {
@@ -383,9 +384,15 @@ transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - (transactionRecord.totalValue || 0)) > 0.001) {
 showToast('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 6000); restoreBtn(); return;
 }
+let _repAlloc = null;
+if (transactionRecord.paymentType === 'COLLECTION' && !(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
+try {
+_repAlloc = await applyCollectionToSales({ kind: 'rep', arr: repSales, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
+} catch (_allocErr) { showToast(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 6000); restoreBtn(); return; }
+}
 if (_ed) {
 const _linkIssue = await getSaleEditLinkIssue('rep', _ed.original, transactionRecord);
-if (_linkIssue) { showToast(_linkIssue, 'warning', 6000); restoreBtn(); return; }
+if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); showToast(_linkIssue, 'warning', 6000); restoreBtn(); return; }
 const o = _ed.original;
 stampEdit(transactionRecord, o);
 if (transactionRecord.paymentType === 'CREDIT' || transactionRecord.paymentType === 'CASH') applySettlement(transactionRecord, planEditSettlement(o, transactionRecord.paymentType));
@@ -398,7 +405,10 @@ replaceRecord(repSales, transactionRecord);
 } else {
 repSales.push(transactionRecord);
 }
+try {
+if (_repAlloc && _repAlloc.changedIds.length) await unifiedSave('rep_sales', repSales, null, _repAlloc.changedIds);
 await unifiedSave('rep_sales', repSales, transactionRecord);
+} catch (_saveErr) { if (_repAlloc) _repAlloc.undo(); throw _saveErr; }
 
 void _gpsBgPromise.then(async coords => {
   if (!coords) return;
@@ -828,7 +838,7 @@ myData.forEach(s => {
 if (s.paymentType === 'CREDIT') {
 repTotalCreditSales += (s.totalValue || 0);
 } else if (s.paymentType === 'COLLECTION' || s.paymentType === 'PARTIAL_PAYMENT') {
-repTotalCollections += (s.totalValue || 0);
+repTotalCollections += collectionCollected(s);
 }
 });
 const totalOutstanding = Object.values(custMap).reduce((sum, c) => sum + (c.debt > 0 ? c.debt : 0), 0);
@@ -1056,8 +1066,8 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(t.totalValue)}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -1541,7 +1551,7 @@ displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
 } else if (pt === 'COLLECTION') {
 credit = parseFloat(t.totalValue) || 0;
 typeLabel = 'COLLECTION';
-detailLabel = 'Cash payment received';
+detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : 'Cash payment received';
 displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
 } else if (pt === 'PARTIAL_PAYMENT') {
 credit = parseFloat(t.totalValue) || 0;

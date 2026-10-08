@@ -1,5 +1,5 @@
-import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks } from './link-guards.js';
-import { planEditSettlement, applySettlement } from './link-graph.js';
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales } from './link-guards.js';
+import { planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -147,6 +147,7 @@ rawData.totalSoldValue += (ms.cashSales || 0) + (ms.unpaidCredit || 0);
 } else if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
 const partialPaid = sale.partialPaymentReceived || 0;
 rawData.salesCredits += Math.max(0, _ctSaleVal - partialPaid);
+rawData.salesCash += collectionPartialCash(sale);
 rawData.totalSoldValue += _ctSaleVal;
 } else if (isRepLinked) {
 rawData.totalSoldValue += _ctSaleVal;
@@ -624,7 +625,7 @@ const _saleVal = sale.totalValue || 0;
 if (sale.isMerged && sale.mergedSummary) {
 _gacSalesCash += (sale.mergedSummary.cashSales || 0);
 } else if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
-
+_gacSalesCash += collectionPartialCash(sale);
 } else if (isRepLinked) {
 
 } else {
@@ -740,6 +741,7 @@ rawData.totalSoldValue += (ms.cashSales || 0) + (ms.unpaidCredit || 0);
 } else if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
 const partialPaid = sale.partialPaymentReceived || 0;
 rawData.salesCredits += Math.max(0, _saleVal - partialPaid);
+rawData.salesCash += collectionPartialCash(sale);
 rawData.totalSoldValue += _saleVal;
 } else if (isRepLinked) {
 rawData.totalSoldValue += _saleVal;
@@ -1302,7 +1304,7 @@ setSaleMode('collection');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
 set('cust-date', editDateValue(rec, ['supplyDate','date','createdAt','timestamp']));
 set('cust-name', rec.customerName || '');
-set('cust-amount-collected', rec.totalValue);
+set('cust-amount-collected', collectionCollected(rec));
 if (rec.customerPhone) {
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.remove('hidden');
 set('new-cust-phone', rec.customerPhone);
@@ -1426,6 +1428,7 @@ s && s.currentRepProfile === 'admin' &&
 s.customerName && s.customerName.toLowerCase() === name.toLowerCase()
 );
 for (const s of _custHistory) _custOutstanding = round2(_custOutstanding + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
+if (_ed && Array.isArray(_ed.original.allocations)) _custOutstanding = round2(_custOutstanding + _ed.original.allocations.reduce((t, a) => t + (Number(a.amount) || 0), 0));
 _custOutstanding = Math.max(0, _custOutstanding);
 } catch (_e) { _custOutstanding = -1; }
 if (_custOutstanding === 0 && !_ed) {
@@ -1497,10 +1500,17 @@ collRecord.date = o.date;
 collRecord.time = o.time;
 if (!collRecord.gps && o.gps) collRecord.gps = o.gps;
 }
+let _alloc = null;
+if (!(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
+try {
+_alloc = await applyCollectionToSales({ kind: 'customer', arr: customerSales, record: collRecord, amount, name, original: _ed ? _ed.original : null, when: { date: collRecord.date, time: timeString }, getGross: getSaleTransactionValue });
+} catch (_allocErr) { showToast(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 6000); restoreBtn(); return; }
+}
 const validated = ensureRecordIntegrity(collRecord, !!_ed);
 const snapshot = [...customerSales];
 try {
 if (_ed) replaceRecord(customerSales, validated); else customerSales.push(validated);
+if (_alloc && _alloc.changedIds.length) await unifiedSave('customer_sales', customerSales, null, _alloc.changedIds);
 await unifiedSave('customer_sales', customerSales, validated);
 notifyDataChange('sales');
 triggerAutoSync();
@@ -1520,8 +1530,10 @@ if (typeof setSaleMode === 'function') setSaleMode('sale');
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 if (typeof calculateCustomerStatsForDisplay === 'function') await calculateCustomerStatsForDisplay(savedName);
-showToast(_ed ? ` Collection updated: ${fmtAmt(amount)} for ${name}` : ` Collection of ${fmtAmt(amount)} recorded for ${name}`, 'success');
+const _allocNote = _alloc && (_alloc.paidCount || _alloc.partialCount) ? ` — ${_alloc.paidCount} sale${_alloc.paidCount === 1 ? '' : 's'} marked paid${_alloc.partialCount ? `, 1 part-paid` : ''}` : '';
+showToast(_ed ? ` Collection updated: ${fmtAmt(amount)} for ${name}${_allocNote}` : ` Collection of ${fmtAmt(amount)} recorded for ${name}${_allocNote}`, 'success');
 } catch (error) {
+if (_alloc) _alloc.undo();
 customerSales.length = 0;
 customerSales.push(...snapshot);
 try { await unifiedSave('customer_sales', customerSales); } catch (_) {}
@@ -1844,8 +1856,8 @@ let _dcMsg = `Permanently delete this ${_dcPayLabel}?`;
 _dcMsg += `\nCustomer: ${recordToDelete.customerName || 'Unknown'}`;
 _dcMsg += `\nDate: ${recordDate}`;
 if (_dcIsCollection) {
-_dcMsg += `\nAmount: ${fmtAmt(recordToDelete.totalValue||0)}`;
-_dcMsg += `\n\n Deleting this collection will restore the credit balance to this customer.`;
+_dcMsg += `\nAmount: ${fmtAmt(collectionCollected(recordToDelete))}`;
+_dcMsg += `\n\n Deleting this collection will restore the credit balance to this customer${(recordToDelete.allocations||[]).length ? ' and mark the sales it paid as unpaid again' : ''}.`;
 } else {
 _dcMsg += `\nQty: ${recordToDelete.quantity || 0} kg`;
 if (recordToDelete.totalValue) _dcMsg += `\nValue: ${fmtAmt(recordToDelete.totalValue||0)}`;
@@ -1876,7 +1888,7 @@ notifyDataChange('sales');
 triggerAutoSync();
 emitSyncUpdate({ customer_sales: null});
 const _delToast = _dcIsCollection
-? ` Collection of ${fmtAmt(recordToDelete.totalValue||0)} deleted.`
+? ` Collection of ${fmtAmt(collectionCollected(recordToDelete))} deleted.`
 : ` Sale deleted! ${recordToDelete.quantity} kg restored to ${recordDate} inventory.`;
 showToast(_delToast, "success");
 } catch (error) {

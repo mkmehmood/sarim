@@ -1,4 +1,4 @@
-import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity } from './business.js';
+import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity, debtDelta, debtNeedsGross } from './business.js';
 import { unifiedSave, unifiedDelete } from './sync.js';
 import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
@@ -6,6 +6,7 @@ import {
   planExpenseCascade, newGroupId, stampGroup,
   findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
+  planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
 
 // Calculator history entries (noman_history) link to other records through these real fields:
@@ -65,6 +66,13 @@ export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
       return `This is a stock transfer from ${link.entry.seller} created by ${_calcLabel(link.entry)}. Delete that calculator record to remove it.`;
     }
     return `This record is already settled in ${_calcLabel(link.entry)}. Delete that calculator record first.`;
+  }
+  if (!opts.ignoreChildren && Array.isArray(rec.collectionAllocs) && rec.collectionAllocs.length) {
+    return 'This sale was paid through a bulk/partial collection. Delete or edit that collection first.';
+  }
+  if (!opts.ignoreChildren && rec.paymentType === 'COLLECTION') {
+    const stacked = getCollectionRevertIssue(rec, all);
+    if (stacked) return stacked;
   }
   if (!opts.forEdit && !opts.ignoreChildren) {
     const children = all.filter(s => s && s.id !== id && s.relatedSaleId === id);
@@ -147,6 +155,9 @@ async function _loadIdMap() {
 // persist the parent on its own (so the cloud and other devices see the parent change too).
 // kind: 'customer' | 'rep'.  `all` is the in-memory array the caller already loaded.
 export async function detachChildPayment(kind, child, all) {
+  if (child && child.paymentType === 'COLLECTION' && Array.isArray(child.allocations) && child.allocations.length) {
+    return await revertCollectionToSales(kind, child, all);
+  }
   if (!child || child.paymentType !== 'PARTIAL_PAYMENT' || !child.relatedSaleId) return null;
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
@@ -180,6 +191,13 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const parent = ensureArray(await sqliteStore.get(key)).find(s => s && !s.deletedAt && s.id === parentId);
     const { block } = planChildReattach(parent, snapshot);
     return block || null;
+  }
+  if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'COLLECTION' && Array.isArray(snapshot.allocations) && snapshot.allocations.length) {
+    const key = COLLECTION_TO_KEY[collectionName];
+    const idMap = await _loadIdMap();
+    const live = ensureArray(await sqliteStore.get(key)).filter(r => r && !r.deletedAt);
+    const mapped = { ...snapshot, allocations: snapshot.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) })) };
+    return getCollectionReapplyIssue(mapped, live);
   }
   if (collectionName === 'calculator_history') return await getCalcRestoreBlockReason(snapshot);
   // Stock consumers: a recovered sale or transfer-out must not overdraw that store on that day.
@@ -316,6 +334,25 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave(key, arr, parent);
     }
   }
+  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
+      cleanRecord.paymentType === 'COLLECTION' && Array.isArray(cleanRecord.allocations) && cleanRecord.allocations.length) {
+    const key = COLLECTION_TO_KEY[collectionName];
+    const arr = ensureArray(await sqliteStore.get(key));
+    const idMap = await _loadIdMap();
+    const now = new Date();
+    const when = { date: cleanRecord.date, time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) };
+    const ids = [];
+    for (const a of cleanRecord.allocations) {
+      const sale = arr.find(x => x && !x.deletedAt && x.id === resolveId(a.saleId, idMap));
+      if (!sale || sale.creditReceived) continue;
+      applyCollectionAlloc(sale, a, cleanRecord.id, when);
+      sale.updatedAt = getTimestamp();
+      ensureRecordIntegrity(sale, true);
+      ids.push(sale.id);
+    }
+    cleanRecord.allocations = cleanRecord.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) }));
+    if (ids.length) await unifiedSave(key, arr, null, ids);
+  }
   // A recovered sale must have its customer back in the customer list (no-op when the contact exists).
   if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales')) {
     try { await ensureContactForRecoveredSale(collectionName, cleanRecord); }
@@ -408,6 +445,10 @@ export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   if (!oldDebtRecord || !oldDebtRecord.id) return { issue: null, collected: 0 };
   const all = ensureArray(await sqliteStore.get('customer_sales'));
   const kids = all.filter(s => s && s.relatedSaleId === oldDebtRecord.id);
+  const live = all.find(s => s && s.id === oldDebtRecord.id);
+  if (live && Array.isArray(live.collectionAllocs) && live.collectionAllocs.length && Math.abs((Number(live.totalValue) || 0) - (Number(newAmount) || 0)) > 0.001) {
+    return { issue: 'This opening balance was paid through a bulk/partial collection. Delete or edit that collection before changing the amount.', collected: 0 };
+  }
   return { issue: getOldDebtEditIssue(newAmount, kids), collected: sumChildPayments(kids) };
 }
 
@@ -418,6 +459,9 @@ export async function getSettleToggleBlockReason(id, kind = 'customer') {
   const rec = ensureArray(await sqliteStore.get(key)).find(s => s && s.id === id);
   if (!rec) return null;
   if (!isSettleableSale(rec)) return 'Only credit sales can be marked paid or unpaid.';
+  if (Array.isArray(rec.collectionAllocs) && rec.collectionAllocs.length) {
+    return 'This sale was paid through a bulk/partial collection. Delete or edit that collection to change it.';
+  }
   const calc = await getSaleBlockReason(id, kind, { forEdit: true });
   if (calc) return calc;
   if (!rec.creditReceived) {
@@ -515,4 +559,76 @@ export async function auditLegacyPartialPayments(opts = {}) {
     }
   }
   return report;
+}
+
+
+// ---- bulk / partial collections: apply to / undo from the customer's credit sales ---------------------------
+// Pure rules live in link-graph.js. These wrappers do the store-aware part.
+
+function _snapshotSales(list) { return list.map(x => ({ ref: x, copy: JSON.parse(JSON.stringify(x)) })); }
+function _restoreSales(snaps) {
+  for (const { ref, copy } of snaps) { Object.keys(ref).forEach(k => { if (!(k in copy)) delete ref[k]; }); Object.assign(ref, copy); }
+}
+
+// Undo what a collection did to its sales (delete path). Saves the touched sales on their own.
+export async function revertCollectionToSales(kind, collection, all) {
+  const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
+  const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
+  const ids = [];
+  for (const a of collection.allocations || []) {
+    const sale = arr.find(s => s && s.id === a.saleId);
+    if (sale && revertCollectionAlloc(sale, collection.id)) {
+      sale.updatedAt = getTimestamp();
+      ensureRecordIntegrity(sale, true);
+      ids.push(sale.id);
+    }
+  }
+  if (ids.length) await unifiedSave(key, arr, null, ids);
+  return ids;
+}
+
+// Apply a collection to the customer's unpaid sales. Mutates `record` (totalValue becomes the leftover) and the sales.
+// opts: { kind, arr, record, amount, name, repName, original, when, getGross }
+// Returns { changedIds, allocated, undo } - call undo() if saving afterwards fails. Throws { message } when an edit cannot be redone.
+export async function applyCollectionToSales(opts) {
+  const { kind, arr, record, amount, name, repName, original, when, getGross } = opts;
+  const lname = String(name || '').trim().toLowerCase();
+  const mine = arr.filter(s => s && !s.deletedAt && !s.isMerged && s.customerName && String(s.customerName).trim().toLowerCase() === lname &&
+    (kind === 'rep' ? s.salesRep === repName : (s.currentRepProfile === 'admin' && (!s.salesRep || s.salesRep === 'NONE'))));
+  const snaps = _snapshotSales(mine);
+  const undo = () => _restoreSales(snaps);
+  const changed = new Set();
+  const hadOld = original && original.paymentType === 'COLLECTION' && Array.isArray(original.allocations) && original.allocations.length;
+  if (hadOld) {
+    const issue = getCollectionRevertIssue(original, arr);
+    if (issue) throw new Error(issue);
+    for (const a of original.allocations) {
+      const sale = arr.find(s => s && s.id === a.saleId);
+      if (sale && revertCollectionAlloc(sale, original.id)) changed.add(sale.id);
+    }
+  }
+  const candidates = sortForCollection(mine.filter(s =>
+    (s.paymentType === 'CREDIT' || s.transactionType === 'OLD_DEBT') && !s.creditReceived && !s.usedInCalcId &&
+    !(s.isRepTransfer || (s.isTransfer && s.transferFrom))));
+  const dues = [];
+  for (const s of candidates) dues.push({ id: s.id, due: debtDelta(s, debtNeedsGross(s) ? await getGross(s) : 0) });
+  const plan = planCollectionAllocation(amount, dues);
+  for (const a of plan.allocs) {
+    const sale = candidates.find(s => s.id === a.saleId);
+    applyCollectionAlloc(sale, a, record.id, when);
+    changed.add(sale.id);
+  }
+  const stamp = getTimestamp();
+  const changedIds = [...changed];
+  changedIds.forEach(id => { const s = arr.find(x => x && x.id === id); if (s) { s.updatedAt = stamp; ensureRecordIntegrity(s, true); } });
+  if (plan.allocs.length) {
+    record.collectedAmount = amount;
+    record.allocations = plan.allocs;
+    record.totalValue = plan.leftover;
+    record.profit = plan.leftover;
+  } else {
+    delete record.collectedAmount; delete record.allocations;
+  }
+  const allocated = plan.allocs.reduce((t, a) => t + a.amount, 0);
+  return { changedIds, allocated, paidCount: plan.allocs.filter(a => a.full).length, partialCount: plan.allocs.filter(a => !a.full).length, undo };
 }

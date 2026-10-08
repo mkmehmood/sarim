@@ -643,3 +643,103 @@ export function findPartialConflicts(sales) {
   });
   return out;
 }
+
+// ---- bulk / partial collections -> credit sales ------------------------------------------------------------
+// A collection used to be a lone record that lowered the customer's balance while every credit sale kept
+// showing UNPAID. Now the money is applied to the customer's unpaid credit sales, oldest first: a sale the money
+// fully covers is marked PAID, the next one is marked partly paid (partialPaymentReceived).
+// To keep every balance and cash figure exact, the sales carry the money they absorbed and the collection record
+// keeps only what no sale could absorb (`totalValue` = leftover / advance). The amount the person actually handed
+// over stays on the collection as `collectedAmount`, and what it did is listed in `allocations`.
+// Each sale remembers the collections that touched it in `collectionAllocs` so a delete or edit can undo it.
+
+export function collectionCollected(rec) {
+  if (!rec) return 0;
+  return rec.collectedAmount != null ? _n(rec.collectedAmount) : _n(rec.totalValue);
+}
+
+// Oldest first; opening balances (old debt) before everything else.
+export function sortForCollection(list) {
+  const day = (s) => String(s.supplyDate || s.date || '');
+  return list.slice().sort((a, b) => {
+    const ao = a.transactionType === 'OLD_DEBT' ? 0 : 1, bo = b.transactionType === 'OLD_DEBT' ? 0 : 1;
+    if (ao !== bo) return ao - bo;
+    if (day(a) !== day(b)) return day(a) < day(b) ? -1 : 1;
+    return _n(a.timestamp) - _n(b.timestamp);
+  });
+}
+
+// dues: [{ id, due }] already in payment order. Returns what to apply to each and what is left over.
+export function planCollectionAllocation(amount, dues) {
+  let left = _r2(Math.max(0, _n(amount)));
+  const allocs = [];
+  for (const d of dues || []) {
+    if (left <= 0.004) break;
+    const due = _r2(_n(d.due));
+    if (due <= 0.004) continue;
+    if (left >= due - 0.004) { allocs.push({ saleId: d.id, amount: due, full: true }); left = _r2(Math.max(0, left - due)); }
+    else { allocs.push({ saleId: d.id, amount: left, full: false }); left = 0; }
+  }
+  return { allocs, leftover: _r2(Math.max(0, left)) };
+}
+
+export function applyCollectionAlloc(sale, alloc, cid, when) {
+  if (!sale || !alloc) return sale;
+  if (!Array.isArray(sale.collectionAllocs)) sale.collectionAllocs = [];
+  sale.collectionAllocs.push({ cid, amount: _r2(alloc.amount), full: !!alloc.full });
+  if (alloc.full) {
+    sale.creditReceived = true;
+    sale.creditReceivedManually = true;
+    if (when && when.date) sale.creditReceivedDate = when.date;
+    if (when && when.time) sale.creditReceivedTime = when.time;
+  } else {
+    sale.partialPaymentReceived = _r2(_n(sale.partialPaymentReceived) + _n(alloc.amount));
+  }
+  return sale;
+}
+
+export function revertCollectionAlloc(sale, cid) {
+  if (!sale || !Array.isArray(sale.collectionAllocs)) return false;
+  const i = sale.collectionAllocs.findIndex(a => a && a.cid === cid);
+  if (i < 0) return false;
+  const [a] = sale.collectionAllocs.splice(i, 1);
+  if (a.full) {
+    sale.creditReceived = false;
+    delete sale.creditReceivedDate; delete sale.creditReceivedTime; delete sale.creditReceivedManually;
+  } else {
+    sale.partialPaymentReceived = _r2(Math.max(0, _n(sale.partialPaymentReceived) - _n(a.amount)));
+  }
+  if (!sale.collectionAllocs.length) delete sale.collectionAllocs;
+  return true;
+}
+
+// Money a sale took in through collections but could not show as PAID yet. The cash tracker counts it.
+export function collectionPartialCash(sale) {
+  if (!sale || sale.creditReceived || !Array.isArray(sale.collectionAllocs)) return 0;
+  return _r2(sale.collectionAllocs.reduce((t, a) => t + (a && !a.full ? _n(a.amount) : 0), 0));
+}
+
+// Undo is last-in-first-out per sale: a newer collection may sit on top of this one.
+export function getCollectionRevertIssue(collection, sales) {
+  const list = Array.isArray(collection && collection.allocations) ? collection.allocations : [];
+  for (const a of list) {
+    const sale = (sales || []).find(s => s && s.id === a.saleId);
+    if (!sale || !Array.isArray(sale.collectionAllocs)) continue;
+    const i = sale.collectionAllocs.findIndex(x => x && x.cid === collection.id);
+    if (i >= 0 && i < sale.collectionAllocs.length - 1) {
+      return 'A newer collection was applied to the same sale(s) after this one. Delete or edit the newer collection first.';
+    }
+  }
+  return null;
+}
+
+// Recover side: can this collection's effect be put back on the sales it settled?
+export function getCollectionReapplyIssue(collection, sales) {
+  const list = Array.isArray(collection && collection.allocations) ? collection.allocations : [];
+  for (const a of list) {
+    const sale = (sales || []).find(s => s && !s.deletedAt && s.id === a.saleId);
+    if (!sale) return 'A sale this collection paid is no longer in your records. Recover that sale first, then recover the collection.';
+    if (sale.creditReceived) return 'A sale this collection paid has since been settled another way, so the collection cannot be recovered.';
+  }
+  return null;
+}
