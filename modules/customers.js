@@ -836,8 +836,12 @@ export function _gcFormatMessage(message) {
   for (const line of lines) {
     if (!line) { flush(); prevBlank = true; continue; }
     const bullet = line.match(/^[\u2022\u00B7\u25CF*\-\u2013]\s+(.*)$/);
-    const kv = !bullet && line.match(/^([A-Za-z][A-Za-z0-9 ()\/&'.-]{1,30}):\s+(.+)$/);
-    if (bullet) {
+    const note = !bullet && line.match(/^(warning|note|caution):\s+(.+)$/i);
+    const kv = !bullet && !note && line.match(/^([A-Za-z][A-Za-z0-9 ()\/&'.-]{1,30}):\s+(.+)$/);
+    if (note) {
+      flush();
+      out.push('<div class="gc-note"><b>' + esc(note[1][0].toUpperCase() + note[1].slice(1).toLowerCase()) + '</b>' + esc(note[2]) + '</div>');
+    } else if (bullet) {
       if (rows) flush();
       (list = list || []).push('<li>' + esc(bullet[1]) + '</li>');
     } else if (kv && kv[2].length <= 48) {
@@ -887,11 +891,10 @@ const iconClass = _tone === 'danger' ? 'icon-danger' : (_tone === 'warning' ? 'i
 const btnClass = _tone === 'danger' ? 'danger' : (_tone === 'warning' ? 'warning' : 'primary');
 const backdrop = document.createElement('div');
 backdrop.className = 'glass-confirm-backdrop';
-const _tagText = tag || (_tone === 'danger' ? 'Permanent' : (_tone === 'warning' ? 'Review' : 'Confirm'));
 backdrop.innerHTML = `
 <div class="gc-wrap gc-tone-${_tone}">
-<span class="gc-tab">${esc(String(_tagText))}</span>
 <div class="glass-confirm-box${_tone === 'danger' ? ' is-danger' : (_tone === 'warning' ? ' is-warning' : '')}" role="alertdialog" aria-modal="true">
+<span class="gc-handle"></span>
 <div class="glass-confirm-head">
 <div class="glass-confirm-icon ${iconClass}">${svgIcon}</div>
 <div class="glass-confirm-title">${esc(String(title).trim())}</div>
