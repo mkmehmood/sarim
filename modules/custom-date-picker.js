@@ -369,7 +369,7 @@
 
     var icon = document.createElement('span');
     icon.className = 'cdp-btn-icon';
-    icon.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.5H14" stroke="currentColor" stroke-width="1.3"/><path d="M5 1.5V4M11 1.5V4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+    icon.innerHTML = '<svg width="14" height="14" viewBox="0 0 36 36" fill="none"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="currentColor" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="20" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="18" cy="20" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="24" cy="20" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="12" cy="25.5" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="18" cy="25.5" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="24" cy="25.5" r="1.5" fill="currentColor" opacity="0.8"/></svg>';
     btn.appendChild(icon);
 
     wrap.appendChild(btn);

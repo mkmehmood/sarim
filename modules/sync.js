@@ -3902,14 +3902,14 @@ overlay.innerHTML = `
 <div class="auth-field">
 <input type="email" id="auth-email" placeholder=" " required autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false">
 <label for="auth-email">Email address</label>
-<svg class="auth-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
+<svg class="auth-ico" width="18" height="18" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="4" y="7.5" width="28" height="21" rx="5" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M6 11.5L18 20 30 11.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M30 4Q30 6 32 6Q30 6 30 8Q30 6 28 6Q30 6 30 4Z" fill="currentColor"/></svg>
 </div>
 <div class="auth-field">
 <input type="password" id="auth-password" placeholder=" " required autocomplete="current-password">
 <label for="auth-password">Password</label>
-<svg class="auth-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="3"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></svg>
+<svg class="auth-ico" width="18" height="18" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="7" y="16" width="22" height="16" rx="5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M12 16V11.5A6 6 0 0 1 24 11.5V16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="23" r="2.2" fill="currentColor"/><path d="M18 24V27.2" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
 <button type="button" class="auth-eye" id="auth-eye" aria-label="Show password" onclick="(function(b){var i=document.getElementById('auth-password');var show=i.type==='password';i.type=show?'text':'password';b.classList.toggle('on',show);b.setAttribute('aria-label',show?'Hide password':'Show password');})(this)">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="auth-eye-slash" d="M4 4l16 16"/></svg>
+<svg width="18" height="18" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M2.5 18C6.5 10.8 12 7.8 18 7.8S29.5 10.8 33.5 18C29.5 25.2 24 28.2 18 28.2S6.5 25.2 2.5 18Z" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="18" r="5.8" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" fill="currentColor"/><path class="auth-eye-slash" d="M6 6L30 30" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" fill="none"/></svg>
 </button>
 </div>
 <button type="submit" class="auth-submit">Sign In</button>
@@ -3928,7 +3928,7 @@ ${_showGoogle ? `<div class="auth-divider"><span>or</span></div>
 <div id="gsi-btn-container" style="display:none;"></div>` : ''}
 <p class="auth-help">No account? <strong>Contact the administrator</strong> to have yours added.</p>
 <div class="auth-secure">
-<svg width="14" height="14" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M18 3 L30 8 V18 C30 25 24 31 18 33 C12 31 6 25 6 18 V8 Z" fill="currentColor" opacity="0.14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12.5 18.5l4 4 7-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg width="14" height="14" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M18 3.5L30 8V18C30 25.5 24.5 30.5 18 33C11.5 30.5 6 25.5 6 18V8Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M12.3 18.2L16.4 22.3 24 14.3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
 <span>End-to-end encrypted &middot; AES-256-GCM</span>
 </div>
 </div>

@@ -146,7 +146,7 @@ export async function deleteProdPhotos(rec) {
   if (keys.length) await _writePhotoKeys({}, keys);
 }
 
-const VIEW_SVG = '<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><rect x="3" y="7" width="30" height="22" rx="3" stroke="currentColor" stroke-width="1.8" fill="none"/><circle cx="18" cy="18" r="6" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="18" cy="18" r="2.5" fill="currentColor"/><rect x="22" y="4" width="8" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>';
+const VIEW_SVG = '<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>';
 const LONG_PRESS_MS = 3000;
 const BOX_SVG = '<svg class="pp-box-ring" viewBox="0 0 28 28" aria-hidden="true"><rect class="pp-box-track" x="2" y="2" width="24" height="24" rx="7"/><rect class="pp-box-fill" x="2" y="2" width="24" height="24" rx="7" pathLength="100"/><path class="pp-box-check" d="M8.5 14.5l3.8 3.8 7.2-7.6" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
