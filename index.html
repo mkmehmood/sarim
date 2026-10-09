@@ -276,30 +276,6 @@ animation: splashBlink 1.4s ease-in-out infinite !important;
 50% { opacity: 0.35; }
 }
 #splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
-@keyframes spIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
-@keyframes spInGlow { from { opacity: 0; transform: scale(0.7); } }
-@media (prefers-reduced-motion: no-preference) {
-#splash-screen.splash-ready .splash-glow { animation: spInGlow 1.2s ease-out both !important; }
-#splash-screen.splash-ready .splash-dial { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0s both !important; }
-#splash-screen.splash-ready .splash-brand { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both !important; }
-#splash-screen.splash-ready .splash-rule { animation: spIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both !important; }
-#splash-screen.splash-ready .splash-quote { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.34s both !important; }
-#splash-screen.splash-ready .splash-author { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.44s both !important; }
-#splash-screen.splash-ready .splash-foot { animation: spIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both !important; }
-}
-@keyframes spOutUp { to { opacity: 0; transform: translateY(-16px) scale(1.07); } }
-@keyframes spOutGlow { to { opacity: 0; transform: scale(1.6); } }
-@media (prefers-reduced-motion: no-preference) {
-#splash-screen { transition: opacity 0.6s ease 0.22s, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1), padding 0.35s ease !important; }
-#splash-screen.splash-out:not(.splash-locked) { transform: scale(1.035); }
-#splash-screen.splash-out:not(.splash-locked) .splash-dial { animation: spOutUp 0.5s cubic-bezier(0.4, 0, 0.7, 0.4) both !important; }
-#splash-screen.splash-out:not(.splash-locked) .splash-brand { animation: spOutUp 0.5s cubic-bezier(0.4, 0, 0.7, 0.4) 0.06s both !important; }
-#splash-screen.splash-out:not(.splash-locked) .splash-rule { animation: spOutUp 0.5s cubic-bezier(0.4, 0, 0.7, 0.4) 0.1s both !important; }
-#splash-screen.splash-out:not(.splash-locked) .splash-quote { animation: spOutUp 0.5s cubic-bezier(0.4, 0, 0.7, 0.4) 0.14s both !important; }
-#splash-screen.splash-out:not(.splash-locked) .splash-author { animation: spOutUp 0.5s cubic-bezier(0.4, 0, 0.7, 0.4) 0.18s both !important; }
-#splash-screen.splash-out:not(.splash-locked) .splash-foot { animation: spOutUp 0.4s ease-in both !important; }
-#splash-screen.splash-out:not(.splash-locked) .splash-glow { animation: spOutGlow 0.9s ease-out both !important; }
-}
 html[data-bio="1"] #splash-screen {
 --sp-sheet: clamp(300px, 44vh, 420px);
 justify-content: center;
@@ -690,7 +666,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
 var el=document.getElementById("splash-screen");
 if(!el)return;
 var Q=[["The details are not the details. They make the design.","Charles Eames"],["Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.","Antoine de Saint-Exupéry"],["Price is what you pay. Value is what you get.","Warren Buffett"],["It is not the strongest of the species that survives, but the one most adaptable to change.","Leon C. Megginson"],["An investment in knowledge pays the best interest.","Benjamin Franklin"],["What gets measured gets managed.","Peter Drucker"],["The purpose of a business is to create a customer who creates customers.","Shiv Singh"],["Simplicity is the ultimate sophistication.","Leonardo da Vinci"],["Opportunities don't happen. You create them.","Chris Grosser"],["The best way to predict the future is to create it.","Peter Drucker"],["Chase the vision, not the money. The money will end up following you.","Tony Hsieh"],["Build something 100 people love, not something 1 million people kind of like.","Brian Chesky"],["Excellence is not an act but a habit.","Will Durant"],["Your most unhappy customers are your greatest source of learning.","Bill Gates"],["Well done is better than well said.","Benjamin Franklin"],["Honesty is the first chapter in the book of wisdom.","Thomas Jefferson"],["It takes twenty years to build a reputation and five minutes to ruin it.","Warren Buffett"],["Do not save what is left after spending; spend what is left after saving.","Warren Buffett"],["Be fearful when others are greedy, and greedy when others are fearful.","Warren Buffett"],["Risk comes from not knowing what you are doing.","Warren Buffett"],["A penny saved is a penny earned.","Benjamin Franklin"],["Beware of little expenses; a small leak will sink a great ship.","Benjamin Franklin"],["The best advertisement is a satisfied customer.","Philip Kotler"],["Efficiency is doing things right; effectiveness is doing the right things.","Peter Drucker"],["Quality means doing it right when no one is looking.","Henry Ford"],["Coming together is a beginning; keeping together is progress; working together is success.","Henry Ford"],["Whether you think you can or you think you can't, you're right.","Henry Ford"],["Genius is one percent inspiration and ninety-nine percent perspiration.","Thomas Edison"],["There is no substitute for hard work.","Thomas Edison"],["Success is the sum of small efforts, repeated day in and day out.","Robert Collier"],["Small deeds done are better than great deeds planned.","Peter Marshall"],["Start where you are. Use what you have. Do what you can.","Arthur Ashe"],["The only way to do great work is to love what you do.","Steve Jobs"],["Trust is the glue of life.","Stephen Covey"],["Customers don't expect you to be perfect. They expect you to fix things when they go wrong.","Donald Porter"],["A journey of a thousand miles begins with a single step.","Lao Tzu"],["Do the difficult things while they are easy and the great things while they are small.","Lao Tzu"],["Knowing is not enough; we must apply.","Johann Wolfgang von Goethe"],["It always seems impossible until it is done.","Nelson Mandela"],["Courage is not the absence of fear, but the triumph over it.","Nelson Mandela"],["Discipline is the bridge between goals and accomplishment.","Jim Rohn"],["Nothing will work unless you do.","Maya Angelou"],["Make each day your masterpiece.","John Wooden"],["Quality is never an accident; it is always the result of intelligent effort.","John Ruskin"],["Little by little, one travels far.","J.R.R. Tolkien"],["Slow and steady wins the race.","Aesop"],["No act of kindness, no matter how small, is ever wasted.","Aesop"],["Well begun is half done.","Aristotle"],["The best time to plant a tree was twenty years ago. The second best time is now.","Chinese Proverb"],["If you want to go fast, go alone. If you want to go far, go together.","African Proverb"],["Fall seven times, stand up eight.","Japanese Proverb"],["Never let the fear of striking out keep you from playing the game.","Babe Ruth"],["The expert in anything was once a beginner.","Helen Hayes"],["A smooth sea never made a skilled sailor.","Franklin D. Roosevelt"],["Do what you can, with what you have, where you are.","Theodore Roosevelt"],["Change your thoughts and you change your world.","Norman Vincent Peale"],["Whoever is happy will make others happy too.","Anne Frank"],["He who has a why to live can bear almost any how.","Friedrich Nietzsche"],["Innovation distinguishes between a leader and a follower.","Steve Jobs"],["The way to get started is to quit talking and begin doing.","Walt Disney"]];
-var HOLD=2800,FADE=950,MAXW=9000,FONTW=1500;
+var HOLD=2800,FADE=550,MAXW=9000,FONTW=1500;
 var $=function(i){return document.getElementById(i)};
 function render(){
 var now=new Date(),hr=now.getHours(),mn=now.getMinutes(),H=hr+mn/60;
@@ -785,11 +761,8 @@ function tryHide(){
 if(hidden||!holdDone||window.__appLocked)return;
 if(!window.__splashBooted&&!window.__splashForce)return;
 hidden=true;
-var root=document.documentElement;
-root.classList.add("app-revealing");
 el.classList.add("splash-out");
 setTimeout(function(){if(!window.__appLocked)el.style.display="none"},FADE+30);
-setTimeout(function(){root.classList.remove("app-revealing")},FADE+900);
 }
 window.__splashTryHide=tryHide;
 function reveal(){

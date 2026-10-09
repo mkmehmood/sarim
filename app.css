@@ -6220,36 +6220,3 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   .sidebar-nav-btn:hover .ic-sp, .sidebar-settings-btn:hover .ic-sp, .btn-theme:hover .ic-sp { animation: ic-twinkle .9s ease-in-out infinite !important; }
   .sidebar-settings-btn:hover .ic-sync-arrows, .btn-theme:hover .ic-sync-arrows { animation: ic-spin .9s cubic-bezier(.4,0,.2,1) 1 !important; }
 }
-@keyframes appEnterUp { from { opacity: 0; transform: translateY(18px) scale(0.985); } }
-@keyframes appEnterDown { from { opacity: 0; transform: translateY(-14px); } }
-@media (prefers-reduced-motion: no-preference) {
-  html.app-revealing #sys-header { animation: appEnterDown 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.25s backwards !important; }
-  html.app-revealing #system-controls { animation: appEnterUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.4s backwards !important; }
-  html.app-revealing :is(#tab-rep, #tab-prod, #tab-sales, #tab-calc, #tab-factory, #tab-payments):not(.hidden) { animation: appEnterUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.3s backwards !important; }
-}
-.pf-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 2147483646; contain: strict; }
-.pf-r { position: absolute; top: -30px; perspective: 600px; will-change: transform; animation: pfFall var(--fall, 3s) cubic-bezier(0.3, 0.1, 0.5, 1) var(--dl, 0s) both !important; }
-.pf-r i { display: block; border-radius: 2px; animation: pfFlutter var(--fl, 0.7s) ease-in-out infinite alternate !important; }
-.pf-b { position: absolute; bottom: -100px; will-change: transform; animation: pfRise var(--rise, 3.6s) cubic-bezier(0.25, 0.6, 0.35, 1) var(--dl, 0s) both !important; }
-.pf-bb { display: block; position: relative; width: 34px; height: 42px; border-radius: 50% 50% 48% 48% / 58% 58% 42% 42%; background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.75) 0 11%, transparent 12%), radial-gradient(circle at 72% 82%, rgba(0,0,0,0.2), transparent 55%), var(--c); transform-origin: 50% 100%; animation: pfSway var(--sw, 1.6s) ease-in-out infinite alternate !important; }
-.pf-bb::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 34px; background: rgba(255,255,255,0.55); }
-.pf-bb::after { content: ""; position: absolute; left: 50%; top: calc(100% - 1px); margin-left: -4px; border: 4px solid transparent; border-top: 0; border-bottom-color: var(--c); }
-@keyframes pfFall { from { transform: translate3d(0, 0, 0); opacity: 1; } 85% { opacity: 1; } to { transform: translate3d(var(--dx, 0), calc(100vh + 60px), 0); opacity: 0; } }
-@keyframes pfFlutter { from { transform: rotateX(0deg) rotateZ(calc(var(--rot, 40deg) * -1)); } to { transform: rotateX(180deg) rotateZ(var(--rot, 40deg)); } }
-@keyframes pfRise { from { transform: translate3d(0, 0, 0); opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } to { transform: translate3d(var(--dx, 0), calc(-100vh - 180px), 0); opacity: 0; } }
-@keyframes pfSway { from { transform: translateX(-12px) rotate(-6deg); } to { transform: translateX(12px) rotate(6deg); } }
-@keyframes gcPop { 0% { opacity: 0; transform: translateY(26px) scale(0.86); } 60% { opacity: 1; transform: translateY(-4px) scale(1.03); } 100% { opacity: 1; transform: none; } }
-@keyframes gcIconPop { 0% { transform: scale(0.2) rotate(-25deg); opacity: 0; } 60% { transform: scale(1.2) rotate(8deg); opacity: 1; } 100% { transform: none; opacity: 1; } }
-@keyframes gcShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
-@keyframes gcRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@keyframes toastGlow { 0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); } 100% { box-shadow: 0 0 0 14px rgba(74, 222, 128, 0); } }
-@media (prefers-reduced-motion: no-preference) {
-  .glass-confirm-box:not(.closing) { animation: gcPop 0.44s cubic-bezier(0.22, 1, 0.36, 1) both !important; }
-  .glass-confirm-box:not(.closing) .glass-confirm-icon { animation: gcIconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both !important; }
-  .glass-confirm-box.is-danger:not(.closing) .glass-confirm-icon { animation: gcIconPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both, gcShake 0.45s ease-in-out 0.6s !important; }
-  .glass-confirm-box:not(.closing) .glass-confirm-title { animation: gcRise 0.4s ease-out 0.16s both !important; }
-  .glass-confirm-box:not(.closing) .glass-confirm-msg { animation: gcRise 0.4s ease-out 0.22s both !important; }
-  .glass-confirm-box:not(.closing) .glass-confirm-btns { animation: gcRise 0.4s ease-out 0.3s both !important; }
-  .liquid-toast.toast-success.show { animation: toastSlideDown 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards, toastGlow 0.9s ease-out 0.3s !important; }
-  .liquid-toast.toast-error.show, .liquid-toast.toast-warning.show { animation: toastSlideDown 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards, gcShake 0.45s ease-in-out 0.4s !important; }
-}

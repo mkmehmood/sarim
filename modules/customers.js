@@ -726,7 +726,6 @@ requestAnimationFrame(() => {
 requestAnimationFrame(() => {
 toast.classList.remove('pre-show');
 toast.classList.add('show');
-if (type === 'success' && typeof window.celebrate === 'function') window.celebrate({ size: 'small' });
 const bar = toast.querySelector('.toast-progress-bar');
 if (bar) {
 bar.style.animationDuration = duration + 'ms';
@@ -816,13 +815,6 @@ export const _gcIcons = {
   confirm:  '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>',
 };
 const _GC_WARN_RE = /warning|insufficient|exceed|over-?collect|overpay|high credit|caution|unsaved|mismatch|cannot|can't|not enough|shortage|short by|already (used|sold|has)|outstanding/i;
-const _GC_NO_PARTY_RE = /log ?out|sign ?out|discard|leave|exit|delete|remove|reset|clear|wipe|erase|revert|undo|unlink|restore|overwrite|close|cancel|disable|stop|unsaved/i;
-export function _gcShouldCelebrate(flag, tone, title, message, confirmText) {
-  if (flag === true) return true;
-  if (flag === false) return false;
-  if (tone !== 'primary') return false;
-  return !_GC_NO_PARTY_RE.test(String(title || '') + ' ' + String(confirmText || '') + ' ' + String(message || '').slice(0, 160));
-}
 export function _gcPickTone(title, message, confirmText, danger, tone) {
   if (tone) return tone;
   if (danger) return 'danger';
@@ -883,8 +875,7 @@ confirmText = 'Confirm',
 cancelText = 'Cancel',
 danger = false,
 icon = null,
-tone = null,
-celebrate = null
+tone = null
 } = {}) {
 return new Promise(resolve => {
 const _tone = _gcPickTone(title, message, confirmText, danger, tone);
@@ -920,14 +911,11 @@ if (box) box.classList.add('closing');
 setTimeout(() => { backdrop.remove(); resolve(result); }, 200);
 setTimeout(() => { window._glassConfirmClosing = false; }, 400);
 };
-backdrop.querySelector('.gc-confirm').addEventListener('click', () => {
-cleanup(true);
-if (_gcShouldCelebrate(celebrate, _tone, title, message, confirmText) && typeof window.celebrate === 'function') window.celebrate({ size: 'big' });
-}, { once: true });
+backdrop.querySelector('.gc-confirm').addEventListener('click', () => cleanup(true), { once: true });
 backdrop.querySelector('.gc-cancel').addEventListener('click', () => cleanup(false), { once: true });
 backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(false); });
 const onKey = (e) => {
-if (e.key === 'Enter') { e.preventDefault(); cleanup(true); if (_gcShouldCelebrate(celebrate, _tone, title, message, confirmText) && typeof window.celebrate === 'function') window.celebrate({ size: 'big' }); }
+if (e.key === 'Enter') { e.preventDefault(); cleanup(true); }
 if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
 };
 document.addEventListener('keydown', onKey);
