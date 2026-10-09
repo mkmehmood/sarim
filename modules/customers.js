@@ -1060,6 +1060,14 @@ const customSalePrice = parseFloat(document.getElementById('edit-cust-custom-pri
 if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
 if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning'); return; }
+if (oldDebit > 0) {
+const _pcSales = ensureArray(await sqliteStore.get('customer_sales'));
+const _pcTx = _pcSales.find(s => s && s.transactionType === 'OLD_DEBT' && s.customerName && (s.customerName === name || s.customerName.toLowerCase() === originalName.toLowerCase()));
+if (_pcTx && _pcTx.totalValue !== oldDebit) {
+const _pcChk = await getOldDebtChangeIssue(_pcTx, oldDebit);
+if (_pcChk.issue) { window.notifyBlocking(_pcChk.issue, 'warning'); return; }
+}
+}
 if (!(await window.gcCommit({}))) return;
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();

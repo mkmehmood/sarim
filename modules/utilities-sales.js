@@ -3908,7 +3908,6 @@ return;
 const isEncrypted = file.name.toLowerCase().endsWith('.gznd');
 if (isEncrypted) {
 const _encRestoreMsg = `Restore data from this encrypted backup file?\n\nHow it works:\n \u2022 Records are merged, not overwritten \u2014 your current data stays\n \u2022 Duplicates are automatically removed\n \u2022 Only new (non-duplicate) records are uploaded to cloud\n \u2022 Other devices are not affected until their next sync\n\nYou will be asked for your account password to decrypt the file.`;
-if (!(await showGlassConfirm(_encRestoreMsg, { title: 'Restore From Encrypted Backup', confirmText: 'Restore & Merge', cancelText: 'Cancel' }))) return;
 showToast('Encrypted backup detected. Decrypting...', 'info', 4000);
 let decPassword = null;
 if (!decPassword) {
@@ -3959,7 +3958,7 @@ window.notifyBlocking('Decryption failed: ' + decErr.message, 'error');
 }
 return;
 }
-showToast('Decryption successful! Restoring data...', 'success', 3000);
+showToast('Decryption successful.', 'success', 2000);
 if (data && data._meta && data._meta.isYearCloseBackup) {
 const snap = data._meta.fyCloseSnapshot || {};
 const closedDate = snap.lastYearClosedDate ? new Date(snap.lastYearClosedDate).toLocaleDateString() : 'unknown date';
@@ -4013,6 +4012,7 @@ if (_postCloseDeletions.length > 0) {
 }
 await _doYearCloseRestore(data, _honourDeletions);
 } else {
+if (!(await showGlassConfirm(_encRestoreMsg, { title: 'Restore From Encrypted Backup', confirmText: 'Restore & Merge', cancelText: 'Cancel' }))) return;
 await _doRestoreMerge(data);
 }
 } catch(err) {

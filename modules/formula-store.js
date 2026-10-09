@@ -364,11 +364,12 @@ export async function addFormulaIngredientRow() {
   if (inp) setTimeout(() => inp.focus(), 200);
   updateFormulaStoreSummary();
 }
-export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', isUpdate: () => !!_editingId }); }
+export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', late: true, isUpdate: () => !!_editingId }); }
 async function _saveFormulaStoreEntryRaw() {
   const c = _collectEditor();
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning'); return false; }
   if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning'); return false; }
+if (!(await window.gcCommit({}))) return false;
   const [list, slots, batch] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS)]);
   const now = getTimestamp();
   const idx = _editingId ? list.findIndex((f) => String(f.id) === String(_editingId)) : -1;

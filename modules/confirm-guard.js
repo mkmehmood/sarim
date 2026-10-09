@@ -26,16 +26,18 @@ export async function confirmGuard(key, run, opts = {}) {
   const head = `${verb} this ${label.toLowerCase()}?`;
   const tail = isUpdate ? 'The existing record will be replaced.' : 'Please review the details before continuing.';
   const message = details.length ? `${head}\n${details.join('\n')}\n\n${tail}` : `${head}\n${tail}`;
-  if (opts.late && !isUpdate) {
+  if (opts.late) {
     const ask = async (extra = {}) => {
       const lines = details.concat(extra.lines || []);
-      const warn = extra.warning ? `\nWarning: ${extra.warning}` : '';
-      const body = lines.length ? `${head}\n${lines.join('\n')}${warn}` : `${head}${warn || `\n${tail}`}`;
-      return window.showGlassConfirm(body, {
+      const parts = [head].concat(lines);
+      if (isUpdate) parts.push('The existing record will be replaced.');
+      else if (!lines.length && !extra.warning) parts.push(tail);
+      if (extra.warning) parts.push(`Warning: ${extra.warning}`);
+      return window.showGlassConfirm(parts.join('\n'), {
         title: `${verb} ${label}?`,
         confirmText: extra.confirmText || (extra.warning ? `${verb} Anyway` : verb),
         cancelText: 'Cancel',
-        tone: extra.warning ? 'warning' : 'primary'
+        tone: extra.warning || isUpdate ? 'warning' : 'primary'
       });
     };
     _pending.add(key);
