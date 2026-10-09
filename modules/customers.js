@@ -836,7 +836,9 @@ export function _gcFormatMessage(message) {
   for (const line of lines) {
     if (!line) { flush(); prevBlank = true; continue; }
     const bullet = line.match(/^[\u2022\u00B7\u25CF*\-\u2013]\s+(.*)$/);
-    const note = !bullet && line.match(/^(warning|note|caution):\s+(.+)$/i);
+    const warnIcon = !bullet && line.match(/^\u26a0\uFE0F?\s*(.+)$/);
+    const perm = !bullet && /^this (action )?cannot be undone\.?$/i.test(line);
+    const note = warnIcon ? ['', 'warning', warnIcon[1]] : (perm ? ['', 'permanent', line] : (!bullet && line.match(/^(warning|note|caution):\s+(.+)$/i)));
     const kv = !bullet && !note && line.match(/^([A-Za-z][A-Za-z0-9 ()\/&'.-]{1,30}):\s+(.+)$/);
     if (note) {
       flush();
@@ -1008,7 +1010,7 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-e
 export function closeCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-edit-screen');
 }
-export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
+export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', fields: [['edit-cust-name', 'Name'], ['edit-cust-phone', 'Phone'], ['edit-cust-address', 'Address'], ['edit-cust-old-debit', 'Old Debit'], ['edit-cust-custom-price', 'Custom Price']], isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
 async function _saveCustomerDetailsRaw() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));

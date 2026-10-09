@@ -1,5 +1,18 @@
 import { getEditCtx } from './edit-mode.js';
 const _pending = new Set();
+function readDetails(fields) {
+  const out = [];
+  (fields || []).forEach(([id, label]) => {
+    const el = document.getElementById(id);
+    if (!el || el.closest('.hidden')) return;
+    let v = el.tagName === 'SELECT' ? ((el.options[el.selectedIndex] || {}).text || '') : String(el.value ?? '');
+    v = v.replace(/\s+/g, ' ').trim();
+    if (!v) return;
+    if (v.length > 44) v = v.slice(0, 43) + '\u2026';
+    out.push(`${label}: ${v}`);
+  });
+  return out;
+}
 export async function confirmGuard(key, run, opts = {}) {
   if (_pending.has(key)) return;
   const ctx = getEditCtx();
@@ -9,9 +22,10 @@ export async function confirmGuard(key, run, opts = {}) {
   const inEdit = !!ctx && Array.isArray(opts.editKinds) && opts.editKinds.includes(ctx.kind);
   const isUpdate = inEdit || (typeof opts.isUpdate === 'function' && !!opts.isUpdate());
   const verb = isUpdate ? 'Update' : (opts.verb || 'Save');
-  const message = isUpdate
-    ? `Update this ${label.toLowerCase()}?\nThe existing record will be replaced.`
-    : `${verb} this ${label.toLowerCase()}?\nPlease review the details before continuing.`;
+  const details = readDetails(opts.fields);
+  const head = `${verb} this ${label.toLowerCase()}?`;
+  const tail = isUpdate ? 'The existing record will be replaced.' : 'Please review the details before continuing.';
+  const message = details.length ? `${head}\n${details.join('\n')}\n\n${tail}` : `${head}\n${tail}`;
   _pending.add(key);
   let ok = false;
   try {

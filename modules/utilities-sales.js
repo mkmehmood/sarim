@@ -1537,7 +1537,7 @@ showToast('Failed to save collection. Please try again.', 'error');
 restoreBtn();
 }
 }
-export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', editKinds: ['sale', 'collection'] }); }
+export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', fields: [['supply-store-value', 'Store'], ['cust-quantity', 'Quantity'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
 async function _saveCustomerTransactionRaw() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -2536,7 +2536,7 @@ emitSyncUpdate({ customer_sales: null });
 return { saleId: id };
 }
 let _calcSaveInFlight = false;
-export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale' }); }
+export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale', fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']] }); }
 async function _saveTransactionRaw() {
 if (_calcSaveInFlight) return;
 _calcSaveInFlight = true;
@@ -6476,7 +6476,7 @@ el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${get
 el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
 window.updateStockTransferAvailability = updateStockTransferAvailability;
-export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer', () => runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)), { label: 'Stock Transfer', editKinds: ['stocktransfer'] }); }
+export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer', () => runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)), { label: 'Stock Transfer', fields: [['stock-transfer-from-value', 'From'], ['stock-transfer-to-value', 'To'], ['stock-transfer-qty', 'Quantity'], ['stock-transfer-date', 'Date'], ['stock-transfer-note', 'Note']], editKinds: ['stocktransfer'] }); }
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
