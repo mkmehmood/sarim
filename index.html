@@ -342,7 +342,7 @@ html[data-bio="1"] .splash-brand { display: none; }
   pointer-events: auto !important;
 }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" media="print" onload="this.media='all'">
 
 <link rel="stylesheet" href="app.css">
 <link rel="modulepreload" href="modules/main.js">
@@ -880,6 +880,10 @@ if(revealed)return;
 revealed=true;
 requestAnimationFrame(function(){
 el.classList.add("splash-ready");
+requestAnimationFrame(function(){
+window.__splashPainted=true;
+try{window.dispatchEvent(new Event("sarim:splash-painted"))}catch(e){}
+});
 setTimeout(function(){holdDone=true;tryHide()},HOLD);
 });
 }

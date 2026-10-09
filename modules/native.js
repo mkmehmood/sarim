@@ -330,7 +330,15 @@ if (isNative) {
   if (App && typeof App.addListener === 'function') App.addListener('backButton', handleBack);
   applyStatusBar();
   new MutationObserver(applyStatusBar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  window.addEventListener('load', () => { if (SplashScreen) setTimeout(() => SplashScreen.hide().catch(() => {}), 150); });
+  let nativeSplashHidden = false;
+  const hideNativeSplash = () => {
+    if (nativeSplashHidden || !SplashScreen) return;
+    nativeSplashHidden = true;
+    SplashScreen.hide({ fadeOutDuration: 120 }).catch(() => {});
+  };
+  if (window.__splashPainted) hideNativeSplash();
+  else window.addEventListener('sarim:splash-painted', hideNativeSplash, { once: true });
+  setTimeout(hideNativeSplash, 3500);
 }
 
 window.__isNativeApp = isNative;
