@@ -469,7 +469,7 @@ export async function auditLegacyPartialPayments(opts = {}) {
       await sqliteStore.set('partial_audit_last', today);
       const names = [...new Set(all.map(c => c.customerName).filter(Boolean))].slice(0, 3).join(', ');
       if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
-        window.showToast(`${all.length} old partly-paid sale${all.length !== 1 ? 's' : ''} (${names}) are counted twice: customer debt is understated by ${report.debtUnderstatedBy} and cash overstated by ${report.cashOverstatedBy}. Details: window._partialAudit`, 'warning', 12000);
+        window.window.notifyBlocking(`${all.length} old partly-paid sale${all.length !== 1 ? 's' : ''} (${names}) are counted twice: customer debt is understated by ${report.debtUnderstatedBy} and cash overstated by ${report.cashOverstatedBy}. Details: window._partialAudit`, 'warning');
       }
       console.table(all);
     }

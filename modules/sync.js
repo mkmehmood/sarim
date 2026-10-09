@@ -2099,7 +2099,7 @@ export async function subscribeToRealtime() {
           await pullDataFromCloud(false, true);
         } catch (_rebuildErr) {
           console.warn('[yearCloseSignal] pullDataFromCloud failed:', _safeErr(_rebuildErr));
-          showToast('Auto-refresh failed — please sync manually.', 'warning', 5000);
+          window.notifyBlocking('Auto-refresh failed — please sync manually.', 'warning');
           return;
         }
         try {
@@ -3487,7 +3487,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     const statsCols = ['production','sales','rep_sales','rep_customers','calculator_history',
       'transactions','entities','inventory','factory_history','returns','expenses','sales_customers'];
     void Promise.all(statsCols.map(c => DeltaSync.updateSyncStats(c))).catch(() => {});
-    if (!silent) showToast(' Data Restored Successfully', 'success');
+    if (!silent) window.showGlassAlert(' Data Restored Successfully', { tone: 'success', title: 'Data Restored' });
     if (typeof updateUnitsAvailableIndicator === 'function') updateUnitsAvailableIndicator();
     queueMicrotask(() => {
       if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {});

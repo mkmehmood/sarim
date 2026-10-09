@@ -211,7 +211,7 @@ s && s.customerName === name
 );
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true });
-if (_blk) { showToast(`Cannot delete "${name}": ${_blk}`, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning'); return; }
 }
 let totalDebt = 0;
 for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
@@ -458,11 +458,11 @@ export async function toggleSingleTransactionStatus(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const record = customerSales.find(s => s.id === id);
 if (record?.isMerged) {
-showToast('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 4000);
+window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning');
 return;
 }
 const _tgBlock = await getSettleToggleBlockReason(id, 'customer');
-if (_tgBlock) { showToast(_tgBlock, 'warning', 6000); return; }
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning'); return; }
 const snapshot = [...customerSales];
 try {
 const idx = customerSales.findIndex(s => s.id === id);
@@ -487,11 +487,11 @@ export async function toggleRepTransactionStatus(id) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const record = repSales.find(s => s.id === id);
 if (record?.isMerged) {
-showToast('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 4000);
+window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning');
 return;
 }
 const _tgBlock = await getSettleToggleBlockReason(id, 'rep');
-if (_tgBlock) { showToast(_tgBlock, 'warning', 6000); return; }
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning'); return; }
 const snapshot = [...repSales];
 try {
 const idx = repSales.findIndex(s => s.id === id);
@@ -526,7 +526,7 @@ return;
 }
 {
 const _blk = await getSaleBlockReason(id, 'customer');
-if (_blk) { showToast(_blk, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
 }
 const _isOldDebt = _txItem?.transactionType === 'OLD_DEBT';
 const _txType = _isOldDebt ? 'Old Debt Record' : _txItem ? (_txItem.paymentType === 'CREDIT' ? 'Credit Sale' : _txItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _txItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
@@ -606,7 +606,7 @@ return;
 }
 {
 const _blk = await getSaleBlockReason(id, 'rep');
-if (_blk) { showToast(_blk, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
 }
 const _rIsOldDebt = _rItem?.transactionType === 'OLD_DEBT';
 const _rType = _rIsOldDebt ? 'Old Debt Record' : _rItem ? (_rItem.paymentType === 'CREDIT' ? 'Credit Sale' : _rItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _rItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
@@ -883,19 +883,21 @@ cancelText = 'Cancel',
 danger = false,
 icon = null,
 tone = null,
-tag = null
+tag = null,
+alertOnly = false
 } = {}) {
 return new Promise(resolve => {
-const _tone = _gcPickTone(title, message, confirmText, danger, tone);
+const _isErr = tone === 'error';
+const _tone = _isErr ? 'danger' : _gcPickTone(title, message, confirmText, danger, tone);
 const _looksLikeGlyph = typeof icon === 'string' && icon.length > 0 && icon.indexOf('<') === -1;
-const svgIcon = (icon !== null && !_looksLikeGlyph) ? icon : _gcPickIcon(title, confirmText, danger, _tone);
-const iconClass = _tone === 'danger' ? 'icon-danger' : (_tone === 'warning' ? 'icon-warning' : 'icon-primary');
-const btnClass = _tone === 'danger' ? 'danger' : (_tone === 'warning' ? 'warning' : 'primary');
+const svgIcon = (icon !== null && !_looksLikeGlyph) ? icon : (_isErr ? _gcIcons.remove : (_tone === 'success' ? _gcIcons.confirm : _gcPickIcon(title, confirmText, danger, _tone)));
+const iconClass = _tone === 'danger' ? 'icon-danger' : (_tone === 'warning' ? 'icon-warning' : (_tone === 'success' ? 'icon-success' : 'icon-primary'));
+const btnClass = _tone === 'danger' ? 'danger' : (_tone === 'warning' ? 'warning' : (_tone === 'success' ? 'success' : 'primary'));
 const backdrop = document.createElement('div');
 backdrop.className = 'glass-confirm-backdrop';
 backdrop.innerHTML = `
 <div class="gc-wrap gc-tone-${_tone}">
-<div class="glass-confirm-box${_tone === 'danger' ? ' is-danger' : (_tone === 'warning' ? ' is-warning' : '')}" role="alertdialog" aria-modal="true">
+<div class="glass-confirm-box${_tone === 'danger' ? ' is-danger' : (_tone === 'warning' ? ' is-warning' : (_tone === 'success' ? ' is-success' : ''))}" role="alertdialog" aria-modal="true">
 <div class="glass-confirm-head">
 <div class="glass-confirm-icon ${iconClass}">${svgIcon}</div>
 <div class="glass-confirm-title">${esc(String(title).trim())}</div>
@@ -903,7 +905,7 @@ backdrop.innerHTML = `
 <div class="glass-confirm-msg">${_gcFormatMessage(message)}</div>
 <div class="glass-confirm-divider"></div>
 <div class="glass-confirm-btns">
-<button class="glass-confirm-btn gc-cancel">${esc(cancelText)}</button>
+${alertOnly ? '' : `<button class="glass-confirm-btn gc-cancel">${esc(cancelText)}</button>`}
 <button class="glass-confirm-btn ${btnClass} gc-confirm">${esc(confirmText)}</button>
 </div>
 </div>
@@ -927,11 +929,12 @@ setTimeout(() => { backdrop.remove(); if (!document.querySelector('.glass-confir
 setTimeout(() => { window._glassConfirmClosing = false; }, 400);
 };
 backdrop.querySelector('.gc-confirm').addEventListener('click', () => cleanup(true), { once: true });
-backdrop.querySelector('.gc-cancel').addEventListener('click', () => cleanup(false), { once: true });
-backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(false); });
+const _cancelBtn = backdrop.querySelector('.gc-cancel');
+if (_cancelBtn) _cancelBtn.addEventListener('click', () => cleanup(false), { once: true });
+backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(alertOnly); });
 const onKey = (e) => {
 if (e.key === 'Enter') { e.preventDefault(); cleanup(true); }
-if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+if (e.key === 'Escape') { e.preventDefault(); cleanup(alertOnly); }
 };
 document.addEventListener('keydown', onKey);
 backdrop.addEventListener('animationend', () => {
@@ -944,6 +947,18 @@ if (btn) btn.focus();
 });
 }
 window.showGlassConfirm = showGlassConfirm;
+const _gcAlertTitles = { success: 'Success', warning: 'Warning', error: 'Something Went Wrong' };
+export function showGlassAlert(message, { title = null, tone = 'warning', buttonText = 'OK', icon = null } = {}) {
+const _t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
+const _icon = icon || (_t === 'error' ? _gcIcons.remove : (_t === 'success' ? _gcIcons.confirm : _gcIcons.warning));
+return showGlassConfirm(message, { title: title || _gcAlertTitles[_t], confirmText: buttonText, tone: _t, icon: _icon, alertOnly: true });
+}
+window.showGlassAlert = showGlassAlert;
+export function notifyBlocking(message, tone = 'warning', title = null) {
+if (typeof window.showGlassAlert === 'function') return showGlassAlert(message, { tone, title });
+showToast(message, tone, 5000);
+}
+window.notifyBlocking = notifyBlocking;
 if (typeof window._onShowGlassConfirmReady === 'function') {
 window._onShowGlassConfirmReady();
 }
@@ -1026,8 +1041,8 @@ const address = document.getElementById('edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('edit-cust-old-debit').value) || 0;
 const customSalePrice = parseFloat(document.getElementById('edit-cust-custom-price').value) || 0;
 if (!name) { showToast('Customer name is required', 'error'); return; }
-if (oldDebit < 0) { showToast('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning', 4000); return; }
-if (customSalePrice < 0) { showToast('Custom sale price cannot be negative.', 'warning', 4000); return; }
+if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
+if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning'); return; }
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
 const freshContacts = await sqliteStore.get('sales_customers', []);
@@ -1081,7 +1096,7 @@ const amountChanged = tx.totalValue !== oldDebit;
 let _odCollected = 0;
 if (amountChanged) {
 const _odChk = await getOldDebtChangeIssue(tx, oldDebit);
-if (_odChk.issue) { showToast(_odChk.issue, 'warning', 6000); return; }
+if (_odChk.issue) { window.notifyBlocking(_odChk.issue, 'warning'); return; }
 _odCollected = _odChk.collected;
 }
 tx.totalValue = oldDebit; tx.customerPhone = phone; tx.timestamp = getTimestamp();

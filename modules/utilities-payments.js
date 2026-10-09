@@ -50,7 +50,7 @@ event.stopPropagation();
 const saleIndex = customerSales.findIndex(item => item.id === id);
 if (saleIndex !== -1) {
 const _tgBlock = await getSettleToggleBlockReason(id, 'customer');
-if (_tgBlock) { showToast(_tgBlock, 'warning', 6000); return; }
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning'); return; }
 applySettlement(customerSales[saleIndex], planCreditToggle(customerSales[saleIndex], localDateStr(), new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })));
 if (!customerSales[saleIndex].currentRepProfile) {
 customerSales[saleIndex].currentRepProfile = 'admin';
@@ -697,7 +697,7 @@ choraMaterial = factoryInventoryData.find(m => m.name && m.name.toUpperCase() ==
 }
 }
 if (!choraMaterial) {
-showToast(` CHORA material not found. Could not reverse expired qty (${quantity}).`, 'warning', 5000);
+window.notifyBlocking(` CHORA material not found. Could not reverse expired qty (${quantity}).`, 'warning');
 return;
 }
 choraMaterial.quantity = Math.max(0, (choraMaterial.quantity || 0) - quantity);
@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
       console.warn('[Startup] DECRYPT_FAILED with key ready — showing auth overlay');
       if (typeof createAuthOverlay === 'function') createAuthOverlay();
       if (typeof showAuthOverlay === 'function') showAuthOverlay();
-      showToast('Data could not be decrypted. Please log in again.', 'error', 7000);
+      window.notifyBlocking('Data could not be decrypted. Please log in again.', 'error');
       return;
     }
     showToast('Startup error — some data may not be available. Tap to retry.', 'warning', 8000);
@@ -1101,7 +1101,7 @@ if (!_blk && entryToDelete.returned > 0 && entryToDelete.returnStore && typeof w
 const _snap = await window.computeStoreStockSnapshot(entryToDelete.returnStore, entryToDelete.date);
 if (_snap.available - entryToDelete.returned < -0.0001) _blk = `${getStoreLabel(entryToDelete.returnStore)} stock on ${entryToDelete.date} was already sold. Removing the ${entryToDelete.returned} kg return would make stock negative.`;
 }
-if (_blk) { showToast(`Cannot delete: ${_blk}`, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(`Cannot delete: ${_blk}`, 'warning'); return; }
 }
 const _dsHasImpact = linkedCount > 0 || linkedRepCount > 0 || (entryToDelete.returned > 0 && entryToDelete.returnStore) || (entryToDelete.transferSaleId) || entryToDelete.expired > 0;
 if (_dsHasImpact) {
@@ -1152,7 +1152,7 @@ const newHistory = history.filter(h => h.id !== id);
 await unifiedDelete('noman_history', newHistory, id, { strict: true }, entryToDelete);
 } catch (_stepErr) {
 await _reapplyCalcEffects(entryToDelete, _doneSteps, _liveEntry);
-showToast('Could not delete the record: ' + ((_stepErr && _stepErr.message) || 'a step failed') + ' Everything was put back as it was.', 'error', 7000);
+window.notifyBlocking('Could not delete the record: ' + ((_stepErr && _stepErr.message) || 'a step failed') + ' Everything was put back as it was.', 'error');
 return;
 }
 if (Array.isArray(salesHistory)) {
@@ -2026,7 +2026,7 @@ const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
 const origCategory = o.isExpense ? 'operating' : o.type;
 if (v.category !== origCategory) {
-showToast('The type cannot be changed while editing. Delete and re-enter it instead.', 'warning', 4000);
+window.notifyBlocking('The type cannot be changed while editing. Delete and re-enter it instead.', 'warning');
 return;
 }
 const oldSigned = o.type === 'IN' ? (o.amount || 0) : -(o.amount || 0);
@@ -2035,7 +2035,7 @@ const delta = newSigned - oldSigned;
 if (delta < 0) {
 const avail = await getAvailableCashInHand();
 if (avail + delta < 0) {
-showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, avail))} — Extra required: ${fmtAmt(-delta)}`, 'error', 5000);
+window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, avail))} — Extra required: ${fmtAmt(-delta)}`, 'error');
 return;
 }
 }
@@ -2142,7 +2142,7 @@ const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-showToast('Access Denied — Payments not in your assigned tabs', 'warning', 3000); return;
+window.notifyBlocking('Access Denied — Payments not in your assigned tabs', 'warning'); return;
 }
 const name = document.getElementById('expenseName').value.trim();
 const amount = parseFloat(document.getElementById('expenseAmount').value);
@@ -2185,7 +2185,7 @@ _seRem -= m.totalPayable;
 const _seNetOutflow = amount - _seMaterialOffset;
 const _seAvailCash = await getAvailableCashInHand();
 if (_seAvailCash < _seNetOutflow) {
-showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _seAvailCash))} — Required: ${fmtAmt(_seNetOutflow)}`, 'error', 5000);
+window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _seAvailCash))} — Required: ${fmtAmt(_seNetOutflow)}`, 'error');
 return;
 }
 }
@@ -3549,7 +3549,7 @@ return;
 }
 const _sqeeAvail = await getAvailableCashInHand();
 if (_sqeeAvail < amount) {
-showToast(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _sqeeAvail))} — Required: ${fmtAmt(amount)}`, 'error', 5000);
+window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _sqeeAvail))} — Required: ${fmtAmt(amount)}`, 'error');
 return;
 }
 try {
@@ -4240,7 +4240,7 @@ async function recoverCalcEntry(deletedId, snap) {
     return true;
   } catch (e) {
     await undo();
-    showToast('Could not recover the calculator record: ' + ((e && e.message) || 'unknown error') + ' Nothing was changed.', 'error', 7000);
+    window.notifyBlocking('Could not recover the calculator record: ' + ((e && e.message) || 'unknown error') + ' Nothing was changed.', 'error');
     return false;
   }
 }
@@ -4835,10 +4835,10 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     if (_recov.plan.requestedSkipped) { showToast(_recov.plan.requestedSkipped, 'warning', 7000); return; }
   } else {
     const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
-    if (_rb) { showToast(_rb, 'warning', 6000); return; }
+    if (_rb) { window.notifyBlocking(_rb, 'warning'); return; }
     if (ownTomb && ownTomb.snapshot) {
       const _lb = await getRecoverLinkBlockReason(collectionName, ownTomb.snapshot);
-      if (_lb) { showToast(_lb, 'warning', 6500); return; }
+      if (_lb) { window.notifyBlocking(_lb, 'warning'); return; }
     }
   }
   const _skipNote = _recov.plan.skipped.length ? `\n\nThese cannot be recovered right now and will stay in the recycle bin:\n${_skippedSummary(_recov.plan)}` : '';
@@ -5154,7 +5154,7 @@ showToast('Encrypting backup with AES-256-GCM...', 'info', 3000);
 const encryptedBlob = await CryptoEngine.encrypt(data, currentUser.email, encPassword, currentUser.uid);
 const timestamp = localDateStr();
 _triggerFileDownload(encryptedBlob, `NaswarDealers_SecureBackup_${timestamp}.gznd`);
-showToast('Encrypted backup saved! Only your account and credentials can restore this file.', 'success', 5000);
+window.showGlassAlert('Encrypted backup saved! Only your account and credentials can restore this file.', { tone: 'success', title: 'Backup Saved' });
 } catch(encErr) {
 console.error('Encryption failed:', _safeErr(encErr));
 showToast('Encryption failed: ' + encErr.message, 'error');
@@ -5594,7 +5594,7 @@ returns: normalized.stock_returns.length,
 expenses: normalized.expenses.length
 };
 const total = Object.values(counts).reduce((a, b) => a + b, 0);
-showToast('Upload Complete! ' + total + ' records merged to cloud.', 'success');
+window.showGlassAlert('Upload Complete! ' + total + ' records merged to cloud.', { tone: 'success', title: 'Upload Complete' });
 } catch (err) {
 showToast('Upload failed: ' + err.message, 'error');
 } finally {
@@ -5773,7 +5773,7 @@ await settingsRef.set(updatePayload, { merge: true });
 showToast(`Remote command sent: ${targetMode} mode`, 'success', 3000);
 return true;
 } catch (error) {
-showToast('Failed to send remote command', 'error', 3000);
+window.notifyBlocking('Failed to send remote command', 'error');
 return false;
 }
 }
@@ -6001,7 +6001,7 @@ const originalShowTab = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 const adminTabs = ['prod', 'sales', 'calc', 'factory', 'payments'];
 if (adminTabs.includes(tab)) {
-showToast("Access Denied - Device in Rep Mode", "warning", 3000);
+window.notifyBlocking("Access Denied - Device in Rep Mode", 'warning');
 return;
 }
 if (tab === 'rep' || !adminTabs.includes(tab)) {
@@ -6016,7 +6016,7 @@ const allowedTabs = window._userRoleAllowedTabs || window._assignedUserTabs || [
 const originalShowTabUR = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 if (!allowedTabs.includes(tab)) {
-showToast('Access Denied — not in your assigned sections', 'warning', 3000);
+window.notifyBlocking('Access Denied — not in your assigned sections', 'warning');
 return;
 }
 if (typeof originalShowTabUR === 'function') originalShowTabUR(tab);
@@ -6042,7 +6042,7 @@ window._userRoleAllowedTabs = allowedTabs;
 const originalShowTabProd = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 if (tab !== 'prod') {
-showToast("Access Denied - Device in Production Manager Mode", "warning", 3000);
+window.notifyBlocking("Access Denied - Device in Production Manager Mode", 'warning');
 return;
 }
 if (typeof originalShowTabProd === 'function') originalShowTabProd(tab);
@@ -6054,7 +6054,7 @@ btn.style.display = 'none';
 const originalShowTabFactory = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 if (tab !== 'factory') {
-showToast("Access Denied - Device in Factory Manager Mode", "warning", 3000);
+window.notifyBlocking("Access Denied - Device in Factory Manager Mode", 'warning');
 return;
 }
 if (typeof originalShowTabFactory === 'function') originalShowTabFactory(tab);
@@ -6106,7 +6106,7 @@ return;
 }
 {
 const _blk = await getSaleBlockReason(id, 'rep');
-if (_blk) { showToast(_blk, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
 }
 const _rtIsOldDebt = transaction.transactionType === 'OLD_DEBT';
 const _rtPayType = transaction.paymentType;
@@ -7040,7 +7040,7 @@ if (salesRepsList.length <= 1) { showToast('Must have at least one representativ
 const name = salesRepsList[index];
 {
 const _pend = await getPendingAllocationCount(name);
-if (_pend > 0) { showToast(`${name} still has ${_pend} unsettled allocation${_pend !== 1 ? 's' : ''}. Settle them in the calculator first.`, 'warning', 6000); return; }
+if (_pend > 0) { window.notifyBlocking(`${name} still has ${_pend} unsettled allocation${_pend !== 1 ? 's' : ''}. Settle them in the calculator first.`, 'warning'); return; }
 }
 const _rsrSales = (typeof repSales !== 'undefined' ? repSales : []).filter(s => s.salesRep === name).length;
 let _rsrMsg = `Remove ${name} from the sales team?`;
@@ -7633,7 +7633,7 @@ const successMsg = targetMode === 'admin'
 showToast(successMsg, 'success', 3500);
 setTimeout(loadDeviceList, 2000);
 } catch (error) {
-showToast('Failed to control device: ' + error.message, 'error', 4000);
+window.notifyBlocking('Failed to control device: ' + error.message, 'error');
 }
 }
 export async function removeDevice(deviceId) {
@@ -7664,7 +7664,7 @@ await deviceRef.delete();
 showToast('Device removed and logged out', 'success', 3000);
 await loadDeviceList();
 } catch (error) {
-showToast('Failed to remove device: ' + error.message, 'error', 3000);
+window.notifyBlocking('Failed to remove device: ' + error.message, 'error');
 }
 }
 window.loadDeviceList = loadDeviceList;
@@ -7929,7 +7929,7 @@ window.listenForTeamChanges = listenForTeamChanges;
 window.applyRemoteModeChange = applyRemoteModeChange;
 export async function prepareEntityTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
+window.notifyBlocking('Access Denied — Payment Transfer not in your assigned tabs', 'warning');
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('payment-transfer-screen');
 return;
 }
@@ -7954,7 +7954,7 @@ export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransf
 async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
+window.notifyBlocking('Access Denied — Payment Transfer not in your assigned tabs', 'warning');
 return;
 }
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -7964,19 +7964,19 @@ const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
 const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
 const date = (document.getElementById('payment-transfer-date') || {}).value;
 const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
-if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
-if (!fromId || !toId) { showToast('Please search and select both entities from the list.', 'warning', 3000); return; }
-if (String(fromId) === String(toId)) { showToast('From and To entities must be different.', 'warning', 3000); return; }
-if (amount <= 0) { showToast('Please enter a valid amount.', 'warning', 3000); return; }
+if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
+if (!fromId || !toId) { window.notifyBlocking('Please search and select both entities from the list.', 'warning'); return; }
+if (String(fromId) === String(toId)) { window.notifyBlocking('From and To entities must be different.', 'warning'); return; }
+if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning'); return; }
 const fromEntity = paymentEntities.find(e => String(e.id) === String(fromId));
 const toEntity = paymentEntities.find(e => String(e.id) === String(toId));
-if (!fromEntity || !toEntity) { showToast('Selected entity not found.', 'error', 3000); return; }
-if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { showToast('Expense-only entities cannot be used in a transfer.', 'warning', 4000); return; }
+if (!fromEntity || !toEntity) { window.notifyBlocking('Selected entity not found.', 'error'); return; }
+if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { window.notifyBlocking('Expense-only entities cannot be used in a transfer.', 'warning'); return; }
 const _oOut = _ed ? _ed.original.records.find(r => r.type === 'OUT') : null;
 const _oIn = _ed ? _ed.original.records.find(r => r.type === 'IN') : null;
 if (_ed) {
 const avail = await getAvailableCashInHand();
-if (avail < 0) { showToast('Cash position is negative; fix that before editing transfers.', 'warning', 4000); return; }
+if (avail < 0) { window.notifyBlocking('Cash position is negative; fix that before editing transfers.', 'warning'); return; }
 const _oo = _ed.original.records.find(r => r.type === 'OUT');
 const _ok = await confirmEditChanges([
 { label: 'From', from: _oo?.entityName || '', to: fromEntity.name },

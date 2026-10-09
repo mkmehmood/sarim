@@ -743,11 +743,11 @@ const factoryAdditionalCosts = _sfpeBatch.get('factory_additional_costs') || {};
 const factoryInventoryData = ensureArray(_sfpeBatch.get('factory_inventory_data'));
 const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory_production_history'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
-showToast('Access Denied — Factory not in your assigned tabs', 'warning', 3000);
+window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning');
 return;
 }
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
-if (units <= 0) return showToast('Invalid units', 'warning', 3000);
+if (units <= 0) return window.notifyBlocking('Invalid units', 'warning');
 const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
 let _histSavedRec = null;
@@ -899,7 +899,7 @@ if (_ed) await unifiedSave('factory_production_history', factoryProductionHistor
 else await unifiedDelete('factory_production_history', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
 } catch (_undoErr) { console.error('Could not undo the saved batch record.', _safeErr(_undoErr)); }
 }
-showToast(error.message || 'Failed to save production data. Please try again.', 'error', 4000);
+window.notifyBlocking(error.message || 'Failed to save production data. Please try again.', 'error');
 }
 }
 export function setFactorySummaryMode(mode, el) {
@@ -1048,7 +1048,7 @@ return ` • ${inv?.name || f.name || 'Material'}: ${fmtNum(f.quantity)} kg rest
 const _feTracking = await updateFormulaInventory();
 const _feAvail = _feTracking?.[_feFormulaKey]?.available || 0;
 if (_feAvail + 1e-9 < (entry.units || 0)) {
-showToast(`Cannot delete: ${fmtNum((entry.units || 0) - _feAvail)} unit${((entry.units || 0) - _feAvail) === 1 ? '' : 's'} of this batch already used in manufacturing entries. Delete those first.`, 'warning', 5000);
+window.notifyBlocking(`Cannot delete: ${fmtNum((entry.units || 0) - _feAvail)} unit${((entry.units || 0) - _feAvail) === 1 ? '' : 's'} of this batch already used in manufacturing entries. Delete those first.`, 'warning');
 return;
 }
 }
@@ -1275,7 +1275,7 @@ return;
 const isReturn = entryToDelete.isReturn === true;
 if (isReturn) {
 const _lk = await findCalcLinkForReturn(entryToDelete);
-if (_lk) { showToast(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning', 6000); return; }
+if (_lk) { window.notifyBlocking(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning'); return; }
 }
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
 const _retLog = isReturn ? findReturnLogFor(entryToDelete, ensureArray(await sqliteStore.get('stock_returns'))) : null;
@@ -1283,7 +1283,7 @@ const _stockDrop = isReturn ? getReturnStockDrop(entryToDelete, _retLog) : (entr
 if (_stockDrop > 0 && typeof window.computeStoreStockSnapshot === 'function') {
 const _snap = await window.computeStoreStockSnapshot(entryToDelete.store, entryToDelete.date);
 if (_snap.available - _stockDrop < -0.0001) {
-showToast(`Cannot delete: ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning', 6000);
+window.notifyBlocking(`Cannot delete: ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning');
 return;
 }
 }

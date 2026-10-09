@@ -37,7 +37,7 @@ export async function updateDeltaSyncStatsDisplay() {
     }
   } catch (e) {
     if (typeof showToast === 'function') {
-      showToast('Could not refresh stats: ' + e.message, 'warning', 3000);
+      window.notifyBlocking('Could not refresh stats: ' + e.message, 'warning');
     }
   }
 }
@@ -941,7 +941,7 @@ if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
 const valid = await verifyAccountPassword(pwd);
 if (!valid) {
   if (errEl) { errEl.textContent = ' Incorrect password — please try again.'; errEl.style.display = 'block'; }
-  showToast('Incorrect password. Please try again.', 'error', 4000);
+  window.notifyBlocking('Incorrect password. Please try again.', 'error');
   if (confirmBtn) {
     confirmBtn.disabled = false;
     confirmBtn.style.opacity = '1';
@@ -1460,7 +1460,7 @@ try {
       const encryptedBlob = await CryptoEngine.encrypt(backupData, currentUser.email, encPassword, currentUser.uid);
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       _triggerFileDownload(encryptedBlob, `NaswarDealers_YearClose_${timestamp}.gznd`);
-      showToast(' Encrypted year-end backup downloaded!', 'success', 4000);
+      window.showGlassAlert(' Encrypted year-end backup downloaded!', { tone: 'success', title: 'Backup Downloaded' });
     } catch (encErr) {
       console.error('Encryption failed:', _safeErr(encErr));
       showToast('Local backup encryption failed — proceeding with cloud backup only.', 'warning', 4000);
@@ -1712,7 +1712,7 @@ if (completeSection) {
     </button>
   </div>`;
   completeSection.style.display = 'block';
-  showToast('Financial Year closed successfully!', 'success');
+  window.showGlassAlert('Financial Year closed successfully!', { tone: 'success', title: 'Financial Year Closed' });
   if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close finished. Balances were carried forward and old records were merged.', 'year-closed').catch(() => {});
 }
 } catch (error) {
@@ -2891,7 +2891,7 @@ if (firebaseDB && currentUser) {
 showToast('Syncing cleaned data to cloud...', 'info');
 await performOneClickSync(true);
 }
-showToast(` Done! ${results.totalDuplicates} duplicates removed. Data synced to cloud.`, 'success', 5000);
+window.showGlassAlert(` Done! ${results.totalDuplicates} duplicates removed. Data synced to cloud.`, { tone: 'success', title: 'Cleanup Complete' });
 } else {
 showToast(' No duplicates found! Data is clean.', 'success');
 }
@@ -3292,7 +3292,7 @@ try {
   try { await refreshAllDisplays(); } catch(e) {}
 } catch (err) {
   console.error('[runUnifiedCleanup] error:', _safeErr(err));
-  showToast('\u26a0 Cleanup failed: ' + err.message, 'error', 6000);
+  window.notifyBlocking('\u26a0 Cleanup failed: ' + err.message, 'error');
 }
 }
 window.runUnifiedCleanup = runUnifiedCleanup;

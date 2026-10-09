@@ -923,7 +923,7 @@ export const sqliteStore = (() => {
       console.warn('[SQLite] localStorage blob write failed (storage full?):', _safeErr(e));
       if (typeof showToast === 'function' && !_lsQuotaWarned) {
         _lsQuotaWarned = true;
-        showToast('Could not save data locally — device storage is full. Please free up space or sync now to avoid losing changes.', 'error', 12000);
+        window.notifyBlocking('Could not save data locally — device storage is full. Please free up space or sync now to avoid losing changes.', 'error');
         setTimeout(() => { _lsQuotaWarned = false; }, 60000);
       }
     }
@@ -1326,7 +1326,7 @@ export const sqliteStore = (() => {
             console.error('[SQLite] Integrity check failed — attempting recovery');
             const recovered = await _attemptRecovery();
             if (!recovered && typeof showToast === 'function') {
-              showToast('Local data could not be fully verified. If something looks missing, use Sync to restore from the cloud.', 'warning', 8000);
+              window.notifyBlocking('Local data could not be fully verified. If something looks missing, use Sync to restore from the cloud.', 'warning');
             }
           }
           if (!existing) await _dualPersist();

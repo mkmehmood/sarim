@@ -1118,7 +1118,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas'
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('prod')) {
-showToast('Access Denied — Production not in your assigned tabs', 'warning', 3000); return;
+window.notifyBlocking('Access Denied — Production not in your assigned tabs', 'warning'); return;
 }
 const netElement = document.getElementById('net-wt');
 const dateElement = document.getElementById('sys-date');
@@ -1141,7 +1141,7 @@ const salePrice = await getSalePriceForStore(store);
 const validation = await validateFormulaAvailability(store, formulaUnits);
 const _unitCredit = (_ed && _ed.original.formulaStore === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;
 if (!validation.sufficient && !(_ed && validation.available + _unitCredit + 1e-9 >= formulaUnits)) {
-showToast(` Insufficient formula units! Available: ${validation.available}, Requested: ${formulaUnits}`, 'warning', 4000);
+window.notifyBlocking(` Insufficient formula units! Available: ${validation.available}, Requested: ${formulaUnits}`, 'warning');
 return;
 }
 if (_ed) {
@@ -1151,7 +1151,7 @@ const prodOld = db.filter(p => p && !p.isReturn && p.id !== o.id && p.date === o
 const retOld = stockReturns.filter(r => r && r.date === o.date && r.store === o.store).reduce((a, r) => a + (r.quantity || 0), 0);
 const soldOld = customerSales.filter(s => s && (s.supplyDate || s.date) === o.date && s.supplyStore === o.store).reduce((a, s) => a + (s.quantity || 0), 0);
 if (prodOld + retOld - soldOld < -1e-6) {
-showToast(` Cannot reduce this entry: ${fmtNum(soldOld - prodOld - retOld)} kg already sold from ${o.date}. Reduce or delete those sales first.`, 'warning', 5000);
+window.notifyBlocking(` Cannot reduce this entry: ${fmtNum(soldOld - prodOld - retOld)} kg already sold from ${o.date}. Reduce or delete those sales first.`, 'warning');
 return;
 }
 }
@@ -1161,7 +1161,7 @@ const _frozenUnit = _ed.original.formulaCost / _ed.original.formulaUnits;
 costData = { ...costData, costPerUnit: _frozenUnit, totalFormulaCost: _frozenUnit * formulaUnits, dynamicCostPerKg: (_frozenUnit * formulaUnits) / net, formulaName: _ed.original.formulaName || costData.formulaName, formulaMaterials: _ed.original.formulaMaterials };
 }
 if (net <= 0) {
-showToast('Net production must be greater than zero. Please check weights.', 'warning', 4000);
+window.notifyBlocking('Net production must be greater than zero. Please check weights.', 'warning');
 return;
 }
 if (!inputDate) {

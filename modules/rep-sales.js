@@ -95,7 +95,7 @@ setTimeout(() => { splash.style.display = 'none'; splash.classList.remove('splas
 const errName = e && e.name ? e.name : '';
 failures++;
 if (errName !== 'NotAllowedError' && failures === 1) {
-showToast((e && e.message) ? e.message : 'Authentication failed', 'error', 4000);
+window.notifyBlocking((e && e.message) ? e.message : 'Authentication failed', 'error');
 }
 if (failures < 5) scheduleRetry(errName === 'NotAllowedError' ? 1200 : 2000);
 } finally {
@@ -122,7 +122,7 @@ const rec = repSales.find(s => s && String(s.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning'); return; }
 {
 const _blk = await getSaleBlockReason(rec.id, 'rep', { forEdit: true });
-if (_blk) { showToast(_blk, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
 }
 if (rec.transactionType === 'OLD_DEBT') { showToast('Opening balances are edited from the customer details.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('rep');
@@ -261,7 +261,7 @@ restoreBtn();
 return;
 }
 if(!salePrice || salePrice <= 0) {
-showToast(" Sale price not configured. Set prices in Factory Formulas before recording rep sales.", "warning", 5000);
+window.notifyBlocking(" Sale price not configured. Set prices in Factory Formulas before recording rep sales.", 'warning');
 restoreBtn();
 return;
 }
@@ -324,7 +324,7 @@ if (_ed && Array.isArray(_ed.original.allocations)) _repOutstanding = round2(_re
 _repOutstanding = Math.max(0, _repOutstanding);
 } catch (_e) { _repOutstanding = -1; }
 if (_repOutstanding === 0 && !_ed) {
-showToast(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error', 5000);
+window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error');
 restoreBtn();
 return;
 } else if (_repOutstanding >= 0 && amount > _repOutstanding) {
@@ -369,17 +369,17 @@ syncedAt: new Date().toISOString()
 transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 }
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - (transactionRecord.totalValue || 0)) > 0.001) {
-showToast('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 6000); restoreBtn(); return;
+window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning'); restoreBtn(); return;
 }
 let _repAlloc = null;
 if (transactionRecord.paymentType === 'COLLECTION' && !(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
 try {
 _repAlloc = await applyCollectionToSales({ kind: 'rep', arr: repSales, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
-} catch (_allocErr) { showToast(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 6000); restoreBtn(); return; }
+} catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning'); restoreBtn(); return; }
 }
 if (_ed) {
 const _linkIssue = await getSaleEditLinkIssue('rep', _ed.original, transactionRecord);
-if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); showToast(_linkIssue, 'warning', 6000); restoreBtn(); return; }
+if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); window.notifyBlocking(_linkIssue, 'warning'); restoreBtn(); return; }
 const o = _ed.original;
 stampEdit(transactionRecord, o);
 if (transactionRecord.paymentType === 'CREDIT' || transactionRecord.paymentType === 'CASH') applySettlement(transactionRecord, planEditSettlement(o, transactionRecord.paymentType));
@@ -858,7 +858,7 @@ const name = currentManagingRepCustomer;
 const txs = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'rep', { ignoreChildren: true });
-if (_blk) { showToast(`Cannot delete "${name}": ${_blk}`, 'warning', 6000); return; }
+if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning'); return; }
 }
 let totalDebt = 0;
 for (const s of txs) totalDebt = round2(totalDebt + debtDelta(s, s.totalValue));
@@ -1152,7 +1152,7 @@ const phone = document.getElementById('rep-edit-cust-phone').value.trim();
 const address = document.getElementById('rep-edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('rep-edit-cust-old-debit').value) || 0;
 if (!name) { showToast('Customer name is required', 'error'); return; }
-if (oldDebit < 0) { showToast('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning', 4000); return; }
+if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
 const freshRepContacts = await sqliteStore.get('rep_customers', []);

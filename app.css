@@ -5940,6 +5940,8 @@ font-feature-settings: "tnum" 1;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+.glass-confirm-icon.icon-success { background: rgba(34, 197, 94, 0.14); color: var(--success, var(--accent)); }
+.glass-confirm-box.is-success { border-color: rgba(34, 197, 94, 0.35); }
 .glass-confirm-box.is-warning { border-color: rgba(245, 158, 11, 0.42); }
 .glass-confirm-box.is-warning .gc-list li::before { background: var(--warning, #f59e0b); }
 .glass-confirm-icon.icon-warning { background: rgba(245, 158, 11, 0.14); color: var(--warning, #f59e0b); }
@@ -6231,6 +6233,7 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   --gc-note: rgba(239, 83, 80, 0.12);
 }
 .gc-wrap.gc-tone-danger { --gc-tone: var(--danger); }
+.gc-wrap.gc-tone-success { --gc-tone: var(--success, var(--accent)); --gc-note: rgba(34, 197, 94, 0.12); }
 .gc-wrap.gc-tone-warning { --gc-tone: var(--warning, #f59e0b); --gc-note: rgba(245, 158, 11, 0.14); }
 [data-theme="light"] .gc-wrap {
   --gc-foot: rgba(15, 23, 42, 0.04);
@@ -6307,6 +6310,7 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .gc-wrap .gc-cancel:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .gc-wrap .glass-confirm-btn.primary { background: var(--accent); background-image: none; border: 0; color: #fff; }
 .gc-wrap .glass-confirm-btn.danger { background: var(--danger); background-image: none; border: 0; color: #fff; }
+.gc-wrap .glass-confirm-btn.success { background: var(--success, var(--accent)); background-image: none; border: 0; color: #fff; }
 .gc-wrap .glass-confirm-btn.warning { background: var(--warning, #f59e0b); background-image: none; border: 0; color: #fff; }
 @media (max-width: 449px) {
   .gc-wrap { max-width: 100%; }
