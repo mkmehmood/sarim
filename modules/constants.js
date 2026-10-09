@@ -15,7 +15,7 @@ export function loadBrandLogo() {
     .catch(() => { _brandLogoPromise = null; });
   return _brandLogoPromise;
 }
-if (typeof window !== 'undefined' && typeof fetch === 'function') (window.requestIdleCallback || setTimeout)(() => loadBrandLogo(), 3000);
+if (typeof window !== 'undefined' && typeof fetch === 'function') setTimeout(() => loadBrandLogo(), 3000);
 export var entityListViewType;
 export const APP_CONFIG = Object.freeze({
   CACHE_VERSION: 'V.29.09.2026',

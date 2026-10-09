@@ -808,7 +808,7 @@ async function _awaitVisualReady() {
         document.fonts.load('700 14px "Noto Nastaliq Urdu"', '\u0627').catch(() => {});
       } catch (_) {}
     };
-    (window.requestIdleCallback || setTimeout)(warmUrdu, 1500);
+    setTimeout(warmUrdu, 1500);
     }
   } catch (_) {}
   try {
