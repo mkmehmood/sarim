@@ -4,7 +4,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
@@ -209,6 +209,17 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return null;
   }
   if (collectionName === 'transactions' || collectionName === 'payment_transactions') {
+    if (!(ctx && ctx.entityInSet && ctx.entityInSet(snapshot.entityId))) {
+      const idMap = await _loadIdMap();
+      const ents = ensureArray(await sqliteStore.get('payment_entities'));
+      const liveEnt = (id) => id && ents.some(e => e && !e.deletedAt && String(e.id) === String(resolveId(id, idMap)));
+      if (snapshot.entityId && !liveEnt(snapshot.entityId)) {
+        return `The ${snapshot.entityName ? `"${snapshot.entityName}"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
+      }
+      if (snapshot.isTransfer && snapshot.transferPeerEntityId && !liveEnt(snapshot.transferPeerEntityId)) {
+        return `The ${snapshot.transferPeerEntityName ? `"${snapshot.transferPeerEntityName}"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
+      }
+    }
     const need = getRestoreCashNeed(snapshot);
     if (need > 0 && typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
       const used = ctx && typeof ctx.cashUsed === 'number' ? ctx.cashUsed : 0;
@@ -220,7 +231,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   }
   return null;
 }
-export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord) {
+export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord, opts = {}) {
   const idMap = await _loadIdMap();
   idMap[String(oldId)] = String(newId);
   await sqliteStore.set(_ID_MAP_KEY, idMap);
@@ -266,7 +277,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave('factory_inventory_data', inv, null, updates.map(u => u.id));
     }
   }
-  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
+  if (cleanRecord && !opts.skipReattach && (collectionName === 'sales' || collectionName === 'rep_sales') &&
       cleanRecord.paymentType === 'PARTIAL_PAYMENT' && cleanRecord.relatedSaleId) {
     const key = COLLECTION_TO_KEY[collectionName];
     const arr = ensureArray(await sqliteStore.get(key));
@@ -306,7 +317,24 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
 }
 export async function resolveSnapshotLinks(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
-  return resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
+  resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
+  const isTx = collectionName === 'transactions' || collectionName === 'payment_transactions';
+  // A link to something that no longer exists is worse than no link: drop it, and refresh copied names.
+  if (isTx && cleanRecord.expenseId) {
+    const exps = ensureArray(await sqliteStore.get('expenses'));
+    if (!exps.some(e => e && !e.deletedAt && String(e.id) === String(cleanRecord.expenseId))) delete cleanRecord.expenseId;
+  }
+  if (collectionName === 'inventory' && cleanRecord.supplierId) {
+    const ents = ensureArray(await sqliteStore.get('payment_entities'));
+    const ent = ents.find(e => e && !e.deletedAt && String(e.id) === String(cleanRecord.supplierId));
+    if (ent) cleanRecord.supplierName = ent.name;
+    else {
+      // The supplier is gone: bring the material back as an ordinary unlinked material with nothing owed.
+      delete cleanRecord.supplierId; delete cleanRecord.supplierName; delete cleanRecord.totalPayable; delete cleanRecord.paidDate;
+      cleanRecord.paymentStatus = 'pending';
+    }
+  }
+  return cleanRecord;
 }
 async function _dropExpensePhoto(expenseId) {
   if (!expenseId) return;
@@ -551,6 +579,15 @@ export async function cascadeEntityRename(entityId, oldName, newName) {
   const plan = planEntityRename(entityId, newName, txs, mats);
   applyEntityRename(entityId, newName, txs, mats, plan);
   const now = getTimestamp();
+  const ents = ensureArray(await sqliteStore.get('payment_entities'));
+  const entity = ents.find(e => e && String(e.id) === String(entityId));
+  const exps = ensureArray(await sqliteStore.get('expenses'));
+  const expIds = planExpenseNameRename(entity, oldName, newName, exps);
+  if (expIds.length) {
+    const set = new Set(expIds.map(String));
+    exps.forEach(e => { if (e && set.has(String(e.id))) { e.name = newName; e.updatedAt = now; } });
+    await unifiedSave('expenses', exps, null, expIds);
+  }
   if (plan.txIds.length) {
     const ids = new Set(plan.txIds.map(String));
     txs.forEach(t => { if (t && ids.has(String(t.id))) t.updatedAt = now; });
@@ -561,5 +598,5 @@ export async function cascadeEntityRename(entityId, oldName, newName) {
     mats.forEach(m => { if (m && ids.has(String(m.id))) m.updatedAt = now; });
     await unifiedSave('factory_inventory_data', mats, null, plan.materialIds);
   }
-  return { tx: plan.txIds.length, materials: plan.materialIds.length };
+  return { tx: plan.txIds.length, materials: plan.materialIds.length, expenses: expIds.length };
 }

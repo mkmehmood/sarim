@@ -3,7 +3,7 @@ export const REF_FIELDS = {
   customer_sales:       { scalar: ['relatedSaleId'], array: [] },
   rep_sales:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
   noman_history:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
-  payment_transactions: { scalar: ['expenseId', 'entityId', 'materialId'], array: ['materialIds'] },
+  payment_transactions: { scalar: ['expenseId', 'entityId', 'transferPeerEntityId', 'materialId'], array: ['materialIds'] },
   factory_inventory_data: { scalar: ['supplierId'], array: [] },
 };
 export const COLLECTION_TO_KEY = {
@@ -373,11 +373,16 @@ export function findParentTombstones(tomb, allTombs, live) {
   const col = _tcol(tomb);
   const liveIds = (live && live.ids) || new Set();
   const out = [];
+  // An expense and its payment transaction are ONE logical entry: bringing back either brings back the other.
+  if (col === 'expenses') {
+    all.forEach(t => { if (t && ['transactions', 'payment_transactions'].includes(_tcol(t)) && t.snapshot && t.snapshot.expenseId && String(t.snapshot.expenseId) === _tid(tomb)) out.push(t); });
+  }
   const byId = (id, cols) => all.find(t => t && _tid(t) === String(id) && cols.includes(_tcol(t)));
   const need = (id, cols) => { if (id && !liveIds.has(String(id))) { const p = byId(id, cols); if (p) out.push(p); } };
   need(snap.relatedSaleId, ['sales', 'rep_sales']);
   need(snap.expenseId, ['expenses']);
   need(snap.entityId, ['entities']);
+  if (snap.isTransfer) need(snap.transferPeerEntityId, ['entities']);
   if (col === 'inventory') need(snap.supplierId, ['entities']);
   if ((col === 'sales' || col === 'rep_sales') && snap.customerName && !snap.isRepTransfer && !(col === 'sales' && snap.salesRep && snap.salesRep !== 'NONE')) {
     const kind = col === 'sales' ? 'sales' : 'rep';
@@ -656,4 +661,40 @@ const r = sort.key === 'amount'
 : String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base', numeric: true });
 return dir * (r || String(a.name || '').localeCompare(String(b.name || '')));
 });
+}
+
+// A partial payment recovered together with its parent credit sale must NOT be added to the parent again when the
+// parent's own snapshot already contains it: that is the case when both were deleted in one action (same deletion
+// group, or - for old records without a group - within moments of each other). A payment deleted on its own earlier
+// was taken OFF the parent at that time, so it has to be added back.
+export function shouldSkipReattach(childTomb, parentTomb) {
+  if (!childTomb || !parentTomb) return false;
+  const cs = childTomb.snapshot || {}, ps = parentTomb.snapshot || {};
+  const cg = cs[GROUP_FIELD], pg = ps[GROUP_FIELD];
+  if (cg || pg) return !!cg && cg === pg;
+  const ct = _n(childTomb.deletedAt || childTomb.tombstoned_at), pt = _n(parentTomb.deletedAt || parentTomb.tombstoned_at);
+  return ct > 0 && pt > 0 && Math.abs(ct - pt) <= 3000;
+}
+
+// Which partial payments in a recovery set must skip the re-attach (their parent comes back in the same set with
+// the amount already in it). Returns a Set of the payments' tombstone ids.
+export function planSkipReattach(members) {
+  const list = (Array.isArray(members) ? members : []).filter(Boolean);
+  const byId = new Map(list.map(t => [String(t.recordId || t.id), t]));
+  const skip = new Set();
+  list.forEach(t => {
+    const s = t.snapshot || {};
+    if (s.paymentType === 'PARTIAL_PAYMENT' && s.relatedSaleId) {
+      const parent = byId.get(String(s.relatedSaleId));
+      if (parent && shouldSkipReattach(t, parent)) skip.add(String(t.recordId || t.id));
+    }
+  });
+  return skip;
+}
+
+// Renaming an expense-only entity also renames the operating-expense records that carry its name.
+export function planExpenseNameRename(entity, oldName, newName, expenses) {
+  if (!entity || !entity.isExpenseEntity || !oldName || oldName === newName) return [];
+  const o = String(oldName).trim().toLowerCase();
+  return (Array.isArray(expenses) ? expenses : []).filter(e => e && !e.deletedAt && e.name && String(e.name).trim().toLowerCase() === o).map(e => e.id);
 }

@@ -1401,6 +1401,13 @@ displayDetail: _snapshot.displayDetail || null,
 displayAmount: _snapshot.displayAmount || null,
 snapshot: _snapshot.record || null,
 };
+if (collectionName === 'entities') {
+  try {
+    const _entPhAll = (await sqliteStore.get('person_photos')) || {};
+    const _entPhV = _entPhAll['entity:' + id];
+    if (_entPhV && String(_entPhV).length < 700000) deletionRecord._photos = { ['entity:' + id]: _entPhV };
+  } catch (_entPhErr) { console.warn('[registerDeletion] entity photo snapshot failed', _entPhErr); }
+}
 if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
   try {
     const _regPh = (await sqliteStore.get('person_photos')) || {};

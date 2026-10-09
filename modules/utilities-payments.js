@@ -1,7 +1,7 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { runExclusive, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _readFileAsText, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -4063,7 +4063,8 @@ async function _withRecycleLock(fn) {
 }
 async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
-  const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null };
+  const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null,
+    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)) };
   const blocked = new Map();
   for (const m of orderForRestore(members)) {
     const snap = m && m.snapshot;
@@ -4254,7 +4255,7 @@ async function recoverCalcEntry(deletedId, snap) {
     return false;
   }
 }
-export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false) {
+export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false, _opts = {}) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -4284,9 +4285,10 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
         let _groupFailed = false;
         let _doneCount = 0;
         let _failedLabel = '';
+        const _skipRe = planSkipReattach(_members);
         for (const m of _grp) {
           const mid = m.recordId || m.id;
-          const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true);
+          const ok = await recoverRecord(mid, m.collection || m.recordType || collectionName, true, { skipReattach: _skipRe.has(String(mid)) });
           if (String(mid) === String(deletedId)) _selfOk = ok;
           if (!ok) {
             _groupFailed = true;
@@ -4375,7 +4377,7 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
       localArr.push(cleanRecord);
       await sqliteStore.set(sqliteKey, localArr);
     }
-    try { await applyRecoveryLinks(collectionName, oldId, newId, cleanRecord); }
+    try { await applyRecoveryLinks(collectionName, oldId, newId, cleanRecord, { skipReattach: !!_opts.skipReattach }); }
     catch (_lkErr) { console.warn('[recoverRecord] link re-pointing failed', _safeErr(_lkErr)); }
     if (typeof invalidateAllCaches === 'function') {
       await invalidateAllCaches();
@@ -4385,6 +4387,24 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
         await _reconcileSupplierLinkAfterRecovery(cleanRecord);
         await _refreshSupplierLinkViews();
       } catch (_slErr) { console.warn('[recoverRecord] supplier link reconcile failed', _safeErr(_slErr)); }
+    }
+    if (collectionName === 'entities' && cleanRecord) {
+      try {
+        const _eph = (await sqliteStore.get('person_photos')) || {};
+        const _etomb = (Array.isArray(localDeletionRecords) ? localDeletionRecords : deletionRecords).find(r => r.id === deletedId || r.recordId === deletedId);
+        const _edata = ((_etomb && _etomb._photos) || {})['entity:' + oldId] || _eph['entity:' + oldId] || null;
+        if (_edata) {
+          _eph['entity:' + newId] = _edata;
+          const _ets = (await sqliteStore.get('person_photos_timestamps')) || {};
+          const _edk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+          _ets['entity:' + newId] = Date.now();
+          if (!_edk.includes('entity:' + newId)) _edk.push('entity:' + newId);
+          await sqliteStore.set('person_photos', _eph);
+          await sqliteStore.set('person_photos_timestamps', _ets);
+          await sqliteStore.set('person_photos_dirty_keys', _edk);
+          await sqliteStore.set('person_photos_timestamp', Date.now());
+        }
+      } catch (_ephErr) { console.warn('[recoverRecord] entity photo restore failed', _ephErr); }
     }
     if (collectionName === 'expenses' || collectionName === 'transactions' || collectionName === 'payment_transactions') {
       try {
