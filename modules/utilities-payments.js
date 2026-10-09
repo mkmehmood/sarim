@@ -833,7 +833,22 @@ async function _awaitVisualReady() {
         document.fonts.load('400 14px "Manrope"'),
         document.fonts.load('700 14px "Manrope"'),
         document.fonts.load('500 14px "JetBrains Mono"'),
+        document.fonts.load('500 14px "Plus Jakarta Sans"'),
+        document.fonts.load('600 14px "Playfair Display"'),
+        document.fonts.load('italic 500 14px "Playfair Display"'),
+        document.fonts.load('600 14px "Cinzel"'),
+        ...(/[\u0600-\u06FF]/.test(document.body.innerText || '') ? [
+          document.fonts.load('400 14px "Noto Nastaliq Urdu"', '\u0627'),
+          document.fonts.load('700 14px "Noto Nastaliq Urdu"', '\u0627'),
+        ] : []),
       ]).then(() => document.fonts.ready), 1500);
+    const warmUrdu = () => {
+      try {
+        document.fonts.load('400 14px "Noto Nastaliq Urdu"', '\u0627').catch(() => {});
+        document.fonts.load('700 14px "Noto Nastaliq Urdu"', '\u0627').catch(() => {});
+      } catch (_) {}
+    };
+    (window.requestIdleCallback || setTimeout)(warmUrdu, 1500);
     }
   } catch (_) {}
   try {
