@@ -6317,3 +6317,31 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   .gc-wrap .glass-confirm-box { padding: 24px 18px 0 !important; }
   .gc-wrap .glass-confirm-btns { margin: 0 -18px; padding: 16px 18px 18px; }
 }
+.gc-wrap.gc-alert .glass-confirm-msg .gc-rows {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.gc-wrap.gc-alert .glass-confirm-msg .gc-row {
+  padding: 5px 0;
+  border: 0;
+}
+.gc-wrap.gc-alert .glass-confirm-msg .gc-note {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+}
+.gc-wrap.gc-alert .glass-confirm-msg .gc-note b {
+  display: inline;
+  margin-right: 6px;
+}
+.gc-wrap.gc-alert .glass-confirm-btns {
+  margin: 0;
+  padding: 20px 0 24px;
+  background: transparent;
+}

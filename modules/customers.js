@@ -896,7 +896,7 @@ const btnClass = _tone === 'danger' ? 'danger' : (_tone === 'warning' ? 'warning
 const backdrop = document.createElement('div');
 backdrop.className = 'glass-confirm-backdrop';
 backdrop.innerHTML = `
-<div class="gc-wrap gc-tone-${_tone}">
+<div class="gc-wrap gc-tone-${_tone}${alertOnly ? ' gc-alert' : ''}">
 <div class="glass-confirm-box${_tone === 'danger' ? ' is-danger' : (_tone === 'warning' ? ' is-warning' : (_tone === 'success' ? ' is-success' : ''))}" role="alertdialog" aria-modal="true">
 <div class="glass-confirm-head">
 <div class="glass-confirm-icon ${iconClass}">${svgIcon}</div>
@@ -911,13 +911,16 @@ ${alertOnly ? '' : `<button class="glass-confirm-btn gc-cancel">${esc(cancelText
 </div>
 </div>
 `;
-if (!document.querySelector('.glass-confirm-backdrop')) window._gcPrevOv = [document.body.style.overflow, document.documentElement.style.overflow];
+const _hadOpen = !!document.querySelector('.glass-confirm-backdrop');
+document.querySelectorAll('.glass-confirm-backdrop').forEach(b => { if (b._gcForce) b._gcForce(); else b.remove(); });
+if (!_hadOpen) window._gcPrevOv = [document.body.style.overflow, document.documentElement.style.overflow];
 document.body.style.overflow = 'hidden';
 document.documentElement.style.overflow = 'hidden';
 backdrop.addEventListener('touchmove', e => { if (!e.target.closest('.glass-confirm-msg')) e.preventDefault(); }, { passive: false });
 backdrop.addEventListener('wheel', e => { if (!e.target.closest('.glass-confirm-msg')) e.preventDefault(); }, { passive: false });
 document.body.appendChild(backdrop);
 let settled = false;
+backdrop._gcForce = () => { settled = true; backdrop.remove(); resolve(alertOnly); };
 const cleanup = (result) => {
 if (settled) return;
 settled = true;
