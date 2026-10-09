@@ -1,4 +1,4 @@
-import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
+import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
@@ -3987,7 +3987,8 @@ export function loadScript(url, integrity) {
     script.onload = () => {
       delete _scriptLoadPromises[url];
       if (/jspdf\.umd/.test(url) && window.jspdf && window.jspdf.jsPDF) installJsPdfImageLog(window.jspdf.jsPDF);
-      resolve();
+      if (/jspdf\.umd/.test(url)) loadBrandLogo().then(() => resolve(), () => resolve());
+      else resolve();
     };
     script.onerror = () => {
       script.dataset.failed = '1';

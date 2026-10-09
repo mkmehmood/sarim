@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.09.10.2026-r10';
+const BUILD_HASH = 'V.09.10.2026-r11';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 const ASSETS_TO_CACHE = [
   './',
@@ -24,6 +24,7 @@ const ASSETS_TO_CACHE = [
   './sql-wasm.js',
   './sql-wasm.wasm',
   './sql.js',
+  './brand-logo.jpg',
   './vendor/jspdf.umd.min.js',
   './vendor/jspdf.plugin.autotable.min.js',
   './vendor/firebase/firebase-app-compat.js',

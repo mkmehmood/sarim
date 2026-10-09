@@ -51,7 +51,7 @@ const cssHash = contentHash(cssMinTmp);
 const cssOut  = `app.${cssHash}.css`;
 copyFileSync(cssMinTmp, join(DIST, cssOut));
 rmSync(cssMinTmp);
-for (const f of ['manifest.json', '192.png', '512.png', 'sql-wasm.js', 'sql-wasm.wasm', 'sql.js']) {
+for (const f of ['manifest.json', '192.png', '512.png', 'sql-wasm.js', 'sql-wasm.wasm', 'sql.js', 'brand-logo.jpg']) {
   copyFileSync(join(ROOT, f), join(DIST, f));
 }
 let html = read(join(ROOT, 'index.html'));
@@ -94,6 +94,7 @@ const ASSETS_TO_CACHE_BLOCK =
   './sql-wasm.js',
   './sql-wasm.wasm',
   './sql.js',
+  './brand-logo.jpg',
   ${VENDOR_ASSETS.map(v => `'./${v}'`).join(',\n  ')},
   ${FONT_FILES.map(f => `'./fonts/${f[1]}'`).join(',\n  ')}
 ];`;

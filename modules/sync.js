@@ -1,4 +1,4 @@
-import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64 } from './constants.js';
+import { APP_CONFIG } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
 import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateUUID } from './business.js';
 import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, closeYearInProgress, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
@@ -3633,7 +3633,7 @@ overlay.className = 'auth-screen';
 overlay.setAttribute('role', 'dialog');
 overlay.setAttribute('aria-modal', 'true');
 overlay.setAttribute('aria-label', 'Sign in');
-const logo = typeof BRAND_LOGO_JPEG_BASE64 !== 'undefined' ? BRAND_LOGO_JPEG_BASE64 : '';
+const logo = 'brand-logo.jpg';
 const _showGoogle = !(window.__desktopApp || (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()));
 overlay.innerHTML = `
 <div class="auth-bg" aria-hidden="true"><i class="auth-orb auth-orb-a"></i><i class="auth-orb auth-orb-b"></i></div>
