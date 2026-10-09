@@ -876,7 +876,8 @@ confirmText = 'Confirm',
 cancelText = 'Cancel',
 danger = false,
 icon = null,
-tone = null
+tone = null,
+tag = null
 } = {}) {
 return new Promise(resolve => {
 const _tone = _gcPickTone(title, message, confirmText, danger, tone);
@@ -886,7 +887,10 @@ const iconClass = _tone === 'danger' ? 'icon-danger' : (_tone === 'warning' ? 'i
 const btnClass = _tone === 'danger' ? 'danger' : (_tone === 'warning' ? 'warning' : 'primary');
 const backdrop = document.createElement('div');
 backdrop.className = 'glass-confirm-backdrop';
+const _tagText = tag || (_tone === 'danger' ? 'Permanent' : (_tone === 'warning' ? 'Review' : 'Confirm'));
 backdrop.innerHTML = `
+<div class="gc-wrap gc-tone-${_tone}">
+<span class="gc-tab">${esc(String(_tagText))}</span>
 <div class="glass-confirm-box${_tone === 'danger' ? ' is-danger' : (_tone === 'warning' ? ' is-warning' : '')}" role="alertdialog" aria-modal="true">
 <div class="glass-confirm-head">
 <div class="glass-confirm-icon ${iconClass}">${svgIcon}</div>
@@ -897,6 +901,7 @@ backdrop.innerHTML = `
 <div class="glass-confirm-btns">
 <button class="glass-confirm-btn gc-cancel">${esc(cancelText)}</button>
 <button class="glass-confirm-btn ${btnClass} gc-confirm">${esc(confirmText)}</button>
+</div>
 </div>
 </div>
 `;
