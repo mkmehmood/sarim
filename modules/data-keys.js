@@ -12,7 +12,6 @@ export const RECORD_STORES = Object.freeze([
   { sqlite: 'expenses',                    collection: 'expenses',           backup: 'expenses',                 aliases: ['expenseRecords', 'expense_records'] },
   { sqlite: 'stock_returns',               collection: 'returns',            backup: 'stockReturns',             aliases: ['stock_returns'] },
 ]);
-
 export const AUX_STATE = Object.freeze([
   {
     sqlite: 'expense_categories',
@@ -39,27 +38,21 @@ export const AUX_STATE = Object.freeze([
     kind: 'slots',
   },
 ]);
-
 export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'current_rep_profile', tsKey: 'repProfile_timestamp' });
-
 export const SQLITE_TO_FIRESTORE = Object.freeze(
   Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, s.collection]))
 );
-
 export const FIRESTORE_TO_SQLITE = Object.freeze(
   Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite]))
 );
-
 export function normaliseBackupFields(data) {
   if (!data || typeof data !== 'object') return data;
-
   if (data.mfg && !data.mfg_pro_pkr)     data.mfg_pro_pkr   = data.mfg;
   if (data.mfg_pro_pkr && !data.mfg)     data.mfg           = data.mfg_pro_pkr;
   if (data.sales && !data.noman_history) data.noman_history = data.sales;
   if (data.noman_history && !data.sales) data.sales         = data.noman_history;
   if (data.app_stores && !data.appStores) data.appStores    = data.app_stores;
   if (data.appStores && !data.app_stores) data.app_stores   = data.appStores;
-
   for (const s of [...RECORD_STORES, ...AUX_STATE]) {
     if (data[s.backup] !== undefined && data[s.backup] !== null) continue;
     for (const alias of s.aliases || []) {
@@ -69,7 +62,6 @@ export function normaliseBackupFields(data) {
   }
   return data;
 }
-
 export function mergeStringLists(local, incoming) {
   const out = [];
   const seen = new Set();
@@ -82,7 +74,6 @@ export function mergeStringLists(local, incoming) {
   }
   return out;
 }
-
 export function mergeById(local, incoming) {
   const out = Array.isArray(local) ? local.filter(r => r && r.id) : [];
   const ids = new Set(out.map(r => String(r.id)));
@@ -91,13 +82,11 @@ export function mergeById(local, incoming) {
   }
   return out;
 }
-
 export function mergeSlots(local, incoming) {
   const l = local && typeof local === 'object' ? local : {};
   const i = incoming && typeof incoming === 'object' ? incoming : {};
   return { standard: l.standard || i.standard || null, asaan: l.asaan || i.asaan || null };
 }
-
 export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0) {
   const l = Array.isArray(local) ? local : [];
   const c = Array.isArray(cloud) ? cloud : [];
@@ -108,7 +97,6 @@ export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0)
   }
   return { value: l, ts: localTs, changed: false };
 }
-
 export async function collectAuxBackupFields(store) {
   const out = {};
   for (const s of AUX_STATE) {
@@ -121,12 +109,10 @@ export async function collectAuxBackupFields(store) {
   out.person_photos_timestamps = (await store.get('person_photos_timestamps')) || {};
   return out;
 }
-
 export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 'merge') {
   const written = [];
   if (!data || typeof data !== 'object') return written;
   normaliseBackupFields(data);
-
   for (const s of AUX_STATE) {
     const incoming = data[s.backup];
     if (incoming === undefined || incoming === null) continue;

@@ -1,6 +1,5 @@
-const BUILD_HASH = 'V.09.10.2026-r8';
+const BUILD_HASH = 'V.09.10.2026-r9';
 const CACHE_NAME = 'app-' + BUILD_HASH;
-
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -22,23 +21,17 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './192.png',
   './512.png',
-
   './sql-wasm.js',
   './sql-wasm.wasm',
   './sql.js'
 ];
-
 const CDN_ASSETS_TO_PRECACHE = [
-
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
-
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-
 ];
-
 const CACHE_FIRST_ORIGINS = [
   'https://www.gstatic.com',
   'https://unpkg.com',
@@ -46,13 +39,9 @@ const CACHE_FIRST_ORIGINS = [
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
 ];
-
 const NOMINATIM_ORIGIN = 'https://nominatim.openstreetmap.org';
-
 const OSM_TILE_ORIGIN = 'https://tile.openstreetmap.org';
-
 const OFFLINE_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
 async function precacheOne(cache, url, opts) {
   try {
     const req = typeof url === 'string' ? new Request(url, opts || {}) : url;
@@ -61,7 +50,6 @@ async function precacheOne(cache, url, opts) {
       res = await fetch(req, opts || {});
       if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch (e) {
-
       res = await fetch(req, Object.assign({}, opts || {}, { cache: 'reload' }));
       if (!res.ok) throw new Error('HTTP ' + res.status);
     }
@@ -71,11 +59,9 @@ async function precacheOne(cache, url, opts) {
     return { url: typeof url === 'string' ? url : url.url, ok: false, error: (e && e.message) || String(e) };
   }
 }
-
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-
       .then((cache) =>
         Promise.all(ASSETS_TO_CACHE.map((url) => precacheOne(cache, url)))
           .then((results) => {
@@ -85,13 +71,11 @@ self.addEventListener('install', (event) => {
             }
             const criticalFailed = failed.some((r) => r.url.endsWith('/') || r.url.endsWith('index.html'));
             if (criticalFailed) {
-
               throw new Error('Failed to precache app shell: ' + JSON.stringify(failed));
             }
             return cache;
           })
       )
-
       .then((cache) =>
         Promise.allSettled(
           CDN_ASSETS_TO_PRECACHE.map((url) =>
@@ -99,11 +83,9 @@ self.addEventListener('install', (event) => {
           )
         )
       )
-
       .then(() => self.skipWaiting())
   );
 });
-
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -111,16 +93,13 @@ self.addEventListener('activate', (event) => {
       .then(() => clients.claim())
   );
 });
-
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
-
 const FIREBASE_PROJECT = 'calculator-fabd3';
 const FIRESTORE_BASE   = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const SW_TOKEN_FILE    = 'sw_sync_token.json';
 const SQLITE_DB_FILE   = 'naswar_dealers.sqlite';
-
 async function opfsRead(filename) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -128,7 +107,6 @@ async function opfsRead(filename) {
     return await (await fh.getFile()).text();
   } catch { return null; }
 }
-
 async function opfsWrite(filename, text) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -138,7 +116,6 @@ async function opfsWrite(filename, text) {
     await wr.close();
   } catch (e) { console.warn('[SW-BgSync] opfsWrite failed:', e); }
 }
-
 async function getSWAuthToken() {
   const raw = await opfsRead(SW_TOKEN_FILE);
   if (!raw) return null;
@@ -148,7 +125,6 @@ async function getSWAuthToken() {
     return rec;
   } catch { return null; }
 }
-
 function toFirestoreValue(val) {
   if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === 'boolean')          return { booleanValue: val };
@@ -158,7 +134,6 @@ function toFirestoreValue(val) {
   if (typeof val === 'object')           return { mapValue: { fields: toFirestoreFields(val) } };
   return { stringValue: String(val) };
 }
-
 function toFirestoreFields(obj) {
   const fields = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -166,13 +141,11 @@ function toFirestoreFields(obj) {
   }
   return fields;
 }
-
 async function executeViaREST(operation, uid, token) {
   const { collection, docId, data, action } = operation;
   const docPath = `users/${uid}/${collection}/${docId}`;
   const docURL  = `${FIRESTORE_BASE}/${docPath}`;
   const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-
   if (action === 'delete') {
     const delRes = await fetch(docURL, { method: 'DELETE', headers });
     if (!delRes.ok && delRes.status !== 404) throw new Error(`DELETE ${delRes.status}`);
@@ -191,7 +164,6 @@ async function executeViaREST(operation, uid, token) {
     );
     return;
   }
-
   if (action === 'set' || action === 'update' || action === 'set-doc') {
     const payload = (data && typeof data === 'object') ? { ...data } : { value: data };
     if (!payload.isMerged) payload.updatedAt = new Date().toISOString();
@@ -203,10 +175,8 @@ async function executeViaREST(operation, uid, token) {
     if (!res.ok) throw new Error(`${method} ${res.status}: ${await res.text()}`);
     return;
   }
-
   throw new Error(`Unknown action: ${action}`);
 }
-
 async function readQueueFromOPFS(uid) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -218,7 +188,6 @@ async function readQueueFromOPFS(uid) {
     return null;
   }
 }
-
 function parseQueueFromSQLite(bytes, uid) {
   try {
     const dv       = new DataView(bytes.buffer);
@@ -259,7 +228,6 @@ function parseQueueFromSQLite(bytes, uid) {
     return null;
   }
 }
-
 function readVarint(bytes, offset) {
   let result = 0, shift = 0, i = 0;
   while (offset + i < bytes.length) {
@@ -270,7 +238,6 @@ function readVarint(bytes, offset) {
   }
   return [result, i];
 }
-
 function extractRowStrings(bytes, start) {
   try {
     const [headerLen] = readVarint(bytes, start);
@@ -303,7 +270,6 @@ function extractRowStrings(bytes, start) {
     return strings;
   } catch { return null; }
 }
-
 async function doBackgroundSync() {
   const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
   if (clients.length > 0) {
@@ -335,16 +301,13 @@ async function doBackgroundSync() {
     console.log(`[SW-BgSync] Completed: ${successIds.length}/${queue.length} operations synced.`);
   }
 }
-
 self.addEventListener('sync', (event) => {
   if (event.tag === 'offline-queue-sync') event.waitUntil(doBackgroundSync());
 });
-
 const NETWORK_TIMEOUT_MS  = 4000;
 const NAVIGATE_TIMEOUT_MS = 3000;
 const LOCAL_TIMEOUT_MS    = 30000;
 const API_TIMEOUT_MS      = 8000;
-
 function fetchWithTimeout(request, timeout, opts) {
   return new Promise(function (resolve, reject) {
     var timer = setTimeout(function () { reject(new Error('SW timeout after ' + timeout + 'ms')); }, timeout);
@@ -353,13 +316,11 @@ function fetchWithTimeout(request, timeout, opts) {
       .catch(function (err) { clearTimeout(timer); reject(err); });
   });
 }
-
 function revalidateInBackground(cache, request, opts) {
   fetchWithTimeout(request, NETWORK_TIMEOUT_MS, opts)
     .then(function (res) { if (res && res.ok) cache.put(request, res); })
     .catch(function () {});
 }
-
 function cacheFirstResponse(event, opts, timeoutMs) {
   event.respondWith(
     caches.open(CACHE_NAME).then(function (cache) {
@@ -375,28 +336,21 @@ function cacheFirstResponse(event, opts, timeoutMs) {
     })
   );
 }
-
 self.addEventListener('fetch', function (event) {
   var url    = new URL(event.request.url);
   var method = event.request.method;
-
   if (method !== 'GET') return;
-
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
-
   if (url.origin === 'https://accounts.google.com') return;
-
   if (url.origin === 'https://cdnjs.cloudflare.com' &&
       url.pathname.toLowerCase().includes('sql.js')) {
     return;
   }
-
   var isFirestoreAPI =
     url.hostname === 'firestore.googleapis.com' ||
     url.hostname === 'identitytoolkit.googleapis.com' ||
     url.hostname === 'securetoken.googleapis.com' ||
     (url.hostname === 'www.googleapis.com' && url.pathname.indexOf('/identitytoolkit') === 0);
-
   if (isFirestoreAPI) {
     event.respondWith(
       fetchWithTimeout(event.request, API_TIMEOUT_MS).catch(function () {
@@ -408,11 +362,9 @@ self.addEventListener('fetch', function (event) {
     );
     return;
   }
-
   if (event.request.mode === 'navigate') {
     event.respondWith(
       caches.open(CACHE_NAME).then(function (cache) {
-
         return cache.match(new URL('./index.html', self.location.href).href)
           .then(function (cached) { return cached || cache.match(event.request); })
           .then(function (cached) {
@@ -443,7 +395,6 @@ self.addEventListener('fetch', function (event) {
     );
     return;
   }
-
   if (url.hostname.endsWith('.tile.openstreetmap.org') || url.origin === OSM_TILE_ORIGIN) {
     event.respondWith(
       caches.open(CACHE_NAME).then(function (cache) {
@@ -455,7 +406,6 @@ self.addEventListener('fetch', function (event) {
           return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS)
             .then(function (res) { if (res.ok) cache.put(event.request, res.clone()); return res; })
             .catch(function () {
-
               var b64 = OFFLINE_TILE.split(',')[1];
               var bin = atob(b64);
               var bytes = new Uint8Array(bin.length);
@@ -470,7 +420,6 @@ self.addEventListener('fetch', function (event) {
     );
     return;
   }
-
   if (url.origin === NOMINATIM_ORIGIN) {
     event.respondWith(
       caches.open(CACHE_NAME).then(function (cache) {
@@ -492,29 +441,23 @@ self.addEventListener('fetch', function (event) {
     );
     return;
   }
-
   var isLocal = url.origin === self.location.origin && (
     url.pathname.endsWith('.js')   || url.pathname.endsWith('.css')  ||
     url.pathname.endsWith('.json') || url.pathname.endsWith('.png')  ||
     url.pathname.endsWith('.webp') || url.pathname.endsWith('.wasm') ||
     url.pathname.endsWith('.html') || url.pathname.endsWith('.ico')
   );
-
   if (isLocal) {
     cacheFirstResponse(event, undefined, LOCAL_TIMEOUT_MS);
     return;
   }
-
   var isCachFirstOrigin = CACHE_FIRST_ORIGINS.some(function (o) { return url.origin === o; });
-
   if (isCachFirstOrigin) {
     cacheFirstResponse(event, { mode: 'cors', credentials: 'omit' });
     return;
   }
-
   cacheFirstResponse(event);
 });
-
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {

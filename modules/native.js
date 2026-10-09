@@ -1,11 +1,9 @@
 const Cap = window.Capacitor;
 export const isNative = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
 const P = () => (window.Capacitor && window.Capacitor.Plugins) || {};
-
 function toast(msg, type = 'info', ms = 3000) {
   if (typeof window.showToast === 'function') window.showToast(msg, type, ms);
 }
-
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -14,18 +12,15 @@ function blobToBase64(blob) {
     r.readAsDataURL(blob);
   });
 }
-
 function safeName(name) {
   return String(name || 'file').replace(/[^\w.\-() ]+/g, '_').slice(0, 80) || 'file';
 }
-
 async function writeCacheFile(name, blob) {
   const { Filesystem } = P();
   const path = `share/${Date.now().toString(36)}-${safeName(name)}`;
   const res = await Filesystem.writeFile({ path, data: await blobToBase64(blob), directory: 'CACHE', recursive: true });
   return res.uri;
 }
-
 export async function nativeShareFiles(files, { title, text } = {}) {
   const { Share } = P();
   const uris = [];
@@ -42,7 +37,6 @@ export async function nativeShareFiles(files, { title, text } = {}) {
     throw e;
   }
 }
-
 function installShareBridge() {
   const canShare = (data) => !!(data && (data.files ? data.files.length > 0 : (data.text || data.url || data.title)));
   try {
@@ -62,21 +56,17 @@ function installShareBridge() {
     });
   } catch (_) {}
 }
-
 const MIME_BY_EXT = { pdf: 'application/pdf', json: 'application/json', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', csv: 'text/csv', txt: 'text/plain', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', zip: 'application/zip', db: 'application/octet-stream' };
-
 function mimeFor(name, blob) {
   const ext = String(name).split('.').pop().toLowerCase();
   return (blob && blob.type) || MIME_BY_EXT[ext] || 'application/octet-stream';
 }
-
 function saveFilePlugin() {
   const C = window.Capacitor;
   if (!C) return null;
   if (C.Plugins && C.Plugins.SaveFile) return C.Plugins.SaveFile;
   return typeof C.registerPlugin === 'function' ? C.registerPlugin('SaveFile') : null;
 }
-
 export async function saveBlobToDevice(blob, name) {
   const mime = mimeFor(name, blob);
   const plugin = saveFilePlugin();
@@ -105,13 +95,10 @@ export async function saveBlobToDevice(blob, name) {
     return false;
   }
 }
-
 async function saveAndShareBlob(blob, name) {
   await saveBlobToDevice(blob, name);
 }
-
 const _blobRegistry = new Map();
-
 function installBlobRegistry() {
   const origCreate = URL.createObjectURL.bind(URL);
   const origRevoke = URL.revokeObjectURL.bind(URL);
@@ -128,7 +115,6 @@ function installBlobRegistry() {
     return origRevoke(u);
   };
 }
-
 function dataUrlToBlob(href) {
   const m = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(href);
   if (!m) return null;
@@ -137,7 +123,6 @@ function dataUrlToBlob(href) {
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return new Blob([bytes], { type: m[1] || 'application/octet-stream' });
 }
-
 function installDownloadBridge() {
   installBlobRegistry();
   const proto = HTMLAnchorElement.prototype;
@@ -162,7 +147,6 @@ function installDownloadBridge() {
     if (a && intercept(a)) e.preventDefault();
   }, true);
 }
-
 function installExternalLinks() {
   const open = (url) => {
     const { App } = P();
@@ -181,13 +165,10 @@ function installExternalLinks() {
     if (/^(https?:\/\/|tel:|mailto:|sms:|whatsapp:)/i.test(href) && a.target === '_blank') { e.preventDefault(); open(a.href); }
   }, true);
 }
-
 function isVisible(el) {
   return !!el && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
 }
-
 let lastBack = 0;
-
 function handleBack() {
   const cam = document.getElementById('photo-capture-modal');
   if (cam && isVisible(cam) && typeof window.closePhotoCapture === 'function') { window.closePhotoCapture(); return; }
@@ -212,7 +193,6 @@ function handleBack() {
   lastBack = now;
   toast('Press back again to exit', 'info', 1800);
 }
-
 function applyStatusBar() {
   const { StatusBar } = P();
   if (!StatusBar) return;
@@ -222,13 +202,11 @@ function applyStatusBar() {
     StatusBar.setBackgroundColor({ color: '#1D4ED8' });
   } catch (_) {}
 }
-
 function geoErr(e) {
   const msg = String((e && e.message) || e || '');
   const denied = /denied|permission/i.test(msg);
   return { code: denied ? 1 : (/timeout|timed out/i.test(msg) ? 3 : 2), message: msg || 'Location unavailable', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 };
 }
-
 async function ensureLocationPermission() {
   const { Geolocation } = P();
   try {
@@ -237,7 +215,6 @@ async function ensureLocationPermission() {
     return st.location === 'granted' || st.coarseLocation === 'granted';
   } catch (_) { return false; }
 }
-
 function installGeolocationBridge() {
   const { Geolocation } = P();
   if (!Geolocation) return;
@@ -273,7 +250,6 @@ function installGeolocationBridge() {
   };
   try { Object.defineProperty(navigator, 'geolocation', { configurable: true, value: shim }); } catch (_) {}
 }
-
 async function requestStartupPermissions() {
   try {
     let asked = false;
@@ -294,7 +270,6 @@ async function requestStartupPermissions() {
   try { if (Camera) await Camera.requestPermissions({ permissions: ['camera'] }); } catch (_) {}
   await ensureLocationPermission();
 }
-
 function installHaptics() {
   const { Haptics } = P();
   if (!Haptics) return;
@@ -303,7 +278,6 @@ function installHaptics() {
     if (t) { try { Haptics.impact({ style: 'LIGHT' }); } catch (_) {} }
   }, { passive: true });
 }
-
 async function unregisterServiceWorkers() {
   try {
     if ('serviceWorker' in navigator) {
@@ -316,7 +290,6 @@ async function unregisterServiceWorkers() {
     }
   } catch (_) {}
 }
-
 if (isNative) {
   document.documentElement.classList.add('is-native', 'is-android');
   installShareBridge();
@@ -340,7 +313,6 @@ if (isNative) {
   else window.addEventListener('sarim:splash-painted', hideNativeSplash, { once: true });
   setTimeout(hideNativeSplash, 3500);
 }
-
 window.__isNativeApp = isNative;
 window.nativeShareFiles = nativeShareFiles;
 window.saveBlobToDevice = saveBlobToDevice;

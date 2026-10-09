@@ -8,7 +8,6 @@ import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDis
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { resolveExpenseCategories } from './data-keys.js';
-
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await sqliteStore.set(key, data);
 const collectionEntry = SQLiteToFirestoreMap[key];
@@ -24,7 +23,6 @@ if (collectionEntry) {
 }
 return result;
 }
-
 export const SQLiteToFirestoreMap = {
 'mfg_pro_pkr': { collection: 'production', varName: 'db' },
 'customer_sales': { collection: 'sales', varName: 'customerSales' },
@@ -39,7 +37,6 @@ export const SQLiteToFirestoreMap = {
 'expenses': { collection: 'expenses', varName: 'expenseRecords' },
 'stock_returns': { collection: 'returns', varName: 'stockReturns' }
 };
-
 export const FirestoreToSQLiteMap = {
 'production': 'mfg_pro_pkr',
 'sales': 'customer_sales',
@@ -54,15 +51,12 @@ export const FirestoreToSQLiteMap = {
 'expenses': 'expenses',
 'returns': 'stock_returns'
 };
-
 export function getFirestoreCollection(sqliteKey) {
 return SQLiteToFirestoreMap[sqliteKey]?.collection || sqliteKey;
 }
-
 export function getSQLiteKey(firestoreCollection) {
 return FirestoreToSQLiteMap[firestoreCollection] || firestoreCollection;
 }
-
 export async function saveRecordToFirestore(sqliteKey, record, silent = true) {
 if (!firebaseDB || !currentUser) {
 return false;
@@ -103,7 +97,6 @@ const now = Date.now();
 const sanitized = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
 if (!sanitized.createdAt) sanitized.createdAt = now;
 if (!record.isMerged) sanitized.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-
 if (collectionName === 'inventory') {
   const _supplierFields = ['supplierId', 'supplierName', 'supplierContact', 'supplierType', 'totalPayable', 'paidDate'];
   _supplierFields.forEach(f => { if (!(f in record)) sanitized[f] = firebase.firestore.FieldValue.delete(); });
@@ -111,7 +104,6 @@ if (collectionName === 'inventory') {
 await docRef.set(sanitized, { merge: true });
 trackFirestoreWrite(1);
 await DeltaSync.setLastSyncTimestamp(collectionName);
-
 if (typeof UUIDSyncRegistry !== 'undefined') {
   UUIDSyncRegistry.markUploaded(collectionName, record.id);
 } else {
@@ -138,7 +130,6 @@ showToast('Failed to sync to cloud — will retry when online', 'warning');
 return false;
 }
 }
-
 export async function deleteRecordFromFirestore(sqliteKey, recordId, silent = true) {
 if (!firebaseDB || !currentUser) {
 return false;
@@ -194,7 +185,6 @@ showToast('Failed to delete from cloud — will retry when online', 'warning');
 return false;
 }
 }
-
 export async function unifiedSave(sqliteKey, dataArray, specificRecord = null, linkedIds = null) {
 let _newTx = { created: [], edited: [] };
 if (_LOCAL_TX_KEYS.has(sqliteKey)) {
@@ -202,7 +192,6 @@ if (_LOCAL_TX_KEYS.has(sqliteKey)) {
 }
 if (specificRecord && specificRecord.id) {
   await saveWithTracking(sqliteKey, dataArray, specificRecord);
-
   _syncQueue.run(async () => {
     try {
       await saveRecordToFirestore(sqliteKey, specificRecord);
@@ -254,13 +243,11 @@ if (_newTx.edited.length) _notifyEditedTransactions(sqliteKey, _newTx.edited);
 triggerAutoSync();
 return true;
 }
-
 const _DELETE_LABELS = {
   rep_sales: 'Sale', customer_sales: 'Sale', payment_transactions: 'Payment', expenses: 'Expense',
   mfg_pro_pkr: 'Production entry', payment_entities: 'Entity', sales_customers: 'Customer', rep_customers: 'Customer',
   factory_inventory_data: 'Raw material', factory_production_history: 'Factory entry', stock_returns: 'Return', noman_history: 'Calculation'
 };
-
 function _notifyDeletion(key, r) {
   try {
     const label = _DELETE_LABELS[key] || 'Record';
@@ -275,7 +262,6 @@ function _notifyDeletion(key, r) {
     sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
   } catch (_) {}
 }
-
 export async function unifiedDelete(sqliteKey, dataArray, deletedRecordId, opts = {}, preDeletedRecord = null) {
 if (opts.strict !== true) {
   console.warn(`[RecycleBin] BLOCKED unifiedDelete on "${sqliteKey}" id=${deletedRecordId} — strict flag missing. Pass { strict: true } to confirm intentional deletion.`);
@@ -296,7 +282,6 @@ if (collectionName && typeof window.registerDeletion === 'function') {
     console.warn('[unifiedDelete] registerDeletion failed:', String(e));
   }
 }
-
 _syncQueue.run(async () => {
   try {
     await deleteRecordFromFirestore(sqliteKey, deletedRecordId);
@@ -305,7 +290,6 @@ _syncQueue.run(async () => {
 triggerAutoSync();
 return true;
 }
-
 export async function verifyDeltaSyncSystem() {
 const collections = [
 'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
@@ -339,22 +323,18 @@ results.issues.push(status);
 }
 return results;
 }
-
 export async function resetDeltaSync() {
 await DeltaSync.clearAllTimestamps();
 await sqliteStore.remove('deltaSyncStats');
-
 if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
 showToast('Delta sync reset - next sync will download all data', 'info');
 }
-
 window.verifyDeltaSyncSystem = verifyDeltaSyncSystem;
 window.resetDeltaSync = resetDeltaSync;
 window.getFirestoreCollection = getFirestoreCollection;
 window.getSQLiteKey = getSQLiteKey;
 window.saveRecordToFirestore = saveRecordToFirestore;
 window.deleteRecordFromFirestore = deleteRecordFromFirestore;
-
 export async function initializeFirebaseSystem() {
 if (typeof firebase === 'undefined') {
 if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('loading');
@@ -385,12 +365,9 @@ _set_auth(firebase.auth());
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 .catch((error) => {
 });
-
 _checkGoogleRedirectResult();
-
 const SW_TOKEN_FILE = 'sw_sync_token.json';
 let _swTokenRefreshTimer = null;
-
 async function saveTokenForSW(firebaseUser) {
   try {
     if (!firebaseUser || !navigator.storage || typeof navigator.storage.getDirectory !== 'function') return;
@@ -404,7 +381,6 @@ async function saveTokenForSW(firebaseUser) {
     console.log('[SWToken] Token saved to OPFS, expires in ~55 min');
   } catch (e) { console.warn('[SWToken] Could not save token to OPFS:', e); }
 }
-
 async function clearTokenForSW() {
   try {
     if (typeof navigator.storage.getDirectory !== 'function') return;
@@ -412,10 +388,8 @@ async function clearTokenForSW() {
     await root.removeEntry(SW_TOKEN_FILE).catch(() => {});
   } catch {  }
 }
-
 function startSWTokenRefresh(firebaseUser) {
   if (_swTokenRefreshTimer) clearInterval(_swTokenRefreshTimer);
-
   _swTokenRefreshTimer = setInterval(async () => {
     try {
       const fresh = await firebaseUser.getIdToken( true);
@@ -429,11 +403,9 @@ function startSWTokenRefresh(firebaseUser) {
     } catch (e) { console.warn('[SWToken] Token refresh failed:', e); }
   }, 50 * 60 * 1000);
 }
-
 function stopSWTokenRefresh() {
   if (_swTokenRefreshTimer) { clearInterval(_swTokenRefreshTimer); _swTokenRefreshTimer = null; }
 }
-
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'BG_SYNC_COMPLETE') {
@@ -449,7 +421,6 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-
 auth.onAuthStateChanged(async (user) => {
 if (user) {
 _set_currentUser({
@@ -458,15 +429,12 @@ uid: user.uid,
 email: user.email,
 displayName: user.displayName
 });
-
 if (!window._sessionStartMs) {
   const _lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
   window._sessionStartMs = _lsStart || Date.now();
 }
-
 saveTokenForSW(user).catch(() => {});
 startSWTokenRefresh(user);
-
 updateSyncButton();
 try {
   const loginData = {
@@ -549,7 +517,6 @@ if (typeof firebaseDB !== 'undefined' && firebaseDB && window._firestoreNetworkD
   } catch (_enErr) {  }
 }
 try {
-
   const _bootstrapAlreadyRan = !!sessionStorage.getItem('_gznd_bootstrap_ran');
   if (!_bootstrapAlreadyRan) {
     if (typeof loadAllData === 'function') await loadAllData();
@@ -559,12 +526,10 @@ try {
   console.warn('Auth: post-login data reload failed:', _safeErr(e));
 }
 updateSyncButton();
-
 const _isFreshLogin = !sessionStorage.getItem('_gznd_login_ts');
 if (_isFreshLogin) {
   try { sessionStorage.setItem('_gznd_login_ts', String(Date.now())); } catch(_) {}
 }
-
 if (typeof initDeviceShard === 'function') {
   await initDeviceShard().catch(() => {});
   if (typeof UUIDSyncRegistry !== 'undefined') {
@@ -600,7 +565,6 @@ if (typeof performOneClickSync === 'function' && !isSyncing) {
 }, 1500);
 } else {
 _set_currentUser(null);
-
 stopSWTokenRefresh();
 clearTokenForSW().catch(() => {});
 try {
@@ -629,7 +593,6 @@ if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('er
 setTimeout(initializeFirebaseSystem, APP_CONFIG.FIREBASE_INIT_RETRY_DELAY);
 }
 }
-
 export class FirestoreDatabaseInitializer {
 constructor(firebaseDB, currentUser) {
 this.firebaseDB = firebaseDB;
@@ -641,7 +604,6 @@ errors: []
 };
 this.timestamp = new Date().toISOString();
 }
-
 async initialize(silent = false) {
 if (!this.firebaseDB || !this.currentUser) {
 throw new Error('Firebase DB and Current User are required');
@@ -682,7 +644,6 @@ results: this.results
 };
 }
 }
-
 async createUserDocument() {
 try {
 await this.userRef.set({
@@ -702,7 +663,6 @@ this.results.errors.push({ collection: 'users', error: error.message });
 throw error;
 }
 }
-
 async createDevicesCollection() {
 try {
 const deviceRef = this.userRef.collection('devices').doc('default_device');
@@ -737,7 +697,6 @@ this.results.success.push('devices');
 this.results.errors.push({ collection: 'devices', error: error.message });
 }
 }
-
 async createAccountCollection() {
 try {
 const infoRef = this.userRef.collection('account').doc('info');
@@ -747,13 +706,11 @@ displayName: this.currentUser.displayName || 'User',
 accountCreated: firebase.firestore.FieldValue.serverTimestamp(),
 lastActivity: firebase.firestore.FieldValue.serverTimestamp()
 });
-
 this.results.success.push('account');
 } catch (error) {
 this.results.errors.push({ collection: 'account', error: error.message });
 }
 }
-
 async createActivityLogCollection() {
 try {
 const activityRef = this.userRef.collection('activityLog').doc('initial');
@@ -771,7 +728,6 @@ this.results.success.push('activityLog');
 this.results.errors.push({ collection: 'activityLog', error: error.message });
 }
 }
-
 async createProductionCollection() {
 try {
 const placeholderRef = this.userRef.collection('production').doc('_placeholder_');
@@ -786,7 +742,6 @@ this.results.success.push('production');
 this.results.errors.push({ collection: 'production', error: error.message });
 }
 }
-
 async createSalesCollections() {
 try {
 const salesPlaceholder = this.userRef.collection('sales').doc('_placeholder_');
@@ -801,7 +756,6 @@ this.results.success.push('sales');
 this.results.errors.push({ collection: 'sales', error: error.message });
 }
 }
-
 async createRepCollections() {
 try {
 const repSalesPlaceholder = this.userRef.collection('rep_sales').doc('_placeholder_');
@@ -824,7 +778,6 @@ this.results.success.push('rep_customers');
 this.results.errors.push({ collection: 'rep_sales', error: error.message });
 }
 }
-
 async createPaymentCollections() {
 try {
 const transactionsPlaceholder = this.userRef.collection('transactions').doc('_placeholder_');
@@ -847,7 +800,6 @@ this.results.success.push('entities');
 this.results.errors.push({ collection: 'transactions', error: error.message });
 }
 }
-
 async createFactoryCollections() {
 try {
 const inventoryPlaceholder = this.userRef.collection('inventory').doc('_placeholder_');
@@ -870,7 +822,6 @@ this.results.success.push('factory_history');
 this.results.errors.push({ collection: 'inventory', error: error.message });
 }
 }
-
 async createExpenseCollections() {
 try {
 const expensesPlaceholder = this.userRef.collection('expenses').doc('_placeholder_');
@@ -893,7 +844,6 @@ this.results.success.push('returns');
 this.results.errors.push({ collection: 'expenses', error: error.message });
 }
 }
-
 async createCalculatorCollection() {
 try {
 const calculatorPlaceholder = this.userRef.collection('calculator_history').doc('_placeholder_');
@@ -908,7 +858,6 @@ this.results.success.push('calculator_history');
 this.results.errors.push({ collection: 'calculator_history', error: error.message });
 }
 }
-
 async createSettingsCollections() {
 try {
 const settingsRef = this.userRef.collection('settings').doc('config');
@@ -954,7 +903,6 @@ this.results.success.push('expenseCategories');
 this.results.errors.push({ collection: 'settings', error: error.message });
 }
 }
-
 async createContactCollections() {
 try {
 const repContactsPlaceholder = this.userRef.collection('rep_customers').doc('_placeholder_');
@@ -977,7 +925,6 @@ this.results.success.push('sales_customers');
 this.results.errors.push({ collection: 'rep_customers', error: error.message });
 }
 }
-
 async createTeamSettingsDocument() {
 try {
 const teamRef = this.userRef.collection('settings').doc('team');
@@ -993,7 +940,6 @@ this.results.success.push('settings/team');
 this.results.errors.push({ collection: 'settings/team', error: error.message });
 }
 }
-
 async createDeletionsCollection() {
 try {
 const deletionsPlaceholder = this.userRef.collection('deletions').doc('_placeholder_');
@@ -1008,7 +954,6 @@ this.results.success.push('deletions');
 this.results.errors.push({ collection: 'deletions', error: error.message });
 }
 }
-
 async createSyncUpdatesCollection() {
 try {
 const syncUpdateRef = this.userRef.collection('sync_updates').doc('initial');
@@ -1025,7 +970,6 @@ this.results.errors.push({ collection: 'sync_updates', error: error.message });
 }
 }
 }
-
 export async function initializeCompleteFirestoreDatabase(silent = false) {
 if (!firebaseDB || !currentUser) {
 if (!silent) showToast('Please log in first', 'warning');
@@ -1034,7 +978,6 @@ return { success: false, error: 'Not logged in' };
 const initializer = new FirestoreDatabaseInitializer(firebaseDB, currentUser);
 return await initializer.initialize(silent);
 }
-
 export async function isCompleteDatabaseInitialized() {
 if (!firebaseDB || !currentUser) return false;
 try {
@@ -1062,7 +1005,6 @@ return true;
 return false;
 }
 }
-
 export async function safeInitializeCompleteDatabase(silent = false) {
 const isInitialized = await isCompleteDatabaseInitialized();
 if (isInitialized) {
@@ -1074,11 +1016,9 @@ message: 'Database was already initialized with complete structure'
 }
 return await initializeCompleteFirestoreDatabase(silent);
 }
-
 export async function initializeFirestoreStructure(silent = false) {
 return await initializeCompleteFirestoreDatabase(silent);
 }
-
 export async function cleanupPlaceholders() {
 if (!firebaseDB || !currentUser) return false;
 try {
@@ -1113,7 +1053,6 @@ return true;
 return false;
 }
 }
-
 export function retryFirebaseInit(attempts = 0, maxAttempts = APP_CONFIG.FIREBASE_INIT_RETRY_MAX) {
 initializeFirebaseSystem();
 if (firebaseDB) {
@@ -1129,7 +1068,6 @@ showToast(' Cloud sync unavailable. App will work offline.', 'warning');
 }
 }
 }
-
 export const _syncQueue = (() => {
   let _chain = Promise.resolve();
   return {
@@ -1141,9 +1079,7 @@ export const _syncQueue = (() => {
     }
   };
 })();
-
 window._syncQueue = _syncQueue;
-
 export const SYNC_COLLECTIONS = [
   {
     firestoreId:  'production',
@@ -1218,15 +1154,12 @@ export const SYNC_COLLECTIONS = [
     lockOnClose:  true,
   },
 ];
-
 export async function _getColData(sqliteKey) {
 return ensureArray(await sqliteStore.get(sqliteKey));
 }
-
 export async function _setColData(sqliteKey, value) {
 await sqliteStore.set(sqliteKey, value);
 }
-
 export function _makeSnapshotHandler(col) {
 return async function handleSnapshot(snapshot) {
 try {
@@ -1302,7 +1235,6 @@ console.warn(`[Snapshot:${col.firestoreId}] local save error`, _safeErr(err));
 }
 };
 }
-
 export function _ensureLocalTombstone(recordId, collectionName) {
 const sid = String(recordId);
 _syncQueue.run(async () => {
@@ -1320,14 +1252,12 @@ _syncQueue.run(async () => {
   } catch (e) {}
 });
 }
-
 export function _updateArray(array, docData, collectionName) {
   if (docData._placeholder || docData.id === '_placeholder_') return array;
   if (!docData.id) {
     docData = ensureRecordIntegrity(docData, false, true);
   }
   const sid = String(docData.id);
-
   const existingIdx_pre = array.findIndex(item => item && item.id === docData.id);
   if (existingIdx_pre !== -1) {
     const localRecord = array[existingIdx_pre];
@@ -1351,16 +1281,13 @@ export function _updateArray(array, docData, collectionName) {
     };
     const cloudMs = _getMs_pre(docData);
     const localMs = _getMs_pre(localRecord);
-
     if (docData.isMerged === true && localRecord.isMerged !== true) {
-
     } else if (localRecord.isMerged === true && docData.isMerged !== true) {
       return array;
     } else if (cloudMs > 0 && cloudMs <= localMs) {
       return array;
     }
   }
-
   const _getMs = (rec) => {
     if (!rec) return 0;
     const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
@@ -1376,13 +1303,11 @@ export function _updateArray(array, docData, collectionName) {
     }
     return 0;
   };
-
   const existingIdx = array.findIndex(item => item && item.id === docData.id);
   if (existingIdx === -1) {
     array.push(docData);
   } else {
     const localItem = array[existingIdx];
-
     const _isMergedWins =
       (docData.isMerged === true && localItem.isMerged !== true)
       || (!(localItem.isMerged === true && docData.isMerged !== true)
@@ -1394,7 +1319,6 @@ export function _updateArray(array, docData, collectionName) {
     }
   }
   if (collectionName) {
-
     if (typeof UUIDSyncRegistry !== 'undefined') {
       UUIDSyncRegistry.markDownloaded(collectionName, sid);
     } else {
@@ -1403,7 +1327,6 @@ export function _updateArray(array, docData, collectionName) {
   }
   return array;
 }
-
 export let realtimeRefs = [];
 export let socketReconnectTimer = null;
 export let pendingSocketUpdate = false;
@@ -1411,7 +1334,6 @@ export let socketDebounceTimer = null;
 export let dbWakeUpAttempted = false;
 export let heartbeatInterval = null;
 export let autoSaveTimer = null;
-
 export let listenerRetryAttempts = 0;
 export const MAX_RETRY_ATTEMPTS = 5;
 export const BASE_RETRY_DELAY = 5000;
@@ -1419,7 +1341,6 @@ export let listenerReconnectTimer = null;
 export let lastSuccessfulConnection = Date.now();
 export let isReconnecting = false;
 export let _syncLockPendingQueue = [];
-
 export function _enqueueSyncLocked(handlerFn, snapshot) {
   const existing = _syncLockPendingQueue.findIndex(e => e.handlerFn === handlerFn);
   if (existing !== -1) {
@@ -1428,7 +1349,6 @@ export function _enqueueSyncLocked(handlerFn, snapshot) {
     _syncLockPendingQueue.push({ handlerFn, snapshot });
   }
 }
-
 export async function _flushSyncLockQueue() {
   if (_syncLockPendingQueue.length === 0) return;
   const queued = _syncLockPendingQueue.splice(0);
@@ -1437,7 +1357,6 @@ export async function _flushSyncLockQueue() {
     catch (err) { console.warn('[SyncLock] Error replaying buffered snapshot', _safeErr(err)); }
   }
 }
-
 export function updateSignalUI(status) {
   if (typeof _setCloudConnectionState !== 'function') return;
   if (status === 'online') {
@@ -1445,18 +1364,15 @@ export function updateSignalUI(status) {
   } else if (status === 'connecting') {
     _setCloudConnectionState('connecting');
   } else {
-
     _setCloudConnectionState('error');
   }
 }
-
 export function flashLivePulse() {
   const dot = document.getElementById('network-status-dot');
   if (!dot) return;
   dot.classList.add('net-dot-flash');
   setTimeout(() => { dot.classList.remove('net-dot-flash'); }, 300);
 }
-
 export async function emitSyncUpdate(payload) {
 if (!firebaseDB || !currentUser) return;
 flashLivePulse();
@@ -1473,7 +1389,6 @@ lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: c
 } catch (_pe) {}
 }
 }
-
 export async function startSyncUpdatesCleanup() {
   if (!firebaseDB || !currentUser) return;
   const runCleanup = async () => {
@@ -1497,7 +1412,6 @@ export async function startSyncUpdatesCleanup() {
   if (window._syncUpdatesCleanupInterval) clearInterval(window._syncUpdatesCleanupInterval);
   window._syncUpdatesCleanupInterval = setInterval(runCleanup, 60 * 60 * 1000);
 }
-
 export function scheduleListenerReconnect() {
   if (isReconnecting) return;
   if (listenerReconnectTimer) clearTimeout(listenerReconnectTimer);
@@ -1514,24 +1428,20 @@ export function scheduleListenerReconnect() {
     isReconnecting = false;
     if (firebaseDB && currentUser) {
       subscribeToRealtime().catch(e => {
-
         isReconnecting = false;
         console.warn('subscribeToRealtime retry failed:', _safeErr(e));
       });
     }
   }, delay);
 }
-
 export function recordSuccessfulConnection() {
   lastSuccessfulConnection = Date.now();
   listenerRetryAttempts = 0;
   isReconnecting = false;
 }
-
 export function isConnectionStale() {
   return (Date.now() - lastSuccessfulConnection) > 5 * 60 * 1000;
 }
-
 export async function subscribeToRealtime() {
   if (!firebaseDB || !currentUser) return;
   if (window._firestoreNetworkDisabled) return;
@@ -1565,14 +1475,12 @@ export async function subscribeToRealtime() {
         if (!Array.isArray(col.data)) continue;
         const merged = col.data.filter(r => r.isMerged === true);
         if (merged.length === 0) continue;
-
         const result = await _commitMergedBatch(userRef, col.name, merged, col.filter);
         if (!result.ok) { allOk = false; }
       }
       if (allOk) {
         _set_pendingFirestoreYearClose(false);
         await sqliteStore.set('pendingFirestoreYearClose', false);
-
         try {
           const _fySettings = await sqliteStore.get('naswar_default_settings', {});
           const _fyTs = Date.now();
@@ -1589,7 +1497,6 @@ export async function subscribeToRealtime() {
         } catch (_metaRetryErr) {
           console.warn('pendingFirestoreYearClose: metadata push failed:', _safeErr(_metaRetryErr));
         }
-
         try {
           const _retryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
           await userRef.collection('settings').doc('yearCloseSignal').set({
@@ -1606,7 +1513,6 @@ export async function subscribeToRealtime() {
       }
     } catch (e) { console.warn('pendingFirestoreYearClose retry failed:', _safeErr(e)); }
   }
-
   if (!pendingFirestoreRestore) {
     try {
       const _storedRestoreFlag = await sqliteStore.get('pendingFirestoreRestore');
@@ -1638,7 +1544,6 @@ export async function subscribeToRealtime() {
           if (records.length === 0) continue;
           const colRef = _restoreUserRef.collection(colName);
           const incomingIds = new Set(records.filter(r => r && r.id).map(r => String(r.id)));
-
           const preSnap = await colRef.get();
           const staleDocs = preSnap.docs.filter(d => !incomingIds.has(d.id) && d.id !== '_placeholder_' && !d.data()._placeholder);
           if (staleDocs.length > 0) {
@@ -1649,7 +1554,6 @@ export async function subscribeToRealtime() {
             });
             await Promise.all(mBatches.map(b => b.commit()));
           }
-
           const wBatches = [firebaseDB.batch()]; let wOps = 0;
           for (const record of records) {
             if (!record || !record.id) continue;
@@ -1659,7 +1563,6 @@ export async function subscribeToRealtime() {
             wBatches[wBatches.length-1].set(colRef.doc(String(record.id)), san, { merge: false }); wOps++;
           }
           if (wOps > 0) await Promise.all(wBatches.map(b => b.commit()));
-
           if (staleDocs.length > 0) {
             const dBatches = [firebaseDB.batch()]; let dOps = 0;
             staleDocs.forEach(d => {
@@ -1677,7 +1580,6 @@ export async function subscribeToRealtime() {
       if (_restoreAllOk) {
         _set_pendingFirestoreRestore(false);
         await sqliteStore.set('pendingFirestoreRestore', false);
-
         try {
           const _rRetryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
           await _restoreUserRef.collection('settings').doc('yearCloseSignal').set({
@@ -1693,22 +1595,18 @@ export async function subscribeToRealtime() {
       }
     } catch (_rErr) { console.warn('pendingFirestoreRestore retry failed:', _safeErr(_rErr)); }
   }
-
   updateSignalUI('connecting');
   realtimeRefs.forEach(unsub => {
     try { if (typeof unsub === 'function') unsub(); }
     catch (e) { console.error('Firebase operation failed.', _safeErr(e)); }
   });
   realtimeRefs = [];
-
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-
   try {
     const userDocUnsub = userRef.onSnapshot(async (snap) => {
       if (!snap.exists) return;
       const data = snap.data() || {};
       if (data.forceLogout && data.forceLogout.at) {
-
         let sessionStart = window._sessionStartMs;
         if (!sessionStart) {
           const lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
@@ -1754,7 +1652,6 @@ export async function subscribeToRealtime() {
       }
     });
     realtimeRefs.push(userDocUnsub);
-
     const _handleSettingsSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1762,24 +1659,20 @@ export async function subscribeToRealtime() {
         trackFirestoreRead(1);
         const cloudSettings = doc.data();
         if (!cloudSettings || typeof cloudSettings !== 'object') return;
-
         let hasUpdates = false;
         const timestampChecks = [
           { cloud: cloudSettings.naswar_default_settings_timestamp, local: await sqliteStore.get('naswar_default_settings_timestamp') },
           { cloud: cloudSettings.repProfile_timestamp,              local: await sqliteStore.get('repProfile_timestamp') },
-
           { cloud: cloudSettings.sales_reps_timestamp,             local: await sqliteStore.get('sales_reps_list_timestamp') },
         ];
         for (const check of timestampChecks) {
           if ((check.cloud || 0) > (check.local || 0)) { hasUpdates = true; break; }
         }
         if (!hasUpdates) return;
-
         if (cloudSettings.naswar_default_settings) {
           const ct = cloudSettings.naswar_default_settings_timestamp || 0;
           const lt = (await sqliteStore.get('naswar_default_settings_timestamp')) || 0;
           if (ct > lt) {
-
             const cloudFy = cloudSettings.naswar_default_settings;
             const localFy = (await sqliteStore.get('naswar_default_settings')) || {};
             const mergedFy = {
@@ -1816,7 +1709,6 @@ export async function subscribeToRealtime() {
           }
         }
         if (cloudSettings.last_synced) await sqliteStore.set('last_synced', cloudSettings.last_synced);
-
         if (Array.isArray(cloudSettings.sales_reps) && cloudSettings.sales_reps.length > 0) {
           const ct = cloudSettings.sales_reps_timestamp || 0;
           const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
@@ -1845,7 +1737,6 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(settingsUnsub);
-
     const _handleFactorySettingsSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1853,7 +1744,6 @@ export async function subscribeToRealtime() {
         trackFirestoreRead(1);
         const cfs = doc.data();
         if (!cfs || typeof cfs !== 'object') return;
-
         const checks = [
           { cloud: cfs.default_formulas_timestamp,       local: await sqliteStore.get('factory_default_formulas_timestamp') },
           { cloud: cfs.additional_costs_timestamp,       local: await sqliteStore.get('factory_additional_costs_timestamp') },
@@ -1864,7 +1754,6 @@ export async function subscribeToRealtime() {
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
-
         const _applyFactorySetting = async (cloudObj, cloudTs, localTsKey, localKey, transform) => {
           if (!cloudObj || typeof cloudObj !== 'object') return;
           if (!(('standard' in cloudObj) && ('asaan' in cloudObj))) return;
@@ -1876,25 +1765,21 @@ export async function subscribeToRealtime() {
           }
           return null;
         };
-
         const newFormulas = await _applyFactorySetting(
           cfs.default_formulas, cfs.default_formulas_timestamp,
           'factory_default_formulas_timestamp', 'factory_default_formulas',
           o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] })
         );
-
         const newCosts = await _applyFactorySetting(
           cfs.additional_costs, cfs.additional_costs_timestamp,
           'factory_additional_costs_timestamp', 'factory_additional_costs',
           o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
         );
-
         const newFactor = await _applyFactorySetting(
           cfs.cost_adjustment_factor, cfs.cost_adjustment_factor_timestamp,
           'factory_cost_adjustment_factor_timestamp', 'factory_cost_adjustment_factor',
           o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 })
         );
-
         const newTracking = await _applyFactorySetting(
           cfs.unit_tracking, cfs.unit_tracking_timestamp,
           'factory_unit_tracking_timestamp', 'factory_unit_tracking',
@@ -1903,7 +1788,6 @@ export async function subscribeToRealtime() {
             asaan:    o.asaan    || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
           })
         );
-
         await _applyFormulaStoreFromCloud(cfs);
         if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         emitSyncUpdate({ factorySettings: null});
@@ -1923,7 +1807,6 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(factorySettingsUnsub);
-
     const _handleExpenseCategoriesSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1931,11 +1814,9 @@ export async function subscribeToRealtime() {
         trackFirestoreRead(1);
         const cloud = doc.data();
         if (!cloud || !Array.isArray(cloud.categories)) return;
-
         const cloudTs = cloud.categories_timestamp || cloud.updated_at || 0;
         const localTs = (await sqliteStore.get('expense_categories_timestamp')) || 0;
         if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
-
         const local = await sqliteStore.get('expense_categories') || [];
         const _ecRes = resolveExpenseCategories(local, cloud.categories, localTs, cloudTs);
         if (_ecRes.changed) {
@@ -1959,7 +1840,6 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(expenseCategoriesUnsub);
-
     const _handleAppStoresSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -1998,7 +1878,6 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(appStoresUnsub);
-
     function _dedupDeletionRecords(arr) {
       if (!Array.isArray(arr)) return [];
       const seen = new Map();
@@ -2017,7 +1896,6 @@ export async function subscribeToRealtime() {
       return Array.from(seen.values());
     }
     window._dedupDeletionRecords = _dedupDeletionRecords;
-
     const _handleDeletionsSnapshot = async (snapshot) => {
       try {
         if (snapshot.metadata.hasPendingWrites) return;
@@ -2087,17 +1965,13 @@ export async function subscribeToRealtime() {
               } catch (collectionError) { console.warn('Failed to apply deletion to collection', _safeErr(collectionError)); }
               hasChanges = true;
             } else if (change.type === 'removed') {
-
               const _removedData = change.doc.data() || {};
               const _docRid = String(_removedData.recordId || change.doc.id);
               const _docCollection = _removedData.collection || _removedData.recordType || null;
-
               deletionRecords = deletionRecords.filter(r =>
                 String(r.id) !== _docRid && String(r.recordId) !== _docRid
               );
-
               deletedSet.delete(_docRid);
-
               if (_docCollection) {
                 try {
                   const _sqliteKey = getSQLiteKey(_docCollection);
@@ -2112,7 +1986,6 @@ export async function subscribeToRealtime() {
                   console.warn('[sync] hardDelete cross-device purge failed for', _docRid, _safeErr(_purgeErr));
                 }
               }
-
               hasChanges = true;
             }
           } catch (docError) { console.warn('Failed to save data locally.', _safeErr(docError)); }
@@ -2139,7 +2012,6 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(deletionsUnsub);
-
     const _handleTeamSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -2185,11 +2057,9 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(teamUnsub);
-
     const _handleYearCloseSignal = async (doc) => {
       try {
         if (!doc.exists) return;
-
         if (doc.metadata.hasPendingWrites) return;
         if (doc.metadata.fromCache) return;
         const sig = doc.data();
@@ -2197,25 +2067,18 @@ export async function subscribeToRealtime() {
         const sigType       = sig.type;
         const sigTriggeredAt = sig.triggeredAt || 0;
         const sigTriggeredBy = sig.triggeredBy || 'unknown';
-
         if (sigType !== 'close' && sigType !== 'restore') return;
-
         const _myDeviceId = (typeof getDeviceId === 'function')
           ? await getDeviceId().catch(() => null)
           : null;
         if (_myDeviceId && sigTriggeredBy === _myDeviceId) return;
-
         const _lastHandledSig = (await sqliteStore.get('_lastHandledYearCloseSignal')) || 0;
         if (sigTriggeredAt <= _lastHandledSig) return;
-
         await sqliteStore.set('_lastHandledYearCloseSignal', sigTriggeredAt);
-
         const _sigLabel = sigType === 'close' ? 'Financial Year Close' : 'Year-Close Restore';
         console.log(`[sync] yearCloseSignal received (${sigType}) from device ${sigTriggeredBy} — wiping SQLite and rebuilding from cloud.`);
         showToast(`↻ ${_sigLabel} detected on another device — refreshing data…`, 'info', 6000);
-
         if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry && OfflineQueue.cancelRetry();
-
         try {
           const _wipeKeys = [
             'mfg_pro_pkr', 'customer_sales', 'noman_history', 'rep_sales',
@@ -2227,12 +2090,10 @@ export async function subscribeToRealtime() {
         } catch (_wipeErr) {
           console.warn('[yearCloseSignal] SQLite wipe failed:', _safeErr(_wipeErr));
         }
-
         try {
           await DeltaSync.clearAllTimestamps();
           if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
         } catch (_dsErr) {  }
-
         try {
           await pullDataFromCloud(false, true);
         } catch (_rebuildErr) {
@@ -2240,13 +2101,11 @@ export async function subscribeToRealtime() {
           showToast('Auto-refresh failed — please sync manually.', 'warning', 5000);
           return;
         }
-
         try {
           if (typeof loadAllData === 'function')        await loadAllData();
           if (typeof invalidateAllCaches === 'function') await invalidateAllCaches();
           if (typeof refreshAllDisplays === 'function') await refreshAllDisplays();
         } catch (_uiErr) {  }
-
         showToast(` Data refreshed after ${_sigLabel} from another device.`, 'success', 4000);
         recordSuccessfulConnection();
       } catch (_sigHandlerErr) {
@@ -2261,7 +2120,6 @@ export async function subscribeToRealtime() {
       console.warn('[sync] yearCloseSignal listener error:', _ec, _safeErr(_e));
     });
     realtimeRefs.push(yearCloseSignalUnsub);
-
     try {
       const _listenDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => null) : null;
       if (_listenDeviceId) {
@@ -2275,12 +2133,10 @@ export async function subscribeToRealtime() {
             if (!data) return;
             const cloudMode      = data.currentMode || 'admin';
             const cloudTimestamp = data.appMode_timestamp || 0;
-
             if (!data.remoteAppliedMode) return;
             const localTimestamp = Number(await sqliteStore.get('appMode_timestamp').catch(() => 0)) || 0;
             if (cloudTimestamp <= localTimestamp) return;
             if (cloudMode === appMode) return;
-
             if (typeof _applyModeFromData === 'function') {
               _applyModeFromData(
                 cloudMode, cloudTimestamp,
@@ -2298,7 +2154,6 @@ export async function subscribeToRealtime() {
           if (isSyncing) { _enqueueSyncLocked(_handleDeviceSnapshot, docSnap); return; }
           await _handleDeviceSnapshot(docSnap);
         }, _e => {
-
           console.warn('[sync] device doc listener error:', _e && _e.code, _safeErr(_e));
         });
         realtimeRefs.push(deviceDocUnsub);
@@ -2306,7 +2161,6 @@ export async function subscribeToRealtime() {
     } catch (_devListenErr) {
       console.warn('[sync] failed to register device doc listener (non-fatal):', _safeErr(_devListenErr));
     }
-
     updateSignalUI('online');
     recordSuccessfulConnection();
     listenerRetryAttempts = 0;
@@ -2320,7 +2174,6 @@ export async function subscribeToRealtime() {
     scheduleListenerReconnect();
   }
 }
-
 export async function executeSmartPull() {
   await pullDataFromCloud(true);
   if (pendingSocketUpdate) {
@@ -2330,19 +2183,16 @@ export async function executeSmartPull() {
     showToast(' Live update received', 'success', 2000);
   }
 }
-
 export function scheduleSocketReconnect() {
   if (socketReconnectTimer) clearTimeout(socketReconnectTimer);
   socketReconnectTimer = setTimeout(() => { subscribeToRealtime().catch(e => console.warn('subscribeToRealtime socket retry failed:', _safeErr(e))); }, 5000);
 }
-
 export async function initFirebase() {
   if (window._firebaseListenersRegistered) return;
   window._firebaseListenersRegistered = true;
   try {
     window._fbOfflineHandler = () => { updateSignalUI('offline'); };
     window._fbOnlineHandler = () => {
-
       listenerRetryAttempts = 0;
       isReconnecting = false;
       if (listenerReconnectTimer) { clearTimeout(listenerReconnectTimer); listenerReconnectTimer = null; }
@@ -2354,7 +2204,6 @@ export async function initFirebase() {
     window.addEventListener('online',  window._fbOnlineHandler);
   } catch (e) { console.warn('Failed to pull data from cloud.', _safeErr(e)); }
 }
-
 export function _toMs(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
@@ -2362,7 +2211,6 @@ export function _toMs(v) {
   if (typeof v === 'object' && v.seconds) return v.seconds * 1000 + Math.round((v.nanoseconds || 0) / 1e6);
   return new Date(v).getTime() || 0;
 }
-
 export function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
   if (!Array.isArray(localArray)) localArray = [];
   if (!Array.isArray(cloudArray)) cloudArray = [];
@@ -2394,7 +2242,6 @@ export function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
   });
   return Array.from(mergedMap.values());
 }
-
 function _keepLocalSalePrices(cloudStores, localStores) {
   const local = Array.isArray(localStores) ? localStores : [];
   return cloudStores.map((c) => {
@@ -2407,7 +2254,6 @@ function _keepLocalSalePrices(cloudStores, localStores) {
     return out;
   });
 }
-
 function _fillStoresFromCloud(localStores, cloudStores) {
   const cloud = Array.isArray(cloudStores) ? cloudStores.filter((c) => c && c.key) : [];
   const local = Array.isArray(localStores) ? localStores : [];
@@ -2426,7 +2272,6 @@ function _fillStoresFromCloud(localStores, cloudStores) {
   });
   return { stores: out, changed };
 }
-
 export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   if (depth > 20) return null;
   if (obj === null || obj === undefined) return null;
@@ -2493,7 +2338,6 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   } catch (e) { return {}; }
   return sanitized;
 }
-
 export async function _commitMergedBatch(userRef, collectionName, mergedRecords, deleteFilter) {
   const OPS_PER_BATCH = 400;
   let batchesTotal = 0, batchesFailed = 0, firstError = null;
@@ -2525,7 +2369,6 @@ export async function _commitMergedBatch(userRef, collectionName, mergedRecords,
         batchesFailed++;
         if (!firstError) firstError = batchErr;
         console.error(`_commitMergedBatch [${collectionName}] batch ${batchesTotal} failed:`, _safeErr(batchErr));
-
       }
     }
   } catch (outerErr) {
@@ -2534,10 +2377,8 @@ export async function _commitMergedBatch(userRef, collectionName, mergedRecords,
   }
   return { ok: batchesFailed === 0, batchesTotal, batchesFailed, error: firstError || null };
 }
-
 export function mergeArrays(localArray, cloudArray, collectionName) {
   const merged = [...localArray];
-
   const idxMap = new Map();
   for (let i = 0; i < merged.length; i++) {
     if (merged[i] && merged[i].id) idxMap.set(String(merged[i].id), i);
@@ -2545,19 +2386,16 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
   const localIds = new Set(idxMap.keys());
   let downloadedCount = 0, fixedCount = 0, skippedCount = 0;
   const useUUIDGate = typeof UUIDSyncRegistry !== 'undefined' && !!collectionName;
-
   if (collectionName) {
     for (const sid of localIds) {
       if (useUUIDGate) UUIDSyncRegistry.markDownloaded(collectionName, sid);
       else DeltaSync.markDownloaded(collectionName, sid);
     }
   }
-
   for (let cloudItem of cloudArray) {
     if (!cloudItem.id || cloudItem.id === '_placeholder_' || cloudItem._placeholder) continue;
     if (!validateUUID(cloudItem.id)) { cloudItem = ensureRecordIntegrity(cloudItem, false, true); fixedCount++; }
     const sid = String(cloudItem.id);
-
     if (!localIds.has(sid)) {
       if (useUUIDGate && UUIDSyncRegistry.skipDownload(collectionName, sid)) {
         skippedCount++;
@@ -2577,26 +2415,19 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
       if (useUUIDGate) UUIDSyncRegistry.markDownloaded(collectionName, sid);
       else if (collectionName) DeltaSync.markDownloaded(collectionName, sid);
     } else {
-
       const idx = idxMap.get(sid);
       const localRecord = merged[idx];
-
       if (useUUIDGate && UUIDSyncRegistry.skipDownload(collectionName, sid)) {
-
         if (!UUIDSyncRegistry.shouldApplyCloud(cloudItem, localRecord)) {
           skippedCount++;
           continue;
         }
-
       }
-
       const cloudWins = (typeof compareRecordVersions === 'function')
         ? compareRecordVersions(cloudItem, localRecord) > 0
-
         : (cloudItem.isMerged === true && localRecord.isMerged !== true)
           || (!(localRecord.isMerged === true && cloudItem.isMerged !== true)
               && _toMs(cloudItem.updatedAt || cloudItem.timestamp) > _toMs(localRecord?.updatedAt || localRecord?.timestamp));
-
       if (cloudWins) {
         merged[idx] = ensureRecordIntegrity(cloudItem, false, true);
         downloadedCount++;
@@ -2614,13 +2445,11 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
       }
     }
   }
-
   return merged.map(item => {
     if (!item.id || !validateUUID(item.id)) { fixedCount++; return ensureRecordIntegrity(item, false, true); }
     return item;
   });
 }
-
 export async function _detectUserType(userRef) {
   const hasInitialized = await sqliteStore.get('firestore_initialized');
   const sqliteArrays = await Promise.all([
@@ -2631,7 +2460,6 @@ export async function _detectUserType(userRef) {
   ]);
   const totalLocal = sqliteArrays.reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0);
   if (hasInitialized && totalLocal > 0) return 'returning';
-
   try {
     const checks = await Promise.all([
       userRef.collection('production').limit(20).get(),
@@ -2648,11 +2476,9 @@ export async function _detectUserType(userRef) {
     return hasInitialized ? 'returning' : 'new';
   }
 }
-
 export async function _downloadDeltas(userRef, userType, forceDownload = false) {
   const FRESH_THRESHOLD_MS = 8 * 1000;
   const buildQuery = async (collection, collectionName) => {
-
     if (forceDownload || userType === 'existing') return collection.get();
     const lastDownloadKey = `lastDownload_${collectionName}`;
     let lastDownloadMs = 0;
@@ -2660,14 +2486,12 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
       const raw = await sqliteStore.get(lastDownloadKey);
       lastDownloadMs = raw ? (typeof raw === 'number' ? raw : parseInt(raw)) : 0;
     } catch (_) {}
-
     if (lastDownloadMs && (Date.now() - lastDownloadMs) < FRESH_THRESHOLD_MS) {
       return { docs: [], docChanges: () => [] };
     }
     const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(collectionName);
     return lastSync ? collection.where('updatedAt', '>', lastSync).get() : collection.get();
   };
-
   const [
     settingsSnap, factorySettingsSnap, expenseCategoriesSnap, appStoresSnap,
     productionSnap, salesSnap, calcHistorySnap,
@@ -2701,7 +2525,6 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     if (snap && typeof snap.query !== 'undefined') realCollectionReads++;
   });
   trackFirestoreRead(realCollectionReads);
-
   let personPhotosSnap = null;
   try {
     const lastPhotoSync = await DeltaSync.getLastSyncFirestoreTimestamp('personPhotos');
@@ -2710,11 +2533,9 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
       : await userRef.collection('personPhotos').get();
     if (personPhotosSnap && !personPhotosSnap.empty) trackFirestoreRead(personPhotosSnap.docs.length);
   } catch(_phe) { console.warn('[downloadDeltas] personPhotos fetch error', _phe); }
-
   const extract = (snap) => snap
     ? snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => !d._placeholder)
     : [];
-
   return {
     settings: settingsSnap,
     factorySettings: factorySettingsSnap,
@@ -2737,10 +2558,8 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     },
   };
 }
-
 const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
 const _REMOTE_TX_KEYS = ['rep_sales', 'customer_sales', 'payment_transactions', 'expenses'];
-
 function _describeRemoteTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const created = Number(r.createdAt || r.timestamp || 0);
@@ -2759,12 +2578,10 @@ function _describeRemoteTx(key, r) {
   }
   return { title: 'New expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
 }
-
 function _pushTxNotification(item) {
   showToast(item.body, 'info', 4500);
   sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {});
 }
-
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   if (appMode !== 'admin') return;
   const items = [];
@@ -2779,9 +2596,7 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   items.slice(0, 5).forEach(_pushTxNotification);
   if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
 }
-
 const _LOCAL_TX_KEYS = new Set(['rep_sales', 'customer_sales', 'payment_transactions', 'expenses', 'mfg_pro_pkr']);
-
 function _describeLocalTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const who = r.customerName || 'customer';
@@ -2798,13 +2613,10 @@ function _describeLocalTx(key, r) {
   if (r.isReturn) return { title: 'Stock return', body: `${kg} kg returned` };
   return { title: 'Production', body: `${kg} kg produced` };
 }
-
 const _EDIT_FIELDS = ['totalValue', 'amount', 'quantity', 'net', 'customerName', 'entityName', 'name', 'description', 'date', 'type', 'paymentType', 'price'];
-
 function _txChanged(before, after) {
   return _EDIT_FIELDS.some(f => String(before && before[f] == null ? '' : before[f]) !== String(after && after[f] == null ? '' : after[f]));
 }
-
 async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds) {
   let candidates = [];
   if (specificRecord && specificRecord.id) candidates = [specificRecord];
@@ -2820,7 +2632,6 @@ async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds
   });
   return { created, edited };
 }
-
 function _notifyLocalTransactions(key, records) {
   const items = [];
   records.forEach(r => {
@@ -2830,7 +2641,6 @@ function _notifyLocalTransactions(key, records) {
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
-
 function _notifyEditedTransactions(key, records) {
   const items = [];
   records.forEach(r => {
@@ -2840,9 +2650,7 @@ function _notifyEditedTransactions(key, records) {
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
-
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
-
 async function _applyFormulaStoreFromCloud(cloud) {
   if (!cloud || typeof cloud !== 'object') return;
   const localList = await sqliteStore.get('factory_formula_store');
@@ -2861,9 +2669,7 @@ async function _applyFormulaStoreFromCloud(cloud) {
     await sqliteStore.setBatch([['factory_formula_slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['factory_formula_slots_timestamp', cloud.formula_slots_timestamp || Date.now()]]);
   }
 }
-
 export async function _mergeAndPersist(cloudData) {
-
   try {
     if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
     const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
@@ -2889,7 +2695,6 @@ export async function _mergeAndPersist(cloudData) {
         };
       })
       .filter(r => r.deletedAt > threeMonthsAgo);
-
     let localDels = await sqliteStore.get('deletion_records') || [];
     if (!Array.isArray(localDels)) localDels = [];
     const mergedDels = [...localDels];
@@ -2924,7 +2729,6 @@ export async function _mergeAndPersist(cloudData) {
   } catch (_delErr) {
   console.warn('[Sync] Failed to refresh deletions:', _safeErr(_delErr));
   }
-
   const { data } = cloudData;
   const _localKeys = [
   'mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
@@ -2934,7 +2738,6 @@ export async function _mergeAndPersist(cloudData) {
   const _localBatch = await sqliteStore.getBatch(_localKeys);
   const _deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
   const _notDeleted = item => !_deletedArr.includes(item.id);
-
   const _yearCloseCollectionKeys = [
     ['mfg_pro_pkr',                'mfg_pro_pkr'],
     ['customer_sales',             'customer_sales'],
@@ -2949,17 +2752,14 @@ export async function _mergeAndPersist(cloudData) {
     if (!Array.isArray(cloudArr) || cloudArr.length === 0) return localArr;
     const cloudAllMerged = cloudArr.every(r => r.isMerged === true);
     if (cloudAllMerged) {
-
       const cloudIds = new Set(cloudArr.map(r => String(r.id)));
       return localArr.filter(r => {
         if (!r || !r.id) return false;
         if (cloudIds.has(String(r.id))) return true;
         if (r.isMerged === true) return false;
-
         return true;
       });
     }
-
     const cloudNoneMerged = cloudArr.every(r => r.isMerged !== true);
     const localHasMerged  = localArr.some(r => r && r.isMerged === true);
     if (cloudNoneMerged && localHasMerged && cloudArr.length > 0) {
@@ -2973,14 +2773,12 @@ export async function _mergeAndPersist(cloudData) {
     }
     return localArr;
   };
-
   const _preFilter = {};
   for (const [localKey, cloudKey] of _yearCloseCollectionKeys) {
     const localArr = ensureArray(_localBatch.get(localKey));
     const cloudArr = data[cloudKey] || [];
     _preFilter[localKey] = _applyYearCloseCompaction(localArr, cloudArr);
   }
-
   const _m = (key, col, cloudKey) =>
     mergeArrays(
       ensureArray(_preFilter[key] !== undefined ? _preFilter[key] : _localBatch.get(key)),
@@ -3001,7 +2799,6 @@ export async function _mergeAndPersist(cloudData) {
   stock_returns:              _m('stock_returns',              'returns',           'stock_returns'),
   expenses:                   _m('expenses',                   'expenses',          'expenses'),
   };
-
   const _mark = (col, arr) => {
   if (!Array.isArray(arr)) return;
   arr.forEach(i => {
@@ -3019,13 +2816,11 @@ export async function _mergeAndPersist(cloudData) {
   _mark('transactions', data.payment_transactions); _mark('entities', data.payment_entities);
   _mark('inventory', data.factory_inventory_data); _mark('factory_history', data.factory_production_history);
   _mark('returns', data.stock_returns);         _mark('expenses', data.expenses);
-
   await sqliteStore.setBatch([
   ...Object.entries(_merged).map(([k, v]) => [k, v]),
   ['last_synced', new Date().toISOString()],
   ]);
   try { notifyAdminOfRemoteTransactions(_localBatch, _merged); } catch (_) {}
-
   const _colMap = {
   production: data.mfg_pro_pkr, sales: data.customer_sales,
   calculator_history: data.noman_history, transactions: data.payment_transactions,
@@ -3042,29 +2837,23 @@ export async function _mergeAndPersist(cloudData) {
   }
   await DeltaSync.setLastSyncTimestamp('deletions');
 }
-
 export async function _syncSettings(cloudData) {
   const { settings: settingsSnap, factorySettings: factorySettingsSnap, expenseCategories: expCatSnap, appStores: appStoresSnap, personPhotosSnap } = cloudData;
-
   if (settingsSnap && settingsSnap.exists) {
     const sd = settingsSnap.data();
     if (sd && sd.naswar_default_settings) {
-
       const ct = sd.naswar_default_settings_timestamp || 0;
       const lt = (await sqliteStore.get('naswar_default_settings_timestamp')) || 0;
       const localSettings = (await sqliteStore.get('naswar_default_settings')) || {};
       if (ct >= lt) {
-
         const cloudFy = sd.naswar_default_settings;
         const mergedFy = {
           ...localSettings,
           ...cloudFy,
-
           fyCloseCount: Math.max(
             typeof cloudFy.fyCloseCount  === 'number' ? cloudFy.fyCloseCount  : 0,
             typeof localSettings.fyCloseCount === 'number' ? localSettings.fyCloseCount : 0
           ),
-
           lastYearClosedAt: Math.max(
             cloudFy.lastYearClosedAt   || 0,
             localSettings.lastYearClosedAt || 0
@@ -3081,12 +2870,10 @@ export async function _syncSettings(cloudData) {
           ['naswar_default_settings_timestamp', ct || Date.now()],
         ]);
       } else {
-
         const cloudFy = sd.naswar_default_settings;
         const mergedFy = {
           ...cloudFy,
           ...localSettings,
-
           fyCloseCount: Math.max(
             typeof cloudFy.fyCloseCount  === 'number' ? cloudFy.fyCloseCount  : 0,
             typeof localSettings.fyCloseCount === 'number' ? localSettings.fyCloseCount : 0
@@ -3094,10 +2881,8 @@ export async function _syncSettings(cloudData) {
         };
         _set_defaultSettings(mergedFy);
         await sqliteStore.set('naswar_default_settings', defaultSettings);
-
       }
     }
-
     if (sd && sd.repProfile) {
       const ct = sd.repProfile_timestamp || 0;
       const lt = (await sqliteStore.get('repProfile_timestamp')) || 0;
@@ -3110,7 +2895,6 @@ export async function _syncSettings(cloudData) {
         ]);
       }
     }
-
     if (sd && Array.isArray(sd.sales_reps) && sd.sales_reps.length > 0) {
       const ct = sd.sales_reps_timestamp || 0;
       const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
@@ -3160,7 +2944,6 @@ export async function _syncSettings(cloudData) {
       }
     }
   }
-
   if (appStoresSnap && appStoresSnap.exists) {
     const asd = appStoresSnap.data();
     if (asd && Array.isArray(asd.stores)) {
@@ -3173,7 +2956,6 @@ export async function _syncSettings(cloudData) {
       }
     }
   }
-
   if (personPhotosSnap && !personPhotosSnap.empty) {
     try {
       const localPhotos = (await sqliteStore.get('person_photos')) || {};
@@ -3185,9 +2967,7 @@ export async function _syncSettings(cloudData) {
         const docData = doc.data();
         const photoKey = docData.key;
         if (!photoKey) continue;
-
         if (localDirtyKeys.has(photoKey)) continue;
-
         if (docData.deleted) {
           if (localPhotos[photoKey] !== undefined) {
             delete localPhotos[photoKey];
@@ -3214,7 +2994,6 @@ export async function _syncSettings(cloudData) {
     } catch(_phe) { console.warn('[syncSettings] personPhotos merge error', _phe); }
   }
 }
-
 export async function _uploadChanges(userRef) {
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
   const _keys = [
@@ -3237,7 +3016,6 @@ export async function _uploadChanges(userRef) {
   expenses:           ensureArray(_batch.get('expenses')).filter(isRealRecord),
   returns:            ensureArray(_batch.get('stock_returns')).filter(isRealRecord),
   };
-
   const batches = [];
   let currentBatch = firebaseDB.batch();
   let operationCount = 0;
@@ -3249,11 +3027,9 @@ export async function _uploadChanges(userRef) {
     }
     return currentBatch;
   };
-
   let totalItemsToWrite = 0;
   const collectionsUploaded = new Set();
   const _pendingUploadMarks = [];
-
   for (const [collectionName, dataArray] of Object.entries(collections)) {
     if (!Array.isArray(dataArray) || dataArray.length === 0) continue;
     const _isUploaded = (col, id) => {
@@ -3264,9 +3040,7 @@ export async function _uploadChanges(userRef) {
     if (changedItems.length === 0) continue;
     for (const item of changedItems) {
       if (!item || !item.id) continue;
-
       if (_isUploaded(collectionName, item.id)) continue;
-
       if (DeltaSync.wasDownloaded(collectionName, item.id)
           && !DeltaSync.isDirtyId(collectionName, item.id)) {
         _pendingUploadMarks.push({ collectionName, id: item.id });
@@ -3286,12 +3060,10 @@ export async function _uploadChanges(userRef) {
       operationCount++;
       totalItemsToWrite++;
       trackFirestoreWrite(1);
-
       _pendingUploadMarks.push({ collectionName, id: item.id });
       collectionsUploaded.add(collectionName);
     }
   }
-
   const configBatch = getOrNewBatch();
   const localFormulaTs = await sqliteStore.get('factory_default_formulas_timestamp');
   const localCostsTs   = await sqliteStore.get('factory_additional_costs_timestamp');
@@ -3299,7 +3071,6 @@ export async function _uploadChanges(userRef) {
   const localUnitTs    = await sqliteStore.get('factory_unit_tracking_timestamp');
   const localStoreTs   = await sqliteStore.get('factory_formula_store_timestamp');
   const localSlotsTs   = await sqliteStore.get('factory_formula_slots_timestamp');
-
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factorySettings');
   const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs, localSlotsTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
@@ -3329,7 +3100,6 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('factorySettings');
   }
-
   const localSettingsTs = await sqliteStore.get('naswar_default_settings_timestamp');
   const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
   if (localSettingsTs && (!lastSettingsSync || localSettingsTs > lastSettingsSync)) {
@@ -3342,7 +3112,6 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('settings');
   }
-
   const localExpCatTs = await sqliteStore.get('expense_categories_timestamp');
   const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('expenseCategories');
   if (localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
@@ -3355,7 +3124,6 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('expenseCategories');
   }
-
   const localStoresTs = await sqliteStore.get('app_stores_timestamp');
   const lastStoresSync = await DeltaSync.getLastSyncTimestamp('appStores');
   if (localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
@@ -3382,7 +3150,6 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('appStores');
   }
-
   if (operationCount > 0) { batches.push(currentBatch); currentBatch = firebaseDB.batch(); operationCount = 0; }
   const PHOTO_DOC_MAX_CHARS = 900000;
   const PHOTO_BATCH_MAX_CHARS = 4000000;
@@ -3424,7 +3191,6 @@ export async function _uploadChanges(userRef) {
       if (_photoBatchOps > 0) photoBatches.push({ batch: _photoBatch, keys: _pendingPhotoKeys });
     }
   } catch(_photoUploadErr) { console.warn('[uploadChanges] person_photos upload error', _photoUploadErr); }
-
   if (operationCount > 0) batches.push(currentBatch);
   for (const batch of batches) {
     await batch.commit();
@@ -3438,7 +3204,6 @@ export async function _uploadChanges(userRef) {
       console.warn('[uploadChanges] photo batch commit failed; will retry next sync', _pbErr);
     }
   }
-
   for (const { collectionName, id } of _pendingUploadMarks) {
     if (typeof UUIDSyncRegistry !== 'undefined') {
       UUIDSyncRegistry.markUploaded(collectionName, id);
@@ -3446,7 +3211,6 @@ export async function _uploadChanges(userRef) {
       DeltaSync.markUploaded(collectionName, id);
     }
   }
-
   if (_uploadedPhotoKeys.length > 0) {
     try {
       const _remainingDirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
@@ -3458,7 +3222,6 @@ export async function _uploadChanges(userRef) {
       await sqliteStore.set('person_photos_timestamps', _localTs);
     } catch(_postPhErr) { console.warn('[uploadChanges] person_photos post-commit cleanup error', _postPhErr); }
   }
-
   for (const col of collectionsUploaded) {
     await DeltaSync.setLastSyncTimestamp(col);
     DeltaSync.clearDirty(col);
@@ -3468,7 +3231,6 @@ export async function _uploadChanges(userRef) {
       DeltaSync.clearDirty(col);
     }
   }
-
   const configItemCount = (collectionsUploaded.has('factorySettings') ? 1 : 0)
     + (collectionsUploaded.has('settings') ? 1 : 0)
     + (collectionsUploaded.has('expenseCategories') ? 1 : 0)
@@ -3480,11 +3242,9 @@ export async function _uploadChanges(userRef) {
   }
   return totalUploaded;
 }
-
 export function performOneClickSync(silent = false) {
   return _syncQueue.run(() => _doOneClickSync(silent));
 }
-
 export async function _doOneClickSync(silent = false) {
   if (!firebaseDB) {
     if (!silent) { showToast('⌛ Connecting to cloud…', 'info', 3000); initializeFirebaseSystem(); }
@@ -3493,19 +3253,16 @@ export async function _doOneClickSync(silent = false) {
   if (!currentUser) {
     if (!silent) {
       showToast('Please log in to sync data', 'warning');
-
       showAuthOverlay();
     }
     return;
   }
-
   _set_isSyncing(true);
   if (document.body) document.body.classList.add('is-syncing');
   const btn = document.getElementById('sync-btn');
   const originalText = btn ? btn.innerHTML : '';
   if (!silent && btn) btn.innerHTML = 'Syncing…';
   if (!silent) showToast('Syncing with cloud…', 'info', 2000);
-
   try {
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
@@ -3514,37 +3271,28 @@ export async function _doOneClickSync(silent = false) {
       await UUIDSyncRegistry.loadAll().catch(() => {});
     }
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-
     const userType = await _detectUserType(userRef);
-
     if (userType === 'new') {
       await initializeFirestoreStructure(true);
       await sqliteStore.set('firestore_initialized', true);
       if (!silent) showToast('Your account is ready!', 'success');
       return;
     }
-
     const syncForceDownload = (userType === 'existing');
     const cloudData = await _downloadDeltas(userRef, userType, syncForceDownload);
     const totalCloudChanges = Object.values(cloudData.data).reduce((s, a) => s + (a?.length || 0), 0);
-
     if (userType === 'existing' && typeof UUIDSyncRegistry !== 'undefined') {
-
       UUIDSyncRegistry.setNewDeviceRestore(true);
     }
     await _mergeAndPersist(cloudData);
     if (userType === 'existing' && typeof UUIDSyncRegistry !== 'undefined') {
       UUIDSyncRegistry.setNewDeviceRestore(false);
     }
-
     await _syncSettings(cloudData);
-
     if (userType === 'existing') {
       await sqliteStore.set('firestore_initialized', true);
       await sqliteStore.set('user_state', { type: 'existing', hasRealData: true, lastChecked: Date.now(), initialized: true, restoredItems: totalCloudChanges });
-
       const totalItemsToWrite = await _uploadChanges(userRef);
-
       if (typeof refreshAllDisplays === 'function') await refreshAllDisplays().catch(() => {});
       if (!silent) {
         const msg = totalItemsToWrite > 0
@@ -3553,16 +3301,12 @@ export async function _doOneClickSync(silent = false) {
         showToast(msg, 'success');
         if (typeof closeDataMenu === 'function') closeDataMenu();
       } else if (totalCloudChanges > 0 || totalItemsToWrite > 0) {
-
         showToast(` Synced — ${totalCloudChanges} new, ${totalItemsToWrite} uploaded`, 'info', 3000);
       }
       return;
     }
-
     const totalItemsToWrite = await _uploadChanges(userRef);
-
     if (typeof refreshAllDisplays === 'function') await refreshAllDisplays().catch(() => {});
-
     if (!silent) {
       if (totalCloudChanges === 0 && totalItemsToWrite === 0) {
         showToast(' Already up to date', 'success', 2500);
@@ -3575,12 +3319,9 @@ export async function _doOneClickSync(silent = false) {
       }
       if (typeof closeDataMenu === 'function') closeDataMenu();
     } else if (totalCloudChanges > 0 || totalItemsToWrite > 0) {
-
       showToast(` Synced — ${totalCloudChanges} new, ${totalItemsToWrite} uploaded`, 'info', 3000);
     }
-
     return { down: totalCloudChanges, up: totalItemsToWrite };
-
   } catch (e) {
     console.error('[OneClickSync] error:', _safeErr(e));
     if (!silent) showToast(' Sync error - will retry automatically', 'warning');
@@ -3592,17 +3333,14 @@ export async function _doOneClickSync(silent = false) {
     _flushSyncLockQueue().catch(err => console.warn('[SyncLock] Flush error', _safeErr(err)));
   }
 }
-
 export function pushDataToCloud(silent = false) {
   return _syncQueue.run(() => _doPushDataToCloud(silent));
 }
-
 export async function _doPushDataToCloud(silent = false) {
   if (!firebaseDB || !currentUser) {
     if (!silent) showToast('Please sign in to sync data', 'warning');
     return;
   }
-
   _set_isSyncing(true);
   let btn = null, originalText = '';
   const pushTimeout = setTimeout(() => {
@@ -3613,24 +3351,19 @@ export async function _doPushDataToCloud(silent = false) {
       if (btn) { btn.innerText = originalText; btn.disabled = false; }
     }
   }, APP_CONFIG.HEARTBEAT_INTERVAL_MS);
-
   try {
     if (!silent) {
       const menuBtn = document.getElementById('sync-btn') || document.querySelector('#sync-data-screen .btn-main');
       if (menuBtn) { btn = menuBtn; originalText = btn.innerText; btn.textContent = 'Uploading...'; btn.disabled = true; }
       else showToast('Starting upload...', 'info');
     }
-
     await sqliteStore.init();
     await sqliteStore.flush();
-
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
     }
-
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     const operationCount = await _uploadChanges(userRef);
-
     const deletionRecordsLocal = await sqliteStore.get('deletion_records', []);
     const unsyncedDeletions = deletionRecordsLocal.filter(r => !r.syncedToCloud);
     if (unsyncedDeletions.length > 0) {
@@ -3657,10 +3390,8 @@ export async function _doPushDataToCloud(silent = false) {
       await dBatch.commit();
       await sqliteStore.set('deletion_records', deletionRecordsLocal);
     }
-
     const now = new Date().toISOString();
     await sqliteStore.set('last_synced', now);
-
     if (!silent) {
       const message = operationCount === 0
         ? ' Already up to date — nothing to upload'
@@ -3679,34 +3410,26 @@ export async function _doPushDataToCloud(silent = false) {
     _flushSyncLockQueue().catch(() => {});
   }
 }
-
 export function pullDataFromCloud(silent = false, forceDownload = false) {
-
   return _syncQueue.run(() => _doPullDataFromCloud(silent, forceDownload));
 }
-
 export async function _doPullDataFromCloud(silent = false, forceDownload = false) {
   if (!firebaseDB || !currentUser) {
     if (!silent) showToast('Please sign in to sync data', 'warning');
     return;
   }
-
   _set_isSyncing(true);
   try {
     if (!silent) showToast('Downloading cloud data...', 'info');
     await sqliteStore.init();
     await sqliteStore.flush();
-
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
     }
-
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     const pullUserType = await _detectUserType(userRef);
-
     const effectiveUserType = forceDownload ? 'existing' : (pullUserType === 'new' ? 'existing' : pullUserType);
     const cloudData = await _downloadDeltas(userRef, effectiveUserType, forceDownload);
-
     const hasData = Object.values(cloudData.data).some(a => a.length > 0)
       || (cloudData.settings && cloudData.settings.exists)
       || (cloudData.factorySettings && cloudData.factorySettings.exists);
@@ -3718,13 +3441,11 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       if (!silent) showToast('No data found in cloud.', 'warning');
       return;
     }
-
     if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(true);
     await _mergeAndPersist(cloudData);
     if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(false);
     await _syncSettings(cloudData);
     await sqliteStore.set('firestore_initialized', true);
-
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
       if (fsData && typeof fsData === 'object') {
@@ -3737,7 +3458,6 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
         await _applyFormulaStoreFromCloud(fsData);
       }
     }
-
     const _settingsBatch = await sqliteStore.getBatch([
       'factory_default_formulas', 'factory_additional_costs',
       'factory_cost_adjustment_factor', 'factory_unit_tracking',
@@ -3763,21 +3483,17 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       ['repProfile', currentRepProfile],
       ['current_rep_profile', currentRepProfile],
     ]);
-
     const statsCols = ['production','sales','rep_sales','rep_customers','calculator_history',
       'transactions','entities','inventory','factory_history','returns','expenses','sales_customers'];
     void Promise.all(statsCols.map(c => DeltaSync.updateSyncStats(c))).catch(() => {});
-
     if (!silent) showToast(' Data Restored Successfully', 'success');
     if (typeof updateUnitsAvailableIndicator === 'function') updateUnitsAvailableIndicator();
-
     queueMicrotask(() => {
       if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {});
     });
   } catch (error) {
     console.error('[pullDataFromCloud] error:', _safeErr(error));
     if (!silent) showToast('Restore failed. Using local data.', 'error');
-
     queueMicrotask(() => {
       if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {});
     });
@@ -3786,17 +3502,14 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     _flushSyncLockQueue().catch(() => {});
   }
 }
-
 export async function showSyncHealthPanel() {
   try {
     const results = await verifyDeltaSyncSystem();
     const lastSync = (await sqliteStore.get('last_synced', null)) || 'Unknown';
     const pending = results.issues.length;
     const ok = results.valid.length;
-
     const existing = document.getElementById('sync-health-panel');
     if (existing) existing.remove();
-
     const panel = document.createElement('div');
     panel.id = 'sync-health-panel';
     panel.setAttribute('role', 'dialog');
@@ -3831,11 +3544,9 @@ export async function showSyncHealthPanel() {
     document.body.appendChild(panel);
   } catch (e) { console.warn('[SyncHealth]', _safeErr(e)); }
 }
-
 window.showSyncHealthPanel = showSyncHealthPanel;
 export let seamlessBackupTimer = null;
 export const SEAMLESS_DELAY_MS = 5000;
-
 export async function triggerSeamlessBackup() {
 if (seamlessBackupTimer) {
 clearTimeout(seamlessBackupTimer);
@@ -3848,16 +3559,13 @@ await pushDataToCloud(true);
 } catch (e) { console.warn('[Backup] Seamless backup error:', _safeErr(e)); }
 }, SEAMLESS_DELAY_MS);
 }
-
 export function stopDatabaseHeartbeat() {
 if (window.deviceHeartbeatInterval) {
 clearInterval(window.deviceHeartbeatInterval);
 window.deviceHeartbeatInterval = null;
 }
 }
-
 export const AUTO_BACKUP_INTERVAL = 900000;
-
 export async function scheduleAutoBackup() {
 clearAutoBackup();
 if (!currentUser) return;
@@ -3871,14 +3579,12 @@ await performOneClickSync(true);
 } catch (e) { console.warn('[AutoBackup]', _safeErr(e)); }
 }, AUTO_BACKUP_INTERVAL);
 }
-
 export function clearAutoBackup() {
 if (autoSaveTimer) {
 clearInterval(autoSaveTimer);
 autoSaveTimer = null;
 }
 }
-
 export async function wakeUpDatabaseAndSync() {
   showToast('Connecting to cloud...', 'info');
   if (!firebaseDB || !currentUser) {
@@ -3891,7 +3597,6 @@ export async function wakeUpDatabaseAndSync() {
   }
   await pullDataFromCloud(false);
 }
-
 export async function triggerCloudAction(action) {
 if (!firebaseDB) {
 showToast("Cloud system not initialized. Check internet.", "error");
@@ -3919,7 +3624,6 @@ await pullDataFromCloud(false);
 }
 }
 }
-
 export async function createAuthOverlay() {
 const existing = document.getElementById('auth-overlay');
 if (existing) existing.remove();
@@ -3978,11 +3682,9 @@ ${_showGoogle ? `<div class="auth-divider"><span>or</span></div>
 </div>
 </div>`;
 document.body.appendChild(overlay);
-
 _initGSIInOverlay();
 const form = document.getElementById('auth-form');
 if(form) form.addEventListener('submit', handleSignIn);
-
 try {
   const email = await OfflineAuth.getSavedEmail();
   const emailInput = document.getElementById('auth-email');
@@ -3993,14 +3695,12 @@ try {
   }
 } catch (_e) {}
 }
-
 export function showAuthOverlay() {
 const existing = document.getElementById('auth-overlay');
 if (existing) existing.remove();
 createAuthOverlay();
 document.body.style.overflow = 'hidden';
 }
-
 export function hideAuthOverlay() {
 const overlay = document.getElementById('auth-overlay');
 if (overlay) {
@@ -4011,7 +3711,6 @@ setTimeout(() => {
 }
 document.body.style.overflow = '';
 }
-
 export const LoginRateLimiter = (() => {
 const KEY_ATTEMPTS = '_gznd_login_attempts';
 const KEY_LOCKOUT  = '_gznd_login_lockout';
@@ -4021,15 +3720,12 @@ const BACKOFF_BASE = 1000;
 function getAttempts() {
 try { return parseInt(sessionStorage.getItem(KEY_ATTEMPTS) || '0', 10); } catch(e) { return 0; }
 }
-
 function setAttempts(n) {
 try { sessionStorage.setItem(KEY_ATTEMPTS, String(n)); } catch(e) {}
 }
-
 function getLockoutUntil() {
 try { return parseInt(sessionStorage.getItem(KEY_LOCKOUT) || '0', 10); } catch(e) { return 0; }
 }
-
 function setLockoutUntil(ts) {
 try { sessionStorage.setItem(KEY_LOCKOUT, String(ts)); } catch(e) {}
 }
@@ -4056,9 +3752,7 @@ try { sessionStorage.removeItem(KEY_ATTEMPTS); sessionStorage.removeItem(KEY_LOC
 },
 };
 })();
-
 export const GOOGLE_CLIENT_ID = window._GOOGLE_CLIENT_ID || '';
-
 export async function _checkUserApproved(uid, email) {
 if (!navigator.onLine) return { denied: false };
 try {
@@ -4082,7 +3776,6 @@ return { denied: true, reason: 'Access denied. You do not have permission to use
 return { denied: false };
 }
 }
-
 export async function _applyGoogleUser(user) {
 const check = await _checkUserApproved(user.uid, user.email);
 if (check.denied) {
@@ -4123,19 +3816,15 @@ await userRef.set({ authProviders: providers, lastLoginAt: Date.now() }, { merge
 }
 await _linkPasswordAfterGoogleSignIn(user);
 try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) { console.warn('Post-Google-login data load failed:', _safeErr(e)); }
-
 hideAuthOverlay();
 setTimeout(() => {
 if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {});
 if (typeof performOneClickSync === 'function') performOneClickSync();
 }, 300);
 }
-
 export async function _checkGoogleRedirectResult() {}
-
 export let _pendingLinkEmail    = null;
 export let _pendingLinkPassword = null;
-
 export async function _linkPasswordAfterGoogleSignIn(user) {
 if (!_pendingLinkEmail || !_pendingLinkPassword) return;
 if (_pendingLinkEmail.toLowerCase() !== (user.email || '').toLowerCase()) {
@@ -4162,16 +3851,13 @@ console.warn('Password link failed (non-critical):', _safeErr(e));
 }
 }
 }
-
 export async function _onGoogleCredential(response) {
 const messageDiv = document.getElementById('auth-message');
 if (!response || !response.credential) {
 if (messageDiv) { messageDiv.textContent = 'Google sign-in cancelled.'; messageDiv.style.color = 'var(--danger)'; }
 return;
 }
-
 if (messageDiv) { messageDiv.textContent = 'Signing in…'; messageDiv.style.color = 'var(--accent)'; }
-
 const container = document.getElementById('gsi-btn-container');
 if (container) container.style.pointerEvents = 'none';
 try {
@@ -4215,11 +3901,8 @@ const btn = document.getElementById('auth-google-btn');
 if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
 }
 }
-
 window._onGoogleCredential = _onGoogleCredential;
-
 export let _gsiInitialized = false;
-
 export function _initGSIInOverlay() {
 if (_gsiInitialized) return;
 if (!document.getElementById('gsi-btn-container')) return;
@@ -4238,7 +3921,6 @@ itp_support:           true,
 });
 _gsiInitialized = true;
 }
-
 export function _handleGoogleBtnClick() {
 const btn = document.getElementById('auth-google-btn');
 const msg = document.getElementById('auth-message');
@@ -4248,7 +3930,6 @@ return;
 }
 if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
 if (msg) { msg.textContent = ''; }
-
 function doPrompt() {
 if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
   setTimeout(doPrompt, 300);
@@ -4271,9 +3952,7 @@ google.accounts.id.prompt(notification => {
 }
 doPrompt();
 }
-
 window._handleGoogleBtnClick = _handleGoogleBtnClick;
-
 export async function handleSignIn(e) {
 if(e) e.preventDefault();
 const emailInput = document.getElementById('auth-email');
@@ -4386,7 +4065,6 @@ try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem(
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = ' Offline Login Successful';
 messageDiv.style.color = 'var(--accent-emerald)';
-
 if (typeof initDeviceShard === 'function') {
   await initDeviceShard().catch(() => {});
 }
@@ -4447,7 +4125,6 @@ messageDiv.textContent = errorMessage;
 messageDiv.style.color = 'var(--danger)';
 }
 }
-
 export async function _isAdminUser() {
 if (!currentUser || !firebaseDB) return false;
 try {
@@ -4455,25 +4132,20 @@ const snap = await firebaseDB.collection('users').doc(currentUser.uid).get();
 return snap.exists && snap.data().role === 'admin';
 } catch(_) { return false; }
 }
-
 export function _accountsIndexRef() {
 return firebaseDB.collection('users').doc(currentUser.uid)
   .collection('settings').doc('accounts_index');
 }
-
 export async function _readAccountsIndex() {
 const snap = await _accountsIndexRef().get();
 if (!snap.exists) return [];
 const data = snap.data() || {};
 return Array.isArray(data.accounts) ? data.accounts : [];
 }
-
 export async function _writeAccountsIndex(accounts) {
 await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: false });
 }
-
 export let _newAccountRole = 'user';
-
 export function setNewAccountRole(role) {
 _newAccountRole = role;
 const userBtn  = document.getElementById('acct-role-user');
@@ -4481,7 +4153,6 @@ const adminBtn = document.getElementById('acct-role-admin');
 if (userBtn)  userBtn.classList.toggle('active',  role === 'user');
 if (adminBtn) adminBtn.classList.toggle('active', role === 'admin');
 }
-
 export async function adminAddAccount() {
 const emailEl = document.getElementById('acct-new-email');
 const passEl  = document.getElementById('acct-new-password');
@@ -4529,7 +4200,6 @@ console.error('adminAddAccount error:', _safeErr(err));
 if (btn) { btn.disabled = false; btn.textContent = 'Add Account'; }
 }
 }
-
 export async function loadAccountsList() {
 const listEl = document.getElementById('manage-accounts-list');
 if (!listEl) return;
@@ -4578,7 +4248,6 @@ listEl.innerHTML = '<div style="color:var(--danger);font-size:0.8rem;text-align:
 console.error('loadAccountsList:', _safeErr(err));
 }
 }
-
 export async function adminToggleApproval(uid, email, currentlyApproved) {
 const confirmed = await showGlassConfirm(
 (currentlyApproved ? 'Suspend' : 'Reinstate') + ' the account for ' + email + '?' +
@@ -4604,7 +4273,6 @@ showToast('Failed to update account.', 'error');
 console.error('adminToggleApproval:', _safeErr(err));
 }
 }
-
 export async function adminRemoveAccount(uid, email) {
 if (uid === currentUser.uid) { showToast('You cannot remove your own account.', 'warning'); return; }
 const confirmed = await showGlassConfirm(
@@ -4624,10 +4292,8 @@ showToast('Failed to remove account.', 'error');
 console.error('adminRemoveAccount:', _safeErr(err));
 }
 }
-
 export async function signOut() {
 try {
-
 let _savedAppMode = null;
 try {
   const _modeKeys = [
@@ -4641,7 +4307,6 @@ try {
     .filter(([, v]) => v != null && v !== undefined);
   if (_modeEntries.length) _savedAppMode = _modeEntries;
 } catch(_) {}
-
 stopDatabaseHeartbeat();
 clearAutoBackup();
 if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry();
@@ -4670,9 +4335,7 @@ keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
 sessionStorage.clear();
 } catch(e) {}
 try {
-
 await sqliteStore.clearAll().catch(() => {});
-
 try {
   if (navigator.storage && navigator.storage.getDirectory) {
     const root = await navigator.storage.getDirectory();
@@ -4684,7 +4347,6 @@ try {
     for (const f of opfsFiles) { await root.removeEntry(f).catch(() => {}); }
   }
 } catch(_) {}
-
 try {
   const lsCleanup = [
     '_gznd_sqlite_db', '_gznd_sqlite_db_bak',
@@ -4697,11 +4359,9 @@ try {
 sqliteStore.clearUserPrefix();
 DeltaSync.clearAllTimestamps().catch(() => {});
 if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
-
 if (typeof _clearDeviceIdStorage === 'function') {
   await _clearDeviceIdStorage().catch(() => {});
 }
-
 if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }
@@ -4719,9 +4379,7 @@ keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
 sessionStorage.clear();
 } catch(e) {}
 try {
-
 await sqliteStore.clearAll().catch(() => {});
-
 try {
   if (navigator.storage && navigator.storage.getDirectory) {
     const root = await navigator.storage.getDirectory();
@@ -4733,7 +4391,6 @@ try {
     for (const f of opfsFiles) { await root.removeEntry(f).catch(() => {}); }
   }
 } catch(_) {}
-
 try {
   const lsCleanup = [
     '_gznd_sqlite_db', '_gznd_sqlite_db_bak',
@@ -4746,11 +4403,9 @@ try {
 sqliteStore.clearUserPrefix();
 DeltaSync.clearAllTimestamps().catch(() => {});
 if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
-
 if (typeof _clearDeviceIdStorage === 'function') {
   await _clearDeviceIdStorage().catch(() => {});
 }
-
 if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }
@@ -4765,7 +4420,6 @@ showAuthOverlay();
 showToast(' Error signing out', 'danger');
 }
 }
-
 export function updateSyncButton() {
 const syncBtn = document.getElementById('sync-btn');
 if (!syncBtn) return;
@@ -4789,9 +4443,7 @@ syncBtn.style.setProperty('background-color', '#2563eb', 'important');
 syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, #2563eb 0%, #059669 100%)', 'important');
 syncBtn.style.color = '#fff';
 }
-
 }
-
 window.saveWithTracking = saveWithTracking;
 window.SQLiteToFirestoreMap = SQLiteToFirestoreMap;
 window.FirestoreToSQLiteMap = FirestoreToSQLiteMap;

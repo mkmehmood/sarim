@@ -1,19 +1,16 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-
 import {
   RECORD_STORES, AUX_STATE, SQLITE_TO_FIRESTORE, FIRESTORE_TO_SQLITE,
   normaliseBackupFields, collectAuxBackupFields, applyAuxBackupFields,
   mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories,
 } from '../modules/data-keys.js';
-
 const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 const sync = read('sync.js');
 const sales = read('utilities-sales.js');
 const payments = read('utilities-payments.js');
 const admin = read('admin-data.js');
-
 function fnBody(src, name) {
   const start = src.indexOf(`function ${name}(`);
   assert.ok(start >= 0, `${name} not found`);
@@ -25,19 +22,16 @@ function fnBody(src, name) {
   }
   throw new Error('unbalanced ' + name);
 }
-
 function objectLiteral(src, name) {
   const start = src.indexOf(`export const ${name} = {`);
   assert.ok(start >= 0, `${name} not found`);
   const end = src.indexOf('\n};', start);
   return src.slice(start, end);
 }
-
 function memStore(init = {}) {
   const m = new Map(Object.entries(init));
   return { async get(k) { return m.has(k) ? m.get(k) : undefined; }, async set(k, v) { m.set(k, v); }, _m: m };
 }
-
 describe('registry matches the maps the cloud sync really uses', () => {
   it('SQLiteToFirestoreMap in sync.js equals the registry', () => {
     const lit = objectLiteral(sync, 'SQLiteToFirestoreMap');
@@ -56,7 +50,6 @@ describe('registry matches the maps the cloud sync really uses', () => {
     }
   });
 });
-
 describe('every backup writer carries every record store and every aux key', () => {
   const writers = {
     unifiedBackup: fnBody(sales, 'unifiedBackup'),
@@ -80,7 +73,6 @@ describe('every backup writer carries every record store and every aux key', () 
     assert.ok(yc.includes("applyAuxBackupFields(data, sqliteStore, settingsTimestamp, 'replace')"));
   });
 });
-
 describe('cloud sync uses the same keys the app reads', () => {
   it('every write of current_rep_profile also writes repProfile', () => {
     const lines = sync.split('\n');
@@ -102,7 +94,6 @@ describe('cloud sync uses the same keys the app reads', () => {
     assert.ok(stamps >= 3, `expected stamps next to category writes, found ${stamps} (writes: ${sets})`);
   });
 });
-
 describe('backup field normalisation', () => {
   it('keeps the legacy mfg/sales twins', () => {
     const d = normaliseBackupFields({ mfg: [1], sales: [2] });
@@ -119,7 +110,6 @@ describe('backup field normalisation', () => {
     assert.deepEqual(d.expenseCategories, ['A']);
   });
 });
-
 describe('aux state round trip: backup -> restore into a fresh device', () => {
   const source = () => memStore({
     expense_categories: ['Fuel', 'Tea'],
@@ -166,7 +156,6 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
     assert.deepEqual(dev._m.get('expense_categories'), ['Rent']);
   });
 });
-
 describe('merge helpers and cloud category resolution', () => {
   it('mergeStringLists trims, drops blanks and duplicates, keeps order', () => {
     assert.deepEqual(mergeStringLists(['a', ' b '], ['b', '', 'c', 7]), ['a', 'b', 'c']);

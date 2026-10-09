@@ -55,23 +55,20 @@
 <title>GULL AND ZUBAIR NASWAR DEALERS</title>
 <meta name="description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits.">
 <meta property="og:title" content="Gull and Zubair Naswar Dealers">
-<meta property="og:description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits.">
-
-<script>(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#ffffff":"#000000");try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();</script>
-<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/cinzel-latin-wght-normal.woff2">
+<meta property="og:description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits."><script>
+(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#ffffff":"#000000");try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();
+</script><link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/cinzel-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/playfair-display-latin-wght-italic.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/plus-jakarta-sans-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/playfair-display-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/manrope-latin-wght-normal.woff2">
-<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/jetbrains-mono-latin-wght-normal.woff2">
-<style id="splash-critical">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/jetbrains-mono-latin-wght-normal.woff2"><style id="splash-critical">
 @font-face { font-family: 'Playfair Display'; font-style: normal; font-weight: 400 900; font-display: swap; src: url('fonts/playfair-display-latin-wght-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Playfair Display'; font-style: italic; font-weight: 400 900; font-display: swap; src: url('fonts/playfair-display-latin-wght-italic.woff2') format('woff2'); }
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap; src: url('fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 400 900; font-display: swap; src: url('fonts/cinzel-latin-wght-normal.woff2') format('woff2'); }
 html{background:#0F172A}
 html[data-theme="light"]{background:#EEF1F4}
-
 #splash-screen {
 --sp-ui: 'Plus Jakarta Sans', 'Noto Nastaliq Urdu', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 --sp-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
@@ -101,11 +98,9 @@ font-family: var(--sp-ui);
 background: var(--sp-bg);
 transition: opacity 0.55s ease;
 }
-
 #splash-screen > * { visibility: hidden; }
 #splash-screen.splash-ready > * { visibility: visible; }
 #splash-screen.splash-out:not(.splash-locked) { opacity: 0; pointer-events: none; }
-
 [data-theme="light"] #splash-screen {
 --sp-ink: #059669;
 --sp-text: #1E293B;
@@ -116,7 +111,6 @@ transition: opacity 0.55s ease;
 --sp-solid: #EEF1F4;
 --sp-bg: linear-gradient(160deg, #EEF1F4 0%, #F1F4F7 50%, #E6EBF0 100%);
 }
-
 .splash-glow {
 position: absolute;
 left: 50%;
@@ -129,34 +123,28 @@ pointer-events: none;
 filter: blur(30px);
 background: radial-gradient(circle at 50% 42%, var(--sp-g1) 0%, var(--sp-g2) 38%, transparent 68%);
 }
-
 .splash-dial {
 position: relative;
 width: min(352px, 92vw);
 aspect-ratio: 300 / 160;
 flex: none;
 }
-
 .splash-dial svg {
 width: 100%;
 height: 100%;
 display: block;
 overflow: visible;
 }
-
 .splash-arc-track { fill: none; stroke: var(--sp-track); stroke-width: 1.4; stroke-dasharray: 0.45 1.35; }
-
 .splash-arc-fill {
 fill: none;
 stroke: var(--sp-ink);
 stroke-width: 3;
 stroke-linecap: round;
 }
-
 .splash-dot-in { transform-box: fill-box; transform-origin: center; }
 .splash-tick { stroke: var(--sp-track); stroke-linecap: round; }
 .splash-dial-label { font-size: 7.5px; font-weight: 700; letter-spacing: 1.5px; fill: var(--sp-muted); font-family: var(--sp-ui); text-anchor: middle; }
-
 .splash-dial-in {
 position: absolute;
 left: 0;
@@ -164,7 +152,6 @@ right: 0;
 bottom: 2px;
 text-align: center;
 }
-
 .splash-greet {
 font-size: 0.64rem;
 font-weight: 700;
@@ -172,7 +159,6 @@ letter-spacing: 0.26em;
 text-transform: uppercase;
 color: var(--sp-ink);
 }
-
 .splash-clock {
 margin-top: 4px;
 font-family: var(--sp-brand);
@@ -182,7 +168,6 @@ line-height: 1.05;
 letter-spacing: 0.02em;
 color: var(--sp-strong);
 }
-
 .splash-clock small {
 margin-left: 6px;
 font-size: 0.9rem;
@@ -190,7 +175,6 @@ font-weight: 600;
 letter-spacing: 0.14em;
 color: var(--sp-muted);
 }
-
 .splash-date {
 margin-top: 6px;
 font-size: 0.7rem;
@@ -199,13 +183,11 @@ letter-spacing: 0.16em;
 text-transform: uppercase;
 color: var(--sp-muted);
 }
-
 .splash-brand {
 margin-top: 46px;
 text-align: center;
 position: relative;
 }
-
 .splash-brand b {
 display: block;
 font-family: var(--sp-brand);
@@ -215,7 +197,6 @@ letter-spacing: 0.1em;
 text-transform: uppercase;
 color: var(--sp-strong);
 }
-
 .splash-brand span {
 display: block;
 margin-top: 8px;
@@ -225,7 +206,6 @@ letter-spacing: 0.34em;
 text-transform: uppercase;
 color: var(--sp-ink);
 }
-
 .splash-rule {
 position: relative;
 flex: none;
@@ -234,7 +214,6 @@ height: 1px;
 margin: 24px 0 22px;
 background: linear-gradient(to right, transparent, var(--sp-track), transparent);
 }
-
 .splash-rule::after {
 content: '';
 position: absolute;
@@ -247,7 +226,6 @@ background: var(--sp-ink);
 transform: translate(-50%, -50%);
 box-shadow: 0 0 0 5px var(--sp-soft);
 }
-
 .splash-quote {
 position: relative;
 max-width: 320px;
@@ -260,7 +238,6 @@ text-align: center;
 text-wrap: balance;
 color: var(--sp-text);
 }
-
 .splash-author {
 position: relative;
 margin-top: 12px;
@@ -271,7 +248,6 @@ text-transform: uppercase;
 text-align: center;
 color: var(--sp-muted);
 }
-
 .splash-foot {
 position: absolute;
 left: 0;
@@ -287,7 +263,6 @@ letter-spacing: 0.24em;
 text-transform: uppercase;
 color: var(--sp-muted);
 }
-
 .splash-foot i {
 width: 6px;
 height: 6px;
@@ -296,24 +271,19 @@ background: var(--sp-ink);
 box-shadow: 0 0 0 4px var(--sp-soft);
 animation: splashBlink 1.4s ease-in-out infinite !important;
 }
-
 @keyframes splashBlink {
 0%, 100% { opacity: 1; }
 50% { opacity: 0.35; }
 }
-
 #splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
-
 html[data-bio="1"] #splash-screen {
 --sp-sheet: clamp(300px, 44vh, 420px);
 justify-content: center;
 padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px var(--sp-sheet);
 }
-
 @supports (height: 100dvh) {
 html[data-bio="1"] #splash-screen { --sp-sheet: clamp(300px, 44dvh, 420px); }
 }
-
 html[data-bio="1"] .splash-glow { top: 40px; width: 420px; height: 420px; margin-left: -210px; }
 html[data-bio="1"] .splash-dial { width: min(250px, 66vw); }
 html[data-bio="1"] .splash-clock { font-size: 2.35rem; margin-top: 2px; }
@@ -327,121 +297,88 @@ html[data-bio="1"] .splash-rule { margin: 14px 0; }
 html[data-bio="1"] .splash-quote { max-width: 290px; font-size: 0.98rem; line-height: 1.45; }
 html[data-bio="1"] .splash-author { margin-top: 8px; font-size: 0.62rem; }
 html[data-bio="1"] .splash-foot { display: none; }
-
 @media (max-height: 700px) {
 html[data-bio="1"] .splash-rule,
 html[data-bio="1"] .splash-quote,
 html[data-bio="1"] .splash-author { display: none; }
 }
-
 @media (max-height: 560px) {
 html[data-bio="1"] .splash-brand { display: none; }
 }
-
 #splash-screen.splash-locked {
   animation: none !important;
   opacity: 1 !important;
   display: flex !important;
   pointer-events: auto !important;
 }
-</style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" media="print" onload="this.media='all'">
-
+</style><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="app.css">
-<link rel="modulepreload" href="modules/main.js">
-<script>
+<link rel="modulepreload" href="modules/main.js"><script>
 (function() {
-
   var _FIREBASE_NOISE = ['DOMException', 'Failed to fetch', 'WebChannelConnection', 'QUIC_PROTOCOL_ERROR'];
   function _containsDOMException(args) {
     for (var i = 0; i < args.length; i++) {
       var a = args[i];
-
       if (a instanceof DOMException) return true;
-
       if (typeof a === 'string') {
         for (var j = 0; j < _FIREBASE_NOISE.length; j++) {
           if (a.indexOf(_FIREBASE_NOISE[j]) !== -1) return true;
         }
       }
-
       if (a instanceof Error && a.message && a.message.indexOf('[DOMException]') === 0) return true;
     }
     return false;
   }
   function _applyConsolePatch() {
-
     var _methods = ['error', 'warn'];
     _methods.forEach(function(method) {
       var _orig = console[method].bind(console);
       console[method] = function() {
         var args = Array.from(arguments);
-
         if (_containsDOMException(args)) return;
         _orig.apply(console, args);
       };
     });
   }
-
   _applyConsolePatch();
-
   window._reapplyConsolePatch = _applyConsolePatch;
-
   window.addEventListener('unhandledrejection', function(event) {
     var reason = event.reason;
-
     if (!reason) { event.preventDefault(); return; }
-
     if (reason instanceof DOMException) { event.preventDefault(); return; }
-
     if (reason instanceof Error) {
       var msg = reason.message || '';
       if (msg.indexOf('[DOMException]') === 0 || msg.indexOf('DOMException') !== -1) {
         event.preventDefault(); return;
       }
     }
-
     if (typeof reason === 'string' && reason.indexOf('DOMException') !== -1) {
       event.preventDefault(); return;
     }
   });
-
   window.onerror = function(msg, src, line, col, error) {
-
     if (error instanceof DOMException) return true;
-
     if (error instanceof Error && error.message && error.message.indexOf('DOMException') !== -1) return true;
-
     if (typeof msg === 'string' && msg.indexOf('DOMException') !== -1) return true;
     return false;
   };
 })();
-</script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script>
-<script>
+</script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script><script>
 (function() {
   if (typeof window._reapplyConsolePatch === 'function') window._reapplyConsolePatch();
   if (typeof firebase === 'undefined') return;
-
   if (typeof firebase.setLogLevel === 'function') firebase.setLogLevel('silent');
-
   if (firebase.firestore && typeof firebase.firestore.setLogLevel === 'function') {
     firebase.firestore.setLogLevel('silent');
   }
-
   try {
     firebase.firestore().settings({ experimentalForceLongPolling: true, merge: true });
   } catch (_e) {  }
 })();
-</script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script>
-<script>
+</script><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous" defer></script><script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
 window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){existing.style.display=existing.style.display==='none'?'block':'none';return;}var pop=document.createElement('div');pop.id=popId;pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:140px;padding:6px 0;';items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);white-space:nowrap;';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);pop.style.display='none';};pop.appendChild(d);});anchor.style.position='relative';anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)pop.style.display='none';}},true);};
-
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
   if (sessionStorage.getItem('_swJustUpdated')) { sessionStorage.removeItem('_swJustUpdated'); return; }
@@ -468,13 +405,11 @@ function _showUpdateDialog(reg) {
     if (waiting) {
       waiting.postMessage({ type: 'SKIP_WAITING' });
     } else {
-
       sessionStorage.setItem('_swJustUpdated', '1');
       window.location.reload();
     }
   });
 }
-
 window._onShowGlassConfirmReady = function() {
   if (window._swPendingReg) {
     var r = window._swPendingReg;
@@ -482,7 +417,6 @@ window._onShowGlassConfirmReady = function() {
     _showUpdateDialog(r);
   }
 };
-
 if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform())) {
   window.addEventListener('load', function() {
     try {
@@ -492,11 +426,9 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
       }
     } catch (e) {}
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
-
       if (reg.waiting) {
         _showUpdateDialog(reg);
       }
-
       reg.addEventListener('updatefound', function() {
         var sw = reg.installing;
         if (!sw) return;
@@ -506,7 +438,6 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
           }
         });
       });
-
       var _reloading = false;
       navigator.serviceWorker.addEventListener('controllerchange', function() {
         if (_reloading) return;
@@ -514,9 +445,7 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
         _reloading = true;
         window.location.reload();
       });
-
       setInterval(function() { reg.update(); }, 30 * 60 * 1000);
-
     }).catch(function(e) {
       var msg = (e && e.message) || String(e) || '';
       if (msg.indexOf('redirect') !== -1 || msg.indexOf('disallowed') !== -1) {
@@ -527,10 +456,7 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
     });
   });
 }
-</script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
-<style>
+</script><script src="https://accounts.google.com/gsi/client" async defer></script><style>
 #sidebar-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.55);
@@ -540,9 +466,7 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   -webkit-backdrop-filter: blur(6px);
   transition: opacity 0.3s ease;
 }
-
 #sidebar-backdrop.open { display: block; }
-
 #app-sidebar {
   position: fixed;
   top: 0; left: 0; bottom: 0;
@@ -557,21 +481,17 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   overflow: hidden;
   padding-top: env(safe-area-inset-top);
 }
-
 #app-sidebar.open { transform: translateX(0); }
-
 .sidebar-topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
-
 .sidebar-brand {
   font-size: 0.72rem; font-weight: 800; color: var(--accent);
   text-transform: uppercase; letter-spacing: 0.08em;
 }
-
 .sidebar-scroll {
   flex: 1; overflow-y: auto; padding: 10px 10px 24px;
   -webkit-overflow-scrolling: touch;
@@ -579,13 +499,11 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   touch-action: pan-y;
   will-change: scroll-position;
 }
-
 .sidebar-section-label {
   font-size: 0.58rem; font-weight: 800; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.1em;
   padding: 12px 6px 6px;
 }
-
 .sidebar-nav-btn, .sidebar-settings-btn {
   width: 100%; display: flex; align-items: center; gap: 12px;
   padding: 11px 12px; border: none;
@@ -595,26 +513,20 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   text-transform: uppercase; letter-spacing: 0.05em;
   text-align: left; transition: background 0.15s, color 0.15s;
 }
-
 .sidebar-nav-btn:hover, .sidebar-settings-btn:hover {
   background: var(--glass-raised); color: var(--text-main);
 }
-
 .sidebar-nav-btn.active {
   background: rgba(29,233,182,0.12); color: var(--accent);
 }
-
 .sidebar-nav-btn svg, .sidebar-settings-btn svg {
   width: 16px; height: 16px; flex-shrink: 0; opacity: 1;
   color: inherit;
 }
-
 .sidebar-nav-btn.active svg { opacity: 1; }
-
 .sidebar-divider {
   height: 1px; background: var(--glass-border); margin: 6px 0;
 }
-
 .sidebar-hamburger {
   width: 36px; height: 36px; border: none;
   background: transparent;
@@ -623,34 +535,28 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   justify-content: center; gap: 5px; padding: 0;
   transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), filter 0.22s;
 }
-
 .sidebar-hamburger:hover {
   transform: scale(1.15);
   filter: drop-shadow(0 0 7px var(--accent));
 }
-
 .sidebar-hamburger:active { transform: scale(0.94); }
-
 .sidebar-hamburger span {
   display: block; border-radius: 9999px;
   background: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.55));
   transition: width 0.22s cubic-bezier(0.34,1.56,0.64,1);
 }
-
 .sidebar-hamburger span:nth-child(1) { width: 22px; height: 2px; }
 .sidebar-hamburger span:nth-child(2) { width: 14px; height: 2px; }
 .sidebar-hamburger span:nth-child(3) { width: 18px; height: 2px; }
 .sidebar-hamburger:hover span:nth-child(1) { width: 22px; }
 .sidebar-hamburger:hover span:nth-child(2) { width: 22px; }
 .sidebar-hamburger:hover span:nth-child(3) { width: 22px; }
-
 .standalone-screen {
   position: fixed; inset: 0;
   z-index: var(--z-screen, 10200);
   background: var(--bg-gradient, #121212);
   display: flex; flex-direction: column; overflow: hidden;
 }
-
 .screen-topbar {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px;
@@ -659,15 +565,12 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0; min-height: 52px;
 }
-
 .screen-back-btn { display: none !important; }
-
 .screen-title {
   font-size: 0.9rem; font-weight: 800; color: var(--text-main);
   margin: 0; text-transform: uppercase; letter-spacing: 0.04em;
   flex: 1;
 }
-
 .screen-body {
   flex: 1; overflow-y: auto;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
@@ -676,7 +579,6 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   touch-action: pan-y;
   will-change: scroll-position;
 }
-
 .settings-list-item {
   display: flex; align-items: center; gap: 14px;
   padding: 14px 16px; margin-bottom: 4px;
@@ -684,68 +586,54 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   border-radius: var(--radius-lg); cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-
 .settings-list-item:hover { background: var(--glass-raised); border-color: var(--accent); }
-
 .settings-list-item-icon {
   width: 36px; height: 36px; border-radius: var(--radius-base);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; font-size: 0.9rem;
 }
-
 .settings-list-item-info { flex: 1; min-width: 0; }
-
 .settings-list-item-title {
   font-size: 0.82rem; font-weight: 700; color: var(--text-main);
   margin: 0 0 2px;
 }
-
 .settings-list-item-desc {
   font-size: 0.68rem; color: var(--text-muted); margin: 0;
 }
-
 .settings-list-item-chevron {
   color: var(--text-secondary); flex-shrink: 0;
 }
-
 .settings-group-label {
   font-size: 0.62rem; font-weight: 800; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.1em;
   padding: 16px 4px 6px; margin: 0;
 }
-
 .screen-theme-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; background: var(--glass);
   border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
   margin-bottom: 4px;
 }
-
 .theme-toggle-switch {
   position: relative; width: 48px; height: 26px;
 }
-
 .theme-toggle-switch input { opacity: 0; width: 0; height: 0; }
-
 .theme-toggle-track {
   position: absolute; inset: 0; background: var(--toggle-bg);
   border-radius: var(--radius-full); cursor: pointer;
   transition: background 0.2s;
 }
-
 .theme-toggle-track::before {
   content: ''; position: absolute;
   width: 20px; height: 20px; left: 3px; bottom: 3px;
   background: var(--toggle-knob); border-radius: 50%;
   transition: transform 0.2s;
 }
-
 input:checked + .theme-toggle-track { background: var(--accent); }
 input:checked + .theme-toggle-track::before { transform: translateX(22px); }
 #calcRangeInputs { position:absolute; left:0; right:0; top:0; height:36px; opacity:0; pointer-events:none; }
 #calcRangeInputs .cdp-wrap { position:absolute; left:0; top:0; width:100%; }
-</style>
-</head>
+</style></head>
 <body>
 <div id="splash-screen">
 <div class="splash-glow"></div>
@@ -773,8 +661,7 @@ input:checked + .theme-toggle-track::before { transform: translateX(22px); }
 <div class="splash-quote" id="splash-quote"></div>
 <div class="splash-author" id="splash-author"></div>
 <div class="splash-foot"><i></i>Preparing your day</div>
-</div>
-<script>
+</div><script>
 (function(){
 var el=document.getElementById("splash-screen");
 if(!el)return;
@@ -900,8 +787,7 @@ var fl=Promise.all([document.fonts.load('600 16px "Cinzel"'),document.fonts.load
 Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,reveal);
 }else reveal();
 })();
-</script>
-<div class="liquid-bg-element liquid-1"></div>
+</script><div class="liquid-bg-element liquid-1"></div>
 <div id="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div id="app-sidebar">
   <div class="sidebar-topbar">
@@ -1017,13 +903,11 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="store-manager-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Store Manager</h2>
   </div>
   <div class="screen-body" id="store-manager-body">
-
     <div class="liquid-card" style="padding:16px;margin-bottom:16px;border:1px solid var(--glass-border);border-radius:var(--radius-lg);">
       <p class="settings-group-label" id="store-form-heading">New Store</p>
       <input type="hidden" id="store-edit-index" value="-1">
@@ -1051,10 +935,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <button class="btn" id="store-cancel-edit-btn" style="display:none;background:var(--glass-raised);color:var(--text-muted);" onclick="resetStoreForm()">Cancel</button>
       </div>
     </div>
-
     <p class="settings-group-label">Existing Stores</p>
     <div id="store-list-container"></div>
-
     <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
       <strong style="color:var(--warning);">Note:</strong> Store keys (STORE_A, STORE_B, etc.) are permanent and link to all historical records.
       Renaming a store updates its display name everywhere. Deleting is only allowed if the store has no production records.
@@ -1062,7 +944,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="backup-restore-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Backup &amp; Restore</h2>
@@ -1092,7 +973,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="recycle-bin-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Recycle Bin</h2>
@@ -1125,7 +1005,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div id="recycleBinList"></div>
   </div>
 </div>
-
 <div id="stock-transfer-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Stock Transfer</h2>
@@ -1162,17 +1041,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="stockTransferAvailability" style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px;"></div>
       <button class="btn btn-noman" id="btn-save-stock-transfer" style="width:100%;" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
     </div>
-
     <p class="settings-group-label">Transfer History</p>
     <div id="stockTransferHistoryList"></div>
-
     <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
       <strong style="color:var(--warning);">Note:</strong> A transfer is only allowed up to the stock currently available at the source store on the selected date.
       Transfers are recorded against both stores' stock history and sync to all connected devices automatically.
     </div>
   </div>
 </div>
-
 <div id="payment-transfer-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Payment Transfer</h2>
@@ -1231,17 +1107,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <button class="btn btn-noman" id="btn-save-payment-transfer" style="width:100%;" onclick="(async()=>{await saveEntityTransfer()})()">Transfer Payment</button>
     </div>
-
     <p class="settings-group-label">Transfer History</p>
     <div id="paymentTransferHistoryList"></div>
-
     <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
       <strong style="color:var(--warning);">Note:</strong> A payment transfer records an OUT transaction against the source entity and an IN transaction against the destination entity.
       Both entities' balances update immediately and sync to all connected devices automatically.
     </div>
   </div>
 </div>
-
 <div id="raw-material-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title" id="factoryInventoryModalTitle">Add Raw Material</h2>
@@ -1335,7 +1208,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="formula-store-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Formula Store</h2>
@@ -1385,7 +1257,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <button class="btn btn-danger" id="fs-delete-btn" style="width:100%;margin-top:10px;display:none;" onclick="deleteFormulaStoreEntry()">Delete Formula</button>
   </div>
 </div>
-
 <div id="sales-rep-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Sales Representatives</h2>
@@ -1406,7 +1277,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="user-roles-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">User Roles</h2>
@@ -1437,7 +1307,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="app-accounts-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">App Accounts</h2>
@@ -1468,7 +1337,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="device-display-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Connected Devices</h2>
@@ -1483,7 +1351,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-
 <div id="close-financial-year-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex-shrink:0;width:36px;height:36px;border-radius:10px;background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.25);display:flex;align-items:center;justify-content:center;">
@@ -1499,7 +1366,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
   <div class="screen-body"></div>
 </div>
-
 <div id="db-structure-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Database Structure</h2>
@@ -1515,9 +1381,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
     </div>
   </div>
-</div>
-
-<script>
+</div><script>
 window._showLogoutConfirmDialog = async function() {
   if (typeof window.showGlassConfirm !== 'function') {
     if (typeof signOut === 'function') { signOut(); return; }
@@ -1540,11 +1404,8 @@ window._showLogoutConfirmDialog = async function() {
     else { showToast('Sign out failed', 'error'); }
   }
 };
-</script>
-
-<div class="liquid-bg-element liquid-2"></div>
+</script><div class="liquid-bg-element liquid-2"></div>
 <div class="liquid-bg-element liquid-3"></div>
-
 <div id="entity-details-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex:1;min-width:0;">
@@ -1572,13 +1433,11 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
 </div>
-
 <div id="add-entity-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title" id="entityManagementModalTitle">Add Entity</h2>
   </div>
   <div class="screen-body">
-
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
         <div id="entity-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('entity')">
@@ -1620,7 +1479,6 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
 </div>
-
 <div id="expense-details-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex:1;min-width:0;">
@@ -1663,7 +1521,6 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
 </div>
-
 <div id="customer-management-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex:1;min-width:0;">
@@ -1691,13 +1548,11 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
 </div>
-
 <div id="customer-edit-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title" id="cust-edit-screen-title">Edit Customer</h2>
   </div>
   <div class="screen-body">
-
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
         <div id="cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('cust')">
@@ -1752,7 +1607,6 @@ window._showLogoutConfirmDialog = async function() {
     <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="cust-edit-save-btn" onclick="(async()=>{await saveCustomerDetails()})()">Update Details</button>
   </div>
 </div>
-
 <div id="rep-customer-management-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex:1;min-width:0;">
@@ -1780,13 +1634,11 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
 </div>
-
 <div id="rep-customer-edit-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title" id="rep-cust-edit-screen-title">Edit Rep Customer</h2>
   </div>
   <div class="screen-body">
-
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
         <div id="rep-cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('rep-cust')">
@@ -1845,12 +1697,10 @@ window._showLogoutConfirmDialog = async function() {
 </button>
 <span id="system-name-display" style="position:absolute;left:50%;transform:translateX(-50%);font-weight:800;font-size:0.85rem;color:var(--accent);white-space:nowrap;pointer-events:none;" class="shimmer-text">MAHMOOD KHAN</span>
 </div>
-
 <div id="photo-lightbox-modal" style="display:none;position:fixed;inset:0;z-index:10400;background:rgba(0,0,0,0.96);flex-direction:column;align-items:center;justify-content:center;touch-action:none;user-select:none;">
   <div id="photo-lightbox-inner" style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">
     <img id="photo-lightbox-img" src="" alt="" style="max-width:92vw;max-height:88vh;border-radius:12px;object-fit:contain;display:block;transform-origin:center center;cursor:grab;transition:none;box-shadow:0 8px 48px rgba(0,0,0,0.7);">
   </div>
-
   <div style="position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;z-index:1;pointer-events:none;">
     <div style="display:flex;align-items:center;gap:8px;pointer-events:all;">
       <button onclick="_lbZoom(-1)" title="Zoom out" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.13);border:1.5px solid rgba(255,255,255,0.22);color:#fff;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);">−</button>
@@ -1860,10 +1710,8 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <button onclick="closePhotoLightbox()" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.13);border:1.5px solid rgba(255,255,255,0.22);color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);pointer-events:all;">✕</button>
   </div>
-
   <div style="position:fixed;bottom:18px;left:0;right:0;text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.35);pointer-events:none;letter-spacing:0.05em;">PINCH OR SCROLL TO ZOOM · DOUBLE-TAP TO RESET</div>
 </div>
-
 <div id="photo-capture-modal" class="cam-modal" style="display:none;" role="dialog" aria-modal="true" aria-label="Camera">
   <div class="cam-top">
     <button type="button" class="cam-icon-btn" onclick="closePhotoCapture()" aria-label="Close camera">
@@ -1906,9 +1754,7 @@ window._showLogoutConfirmDialog = async function() {
       <span class="cam-spacer"></span>
     </div>
   </div>
-</div>
-
-<style>
+</div><style>
 .person-avatar-ring {
   width: 52px; height: 52px; border-radius: 50%;
   background: var(--input-bg);
@@ -1916,13 +1762,9 @@ window._showLogoutConfirmDialog = async function() {
   overflow: hidden; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-
 .person-avatar-ring img { width:100%; height:100%; object-fit:cover; }
 .person-avatar-ring svg { opacity: 0.35; }
-</style>
-
-<input type="file" id="restoreInput" class="hidden" accept=".json,.gznd" onchange="(async () => { await unifiedRestore(event) })()">
-
+</style><input type="file" id="restoreInput" class="hidden" accept=".json,.gznd" onchange="(async () => { await unifiedRestore(event) })()">
 <div id="tab-rep" class="hidden">
 <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
 <h1 class="shimmer-text u-heading-bold">Rep Sales</h1>
@@ -2031,7 +1873,6 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 </div>
 </div>
 </div>
-
 <div id="rep-customers-card" class="section liquid-card">
 <div class="section-header" style="position: relative; flex-wrap: nowrap; gap: 10px; align-items: center;">
 <h3 style="color:var(--text-main); margin:0; white-space: nowrap; flex-shrink: 0;">Customer List</h3>
@@ -2111,7 +1952,6 @@ Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</s
 <div id="storeSelectorToggleGroup" class="toggle-group" style="flex-wrap:wrap;"></div>
 </div>
 </div>
-
 <div class="grid-inputs">
 <div class="field">
 <label>Formula Units Used</label>
@@ -3164,23 +3004,16 @@ No records found
 <span id="network-status-dot" class="net-dot net-dot-online" aria-hidden="true"></span>
 <span id="offline-banner-msg">Offline — changes saved locally</span>
 <span id="offline-queue-badge" title="Pending uploads when back online">0 pending</span>
-</div>
-
-<script type="module" src="modules/main.js"></script>
-
-<script>
+</div><script type="module" src="modules/main.js"></script><script>
 (function() {
-
 var _navStack   = [];
 var _lastBackMs = 0;
 var _DOUBLE_BACK_MS = 2000;
-
 function _hideSidebar() {
   document.getElementById('sidebar-backdrop').classList.remove('open');
   document.getElementById('app-sidebar').classList.remove('open');
   document.body.style.overflow = '';
 }
-
 function _hideScreen(id) {
   var el = document.getElementById(id);
   if (!el) return;
@@ -3200,7 +3033,6 @@ function _hideScreen(id) {
     }
   }, ANIM_MS);
 }
-
 function _stackRemove(type, id) {
   for (var i = _navStack.length - 1; i >= 0; i--) {
     if (_navStack[i].type === type && (!id || _navStack[i].id === id)) {
@@ -3209,7 +3041,6 @@ function _stackRemove(type, id) {
     }
   }
 }
-
 function openSidebar() {
   if (typeof window.syncBiometricButton === 'function') window.syncBiometricButton();
   var mode = window.appMode || 'admin';
@@ -3218,12 +3049,10 @@ function openSidebar() {
     settingsSection.style.display = '';
     var alwaysVisibleIds = new Set(['sidebar-btn-sync','sidebar-btn-recycle','sidebar-btn-theme','sidebar-label-data','sidebar-label-appearance']);
     if (mode === 'admin') {
-
       settingsSection.querySelectorAll('.sidebar-settings-btn, .sidebar-section-label').forEach(function(el) {
         el.style.display = '';
       });
     } else {
-
       settingsSection.querySelectorAll('.sidebar-settings-btn, .sidebar-section-label').forEach(function(el) {
         el.style.display = alwaysVisibleIds.has(el.id) ? '' : 'none';
       });
@@ -3232,28 +3061,23 @@ function openSidebar() {
   document.getElementById('sidebar-backdrop').classList.add('open');
   document.getElementById('app-sidebar').classList.add('open');
   document.body.style.overflow = 'hidden';
-
   var alreadyTracked = _navStack.some(function(x){ return x.type === 'sidebar'; });
   if (!alreadyTracked) {
     _navStack.push({ type: 'sidebar' });
     history.pushState({ _pwa: 'nav' }, '');
   }
 }
-
 function closeSidebar() {
   _stackRemove('sidebar');
   _hideSidebar();
 }
-
 window.openSidebar  = openSidebar;
 window.closeSidebar = closeSidebar;
-
 function openStandaloneScreen(id) {
   var el = document.getElementById(id);
   if (!el) return;
   el.classList.remove('screen-leaving');
   el.style.display = 'flex';
-
   void el.offsetWidth;
   el.classList.add('screen-entering');
   el.addEventListener('animationend', function onEnterDone() {
@@ -3265,15 +3089,12 @@ function openStandaloneScreen(id) {
   _navStack.push({ type: 'screen', id: id });
   history.pushState({ _pwa: 'nav' }, '');
 }
-
 function closeStandaloneScreen(id, _fromPopstate) {
   _stackRemove('screen', id);
   _hideScreen(id);
 }
-
 window.addEventListener('popstate', function() {
   var top = _navStack[_navStack.length - 1];
-
   if (top) {
     _navStack.pop();
     if (top.type === 'sidebar') {
@@ -3281,29 +3102,22 @@ window.addEventListener('popstate', function() {
     } else {
       _hideScreen(top.id);
     }
-
     if (_navStack.length > 0) {
       history.pushState({ _pwa: 'nav' }, '');
     } else {
-
       history.pushState({ _pwa: 'guard' }, '');
     }
     return;
   }
-
   var now = Date.now();
   if (now - _lastBackMs < _DOUBLE_BACK_MS) {
-
     return;
   }
-
   _lastBackMs = now;
   history.pushState({ _pwa: 'guard' }, '');
 });
-
 window.openStandaloneScreen  = openStandaloneScreen;
 window.closeStandaloneScreen = closeStandaloneScreen;
-
 function sidebarNav(tab) {
   closeSidebar();
   if (typeof showTab === 'function') showTab(tab);
@@ -3312,33 +3126,27 @@ function sidebarNav(tab) {
   if (btn) btn.classList.add('active');
 }
 window.sidebarNav = sidebarNav;
-
 async function openStoreManagerScreen() {
   openStandaloneScreen('store-manager-screen');
   await renderStoreList();
   resetStoreForm();
 }
 window.openStoreManagerScreen = openStoreManagerScreen;
-
 async function renderStoreList() {
   const stores = await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]));
   const container = document.getElementById('store-list-container');
   if (!container) return;
-
   let productionData = [];
   try {
     productionData = (typeof sqliteStore !== 'undefined') ? (await sqliteStore.get('mfg_pro_pkr') || []) : [];
   } catch(e) {}
   const usedKeys = new Set(productionData.map(r => r.store).filter(Boolean));
-
   if (!stores.length) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;padding:12px 0;">No stores found.</p>';
     return;
   }
-
   const formulaNames = typeof getStoreFormulaNames === 'function' ? await getStoreFormulaNames() : {};
   const fTypeColor = { standard: 'var(--accent)', asaan: 'var(--accent-purple,#a78bfa)' };
-
   container.innerHTML = stores.map((s, i) => {
     const isUsed = usedKeys.has(s.key);
     const isBuiltin = ['STORE_A','STORE_B','STORE_C'].includes(s.key);
@@ -3369,7 +3177,6 @@ async function renderStoreList() {
   }).join('');
 }
 window.renderStoreList = renderStoreList;
-
 function resetStoreForm() {
   document.getElementById('store-edit-index').value = '-1';
   document.getElementById('store-name-input').value = '';
@@ -3381,7 +3188,6 @@ function resetStoreForm() {
   if (cancelBtn) cancelBtn.style.display = 'none';
 }
 window.resetStoreForm = resetStoreForm;
-
 async function editStore(index) {
   const stores = await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]));
   const s = stores[index];
@@ -3397,7 +3203,6 @@ async function editStore(index) {
   document.getElementById('store-name-input').focus();
 }
 window.editStore = editStore;
-
 async function deleteStore(index) {
   const stores = await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]));
   const s = stores[index];
@@ -3417,36 +3222,30 @@ async function deleteStore(index) {
   if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Store deleted', s.name, 'store-del-' + s.key).catch(function(){});
 }
 window.deleteStore = deleteStore;
-
 async function saveStoreFromForm() {
   const nameRaw = (document.getElementById('store-name-input').value || '').trim().toUpperCase();
   const formulaId = document.getElementById('store-formula-select').value || '';
   const salePriceRaw = parseFloat(document.getElementById('store-sale-price-input').value);
   const salePrice = (isNaN(salePriceRaw) || salePriceRaw < 0) ? 0 : salePriceRaw;
   const editIndex = parseInt(document.getElementById('store-edit-index').value, 10);
-
   if (!nameRaw) {
     if (typeof showToast === 'function') showToast('Store name is required', 'warning');
     return;
   }
-
   if (!formulaId) {
     if (typeof showToast === 'function') showToast('Select a formula from the Formula Store', 'warning');
     return;
   }
   const stores = (await (typeof getAppStores === 'function' ? getAppStores() : Promise.resolve([]))).map(function(st) { return Object.assign({}, st); });
   if (editIndex >= 0) {
-
     const s = stores[editIndex];
     if (!s) return;
-
     const dup = stores.findIndex((st, i) => i !== editIndex && st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     s.name = nameRaw;
     s.formulaId = formulaId;
     s.salePrice = isNaN(salePriceRaw) ? (s.salePrice > 0 ? s.salePrice : 0) : salePrice;
   } else {
-
     const existingNums = stores.map(s => {
       const m = s.key.match(/^STORE_([A-Z])$/);
       if (m) return m[1].charCodeAt(0) - 65;
@@ -3455,12 +3254,10 @@ async function saveStoreFromForm() {
     const nextNum = existingNums.length ? Math.max(...existingNums) + 1 : 0;
     if (nextNum > 25) { if (typeof showToast === 'function') showToast('Maximum 26 stores allowed', 'warning'); return; }
     const newKey = 'STORE_' + String.fromCharCode(65 + nextNum);
-
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     stores.push({ key: newKey, name: nameRaw, formulaType: 'standard', formulaId, salePrice });
   }
-
   const commitResult = await commitStoresWithFormulas(stores);
   if (!commitResult.ok) {
     if (typeof showToast === 'function') showToast(commitResult.error, 'warning', 5000);
@@ -3476,22 +3273,18 @@ async function saveStoreFromForm() {
   }
 }
 window.saveStoreFromForm = saveStoreFromForm;
-
 window.openDataMenu = function() { if(typeof performOneClickSync==='function') performOneClickSync().catch(function(e){console.error('Sync error:',(e&&e.message)||String(e)||'(unknown)')}); };
 window.closeDataMenu = function() {  };
-
 window.openRecycleBin = function() {
   openStandaloneScreen('recycle-bin-screen');
   if (typeof renderRecycleBin === 'function') renderRecycleBin('all');
 };
 window.closeRecycleBin = function() { closeStandaloneScreen('recycle-bin-screen'); };
-
 window.openEntityManagement = function() {
   prepareAddEntityScreen();
   openStandaloneScreen('add-entity-screen');
 };
 window.closeEntityManagement = function() { closeStandaloneScreen('add-entity-screen'); };
-
 window.prepareAddEntityScreen = function() {
   var titleEl = document.getElementById('entityManagementModalTitle');
   if (titleEl) titleEl.textContent = 'Add Entity';
@@ -3501,7 +3294,6 @@ window.prepareAddEntityScreen = function() {
     var el = document.getElementById(id); if (el) el.value = '';
   });
 };
-
 window.prepareRawMaterialScreen = function() {
   var titleEl = document.getElementById('factoryInventoryModalTitle');
   if (titleEl) titleEl.textContent = 'Add Raw Material';
@@ -3520,14 +3312,12 @@ window.prepareRawMaterialScreen = function() {
     costInput.addEventListener('input', updateFactoryKgCalculation);
   }
 };
-
 window._origOpenFactoryInventoryModal = window.openFactoryInventoryModal;
 window.openFactoryInventoryModal = function() {
   prepareRawMaterialScreen();
   openStandaloneScreen('raw-material-screen');
 };
 window.closeFactoryInventoryModal = function() { closeStandaloneScreen('raw-material-screen'); };
-
 window.openManageRepsModal = function() {
   openStandaloneScreen('sales-rep-screen');
   if (typeof renderManageRepsList === 'function') renderManageRepsList();
@@ -3540,7 +3330,6 @@ window.closeManageRepsModal = function() {
 window.loadManageRepsContent = function() {
   if (typeof renderManageRepsList === 'function') renderManageRepsList();
 };
-
 window.loadDbStructureScreen = async function() {
   var container = document.getElementById('delta-sync-details-container');
   if (!container) return;
@@ -3550,7 +3339,6 @@ window.loadDbStructureScreen = async function() {
     container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;font-size:0.82rem;">Requires an active Firestore connection.</div>';
     return;
   }
-
   var originalAppend = document.body.appendChild.bind(document.body);
   var capturedModal = null;
   document.body.appendChild = function(el) {
@@ -3567,11 +3355,9 @@ window.loadDbStructureScreen = async function() {
     if (capturedModal) {
       var dbvRoot = capturedModal.querySelector('#dbv-root');
       if (dbvRoot) {
-
         container.innerHTML = '';
         container.appendChild(dbvRoot);
       } else {
-
         var inner = capturedModal.firstElementChild;
         if (inner) { container.innerHTML = inner.innerHTML; }
         else { container.innerHTML = '<div style="color:var(--text-muted);padding:20px;text-align:center;">No content returned.</div>'; }
@@ -3587,32 +3373,25 @@ window.loadDbStructureScreen = async function() {
   }
   setTimeout(function() { document.body.appendChild = originalAppend; }, 2000);
 };
-
 document.addEventListener('DOMContentLoaded', function() {
   var platEl = document.getElementById('device-platform-display');
   if (platEl) platEl.textContent = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) ? 'Mobile' : 'Desktop';
   var screenEl = document.getElementById('device-screen-display');
   if (screenEl) screenEl.textContent = window.screen.width + 'x' + window.screen.height;
-
   document.querySelectorAll('.sidebar-nav-btn').forEach(function(b) { b.classList.remove('active'); });
   var firstActive = document.getElementById('snav-prod');
   if (firstActive) firstActive.classList.add('active');
-
   if (typeof rebuildStoreUI === 'function') {
-
     setTimeout(function() {
       rebuildStoreUI().catch(function(e) { console.warn('[StoreUI]', e && e.message); });
     }, 600);
   }
-
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       closeSidebar();
     }
   });
-
   history.replaceState({ _pwa: 'base' }, '');
-
   var origOpenDevice = window.openStandaloneScreen;
   window.openStandaloneScreen = function(id) {
     origOpenDevice(id);
@@ -3636,8 +3415,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 });
-
 })();
-</script>
-</body>
+</script></body>
 </html>

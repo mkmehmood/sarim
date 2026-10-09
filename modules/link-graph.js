@@ -1,5 +1,4 @@
 export const GROUP_FIELD = '_deletionGroup';
-
 export const REF_FIELDS = {
   customer_sales:       { scalar: ['relatedSaleId'], array: [] },
   rep_sales:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
@@ -7,7 +6,6 @@ export const REF_FIELDS = {
   payment_transactions: { scalar: ['expenseId', 'entityId', 'materialId'], array: ['materialIds'] },
   factory_inventory_data: { scalar: ['supplierId'], array: [] },
 };
-
 export const COLLECTION_TO_KEY = {
   sales: 'customer_sales',
   rep_sales: 'rep_sales',
@@ -23,10 +21,8 @@ export const COLLECTION_TO_KEY = {
   inventory: 'factory_inventory_data',
   factory_history: 'factory_production_history',
 };
-
 const _n = (v) => Number(v) || 0;
 const _r2 = (v) => Math.round((_n(v) + Number.EPSILON) * 100) / 100;
-
 export function resolveId(id, idMap) {
   if (!id || !idMap) return id;
   let cur = String(id);
@@ -37,7 +33,6 @@ export function resolveId(id, idMap) {
   }
   return cur;
 }
-
 export function remapReferences(stores, oldId, newId) {
   const changed = {};
   const o = String(oldId);
@@ -60,7 +55,6 @@ export function remapReferences(stores, oldId, newId) {
   }
   return changed;
 }
-
 export function resolveOwnLinks(collectionName, snapshot, idMap) {
   const key = COLLECTION_TO_KEY[collectionName];
   const spec = REF_FIELDS[key];
@@ -69,7 +63,6 @@ export function resolveOwnLinks(collectionName, snapshot, idMap) {
   for (const f of spec.array) if (Array.isArray(snapshot[f])) snapshot[f] = snapshot[f].map(x => resolveId(x, idMap));
   return snapshot;
 }
-
 export function planChildDetach(parent, child) {
   if (!parent || !child) return null;
   const paid = Math.max(0, _r2(_n(parent.partialPaymentReceived) - _n(child.totalValue)));
@@ -77,7 +70,6 @@ export function planChildDetach(parent, child) {
   if (paid === 0) { patch.creditReceived = false; patch.clearCreditReceivedDate = true; }
   return patch;
 }
-
 export function planChildReattach(parent, child) {
   if (!child || child.paymentType !== 'PARTIAL_PAYMENT' || !child.relatedSaleId) return { patch: null };
   if (!parent) return { block: 'The credit sale this payment belongs to is not in your records. Recover that sale first, then recover the payment.' };
@@ -90,7 +82,6 @@ export function planChildReattach(parent, child) {
   }
   return { patch: { partialPaymentReceived: next } };
 }
-
 export function applyPatch(rec, patch) {
   if (!rec || !patch) return rec;
   const { clearCreditReceivedDate, ...rest } = patch;
@@ -98,7 +89,6 @@ export function applyPatch(rec, patch) {
   if (clearCreditReceivedDate) { delete rec.creditReceivedDate; delete rec.creditReceivedTime; delete rec.creditReceivedManually; }
   return rec;
 }
-
 export function getEditLinkIssue(original, next, children) {
   if (!original || !next) return null;
   const kids = Array.isArray(children) ? children : [];
@@ -112,7 +102,6 @@ export function getEditLinkIssue(original, next, children) {
   }
   return null;
 }
-
 export function planExpenseCascade(tx, allTxs, expenses, excludeIds) {
   if (!tx || !tx.expenseId) return null;
   const skip = new Set([String(tx.id), ...(excludeIds ? [...excludeIds].map(String) : [])]);
@@ -120,17 +109,13 @@ export function planExpenseCascade(tx, allTxs, expenses, excludeIds) {
   if (stillUsed) return null;
   return (Array.isArray(expenses) ? expenses : []).find(e => e && String(e.id) === String(tx.expenseId)) || null;
 }
-
 export function stampGroup(rec, groupId) {
   return rec && groupId ? { ...rec, [GROUP_FIELD]: groupId } : rec;
 }
-
 export function newGroupId(prefix = 'grp') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
-
 const _COLLECTION_RANK = { sales_customers: 0, rep_customers: 0, expenses: 0, entities: 0, inventory: 0 };
-
 export function orderForRestore(tombstones) {
   const list = tombstones.slice();
   const ids = new Set(list.map(t => String(t.recordId || t.id)));
@@ -149,7 +134,6 @@ export function orderForRestore(tombstones) {
     .sort((a, b) => a.rank - b.rank)
     .map(x => x.t);
 }
-
 export function findGroupMembers(tomb, allTombstones) {
   const snap = (tomb && tomb.snapshot) || {};
   const gid = snap[GROUP_FIELD];
@@ -163,7 +147,6 @@ export function findGroupMembers(tomb, allTombstones) {
   if (!members.some(t => t === tomb)) members.push(tomb);
   return members;
 }
-
 export function expandGroups(recs, all) {
   const out = new Map();
   for (const r of recs || []) {
@@ -175,7 +158,6 @@ export function expandGroups(recs, all) {
   }
   return Array.from(out.values());
 }
-
 export function remapMaterialRefs(history, formulas, oldId, newId) {
   const o = String(oldId), nw = String(newId);
   const historyChanged = [];
@@ -196,7 +178,6 @@ export function remapMaterialRefs(history, formulas, oldId, newId) {
   }
   return { historyChanged, formulasChanged };
 }
-
 export function planMaterialDeduction(entry, inventory, formulas, formulaKey) {
   if (!entry) return { updates: [] };
   const used = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
@@ -216,7 +197,6 @@ export function planMaterialDeduction(entry, inventory, formulas, formulaKey) {
   }
   return { updates };
 }
-
 export function getStockOverdrawIssue(label, qty, availableNow) {
   const q = _n(qty);
   if (q <= 0) return null;
@@ -225,7 +205,6 @@ export function getStockOverdrawIssue(label, qty, availableNow) {
   }
   return null;
 }
-
 export function recordRename(map, kind, from, to) {
   const m = map && typeof map === 'object' ? map : {};
   const f = String(from || '').trim().toLowerCase();
@@ -234,7 +213,6 @@ export function recordRename(map, kind, from, to) {
   m[`${kind}:${f}`] = t;
   return m;
 }
-
 export function resolveRename(map, kind, name) {
   if (!map || !name) return name;
   let cur = String(name);
@@ -245,7 +223,6 @@ export function resolveRename(map, kind, name) {
   }
   return cur;
 }
-
 export function getOldDebtEditIssue(newAmount, children) {
   const paid = (Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0);
   if (paid > 0 && _n(newAmount) + 0.01 < paid) {
@@ -253,13 +230,10 @@ export function getOldDebtEditIssue(newAmount, children) {
   }
   return null;
 }
-
 export function sumChildPayments(children) {
   return _r2((Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0));
 }
-
 export const DELETE_ORIGIN_FIELD = '_deleteOrigin';
-
 export function findReturnLogFor(entry, logs) {
   if (!entry) return null;
   const cands = (Array.isArray(logs) ? logs : []).filter(l => l && !l.deletedAt &&
@@ -269,11 +243,9 @@ export function findReturnLogFor(entry, logs) {
     || cands.find(l => entry.returnedBy && l.seller === entry.returnedBy)
     || cands[0];
 }
-
 export function getReturnStockDrop(entry, log) {
   return entry && log ? _n(log.quantity) : 0;
 }
-
 export function getUnitsShortIssue(label, requested, available) {
   const r = _n(requested);
   if (r <= 0) return null;
@@ -282,21 +254,17 @@ export function getUnitsShortIssue(label, requested, available) {
   }
   return null;
 }
-
 const _txMatIds = (t) => {
   const ids = new Set();
   if (t && t.materialId) ids.add(String(t.materialId));
   if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
   return ids;
 };
-
 const _stockValueFallback = (m) => _r2(m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : _n(m.quantity) * _n(m.cost)) || 0);
-
 export function findPayableInTxs(txs, materialId, supplierId) {
   return (Array.isArray(txs) ? txs : []).filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'IN' &&
     (supplierId == null || String(t.entityId) === String(supplierId)) && _txMatIds(t).has(String(materialId)));
 }
-
 export function isOrphanSupplierTx(t, inventory) {
   if (!t || t.isPayable !== true) return false;
   const ids = _txMatIds(t);
@@ -304,17 +272,14 @@ export function isOrphanSupplierTx(t, inventory) {
   const inv = Array.isArray(inventory) ? inventory : [];
   return !inv.some(m => m && !m.deletedAt && ids.has(String(m.id)) && m.supplierId && String(m.supplierId) === String(t.entityId));
 }
-
 export function hasLiveSupplierInvoice(material, txs) {
   return !!(material && material.supplierId && findPayableInTxs(txs, material.id, material.supplierId).length > 0);
 }
-
 export function materialOriginalPayable(material, inTxs) {
   const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);
   if (direct.length) return _r2(direct.reduce((s, t) => s + _n(t.amount), 0));
   return _stockValueFallback(material || {});
 }
-
 export function allocatePayments(mats, payments, originalOf) {
   mats.forEach(m => { m.totalPayable = originalOf(m); m.paymentStatus = 'pending'; delete m.paidDate; });
   payments.forEach(pay => {
@@ -335,15 +300,12 @@ export function allocatePayments(mats, payments, originalOf) {
   });
   return mats;
 }
-
 export function planPayableAdjustment(currentInvoiced, delta) {
   const next = Math.max(0, _r2(_n(currentInvoiced) + _n(delta)));
   return { next, change: _r2(next - _n(currentInvoiced)) };
 }
-
 const _SLOTS = ['standard', 'asaan'];
 const _SLOT_LABEL = { standard: 'Standard', asaan: 'Asaan' };
-
 export function resolveSelectedFormula(data, storeKey) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
   const slots = data.slots || {};
@@ -372,20 +334,16 @@ export function resolveSelectedFormula(data, storeKey) {
   const costs = data.costs || {};
   return { source: 'feed', type, formulaId: null, name: _SLOT_LABEL[type] || 'Formula', additionalCost: _n(costs[type] != null ? costs[type] : costs[storeKey]), ingredients: (Array.isArray(feed[type] || feed[storeKey]) ? (feed[type] || feed[storeKey]) : []).map(resolve) };
 }
-
 const _SETTLE_FIELDS = ['creditReceivedDate', 'creditReceivedTime', 'creditReceivedManually'];
-
 export function isSettleableSale(rec) {
   return !!rec && (rec.paymentType === 'CREDIT' || rec.transactionType === 'OLD_DEBT');
 }
-
 export function planCreditToggle(rec, today, nowTime) {
   const next = !rec.creditReceived;
   return next
     ? { set: { creditReceived: true, creditReceivedManually: true, creditReceivedDate: today, creditReceivedTime: nowTime }, clear: [] }
     : { set: { creditReceived: false }, clear: _SETTLE_FIELDS.slice() };
 }
-
 export function planEditSettlement(original, newPaymentType) {
   if (newPaymentType === 'CASH') return { set: { creditReceived: true }, clear: _SETTLE_FIELDS.slice() };
   if (original && original.paymentType === 'CREDIT' && newPaymentType === 'CREDIT') {
@@ -395,24 +353,20 @@ export function planEditSettlement(original, newPaymentType) {
   }
   return { set: { creditReceived: false }, clear: _SETTLE_FIELDS.slice() };
 }
-
 export function applySettlement(rec, plan) {
   if (!rec || !plan) return rec;
   Object.assign(rec, plan.set);
   (plan.clear || []).forEach(f => { delete rec[f]; });
   return rec;
 }
-
 const _tid = (t) => String((t && (t.recordId || t.id)) || '');
 const _tcol = (t) => (t && (t.collection || t.recordType)) || '';
 const _lc = (v) => String(v || '').trim().toLowerCase();
-
 function _returnPairMatches(entry, log) {
   if (!entry || !log) return false;
   return entry.store === log.store && entry.date === log.date && _n(log.quantity) === _n(entry.net) &&
     ((entry.createdAt != null && log.createdAt === entry.createdAt) || (entry.returnedBy && log.seller === entry.returnedBy));
 }
-
 export function findParentTombstones(tomb, allTombs, live) {
   const all = Array.isArray(allTombs) ? allTombs : [];
   const snap = (tomb && tomb.snapshot) || {};
@@ -444,7 +398,6 @@ export function findParentTombstones(tomb, allTombs, live) {
   }
   return out;
 }
-
 export function expandRecoveryMembers(tomb, allTombs, live) {
   if (!tomb) return [];
   const seen = new Map();
@@ -459,7 +412,6 @@ export function expandRecoveryMembers(tomb, allTombs, live) {
   }
   return Array.from(seen.values());
 }
-
 export function planGroupRecovery(members, blocked, requestedId) {
   const list = (members || []).filter(Boolean);
   const byId = new Map(list.map(t => [_tid(t), t]));
@@ -500,14 +452,12 @@ export function planGroupRecovery(members, blocked, requestedId) {
   const requestedSkipped = requestedId != null && skip.has(String(requestedId)) ? skip.get(String(requestedId)) : null;
   return { restore, skipped, requestedSkipped };
 }
-
 export function getPartialPaidIssue(childTotal) {
   const c = _n(childTotal);
   return c > 0
     ? `${_r2(c)} was already collected through separate payment records on this sale. Marking it paid would count that money twice. Delete those payment records first.`
     : null;
 }
-
 export function planCalcRestore(entry, ctx) {
   const e = entry || {};
   const c = ctx || {};
@@ -522,7 +472,6 @@ export function planCalcRestore(entry, ctx) {
     (Array.isArray(h.linkedRepSalesIds) ? h.linkedRepSalesIds : []).forEach(i => claimedRep.add(String(i)));
   });
   const problems = [];
-
   const ids = Array.isArray(e.linkedSalesIds) ? e.linkedSalesIds : [];
   let missing = 0, paid = 0, other = 0;
   ids.forEach(id => {
@@ -538,7 +487,6 @@ export function planCalcRestore(entry, ctx) {
     if (other) parts.push(`${other} settled by another calculator record`);
     problems.push(`${missing + paid + other} of the ${ids.length} credit sale${ids.length !== 1 ? 's' : ''} this record settled can no longer be settled again (${parts.join(', ')})`);
   }
-
   const repIds = Array.isArray(e.linkedRepSalesIds) ? e.linkedRepSalesIds : [];
   let repBad = 0;
   repIds.forEach(id => {
@@ -546,7 +494,6 @@ export function planCalcRestore(entry, ctx) {
     if (!sale || sale.usedInCalcId || claimedRep.has(String(id))) repBad++;
   });
   if (repBad) problems.push(`${repBad} of the ${repIds.length} rep sale${repIds.length !== 1 ? 's' : ''} it used ${repBad !== 1 ? 'are' : 'is'} deleted or already used by another record`);
-
   if (_n(e.returned) > 0 && e.returnStore && Array.isArray(c.storeKeys) && !c.storeKeys.includes(e.returnStore)) {
     problems.push('the store it returned stock to no longer exists');
   }
@@ -555,7 +502,6 @@ export function planCalcRestore(entry, ctx) {
   }
   return { block: problems.length ? `This calculator record cannot be recovered because ${problems.join('; ')}. Enter the calculation again.` : null };
 }
-
 export function findPartialConflicts(sales) {
   const list = (Array.isArray(sales) ? sales : []).filter(s => s && !s.deletedAt);
   const kids = new Map();
@@ -581,12 +527,10 @@ export function findPartialConflicts(sales) {
   });
   return out;
 }
-
 export function collectionCollected(rec) {
   if (!rec) return 0;
   return rec.collectedAmount != null ? _n(rec.collectedAmount) : _n(rec.totalValue);
 }
-
 export function sortForCollection(list) {
   const day = (s) => String(s.supplyDate || s.date || '');
   return list.slice().sort((a, b) => {
@@ -596,7 +540,6 @@ export function sortForCollection(list) {
     return _n(a.timestamp) - _n(b.timestamp);
   });
 }
-
 export function planCollectionAllocation(amount, dues) {
   let left = _r2(Math.max(0, _n(amount)));
   const allocs = [];
@@ -609,7 +552,6 @@ export function planCollectionAllocation(amount, dues) {
   }
   return { allocs, leftover: _r2(Math.max(0, left)) };
 }
-
 export function applyCollectionAlloc(sale, alloc, cid, when) {
   if (!sale || !alloc) return sale;
   if (!Array.isArray(sale.collectionAllocs)) sale.collectionAllocs = [];
@@ -623,7 +565,6 @@ export function applyCollectionAlloc(sale, alloc, cid, when) {
   }
   return sale;
 }
-
 export function revertCollectionAlloc(sale, cid) {
   if (!sale || !Array.isArray(sale.collectionAllocs)) return false;
   const i = sale.collectionAllocs.findIndex(a => a && a.cid === cid);
@@ -639,12 +580,10 @@ export function revertCollectionAlloc(sale, cid) {
   if (!sale.collectionAllocs.length) delete sale.collectionAllocs;
   return true;
 }
-
 export function collectionPartialCash(sale) {
   if (!sale || sale.creditReceived || !Array.isArray(sale.collectionAllocs)) return 0;
   return _r2(sale.collectionAllocs.reduce((t, a) => t + (a && !a.full ? _n(a.amount) : 0), 0));
 }
-
 export function getCollectionRevertIssue(collection, sales) {
   const list = Array.isArray(collection && collection.allocations) ? collection.allocations : [];
   for (const a of list) {
@@ -657,7 +596,6 @@ export function getCollectionRevertIssue(collection, sales) {
   }
   return null;
 }
-
 export function getCollectionReapplyIssue(collection, sales) {
   const list = Array.isArray(collection && collection.allocations) ? collection.allocations : [];
   for (const a of list) {
@@ -667,31 +605,24 @@ export function getCollectionReapplyIssue(collection, sales) {
   }
   return null;
 }
-
 const _held = new Set();
-
 export function runExclusive(key, fn) {
   if (_held.has(key)) return Promise.resolve(undefined);
   _held.add(key);
   return Promise.resolve().then(fn).finally(() => _held.delete(key));
 }
-
 const _cashRelevant = (tx) => !!tx && !tx.isTransfer && !tx.isMerged && !(tx.isPayable && tx.type === 'IN');
-
 export function getDeleteCashDrop(tx) {
   return _cashRelevant(tx) && tx.type === 'IN' ? _n(tx.amount) : 0;
 }
-
 export function getRestoreCashNeed(tx) {
   return _cashRelevant(tx) && tx.type === 'OUT' && !tx.isPayable ? _n(tx.amount) : 0;
 }
-
 export function getCashShortIssue(need, available, what) {
   const n = _n(need);
   if (n <= 0 || _n(available) - n >= -0.0001) return null;
   return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
 }
-
 export function planEntityRename(entityId, newName, txs, materials) {
   const id = String(entityId);
   const tx = [], mat = [];
@@ -707,7 +638,6 @@ export function planEntityRename(entityId, newName, txs, materials) {
   });
   return { txIds: tx, materialIds: mat };
 }
-
 export function applyEntityRename(entityId, newName, txs, materials, plan) {
   const id = String(entityId);
   const T = new Set(plan.txIds.map(String)), M = new Set(plan.materialIds.map(String));
@@ -717,7 +647,6 @@ export function applyEntityRename(entityId, newName, txs, materials, plan) {
   } });
   (materials || []).forEach(m => { if (m && M.has(String(m.id))) m.supplierName = newName; });
 }
-
 export function sortInventoryItems(items, sort) {
 const amt = (m) => (Number(m.quantity) * Number(m.cost)) || 0;
 const dir = sort.dir === 'desc' ? -1 : 1;

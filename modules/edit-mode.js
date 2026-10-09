@@ -1,16 +1,13 @@
 import { getTimestamp } from './business.js';
-
 function _reg() {
   if (!window.__editRegistry) window.__editRegistry = { handlers: {}, keep: {} };
   return window.__editRegistry;
 }
-
 export function registerEditHandler(kind, fn, opts = {}) {
   const r = _reg();
   r.handlers[kind] = fn;
   r.keep[kind] = opts.keepScreens || [];
 }
-
 export async function startEdit(kind, id) {
   const h = _reg().handlers[kind];
   if (!h) {
@@ -27,12 +24,10 @@ export async function startEdit(kind, id) {
     if (window.showToast) window.showToast('Could not open this entry for editing.', 'error');
   }
 }
-
 export function getEditCtx(kind) {
   const c = window._editCtx;
   return c && (!kind || c.kind === kind) ? c : null;
 }
-
 export function beginEditMode(kind, original, opts = {}) {
   endEditMode();
   window._editCtx = {
@@ -70,7 +65,6 @@ export function beginEditMode(kind, original, opts = {}) {
   const anchor = (opts.anchorId && document.getElementById(opts.anchorId)) || btn;
   if (anchor && anchor.scrollIntoView) setTimeout(() => anchor.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
 }
-
 export function endEditMode() {
   const c = window._editCtx;
   const banner = document.getElementById('edit-mode-banner');
@@ -84,20 +78,17 @@ export function endEditMode() {
   }
   window._editCtx = null;
 }
-
 function _readWatched(ids) {
   const snap = {};
   (ids || []).forEach(id => { const el = document.getElementById(id); snap[id] = el ? String(el.value ?? '') : ''; });
   return snap;
 }
-
 export function isEditDirty() {
   const c = window._editCtx;
   if (!c || !c.watchIds || !c.watchIds.length) return false;
   const now = _readWatched(c.watchIds);
   return c.watchIds.some(id => (now[id] || '') !== (c.snapshot[id] || ''));
 }
-
 export async function requestCancelEdit() {
   if (isEditDirty() && typeof window.showGlassConfirm === 'function') {
     const ok = await window.showGlassConfirm(
@@ -108,7 +99,6 @@ export async function requestCancelEdit() {
   }
   cancelEdit();
 }
-
 export async function confirmEditChanges(rows, title = 'Update Entry?') {
   const changed = (rows || []).filter(r => String(r.from) !== String(r.to));
   if (changed.length === 0) {
@@ -122,7 +112,6 @@ export async function confirmEditChanges(rows, title = 'Update Entry?') {
   lines.push('The original entry will be replaced and synced.');
   return window.showGlassConfirm(lines.join('\n'), { title, confirmText: 'Update', cancelText: 'Review', tone: 'warning' });
 }
-
 export function cancelEdit() {
   const c = window._editCtx;
   endEditMode();
@@ -130,7 +119,6 @@ export function cancelEdit() {
     try { c.cancelFn(); } catch (_) {}
   }
 }
-
 export function stampEdit(rec, original) {
   rec.id = original.id;
   rec.createdAt = original.createdAt;
@@ -141,29 +129,23 @@ export function stampEdit(rec, original) {
   if (original.createdBy && !rec.createdBy) rec.createdBy = original.createdBy;
   return rec;
 }
-
 export function replaceRecord(arr, rec) {
   const i = arr.findIndex(r => r && String(r.id) === String(rec.id));
   if (i === -1) arr.push(rec);
   else arr[i] = rec;
   return i;
 }
-
 const _esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
 export function editButtonHtml(kind, id) {
   return `<button class="tbl-action-btn edit" onclick="startEdit('${_esc(kind)}','${_esc(id)}')">Edit</button>`;
 }
-
 export function actionRowHtml(kind, id, deleteHtml) {
   if (!deleteHtml) return '';
   return `<div class="tbl-action-row">${editButtonHtml(kind, id)}${deleteHtml.replace(' u-w-full u-mt-8', '')}</div>`;
 }
-
 export function markEditedBadge(rec) {
   return rec && rec.isEdited ? '<span class="edited-badge">edited</span>' : '';
 }
-
 window.startEdit = startEdit;
 window.cancelEdit = cancelEdit;
 window.requestCancelEdit = requestCancelEdit;

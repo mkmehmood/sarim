@@ -1,9 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-
 const src = readFileSync(new URL('../modules/sync.js', import.meta.url), 'utf8');
-
 function grab(name) {
   const start = src.indexOf(`function ${name}(`);
   assert.ok(start >= 0, `${name} not found in sync.js`);
@@ -15,23 +13,19 @@ function grab(name) {
   }
   throw new Error('unbalanced ' + name);
 }
-
 const { keepLocal, fillFromCloud } = new Function(
   `${grab('_keepLocalSalePrices')}\n${grab('_fillStoresFromCloud')}\nreturn { keepLocal: _keepLocalSalePrices, fillFromCloud: _fillStoresFromCloud };`
 )();
-
 const cloud = [
   { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard', formulaId: 'f1', salePrice: 520 },
   { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard', formulaId: 'f1', salePrice: 515 },
   { key: 'STORE_C', name: 'ASAAN', formulaType: 'asaan', formulaId: 'f2', salePrice: 610 },
 ];
-
 const defaults = [
   { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard' },
   { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard' },
   { key: 'STORE_C', name: 'ASAAN', formulaType: 'asaan' },
 ];
-
 describe('store sync never replaces real cloud data with defaults', () => {
   it('first upload from a device holding default stores keeps cloud prices and formulas', () => {
     const { stores, changed } = fillFromCloud(defaults, cloud);

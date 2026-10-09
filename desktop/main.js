@@ -2,21 +2,16 @@ const { app, BrowserWindow, Menu, protocol, net, session, shell, dialog } = requ
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
-
 const APP_HOST = 'mkmehmood.github.io';
 const APP_BASE = '/sarim/';
 const ROOT = path.join(__dirname, 'app');
-
 protocol.registerSchemesAsPrivileged([
   { scheme: 'https', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }
 ]);
-
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 }
-
 let win = null;
-
 function resolveLocal(urlPath) {
   let p = decodeURIComponent(urlPath);
   if (p.startsWith(APP_BASE)) p = p.slice(APP_BASE.length);
@@ -26,7 +21,6 @@ function resolveLocal(urlPath) {
   if (!full.startsWith(ROOT)) return null;
   return fs.existsSync(full) && fs.statSync(full).isFile() ? full : null;
 }
-
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -60,7 +54,6 @@ function createWindow() {
   win.loadURL(`https://${APP_HOST}${APP_BASE}index.html`);
   win.on('closed', () => { win = null; });
 }
-
 app.whenReady().then(() => {
   protocol.handle('https', (request) => {
     const url = new URL(request.url);
@@ -71,11 +64,9 @@ app.whenReady().then(() => {
     }
     return net.fetch(request, { bypassCustomProtocolHandlers: true });
   });
-
   session.defaultSession.setPermissionRequestHandler((wc, permission, cb) => {
     cb(['media', 'geolocation', 'clipboard-sanitized-write', 'notifications', 'fullscreen'].includes(permission));
   });
-
   session.defaultSession.on('will-download', (event, item) => {
     item.once('done', (_e, state) => {
       if (state === 'completed' && win) {
@@ -84,19 +75,15 @@ app.whenReady().then(() => {
       }
     });
   });
-
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'App', submenu: [{ role: 'reload' }, { role: 'forceReload' }, { role: 'togglefullscreen' }, { type: 'separator' }, { role: 'quit' }] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: 'View', submenu: [{ role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' }] }
   ]));
-
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
-
 app.on('second-instance', () => {
   if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
 });
-
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

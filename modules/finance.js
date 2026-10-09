@@ -2,7 +2,6 @@ const num = (v, d = 0) => {
   const n = typeof v === 'number' ? v : parseFloat(v);
   return Number.isFinite(n) ? n : d;
 };
-
 export function fmtNum(value, maxDecimals = 2) {
   const n = num(value, 0);
   if (!isFinite(n)) return '0';
@@ -17,12 +16,10 @@ export function fmtNum(value, maxDecimals = 2) {
   const body = frac ? grouped + '.' + frac : grouped;
   return n < 0 && rounded !== 0 ? '-' + body : body;
 }
-
 export function round2(v) {
   const n = Number(v);
   return isFinite(n) ? Math.round((n + Math.sign(n) * Number.EPSILON) * 100) / 100 : 0;
 }
-
 export function lockedUnitPrice(t) {
   if (!t) return 0;
   const up = num(t.unitPrice, 0);
@@ -31,7 +28,6 @@ export function lockedUnitPrice(t) {
   const tv = num(t.totalValue, 0);
   return qty > 0 && tv > 0 ? tv / qty : 0;
 }
-
 export function lockedSaleValue(t) {
   if (!t) return null;
   const qty = num(t.quantity, 0);
@@ -41,13 +37,11 @@ export function lockedSaleValue(t) {
   const tv = num(t.totalValue, 0);
   return tv > 0 ? round2(tv) : null;
 }
-
 export function debtNeedsGross(t) {
   if (!t || t.creditReceived) return false;
   if (t.transactionType === 'OLD_DEBT') return true;
   return t.paymentType === 'CREDIT' && !(t.isMerged && typeof t.creditValue === 'number');
 }
-
 export function debtDelta(t, grossValue) {
   if (!t) return 0;
   const partial = num(t.partialPaymentReceived, 0);
@@ -64,7 +58,6 @@ export function debtDelta(t, grossValue) {
   }
   return 0;
 }
-
 export function localDateStr(d = new Date()) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }

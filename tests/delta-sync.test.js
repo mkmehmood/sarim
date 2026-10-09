@@ -1,8 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-
 let deletedRecordIds = new Set();
-
 function _toMs(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
@@ -10,7 +8,6 @@ function _toMs(v) {
   if (typeof v === 'object' && v.seconds) return v.seconds * 1000 + Math.round((v.nanoseconds || 0) / 1e6);
   return new Date(v).getTime() || 0;
 }
-
 function mergeDatasets(localArray, cloudArray) {
   if (!Array.isArray(localArray)) localArray = [];
   if (!Array.isArray(cloudArray)) cloudArray = [];
@@ -46,7 +43,6 @@ function mergeDatasets(localArray, cloudArray) {
   });
   return Array.from(mergedMap.values());
 }
-
 function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   if (depth > 20) return null;
   if (obj === null || obj === undefined) return null;
@@ -110,59 +106,47 @@ function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   } catch(e) { return {}; }
   return sanitized;
 }
-
 const T_OLD = 1_700_000_000_000;
 const T_NEW = 1_700_000_001_000;
-
 function rec(overrides) {
   return { id: 'r1', updatedAt: T_OLD, ...overrides };
 }
-
 describe('mergeDatasets', () => {
-
   beforeEach(() => { deletedRecordIds = new Set(); });
-
   describe('inputs', () => {
     it('returns empty array when both inputs are empty', () => {
       assert.deepEqual(mergeDatasets([], []), []);
     });
-
     it('handles null/undefined inputs gracefully', () => {
       assert.deepEqual(mergeDatasets(null, null), []);
       assert.deepEqual(mergeDatasets(undefined, undefined), []);
     });
-
     it('skips items with no id', () => {
       const result = mergeDatasets([{ updatedAt: T_NEW }], [{ updatedAt: T_OLD }]);
       assert.equal(result.length, 0);
     });
-
     it('cloud-only record is included', () => {
       const result = mergeDatasets([], [{ id: 'c1', name: 'cloud' }]);
       assert.equal(result.length, 1);
       assert.equal(result[0].id, 'c1');
     });
-
     it('local-only record is included', () => {
       const result = mergeDatasets([{ id: 'l1', name: 'local' }], []);
       assert.equal(result.length, 1);
       assert.equal(result[0].id, 'l1');
     });
   });
-
   describe('deletion filter', () => {
     it('excludes cloud record whose id is in deletedRecordIds', () => {
       deletedRecordIds.add('c1');
       const result = mergeDatasets([], [{ id: 'c1', name: 'cloud' }]);
       assert.equal(result.length, 0);
     });
-
     it('excludes local record whose id is in deletedRecordIds', () => {
       deletedRecordIds.add('l1');
       const result = mergeDatasets([{ id: 'l1', name: 'local' }], []);
       assert.equal(result.length, 0);
     });
-
     it('only filters the deleted id, not other records', () => {
       deletedRecordIds.add('r1');
       const result = mergeDatasets(
@@ -173,7 +157,6 @@ describe('mergeDatasets', () => {
       assert.equal(result[0].id, 'r2');
     });
   });
-
   describe('timestamp conflict resolution', () => {
     it('local wins when local is newer', () => {
       const local = rec({ name: 'local-newer', updatedAt: T_NEW });
@@ -181,42 +164,36 @@ describe('mergeDatasets', () => {
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local-newer');
     });
-
     it('cloud wins when cloud is strictly newer', () => {
       const local = rec({ name: 'local-older', updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud-newer', updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'cloud-newer');
     });
-
     it('local wins on exact timestamp tie', () => {
       const local = rec({ name: 'local-tie', updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud-tie', updatedAt: T_OLD });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local-tie');
     });
-
     it('falls back to timestamp field when updatedAt is absent', () => {
       const local = { id: 'r1', name: 'local', timestamp: T_NEW };
       const cloud = { id: 'r1', name: 'cloud', timestamp: T_OLD };
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('uses date string when updatedAt and timestamp are absent', () => {
       const local = { id: 'r1', name: 'local', date: '2024-03-15' };
       const cloud = { id: 'r1', name: 'cloud', date: '2024-01-01' };
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('handles Firestore-style {seconds, nanoseconds} timestamp', () => {
       const local = rec({ name: 'local', updatedAt: { seconds: 1700000001, nanoseconds: 0 } });
       const cloud = rec({ name: 'cloud', updatedAt: { seconds: 1700000000, nanoseconds: 0 } });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('handles .toMillis() Firestore Timestamp object', () => {
       const local = rec({ name: 'local', updatedAt: { toMillis: () => T_NEW } });
       const cloud = rec({ name: 'cloud', updatedAt: { toMillis: () => T_OLD } });
@@ -224,7 +201,6 @@ describe('mergeDatasets', () => {
       assert.equal(result[0].name, 'local');
     });
   });
-
   describe('semantic conflict guards', () => {
     it('local wins when local has financial data and cloud is corrupt (totalSold null)', () => {
       const local = rec({ name: 'local', totalSold: 100, revenue: 5000, updatedAt: T_OLD });
@@ -232,56 +208,48 @@ describe('mergeDatasets', () => {
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('cloud wins when local financial data is zero and cloud is newer', () => {
       const local = rec({ name: 'local', totalSold: 0, revenue: 0, updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', totalSold: 50, revenue: 2500, updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'cloud');
     });
-
     it('local wins when local isReturn=true and cloud has no isReturn', () => {
       const local = rec({ name: 'local', isReturn: true, updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('does not apply isReturn guard when both have isReturn', () => {
       const local = rec({ name: 'local', isReturn: true, updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', isReturn: true, updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'cloud');
     });
-
     it('local wins when local has formulaUnits and cloud does not', () => {
       const local = rec({ name: 'local', formulaUnits: 10, updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('local wins when local has formulaCost and cloud does not', () => {
       const local = rec({ name: 'local', formulaCost: 500, updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('local wins when local has supplierId and cloud does not', () => {
       const local = rec({ name: 'local', supplierId: 'sup-1', updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('local wins when local paymentStatus is paid and cloud is not', () => {
       const local = rec({ name: 'local', paymentStatus: 'paid', updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', paymentStatus: 'pending', updatedAt: T_NEW });
       const result = mergeDatasets([local], [cloud]);
       assert.equal(result[0].name, 'local');
     });
-
     it('does not apply paymentStatus guard when cloud is also paid', () => {
       const local = rec({ name: 'local', paymentStatus: 'paid', updatedAt: T_OLD });
       const cloud = rec({ name: 'cloud', paymentStatus: 'paid', updatedAt: T_NEW });
@@ -289,7 +257,6 @@ describe('mergeDatasets', () => {
       assert.equal(result[0].name, 'cloud');
     });
   });
-
   describe('multiple records', () => {
     it('merges non-conflicting records from both sides', () => {
       const result = mergeDatasets(
@@ -298,13 +265,11 @@ describe('mergeDatasets', () => {
       );
       assert.equal(result.length, 2);
     });
-
     it('deduplicates — no record appears twice', () => {
       const shared = rec({ name: 'shared', updatedAt: T_NEW });
       const result = mergeDatasets([shared], [shared]);
       assert.equal(result.length, 1);
     });
-
     it('each conflicting id resolved independently', () => {
       const result = mergeDatasets(
         [
@@ -322,70 +287,56 @@ describe('mergeDatasets', () => {
     });
   });
 });
-
 describe('sanitizeForFirestore', () => {
-
   it('returns null for null input', () => {
     assert.equal(sanitizeForFirestore(null), null);
   });
-
   it('returns null for undefined input', () => {
     assert.equal(sanitizeForFirestore(undefined), null);
   });
-
   it('converts Date to ISO string', () => {
     const d = new Date('2024-01-15T10:00:00.000Z');
     assert.equal(sanitizeForFirestore(d), d.toISOString());
   });
-
   it('replaces NaN with 0', () => {
     const result = sanitizeForFirestore({ amount: NaN });
     assert.equal(result.amount, 0);
   });
-
   it('replaces Infinity with 0', () => {
     const result = sanitizeForFirestore({ cost: Infinity });
     assert.equal(result.cost, 0);
   });
-
   it('coerces numeric string for amount field', () => {
     const result = sanitizeForFirestore({ amount: '1500.5' });
     assert.equal(result.amount, 1500.5);
   });
-
   it('coerces null amount to 0', () => {
     const result = sanitizeForFirestore({ amount: null });
     assert.equal(result.amount, 0);
   });
-
   it('casts id to string', () => {
     const result = sanitizeForFirestore({ id: 12345 });
     assert.equal(result.id, '12345');
     assert.equal(typeof result.id, 'string');
   });
-
   it('sets id to empty string when null', () => {
     const result = sanitizeForFirestore({ id: null });
     assert.equal(result.id, '');
   });
-
   it('sanitizes illegal Firestore key characters', () => {
     const result = sanitizeForFirestore({ 'a.b': 'val' });
     assert.ok('a_b' in result);
     assert.ok(!('a.b' in result));
   });
-
   it('sanitizes $ in key', () => {
     const result = sanitizeForFirestore({ '$field': 'val' });
     assert.ok('_field' in result);
   });
-
   it('removes function-valued fields', () => {
     const result = sanitizeForFirestore({ fn: () => {}, name: 'ok' });
     assert.ok(!('fn' in result));
     assert.equal(result.name, 'ok');
   });
-
   it('handles circular reference without throwing', () => {
     const obj = { name: 'test' };
     obj.self = obj;
@@ -393,59 +344,49 @@ describe('sanitizeForFirestore', () => {
     const result = sanitizeForFirestore(obj);
     assert.equal(result.self, '[Circular]');
   });
-
   it('recursively sanitizes nested objects', () => {
     const result = sanitizeForFirestore({ nested: { amount: NaN, id: 42 } });
     assert.equal(result.nested.amount, 0);
     assert.equal(result.nested.id, '42');
   });
-
   it('sanitizes array items', () => {
     const result = sanitizeForFirestore({ items: [{ amount: NaN }, { amount: 100 }] });
     assert.equal(result.items[0].amount, 0);
     assert.equal(result.items[1].amount, 100);
   });
-
   it('drops function items from arrays', () => {
     const result = sanitizeForFirestore([() => {}, 'keep']);
     assert.equal(result.length, 1);
     assert.equal(result[0], 'keep');
   });
-
   it('sets gps to null when value sanitizes to null', () => {
     const result = sanitizeForFirestore({ gps: null });
     assert.ok('gps' in result);
     assert.equal(result.gps, null);
   });
-
   it('returns null beyond depth limit of 20', () => {
     let deep = { value: 'leaf' };
     for (let i = 0; i < 22; i++) deep = { child: deep };
     assert.doesNotThrow(() => sanitizeForFirestore(deep));
   });
-
   it('preserves boolean values', () => {
     const result = sanitizeForFirestore({ active: true, deleted: false });
     assert.equal(result.active, true);
     assert.equal(result.deleted, false);
   });
-
   it('passes through valid timestamp string unchanged', () => {
     const iso = '2024-06-01T12:00:00.000Z';
     const result = sanitizeForFirestore({ updatedAt: iso });
     assert.equal(result.updatedAt, iso);
   });
-
   it('passes through numeric timestamp unchanged', () => {
     const result = sanitizeForFirestore({ createdAt: 1700000000000 });
     assert.equal(result.createdAt, 1700000000000);
   });
-
   it('drops empty nested objects that are not factory settings keys', () => {
     const result = sanitizeForFirestore({ meta: {} });
     assert.ok(!('meta' in result));
   });
-
   it('keeps empty object for factory settings key "standard"', () => {
     const result = sanitizeForFirestore({ standard: {} });
     assert.ok('standard' in result);

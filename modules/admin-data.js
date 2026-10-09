@@ -6,7 +6,6 @@ import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { collectAuxBackupFields } from './data-keys.js';
-
 export async function updateDeltaSyncStatsDisplay() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -42,13 +41,11 @@ export async function updateDeltaSyncStatsDisplay() {
     }
   }
 }
-
 export async function showDeltaSyncDetails() {
 if (!firebaseDB || !currentUser) {
   showToast('Please log in to view database structure', 'warning', 3000);
   return;
 }
-
 const modal = document.createElement('div');
 modal.id = 'delta-stats-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
@@ -58,11 +55,9 @@ modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radiu
   <div style="color:var(--text-muted);font-size:0.85rem;">Loading database structure…</div>
 </div>`;
 document.body.appendChild(modal);
-
 try {
   const userRef = firebaseDB.collection('users').doc(currentUser.uid);
   const deviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => '—') : '—';
-
   const [
     productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
     salesCustomersSnap, transactionsSnap, entitiesSnap, inventorySnap,
@@ -93,7 +88,6 @@ try {
     userRef.collection('settings').doc('yearCloseSignal').get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('appStores').doc('stores').get().catch(() => ({ exists: false, data: () => null })),
   ]);
-
   const stats      = await DeltaSync.getSyncStats();
   const uuidStats  = (typeof UUIDSyncRegistry !== 'undefined') ? UUIDSyncRegistry.stats() : {};
   const myDeviceShard = uuidStats._myDeviceShard ? uuidStats._myDeviceShard.toUpperCase() : '—';
@@ -101,7 +95,6 @@ try {
   const firestoreStats = (_savedFsStats && typeof _savedFsStats.reads === 'number')
     ? _savedFsStats
     : { reads: 0, writes: 0, lastReset: Date.now() };
-
   const sqliteCounts = {};
   const sqliteKeys = ['mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
     'sales_customers','payment_transactions','payment_entities','factory_inventory_data',
@@ -112,7 +105,6 @@ try {
   }));
   const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
   sqliteCounts['_person_photos_dirty'] = Array.isArray(_dirtyPhotoKeys) ? _dirtyPhotoKeys.length : 0;
-
   const COLLECTIONS = [
     { fsName:'production',         sqliteKey:'mfg_pro_pkr',               jsVar:'db',                       snap:productionSnap,      tabFn:'syncProductionTab',  lock:true,  desc:'Factory production batches' },
     { fsName:'sales',              sqliteKey:'customer_sales',             jsVar:'customerSales',            snap:salesSnap,           tabFn:'syncSalesTab',       lock:true,  desc:'Direct customer sales' },
@@ -129,7 +121,6 @@ try {
     { fsName:'deletions',          sqliteKey:'deletion_records',           jsVar:'deletedRecordIds',         snap:deletionsSnap,       tabFn:null,                 lock:false, desc:'Tombstone records for soft-deleted IDs' },
     { fsName:'personPhotos',       sqliteKey:'person_photos',              jsVar:'person_photos{}',          snap:personPhotosSnap,    tabFn:null,                 lock:false, desc:'Person/customer/entity photos (keyed object: cust:name, entity:id, rep-cust:rep:name)', isPhotoStore:true },
   ];
-
   const CONFIG_DOCS = [
     { path:'settings/config',              doc:settingsDoc,          desc:'App settings, FY counter, repProfile, sales_reps (init)',
       sqlite:[['naswar_default_settings','naswar_default_settings'],['current_rep_profile','repProfile'],['sales_reps_list','sales_reps (init)']],
@@ -164,7 +155,6 @@ try {
       fsFields:['email','displayName','accountCreated','lastActivity'],
       listener:'none — read once on login' },
   ];
-
   const ago = raw => {
     if (!raw) return 'never';
     const ms = typeof raw === 'string' ? Date.parse(raw) : raw;
@@ -195,10 +185,8 @@ try {
     `<span style="font-size:0.6rem;font-weight:700;padding:2px 7px;color:${color};letter-spacing:0.03em">${txt}</span>`;
   const pill = (txt, color) =>
     `<span style="font-size:0.62rem;padding:2px 6px;color:${color};font-family:var(--font-mono)">${txt}</span>`;
-
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
-
   let html = `
 <div id="dbv-root" style="background:var(--glass);border-radius:20px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
 
@@ -227,7 +215,6 @@ try {
 
   <div id="dbv-body" style="overflow-y:auto;padding:16px 20px 20px;flex:1;min-height:0">
 `;
-
   html += `<div id="dbv-pane-0">`;
   const _reads      = firestoreStats.reads  || 0;
   const _writes     = firestoreStats.writes || 0;
@@ -258,7 +245,6 @@ try {
   <div style="font-size:0.59rem;color:var(--text-muted);text-align:right;margin-bottom:10px;padding-right:2px">
     Counter started ${_resetAgo} &nbsp;·&nbsp; resets in ${_resetNext}
   </div>`;
-
   COLLECTIONS.forEach(col => {
     const fsDocs   = col.snap.size || 0;
     const sqDocs   = sqliteCounts[col.sqliteKey] || 0;
@@ -269,7 +255,6 @@ try {
     const hasLiveListener = col.fsName !== 'deletions' && col.fsName !== 'personPhotos';
     const mismatch = !col.isPhotoStore && Math.abs(fsDocs - sqDocs) > 0;
     const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
-
     html += `
 <div style="margin-bottom:9px;padding:11px 13px;background:var(--input-bg);border-radius:14px;border:1px solid ${borderColor}">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -304,7 +289,6 @@ try {
 </div>`;
   });
   html += `</div>`;
-
   html += `<div id="dbv-pane-1" style="display:none">`;
   CONFIG_DOCS.forEach(doc => {
     const exists = doc.doc && doc.doc.exists;
@@ -321,7 +305,6 @@ try {
       ${exists ? badge('EXISTS','#30d158') : badge('MISSING','#ff453a')}
     </div>
   </div>`;
-
     if (doc.sqlite.length) {
       html += `<div style="margin-bottom:6px">
         <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:3px;font-weight:600">SQLite ↔ Firestore field mapping:</div>
@@ -334,7 +317,6 @@ try {
         </div>
       </div>`;
     }
-
     if (exists && data) {
       html += `<div style="border-top:1px solid var(--glass-border);padding-top:6px">
         <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:4px;font-weight:600">Firestore fields:</div>
@@ -352,7 +334,6 @@ try {
     html += `</div>`;
   });
   html += `</div>`;
-
   html += `<div id="dbv-pane-2" style="display:none">`;
   const LISTENERS = [
     { name:'users/{uid}',                      type:'doc',  path:'userRef.onSnapshot',                              purpose:'Force-logout, account suspension, lastWrite ping for pull trigger', fires:'Any write to the user root doc' },
@@ -373,12 +354,10 @@ try {
       fires: 'Any doc change; lockOnClose=' + c.lock,
     })),
   ];
-
   html += `<div style="margin-bottom:10px;padding:10px 12px;background:rgba(48,209,88,0.07);border-radius:12px;border:1px solid rgba(48,209,88,0.2)">
     <div style="font-size:0.75rem;font-weight:700;color:#30d158;margin-bottom:2px">● ${LISTENERS.length} Active Realtime Listeners</div>
     <div style="font-size:0.65rem;color:var(--text-muted)">All subscribed via <code>onSnapshot</code> in <code>subscribeToRealtime()</code>. Reconnect on network restore.</div>
   </div>`;
-
   LISTENERS.forEach(l => {
     html += `
 <div style="margin-bottom:8px;padding:10px 12px;background:var(--input-bg);border-radius:13px;border:1px solid var(--glass-border)">
@@ -394,9 +373,7 @@ try {
 </div>`;
   });
   html += `</div>`;
-
   html += `<div id="dbv-pane-3" style="display:none">`;
-
   html += `<div style="margin-bottom:12px">
     <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore → SQLite → JS Variable Map</div>
     <div style="overflow-x:auto">
@@ -423,7 +400,6 @@ try {
     </table>
     </div>
   </div>`;
-
   html += `<div style="margin-bottom:12px;padding:12px;background:var(--input-bg);border-radius:14px">
     <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore Schema (users/{uid}/…)</div>
     <div style="font-size:0.63rem;font-family:var(--font-mono);line-height:1.9;color:var(--text-muted)">
@@ -469,13 +445,9 @@ try {
     </div>`;
   })()}
   `;
-
   html += `</div>`;
-
   html += `</div></div>`;
-
   modal.innerHTML = html;
-
 } catch (err) {
   console.error('[showDeltaSyncDetails] error:', err);
   modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radius:20px;text-align:center;max-width:400px">
@@ -487,22 +459,18 @@ try {
   </div>`;
 }
 }
-
 if (typeof closeYearInProgress === 'undefined') var closeYearInProgress = false;
 if (typeof closeYearAbortController === 'undefined') var closeYearAbortController = null;
 if (typeof _fyVerifiedPassword === 'undefined') var _fyVerifiedPassword = null;
 if (typeof pendingFirestoreYearClose === 'undefined') var pendingFirestoreYearClose = false;
 if (typeof pendingFirestoreRestore === 'undefined') var pendingFirestoreRestore = false;
-
 if (typeof _hasMergeCommitFailure === 'undefined') var _hasMergeCommitFailure = false;
-
 export function _storeCodeToLabel(c) {
   if (c === 'STORE_A') return 'ZUBAIR';
   if (c === 'STORE_B') return 'MAHMOOD';
   if (c === 'STORE_C') return 'ASAAN';
   return c;
 }
-
 export async function showCloseFinancialYearDialog() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -927,7 +895,6 @@ setTimeout(() => {
   if (inp) inp.focus();
 }, 80);
 }
-
 export function validateCloseYearInput(value) {
 const confirmBtn = document.getElementById('close-year-confirm-btn');
 const errEl = document.getElementById('close-year-pwd-error');
@@ -947,7 +914,6 @@ if (value.trim().length > 0) {
 }
 if (errEl) errEl.style.display = 'none';
 }
-
 export async function verifyAndExecuteCloseYear() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -989,7 +955,6 @@ if (!valid) {
 _fyVerifiedPassword = pwd;
 executeCloseFinancialYear();
 }
-
 export function closeCloseYearDialog() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('close-financial-year-screen');
 const _cyScreen = document.getElementById('close-financial-year-screen');
@@ -1001,7 +966,6 @@ closeYearAbortController = null;
 }
 closeYearInProgress = false;
 }
-
 export function updateCloseYearProgress(stage, percent) {
 const stageEl = document.getElementById('close-year-stage');
 const progressBar = document.getElementById('close-year-progress-bar');
@@ -1050,7 +1014,6 @@ if (procSubtitle && procSubtitle.textContent.includes('will be compacted')) {
   procSubtitle.style.color = 'var(--warning)';
 }
 }
-
 export async function generateCloseYearSummary() {
   const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -1258,7 +1221,6 @@ const rowsHtml = rows;
 const html = '<div style="display:grid;gap:4px;">' + rows + '</div>';
 return { html, rowsHtml, summary: S };
 }
-
 export async function createMergeBackup() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1268,7 +1230,6 @@ export async function createMergeBackup() {
   const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
   const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-
   const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
   const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
   const backup = {
@@ -1293,14 +1254,12 @@ export async function createMergeBackup() {
     throw new Error('Cannot proceed without backup: ' + e.message);
   }
 }
-
 export async function restoreFromBackup(backupTimestamp) {
   try {
     const backup = await sqliteStore.get('close_year_backup_' + backupTimestamp);
     if (!backup) {
       throw new Error('Backup not found: ' + backupTimestamp);
     }
-
     await sqliteStore.set('mfg_pro_pkr', backup.db);
     await sqliteStore.set('customer_sales', backup.customerSales);
     await sqliteStore.set('noman_history', backup.salesHistory);
@@ -1309,20 +1268,16 @@ export async function restoreFromBackup(backupTimestamp) {
     await sqliteStore.set('rep_sales', backup.repSales);
     await sqliteStore.set('expenses', backup.expenseRecords);
     await sqliteStore.set('stock_returns', backup.stockReturns);
-
     if (Array.isArray(backup.repCustomers))   await sqliteStore.set('rep_customers',   backup.repCustomers);
     if (Array.isArray(backup.salesCustomers)) await sqliteStore.set('sales_customers', backup.salesCustomers);
-
     if (typeof emitSyncUpdate === 'function') {
       emitSyncUpdate({ mfg_pro_pkr: null, customer_sales: null, noman_history: null,
         payment_transactions: null, factory_production_history: null,
         rep_sales: null, expenses: null, stock_returns: null });
     }
-
     if (firebaseDB && currentUser) {
       try {
         const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-
         const fbCollections = [
           { name: 'production',         backupData: backup.db },
           { name: 'sales',              backupData: backup.customerSales },
@@ -1338,10 +1293,8 @@ export async function restoreFromBackup(backupTimestamp) {
             const snapshot = await userRef.collection(col.name).get();
             const batch = firebaseDB.batch();
             let deleteCount = 0;
-
             const preExistingIds = new Set((Array.isArray(col.backupData) ? col.backupData : []).map(r => String(r.id)));
             snapshot.docs.forEach(doc => {
-
               if (!preExistingIds.has(doc.id)) {
                 const data = doc.data();
                 const docCreatedAt = data.createdAt?.toMillis ? data.createdAt.toMillis() :
@@ -1370,7 +1323,6 @@ export async function restoreFromBackup(backupTimestamp) {
     throw e;
   }
 }
-
 export async function verifyMergeConsistency(snap) {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1425,11 +1377,8 @@ export async function verifyMergeConsistency(snap) {
     timestamp: Date.now()
   };
 }
-
 export async function executeCloseFinancialYear() {
-
   let fyMeta = null;
-
   _hasMergeCommitFailure = false;
   const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
   const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
@@ -1503,7 +1452,6 @@ try {
       }
     }
   };
-
   const encPassword = _fyVerifiedPassword || null;
   _fyVerifiedPassword = null;
   if (encPassword) {
@@ -1579,7 +1527,6 @@ const liveUpdate = (rowId, afterText, accentColor, resultLabel, resultNote) => {
     detailEl.style.transition = 'all 0.35s ease';
   }
 };
-
 const closeEpoch = Date.now();
 updateCloseYearProgress('Merging Production Data', 25);
 try {
@@ -1616,7 +1563,6 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
   if (!consistencyCheck.valid) {
     throw new Error(`Data consistency check failed: ${consistencyCheck.errors.join('; ')}`);
   }
-
   updateCloseYearProgress('Purging deleted records...', 93);
   try {
     const _tombstoneIds = Array.from(
@@ -1634,22 +1580,18 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
         await _delBatch.commit().catch(e => console.warn('[yearClose] tombstone Firestore purge batch failed:', _safeErr(e)));
       }
     }
-
     await sqliteStore.set('deleted_records', []);
     await sqliteStore.set('deletion_records', []);
     console.log('[yearClose] Hard-deleted', _tombstoneIds.length, 'tombstone record(s) from SQLite + Firestore.');
   } catch (_hardDelErr) {
     console.warn('[yearClose] Hard-delete of tombstones failed (non-fatal):', _safeErr(_hardDelErr));
   }
-
 try {
-
   fyMeta = await sqliteStore.get('naswar_default_settings', {});
   fyMeta.lastYearClosedAt   = Date.now();
   fyMeta.lastYearClosedDate = new Date().toISOString();
   fyMeta.fyCloseCount       = (fyMeta.fyCloseCount || 0) + 1;
   fyMeta.lastConsistencyCheck = consistencyCheck;
-
   const hasSyncWarning = typeof _hasMergeCommitFailure !== 'undefined' && _hasMergeCommitFailure === true;
   if (hasSyncWarning) {
     fyMeta.pendingFirestoreYearClose = true;
@@ -1662,10 +1604,8 @@ try {
   }
   const _fyMetaTs = Date.now();
   await sqliteStore.set('naswar_default_settings', fyMeta);
-
   await sqliteStore.set('naswar_default_settings_timestamp', _fyMetaTs);
   if (firebaseDB && currentUser) {
-
     await firebaseDB.collection('users').doc(currentUser.uid)
       .collection('settings').doc('config')
       .set({
@@ -1679,7 +1619,6 @@ try {
     if (typeof DeltaSync !== 'undefined') {
       await DeltaSync.setLastSyncTimestamp('settings');
     }
-
     try {
       const _sigDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
       await firebaseDB.collection('users').doc(currentUser.uid)
@@ -1718,7 +1657,6 @@ if (completeSection) {
     .filter(id => { const el = document.getElementById('cy-row-' + id); return el && el.style.borderLeftColor && el.style.borderLeftColor.includes('warning') || (el && el.style.borderLeftColor === 'var(--warning)'); });
   const hasSyncWarnings = document.querySelectorAll('[id^="cy-status-"]') &&
     [...document.querySelectorAll('[id^="cy-status-"]')].some(el => el.textContent.includes('Sync Failed'));
-
   const _freshMergedCount = async () => {
     const keys = ['mfg_pro_pkr','customer_sales','noman_history','payment_transactions',
                   'factory_production_history','rep_sales','expenses','stock_returns'];
@@ -1800,9 +1738,7 @@ closeYearInProgress = false;
 closeYearAbortController = null;
 }
 }
-
 export function _markRowSyncWarning(rowId, commitResult) {
-
   _hasMergeCommitFailure = true;
   try {
     const rowEl = document.getElementById('cy-row-' + rowId);
@@ -1825,7 +1761,6 @@ export function _markRowSyncWarning(rowId, commitResult) {
     rowEl.style.borderLeftColor = 'var(--warning)';
   } catch (e) {   }
 }
-
 export function _buildMergedBase(id, mergeEpoch, nowISODate, nowTime, extra = {}) {
 return {
   id,
@@ -1840,7 +1775,6 @@ return {
   ...extra
 };
 }
-
 export async function mergeProductionData(signal, closeEpoch) {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 updateCloseYearProgress('Merging Production Data...', 10);
@@ -1975,7 +1909,6 @@ await sqliteStore.set('mfg_pro_pkr', mergedDb);
 emitSyncUpdate({ mfg_pro_pkr: null});
 updateCloseYearProgress('Production Data Merged', 20);
 }
-
 export async function mergeSalesData(signal, closeEpoch) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
@@ -2122,7 +2055,6 @@ await sqliteStore.set('customer_sales', mergedSales);
 emitSyncUpdate({ customer_sales: null});
 updateCloseYearProgress('Sales Data Merged', 40);
 }
-
 export async function mergeCalculatorData(signal, closeEpoch) {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 updateCloseYearProgress('Merging Calculator Data...', 50);
@@ -2225,10 +2157,8 @@ const postCloseCalc = salesHistory.filter(item => item.isMerged !== true && _rec
 const mergedHistory = [...existingMergedCalc, ...mergedRecords, ...postCloseCalc];
 await sqliteStore.set('noman_history', mergedHistory);
 emitSyncUpdate({ noman_history: null});
-
 updateCloseYearProgress('Calculator Data Merged', 60);
 }
-
 export async function mergePaymentData(signal, closeEpoch) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -2309,7 +2239,6 @@ await sqliteStore.set('payment_transactions', mergedPayTx);
 emitSyncUpdate({ payment_transactions: null});
 updateCloseYearProgress('Payment Data Merged', 80);
 }
-
 export async function mergeFactoryData(signal, closeEpoch) {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
@@ -2381,10 +2310,8 @@ const postCloseFactory = factoryProductionHistory.filter(item => item.isMerged !
 const mergedFph = [...existingMergedFactory, ...mergedRecords, ...postCloseFactory];
 await sqliteStore.set('factory_production_history', mergedFph);
 emitSyncUpdate({ factory_production_history: null});
-
 updateCloseYearProgress('Factory Data Merged', 90);
 }
-
 export async function mergeRepSalesData(signal, closeEpoch) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
@@ -2533,7 +2460,6 @@ await sqliteStore.set('rep_sales', mergedRepSales);
 emitSyncUpdate({ rep_sales: null});
 updateCloseYearProgress('Rep Sales Data Merged', 92);
 }
-
 export async function mergeExpensesData(signal, closeEpoch) {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
@@ -2602,7 +2528,6 @@ const existingMerged = expenseRecords.filter(e => e.isMerged === true);
 const postCloseExpenses = expenseRecords.filter(e => e.isMerged !== true && _recTs(e) > closeEpoch);
 const mergedExpenses = [...existingMerged, ...mergedRecords, ...postCloseExpenses];
 await sqliteStore.set('expenses', mergedExpenses);
-
 try {
   const _keptIds = new Set(mergedExpenses.map(e => e.id));
   const _mergedAwayIds = expenseRecords
@@ -2630,11 +2555,9 @@ try {
     }
   }
 } catch (_fyPhErr) { console.warn('[mergeExpensesData] photo cleanup failed:', _fyPhErr); }
-
 emitSyncUpdate({ expenses: null});
 updateCloseYearProgress('Expenses Merged', 97);
 }
-
 export async function mergeStockReturnsData(signal, closeEpoch) {
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 updateCloseYearProgress('Merging Stock Returns...', 98);
@@ -2713,7 +2636,6 @@ await sqliteStore.set('stock_returns', mergedReturns);
 emitSyncUpdate({ stock_returns: null});
 updateCloseYearProgress('Stock Returns Merged', 100);
 }
-
 export async function verifyTimestampConsistency() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -2846,7 +2768,6 @@ showToast('Timestamp consistency check passed — all records healthy.', 'succes
 }
 return report;
 }
-
 export async function deduplicateAllData() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -2976,7 +2897,6 @@ showToast(' No duplicates found! Data is clean.', 'success');
 }
 return results;
 }
-
 export function dbvShowTab(i) {
   [0,1,2,3].forEach(j => {
     const p = document.getElementById('dbv-pane-'+j);
@@ -2988,13 +2908,10 @@ export function dbvShowTab(i) {
     }
   });
 }
-
 window.dbvShowTab = dbvShowTab;
-
 window.showDeltaSyncDetails = showDeltaSyncDetails;
 window.verifyTimestampConsistency = verifyTimestampConsistency;
 window.deduplicateAllData = deduplicateAllData;
-
 export async function verifyCompleteTimestampConsistency() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -3234,7 +3151,6 @@ showToast('Full system verification passed — all data is consistent.', 'succes
 }
 return report;
 }
-
 export function extractTimestampValue(record) {
 if (!record) return 0;
 let ts = record.updatedAt || record.timestamp || record.createdAt || 0;
@@ -3254,9 +3170,7 @@ if (!isNaN(time)) return time;
 }
 return 0;
 }
-
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
-
 export async function runUnifiedCleanup() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -3275,9 +3189,7 @@ if (!(await showGlassConfirm(
   'Clean all duplicate records?\n\n\u2022 Scans every collection in SQLite\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }
 ))) return;
-
 showToast('Scanning for duplicates\u2026', 'info', 4000);
-
 const COLLECTIONS = [
   { sqliteKey: 'mfg_pro_pkr',                firestore: 'production',         label: 'Production',           liveVar: 'db'                       },
   { sqliteKey: 'noman_history',              firestore: 'calculator_history',  label: 'Calculator History',   liveVar: 'salesHistory'             },
@@ -3292,25 +3204,19 @@ const COLLECTIONS = [
   { sqliteKey: 'payment_entities',           firestore: 'entities',            label: 'Payment Entities',     liveVar: 'paymentEntities'          },
   { sqliteKey: 'expenses',                   firestore: 'expenses',            label: 'Expenses',             liveVar: 'expenseRecords'           },
 ];
-
 try {
   let totalDuplicates = 0;
   const dirtyCollections = [];
-
   for (const col of COLLECTIONS) {
     const records = await sqliteStore.get(col.sqliteKey, []);
     if (!Array.isArray(records) || records.length === 0) continue;
-
     const seen = new Map();
     let dupsInCol = 0;
-
     for (const rec of records) {
       if (!rec || !rec.id) continue;
       if (!validateUUID(rec.id)) rec.id = generateUUID('repair');
-
       if (seen.has(rec.id)) {
         dupsInCol++;
-
         const cmp = (typeof compareRecordVersions === 'function')
           ? compareRecordVersions(rec, seen.get(rec.id))
           : ((rec.updatedAt || 0) - (seen.get(rec.id).updatedAt || 0));
@@ -3319,7 +3225,6 @@ try {
         seen.set(rec.id, rec);
       }
     }
-
     if (dupsInCol > 0) {
       const cleaned = Array.from(seen.values());
       await sqliteStore.set(col.sqliteKey, cleaned);
@@ -3327,25 +3232,18 @@ try {
       totalDuplicates += dupsInCol;
     }
   }
-
   if (totalDuplicates === 0) {
     showToast('\u2714 No duplicates found \u2014 data is clean.', 'success', 4000);
     return;
   }
-
   showToast(`Found ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''}. Removing from Firestore\u2026`, 'info', 5000);
-
   if (firebaseDB && currentUser) {
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-
     for (const col of dirtyCollections) {
       try {
-
         const snapshot = await userRef.collection(col.firestore).get();
         if (snapshot.empty) continue;
-
         const canonicalIds = new Set(col.cleaned.map(r => String(r.id)));
-
         const docsToDelete = snapshot.docs.filter(d => !canonicalIds.has(d.id));
         if (docsToDelete.length > 0) {
           const delBatches = [firebaseDB.batch()];
@@ -3358,7 +3256,6 @@ try {
           }
           for (const b of delBatches) await b.commit();
         }
-
         const upBatches = [firebaseDB.batch()];
         let upOps = 0;
         for (const rec of col.cleaned) {
@@ -3377,13 +3274,11 @@ try {
         }
         for (const b of upBatches) await b.commit();
         if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp(col.firestore);
-
       } catch (colErr) {
         console.error('[Cleanup] Firestore sync failed for', col.firestore, _safeErr(colErr));
         showToast('Firestore sync failed for ' + col.label + ': ' + colErr.message, 'error');
       }
     }
-
     showToast(
       `\u2714 Removed ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''} from SQLite and Firestore. Canonical records re-uploaded.`,
       'success', 6000
@@ -3394,22 +3289,17 @@ try {
       'success', 5000
     );
   }
-
   try { await refreshAllDisplays(); } catch(e) {}
-
 } catch (err) {
   console.error('[runUnifiedCleanup] error:', _safeErr(err));
   showToast('\u26a0 Cleanup failed: ' + err.message, 'error', 6000);
 }
 }
-
 window.runUnifiedCleanup = runUnifiedCleanup;
 window._showDeltaSyncDetails = showDeltaSyncDetails;
 window._runUnifiedCleanup = runUnifiedCleanup;
 window._showCloseFinancialYearDialog = showCloseFinancialYearDialog;
-
 export { closeYearInProgress, closeYearAbortController, _fyVerifiedPassword, pendingFirestoreYearClose, pendingFirestoreRestore, _hasMergeCommitFailure };
-
 window.updateDeltaSyncStatsDisplay = updateDeltaSyncStatsDisplay;
 window.showDeltaSyncDetails = showDeltaSyncDetails;
 window.closeYearInProgress = closeYearInProgress;
@@ -3445,6 +3335,5 @@ window.dbvShowTab = dbvShowTab;
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
 window.extractTimestampValue = extractTimestampValue;
 window.runUnifiedCleanup = runUnifiedCleanup;
-
 export function _set_pendingFirestoreRestore(v) { pendingFirestoreRestore = v; }
 export function _set_pendingFirestoreYearClose(v) { pendingFirestoreYearClose = v; }

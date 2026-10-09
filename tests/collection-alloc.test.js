@@ -1,16 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-
 import {
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, collectionPartialCash,
   getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection, collectionCollected,
 } from '../modules/link-graph.js';
-
 import { debtDelta } from '../modules/finance.js';
-
 const credit = (id, date, value) => ({ id, date, timestamp: Date.parse(date), paymentType: 'CREDIT', creditReceived: false, totalValue: value });
 const owed = (sales) => sales.reduce((t, s) => t + debtDelta(s, s.totalValue), 0);
-
 describe('collection allocation', () => {
   it('pays oldest sales in full, then part-pays the next', () => {
     const plan = planCollectionAllocation(250, [{ id: 'a', due: 100 }, { id: 'b', due: 100 }, { id: 'c', due: 100 }]);
@@ -34,7 +30,6 @@ describe('collection allocation', () => {
     assert.deepEqual(order, ['o', 'm', 'n']);
   });
 });
-
 describe('applying a collection to sales keeps the balance exact', () => {
   it('total owed drops by exactly the amount collected, and undo restores it', () => {
     const sales = [credit('a', '2026-01-01', 100), credit('b', '2026-01-02', 100), credit('c', '2026-01-03', 100)];
@@ -88,7 +83,6 @@ describe('applying a collection to sales keeps the balance exact', () => {
     assert.equal(collectionCollected({ totalValue: 0, collectedAmount: 250 }), 250);
   });
 });
-
 describe('old debt (opening balance)', () => {
   const od = () => ({ id: 'od', date: '2025-12-31', timestamp: 1, paymentType: 'CREDIT', transactionType: 'OLD_DEBT', creditReceived: false, partialPaymentReceived: 0, totalValue: 300 });
   it('is paid first, keeps its date, and statement credit reaches the full total', () => {

@@ -1,6 +1,5 @@
 const _pad = n => String(n).padStart(2, '0');
 const _local = d => d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate());
-
 export function editDateValue(rec, fields = ['date', 'createdAt', 'timestamp']) {
   if (!rec) return '';
   for (const f of fields) {

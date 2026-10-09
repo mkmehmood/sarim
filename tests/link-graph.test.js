@@ -1,6 +1,5 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
@@ -8,7 +7,6 @@ import {
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
-
 describe('recovered-id remapping', () => {
   it('follows chains oldId -> newId -> newer', () => {
     assert.equal(resolveId('a', { a: 'b', b: 'c' }), 'c');
@@ -36,11 +34,9 @@ describe('recovered-id remapping', () => {
     assert.equal(snap.relatedSaleId, 'newParent');
   });
 });
-
 describe('partial payment detach / reattach', () => {
   const parent = () => ({ id: 'p', paymentType: 'CREDIT', totalValue: 1000, partialPaymentReceived: 400, creditReceived: false });
   const child = { id: 'c', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'p', totalValue: 400 };
-
   it('delete then restore returns the parent to exactly where it started', () => {
     const p = parent();
     applyPatch(p, planChildDetach(p, child));
@@ -66,7 +62,6 @@ describe('partial payment detach / reattach', () => {
     assert.equal(planChildReattach(parent(), { paymentType: 'CASH' }).patch, null);
   });
 });
-
 describe('edit guard for sales that have payments', () => {
   const orig = { id: 'p', customerName: 'Ali', totalValue: 1000, partialPaymentReceived: 400 };
   it('blocks renaming a sale that has payment records', () => {
@@ -80,7 +75,6 @@ describe('edit guard for sales that have payments', () => {
     assert.equal(getEditLinkIssue({ id: 'x', customerName: 'A', totalValue: 5 }, { customerName: 'B', totalValue: 5 }, []), null);
   });
 });
-
 describe('deletion groups', () => {
   it('stamps without mutating the live record', () => {
     const r = { id: 'e' };
@@ -102,7 +96,6 @@ describe('deletion groups', () => {
     assert.equal(findGroupMembers(tombs[3], tombs).length, 1);
   });
 });
-
 describe('payment <-> expense cascade', () => {
   const exp = { id: 'e1', category: 'OUT' };
   it('removes the expense record created with a lone payment', () => {
@@ -122,7 +115,6 @@ describe('payment <-> expense cascade', () => {
     assert.equal(planExpenseCascade({ id: 't1', expenseId: 'gone' }, [], [exp]), null);
   });
 });
-
 describe('entity restore keeps payments attached', () => {
   it('re-points payments at a recovered entity and at a recovered expense', () => {
     const stores = { payment_transactions: [{ id: 't1', entityId: 'oldEnt', expenseId: 'oldExp' }] };
@@ -146,7 +138,6 @@ describe('entity restore keeps payments attached', () => {
     assert.equal(order[order.length - 1], 't1');
   });
 });
-
 describe('more id references', () => {
   it('re-points materials -> supplier and payments -> material', () => {
     const stores = {
@@ -171,7 +162,6 @@ describe('more id references', () => {
     assert.equal(r.formulasChanged, true);
   });
 });
-
 describe('factory batch restore takes materials back out of inventory', () => {
   const inv = () => [{ id: 'a', name: 'Sugar', quantity: 100 }, { id: 'b', name: 'Flour', quantity: 5 }];
   it('deducts exactly what delete added back', () => {
@@ -189,7 +179,6 @@ describe('factory batch restore takes materials back out of inventory', () => {
     assert.deepEqual(updates, [{ id: 'a', quantity: 90 }]);
   });
 });
-
 describe('stock overdraw on restore', () => {
   it('blocks a sale that would use more than is available', () => {
     assert.match(getStockOverdrawIssue('Store A', 50, 20), /only 20 kg/);
@@ -199,7 +188,6 @@ describe('stock overdraw on restore', () => {
     assert.equal(getStockOverdrawIssue('Store A', 0, 0), null);
   });
 });
-
 describe('customer rename map', () => {
   it('records and follows renames, case-insensitively and through chains', () => {
     const m = {};
@@ -222,7 +210,6 @@ describe('customer rename map', () => {
     assert.equal(typeof resolveRename(m, 'sales', 'A'), 'string');
   });
 });
-
 describe('old balance edits', () => {
   const kids = [{ totalValue: 300 }, { totalValue: 200 }];
   it('blocks lowering below what was collected', () => {
@@ -234,7 +221,6 @@ describe('old balance edits', () => {
     assert.equal(getOldDebtEditIssue(10, []), null);
   });
 });
-
 describe('transfer halves recover together even without a deletion group', () => {
   it('pairs both sides of a transfer by transferPairId', () => {
     const out = { id: 'o', snapshot: { transferPairId: 'P1', transferDirection: 'out' } };
@@ -251,7 +237,6 @@ describe('transfer halves recover together even without a deletion group', () =>
     assert.deepEqual(findGroupMembers(a, []).map(t => t.id), ['a']);
   });
 });
-
 describe('production returns are a pair', () => {
   const entry = { id: 'e', store: 'A', date: '2026-01-05', net: 12, createdAt: 111, returnedBy: 'Ali' };
   it('finds the stock_returns log that belongs to the entry', () => {
@@ -271,7 +256,6 @@ describe('production returns are a pair', () => {
     assert.equal(getReturnStockDrop(entry, { quantity: 12 }), 12);
   });
 });
-
 describe('restoring production needs factory units', () => {
   it('blocks when the factory no longer has enough units', () => {
     assert.match(getUnitsShortIssue('Standard', 5, 2), /only 2 are available/);
@@ -281,7 +265,6 @@ describe('restoring production needs factory units', () => {
     assert.equal(getUnitsShortIssue('Standard', 0, 0), null);
   });
 });
-
 describe('expandGroups (erase / recover together)', () => {
   const tomb = (id, snapshot) => ({ id, recordId: id, snapshot });
   it('adds group and transfer-pair mates once, keeps loners alone', () => {
@@ -297,7 +280,6 @@ describe('expandGroups (erase / recover together)', () => {
     assert.deepEqual(expandGroups([], all), []);
   });
 });
-
 describe('supplier payables stay tied to what was invoiced', () => {
   const inTx = (id, mat, amt) => ({ id, type: 'IN', isPayable: true, entityId: 'S', materialId: mat, amount: amt });
   it('uses the invoiced amount even after batches used the stock up', () => {
@@ -332,7 +314,6 @@ describe('supplier payables stay tied to what was invoiced', () => {
     assert.deepEqual(planPayableAdjustment(100, -500), { next: 0, change: -100 });
   });
 });
-
 describe('new production card always shows the selected formula, freshly', () => {
   const inv = [{ id: 'sug', name: 'Sugar (new name)', cost: 12, quantity: 50 }, { id: 'fl', name: 'Flour', cost: 5, quantity: 3 }];
   const list = [
@@ -373,7 +354,6 @@ describe('new production card always shows the selected formula, freshly', () =>
     assert.equal(resolveSelectedFormula({ list, slots: { asaan: 'F2' }, inventory: inv }, 'asaan').name, 'Basic');
   });
 });
-
 describe('credit settlement keeps its date in step with its flag', () => {
   it('marking paid sets the settled date; marking unpaid clears every settled field', () => {
     const rec = { paymentType: 'CREDIT', creditReceived: false };
@@ -404,11 +384,9 @@ describe('credit settlement keeps its date in step with its flag', () => {
     assert.equal(toCredit.creditReceivedDate, undefined);
   });
 });
-
 describe('old bin records come back with what they depend on', () => {
   const tomb = (id, collection, snapshot) => ({ id, recordId: id, collection, snapshot });
   const live = (ids = [], sales = [], rep = []) => ({ ids: new Set(ids), contacts: { sales: new Set(sales), rep: new Set(rep) } });
-
   it('a payment brings back its deleted expense and supplier, not their other payments', () => {
     const exp = tomb('e1', 'expenses', {});
     const sup = tomb('s1', 'entities', { name: 'Supplier' });
@@ -442,7 +420,6 @@ describe('old bin records come back with what they depend on', () => {
     assert.deepEqual(expandRecoveryMembers(log, [entry, log], live()).map(t => t.id).sort(), ['r1', 'r2']);
   });
 });
-
 describe('recover what can be recovered, skip what cannot', () => {
   const tomb = (id, collection, snapshot) => ({ id, recordId: id, collection, snapshot });
   it('skips the blocked record and everything that depends on it, restores the rest', () => {
@@ -480,19 +457,16 @@ describe('recover what can be recovered, skip what cannot', () => {
     assert.equal(plan.skipped.length, 0);
   });
 });
-
 describe('marking a partly-paid sale as paid', () => {
   it('is refused while separate payment records exist, allowed otherwise', () => {
     assert.match(getPartialPaidIssue(400), /400 was already collected/);
     assert.equal(getPartialPaidIssue(0), null);
   });
 });
-
 describe('calculator record restore preconditions', () => {
   const sale = (id, extra = {}) => ({ id, paymentType: 'CREDIT', creditReceived: false, ...extra });
   const entry = { id: 'c1', linkedSalesIds: ['s1', 's2'], linkedRepSalesIds: ['r1'], returned: 5, returnStore: 'A', expired: 2 };
   const ctx = (over = {}) => ({ sales: [sale('s1'), sale('s2')], repSales: [{ id: 'r1' }], history: [], storeKeys: ['A'], ...over });
-
   it('allows restore when everything is exactly as the delete left it', () => {
     assert.equal(planCalcRestore(entry, ctx()).block, null);
   });
@@ -519,7 +493,6 @@ describe('calculator record restore preconditions', () => {
     assert.equal(r.block, null);
   });
 });
-
 describe('legacy partly-paid sales are detected exactly', () => {
   const parent = (id, extra = {}) => ({ id, paymentType: 'CREDIT', customerName: 'Ali', totalValue: 1000, creditReceived: false, ...extra });
   const child = (id, rel, amt) => ({ id, paymentType: 'PARTIAL_PAYMENT', relatedSaleId: rel, totalValue: amt });
@@ -538,7 +511,6 @@ describe('legacy partly-paid sales are detected exactly', () => {
     assert.deepEqual(findPartialConflicts(null), []);
   });
 });
-
 describe('one save at a time', () => {
   it('ignores a second call while the first is still running, then allows it again', async () => {
     let runs = 0;
@@ -557,7 +529,6 @@ describe('one save at a time', () => {
     assert.deepEqual([x, y], [1, 2]);
   });
 });
-
 describe('cash in hand guards for deleting and recovering payments', () => {
   it('deleting a payment received takes cash away; credit purchases and transfers do not', () => {
     assert.equal(getDeleteCashDrop({ type: 'IN', amount: 500 }), 500);
@@ -578,7 +549,6 @@ describe('cash in hand guards for deleting and recovering payments', () => {
     assert.equal(getCashShortIssue(0, 0, 'x'), null);
   });
 });
-
 describe('renaming an entity updates every copy of its name', () => {
   it('renames its transactions, transfer peers and linked materials, and nothing else', () => {
     const txs = [

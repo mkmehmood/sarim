@@ -2,15 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-
 const src = readFileSync(new URL('../modules/formula-store.js', import.meta.url), 'utf8');
-
 const DEFAULTS = [
   { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard' },
   { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard' },
   { key: 'STORE_C', name: 'ASAAN', formulaType: 'asaan' },
 ];
-
 function load(initial = {}) {
   const data = new Map(Object.entries(initial));
   const writes = [];
@@ -38,9 +35,7 @@ function load(initial = {}) {
   vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, getFormulaStore, getFormulaSlots };', ctx);
   return { api: ctx.api, data, writes, notes };
 }
-
 const legacy = { factory_default_formulas: { standard: [{ name: 'a', quantity: 1, cost: 2 }], asaan: [{ name: 'b', quantity: 1, cost: 3 }] } };
-
 describe('commitStoresWithFormulas', () => {
   const base = () => ({
     ...legacy,

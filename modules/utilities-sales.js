@@ -13,9 +13,7 @@ import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, ge
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { normaliseBackupFields as _normaliseBackupFieldsShared, collectAuxBackupFields, applyAuxBackupFields } from './data-keys.js';
-
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
-
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
 export function _set_currentCashTrackerMode(v) { currentCashTrackerMode = v; window.currentCashTrackerMode = v; }
@@ -52,7 +50,6 @@ export function _set_currentOverviewMode(v) { currentOverviewMode = v; window.cu
 export let currentCustomerChartMode = 'week';
 window.currentCustomerChartMode = currentCustomerChartMode;
 export function _set_currentCustomerChartMode(v) { currentCustomerChartMode = v; window.currentCustomerChartMode = v; }
-
 (window.__uiSyncers = window.__uiSyncers || []).push(() => {
   try { const v = window.currentMfgMode; if (v !== undefined) currentMfgMode = v; } catch (_) {}
   try { const v = window.currentCustomerChartMode; if (v !== undefined) currentCustomerChartMode = v; } catch (_) {}
@@ -67,7 +64,6 @@ export function _set_currentCustomerChartMode(v) { currentCustomerChartMode = v;
   try { const v = window.custTransactionMode; if (v !== undefined) custTransactionMode = v; } catch (_) {}
   try { const v = window.currentFactoryDate; if (v !== undefined) currentFactoryDate = v; } catch (_) {}
 });
-
 export function setCashTrackerMode(mode) {
 currentCashTrackerMode = mode; window.currentCashTrackerMode = currentCashTrackerMode;
 document.querySelectorAll('#tab-payments .toggle-group .toggle-opt').forEach(opt => {
@@ -81,7 +77,6 @@ event.target.classList.add('active');
 calculateCashTracker();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 }
-
 export async function calculateCashTracker() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -260,7 +255,6 @@ const elCreditTotal = document.getElementById('credit-total');
 if (elCreditTotal) elCreditTotal.textContent = `${fmtAmt(safeValue(totalCredits))}`;
 return finalTotals;
 }
-
 export function updateEconomicDashboardWithNetValues(totals, totalCredits) {
 const operatingCashFlow = totals.productionValue - totals.totalSoldValue + totals.salesTabCash + totals.calculatorCash;
 const operatingCashElement = document.getElementById('operatingCashFlow');
@@ -282,7 +276,6 @@ if (productionValueElement) {
 productionValueElement.textContent = `${fmtAmt(safeValue(totals.productionValue))}`;
 }
 }
-
 export async function openEntityTransactions(entityId) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -350,7 +343,6 @@ document.documentElement.style.overflow = 'hidden';
 document.getElementById('entityTransactionsOverlay').style.display = 'flex';
 });
 }
-
 export function closeEntityTransactions() {
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
@@ -358,9 +350,7 @@ document.documentElement.style.overflow = '';
 document.getElementById('entityTransactionsOverlay').style.display = 'none';
 });
 }
-
 export function savePaymentTransaction(...a) { return runExclusive('savePaymentTransaction', () => _savePaymentTransactionImpl(...a)); }
-
 async function _savePaymentTransactionImpl() {
 let message = '';
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
@@ -526,7 +516,6 @@ if (typeof calculateCashTracker === 'function') calculateCashTracker();
 if (isPayable) {
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 }
-
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 message = `Payment ${type === 'IN' ? 'received from' : 'made to'} ${entity.name}`;
 if (isPayable) {
@@ -551,7 +540,6 @@ return;
 }
 showToast(message, 'success');
 }
-
 export async function deletePaymentTransaction(id) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -615,7 +603,6 @@ showToast(" Failed to delete transaction. Please try again.", "error");
 }
 }
 }
-
 export async function filterPaymentHistory() {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -631,9 +618,7 @@ card.style.display = 'none';
 }
 });
 }
-
 export async function getAvailableCashInHand() {
-
 const _gacBatch = await sqliteStore.getBatch([
 'noman_history','mfg_pro_pkr','customer_sales','payment_transactions','expenses',
 'factory_production_history'
@@ -658,7 +643,6 @@ _gacSalesCash += (sale.mergedSummary.cashSales || 0);
 } else if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
 _gacSalesCash += collectionPartialCash(sale);
 } else if (isRepLinked) {
-
 } else {
 if (sale.paymentType === 'CASH' || sale.creditReceived) _gacSalesCash += _saleVal;
 else if (sale.paymentType === 'COLLECTION') _gacSalesCash += _saleVal;
@@ -680,7 +664,6 @@ _gacPayOut += (parseFloat(tx.amount) || 0);
 }
 }
 });
-
 _gacExpenses.forEach(exp => {
 if (exp.isMerged === true && exp.category === 'operating') _gacExp += (parseFloat(exp.amount) || 0);
 });
@@ -689,7 +672,6 @@ if (!entry.isMerged) _gacExp += (parseFloat(entry.additionalCost) || 0);
 });
 return _gacProdVal + _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _gacExp;
 }
-
 export async function calculateNetCash() {
 const _cncBatch = await sqliteStore.getBatch([
 'noman_history','factory_unit_tracking','payment_transactions','payment_entities',
@@ -995,7 +977,6 @@ return indicators;
 return null;
 }
 }
-
 export function updateEconomicDashboard(indicators) {
 const _econMode = typeof currentCashTrackerMode !== 'undefined' ? currentCashTrackerMode : 'all';
 const netCashValueElement = document.getElementById('netCashValue');
@@ -1005,7 +986,6 @@ netCashValueElement.style.color = indicators.cashInHand < 0 ? 'var(--danger)' :
 indicators.cashInHand < 10000 ? 'var(--warning)' :
 'var(--accent-emerald)';
 }
-
 const operatingCashElement = document.getElementById('operatingCashFlow');
 if (operatingCashElement) {
 operatingCashElement.textContent = `${fmtAmt(safeValue(indicators.operatingCashFlow))}`;
@@ -1068,15 +1048,12 @@ const cashRatio = indicators.liquidityRatios?.cashRatio;
 cashRatioElement.textContent = (cashRatio === null || cashRatio === undefined) ? 'N/A' : safeNumber(parseFloat(cashRatio), 0).toFixed(2);
 }
 }
-
 let _saleSaveInFlight = false;
-
 export async function saveCustomerSale() {
 if (_saleSaveInFlight) return;
 _saleSaveInFlight = true;
 try { return await _saveCustomerSaleImpl(); } finally { _saleSaveInFlight = false; }
 }
-
 async function _saveCustomerSaleImpl() {
 const _ed = getEditCtx('sale');
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -1257,7 +1234,6 @@ document.getElementById('cust-name').value = '';
 document.getElementById('cust-quantity').value = '';
 selectSalesRep(document.querySelector('#sales-rep-toggle-group .toggle-opt'), 'NONE');
 selectPaymentType(document.getElementById('btn-payment-credit'), 'CREDIT');
-
 (async () => {
   const _stores = typeof getAppStores === 'function' ? await getAppStores() : [];
   const _firstStore = _stores[0] || { key: 'STORE_A' };
@@ -1286,7 +1262,6 @@ showToast('Sale rollback failed: ' + (_safeErr(rollbackError).message || 'data m
 showToast(' Failed to save sale. Please try again.', 'error');
 }
 }
-
 function _resetSaleForm() {
 const n = document.getElementById('cust-name'); if (n) n.value = '';
 const q = document.getElementById('cust-quantity'); if (q) q.value = '';
@@ -1295,7 +1270,6 @@ const ph = document.getElementById('new-cust-phone'); if (ph) ph.value = '';
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.add('hidden');
 setSaleMode('sale');
 }
-
 export async function startEditSale(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const rec = customerSales.find(s => s && String(s.id) === String(id));
@@ -1325,7 +1299,6 @@ set('new-cust-phone', rec.customerPhone);
 calculateCustomerSale();
 beginEditMode('sale', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Sale', watchIds: ['cust-name','cust-quantity','cust-date','sales-rep-value','supply-store-value','new-cust-phone'], anchorId: 'cust-name', cancelFn: _resetSaleForm });
 }
-
 export async function startEditCollection(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const rec = customerSales.find(s => s && String(s.id) === String(id));
@@ -1343,17 +1316,14 @@ set('new-cust-phone', rec.customerPhone);
 updateCollectionPreview();
 beginEditMode('collection', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Collection', watchIds: ['cust-name','cust-amount-collected','cust-date','new-cust-phone'], anchorId: 'cust-amount-collected', cancelFn: _resetSaleForm });
 }
-
 registerEditHandler('sale', startEditSale);
 registerEditHandler('collection', startEditCollection);
-
 function _resetProdForm() {
 ['gross-wt', 'cont-wt', 'net-wt'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 resetProdPhotos();
 const fu = document.getElementById('formula-units'); if (fu) fu.value = '1';
 if (typeof window.calculateDynamicProductionCost === 'function') window.calculateDynamicProductionCost();
 }
-
 export async function startEditProd(id) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const rec = db.find(r => r && String(r.id) === String(id));
@@ -1375,19 +1345,15 @@ if (rec.grossWt && typeof window.calcNet === 'function') window.calcNet();
 if (typeof window.calculateDynamicProductionCost === 'function') await window.calculateDynamicProductionCost();
 beginEditMode('prod', rec, { buttonId: 'btn-save-production', watchIds: ['sys-date','storeSelector','formula-units','gross-wt','cont-wt','net-wt'], label: 'Update Production', anchorId: 'sys-date', cancelFn: _resetProdForm });
 }
-
 registerEditHandler('prod', startEditProd);
-
 export function setSaleMode(mode) {
 custTransactionMode = mode; window.custTransactionMode = custTransactionMode;
 const isSale = mode === 'sale';
 const _el = id => document.getElementById(id);
-
 const btnSale = _el('btn-cust-mode-sale');
 const btnColl = _el('btn-cust-mode-coll');
 if (btnSale) btnSale.className = `toggle-opt${isSale ? ' active' : ''}`;
 if (btnColl) btnColl.className = `toggle-opt${!isSale ? ' active' : ''}`;
-
 const saleIn  = _el('cust-sale-inputs');
 const collIn  = _el('cust-coll-inputs');
 const supPay  = _el('cust-sale-supply-payment');
@@ -1396,13 +1362,10 @@ if (saleIn)  isSale ? saleIn.classList.remove('hidden')  : saleIn.classList.add(
 if (collIn)  isSale ? collIn.classList.add('hidden')     : collIn.classList.remove('hidden');
 if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
 if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
-
 const qtyRow = _el('customer-qty-row');
 if (qtyRow) { qtyRow.style.display = isSale ? '' : 'none'; }
-
 const btn = _el('btn-save-cust-transaction');
 if (btn) btn.textContent = isSale ? 'Save Transaction' : 'Save Collection';
-
 if (!isSale) {
 const amtEl = _el('cust-amount-collected');
 if (amtEl) amtEl.value = '';
@@ -1411,7 +1374,6 @@ updateCollectionPreview();
 calculateCustomerSale();
 }
 }
-
 export function updateCollectionPreview() {
 if (custTransactionMode !== 'collection') return;
 const creditEl = document.getElementById('customer-current-credit');
@@ -1429,7 +1391,6 @@ balEl.textContent = fmtAmt(remaining);
 balEl.style.color = remaining === 0 ? 'var(--accent-emerald)' : 'var(--warning)';
 }
 }
-
 export async function saveCustomerCollection() {
 const _ed = getEditCtx('collection');
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1551,7 +1512,6 @@ if (typeof calculateCashTracker === 'function') calculateCashTracker();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 emitSyncUpdate({ customer_sales: null});
-
 const savedName = name;
 if (amountEl) amountEl.value = '';
 const _custNameEl = document.getElementById('cust-name');
@@ -1576,7 +1536,6 @@ showToast('Failed to save collection. Please try again.', 'error');
 restoreBtn();
 }
 }
-
 export async function saveCustomerTransaction() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -1587,17 +1546,14 @@ await saveCustomerCollection();
 await saveCustomerSale();
 }
 }
-
 export const _DEFAULT_STORES = [
   { key: 'STORE_A', name: 'ZUBAIR',   formulaType: 'standard' },
   { key: 'STORE_B', name: 'MAHMOOD',  formulaType: 'standard' },
   { key: 'STORE_C', name: 'ASAAN',    formulaType: 'asaan'    },
 ];
-
 export let _storesCache = null;
 export let _storesCacheTs = 0;
 export const _STORES_CACHE_TTL = 3000;
-
 export async function getAppStores() {
   const now = Date.now();
   if (_storesCache && (now - _storesCacheTs) < _STORES_CACHE_TTL) return _storesCache;
@@ -1610,11 +1566,9 @@ export async function getAppStores() {
   _storesCacheTs = now;
   return _storesCache;
 }
-
 export function _invalidateStoresCache() { _storesCache = null; _storesCacheTs = 0; }
 window._invalidateStoresCache = _invalidateStoresCache;
 window.getAppStores = getAppStores;
-
 export function getStoreLabel(storeCode) {
   if (_storesCache) {
     const f = _storesCache.find(s => s.key === storeCode);
@@ -1627,24 +1581,19 @@ export function getStoreLabel(storeCode) {
     default: return storeCode || '';
   }
 }
-
 export async function getStoreLabelAsync(storeCode) {
   const stores = await getAppStores();
   const f = stores.find(s => s.key === storeCode);
   return f ? f.name : (storeCode || '');
 }
-
 export async function getStoreFormulaType(storeCode) {
   const stores = await getAppStores();
   const f = stores.find(s => s.key === storeCode);
   return f ? (f.formulaType || 'standard') : 'standard';
 }
-
 window.getStoreFormulaType = getStoreFormulaType;
-
 export async function rebuildStoreUI() {
   const stores = await getAppStores();
-
   const supplyGroup = document.getElementById('supply-store-toggles');
   if (supplyGroup) {
     supplyGroup.innerHTML = '';
@@ -1659,9 +1608,7 @@ export async function rebuildStoreUI() {
     const hidden = document.getElementById('supply-store-value');
     if (hidden && stores.length) hidden.value = stores[0].key;
   }
-
   if (typeof renderReturnTargets === 'function') await renderReturnTargets();
-
   const storeHidden = document.getElementById('storeSelector');
   const storeTglGrp = document.getElementById('storeSelectorToggleGroup');
   if (storeTglGrp && storeHidden) {
@@ -1683,12 +1630,9 @@ export async function rebuildStoreUI() {
     if (!storeHidden.value && stores.length) storeHidden.value = stores[0].key;
     else if (!stores.find(s => s.key === cur) && stores.length) storeHidden.value = stores[0].key;
   }
-
   if (typeof window.refreshFormulaDependentUI === 'function') await window.refreshFormulaDependentUI();
 }
-
 window.rebuildStoreUI = rebuildStoreUI;
-
 export async function getAvailableStoresForDate(date) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -1700,7 +1644,6 @@ stores.add(getStoreLabel(production.store));
 });
 return Array.from(stores).join(', ') || 'None';
 }
-
 export async function calculateSalesCost(store, quantity) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
@@ -1723,7 +1666,6 @@ totalCost: totalCost,
 totalValue: totalValue
 };
 }
-
 export async function calculateCustomerSale() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -1784,7 +1726,6 @@ inventoryWarning.style.background = 'rgba(5, 150, 105, 0.1)';
 }
 }
 }
-
 export function selectSalesRep(btn, value) {
 document.querySelectorAll('#sales-rep-toggle-group .toggle-opt').forEach(b => b.classList.remove('active'));
 btn.classList.add('active');
@@ -1792,7 +1733,6 @@ document.getElementById('sales-rep-value').value = value;
 autoFillCustomerName();
 calculateCustomerSale();
 }
-
 export function selectSupplyStore(btn, value) {
 const grp = document.getElementById('supply-store-toggles');
 if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
@@ -1801,7 +1741,6 @@ const hid = document.getElementById('supply-store-value');
 if (hid) hid.value = value;
 calculateCustomerSale();
 }
-
 export function selectPaymentType(btn, value) {
 if (!btn) return;
 document.querySelectorAll('#btn-payment-cash, #btn-payment-credit').forEach(b => b.classList.remove('active'));
@@ -1809,14 +1748,12 @@ btn.classList.add('active');
 document.getElementById('payment-type-value').value = value;
 calculateCustomerSale();
 }
-
 export function selectRepPaymentType(btn, value) {
 document.querySelectorAll('#btn-rep-pay-credit, #btn-rep-pay-cash').forEach(b => b.classList.remove('active'));
 btn.classList.add('active');
 document.getElementById('rep-payment-value').value = value;
 calculateRepSalePreview();
 }
-
 export function autoFillCustomerName() {
 const salesRepValue = document.getElementById('sales-rep-value').value;
 const nameInput = document.getElementById('cust-name');
@@ -1845,7 +1782,6 @@ infoDisplay.classList.add('hidden');
 }
 }
 }
-
 export function createInventoryWarningElement() {
 const warningDiv = document.createElement('div');
 warningDiv.id = 'inventory-warning';
@@ -1859,7 +1795,6 @@ const calculateButton = salesSection.querySelector('.btn-main');
 salesSection.insertBefore(warningDiv, calculateButton);
 return warningDiv;
 }
-
 export async function deleteCustomerSale(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
@@ -1935,7 +1870,6 @@ showToast(" Failed to delete sale. Please try again.", "error");
 }
 }
 }
-
 export async function calculateSales() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -1954,7 +1888,6 @@ const fieldExp = parseFloat(document.getElementById('fieldExpenses').value) || 0
 const salePrice = autoSalePrice;
 const commissionPerUnit = parseFloat(document.getElementById('commissionPerUnit').value) || 0;
 const commissionPaid = parseFloat(document.getElementById('commissionPaid').value) || 0;
-
 const netSold = Math.max(0, sold - ret - exp - shared);
 const cashQty = Math.max(0, netSold - cred);
 const expected = (cashQty * salePrice) + prev - fieldExp - commissionPaid;
@@ -1972,7 +1905,6 @@ if (_discEl) _discEl.innerText = `SHORT: ${fmtAmt(Math.abs(diff))}`;
 if (box) box.className = 'result-box discrepancy-ok';
 if (_discEl) _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 }
-
 const grossCommission = commissionPerUnit * netSold;
 const commissionPayable = Math.max(0, grossCommission - commissionPaid);
 const grossEl = document.getElementById('grossCommissionEarned');
@@ -1984,7 +1916,6 @@ if (paidEl) paidEl.textContent = fmtAmt(safeValue(commissionPaid));
 if (payableEl) payableEl.textContent = fmtAmt(safeValue(commissionPayable));
 if (payableBox) payableBox.className = commissionPayable > 0.01 ? 'result-box discrepancy-alert' : 'result-box discrepancy-ok';
 }
-
 export const firebaseConfig = {
   apiKey: "AIzaSyDYjGQILtrcG2nfKACSfsVtfIPZOAgbr_s",
   authDomain: "calculator-fabd3.firebaseapp.com",
@@ -1994,7 +1925,6 @@ export const firebaseConfig = {
   messagingSenderId: "124313576124",
   appId: "1:124313576124:web:fb721bb61bc19b51db26b9"
 };
-
 export async function loadFirestoreStats() {
 try {
 const saved = await sqliteStore.get('firestore_stats', null);
@@ -2009,18 +1939,15 @@ firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 }
 }
-
 export function saveFirestoreStats() {
 sqliteStore.set('firestore_stats', firestoreStats).catch(() => {});
 }
-
 export let firestoreStats = {
 reads: 0,
 writes: 0,
 history: [],
 lastReset: Date.now()
 };
-
 export function checkAndAutoResetFirestoreStats() {
 const now = Date.now();
 const hoursSinceReset = (now - firestoreStats.lastReset) / (1000 * 60 * 60);
@@ -2032,13 +1959,11 @@ firestoreStats.lastReset = now;
 saveFirestoreStats();
 }
 }
-
 export const FIRESTORE_THRESHOLDS = {
   reads:  { warn: 40000, critical: 48000 },
   writes: { warn: 16000, critical: 19000 },
   _alerted: { reads_warn: false, reads_critical: false, writes_warn: false, writes_critical: false }
 };
-
 export function _checkFirestoreCostThresholds() {
   const r = firestoreStats.reads;
   const w = firestoreStats.writes;
@@ -2057,7 +1982,6 @@ export function _checkFirestoreCostThresholds() {
     showToast('\u26A0\uFE0F Firestore writes at ' + w.toLocaleString() + ' today \u2014 80\u202f% of 20\u202f000/day free tier used', 'warning', 6000);
   }
 }
-
 export function buildFirestoreCostEstimate(estimatedReads, estimatedWrites) {
   const totalR = firestoreStats.reads  + estimatedReads;
   const totalW = firestoreStats.writes + estimatedWrites;
@@ -2071,28 +1995,23 @@ export function buildFirestoreCostEstimate(estimatedReads, estimatedWrites) {
   }
   return lines.join('\n');
 }
-
 export function trackFirestoreRead(count = 1) {
 checkAndAutoResetFirestoreStats();
 firestoreStats.reads += count;
 saveFirestoreStats();
 _checkFirestoreCostThresholds();
 }
-
 export function trackFirestoreWrite(count = 1) {
 checkAndAutoResetFirestoreStats();
 firestoreStats.writes += count;
 saveFirestoreStats();
 _checkFirestoreCostThresholds();
 }
-
 export function resetFirestoreStats() {
 firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 saveFirestoreStats();
 }
-
 export const originalOpenDataMenu = window.openDataMenu;
-
 window.openDataMenu = function() {
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof performOneClickSync === 'function') {
@@ -2101,7 +2020,6 @@ performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error
 originalOpenDataMenu();
 }
 };
-
 export const DeltaSync = {
 _cache: {},
 _cacheGet(key) {
@@ -2161,7 +2079,6 @@ async markUploaded(collection, id) {
   if (!this._uploaded.has(collection)) this._uploaded.set(collection, new Set());
   this._uploaded.get(collection).add(sid);
   if (this._dirty.has(collection)) this._dirty.get(collection).delete(sid);
-
   const _uploadedIds = Array.from(this._uploaded.get(collection) || []);
   if (_uploadedIds.length > 0) {
     try {
@@ -2246,7 +2163,6 @@ async setLastSyncTimestamp(collection, explicitMs) {
   const key = `lastSync_${collection}`;
   const ts = explicitMs ? new Date(explicitMs).toISOString() : new Date().toISOString();
   this._cacheSet(key, ts);
-
   await sqliteStore.set(key, ts);
 },
 async getLastLocalModification(collection) {
@@ -2369,7 +2285,6 @@ async recordOperation(collection, reads = 0, writes = 0) {
   await sqliteStore.set('deltaSyncStats', stats);
 }
 };
-
 export async function initializeSyncStatsIfNeeded() {
 const stats = await DeltaSync.getSyncStats();
 const hasStats = Object.keys(stats).length > 0;
@@ -2402,7 +2317,6 @@ return true;
 }
 return false;
 }
-
 export const UUIDSyncRegistry = (() => {
   const MAX_IDS_PER_COL = 10000;
   const ALL_COLLECTIONS = [
@@ -2410,17 +2324,14 @@ export const UUIDSyncRegistry = (() => {
     'sales_customers', 'transactions', 'entities', 'inventory',
     'factory_history', 'returns', 'expenses',
   ];
-
   const _uploaded   = new Map();
   const _downloaded = new Map();
   let   _myDeviceShard = null;
   let   _newDeviceRestore = false;
-
   function _set(map, col) {
     if (!map.has(col)) map.set(col, new Set());
     return map.get(col);
   }
-
   function _shardOf(id) {
     if (!id || typeof id !== 'string') return null;
     try {
@@ -2428,29 +2339,22 @@ export const UUIDSyncRegistry = (() => {
       return (meta && meta.deviceShard) ? String(meta.deviceShard).toLowerCase() : null;
     } catch (_) { return null; }
   }
-
   function _isLocalOrigin(id) {
     if (!_myDeviceShard) return false;
     const shard = _shardOf(id);
     return shard !== null && shard === _myDeviceShard;
   }
-
   function setDeviceShard(shard) {
     _myDeviceShard = shard ? String(shard).toLowerCase() : null;
   }
-
   function setNewDeviceRestore(flag) {
     _newDeviceRestore = !!flag;
   }
-
   function markUploaded(col, id) {
     const sid = String(id);
-
     _set(_uploaded, col).add(sid);
-
     DeltaSync.markUploaded(col, sid);
   }
-
   function skipUpload(col, id) {
     const sid = String(id);
     if (DeltaSync.isDirtyId(col, sid)) return false;
@@ -2460,7 +2364,6 @@ export const UUIDSyncRegistry = (() => {
     if (_isLocalOrigin(sid)) return false;
     return DeltaSync.wasUploaded(col, sid);
   }
-
   const _downloadPersistTimers = new Map();
   function _persistDownloadedIds(col) {
     if (_downloadPersistTimers.has(col)) clearTimeout(_downloadPersistTimers.get(col));
@@ -2474,30 +2377,23 @@ export const UUIDSyncRegistry = (() => {
       } catch (_) {}
     }, 800));
   }
-
   function markDownloaded(col, id) {
     const sid = String(id);
     _set(_downloaded, col).add(sid);
     DeltaSync.markDownloaded(col, sid);
     _persistDownloadedIds(col);
   }
-
   function skipDownload(col, id) {
     const sid = String(id);
-
     const dn = _downloaded.get(col);
     if (dn && dn.has(sid)) return true;
-
     if (_newDeviceRestore) return false;
-
     if (_isLocalOrigin(sid)) {
-
       if (typeof DeltaSync !== 'undefined' && DeltaSync.isDirtyId(col, sid)) return false;
       return true;
     }
     return false;
   }
-
   function shouldApplyCloud(cloudRecord, localRecord) {
     if (!localRecord) return true;
     if (!cloudRecord) return false;
@@ -2507,14 +2403,12 @@ export const UUIDSyncRegistry = (() => {
         : false;
     } catch (_) { return false; }
   }
-
   function stats() {
     const out = { _myDeviceShard };
     for (const [col, s] of _uploaded)   out[col] = { ...(out[col] || {}), uploaded:   s.size };
     for (const [col, s] of _downloaded) out[col] = { ...(out[col] || {}), downloaded: s.size };
     return out;
   }
-
   async function loadCollection(col) {
     try {
       const uploadedArr = await sqliteStore.get(`uploadedIds_${col}`, []);
@@ -2530,11 +2424,9 @@ export const UUIDSyncRegistry = (() => {
       }
     } catch (_) {}
   }
-
   async function loadAll() {
     await Promise.all(ALL_COLLECTIONS.map(c => loadCollection(c)));
   }
-
   async function clearAll() {
     _uploaded.clear();
     _downloaded.clear();
@@ -2543,7 +2435,6 @@ export const UUIDSyncRegistry = (() => {
       sqliteStore.remove(`downloadedIds_${c}`).catch(() => {}),
     ]));
   }
-
   return {
     setDeviceShard,
     setNewDeviceRestore,
@@ -2556,16 +2447,12 @@ export const UUIDSyncRegistry = (() => {
     loadCollection,
     loadAll,
     clearAll,
-
     isLocalOrigin: _isLocalOrigin,
     shardOf: _shardOf,
   };
 })();
-
 window.UUIDSyncRegistry = UUIDSyncRegistry;
-
 updateSyncButton();
-
 export function addSignOutButton() {
 removeSignOutButton();
 const systemControls = document.querySelector('.system-controls');
@@ -2576,12 +2463,10 @@ const signOutBtn = document.createElement('button');
 }
 }
 }
-
 export function removeSignOutButton() {
 const btn = document.getElementById('cloud-signout-btn');
 if (btn) btn.remove();
 }
-
 export function handleReturnQtyInput() {
 const retQty = parseFloat(document.getElementById('returnedQuantity').value) || 0;
 const section = document.getElementById('returnStoreSection');
@@ -2593,7 +2478,6 @@ section.classList.add('hidden');
 }
 if (typeof calculateSales === 'function') calculateSales();
 }
-
 export function handleExpiredQtyInput() {
 const expQty = parseFloat(document.getElementById('expiredQuantity').value) || 0;
 const section = document.getElementById('expiredSection');
@@ -2604,7 +2488,6 @@ section.classList.add('hidden');
 }
 if (typeof calculateSales === 'function') calculateSales();
 }
-
 export function handleTripleTap(el, targetTab) {
 const now = Date.now();
 const TAP_WINDOW = 600;
@@ -2616,7 +2499,6 @@ el._tapTimes = [];
 showTab(targetTab);
 }
 }
-
 export async function processRepTransfer(targetRep, quantity, date, seller) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
@@ -2651,15 +2533,12 @@ notifyDataChange('sales');
 emitSyncUpdate({ customer_sales: null });
 return { saleId: id };
 }
-
 let _calcSaveInFlight = false;
-
 export async function saveTransaction() {
 if (_calcSaveInFlight) return;
 _calcSaveInFlight = true;
 try { return await _saveTransactionImpl(); } finally { _calcSaveInFlight = false; }
 }
-
 async function _saveTransactionImpl() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -2810,7 +2689,6 @@ linkedRepSalesIds: [],
 syncedAt: new Date().toISOString()
 };
 entry = ensureRecordIntegrity(entry, false);
-
 const reconciledCustomerIds = new Set();
 if (Array.isArray(salesHistory)) {
   salesHistory.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(id => reconciledCustomerIds.add(id)); });
@@ -2872,7 +2750,6 @@ showToast('Failed to save transaction. Nothing was changed.', 'error', 4000);
 }
 }
 }
-
 export async function exportCustomerData(type) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3074,7 +2951,6 @@ showToast(`Exported ${customerMap.size} customers successfully!`, "success");
 showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
-
 export async function markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, onlyIds, settledAt) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 if (!seller || seller === 'COMBINED') return [];
@@ -3109,7 +2985,6 @@ notifyDataChange('sales');
 }
 return linkedIds;
 }
-
 export async function markSalesEntriesAsReceived(seller, quantityToMark) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -3148,7 +3023,6 @@ refreshCustomerSales(1, false);
 }
 return linkedIds;
 }
-
 export async function markRepSalesEntriesAsUsed(seller, date, calcId, fromDate) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   if (!seller || seller === 'COMBINED' || !date || !calcId) return [];
@@ -3171,7 +3045,6 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   }
   return linkedRepIds;
 }
-
 export async function revertRepSalesEntries(repSaleIds) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   if (!repSaleIds || repSaleIds.length === 0) return 0;
@@ -3192,7 +3065,6 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   }
   return revertedCount;
 }
-
 export async function updateCompositionChart() {
 const _sdEl = document.getElementById('sellerSelect');
 if (_sdEl && _sdEl.value === 'COMBINED') {
@@ -3200,7 +3072,6 @@ const comp = await calculateComparisonData();
 updateSalesCharts(comp);
 }
 }
-
 export async function setIndChartMode(mode) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -3213,7 +3084,6 @@ document.getElementById('ind-year-btn').className = `toggle-opt ${mode === 'year
 document.getElementById('ind-all-btn').className = `toggle-opt ${mode === 'all' ? 'active' : ''}`;
 await updateIndChart();
 }
-
 export async function setIndChartMetric(metric) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -3222,13 +3092,11 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 currentIndMetric = metric; window.currentIndMetric = currentIndMetric;
 await updateIndChart();
 }
-
 export async function updateIndChart() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-
 const seller = document.getElementById('sellerSelect').value;
 if (seller === 'COMBINED') return;
 if(indPerformanceChart) indPerformanceChart.destroy();
@@ -3347,7 +3215,6 @@ ticks: { color: colors.text, maxRotation: 45 }
 }
 }));
 }
-
 export function setStoreComparisonMetric(metric, event) {
 if (event) {
 event.preventDefault();
@@ -3361,13 +3228,11 @@ event.target.classList.add('active');
 }
 updateStoreComparisonChart(currentOverviewMode);
 }
-
 export async function updateStoreComparisonChart(mode = 'day') {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
-
 if(storeComparisonChart) storeComparisonChart.destroy();
 const selectedDate = document.getElementById('sys-date').value;
 const selectedDateObj = new Date(selectedDate);
@@ -3467,7 +3332,6 @@ ticks: { color: colors.text }
 }
 }));
 }
-
 export async function refreshUI(page = 1, force = false) {
 const _ruiBatch = await sqliteStore.getBatch([
 'mfg_pro_pkr','stock_returns','customer_sales','sales_customers',
@@ -3487,7 +3351,6 @@ const expenseRecords = ensureArray(_ruiBatch.get('expenses')).filter(_rdAlive);
 const selectedDate = document.getElementById('sys-date').value;
 if (!selectedDate) return;
 if (sqliteStore && sqliteStore.get) {
-
 try {
 let freshProduction = await sqliteStore.get('mfg_pro_pkr', []);
 if (freshProduction && freshProduction.length > 0) {
@@ -3672,7 +3535,6 @@ if (typeof updateUnitsAvailableIndicator === 'function') updateUnitsAvailableInd
 updateUnitsAvailableIndicator();
 }
 }
-
 export function filterProductionHistory() {
 const searchTerm = document.getElementById('production-search').value.toLowerCase();
 const allCards = document.querySelectorAll('#prodHistoryList .card');
@@ -3685,7 +3547,6 @@ card.style.display = 'none';
 }
 });
 }
-
 export function filterCalculatorHistory() {
 const searchTerm = document.getElementById('calculator-search').value.toLowerCase();
 const allCards = document.querySelectorAll('#historyList .card');
@@ -3700,7 +3561,6 @@ card.style.display = 'none';
 }
 });
 }
-
 export function filterCustomerTransactions() {
 const searchTerm = document.getElementById('customer-search').value.toLowerCase();
 const allCards = document.querySelectorAll('#custHistoryList .card');
@@ -3713,7 +3573,6 @@ card.style.display = 'none';
 }
 });
 }
-
 export async function renderEntityTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _retAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -3724,7 +3583,6 @@ const tbody = document.getElementById('entity-table-body');
 const filterInput = document.getElementById('entity-list-filter');
 const filter = filterInput ? String(filterInput.value).toLowerCase() : '';
 if (!tbody) return;
-
 try {
 const _freshInv = await sqliteStore.get('factory_inventory_data', []);
 if (_freshInv && Array.isArray(_freshInv) && _freshInv.length > 0) {
@@ -3787,7 +3645,6 @@ const payEl = document.getElementById('total-payables');
 if(recEl) recEl.innerText = `${fmtAmt(totalReceivables)}`;
 if(payEl) payEl.innerText = `${fmtAmt(totalPayables)}`;
 }
-
 export async function filterEntityList() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const searchTerm = document.getElementById('entity-list-search')?.value.toLowerCase() || '';
@@ -3814,7 +3671,6 @@ card.style.display = 'none';
 });
 }
 }
-
 export async function viewEntityTransactions(entityId) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3845,7 +3701,6 @@ message += `Net Balance: ${fmtAmt(netBalance)}\n`;
 }
 showToast(message, 'info', 5000);
 }
-
 export async function syncSuppliersToEntities() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
@@ -3881,7 +3736,6 @@ material.supplierId = existingEntity.id;
 fixedMaterials.push(material);
 }
 });
-
 if (newEntities.length > 0) {
 await unifiedSave('payment_entities', paymentEntities, null, newEntities.map(e => e.id));
 }
@@ -3889,7 +3743,6 @@ if (fixedMaterials.length > 0) {
 await unifiedSave('factory_inventory_data', factoryInventoryData, null, fixedMaterials.map(i => i.id));
 }
 }
-
 export async function verifyAccountPassword(password) {
   if (!currentUser || !password) return false;
   const email = currentUser.email;
@@ -3910,7 +3763,6 @@ export async function verifyAccountPassword(password) {
     return false;
   }
 }
-
 export async function promptVerifiedBackupPassword({ title = 'Confirm Password', subtitle = 'Enter your account password to encrypt this backup file.', inputId = '_bkp_pwd_modal_input' } = {}) {
   if (!currentUser) return null;
   return new Promise((resolve) => {
@@ -3969,7 +3821,6 @@ export async function promptVerifiedBackupPassword({ title = 'Confirm Password',
     };
   });
 }
-
 export async function unifiedBackup() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -4039,7 +3890,6 @@ console.error('Encryption failed:', _safeErr(encErr));
 showToast('Encryption failed: ' + encErr.message, 'error');
 }
 }
-
 export async function unifiedRestore(event) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -4189,11 +4039,9 @@ showToast("Error reading file: " + err.message, 'error');
 }
 }
 }
-
 export function normaliseBackupFields(data) {
   return _normaliseBackupFieldsShared(data);
 }
-
 export async function _doRestoreMerge(data) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -4351,7 +4199,6 @@ localArray.forEach(item => {
     DeltaSync.markDownloaded(firestoreCollection, sid);
   }
 });
-
 mergedData[key] = merged.map(item => {
   if (!item) return item;
   if (!item.id || !validateUUID(String(item.id))) return ensureRecordIntegrity(item, false, true);
@@ -4554,14 +4401,12 @@ showToast('Not logged in to cloud. Data restored locally only.', 'warning');
 }
 const statsMessage = `Added: ${totalAdded}, Updated: ${totalUpdated}, Skipped: ${totalSkipped}`;
 const syncMessage = cloudSyncSuccess ? ' and new/updated records uploaded to cloud' : '';
-
 if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArray(data.person_photos)) {
   try {
     const existingPhotos = (await sqliteStore.get('person_photos')) || {};
     const backupPhotos = data.person_photos;
     const mergedPhotos = Object.assign({}, existingPhotos, backupPhotos);
     await sqliteStore.set('person_photos', mergedPhotos);
-
     const existingTs = (await sqliteStore.get('person_photos_timestamps')) || {};
     const backupTs   = (data.person_photos_timestamps && typeof data.person_photos_timestamps === 'object')
       ? data.person_photos_timestamps : {};
@@ -4571,7 +4416,6 @@ if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArr
       mergedTs[key] = backupTs[key] || nowMs;
     }
     await sqliteStore.set('person_photos_timestamps', mergedTs);
-
     const restoredKeys = Object.keys(backupPhotos);
     if (restoredKeys.length > 0) {
       const dirtyKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
@@ -4586,7 +4430,6 @@ if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArr
 showToast(`Restore complete${syncMessage}! ${statsMessage}`, 'success', 5000);
 if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Backup restored', 'Your data was restored from the backup file. Open the app to check your records.', 'backup-restored').catch(() => {});
 }
-
 export async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -4607,7 +4450,6 @@ let factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustmen
 let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
   data = normaliseBackupFields(data);
   showToast('↩ Reversing financial year close — replacing data...', 'info', 5000);
-
   const _backupIds = new Set([
     ...ensureArray(data.mfg || data.mfg_pro_pkr),
     ...ensureArray(data.sales || data.noman_history),
@@ -4618,7 +4460,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     ...ensureArray(data.stockReturns),
     ...ensureArray(data.expenses),
   ].filter(r => r && r.id).map(r => String(r.id)));
-
   const _mergedToTombstone = [
     ...ensureArray(currentDb),
     ...ensureArray(currentSalesHistory),
@@ -4629,23 +4470,18 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     ...ensureArray(stockReturns),
     ...ensureArray(expenseRecords),
   ].filter(r => r && r.id && r.isMerged === true && !_backupIds.has(String(r.id)));
-
   if (_mergedToTombstone.length > 0) {
     _mergedToTombstone.forEach(r => deletedRecordIds.add(String(r.id)));
     await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
   }
-
   const isAlive = honourPostCloseDeletions
     ? (item) => item && item.id && !deletedRecordIds.has(item.id)
     : (item) => item && item.id;
-
   const _ycRepNameSet = new Set((Array.isArray(salesRepsList) ? salesRepsList : []).map(r => r.toLowerCase()));
   const _ycNotRepName = (c) => !c || !c.name || !_ycRepNameSet.has(c.name.toLowerCase());
-
   const _backupCreatedAt = (data._meta && data._meta.createdAt) || 0;
   const _recTs = r => r.createdAt || r.timestamp || 0;
   const _isPostClose  = r => r && r.id && _recTs(r) > _backupCreatedAt;
-
   const _postCloseKeep = (current, backupArr) => {
     const backupIdSet = new Set(ensureArray(backupArr).filter(r => r && r.id).map(r => String(r.id)));
     return ensureArray(current).filter(r =>
@@ -4655,7 +4491,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
       !(r.isMerged === true && !_backupIds.has(String(r.id)))
     );
   };
-
   const replaceData = {
     mfg_pro_pkr:                [...ensureArray(data.mfg || data.mfg_pro_pkr).filter(isAlive),
                                   ..._postCloseKeep(currentDb, data.mfg || data.mfg_pro_pkr)],
@@ -4678,7 +4513,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     expenses:                   [...ensureArray(data.expenses).filter(isAlive),
                                   ..._postCloseKeep(expenseRecords, data.expenses)],
   };
-
   const _dedupReplace = (arr) => {
     const map = new Map();
     ensureArray(arr).forEach(r => { if (r && r.id) map.set(String(r.id), r); });
@@ -4687,7 +4521,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   for (const key of Object.keys(replaceData)) {
     replaceData[key] = _dedupReplace(replaceData[key]);
   }
-
   await sqliteStore.setBatch([
     ['mfg_pro_pkr',                replaceData.mfg_pro_pkr],
     ['noman_history',              replaceData.noman_history],
@@ -4702,7 +4535,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     ['payment_entities',           replaceData.payment_entities],
     ['expenses',                   replaceData.expenses],
   ]);
-
   try {
     const _restoreDeltaMap = {
       production:          replaceData.mfg_pro_pkr,
@@ -4722,12 +4554,10 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
       if (typeof DeltaSync !== 'undefined') {
         DeltaSync.clearDirty(deltaName);
         await DeltaSync.setLastSyncTimestamp(deltaName);
-
         _mergedToTombstone.forEach(r => {
           DeltaSync.markUploaded(deltaName, r.id);
           DeltaSync.markDownloaded(deltaName, r.id);
         });
-
         ensureArray(records).forEach(r => {
           if (r && r.id) {
             DeltaSync.markUploaded(deltaName, r.id);
@@ -4737,7 +4567,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
       }
     }
   } catch(_dsErr) { console.warn('DeltaSync reset after restore failed:', _safeErr(_dsErr)); }
-
   try {
     if (typeof customerSales !== 'undefined' && Array.isArray(customerSales)) {
       customerSales.length = 0;
@@ -4775,7 +4604,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     currentSettings.lastYearClosedDate = snap.lastYearClosedDate ?? null;
     currentSettings.pendingFirestoreYearClose = false;
     _set_pendingFirestoreYearClose(false);
-
     const _restoreMetaTs = Date.now();
     await sqliteStore.set('naswar_default_settings', currentSettings);
     await sqliteStore.set('naswar_default_settings_timestamp', _restoreMetaTs);
@@ -4791,7 +4619,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
               lastYearClosedAt:  currentSettings.lastYearClosedAt,
               lastYearClosedDate:currentSettings.lastYearClosedDate
             },
-
             naswar_default_settings_timestamp: _restoreMetaTs
           }, { merge: true });
         if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp('settings');
@@ -4899,14 +4726,12 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   try { syncFactoryProductionStats(); } catch(e) {}
   try { await invalidateAllCaches(); } catch(e) {}
   try { await refreshAllDisplays(); } catch(e) {}
-
   if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArray(data.person_photos)) {
     try {
       const _ycExisting = (await sqliteStore.get('person_photos')) || {};
       const _ycBackup   = data.person_photos;
       const _ycMerged = Object.assign({}, _ycExisting, _ycBackup);
       await sqliteStore.set('person_photos', _ycMerged);
-
       const _ycExistingTs = (await sqliteStore.get('person_photos_timestamps')) || {};
       const _ycBackupTs   = (data.person_photos_timestamps && typeof data.person_photos_timestamps === 'object')
         ? data.person_photos_timestamps : {};
@@ -4916,7 +4741,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
         _ycMergedTs[_ycKey] = _ycBackupTs[_ycKey] || _ycNowMs;
       }
       await sqliteStore.set('person_photos_timestamps', _ycMergedTs);
-
       const _ycDirty = Object.keys(_ycBackup);
       if (_ycDirty.length > 0) {
         const _ycExistingDirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
@@ -4930,7 +4754,6 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   const totalRecords = Object.values(replaceData).reduce((s, a) => s + a.length, 0);
   showToast(` Financial year close reversed! ${totalRecords} pre-close records restored.`, 'success', 6000);
 }
-
 export async function showTab(tab) {
 currentActiveTab = tab; window.currentActiveTab = currentActiveTab;
 requestAnimationFrame(() => {
@@ -5012,7 +4835,6 @@ console.warn('[showTab] tab load error:', _safeErr(e));
 }
 }, 50);
 }
-
 export function handleRepTabUI() {
 const adminControls = document.getElementById('admin-rep-controls');
 const adminAnalytics = document.getElementById('admin-rep-analytics');
@@ -5059,7 +4881,6 @@ renderRepCustomerTable();
 }
 }
 }
-
 (function() {
 const scrollableElements = new WeakSet();
 window.smoothScrollTo = function(target, options = {}) {
@@ -5108,14 +4929,12 @@ window.getScrollY = function() {
 return lastScrollY;
 };
 })();
-
 export function enableGPUAcceleration(element) {
 if (!element) return;
 element.style.transform = 'translateZ(0)';
 element.style.willChange = 'transform';
 element.style.backfaceVisibility = 'hidden';
 }
-
 export const DOMBatch = {
 reads: [],
 writes: [],
@@ -5145,7 +4964,6 @@ write();
 this.scheduled = false;
 }
 };
-
 export const lazyLoadObserver = new IntersectionObserver((entries) => {
 entries.forEach(entry => {
 if (entry.isIntersecting) {
@@ -5161,13 +4979,11 @@ root: null,
 rootMargin: '50px',
 threshold: 0.1
 });
-
 export function observeLazyLoad(element) {
 if (element) {
 lazyLoadObserver.observe(element);
 }
 }
-
 export function animateElement(element, keyframes, options = {}) {
 if (!element) return Promise.resolve();
 const defaultOptions = {
@@ -5178,7 +4994,6 @@ fill: 'forwards'
 const animation = element.animate(keyframes, { ...defaultOptions, ...options });
 return animation.finished;
 }
-
 export function fadeIn(element, duration = 150) {
 if (!element) return Promise.resolve();
 element.style.opacity = '0';
@@ -5188,7 +5003,6 @@ return animateElement(element, [
 { opacity: 1 }
 ], { duration });
 }
-
 export function fadeOut(element, duration = 100) {
 if (!element) return Promise.resolve();
 return animateElement(element, [
@@ -5198,7 +5012,6 @@ return animateElement(element, [
 element.style.display = 'none';
 });
 }
-
 export function slideIn(element, direction = 'up', duration = 200) {
 if (!element) return Promise.resolve();
 const transforms = {
@@ -5210,10 +5023,8 @@ right: [{ transform: 'translateX(-20px)', opacity: 0 }, { transform: 'translateX
 element.style.display = '';
 return animateElement(element, transforms[direction] || transforms.up, { duration });
 }
-
 export let frameCount = 0;
 export let lastTime = performance.now();
-
 export function measureFPS() {
 frameCount++;
 const currentTime = performance.now();
@@ -5224,7 +5035,6 @@ lastTime = currentTime;
 }
 requestAnimationFrame(measureFPS);
 }
-
 export async function handleAdminRepDateChange(val) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -5242,7 +5052,6 @@ if (typeof calculateRepAnalytics === 'function') {
 calculateRepAnalytics();
 }
 }
-
 export function setMfgChartMode(mode) {
 currentMfgMode = mode; window.currentMfgMode = currentMfgMode;
 document.getElementById('mfg-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
@@ -5251,11 +5060,9 @@ document.getElementById('mfg-year-btn').className = `toggle-opt ${mode === 'year
 document.getElementById('mfg-all-btn').className = `toggle-opt ${mode === 'all' ? 'active' : ''}`;
 updateMfgCharts();
 }
-
 export async function updateMfgCharts() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
-
 if(mfgBarChart) mfgBarChart.destroy();
 if(mfgPieChart) mfgPieChart.destroy();
 let filteredData = currentProductionView === 'combined' ? db : db.filter(item => item.store === currentStore);
@@ -5410,7 +5217,6 @@ font: { size: 13, weight: 'bold' }
 }
 }));
 }
-
 export async function getWeightPerUnit(storeType) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
@@ -5422,17 +5228,14 @@ totalWeight += item.quantity;
 });
 return totalWeight;
 }
-
 function _recordUnitWeight(item, fallbackWeight) {
 if (item && Array.isArray(item.formulaMaterials)) return item.formulaMaterials.reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0);
 return fallbackWeight;
 }
-
 function _prodSlot(entry, storeFormulaMap) {
 const ft = entry.formulaStore || storeFormulaMap[entry.store] || (entry.store === 'STORE_C' ? 'asaan' : 'standard');
 return ft === 'asaan' ? 'asaan' : 'standard';
 }
-
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -5454,7 +5257,6 @@ return Math.max(0, prevPrevAvailable + prevProduced - prevUsed);
 }
 return 0;
 }
-
 export async function updateFactoryUnitsAvailableStats() {
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
@@ -5515,7 +5317,6 @@ _setFac('factoryS2MatVal', await formatCurrency(asaanMaterialsValue));
 _setFac('factoryS2Profit', await formatCurrency(asaanTotalProfit));
 _setFac('factoryS2ProfitUnit', await formatCurrency(asaanProfitPerKg) + '/kg');
 }
-
 export async function updateFactorySummaryCard() {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -5627,7 +5428,6 @@ _setSum('factorySumUnitCost', await formatCurrency(avgCostPerUnit));
 _setSum('factorySumTotalCost', await formatCurrency(totalCost));
 _setSum('factorySumOutput', fmtNum(safeNumber(totalOutput, 0)) + ' kg');
 _setSum('factorySumRawUsed', fmtNum(safeNumber(totalRawUsed, 0)) + ' kg');
-
 const _rawBreakdownEl = document.getElementById('factorySumRawBreakdown');
 if (_rawBreakdownEl) {
   const _rawEntries = Object.entries(rawByMaterial).sort((a, b) => b[1].qty - a[1].qty);
@@ -5667,7 +5467,6 @@ _setSum('factorySumMatVal', await formatCurrency(totalMatValue));
 _setSum('factorySumProfit', await formatCurrency(totalProfit));
 _setSum('factorySumProfitUnit', await formatCurrency(avgProfitPerKg) + '/kg');
 }
-
 export async function getInitialAvailableForRange(storeType, mode, endDate) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -5684,7 +5483,6 @@ startDate = new Date(end.getFullYear(), 0, 1);
 }
 return getPreviousDayAvailableUnits(storeType, startDate);
 }
-
 export async function refreshFactoryTab() {
 const _rftBatch = await sqliteStore.getBatch([
 'factory_inventory_data','factory_production_history',
@@ -5771,7 +5569,6 @@ renderFactoryHistory();
 await renderFactoryInventory();
 calculateFactoryProduction();
 }
-
 export async function updateAllTabsWithFactoryCosts() {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
@@ -5790,7 +5587,6 @@ updateFactoryUnitsAvailableStats();
 updateFactorySummaryCard();
 refreshUI();
 }
-
 export function initFactoryTab() {
 const factoryDateInput = document.getElementById('factory-date');
 if (!factoryDateInput.value) {
@@ -5806,7 +5602,6 @@ else opt.classList.remove('active');
 if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
 refreshFactoryTab();
 }
-
 export function setProductionView(view, event) {
 currentProductionView = view; window.currentProductionView = currentProductionView;
 document.querySelectorAll('.production-toggle-btn').forEach(btn => btn.classList.remove('active'));
@@ -5835,7 +5630,6 @@ updateAllStoresOverview(currentOverviewMode);
 }
 refreshUI();
 }
-
 export async function updateAllStoresOverview(mode = 'day') {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -5982,7 +5776,6 @@ let returnsHtml = '';
 if (storeData.returns > 0) {
 returnsHtml = `<p><span>Returns Recvd:</span> <span style="color:#10b981; font-weight:800;">${fmtNum(safeValue(storeData.returns))} kg</span></p>`;
 }
-
 let soldBreakdownHtml = '';
 const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] - a[1]);
 if (soldBreakdownEntries.length > 0) {
@@ -6055,7 +5848,6 @@ const combinedRemaining = totalCombined.qty - totalCombined.sold;
 	if (calcTabTotalReturns > 0 && Math.abs(totalCombined.returns - calcTabTotalReturns) > 0.01) {
 		totalCombined.returns = calcTabTotalReturns;
 	}
-
 let combinedSoldBreakdownHtml = '';
 const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) => b[1] - a[1]);
 if (combinedSoldEntries.length > 0) {
@@ -6103,7 +5895,6 @@ _asgFrag.appendChild(combinedCard);
 allStoresGrid.replaceChildren(_asgFrag);
 updateStoreComparisonChart(mode);
 }
-
 export function setCustomerChartMode(mode) {
 currentCustomerChartMode = mode; window.currentCustomerChartMode = currentCustomerChartMode;
 document.getElementById('cust-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
@@ -6112,12 +5903,10 @@ document.getElementById('cust-year-btn').className = `toggle-opt ${mode === 'yea
 document.getElementById('cust-all-btn').className = `toggle-opt ${mode === 'all' ? 'active' : ''}`;
 updateCustomerCharts();
 }
-
 export async function updateCustomerCharts() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
-
 if(custSalesChart) custSalesChart.destroy();
 if(custPaymentChart) custPaymentChart.destroy();
 const selectedDate = document.getElementById('cust-date').value;
@@ -6147,13 +5936,10 @@ const ms = item.mergedSummary;
 dayCash   += (ms.cashSales    || 0);
 dayCredit += (ms.unpaidCredit || 0);
 } else if(item.paymentType === 'CREDIT' && !item.creditReceived) {
-
 dayCredit += item.totalValue;
 } else if(isRepLinked) {
-
 dayCredit += item.totalValue;
 } else if(item.paymentType === 'CASH' || item.creditReceived) {
-
 dayCash += item.totalValue;
 }
 }
@@ -6177,7 +5963,6 @@ creditData[d.getDate() - 1] += (ms.unpaidCredit || 0);
 } else if(item.paymentType === 'CREDIT' && !item.creditReceived) {
 creditData[d.getDate() - 1] += item.totalValue;
 } else if(isRepLinked) {
-
 creditData[d.getDate() - 1] += item.totalValue;
 } else if(item.paymentType === 'CASH' || item.creditReceived) {
 cashData[d.getDate() - 1] += item.totalValue;
@@ -6200,7 +5985,6 @@ creditData[d.getMonth()] += (ms.unpaidCredit || 0);
 } else if(item.paymentType === 'CREDIT' && !item.creditReceived) {
 creditData[d.getMonth()] += item.totalValue;
 } else if(isRepLinked) {
-
 creditData[d.getMonth()] += item.totalValue;
 } else if(item.paymentType === 'CASH' || item.creditReceived) {
 cashData[d.getMonth()] += item.totalValue;
@@ -6228,7 +6012,6 @@ monthData[monthYear].credit += (ms.unpaidCredit || 0);
 } else if(item.paymentType === 'CREDIT' && !item.creditReceived) {
 monthData[monthYear].credit += item.totalValue;
 } else if(isRepLinked) {
-
 monthData[monthYear].credit += item.totalValue;
 } else if(item.paymentType === 'CASH' || item.creditReceived) {
 monthData[monthYear].cash += item.totalValue;
@@ -6269,7 +6052,6 @@ totalCredit += (ms.unpaidCredit || 0);
 } else if(item.paymentType === 'CREDIT' && !item.creditReceived) {
 totalCredit += item.totalValue;
 } else if(isRepLinked) {
-
 totalCredit += item.totalValue;
 } else if(item.paymentType === 'CASH' || item.creditReceived) {
 totalCash += item.totalValue;
@@ -6356,7 +6138,6 @@ font: { size: 13, weight: 'bold' }
 }
 }));
 }
-
 export async function refreshCustomerSales(page = 1, force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _rcsAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -6625,7 +6406,6 @@ _filterHistoryByPeriod('#custHistoryList', _custDate, currentSalesSummaryMode ||
 renderCustomersTable();
 updateCustomerCharts();
 }
-
 export async function computeStoreStockSnapshot(store, date, excludeIds = null) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr')).filter(x => !(excludeIds && excludeIds.includes(x.id)));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -6646,9 +6426,7 @@ if (effDate === date && s.supplyStore === store) sales += s.quantity || 0;
 const available = production + returns - sales;
 return { production, returns, sales, available };
 }
-
 window.computeStoreStockSnapshot = computeStoreStockSnapshot;
-
 export async function prepareStockTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
 showToast('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 3000);
@@ -6683,9 +6461,7 @@ const noteInput = document.getElementById('stock-transfer-note'); if (noteInput)
 await updateStockTransferAvailability();
 await renderStockTransferHistory();
 }
-
 window.prepareStockTransferScreen = prepareStockTransferScreen;
-
 export async function updateStockTransferAvailability() {
 const fromStore = (document.getElementById('stock-transfer-from-value') || {}).value;
 const date = (document.getElementById('stock-transfer-date') || {}).value;
@@ -6696,11 +6472,8 @@ const snap = await computeStoreStockSnapshot(fromStore, date);
 el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${getStoreLabel(fromStore)} on ${date}`;
 el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
-
 window.updateStockTransferAvailability = updateStockTransferAvailability;
-
 export function saveStockTransfer(...a) { return runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)); }
-
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
@@ -6786,14 +6559,11 @@ if (typeof refreshUI === 'function') { try { await refreshUI(); } catch (_) {} }
 if (typeof syncFactoryProductionStats === 'function') { try { await syncFactoryProductionStats(); } catch (_) {} }
 triggerAutoSync();
 }
-
 window.saveStockTransfer = saveStockTransfer;
-
 function _resetStockTransferForm() {
 const q = document.getElementById('stock-transfer-qty'); if (q) q.value = '';
 const n = document.getElementById('stock-transfer-note'); if (n) n.value = '';
 }
-
 export async function startEditStockTransfer(pairId) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const records = db.filter(r => r && r.isTransfer === true && r.transferPairId === pairId);
@@ -6816,9 +6586,7 @@ set('stock-transfer-note', out.transferNote || '');
 beginEditMode('stocktransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-stock-transfer', watchIds: ['stock-transfer-from-value','stock-transfer-to-value','stock-transfer-date','stock-transfer-qty','stock-transfer-note'], label: 'Update Transfer', anchorId: 'stock-transfer-qty', cancelFn: _resetStockTransferForm });
 await updateStockTransferAvailability();
 }
-
 registerEditHandler('stocktransfer', startEditStockTransfer, { keepScreens: ['stock-transfer-screen'] });
-
 export async function renderStockTransferHistory() {
 const list = document.getElementById('stockTransferHistoryList');
 if (!list) return;
@@ -6847,9 +6615,7 @@ fragment.appendChild(div);
 });
 list.replaceChildren(fragment);
 }
-
 window.renderStockTransferHistory = renderStockTransferHistory;
-
 export async function deleteStockTransfer(pairId) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const entries = db.filter(item => item.transferPairId === pairId);
@@ -6886,9 +6652,7 @@ showToast('Stock transfer removed', 'success');
 showToast('Failed to remove transfer. Please try again.', 'error');
 }
 }
-
 window.deleteStockTransfer = deleteStockTransfer;
-
 window.setCashTrackerMode = setCashTrackerMode;
 window.calculateCashTracker = calculateCashTracker;
 window.updateEconomicDashboardWithNetValues = updateEconomicDashboardWithNetValues;

@@ -12,9 +12,7 @@ import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryIn
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
 import { collectAuxBackupFields } from './data-keys.js';
-
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
-
 export let currentCompMode = 'all';
 window.currentCompMode = currentCompMode;
 export function _set_currentCompMode(v) { currentCompMode = v; window.currentCompMode = v; }
@@ -36,14 +34,12 @@ export function _set_selectedEntityId(v) { selectedEntityId = v; window.selected
 export let currentExpenseOverlayName;
 window.currentExpenseOverlayName = currentExpenseOverlayName;
 export function _set_currentExpenseOverlayName(v) { currentExpenseOverlayName = v; window.currentExpenseOverlayName = v; }
-
 (window.__uiSyncers = window.__uiSyncers || []).push(() => {
   try { const v = window.currentCompMode; if (v !== undefined) currentCompMode = v; } catch (_) {}
   try { const v = window.currentSalesSummaryMode; if (v !== undefined) currentSalesSummaryMode = v; } catch (_) {}
   try { const v = window.currentPerfOverviewMode; if (v !== undefined) currentPerfOverviewMode = v; } catch (_) {}
   try { const v = window.entityViewMode; if (v !== undefined) entityViewMode = v; } catch (_) {}
 });
-
 export async function toggleCustomerCreditReceived(id, event) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 if (event) {
@@ -65,7 +61,6 @@ refreshCustomerSales();
 updateCustomerCharts();
 }
 }
-
 export async function calculateComparisonData() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -114,7 +109,6 @@ comp[h.seller].commissionPaid += (h.commissionPaid || 0);
 });
 return comp;
 }
-
 export function createReportHTML(title, data, isHistory = false, id = null, sellerName = null, isHighlight = false, isMerged = false) {
 const creditVal = safeValue(data.creditVal);
 const collected = safeValue(data.collected);
@@ -173,11 +167,9 @@ html += `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteSa
 html += `</div>`;
 return html;
 }
-
 export function _calcSaleDay(sale) {
 return (sale && (sale.supplyDate || sale.date)) || '';
 }
-
 export async function getPendingRepDeliveries(seller) {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -195,7 +187,6 @@ return customerSales.filter(sale =>
   sale.transactionType !== 'OLD_DEBT'
 );
 }
-
 export function getCalcDateRange(pending) {
 const toEl = document.getElementById('sale-date');
 const fromEl = document.getElementById('sale-date-from');
@@ -208,7 +199,6 @@ if (!window._calcFromManual || !from) {
 if (from > to) from = to;
 return { from, to };
 }
-
 export async function getCalcCycleSelection(seller) {
 const pending = await getPendingRepDeliveries(seller);
 const { from, to } = getCalcDateRange(pending);
@@ -220,20 +210,16 @@ return {
   from, to
 };
 }
-
 export async function calculateTotalSoldForRepresentative(seller) {
 const sel = await getCalcCycleSelection(seller);
 return sel.qty;
 }
-
 export const _CALC_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
 export function _calcFmtDay(iso, withYear) {
 const p = (iso || '').split('-');
 if (p.length !== 3) return '';
 return parseInt(p[2], 10) + ' ' + _CALC_MONTHS[parseInt(p[1], 10) - 1] + (withYear ? ' ' + p[0] : '');
 }
-
 export function updateCalcRangeLabel() {
 const fromEl = document.getElementById('sale-date-from');
 const toEl = document.getElementById('sale-date');
@@ -247,13 +233,11 @@ if (seller === 'COMBINED' || !from || from === to) { lbl.textContent = _calcFmtD
 const sameYear = from.slice(0, 4) === to.slice(0, 4);
 lbl.textContent = _calcFmtDay(from, !sameYear) + ' to ' + _calcFmtDay(to, true);
 }
-
 export function openCalcRangePicker() {
 const seller = (document.getElementById('sellerSelect') || {}).value;
 const btn = document.getElementById(seller === 'COMBINED' ? 'sale-date__cdpBtn' : 'sale-date-from__cdpBtn');
 if (btn) btn.click();
 }
-
 export async function onCalcDateChange(which) {
 const fromEl = document.getElementById('sale-date-from');
 const toEl = document.getElementById('sale-date');
@@ -272,7 +256,6 @@ if (which === 'from' && seller !== 'COMBINED') {
 await loadSalesData();
 setPerfOverviewMode(currentPerfOverviewMode || 'day');
 }
-
 export async function autoFillTotalSoldQuantity() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -335,14 +318,12 @@ styleAutoFilledField(recoveredField);
 calculateSales();
 if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
-
 export function styleAutoFilledField(field) {
 field.style.background = 'rgba(5, 150, 105, 0.1)';
 field.style.color = 'var(--accent-emerald)';
 field.style.fontWeight = 'bold';
 field.style.border = '1px solid var(--accent-emerald)';
 }
-
 export async function loadSalesData(compMode = 'all') {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -495,7 +476,6 @@ return `<tr${rowCls}><td>${m.label}</td>${cells}</tr>`;
 await updateIndChart();
 }
 }
-
 export function addToRange(range, h) {
 range.sold += h.totalSold;
 range.ret += h.returned;
@@ -512,9 +492,7 @@ range.received += (h.received || 0);
 range.fieldExp = (range.fieldExp || 0) + (h.fieldExpenses || 0);
 range.commissionPaid = (range.commissionPaid || 0) + (h.commissionPaid || 0);
 }
-
 export function updateSalesCharts(comp) {
-
 if(!comp) return;
 const selectedMetric = document.getElementById('metricSelector').value;
 const metricLabel = document.getElementById('metricSelector').options[document.getElementById('metricSelector').selectedIndex].text;
@@ -589,7 +567,6 @@ font: { size: 13, weight: 'bold' }
 }
 }));
 }
-
 export async function processReturnToProduction(storeKey, quantity, date, seller, note) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -660,7 +637,6 @@ throw _logErr;
 }
 return { returnEntryId: returnEntry.id, returnLogId: returnLogEntry.id };
 }
-
 export async function reverseReturnFromProduction(storeKey, quantity, date, seller, ids) {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const stockReturns = ensureArray(await sqliteStore.get('stock_returns'));
@@ -679,9 +655,7 @@ if (returnLogEntry) {
 await unifiedDelete('stock_returns', stockReturns, returnLogEntry.id, { strict: true }, returnLogEntry);
 }
 }
-
 export const CHORA_MATERIAL_NAME = 'CHORA';
-
 export async function processExpiredToChora(quantity, date, seller) {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -709,7 +683,6 @@ emitSyncUpdate({ factory_inventory_data: null});
 notifyDataChange('factory');
 return true;
 }
-
 export async function reverseExpiredFromChora(quantity, date) {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -734,17 +707,13 @@ await unifiedSave('factory_inventory_data', factoryInventoryData, choraMaterial)
 emitSyncUpdate({ factory_inventory_data: null});
 notifyDataChange('factory');
 }
-
 export function formatCurrency(num) {
 return fmtNum(num, 2);
 }
-
 export function safeValue(value) {
 return isNaN(value) || !isFinite(value) ? 0 : value;
 }
-
 export async function refreshAllDisplays() {
-
 const _radBatch = await sqliteStore.getBatch([
 'mfg_pro_pkr','customer_sales','rep_sales','noman_history',
 'payment_transactions','payment_entities','expenses','stock_returns',
@@ -768,36 +737,29 @@ const factoryAdditionalCosts = _radBatch.get('factory_additional_costs') || {};
 const factoryCostAdjustmentFactor = _radBatch.get('factory_cost_adjustment_factor') || {};
 const factoryUnitTracking = _radBatch.get('factory_unit_tracking') || {};
 const deletedRecordIds = new Set(ensureArray(_radBatch.get('deleted_records')));
-
 await Promise.all([
-
   (async () => {
     try { await syncFactoryProductionStats(); } catch (e) { console.error('syncFactoryProductionStats failed.', _safeErr(e)); }
     try { if (typeof refreshUI === 'function') await refreshUI(1, true); } catch (e) { console.error('refreshUI failed.', _safeErr(e)); }
   })(),
-
   (async () => {
     try {
       if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);
       else if (typeof renderCustomersTable === 'function') renderCustomersTable();
     } catch (e) { console.error('refreshCustomerSales failed.', _safeErr(e)); }
   })(),
-
   (async () => {
     try { if (typeof loadSalesData === 'function') await loadSalesData(currentCompMode); } catch (e) { console.error('loadSalesData failed.', _safeErr(e)); }
   })(),
-
   (() => {
     try { if (typeof initFactoryTab === 'function') initFactoryTab(); } catch (e) { console.error('initFactoryTab failed.', _safeErr(e)); }
   })(),
-
   (async () => {
     try {
       if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
       if (typeof calculateNetCash === 'function') calculateNetCash();
     } catch (e) { console.error('refreshPaymentTab failed.', _safeErr(e)); }
   })(),
-
   (() => {
     try {
       if (appMode === 'rep') {
@@ -808,7 +770,6 @@ await Promise.all([
   })(),
 ]);
 }
-
 window.addEventListener('unhandledrejection', function(event) {
   const err = event.reason;
   if (!err) { event.preventDefault(); return; }
@@ -823,7 +784,6 @@ window.addEventListener('unhandledrejection', function(event) {
     event.preventDefault(); return;
   }
 });
-
 async function _awaitVisualReady() {
   const cap = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
   const frame = () => new Promise(r => requestAnimationFrame(() => r()));
@@ -859,7 +819,6 @@ async function _awaitVisualReady() {
   await frame();
   await frame();
 }
-
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   initSplashScreen();
   setTimeout(() => { auditLegacyPartialPayments().catch(() => {}); }, 9000);
@@ -888,7 +847,6 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
       }, 200);
     });
   }
-
   if (typeof ThemeManager !== 'undefined' && ThemeManager.init) ThemeManager.init();
   await initTheme();
   const hasFirebaseSession = await _checkFirebaseSessionExists();
@@ -919,10 +877,8 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
     await initializeDeviceListeners();
     if (typeof OfflineQueue !== 'undefined') await OfflineQueue.init();
     loadFirestoreStats();
-
     try { sessionStorage.setItem('_gznd_bootstrap_ran', '1'); } catch(_) {}
   } catch (e) {
-
     console.error('[Startup] Initialization error:', _safeErr(e));
     if (e && e.code === 'DECRYPT_FAILED') {
       console.warn('[Startup] DECRYPT_FAILED with key ready — showing auth overlay');
@@ -931,9 +887,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
       showToast('Data could not be decrypted. Please log in again.', 'error', 7000);
       return;
     }
-
     showToast('Startup error — some data may not be available. Tap to retry.', 'warning', 8000);
-
   }
   await enforceRepModeLock();
   preventAdminAccess();
@@ -963,7 +917,6 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   const saleDate2 = document.getElementById('sale-date');
   if (sellerSelect) sellerSelect.addEventListener('change', autoFillTotalSoldQuantity);
   if (saleDate2) saleDate2.addEventListener('change', autoFillTotalSoldQuantity);
-
   setProductionView('store');
   const _firstRender = new Promise(_resolveFirst => requestAnimationFrame(async () => {
    try {
@@ -1002,7 +955,6 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   window.__splashBooted = true;
   if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 });
-
 export function _filterFactoryHistoryByMode(mode) {
 const selectedDateVal = (document.getElementById('factory-date') || {}).value || localDateStr();
 const selectedDate = new Date(selectedDateVal);
@@ -1023,7 +975,6 @@ else show = true;
 item.style.display = show ? '' : 'none';
 });
 }
-
 export function _filterPaymentHistoryByPeriod() {
 const periodFilterEl = document.getElementById('unifiedPeriodFilter');
 const period = periodFilterEl ? periodFilterEl.value : 'all';
@@ -1041,7 +992,6 @@ if (isNaN(cd.getTime())) { card.style.display = ''; return; }
 card.style.display = (cd >= startDate) ? '' : 'none';
 });
 }
-
 export function _filterHistoryByPeriod(listSelector, refDateStr, mode) {
 const refDate = new Date(refDateStr);
 if (isNaN(refDate.getTime())) return;
@@ -1061,7 +1011,6 @@ else show = true;
 card.style.display = show ? '' : 'none';
 });
 }
-
 export function setSalesSummaryMode(mode) {
 currentSalesSummaryMode = mode; window.currentSalesSummaryMode = currentSalesSummaryMode;
 const labels = { day:'Daily', week:'Weekly', month:'Monthly', year:'Yearly', all:'All Time' };
@@ -1091,7 +1040,6 @@ else card.classList.remove('all-times-summary');
 const refDate = (document.getElementById('cust-date') || {}).value || localDateStr();
 _filterHistoryByPeriod('#custHistoryList', refDate, mode);
 }
-
 export function setPerfOverviewMode(mode) {
 currentPerfOverviewMode = mode; window.currentPerfOverviewMode = currentPerfOverviewMode;
 const prefixes = ['day','week','month','year','all'];
@@ -1106,7 +1054,6 @@ if (activeEl && ghostEl) activeEl.innerHTML = ghostEl.innerHTML;
 const refDate = (document.getElementById('sale-date') || {}).value || localDateStr();
 _filterHistoryByPeriod('#historyList', refDate, mode);
 }
-
 export function setOverviewMode(mode) {
 _set_currentOverviewMode(mode);
 const buttons = ['day', 'week', 'month', 'year', 'all'];
@@ -1120,7 +1067,6 @@ else btn.classList.remove('active');
 updateAllStoresOverview(mode);
 refreshUI();
 }
-
 export async function deleteSalesEntry(id) {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1243,7 +1189,6 @@ showToast("Error: Record not found.", "error");
 showToast("Failed to delete entry. Please try again.", "error");
 }
 }
-
 export async function revertSpecificSalesEntries(saleIds) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -1275,7 +1220,6 @@ triggerAutoSync();
 }
 return revertedCount;
 }
-
 export function toggleEntityViewMode() {
 const toggleBtn = document.getElementById('entityViewModeToggle');
 const entityGrid = document.getElementById('entityCardsGrid');
@@ -1292,7 +1236,6 @@ toggleBtn.textContent = '';
 }
 renderEntityTable();
 }
-
 export async function calculateEntityBalances() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -1356,7 +1299,6 @@ supplierIdSet.add(String(transaction.entityId));
 }
 return balances;
 }
-
 export function getDynamicRole(balance) {
 if (balance > 0.01) {
 return {
@@ -1384,7 +1326,6 @@ sign: ''
 };
 }
 }
-
 export function filterEntityCards() {
 const searchTerm = document.getElementById('entity-list-search').value.toLowerCase().trim();
 const entityCards = document.querySelectorAll('#entityCardsGrid .entity-card-compact');
@@ -1404,7 +1345,6 @@ card.style.display = 'none';
 }
 });
 }
-
 export function openEntityManagement() {
 editingEntityId = null; window.editingEntityId = editingEntityId;
 const _en = document.getElementById('entityName'); if (_en) _en.value = '';
@@ -1415,7 +1355,6 @@ const _delBtn = document.getElementById('deleteEntityBtn'); if (_delBtn) { _delB
 clearPersonPhoto('entity');
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('add-entity-screen');
 }
-
 export async function closeEntityManagement() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('add-entity-screen');
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -1425,9 +1364,7 @@ const entity = paymentEntities.find(e => String(e.id) === String(currentEntityId
 if (entity) renderEntityOverlayContent(entity);
 }
 }
-
 export function saveEntity(...a) { return runExclusive('saveEntity', () => _saveEntityImpl(...a)); }
-
 async function _saveEntityImpl() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -1501,7 +1438,6 @@ if (typeof calculateNetCash === 'function') calculateNetCash();
 showToast('Failed to save entity. Please try again.', 'error');
 }
 }
-
 export async function editEntityBasicInfo(id) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const entity = paymentEntities.find(e => String(e.id) === String(id));
@@ -1515,7 +1451,6 @@ await loadPersonPhotoIntoEditor('entity', 'entity:' + String(id));
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('add-entity-screen');
 }
 }
-
 export async function refreshPaymentTab(force = false) {
 await _ensureSupplierInvoices();
 const _rptBatch = await sqliteStore.getBatch([
@@ -1676,7 +1611,6 @@ console.error('Payment transaction failed.', _safeErr(error));
 showToast('Payment transaction failed.', 'error');
 }
 }
-
 export async function selectEntity(id) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 selectedEntityId = id; window.selectedEntityId = selectedEntityId;
@@ -1702,14 +1636,12 @@ chip.classList.add('active');
 }
 });
 }
-
 export async function refreshEntityBalances() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 renderEntityTable();
 }
-
 export function getMetricValue(historyItem, metric) {
 switch(metric) {
 case 'weight':
@@ -1728,7 +1660,6 @@ default:
 return 0;
 }
 }
-
 export function getMetricLabel(metric) {
 switch(metric) {
 case 'weight': return 'Weight (kg)';
@@ -1740,7 +1671,6 @@ case 'credit': return 'Credit ()';
 default: return 'Metric';
 }
 }
-
 export async function deleteFactoryInventoryItem() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -1776,7 +1706,6 @@ _diMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_diMsg, { title: `Delete "${_diName}"`, confirmText: "Delete", danger: true })) {
 try {
 const material = factoryInventoryData.find(i => i.id === editingFactoryInventoryId);
-
 const _materialToDelete = material ? { ...material } : null;
 const _matGroup = (material && material.supplierId) ? newGroupId('mat') : null;
 if (material && material.supplierId) {
@@ -1796,7 +1725,6 @@ showToast('Failed to delete item. Please try again.', 'error');
 }
 }
 }
-
 export async function initPaymentData() {
 const store = (typeof sqliteStore !== 'undefined' && sqliteStore) || (typeof window !== 'undefined' && window.sqliteStore);
 if (!store || typeof store.get !== 'function') {
@@ -1887,7 +1815,6 @@ updated = true;
 }
 return transaction;
 });
-
 localTransactions = localTransactions.filter(t =>
 t && t.id && (t.type === 'IN' || t.type === 'OUT') && typeof t.amount === 'number'
 );
@@ -1896,9 +1823,7 @@ await sqliteStore.set('payment_transactions', localTransactions);
 } catch (e) {
 }
 }
-
 setTimeout(() => { initPaymentData(); }, 300);
-
 setTimeout(async function initExpenseManager() {
 const store = (typeof sqliteStore !== 'undefined' && sqliteStore) || (typeof window !== 'undefined' && window.sqliteStore);
 if (!store || typeof store.get !== 'function') {
@@ -1921,7 +1846,6 @@ expenseDateInput.value = localDateStr();
 }
 renderRecentExpenses();
 }, 300);
-
 export async function handleExpenseSearch() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
@@ -1934,7 +1858,6 @@ if (!query || query.length < 1) {
 resultsDiv.classList.add('hidden');
 return;
 }
-
 const expenseMatches = expenseCategories.filter(name => {
 if (!name || typeof name !== 'string') return false;
 return name.toLowerCase().includes(query);
@@ -2008,7 +1931,6 @@ html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted);
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
 }
-
 export function selectExpense(name, type) {
 document.getElementById('expenseName').value = name;
 document.getElementById('expense-search-results').classList.add('hidden');
@@ -2044,16 +1966,13 @@ if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
 }
 document.getElementById('expenseAmount').focus();
 }
-
 export function hideExpenseSearch() {
 document.getElementById('expense-search-results').classList.add('hidden');
 document.getElementById('expenseAmount').focus();
 }
-
 window._expenseCategory = 'OUT';
 window._returnStore = null;
 window._returnRep = null;
-
 export function selectExpenseCategory(value, clickedBtn) {
 window._expenseCategory = value;
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
@@ -2062,25 +1981,21 @@ if (btn) btn.classList.remove('active');
 });
 if (clickedBtn) clickedBtn.classList.add('active');
 }
-
 export function selectReturnStore(value, clickedBtn) {
 window._returnStore = value;
 window._returnRep = null;
 _markReturnTargetActive(clickedBtn);
 }
-
 export function selectReturnRep(repName, clickedBtn) {
 window._returnRep = repName;
 window._returnStore = null;
 _markReturnTargetActive(clickedBtn);
 }
-
 function _markReturnTargetActive(clickedBtn) {
 const grp = document.querySelector('#returnStoreSection .toggle-group');
 if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
 if (clickedBtn) clickedBtn.classList.add('active');
 }
-
 export async function renderReturnTargets() {
 const sec = document.getElementById('returnStoreSection');
 const grp = sec && sec.querySelector('.toggle-group');
@@ -2099,11 +2014,9 @@ b.onclick = () => selectReturnRep(r, b);
 grp.appendChild(b);
 });
 }
-
 function _resetExpenseForm() {
 ['expenseName', 'expenseAmount', 'expenseDescription'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 }
-
 async function applyPaymentEdit(ed, v) {
 const o = ed.original;
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -2192,7 +2105,6 @@ console.warn('[edit payment] failed', err);
 showToast('Failed to update transaction. Please try again.', 'error');
 }
 }
-
 export async function startEditPayment(id) {
 const txs = ensureArray(await sqliteStore.get('payment_transactions'));
 const t = txs.find(x => x && String(x.id) === String(id));
@@ -2213,19 +2125,15 @@ set('expenseDate', editDateValue(t));
 set('expenseDescription', t.description || '');
 beginEditMode('payment', t, { buttonId: 'btn-save-expense', watchIds: ['expenseName','expenseAmount','expenseDate','expenseDescription'], label: 'Update Transaction', anchorId: 'expenseName', cancelFn: _resetExpenseForm });
 }
-
 export async function startEditExpenseRecord(expenseId) {
 const txs = ensureArray(await sqliteStore.get('payment_transactions'));
 const t = txs.find(x => x && String(x.expenseId) === String(expenseId));
 if (!t) { showToast('No linked transaction found for this expense.', 'warning'); return; }
 await startEditPayment(t.id);
 }
-
 registerEditHandler('payment', startEditPayment);
 registerEditHandler('expense', startEditExpenseRecord);
-
 export function saveExpense(...a) { return runExclusive('saveExpense', () => _saveExpenseImpl(...a)); }
-
 async function _saveExpenseImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -2576,7 +2484,6 @@ showToast('Expense rollback failed: ' + (_safeErr(rollbackError).message || 'dat
 showToast('Failed to save expense. Please try again.', 'error');
 }
 }
-
 export async function createExpenseTransaction(expense) {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -2630,11 +2537,9 @@ if (typeof refreshEntityBalances === 'function') {
 refreshEntityBalances();
 }
 }
-
 export function renderRecentExpenses() {
 renderExpenseTable();
 }
-
 export async function renderExpenseTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'))
@@ -2746,9 +2651,7 @@ fragment.appendChild(tr);
 });
 tbody.replaceChildren(fragment);
 }
-
 export async function renderUnifiedTable(page = 1) {
-
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _notDeleted = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data')).filter(_notDeleted);
@@ -3044,7 +2947,6 @@ No records found matching your filters
 if (totalSpan) totalSpan.textContent = '0';
 return;
 }
-
 function buildUnifiedRow(row) {
 const tr = document.createElement('tr');
 tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s; cursor: pointer;';
@@ -3121,7 +3023,6 @@ if (expensesEl) expensesEl.textContent = fmtAmt(totalExpenses);
 }
 _filterPaymentHistoryByPeriod();
 }
-
 export async function updateExpenseBreakdown() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const container = document.getElementById('expense-breakdown-container');
@@ -3165,7 +3066,6 @@ html += `<div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 4p
 }
 container.innerHTML = html;
 }
-
 export async function exportUnifiedData() {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _notDeleted = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -3456,7 +3356,6 @@ showToast('PDF exported successfully!', 'success');
 showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
-
 export function formatExpenseDate(dateString) {
 const date = new Date(dateString);
 const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
@@ -3464,7 +3363,6 @@ const day = String(date.getDate()).padStart(2, '0');
 const year = String(date.getFullYear()).slice(-2);
 return `${month} ${day} ${year}`;
 }
-
 export function toSafeDate(value) {
 if (!value) return null;
 if (typeof value === 'object' && value !== null && typeof value.seconds === 'number') {
@@ -3474,7 +3372,6 @@ if (value instanceof Date) return value;
 const d = new Date(value);
 return isNaN(d.getTime()) ? null : d;
 }
-
 export function formatDisplayDate(dateInput) {
 if (!dateInput) return '-';
 const date = toSafeDate(dateInput);
@@ -3484,13 +3381,11 @@ const day = String(date.getDate()).padStart(2, '0');
 const year = String(date.getFullYear()).slice(-2);
 return `${month} ${day} ${year}`;
 }
-
 export function formatDisplayDateTime(dateInput, timeStr) {
 const datePart = formatDisplayDate(dateInput);
 if (!timeStr) return datePart;
 return `${datePart} @ ${timeStr}`;
 }
-
 export async function openExpenseEntityDetails(expenseId) {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -3513,7 +3408,6 @@ openEntityDetailsOverlay(entity.id);
 showToast('Entity not found for this expense', 'warning');
 }
 }
-
 export async function openOperatingExpenseOverlay(expenseName) {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 currentExpenseOverlayName = expenseName; window.currentExpenseOverlayName = currentExpenseOverlayName;
@@ -3530,13 +3424,11 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('expense-de
 });
 renderExpenseOverlayContent();
 }
-
 export function closeExpenseDetailsOverlay() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('expense-details-screen');
 currentExpenseOverlayName = null; window.currentExpenseOverlayName = currentExpenseOverlayName;
 refreshPaymentTab();
 }
-
 export async function renderExpenseOverlayContent() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3620,7 +3512,6 @@ sqliteStore.get('person_photos').then(ph => {
 });
 list.replaceChildren(_expFrag);
 }
-
 export function filterExpenseManagementHistory() {
 const term = document.getElementById('expense-history-search').value.toLowerCase();
 const items = document.querySelectorAll('#expenseManagementHistoryList .cust-history-item');
@@ -3628,7 +3519,6 @@ items.forEach(item => {
 item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
 });
 }
-
 export async function deleteExpenseFromOverlay(expenseId) {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3638,7 +3528,6 @@ if (overlayEl && overlayEl.style.display !== 'none' && currentExpenseOverlayName
 renderExpenseOverlayContent();
 }
 }
-
 export async function saveQuickExpenseEntry() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3691,7 +3580,6 @@ if (typeof calculateCashTracker === 'function') calculateCashTracker();
 showToast('Failed to save expense. Please try again.', 'error');
 }
 }
-
 export async function deleteAllExpensesByName() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3759,7 +3647,6 @@ if (typeof renderRecentExpenses === 'function') renderRecentExpenses();
 showToast('Failed to delete all expense records. Please try again.', 'error');
 }
 }
-
 export async function exportExpenseOverlayToPDF() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const expenseName = currentExpenseOverlayName;
@@ -3927,7 +3814,6 @@ showToast('PDF exported successfully', 'success');
 showToast('Failed to export PDF: ' + error.message, 'error');
 }
 }
-
 export async function deleteExpense(expenseId) {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -3987,7 +3873,6 @@ await unifiedDelete('payment_transactions', _expRemaining, trans.id, { strict: t
 }
 const _expRecFiltered = expenseRecords.filter(e => e.id !== expenseId);
 await unifiedDelete('expenses', _expRecFiltered, expenseId, { strict: true }, txToDelete.length ? stampGroup(expense, _expGroup) : expense);
-
 try {
   const _delPhotoKey = 'expense:' + expenseId;
   const _delPhotos = (await sqliteStore.get('person_photos')) || {};
@@ -4003,7 +3888,6 @@ try {
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   }
 } catch(_delPhErr) { console.warn('[deleteExpense] photo cleanup failed', _delPhErr); }
-
 notifyDataChange('expenses');
 renderRecentExpenses();
 await _refreshSupplierLinkViews();
@@ -4013,7 +3897,6 @@ showToast(` ${label} deleted — all balances and views restored!`, 'success');
 showToast('Failed to delete expense. Please try again.', 'error');
 }
 }
-
 export function clearExpenseForm() {
 document.getElementById('expenseName').value = '';
 document.getElementById('expenseAmount').value = '';
@@ -4034,7 +3917,6 @@ expIdEl.title = previewId;
 window._expensePendingPhoto = null;
 _applyExpensePendingPhoto(null);
 }
-
 export function getCategoryColor(category) {
 switch(category) {
 case 'operating': return 'var(--danger)';
@@ -4043,7 +3925,6 @@ case 'misc': return 'var(--accent)';
 default: return 'var(--text-muted)';
 }
 }
-
 export function getCategoryLabel(category) {
 switch(category) {
 case 'operating': return 'Operating';
@@ -4052,7 +3933,6 @@ case 'misc': return ' Miscellaneous';
 default: return 'Other';
 }
 }
-
 export function openDataMenu() {
 if (appMode === 'rep') {
 return;
@@ -4062,13 +3942,9 @@ if (typeof performOneClickSync === 'function') {
 performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error:', _safeErr(e))});
 }
 }
-
 export function closeDataMenu() {
-
 }
-
 export const _recoveredThisSession = new Set();
-
 export async function purgeRecoveredId(id, collectionName, cleanRecord, newId) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4157,9 +4033,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     })();
   }
 }
-
 window.purgeRecoveredId = purgeRecoveredId;
-
 export async function _findPairedTransferTombstone(currentId, transferPairId) {
   if (!transferPairId) return null;
   const allDeletions = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4169,15 +4043,12 @@ export async function _findPairedTransferTombstone(currentId, transferPairId) {
     r.snapshot && r.snapshot.transferPairId === transferPairId
   ) || null;
 }
-
 let _recycleBusy = false;
-
 async function _withRecycleLock(fn) {
   if (_recycleBusy) { showToast('Please wait, another recycle bin action is still running.', 'info', 2500); return; }
   _recycleBusy = true;
   try { return await fn(); } finally { _recycleBusy = false; }
 }
-
 async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
   const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null };
@@ -4196,34 +4067,28 @@ async function _getGroupBlockedMap(members) {
   }
   return blocked;
 }
-
 async function _collectRecoveryMembers(tomb, deletionRecords) {
   if (!tomb) return [];
   const live = await getLiveRecoveryRefs();
   return expandRecoveryMembers(tomb, deletionRecords, live);
 }
-
 async function _planRecovery(tomb, deletionRecords) {
   const members = await _collectRecoveryMembers(tomb, deletionRecords);
   const blocked = await _getGroupBlockedMap(members);
   const plan = planGroupRecovery(members, blocked, String(tomb.recordId || tomb.id));
   return { members, blocked, plan };
 }
-
 function _skippedSummary(plan) {
   return plan.skipped.map(x => {
     const s = x.tomb.snapshot || {};
     return `\u2022 ${s.customerName || s.name || s.description || x.tomb.collection || 'Record'}: ${x.reason}`;
   }).join('\n');
 }
-
 const _FACTORY_RECOVER_COLLECTIONS = new Set(['production', 'returns', 'factory_history', 'inventory']);
-
 async function _refreshFactoryAfterRecover(collections) {
   if (!collections.some(c => _FACTORY_RECOVER_COLLECTIONS.has(c))) return;
   try { await syncFactoryProductionStats(); } catch (e) { console.warn('[RecycleBin] factory stats refresh failed', _safeErr(e)); }
 }
-
 async function _clearErasedIds(ids) {
   try {
     const gone = new Set(ids.map(String));
@@ -4231,7 +4096,6 @@ async function _clearErasedIds(ids) {
     await sqliteStore.set('erased_deletion_ids', left);
   } catch (e) { console.warn('[RecycleBin] clear erased ids failed', _safeErr(e)); }
 }
-
 export async function flushErasedTombstones() {
   try {
     const pending = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String);
@@ -4249,9 +4113,7 @@ export async function flushErasedTombstones() {
     }
   } catch (e) { console.warn('[RecycleBin] flushErasedTombstones failed', _safeErr(e)); }
 }
-
 window.flushErasedTombstones = flushErasedTombstones;
-
 async function _recreateCalcTransferSale(snap) {
   const tombs = ensureArray(await sqliteStore.get('deletion_records'));
   const t = tombs.find(x => x && String(x.recordId || x.id) === String(snap.transferSaleId) && (x.collection || x.recordType) === 'sales');
@@ -4271,12 +4133,10 @@ async function _recreateCalcTransferSale(snap) {
   const r = await processRepTransfer(snap.returnRep, snap.returned, snap.date, snap.seller);
   return { saleId: r.saleId, oldId: null };
 }
-
 function _calcOriginalMoment(snap) {
   const d = new Date(snap && (snap.syncedAt || snap.createdAt));
   return isNaN(d.getTime()) ? undefined : d;
 }
-
 async function _reapplyCalcEffects(snap, done, liveEntry) {
   let entryChanged = false;
   for (const step of done.slice().reverse()) {
@@ -4305,7 +4165,6 @@ async function _reapplyCalcEffects(snap, done, liveEntry) {
     try { const h = ensureArray(await sqliteStore.get('noman_history')); await unifiedSave('noman_history', h, liveEntry); } catch (_) { }
   }
 }
-
 async function _claimRepSalesForCalc(repIds, calcId) {
   const repSales = ensureArray(await sqliteStore.get('rep_sales'));
   const claimed = [];
@@ -4321,7 +4180,6 @@ async function _claimRepSalesForCalc(repIds, calcId) {
   if (claimed.length) await unifiedSave('rep_sales', repSales, null, claimed);
   return claimed;
 }
-
 async function recoverCalcEntry(deletedId, snap) {
   const oldId = String(deletedId);
   const ids = Array.isArray(snap.linkedSalesIds) ? snap.linkedSalesIds : [];
@@ -4384,7 +4242,6 @@ async function recoverCalcEntry(deletedId, snap) {
     return false;
   }
 }
-
 export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4573,10 +4430,8 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     return false;
   }
 }
-
 window.recoverRecord = recoverRecord;
 window.registerDeletion = registerDeletion;
-
 export const RECYCLE_COLLECTION_TO_TAB = {
   'sales':              'tab_sales',
   'sales_customers':    'tab_sales',
@@ -4592,7 +4447,6 @@ export const RECYCLE_COLLECTION_TO_TAB = {
   'entities':           'tab_payments',
   'unknown':            'tab_payments',
 };
-
 export const RECYCLE_BIN_COLLECTION_LABELS = {
   'sales':              'Customer Sale',
   'sales_customers':    'Customer Contact',
@@ -4608,7 +4462,6 @@ export const RECYCLE_BIN_COLLECTION_LABELS = {
   'entities':           'Payment Entity',
   'unknown':            'Record',
 };
-
 export const RECYCLE_TAB_LABELS = {
   'tab_sales':       'Sales Tab',
   'tab_rep':         'Rep Tab',
@@ -4617,16 +4470,13 @@ export const RECYCLE_TAB_LABELS = {
   'tab_factory':     'Factory Tab',
   'tab_payments':    'Payments Tab',
 };
-
 export const RECYCLE_RECOVERABLE_COLLECTIONS = new Set([
   'sales','transactions','rep_sales','expenses','production',
   'factory_history','inventory','returns','calculator_history',
   'sales_customers','rep_customers','entities'
 ]);
-
 export async function openRecycleBin() {
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('recycle-bin-screen');
-
 const MODE_TO_RECYCLE_FILTER = {
   'production': 'tab_production',
   'factory':    'tab_factory',
@@ -4653,13 +4503,11 @@ if (mode === 'userrole') {
 } else {
   defaultFilter = MODE_TO_RECYCLE_FILTER[mode] || 'all';
 }
-
 const filterSel = document.getElementById('recycleBinFilter');
 if (filterSel) {
   const allowedFilters = new Set();
   allowedFilters.add('all');
   if (mode === 'admin') {
-
     Array.from(filterSel.options).forEach(opt => { opt.style.display = ''; });
   } else if (mode === 'userrole') {
     const tabs = window._assignedUserTabs || [];
@@ -4678,11 +4526,9 @@ if (filterSel) {
 }
 await renderRecycleBin(defaultFilter);
 }
-
 export function closeRecycleBin() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('recycle-bin-screen');
 }
-
 export async function renderRecycleBin(filterCollection = 'all') {
   const container = document.getElementById('recycleBinList');
   const statsEl   = document.getElementById('recycleBinStats');
@@ -4737,13 +4583,11 @@ export async function renderRecycleBin(filterCollection = 'all') {
       }
     }
     localDeletionRecords = Array.from(_seen.values());
-
     for (const r of localDeletionRecords) {
       if (r.displayName) { continue; }
       const col = r.collection || 'unknown';
       const s = r.snapshot;
       if (s && typeof s === 'object') {
-
         if (col === 'sales') {
           r.displayName   = s.customerName || s.name || null;
           r.displayDetail = r.displayDetail || [s.supplyStore || s.store || '', s.paymentType || '', s.date || ''].filter(Boolean).join(' · ');
@@ -4789,7 +4633,6 @@ export async function renderRecycleBin(filterCollection = 'all') {
           r.displayAmount = r.displayAmount || ((s.amount ?? s.totalValue) != null ? `₨${fmtNum(s.amount ?? s.totalValue)}` : null);
         }
       }
-
       if (!r.displayName) {
         try {
           const live = await _captureRecordSnapshot(r.id || r.recordId, col);
@@ -4904,7 +4747,6 @@ export async function renderRecycleBin(filterCollection = 'all') {
           }
         }
       }
-
       const _snap = rec.snapshot || {};
       const _rbCreatedBy = _snap.createdBy || rec.createdBy || null;
       const _rbManagedBy = _snap.managedBy || rec.managedBy || null;
@@ -4919,12 +4761,10 @@ export async function renderRecycleBin(filterCollection = 'all') {
         ? `<span class="sales-rep-badge">${esc(_rbSalesRep.split(' ')[0])}</span>`
         : '';
       const _rbBadgesHtml = [_rbManagedBadge, _rbCreatorBadge, _rbRepBadge].filter(Boolean).join('');
-
       const _rbDeletedByRaw = rec.deleted_by || null;
       const _rbDeletedByBadge = (_rbDeletedByRaw && _rbDeletedByRaw !== 'user')
         ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.62rem;font-weight:700;letter-spacing:0.04em;color:#f87171;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>${esc(_rbDeletedByRaw)}</span>`
         : '';
-
       const nameHtml = displayName
         ? `<span style="font-size:0.88rem;font-weight:700;color:var(--text-main);">${esc(displayName)}</span>`
         : `<span style="font-size:0.82rem;font-weight:600;color:var(--text-muted);font-style:italic;">${esc(RECYCLE_BIN_COLLECTION_LABELS[col] || col)} — name unavailable</span>`;
@@ -4976,11 +4816,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
     console.error('[RecycleBin] render error', _safeErr(e));
   }
 }
-
 export async function attemptRecoverRecord(id, collectionName) {
   return _withRecycleLock(() => _attemptRecoverRecordImpl(id, collectionName));
 }
-
 async function _attemptRecoverRecordImpl(id, collectionName) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -5037,16 +4875,13 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     await renderRecycleBin(_fs ? _fs.value : 'all');
   }
 }
-
 window.openRecycleBin = openRecycleBin;
 window.closeRecycleBin = closeRecycleBin;
 window.renderRecycleBin = renderRecycleBin;
 window.attemptRecoverRecord = attemptRecoverRecord;
-
 export async function emptyRecycleBin() {
   return _withRecycleLock(_emptyRecycleBinImpl);
 }
-
 async function _emptyRecycleBinImpl() {
   const currentFilter = window._recycleBinCurrentFilterKey || (document.getElementById('recycleBinFilter') || {}).value || 'all';
   const shown = (window._recycleBinCurrentFiltered || []).slice();
@@ -5089,29 +4924,22 @@ async function _emptyRecycleBinImpl() {
     if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Recycle bin emptied', targets.length + ' record' + (targets.length !== 1 ? 's were' : ' was') + ' permanently deleted and cannot be recovered.', 'recycle-emptied').catch(() => {});
   }
 }
-
 window.emptyRecycleBin = emptyRecycleBin;
-
 export async function hardDeleteRecord(id, collectionName, _isPairDelete = false) {
   if (!id || !collectionName) return false;
   const sid = String(id);
   try {
-
     const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
     deletedRecordIds.delete(sid);
     await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
-
     const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     const ownTombstone = deletionRecords.find(r => String(r.id) === sid || String(r.recordId || r.id) === sid);
     const pruned = deletionRecords.filter(r => String(r.id) !== sid && String(r.recordId || r.id) !== sid);
     await sqliteStore.set('deletion_records', pruned);
-
     const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
     _erasedIds.add(sid);
     await sqliteStore.set('erased_deletion_ids', Array.from(_erasedIds));
-
     _recoveredThisSession.add(sid);
-
     const sqliteKey = getSQLiteKey(collectionName);
     if (sqliteKey) {
       const store = ensureArray(await sqliteStore.get(sqliteKey));
@@ -5120,7 +4948,6 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
         await sqliteStore.set(sqliteKey, filtered);
       }
     }
-
     if (typeof OfflineQueue !== 'undefined') {
       const isThisId = (item) => {
         const op = item.operation || {};
@@ -5136,7 +4963,6 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
         try { await OfflineQueue.saveDeadLetterQueue(); } catch(e) {}
       }
     }
-
     if (firebaseDB && currentUser) {
       (async () => {
         try {
@@ -5210,11 +5036,9 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
     return false;
   }
 }
-
 export async function attemptHardDeleteRecord(id, collectionName) {
   return _withRecycleLock(() => _attemptHardDeleteImpl(id, collectionName));
 }
-
 async function _attemptHardDeleteImpl(id, collectionName) {
   const tabKey   = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
@@ -5261,10 +5085,8 @@ async function _attemptHardDeleteImpl(id, collectionName) {
     await renderRecycleBin(filterSel ? filterSel.value : 'all');
   }
 }
-
 window.hardDeleteRecord = hardDeleteRecord;
 window.attemptHardDeleteRecord = attemptHardDeleteRecord;
-
 export async function triggerLocalBackup() {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -5336,7 +5158,6 @@ console.error('Encryption failed:', _safeErr(encErr));
 showToast('Encryption failed: ' + encErr.message, 'error');
 }
 }
-
 export async function uploadOldDataToCloud(event) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -5510,7 +5331,6 @@ cloudData.naswar_default_settings = {};
 cloudData.appMode = 'admin';
 cloudData.repProfile = {};
 }
-
 function mergeArrays(cloudArr, fileArr) {
 if (!Array.isArray(cloudArr)) cloudArr = [];
 if (!Array.isArray(fileArr)) fileArr = [];
@@ -5779,13 +5599,11 @@ showToast('Upload failed: ' + err.message, 'error');
 _set_isSyncing(false);
 }
 }
-
 const _nativeBio = () => {
 const C = window.Capacitor;
 if (!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform())) return null;
 return (C.Plugins && C.Plugins.NativeBiometric) || null;
 };
-
 const _bioErrorMessage = (code) => ({
 1: 'Biometrics are not available on this device.',
 2: 'Too many failed attempts. Try again later or use your device PIN.',
@@ -5794,7 +5612,6 @@ const _bioErrorMessage = (code) => ({
 10: 'Fingerprint not recognised. Please try again.',
 14: 'Set a screen lock (PIN, pattern or password) in Android Settings first.'
 }[code] || 'Biometric authentication failed.');
-
 const _nativeBioError = (e) => {
 const code = e && (e.code !== undefined ? Number(e.code) : NaN);
 const cancelled = code === 11 || code === 15 || code === 13 || /cancel/i.test(String((e && e.message) || ''));
@@ -5803,7 +5620,6 @@ err.name = cancelled ? 'NotAllowedError' : 'BiometricError';
 err.code = code;
 return err;
 };
-
 export const BiometricAuth = {
 isAvailable: async () => {
 const nb = _nativeBio();
@@ -5930,7 +5746,6 @@ throw err;
 }
 }
 };
-
 export async function forceAppModeFromCloud(targetMode, repName = null) {
 if (!firebaseDB || !currentUser) {
 showToast('Not logged in', 'error', 3000);
@@ -5960,9 +5775,7 @@ showToast('Failed to send remote command', 'error', 3000);
 return false;
 }
 }
-
 window.forceAppModeFromCloud = forceAppModeFromCloud;
-
 export function updateSystemName() {
 const el = document.getElementById('system-name-display');
 if (!el) return;
@@ -5978,7 +5791,6 @@ el.textContent = (window._assignedManagerName || 'Factory Manager').toUpperCase(
 el.textContent = (window._assignedManagerName || 'User').toUpperCase();
 }
 }
-
 export function lockToRepMode() {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
 if (btn.id !== 'snav-rep') btn.style.display = 'none';
@@ -6002,7 +5814,6 @@ const newTransCard = document.getElementById('rep-new-transaction-card');
 if (newTransCard) newTransCard.style.display = 'block';
 if (typeof refreshRepUI === 'function') refreshRepUI();
 }
-
 export function lockToProductionMode() {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
 if (btn.id !== 'snav-prod') btn.style.display = 'none';
@@ -6034,7 +5845,6 @@ if (spField) spField.style.display = 'none';
 const dynCost = document.getElementById('dynamic-cost-display');
 if (dynCost) dynCost.style.display = 'none';
 }
-
 export function lockToFactoryMode() {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
 if (btn.id !== 'snav-factory') btn.style.display = 'none';
@@ -6068,7 +5878,6 @@ const formulaDisplay = document.getElementById('factoryFormulaDisplay');
 if (formulaDisplay) formulaDisplay.style.display = 'none';
 }
 }
-
 export function lockToUserRoleMode() {
 const assignedTabs = window._assignedUserTabs || [];
 const userName = window._assignedManagerName || 'User';
@@ -6152,7 +5961,6 @@ if (assignedTabs.length > 0 && typeof showTab === 'function') {
 showTab(assignedTabs[0]);
 }
 }
-
 export async function enforceRepModeLock() {
 if (window._modeLockEnforced) return;
 window._modeLockEnforced = true;
@@ -6181,7 +5989,6 @@ lockToFactoryMode();
 console.warn('enforceRepModeLock: failed to read mode from SQLite, defaulting to admin.', _safeErr(e));
 }
 }
-
 export function preventAdminAccess() {
 if (!window._originalShowTab && typeof window.showTab === 'function') {
 window._originalShowTab = window.showTab;
@@ -6255,7 +6062,6 @@ btn.style.display = 'none';
 });
 }
 }
-
 export async function unlockAdminMode() {
 _set_appMode('admin');
 updateSystemName();
@@ -6269,22 +6075,18 @@ await sqliteStore.set('appMode_timestamp', timestamp);
 await sqliteStore.set('assignedManager', null);
 await sqliteStore.set('assignedUserTabs', []);
 await sqliteStore.set('repProfile', null);
-
 if (typeof firebaseDB !== 'undefined' && firebaseDB && window._firestoreNetworkDisabled) {
 try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
 }
-
 if (typeof OfflineQueue !== 'undefined' && navigator.onLine) {
 try { await OfflineQueue.processQueue(); } catch (_oq) {}
 }
 notifyDataChange('all');
 showToast('Switching to Admin Mode...', 'info', 1500);
-
 setTimeout(() => {
 location.reload();
 }, 2000);
 }
-
 export async function deleteRepTransaction(id) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (!id || !validateUUID(id)) {
@@ -6366,7 +6168,6 @@ showToast('Failed to delete transaction. Please try again.', 'error');
 }
 }
 }
-
 export async function handleCustomerInput(query, mode) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -6407,7 +6208,6 @@ phoneContainer.classList.remove('hidden');
 phoneContainer.classList.add('hidden');
 }
 }
-
 export async function handleUniversalSearch(inputId, resultsId, dataSource) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -6551,7 +6351,6 @@ break;
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
 }
-
 export function selectFromUniversalSearch(inputId, resultsId, value, type, id) {
 const input = document.getElementById(inputId);
 const resultsDiv = document.getElementById(resultsId);
@@ -6589,21 +6388,17 @@ if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 if (typeof openRepCustomerEditModal === 'function') openRepCustomerEditModal(value);
 }
 }
-
 document.addEventListener('click', function(e) {
-
 if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown') &&
     !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"], button[onclick*="perf-sum-raw-breakdown"]')) {
   document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown').forEach(panel => {
     if (panel.style.display !== 'none') {
       panel.style.display = 'none';
-
       const btn = panel.previousElementSibling;
       if (btn && btn.tagName === 'BUTTON') {
         const arrow = btn.querySelector('span:first-child');
         if (arrow) {
           if (arrow.textContent === '▼') arrow.textContent = '▶';
-
         }
       }
     }
@@ -6628,21 +6423,18 @@ resultsDiv.classList.add('hidden');
 }
 });
 });
-
 window.selectCustomer = function(name) {
   const base = window._selectCustomerBase;
   if (typeof base === 'function') base(name);
   document.getElementById('new-customer-phone-container').classList.add('hidden');
   document.getElementById('new-cust-phone').value = '';
 };
-
 window.selectRepCustomer = function(name) {
   const base = window._selectRepCustomerBase;
   if (typeof base === 'function') base(name);
   document.getElementById('rep-new-customer-phone-container').classList.add('hidden');
   document.getElementById('rep-new-cust-phone').value = '';
 };
-
 export async function initTheme() {
 const savedTheme = await sqliteStore.get('theme') || 'dark';
 const html = document.documentElement;
@@ -6657,7 +6449,6 @@ if (metaThemeColor) {
 metaThemeColor.setAttribute('content', savedTheme === 'light' ? '#ffffff' : '#000000');
 }
 }
-
 export const FIRESTORE_ENHANCED_SCHEMA = {
 production: {
 localKey: 'mfg_pro_pkr',
@@ -6740,7 +6531,6 @@ description: 'Unified expense manager records (operating expenses, payments IN/O
 fields: ['name', 'amount', 'category', 'description', 'date', 'time', 'id', 'timestamp', 'syncedAt']
 }
 };
-
 export const FIRESTORE_SETTINGS_SCHEMA = {
 factory_default_formulas: {
 localKey: 'factory_default_formulas',
@@ -6791,7 +6581,6 @@ repProfile: {
 localKey: 'repProfile',
 localVariable: 'currentRepProfile',
 type: 'string',
-
 defaultValue: 'NORAN SHAH',
 description: 'Active sales-representative profile name'
 },
@@ -6810,7 +6599,6 @@ defaultValue: null,
 description: 'ISO timestamp of the last successful cloud sync'
 }
 };
-
 export const FIRESTORE_LOCAL_ONLY_KEYS = {
 theme: {
 localKey: 'theme',
@@ -6834,7 +6622,6 @@ defaultValue: '',
 description: 'WebAuthn biometric credential ID'
 }
 };
-
 export function updateConnectionStatus() {
 if (!navigator.onLine) {
 _setCloudConnectionState(null);
@@ -6846,11 +6633,9 @@ _setCloudConnectionState('signed-out');
 _setCloudConnectionState(null);
 }
 }
-
 window.addEventListener('online', () => { updateConnectionStatus(); if(typeof updateOfflineBanner==='function') updateOfflineBanner(); });
 window.addEventListener('offline', () => { updateConnectionStatus(); if(typeof updateOfflineBanner==='function') updateOfflineBanner(); });
 export const originalSync = window.performOneClickSync;
-
 window.performOneClickSync = async function(silent) {
 updateConnectionStatus();
 try {
@@ -6860,7 +6645,6 @@ _set_isSyncing(false);
 updateConnectionStatus();
 }
 };
-
 (function registerRenderFunctions() {
 if (typeof renderUnifiedTable === 'function') {
 }
@@ -6873,7 +6657,6 @@ if (typeof renderExpenseTable === 'function') {
 if (typeof renderRepCustomerTable === 'function') {
 }
 })();
-
 export var ThemeManager = {
 currentTheme: 'dark',
 observers: new Set(),
@@ -6912,7 +6695,6 @@ return getComputedStyle(document.documentElement)
 .getPropertyValue(`--${varName}`).trim();
 }
 };
-
 export const IncrementalRenderer = {
 queue: [],
 isRendering: false,
@@ -6943,7 +6725,6 @@ container.appendChild(fragment);
 this.isRendering = false;
 }
 };
-
 export class ReactiveComponent {
 constructor(element, config = {}) {
 this.element = element;
@@ -6951,14 +6732,12 @@ this.state = config.initialState || {};
 this.styleMap = config.styleMap || {};
 this.listeners = new Map();
 }
-
 setState(newState) {
 const oldState = { ...this.state };
 this.state = { ...this.state, ...newState };
 this.syncStyles();
 this.notifyListeners(oldState, this.state);
 }
-
 syncStyles() {
 Object.entries(this.styleMap).forEach(([stateKey, styles]) => {
 if (this.state[stateKey]) {
@@ -6966,14 +6745,12 @@ Object.assign(this.element.style, styles);
 }
 });
 }
-
 on(event, callback) {
 if (!this.listeners.has(event)) {
 this.listeners.set(event, new Set());
 }
 this.listeners.get(event).add(callback);
 }
-
 notifyListeners(oldState, newState) {
 const listeners = this.listeners.get('change');
 if (listeners) {
@@ -6981,7 +6758,6 @@ listeners.forEach(cb => cb(newState, oldState));
 }
 }
 }
-
 export var PerformanceMonitor = {
 metrics: {
 renderTime: [],
@@ -7014,12 +6790,10 @@ report() {
 const averages = this.getAverages();
 }
 };
-
 window.addEventListener('beforeunload', function() {
 if (listenerReconnectTimer) {
 clearTimeout(listenerReconnectTimer);
 }
-
 if (window._scrollRafId != null) {
 cancelAnimationFrame(window._scrollRafId);
 window._scrollRafId = null;
@@ -7034,7 +6808,6 @@ if (window._syncUpdatesCleanupInterval) { clearInterval(window._syncUpdatesClean
 if (window._connectionCheckInterval) { clearInterval(window._connectionCheckInterval); window._connectionCheckInterval = null; }
 if (window._perfMonitorInterval) { clearInterval(window._perfMonitorInterval); window._perfMonitorInterval = null; }
 });
-
 export async function loadSalesRepsList() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -7071,7 +6844,6 @@ if (cloudTs > localTs) await sqliteStore.set('team_list_timestamp', cloudTs);
 }
 renderAllRepUI();
 }
-
 export async function saveSalesRepsList() {
 try {
 await sqliteStore.set('sales_reps_list', salesRepsList);
@@ -7096,7 +6868,6 @@ console.error('saveSalesRepsList error:', _safeErr(e));
 showToast('Failed to save team list. Please try again.', 'error');
 }
 }
-
 export async function saveUserRolesList() {
 try {
 await sqliteStore.set('user_roles_list', userRolesList);
@@ -7120,7 +6891,6 @@ console.error('saveUserRolesList error:', _safeErr(e));
 showToast('Failed to save user roles. Please try again.', 'error');
 }
 }
-
 export function renderAllRepUI() {
 const adminSel = document.getElementById('admin-rep-selector');
 if (adminSel) {
@@ -7149,7 +6919,6 @@ return `<button id="btn-rep-dyn-${i}" class="toggle-opt${currentVal === r ? ' ac
 }
 renderManageRepsList();
 }
-
 export function renderManageRepsList() {
 const list = document.getElementById('manage-reps-list');
 if (!list) return;
@@ -7167,9 +6936,7 @@ list.innerHTML = salesRepsList.map((rep, i) => `
 </div>
 `).join('');
 }
-
 export let _newUserRoleSelectedTabs = new Set();
-
 export function toggleUserRoleTabAccess(tabKey) {
 if (_newUserRoleSelectedTabs.has(tabKey)) {
 _newUserRoleSelectedTabs.delete(tabKey);
@@ -7187,7 +6954,6 @@ hint.textContent = _newUserRoleSelectedTabs.size === 0
 : 'Access: ' + [..._newUserRoleSelectedTabs].map(t => _cap(t)).join(', ');
 }
 }
-
 export function renderUserRoleList() {
 const list = document.getElementById('manage-userrole-list');
 if (!list) return;
@@ -7211,7 +6977,6 @@ return `
 </div>`;
 }).join('');
 }
-
 export function switchManageTeamTab(tab) {
 ['rep', 'userrole', 'accounts'].forEach(t => {
 const btn = document.getElementById('team-tab-' + t);
@@ -7223,7 +6988,6 @@ if (tab === 'userrole') renderUserRoleList();
 if (tab === 'rep') renderManageRepsList();
 if (tab === 'accounts' && typeof loadAccountsList === 'function') loadAccountsList();
 }
-
 export async function addNewUserRole() {
 const input = document.getElementById('new-userrole-name-input');
 if (!input) return;
@@ -7244,7 +7008,6 @@ if (hint) hint.textContent = 'Select one or more tabs to assign';
 renderUserRoleList();
 showToast(`${name} added as User`, 'success');
 }
-
 export async function removeUserRole(index) {
 const user = userRolesList[index];
 if (!user) return;
@@ -7256,7 +7019,6 @@ await saveUserRolesList();
 renderUserRoleList();
 showToast(`${esc(user.name)} removed`, 'info');
 }
-
 export async function addNewSalesRep() {
 const input = document.getElementById('new-rep-name-input');
 if (!input) return;
@@ -7268,7 +7030,6 @@ await saveSalesRepsList();
 input.value = '';
 showToast(`${name} added`, 'success');
 }
-
 export async function removeSalesRep(index) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (salesRepsList.length <= 1) { showToast('Must have at least one representative', 'warning'); return; }
@@ -7298,12 +7059,10 @@ await sqliteStore.set('repProfile', currentRepProfile);
 await saveSalesRepsList();
 showToast(`${name} removed`, 'info');
 }
-
 export function openManageRepsModal() {
 renderManageRepsList();
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('sales-rep-screen');
 }
-
 export function closeManageRepsModal() {
 if (typeof closeStandaloneScreen === 'function') {
 closeStandaloneScreen('sales-rep-screen');
@@ -7311,7 +7070,6 @@ closeStandaloneScreen('user-roles-screen');
 closeStandaloneScreen('app-accounts-screen');
 }
 }
-
 export const _overlayStack = (() => {
   const _registry = {
     'formula-store-screen':        { closeFn: () => closeStandaloneScreen('formula-store-screen'), contentSel: '.screen-body' },
@@ -7366,7 +7124,6 @@ export const _overlayStack = (() => {
   });
   return { closeTop, openLayers: _openLayers };
 })();
-
 window.loadSalesRepsList = loadSalesRepsList;
 window.saveSalesRepsList = saveSalesRepsList;
 window.renderAllRepUI = renderAllRepUI;
@@ -7375,7 +7132,6 @@ window.removeSalesRep = removeSalesRep;
 window.openManageRepsModal = openManageRepsModal;
 window.closeManageRepsModal = closeManageRepsModal;
 window.switchManageTeamTab = switchManageTeamTab;
-
 export async function loadUserRolesContent() {
 if (firebaseDB && currentUser) {
 try {
@@ -7394,7 +7150,6 @@ console.warn('loadUserRolesContent: cloud fetch failed, showing cached list', _s
 }
 renderUserRoleList();
 }
-
 window.addNewUserRole = addNewUserRole;
 window.removeUserRole = removeUserRole;
 window.toggleUserRoleTabAccess = toggleUserRoleTabAccess;
@@ -7402,7 +7157,6 @@ window.renderUserRoleList = renderUserRoleList;
 window.loadUserRolesContent = loadUserRolesContent;
 window.saveUserRolesList = saveUserRolesList;
 window.lockToUserRoleMode = lockToUserRoleMode;
-
 export function phoneActionHTML(phone, opts = {}) {
 const raw = (phone || '').toString().trim();
 const empty = !raw || raw === '-' || raw === 'N/A' || raw === 'No Phone' || raw === 'No contact';
@@ -7414,24 +7168,19 @@ const clean = raw.replace(/[\s\-().]/g, '');
 const wa = clean.startsWith('0') ? '92' + clean.slice(1) : clean;
 return `<a href="tel:${clean}" title="Tap to call · Long-press for WhatsApp" style="color:inherit;text-decoration:none;cursor:pointer;border-bottom:1px dotted currentColor;touch-action:manipulation;-webkit-touch-callout:default;" oncontextmenu="event.preventDefault();window.open('https://wa.me/${wa}','_blank')">${esc(raw)}</a>`;
 }
-
 window.phoneActionHTML = phoneActionHTML;
-
 window.initDatabase = async function(silent = false) {
 const result = await initializeCompleteFirestoreDatabase(silent);
 return result;
 };
-
 window.checkDatabase = async function() {
 const isComplete = await isCompleteDatabaseInitialized();
 return isComplete;
 };
-
 window.safeInitDatabase = async function(silent = false) {
 const result = await safeInitializeCompleteDatabase(silent);
 return result;
 };
-
 window.analyzeBackupFile = async function(file) {
 if (!file) {
 return;
@@ -7564,7 +7313,6 @@ console.error('analyzeBackupFile error:', _safeErr(error));
 showToast('Could not parse backup file: ' + error.message, 'error');
 }
 };
-
 (function() {
   let _adminLoaded = false;
   let _adminLoading = null;
@@ -7593,7 +7341,6 @@ showToast('Could not parse backup file: ' + error.message, 'error');
     }
   };
 })();
-
 export async function loadDeviceList() {
 const container = document.getElementById('device-list-container');
 if (!container) return;
@@ -7690,7 +7437,6 @@ const modeColor = deviceMode === 'admin' ? '#007aff'
 const modeIcon = '';
 const onlineColor = isOnline ? '#30d158' : '#ff453a';
 const onlineDot = isOnline ? ' Online' : ' Offline';
-
 let deviceShard = 'N/A';
 if (device.deviceShard) {
   deviceShard = String(device.deviceShard).toUpperCase();
@@ -7699,7 +7445,6 @@ try {
 deviceShard = deriveDeviceShard(device.deviceId).toUpperCase();
 } catch (_) { deviceShard = 'N/A'; }
 }
-
 let firstLoginStr = '';
 if (device.firstLoginAt) {
   try {
@@ -7809,7 +7554,6 @@ Error loading devices: ${esc(error.message)}
 `;
 }
 }
-
 export async function refreshDeviceList() {
 const container = document.getElementById('device-list-container');
 if (container) {
@@ -7822,7 +7566,6 @@ Refreshing...
 await loadDeviceList();
 showToast(' Device list refreshed', 'success', 2000);
 }
-
 export async function remoteControlDevice(deviceId, targetMode, repName = null, userTabs = null) {
 if (!firebaseDB || !currentUser) {
 showToast('Not logged in', 'error', 3000);
@@ -7856,12 +7599,10 @@ danger: targetMode !== 'admin'
 });
 if (!confirmed) return;
 try {
-
 if (window._firestoreNetworkDisabled) {
 try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
 }
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-
 const commandTimestamp = Date.now();
 const deviceRef = userRef.collection('devices').doc(deviceId);
 const updateData = {
@@ -7891,7 +7632,6 @@ setTimeout(loadDeviceList, 2000);
 showToast('Failed to control device: ' + error.message, 'error', 4000);
 }
 }
-
 export async function removeDevice(deviceId) {
 if (!firebaseDB || !currentUser) {
 showToast('Not logged in', 'error', 3000);
@@ -7923,7 +7663,6 @@ await loadDeviceList();
 showToast('Failed to remove device: ' + error.message, 'error', 3000);
 }
 }
-
 window.loadDeviceList = loadDeviceList;
 window.refreshDeviceList = refreshDeviceList;
 window.remoteControlDevice = remoteControlDevice;
@@ -7931,7 +7670,6 @@ window.removeDevice = removeDevice;
 window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
-
 export function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, assignedUserTabs, remoteApplied) {
   const previousMode = appMode;
   _set_appMode(modeStr);
@@ -7958,20 +7696,16 @@ export function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, as
     : `Switching to ${modeLabel}...`, 'info', 2000);
   setTimeout(() => { window.location.reload(); }, 1500);
 }
-
 window._applyModeFromData = _applyModeFromData;
-
 export async function restoreDeviceModeOnLogin(uid) {
 try {
   const localTimestamp = Number(await sqliteStore.get('appMode_timestamp')) || 0;
-
   if (firebaseDB && !window._firestoreNetworkDisabled && navigator.onLine) {
     try {
       const deviceId = await getDeviceId();
       const deviceRef = firebaseDB.collection('users').doc(uid)
                                   .collection('devices').doc(deviceId);
       const deviceDoc = await deviceRef.get();
-
       if (deviceDoc.exists) {
         const data = deviceDoc.data();
         if (data && (data.forceLogout === true || data.targetMode === 'force_logout')) {
@@ -7995,15 +7729,12 @@ try {
             data.assignedUserTabs, !!data.remoteAppliedMode
           );
         }
-
         return;
       }
-
     } catch (_fsErr) {
       console.warn('[restoreDeviceMode] Firestore read failed, trying SQLite fallback:', _safeErr(_fsErr));
     }
   }
-
   const sqliteMode = await sqliteStore.get('appMode') || 'admin';
   const _modeIsLockedSqlite = sqliteMode !== 'admin';
   const _localIsAdminSqlite = appMode === 'admin';
@@ -8020,31 +7751,23 @@ try {
   console.warn('[restoreDeviceMode] could not restore device mode:', _safeErr(error));
 }
 }
-
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
-
 export async function listenForDeviceCommands() {
 if (!firebaseDB || !currentUser) return;
-
 if (typeof window.deviceCommandsUnsubscribe === 'function') {
 try { window.deviceCommandsUnsubscribe(); } catch (_) {}
 window.deviceCommandsUnsubscribe = null;
 }
-
 if (!window._deviceCmdRetryAttempts) window._deviceCmdRetryAttempts = 0;
 if (!window._deviceCmdRetrying) window._deviceCmdRetrying = false;
-
 try {
 const deviceId = await getDeviceId();
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const deviceRef = userRef.collection('devices').doc(deviceId);
-
 const unsubscribe = deviceRef.onSnapshot({ includeMetadataChanges: false }, (doc) => {
 try {
-
 if (doc.metadata.fromCache || doc.metadata.hasPendingWrites) return;
 if (!doc.exists) {
-
 return;
 }
 const data = doc.data();
@@ -8067,7 +7790,6 @@ resolvedName = data.assignedRoleName || data.assignedManager || null;
 }
 const effectiveMode = data.assignedRoleType || targetMode;
 const resolvedUserTabs = Array.isArray(data.assignedUserTabs) ? data.assignedUserTabs : [];
-
 const commandTimestamp = data.targetModeTimestamp && data.targetModeTimestamp.toMillis
 ? data.targetModeTimestamp.toMillis()
 : (typeof data.targetModeTimestamp === 'number' ? data.targetModeTimestamp : 0);
@@ -8076,7 +7798,6 @@ const lastProcessed = window.lastProcessedCommandTimestamp || 0;
 if (commandTimestamp > lastProcessed) {
 applyRemoteModeChange(effectiveMode, data.commandSource || 'remote', resolvedName, resolvedUserTabs);
 window.lastProcessedCommandTimestamp = commandTimestamp;
-
 window._deviceCmdRetryAttempts = 0;
 }
 } catch (snapErr) {
@@ -8086,14 +7807,12 @@ console.warn('[device] command snapshot handler error:', _safeErr(snapErr));
 const _code = error && error.code;
 console.warn('[device] command listener error:', _code, _safeErr(error));
 window.deviceCommandsUnsubscribe = null;
-
 if (_code === 'permission-denied' || _code === 'failed-precondition') {
 console.warn('[device] stopping device listener — unrecoverable error:', _code);
 window._deviceCmdRetryAttempts = 0;
 window._deviceCmdRetrying = false;
 return;
 }
-
 if (window._deviceCmdRetrying) return;
 window._deviceCmdRetryAttempts = (window._deviceCmdRetryAttempts || 0) + 1;
 const MAX_DEVICE_RETRIES = 8;
@@ -8103,7 +7822,6 @@ window._deviceCmdRetryAttempts = 0;
 window._deviceCmdRetrying = false;
 return;
 }
-
 const delay = Math.min(5000 * Math.pow(2, window._deviceCmdRetryAttempts - 1), 120000);
 window._deviceCmdRetrying = true;
 setTimeout(() => {
@@ -8123,7 +7841,6 @@ window._deviceCmdRetrying = false;
 console.error('[device] listenForDeviceCommands failed:', _safeErr(error));
 }
 }
-
 export async function applyRemoteModeChange(targetMode, source, repName = null, userTabs = null) {
 const previousMode = appMode;
 const previousManager = window._assignedManagerName || null;
@@ -8159,7 +7876,6 @@ batchData.push(['assignedManager', null], ['assignedUserTabs', []]);
 await sqliteStore.setBatch(batchData);
 if (firebaseDB && currentUser) {
 try {
-
 if (targetMode === 'admin' && window._firestoreNetworkDisabled) {
 try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
 }
@@ -8198,19 +7914,15 @@ if (typeof notifyDataChange === 'function') notifyDataChange('all');
 showToast('Device unlocked to Admin mode', 'info', 4000);
 }
 }
-
 window.listenForDeviceCommands = listenForDeviceCommands;
-
 export function listenForTeamChanges() {
 if (window._teamUnsubscribe) {
 try { window._teamUnsubscribe(); } catch(e) {}
 window._teamUnsubscribe = null;
 }
 }
-
 window.listenForTeamChanges = listenForTeamChanges;
 window.applyRemoteModeChange = applyRemoteModeChange;
-
 export async function prepareEntityTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
 showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
@@ -8233,11 +7945,8 @@ const noteInput = document.getElementById('payment-transfer-note'); if (noteInpu
 if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(null);
 await renderPaymentTransferHistory();
 }
-
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
-
 export function saveEntityTransfer(...a) { return runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)); }
-
 async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
@@ -8330,13 +8039,10 @@ if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(tru
 if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
 triggerAutoSync();
 }
-
 window.saveEntityTransfer = saveEntityTransfer;
-
 function _resetPaymentTransferForm() {
 ['payment-transfer-amount', 'payment-transfer-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 }
-
 export async function startEditPaymentTransfer(pairId) {
 const txs = ensureArray(await sqliteStore.get('payment_transactions'));
 const records = txs.filter(r => r && r.isTransfer === true && r.transferPairId === pairId);
@@ -8361,15 +8067,11 @@ const prefix = `Transfer to ${inn.entityName}: `;
 set('payment-transfer-note', (out.description || '').startsWith(prefix) ? out.description.slice(prefix.length) : '');
 beginEditMode('paytransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-payment-transfer', watchIds: ['payment-transfer-from-value','payment-transfer-to-value','payment-transfer-date','payment-transfer-amount','payment-transfer-note'], label: 'Update Transfer', anchorId: 'payment-transfer-amount', cancelFn: _resetPaymentTransferForm });
 }
-
 registerEditHandler('paytransfer', startEditPaymentTransfer, { keepScreens: ['payment-transfer-screen'] });
-
 export function openPaymentTransferPhotoCapture() {
 openPhotoCapture('paytransfer');
 }
-
 window.openPaymentTransferPhotoCapture = openPaymentTransferPhotoCapture;
-
 export function handlePaymentTransferPhotoFile(event) {
 const file = event.target.files && event.target.files[0];
 if (!file) return;
@@ -8378,11 +8080,8 @@ reader.onload = (e) => _applyPaymentTransferPendingPhoto(e.target.result);
 reader.readAsDataURL(file);
 event.target.value = '';
 }
-
 window.handlePaymentTransferPhotoFile = handlePaymentTransferPhotoFile;
-
 window._paymentTransferPendingPhoto = null;
-
 export function _applyPaymentTransferPendingPhoto(dataUrl) {
 window._paymentTransferPendingPhoto = dataUrl || null;
 const dot = document.getElementById('payment-transfer-photo-dot');
@@ -8393,9 +8092,7 @@ btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
 btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
 }
 }
-
 window._applyPaymentTransferPendingPhoto = _applyPaymentTransferPendingPhoto;
-
 export async function renderPaymentTransferHistory() {
 const list = document.getElementById('paymentTransferHistoryList');
 if (!list) return;
@@ -8448,9 +8145,7 @@ if (t.id) {
 });
 list.replaceChildren(fragment);
 }
-
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
-
 export async function deletePaymentTransfer(pairId, skipConfirm = false) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const entries = paymentTransactions.filter(t => t.transferPairId === pairId);
@@ -8500,9 +8195,7 @@ if (!skipConfirm) showToast('Payment transfer removed', 'success');
 showToast('Failed to remove transfer. Please try again.', 'error');
 }
 }
-
 window.deletePaymentTransfer = deletePaymentTransfer;
-
 window.toggleCustomerCreditReceived = toggleCustomerCreditReceived;
 window.calculateComparisonData = calculateComparisonData;
 window.createReportHTML = createReportHTML;

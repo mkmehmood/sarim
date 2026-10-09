@@ -1,6 +1,5 @@
 import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity, debtDelta, debtNeedsGross } from './business.js';
 import { unifiedSave, unifiedDelete } from './sync.js';
-
 import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
@@ -9,15 +8,12 @@ import {
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
-
 async function _calcHistory() {
   return ensureArray(await sqliteStore.get('noman_history')).filter(h => h && !h.deletedAt);
 }
-
 function _calcLabel(h) {
   return `${h.seller || 'a seller'}'s calculator record of ${h.date || 'unknown date'}`;
 }
-
 export async function findCalcLinkForSale(saleId) {
   if (!saleId) return null;
   const hist = await _calcHistory();
@@ -27,14 +23,12 @@ export async function findCalcLinkForSale(saleId) {
   if (transfer) return { entry: transfer, via: 'transfer' };
   return null;
 }
-
 export async function findCalcLinkForRepSale(repSaleId) {
   if (!repSaleId) return null;
   const hist = await _calcHistory();
   const entry = hist.find(h => Array.isArray(h.linkedRepSalesIds) && h.linkedRepSalesIds.includes(repSaleId));
   return entry ? { entry, via: 'rep' } : null;
 }
-
 export async function findCalcLinkForReturn(rec) {
   if (!rec || rec.isReturn !== true) return null;
   const hist = await _calcHistory();
@@ -44,7 +38,6 @@ export async function findCalcLinkForReturn(rec) {
     Number(h.returned) === Number(rec.net) && h.date === rec.date && (!rec.returnedBy || rec.returnedBy === h.seller));
   return legacy ? { entry: legacy, via: 'return' } : null;
 }
-
 export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const all = ensureArray(await sqliteStore.get(key));
@@ -72,7 +65,6 @@ export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
   }
   return null;
 }
-
 export async function getTransferDeleteBlockReason(entry) {
   if (!entry || !entry.transferSaleId) return null;
   const sales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -87,7 +79,6 @@ export async function getTransferDeleteBlockReason(entry) {
   }
   return null;
 }
-
 export async function getExpiredDeleteBlockReason(entry) {
   if (!entry || !(entry.expired > 0) || entry.expiredApplied === false) return null;
   const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
@@ -98,7 +89,6 @@ export async function getExpiredDeleteBlockReason(entry) {
   }
   return null;
 }
-
 export function getRecoverBlockReason(collectionName, snapshot) {
   const s = snapshot || {};
   if (collectionName === 'sales' && (s.isRepTransfer || (s.isTransfer && s.transferFrom))) {
@@ -113,7 +103,6 @@ export function getRecoverBlockReason(collectionName, snapshot) {
   }
   return null;
 }
-
 export async function getPendingAllocationCount(repName) {
   const sales = ensureArray(await sqliteStore.get('customer_sales'));
   const hist = await _calcHistory();
@@ -122,14 +111,11 @@ export async function getPendingAllocationCount(repName) {
   return sales.filter(s => s && !s.deletedAt && s.customerName === repName && s.currentRepProfile === 'admin' &&
     s.paymentType === 'CREDIT' && !s.creditReceived && s.transactionType !== 'OLD_DEBT' && !settled.has(s.id)).length;
 }
-
 const _ID_MAP_KEY = 'recovered_id_map';
-
 async function _loadIdMap() {
   const m = await sqliteStore.get(_ID_MAP_KEY, {});
   return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
 }
-
 export async function detachChildPayment(kind, child, all) {
   if (child && child.paymentType === 'COLLECTION' && Array.isArray(child.allocations) && child.allocations.length) {
     return await revertCollectionToSales(kind, child, all);
@@ -147,7 +133,6 @@ export async function detachChildPayment(kind, child, all) {
   await unifiedSave(key, arr, parent);
   return parent;
 }
-
 export async function getSaleEditLinkIssue(kind, original, next) {
   if (!original || !original.id) return null;
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
@@ -155,7 +140,6 @@ export async function getSaleEditLinkIssue(kind, original, next) {
   const children = all.filter(s => s && s.id !== original.id && s.relatedSaleId === original.id);
   return getEditLinkIssue(original, next, children);
 }
-
 export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   if (!snapshot) return null;
   if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
@@ -236,14 +220,11 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   }
   return null;
 }
-
 export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord) {
   const idMap = await _loadIdMap();
   idMap[String(oldId)] = String(newId);
   await sqliteStore.set(_ID_MAP_KEY, idMap);
-
   if (cleanRecord) resolveOwnLinks(collectionName, cleanRecord, idMap);
-
   const keys = Object.keys(REF_FIELDS);
   const stores = {};
   for (const k of keys) stores[k] = ensureArray(await sqliteStore.get(k));
@@ -253,7 +234,6 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     changed[k].forEach(r => { r.updatedAt = now; });
     await unifiedSave(k, stores[k], null, changed[k].map(r => r.id));
   }
-
   if (collectionName === 'inventory') {
     const hist = ensureArray(await sqliteStore.get('factory_production_history'));
     const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -268,7 +248,6 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await sqliteStore.set('factory_default_formulas_timestamp', Date.now());
     }
   }
-
   if (collectionName === 'factory_history' && cleanRecord) {
     const inv = ensureArray(await sqliteStore.get('factory_inventory_data'));
     const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -287,7 +266,6 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave('factory_inventory_data', inv, null, updates.map(u => u.id));
     }
   }
-
   if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
       cleanRecord.paymentType === 'PARTIAL_PAYMENT' && cleanRecord.relatedSaleId) {
     const key = COLLECTION_TO_KEY[collectionName];
@@ -326,12 +304,10 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
   }
   return cleanRecord;
 }
-
 export async function resolveSnapshotLinks(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
   return resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
 }
-
 async function _dropExpensePhoto(expenseId) {
   if (!expenseId) return;
   try {
@@ -348,7 +324,6 @@ async function _dropExpensePhoto(expenseId) {
     await sqliteStore.set('person_photos_dirty_keys', dk);
   } catch (e) { console.warn('[deletePaymentTxWithLinks] photo cleanup failed', e); }
 }
-
 export async function deletePaymentTxWithLinks(tx, opts = {}) {
   if (!tx || !tx.id) return { tx: null, expense: null };
   const allTxs = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -364,12 +339,10 @@ export async function deletePaymentTxWithLinks(tx, opts = {}) {
   await _dropExpensePhoto(tx.expenseId);
   return { tx, expense };
 }
-
 export async function recordCustomerRename(kind, from, to) {
   const map = (await sqliteStore.get('customer_rename_map')) || {};
   await sqliteStore.set('customer_rename_map', recordRename(map, kind, from, to));
 }
-
 export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
   if (collectionName === 'entities' || collectionName === 'transactions' || collectionName === 'payment_transactions' || collectionName === 'inventory') {
@@ -392,7 +365,6 @@ export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   }
   return cleanRecord;
 }
-
 export async function findLiveSameNameRecord(collectionName, snapshot) {
   if (!snapshot || !snapshot.name) return null;
   if (!['sales_customers', 'rep_customers', 'entities'].includes(collectionName)) return null;
@@ -400,7 +372,6 @@ export async function findLiveSameNameRecord(collectionName, snapshot) {
   const nm = String(snapshot.name).trim().toLowerCase();
   return arr.find(r => r && !r.deletedAt && r.name && String(r.name).trim().toLowerCase() === nm) || null;
 }
-
 export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   if (!oldDebtRecord || !oldDebtRecord.id) return { issue: null, collected: 0 };
   const all = ensureArray(await sqliteStore.get('customer_sales'));
@@ -411,7 +382,6 @@ export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   }
   return { issue: getOldDebtEditIssue(newAmount, kids), collected: sumChildPayments(kids) };
 }
-
 export async function getSettleToggleBlockReason(id, kind = 'customer') {
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const rec = ensureArray(await sqliteStore.get(key)).find(s => s && s.id === id);
@@ -428,7 +398,6 @@ export async function getSettleToggleBlockReason(id, kind = 'customer') {
   }
   return null;
 }
-
 export async function getLiveRecoveryRefs() {
   const ids = new Set();
   for (const k of ['customer_sales', 'rep_sales', 'expenses', 'payment_entities']) {
@@ -437,7 +406,6 @@ export async function getLiveRecoveryRefs() {
   const names = async (k) => new Set(ensureArray(await sqliteStore.get(k)).filter(c => c && c.name && !c.deletedAt).map(c => String(c.name).trim().toLowerCase()));
   return { ids, contacts: { sales: await names('sales_customers'), rep: await names('rep_customers') } };
 }
-
 export async function ensureContactForRecoveredSale(collectionName, rec) {
   if (!rec || !rec.customerName || !String(rec.customerName).trim()) return null;
   let key, extra = {};
@@ -462,7 +430,6 @@ export async function ensureContactForRecoveredSale(collectionName, rec) {
   await unifiedSave(key, arr, contact);
   return contact;
 }
-
 export async function loadCalcRestoreContext(entry) {
   const tombs = ensureArray(await sqliteStore.get('deletion_records'));
   const tt = entry && entry.transferSaleId
@@ -485,11 +452,9 @@ export async function loadCalcRestoreContext(entry) {
     repPriceOk: !!(repContact && Number(repContact.customSalePrice) > 0),
   };
 }
-
 export async function getCalcRestoreBlockReason(entry) {
   return planCalcRestore(entry, await loadCalcRestoreContext(entry)).block;
 }
-
 export async function auditLegacyPartialPayments(opts = {}) {
   const customer = findPartialConflicts(ensureArray(await sqliteStore.get('customer_sales')));
   const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep_sales')));
@@ -511,13 +476,10 @@ export async function auditLegacyPartialPayments(opts = {}) {
   }
   return report;
 }
-
 function _snapshotSales(list) { return list.map(x => ({ ref: x, copy: JSON.parse(JSON.stringify(x)) })); }
-
 function _restoreSales(snaps) {
   for (const { ref, copy } of snaps) { Object.keys(ref).forEach(k => { if (!(k in copy)) delete ref[k]; }); Object.assign(ref, copy); }
 }
-
 export async function revertCollectionToSales(kind, collection, all) {
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
@@ -533,7 +495,6 @@ export async function revertCollectionToSales(kind, collection, all) {
   if (ids.length) await unifiedSave(key, arr, null, ids);
   return ids;
 }
-
 export async function applyCollectionToSales(opts) {
   const { kind, arr, record, amount, name, repName, original, when, getGross } = opts;
   const lname = String(name || '').trim().toLowerCase();
@@ -576,13 +537,11 @@ export async function applyCollectionToSales(opts) {
   const allocated = plan.allocs.reduce((t, a) => t + a.amount, 0);
   return { changedIds, allocated, paidCount: plan.allocs.filter(a => a.full).length, partialCount: plan.allocs.filter(a => !a.full).length, undo };
 }
-
 export async function getPaymentDeleteBlockReason(tx) {
   const drop = getDeleteCashDrop(tx);
   if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
 }
-
 export async function cascadeEntityRename(entityId, oldName, newName) {
   if (!entityId || !newName || oldName === newName) return { tx: 0, materials: 0 };
   const map = (await sqliteStore.get('customer_rename_map')) || {};

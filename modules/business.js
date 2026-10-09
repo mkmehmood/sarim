@@ -3,7 +3,6 @@ import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSetting
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
 import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';
-
 export let appMode;
 window.appMode = appMode;
 export function _set_appMode(v) { appMode = v; window.appMode = v; }
@@ -34,7 +33,6 @@ export function _set_userRolesList(v) { userRolesList = v; window.userRolesList 
 export let deriveDeviceShard;
 window.deriveDeviceShard = deriveDeviceShard;
 export function _set_deriveDeviceShard(v) { deriveDeviceShard = v; window.deriveDeviceShard = v; }
-
 export function _safeErr(err) {
   if (err === null || err === undefined) return new Error('Unknown error (null)');
   if (err instanceof Error) return err;
@@ -44,7 +42,6 @@ export function _safeErr(err) {
   }
   return new Error(String(err));
 }
-
 export function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -54,9 +51,7 @@ export function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
 export const esc = escapeHtml;
-
 export function _triggerFileDownload(blob, filename) {
   if (typeof window.navigator.msSaveBlob === 'function') {
     window.navigator.msSaveBlob(blob, filename);
@@ -76,7 +71,6 @@ export function _triggerFileDownload(blob, filename) {
     }, 300);
   }, 0);
 }
-
 export function _readFileAsArrayBuffer(file) {
   if (typeof file.arrayBuffer === 'function') {
     return file.arrayBuffer();
@@ -88,7 +82,6 @@ export function _readFileAsArrayBuffer(file) {
     fr.readAsArrayBuffer(file);
   });
 }
-
 export function _readFileAsText(file) {
   if (typeof file.text === 'function') return file.text();
   return new Promise((resolve, reject) => {
@@ -98,7 +91,6 @@ export function _readFileAsText(file) {
     fr.readAsText(file);
   });
 }
-
 if (window.trustedTypes && window.trustedTypes.createPolicy) {
   window._gndHTMLPolicy = window.trustedTypes.createPolicy('gnd-html-policy', {
     createHTML: (s) => s
@@ -109,21 +101,16 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
 } else {
   window.setHTML = (el, html) => { el.innerHTML = html; };
 }
-
 export const CryptoEngine = (() => {
-
 const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);
-
 const MAGIC_V4 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x34]);
 const SALT_LEN = 32;
 const IV_LEN = 12;
 const UID_HASH_LEN = 32;
 const PBKDF2_ITERS_V4 = 210000;
 const PBKDF2_ITERS_V2 = 100000;
-
 async function deriveKeyV4(email, password, uid, salt) {
   const enc = new TextEncoder();
-
   const ikm = enc.encode(email.toLowerCase().trim() + ':' + password + ':' + (uid || ''));
   const keyMaterial = await crypto.subtle.importKey('raw', ikm, 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
@@ -131,7 +118,6 @@ async function deriveKeyV4(email, password, uid, salt) {
     keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
   );
 }
-
 async function deriveKeyV2(email, password, salt) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -142,12 +128,10 @@ async function deriveKeyV2(email, password, salt) {
     keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
   );
 }
-
 async function _hashUID(uid) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(uid || ''));
   return new Uint8Array(buf);
 }
-
 async function deriveKeyHashV4(email, password, salt) {
   const enc = new TextEncoder();
   const ikm = enc.encode(email.toLowerCase().trim() + ':' + password);
@@ -160,9 +144,7 @@ async function deriveKeyHashV4(email, password, salt) {
   const hashBuf = await crypto.subtle.digest('SHA-512', raw);
   return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
-
 return {
-
   async encrypt(dataObj, email, password, uid) {
     const _uid = uid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.email || '') : '');
     const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
@@ -172,7 +154,6 @@ return {
     const plaintext = new TextEncoder().encode(JSON.stringify(dataObj));
     const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
     const ctBytes = new Uint8Array(ciphertext);
-
     const out = new Uint8Array(MAGIC_V4.length + UID_HASH_LEN + SALT_LEN + IV_LEN + ctBytes.length);
     let offset = 0;
     out.set(MAGIC_V4, offset); offset += MAGIC_V4.length;
@@ -182,18 +163,14 @@ return {
     out.set(ctBytes, offset);
     return new Blob([out], { type: 'application/octet-stream' });
   },
-
   async decrypt(arrayBuffer, email, password, uid) {
     const bytes = new Uint8Array(arrayBuffer);
     const magicLen = MAGIC_V4.length;
-
     const isV4 = bytes.length >= magicLen && MAGIC_V4.every((b, i) => bytes[i] === b);
     const isV2 = !isV4 && bytes.length >= magicLen && MAGIC_V2.every((b, i) => bytes[i] === b);
     if (!isV4 && !isV2) throw new Error('INVALID_FORMAT');
-
     let offset = magicLen;
     if (isV4) {
-
       const storedUidHash = bytes.slice(offset, offset + UID_HASH_LEN); offset += UID_HASH_LEN;
       const _uid = uid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.email || '') : '');
       const actualUidHash = await _hashUID(_uid);
@@ -208,7 +185,6 @@ return {
         return JSON.parse(new TextDecoder().decode(plaintext));
       } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
     } else {
-
       const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
       const iv  = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
       const ciphertext = bytes.slice(offset);
@@ -219,7 +195,6 @@ return {
       } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
     }
   },
-
   async hashCredentials(email, password, existingSaltHex) {
     let salt;
     if (existingSaltHex) {
@@ -233,7 +208,6 @@ return {
   }
 };
 })();
-
 export const _OPFSStore = (() => {
   const _SUPPORTED = typeof navigator !== 'undefined' &&
                      !!navigator.storage &&
@@ -272,7 +246,6 @@ export const _OPFSStore = (() => {
   }
   return { read, write, remove };
 })();
-
 export const OfflineAuth = {
   _FILE: 'gznd_auth.json',
   _LS:   '_gznd_auth_data',
@@ -304,7 +277,6 @@ export const OfflineAuth = {
     return true;
   }
 };
-
 export async function _checkFirebaseSessionExists() {
 try {
 const sessionFlag = sessionStorage.getItem('_gznd_session_active');
@@ -329,28 +301,23 @@ return false;
 return false;
 }
 }
-
 export const SQLiteCrypto = (() => {
   let _sessionKey = null;
   let _keyEmail = null;
   let _keyUid = null;
   let _preWarmPromise = null;
-
   const _wrapKeyMemCache = new Map();
   const PBKDF2_ITERS = 210000;
   const PBKDF2_HASH  = 'SHA-512';
-
   const _KEY_FILE      = 'gznd_keystore.json';
   const _KEY_LS        = '_gznd_keystore';
   const _ENTROPY_FILE  = 'gznd_entropy.json';
   const _ENTROPY_LS    = '_gznd_entropy';
   const _SESSION_FILE  = 'gznd_session.json';
   const _SESSION_LS    = '_gznd_session_store';
-
   const IV_LEN = 12;
   const ENC_PREFIX = 'GZND_ENC_';
   const KEY_VERSION = '4';
-
   async function _getDeviceEntropy() {
     const stored = await _OPFSStore.read(_ENTROPY_FILE, _ENTROPY_LS);
     if (stored && stored.entropy) {
@@ -361,7 +328,6 @@ export const SQLiteCrypto = (() => {
     await _OPFSStore.write(_ENTROPY_FILE, _ENTROPY_LS, { entropy: entropyHex });
     return newEntropy;
   }
-
   async function _sqliteSessionSet(id, value) {
     try {
       const all = await _OPFSStore.read(_SESSION_FILE, _SESSION_LS) || {};
@@ -377,7 +343,6 @@ export const SQLiteCrypto = (() => {
       }
     } catch (e) {}
   }
-
   async function _sqliteSessionGet(id) {
     try {
       const all = await _OPFSStore.read(_SESSION_FILE, _SESSION_LS) || {};
@@ -389,7 +354,6 @@ export const SQLiteCrypto = (() => {
       return null;
     } catch (e) { return null; }
   }
-
   async function _sqliteSessionDelete(id) {
     try {
       const all = await _OPFSStore.read(_SESSION_FILE, _SESSION_LS) || {};
@@ -401,10 +365,8 @@ export const SQLiteCrypto = (() => {
       }
     } catch(e) {}
   }
-
   function _getCachedWrapKey(saltHex) { return _wrapKeyMemCache.get(saltHex) || null; }
   function _setCachedWrapKey(saltHex, cryptoKey) { _wrapKeyMemCache.set(saltHex, cryptoKey); }
-
   async function deriveSessionKey(email, password, kdfSalt) {
     const enc = new TextEncoder();
     const ikm = enc.encode(email.toLowerCase().trim() + ':' + password);
@@ -417,7 +379,6 @@ export const SQLiteCrypto = (() => {
       ['encrypt', 'decrypt']
     );
   }
-
   async function deriveWrappingKey(wrapSalt, uid) {
     const saltHex = Array.from(wrapSalt).map(b => b.toString(16).padStart(2, '0')).join('');
     const cacheKey = saltHex + ':' + (uid || '');
@@ -442,7 +403,6 @@ export const SQLiteCrypto = (() => {
     _setCachedWrapKey(cacheKey, wrapKey);
     return wrapKey;
   }
-
   async function _persistKey(key, email, uid, kdfSalt) {
     try {
       const wrapSalt = crypto.getRandomValues(new Uint8Array(16));
@@ -467,7 +427,6 @@ export const SQLiteCrypto = (() => {
       throw e;
     }
   }
-
   async function _restoreKey() {
     try {
       const stored = await _OPFSStore.read(_KEY_FILE, _KEY_LS);
@@ -516,7 +475,6 @@ export const SQLiteCrypto = (() => {
       return null;
     }
   }
-
   return {
     async initialize() {
       return true;
@@ -531,7 +489,6 @@ export const SQLiteCrypto = (() => {
       }
       return _preWarmPromise;
     },
-
     async setSessionKey(email, password, uid) {
       const _uid = uid || null;
       const kdfSalt = crypto.getRandomValues(new Uint8Array(32));
@@ -557,7 +514,6 @@ export const SQLiteCrypto = (() => {
       }
       return this._restorePromise;
     },
-
     async rederiveKey(email, password, uid) {
       try {
         const _uid = uid || _keyUid || null;
@@ -652,45 +608,34 @@ export const SQLiteCrypto = (() => {
     }
   };
 })();
-
 SQLiteCrypto.preWarm();
-
 export const USE_IDB_ONLY = true;
-
 export function safeNumber(value, defaultValue = 0) {
 const num = Number(value);
 return (isNaN(num) || !isFinite(num)) ? defaultValue : num;
 }
-
 export function safeToFixed(value, decimals = 2) {
 return safeNumber(value, 0).toFixed(decimals);
 }
-
 import { fmtNum, round2, debtNeedsGross, debtDelta, lockedUnitPrice, lockedSaleValue, localDateStr } from './finance.js';
 export { fmtNum, round2, debtNeedsGross, debtDelta, lockedUnitPrice, lockedSaleValue, localDateStr };
 window.localDateStr = localDateStr;
 window.fmtNum = fmtNum;
 window.debtDelta = debtDelta;
-
 export function formatIndianCurrency(value) {
   return fmtNum(value, 2);
 }
-
 export function fmtAmt(value) {
 return formatIndianCurrency(value);
 }
-
 export function safeString(value, defaultValue = '') {
 if (value === null || value === undefined) return defaultValue;
 return String(value);
 }
-
 export function safeReplace(value, searchValue, replaceValue) {
 return safeString(value).replace(searchValue, replaceValue);
 }
-
 export const SQLITE_DB_NAME      = 'naswar_dealers.sqlite';
-
 export const SQLITE_JS_LOCAL      = './sql-wasm.js';
 export const SQLITE_WASM_LOCAL    = './sql-wasm.wasm';
 export const SQLITE_ASMJS_LOCAL   = './sql.js';
@@ -699,13 +644,10 @@ export const SQLITE_WASM_CDN      = 'https://cdnjs.cloudflare.com/ajax/libs/sql.
 export const SQLITE_ASMJS_CDN     = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql.js';
 export const SQLITE_MAGIC        = 'SQLite format 3\0';
 export const SQLITE_SCHEMA_VERSION = 2;
-
 export const PERSIST_URGENT_MS   = 300;
 export const PERSIST_NORMAL_MS   = 3000;
 export const PERSIST_LAZY_MS     = 8000;
-
 export const sqliteStore = (() => {
-
   let _sqlDB           = null;
   let _SQL             = null;
   let _initPromise     = null;
@@ -719,7 +661,6 @@ export const sqliteStore = (() => {
   let _lastPersistAt   = 0;
   let _hasOPFS         = false;
   let _persistChannel  = null;
-
   const _DEVICE_GLOBAL = new Set([
     'device_id', 'device_name', 'theme',
     'appMode', 'appMode_timestamp',
@@ -729,7 +670,6 @@ export const sqliteStore = (() => {
     'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
-
   const _PLAINTEXT_KEYS = new Set([
     'appMode', 'appMode_timestamp',
     'repProfile', 'repProfile_timestamp',
@@ -741,7 +681,6 @@ export const sqliteStore = (() => {
     'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
-
   const _IDB_KEY_TO_COLLECTION = {
     'mfg_pro_pkr':                'production',
     'customer_sales':             'sales',
@@ -758,7 +697,6 @@ export const sqliteStore = (() => {
     'deletion_records':           'deletions',
     'deleted_records':            'deleted_ids',
   };
-
   const _SETTINGS_KEYS = new Set([
     'factory_default_formulas', 'factory_additional_costs',
     'factory_cost_adjustment_factor', 'factory_formula_store', 'factory_formula_slots',
@@ -769,7 +707,6 @@ export const sqliteStore = (() => {
     'app_stores', 'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
-
   function _rowType(key) {
     if (_DEVICE_GLOBAL.has(key))                                  return 'device';
     if (_IDB_KEY_TO_COLLECTION[key])                              return 'collection';
@@ -785,14 +722,12 @@ export const sqliteStore = (() => {
       || key === 'user_state')                                    return 'sync_meta';
     return 'config';
   }
-
   function _persistUrgencyFor(key) {
     const rt = _rowType(key);
     if (rt === 'collection') return PERSIST_URGENT_MS;
     if (rt === 'settings')   return PERSIST_NORMAL_MS;
     return PERSIST_LAZY_MS;
   }
-
   function _isValidSQLite(bytes) {
     if (!bytes || bytes.length < 16) return false;
     for (let i = 0; i < 16; i++) {
@@ -800,7 +735,6 @@ export const sqliteStore = (() => {
     }
     return true;
   }
-
   function _integrityCheck(db) {
     try {
       const rows = db.exec('PRAGMA integrity_check');
@@ -816,7 +750,6 @@ export const sqliteStore = (() => {
       return false;
     }
   }
-
   async function _attemptRecovery() {
     const sources = [];
     if (_hasOPFS) {
@@ -844,7 +777,6 @@ export const sqliteStore = (() => {
     }
     return false;
   }
-
   async function _checkQuota(requiredBytes = 0) {
     try {
       if (!navigator.storage || !navigator.storage.estimate) return true;
@@ -863,7 +795,6 @@ export const sqliteStore = (() => {
       return true;
     } catch { return true; }
   }
-
   async function _opfsWrite(filename, data) {
     const root = await navigator.storage.getDirectory();
     const fh   = await root.getFileHandle(filename, { create: true });
@@ -884,11 +815,9 @@ export const sqliteStore = (() => {
       await root.removeEntry(filename);
     } catch {}
   }
-
   async function _opfsShadowWrite(data) {
     await _opfsWrite(SQLITE_DB_NAME, data);
   }
-
   function _openIDB() {
     return new Promise((resolve, reject) => {
       if (typeof indexedDB === 'undefined') return reject(new Error('IndexedDB unavailable'));
@@ -900,7 +829,6 @@ export const sqliteStore = (() => {
       req.onerror = () => reject(req.error);
     });
   }
-
   async function _idbWrite(key, data) {
     try {
       const db = await _openIDB();
@@ -914,7 +842,6 @@ export const sqliteStore = (() => {
       console.warn('[SQLite] IndexedDB write failed:', _safeErr(e));
     }
   }
-
   async function _idbRead(key) {
     try {
       const db = await _openIDB();
@@ -928,16 +855,13 @@ export const sqliteStore = (() => {
       return null;
     }
   }
-
   const _LS_BLOB_KEY     = '_gznd_sqlite_db';
   const _LS_BLOB_KEY_BAK = '_gznd_sqlite_db_bak';
   const _LS_SAFE_RAW_BYTES = 3.5 * 1024 * 1024;
   let _lsQuotaWarned = false;
-
   function _yieldToMain() {
     return new Promise(resolve => setTimeout(resolve, 0));
   }
-
   async function _bytesToBase64Async(bytes) {
     const CHUNK = 0x8000;
     let binary = '';
@@ -952,7 +876,6 @@ export const sqliteStore = (() => {
     }
     return btoa(binary);
   }
-
   async function _base64ToBytesAsync(b64) {
     const binary = atob(b64);
     const bytes  = new Uint8Array(binary.length);
@@ -967,7 +890,6 @@ export const sqliteStore = (() => {
     }
     return bytes;
   }
-
   function _bytesToBase64Sync(bytes) {
     const CHUNK = 0x8000;
     let binary = '';
@@ -976,7 +898,6 @@ export const sqliteStore = (() => {
     }
     return btoa(binary);
   }
-
   function _lsBlobWriteSync(lsKey, data) {
     try {
       localStorage.setItem(lsKey, _bytesToBase64Sync(data));
@@ -984,7 +905,6 @@ export const sqliteStore = (() => {
       console.warn('[SQLite] sync localStorage blob write (unload) failed:', _safeErr(e));
     }
   }
-
   async function _lsBlobWrite(lsKey, data) {
     try {
       if (!_hasOPFS && data.byteLength > _LS_SAFE_RAW_BYTES) {
@@ -1015,10 +935,8 @@ export const sqliteStore = (() => {
       return await _base64ToBytesAsync(b64);
     } catch { return null; }
   }
-
   let _lastBackupWriteAt = 0;
   const BACKUP_WRITE_INTERVAL_MS = 60000;
-
   async function _dualPersist() {
     if (!_sqlDB) return;
     const data     = _sqlDB.export();
@@ -1053,7 +971,6 @@ export const sqliteStore = (() => {
     _pendingWrites = 0;
     _lastPersistAt = Date.now();
   }
-
   function _schedulePersist(urgencyMs) {
     _pendingWrites++;
     if (urgencyMs < _persistUrgency || _persistTimer === null) {
@@ -1068,19 +985,16 @@ export const sqliteStore = (() => {
       }, urgencyMs);
     }
   }
-
   async function _flushPersist() {
     if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
     _persistUrgency = PERSIST_LAZY_MS;
     if (_pendingWrites > 0) await _dualPersist();
   }
-
   function _notifyPersisted() {
     if (!_persistChannel) return;
     try { _persistChannel.postMessage({ type: 'sqlite-persisted', uid: _uid, ts: Date.now() }); }
     catch {}
   }
-
   async function _loadBestDB() {
     const sources = [];
     if (_hasOPFS) {
@@ -1104,7 +1018,6 @@ export const sqliteStore = (() => {
     }
     return null;
   }
-
   function _injectScript(src) {
     return new Promise((resolve, reject) => {
       if (document.querySelector('script[src="' + src + '"]')) { resolve(); return; }
@@ -1115,10 +1028,8 @@ export const sqliteStore = (() => {
       document.head.appendChild(s);
     });
   }
-
   const SQLITE_LOAD_TIMEOUT_MS = 12000;
   const SQLITE_BOOT_TIMEOUT_MS = 25000;
-
   function _withTimeout(promise, ms, label) {
     return new Promise((resolve, reject) => {
       let settled = false;
@@ -1133,15 +1044,12 @@ export const sqliteStore = (() => {
       );
     });
   }
-
   function _injectScriptTimed(src) {
     return _withTimeout(_injectScript(src), SQLITE_LOAD_TIMEOUT_MS, 'script load ' + src);
   }
-
   function _fetchTimed(url) {
     return _withTimeout(fetch(url), SQLITE_LOAD_TIMEOUT_MS, 'fetch ' + url);
   }
-
   async function _tryLoadWasm() {
     if (typeof window.initSqlJs !== 'function') {
       try {
@@ -1151,11 +1059,9 @@ export const sqliteStore = (() => {
         await _injectScriptTimed(SQLITE_CDN);
       }
     }
-
     if (typeof window.initSqlJs !== 'function') {
       throw new Error('[SQLite] initSqlJs not available after script load');
     }
-
     let buffer;
     try {
       const resp = await _fetchTimed(SQLITE_WASM_LOCAL);
@@ -1167,43 +1073,34 @@ export const sqliteStore = (() => {
       if (!resp.ok) throw new Error('[SQLite] WASM CDN fetch failed: ' + resp.status);
       buffer = await resp.arrayBuffer();
     }
-
     return _withTimeout(Promise.resolve(window.initSqlJs({ wasmBinary: buffer })), SQLITE_LOAD_TIMEOUT_MS, 'initSqlJs (wasm)');
   }
-
   async function _tryLoadAsmJs() {
     delete window.initSqlJs;
     delete window.SQL;
-
     try {
       await _injectScriptTimed(SQLITE_ASMJS_LOCAL);
     } catch (_e1) {
       console.warn('[SQLite] local sql.js failed, trying CDN:', _safeErr(_e1));
       await _injectScriptTimed(SQLITE_ASMJS_CDN);
     }
-
     if (typeof window.initSqlJs !== 'function') {
       throw new Error('[SQLite] asm.js initSqlJs not available after script load');
     }
-
     return _withTimeout(Promise.resolve(window.initSqlJs()), SQLITE_LOAD_TIMEOUT_MS, 'initSqlJs (asm.js)');
   }
-
   async function _loadSqlJs() {
     if (window.SQL) return window.SQL;
-
     try {
       const SQL = await _tryLoadWasm();
       return (window.SQL = SQL);
     } catch (e1) {
       console.warn('[SQLite] WASM build failed, falling back to asm.js:', _safeErr(e1));
     }
-
     try {
       const SQL = await _tryLoadAsmJs();
       return (window.SQL = SQL);
     } catch (e2) {
-
       const msg = '[SQLite] Both WASM and asm.js builds failed. '
         + 'Run: node download-sqljs.js to install local files. '
         + 'Details: ' + e2.message;
@@ -1211,19 +1108,15 @@ export const sqliteStore = (() => {
       throw new Error(msg);
     }
   }
-
   let _stmtGet = null;
   function _clearStmtCache() {
     if (_stmtGet) { try { _stmtGet.free(); } catch {} _stmtGet = null; }
   }
-
   function _bootstrapSchema(db) {
-
     db.run('PRAGMA journal_mode=WAL');
     db.run('PRAGMA synchronous=NORMAL');
     db.run('PRAGMA temp_store=MEMORY');
     db.run('PRAGMA cache_size=-8000');
-
     db.run(`CREATE TABLE IF NOT EXISTS schema_version (
       version     INTEGER NOT NULL,
       upgraded_at INTEGER NOT NULL
@@ -1239,7 +1132,6 @@ export const sqliteStore = (() => {
       ts         INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL DEFAULT 0
     )`);
-
     db.run(`CREATE TABLE IF NOT EXISTS ndapp_outbox (
       id           TEXT    NOT NULL PRIMARY KEY,
       uid          TEXT    NOT NULL DEFAULT '',
@@ -1251,7 +1143,6 @@ export const sqliteStore = (() => {
       attempts     INTEGER NOT NULL DEFAULT 0,
       last_attempt INTEGER NOT NULL DEFAULT 0
     )`);
-
     db.run(`CREATE INDEX IF NOT EXISTS idx_kv_uid_key
             ON kv_store (uid, user_key)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_kv_collection
@@ -1262,19 +1153,15 @@ export const sqliteStore = (() => {
             ON kv_store (ts)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_kv_device
             ON kv_store (row_type) WHERE row_type = 'device'`);
-
     db.run(`CREATE INDEX IF NOT EXISTS idx_outbox_uid
             ON ndapp_outbox (uid, created_at)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_outbox_col
             ON ndapp_outbox (uid, collection)`);
-
   }
-
   function _fullKey(key) {
     if (!_prefix || _DEVICE_GLOBAL.has(key)) return key;
     return _prefix + key;
   }
-
   function _rawGet(fullKey) {
     try {
       if (!_stmtGet) _stmtGet = _sqlDB.prepare('SELECT value, encrypted FROM kv_store WHERE full_key = ?');
@@ -1293,7 +1180,6 @@ export const sqliteStore = (() => {
       return row;
     }
   }
-
   function _rawSet(key, serialized, isEncrypted) {
     const now        = Date.now();
     const fk         = _fullKey(key);
@@ -1312,12 +1198,10 @@ export const sqliteStore = (() => {
         collection = excluded.collection
     `, [fk, key, uid, collection, rowType, isEncrypted ? 1 : 0, serialized, now, now]);
   }
-
   function _rawDelete(fullKey) {
     _sqlDB.run('DELETE FROM kv_store WHERE full_key = ?', [fullKey]);
     _schedulePersist(PERSIST_NORMAL_MS);
   }
-
   async function _decrypt(key, rawData) {
     if (rawData === null || rawData === undefined) return null;
     const isPlain = _PLAINTEXT_KEYS.has(key);
@@ -1329,7 +1213,6 @@ export const sqliteStore = (() => {
     if (dec === null) return null;
     try { return JSON.parse(dec); } catch { return dec; }
   }
-
   function _outboxAdd(action, collection, docId, payload) {
     if (!_sqlDB) return;
     const id = (typeof generateUUID === 'function')
@@ -1342,7 +1225,6 @@ export const sqliteStore = (() => {
     `, [id, _uid, action, collection || '', docId || '', payload ? JSON.stringify(payload) : null, Date.now()]);
     _schedulePersist(PERSIST_URGENT_MS);
   }
-
   function _outboxGetAll() {
     if (!_sqlDB) return [];
     return _sqlDB.exec(
@@ -1353,13 +1235,11 @@ export const sqliteStore = (() => {
       data: v[4] ? JSON.parse(v[4]) : null,
     })));
   }
-
   function _outboxRemove(id) {
     if (!_sqlDB) return;
     _sqlDB.run('DELETE FROM ndapp_outbox WHERE id = ?', [id]);
     _schedulePersist(PERSIST_NORMAL_MS);
   }
-
   function _outboxBumpAttempt(id) {
     if (!_sqlDB) return;
     _sqlDB.run(
@@ -1367,7 +1247,6 @@ export const sqliteStore = (() => {
       [Date.now(), id]
     );
   }
-
   async function _drainOutbox() {
     if (!_sqlDB || !navigator.onLine) return;
     if (typeof firebaseDB === 'undefined' || !firebaseDB) return;
@@ -1400,11 +1279,8 @@ export const sqliteStore = (() => {
       await _flushPersist();
     }
   }
-
   return {
-
     DECRYPT_FAILED: Symbol('DECRYPT_FAILED'),
-
     setUserPrefix(uid) {
       const newPrefix = uid ? 'u_' + uid + '_' : '';
       if (_prefix !== newPrefix) {
@@ -1421,7 +1297,6 @@ export const sqliteStore = (() => {
         }
       }
     },
-
     clearUserPrefix() {
       _prefix = '';
       _uid    = '';
@@ -1430,18 +1305,15 @@ export const sqliteStore = (() => {
         DeltaSync._dirty = new Map();
       }
     },
-
     async init() {
       if (_sqlDB)       return _sqlDB;
       if (_initPromise) return _initPromise;
       const myGeneration = ++_initGeneration;
       _initPromise = _withTimeout((async () => {
         try {
-
           _hasOPFS = typeof navigator !== 'undefined' &&
                      !!navigator.storage &&
                      typeof navigator.storage.getDirectory === 'function';
-
           _SQL = await _loadSqlJs();
           const existing = await _loadBestDB();
           if (myGeneration !== _initGeneration) {
@@ -1450,7 +1322,6 @@ export const sqliteStore = (() => {
           _clearStmtCache();
           _sqlDB = existing ? new _SQL.Database(existing) : new _SQL.Database();
           _bootstrapSchema(_sqlDB);
-
           if (existing && !_integrityCheck(_sqlDB)) {
             console.error('[SQLite] Integrity check failed — attempting recovery');
             const recovered = await _attemptRecovery();
@@ -1458,21 +1329,16 @@ export const sqliteStore = (() => {
               showToast('Local data could not be fully verified. If something looks missing, use Sync to restore from the cloud.', 'warning', 8000);
             }
           }
-
           if (!existing) await _dualPersist();
-
           if (navigator.onLine) {
             setTimeout(() => _drainOutbox().catch(() => {}), 2000);
           }
-
           try { _persistChannel = new BroadcastChannel('sqlite-persist-channel'); }
           catch {}
-
           window.addEventListener('online', () => {
             _drainOutbox().catch(() => {});
             if (typeof triggerAutoSync === 'function') triggerAutoSync();
           });
-
           window.addEventListener('beforeunload', () => {
             if (_pendingWrites > 0 && _sqlDB) {
               if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null; }
@@ -1485,7 +1351,6 @@ export const sqliteStore = (() => {
               } catch {}
             }
           });
-
           return _sqlDB;
         } catch (e) {
           if (myGeneration === _initGeneration) _initPromise = null;
@@ -1501,7 +1366,6 @@ export const sqliteStore = (() => {
       });
       return _initPromise;
     },
-
     async get(key, defaultValue = null) {
       await this.init();
       const row = _rawGet(_fullKey(key));
@@ -1517,7 +1381,6 @@ export const sqliteStore = (() => {
         return defaultValue;
       }
     },
-
     async set(key, value) {
       await this.init();
       if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
@@ -1546,7 +1409,6 @@ export const sqliteStore = (() => {
       _rawSet(key, stored, isEncrypted);
       _schedulePersist(_persistUrgencyFor(key));
     },
-
     async setBatch(entries) {
       await this.init();
       if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
@@ -1584,13 +1446,11 @@ export const sqliteStore = (() => {
       }
       _schedulePersist(batchUrgency);
     },
-
     async getBatch(keys) {
       await this.init();
       const results = new Map();
       if (keys.length === 0) return results;
       await SQLiteCrypto.restoreSessionKeyFromStorage();
-
       for (const key of keys) {
         const row = _rawGet(_fullKey(key));
         if (!row) { results.set(key, null); continue; }
@@ -1624,12 +1484,10 @@ export const sqliteStore = (() => {
       }
       return results;
     },
-
     async remove(key) {
       await this.init();
       _rawDelete(_fullKey(key));
     },
-
     async clearUserData() {
       await this.init();
       _clearStmtCache();
@@ -1643,7 +1501,6 @@ export const sqliteStore = (() => {
       _sqlDB.run('PRAGMA wal_checkpoint(TRUNCATE)');
       await _flushPersist();
     },
-
     async clearAll() {
       await this.init();
       _clearStmtCache();
@@ -1652,11 +1509,9 @@ export const sqliteStore = (() => {
       _sqlDB.run('PRAGMA wal_checkpoint(TRUNCATE)');
       await _flushPersist();
     },
-
     async flush() {
       await _flushPersist();
     },
-
     query(sql, params = []) {
       if (!_sqlDB) throw new Error('[SQLite] not initialised');
       const out  = [];
@@ -1666,7 +1521,6 @@ export const sqliteStore = (() => {
       stmt.free();
       return out;
     },
-
     async reEncryptAll() {
       if (!SQLiteCrypto.isReady() || !_sqlDB) return;
       try {
@@ -1696,23 +1550,18 @@ export const sqliteStore = (() => {
         console.warn('[SQLite] reEncryptAll error:', _safeErr(e));
       }
     },
-
     outboxAdd(action, collection, docId, payload) {
       _outboxAdd(action, collection, docId, payload);
     },
-
     outboxGetAll() {
       return _outboxGetAll();
     },
-
     outboxAck(id) {
       _outboxRemove(id);
     },
-
     drainOutbox() {
       return _drainOutbox();
     },
-
     outboxPending() {
       if (!_sqlDB) return 0;
       try {
@@ -1722,12 +1571,10 @@ export const sqliteStore = (() => {
         return (r.length && r[0].values.length) ? r[0].values[0][0] : 0;
       } catch { return 0; }
     },
-
     exportDB() {
       if (!_sqlDB) return null;
       return _sqlDB.export();
     },
-
     exportWithMeta() {
       if (!_sqlDB) return null;
       const data = _sqlDB.export();
@@ -1741,7 +1588,6 @@ export const sqliteStore = (() => {
         bytes:         data,
       };
     },
-
     async importDB(bytes) {
       if (!_isValidSQLite(bytes)) throw new Error('[SQLite] importDB: invalid SQLite file');
       await this.init();
@@ -1751,13 +1597,11 @@ export const sqliteStore = (() => {
       if (!_integrityCheck(_sqlDB)) throw new Error('[SQLite] importDB: integrity check failed');
       await _dualPersist();
     },
-
     async offlineStatus() {
       await this.init();
       const schemaRows = _sqlDB.exec('SELECT version, upgraded_at FROM schema_version LIMIT 1');
       const schemaVer  = schemaRows.length ? schemaRows[0].values[0][0] : 0;
       const schemaAt   = schemaRows.length ? schemaRows[0].values[0][1] : 0;
-
       const countRows  = _sqlDB.exec(
         `SELECT row_type, COUNT(*) as n FROM kv_store
          WHERE uid=? OR row_type='device' GROUP BY row_type`,
@@ -1765,14 +1609,12 @@ export const sqliteStore = (() => {
       );
       const rowCounts  = {};
       if (countRows.length) countRows[0].values.forEach(([rt, n]) => { rowCounts[rt] = n; });
-
       const outboxRows = _sqlDB.exec(
         'SELECT COUNT(*) as n, MAX(attempts) as max_attempts FROM ndapp_outbox WHERE uid=?',
         [_uid]
       );
       const outboxN    = outboxRows.length ? outboxRows[0].values[0][0] : 0;
       const maxAttempt = outboxRows.length ? outboxRows[0].values[0][1] : 0;
-
       let quota = null;
       try {
         if (navigator.storage && navigator.storage.estimate) {
@@ -1785,10 +1627,8 @@ export const sqliteStore = (() => {
           };
         }
       } catch {}
-
       const dbBytes  = _sqlDB.export().byteLength;
       const cacheHit = 0;
-
       return {
         sqlite: {
           schemaVersion:   schemaVer,
@@ -1812,7 +1652,6 @@ export const sqliteStore = (() => {
         storage: quota,
       };
     },
-
     schemaVersion() {
       if (!_sqlDB) return null;
       try {
@@ -1820,13 +1659,11 @@ export const sqliteStore = (() => {
         return (r.length && r[0].values.length) ? r[0].values[0][0] : 0;
       } catch { return 0; }
     },
-
     walCheckpoint() {
       if (!_sqlDB) return;
       try { _sqlDB.run('PRAGMA wal_checkpoint(PASSIVE)'); }
       catch {}
     },
-
     collectionStats() {
       if (!_sqlDB) return {};
       try {
@@ -1841,14 +1678,11 @@ export const sqliteStore = (() => {
         return out;
       } catch { return {}; }
     },
-
   };
 })();
-
 (function() {
   try { sqliteStore.init().catch(function() {}); } catch (_) {}
 })();
-
 export function ensureArray(value) {
 if (Array.isArray(value)) {
 return value;
@@ -1865,7 +1699,6 @@ return [];
 }
 return [];
 }
-
 export async function loadAllData() {
 if (typeof loadUIState === 'function') await loadUIState();
 const configKeys = [
@@ -1925,20 +1758,17 @@ if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllUploadedIds === 
 DeltaSync.loadAllUploadedIds().catch(() => {});
 }
 }
-
 export const DEVICE_ID_COOKIE = 'gz_did';
 export const INSTALL_TOKEN_COOKIE = 'gz_itk';
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 3650;
 export const _CACHE_DEVICE_KEY = 'gz_device_anchor';
 export const _CACHE_STORE_NAME = 'gz-device-anchor-v1';
-
 export function _readCookie(name) {
 try {
 const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
 return match ? decodeURIComponent(match[1]) : null;
 } catch (e) { return null; }
 }
-
 export function _writeCookie(name, value) {
 try {
 document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Strict`;
@@ -1946,14 +1776,11 @@ document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${COOKIE_MAX_AG
 console.warn('_writeCookie failed:', _safeErr(e));
 }
 }
-
 export function _generateUUID() {
-
   const buf = new Uint8Array(16);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     crypto.getRandomValues(buf);
   } else {
-
     let s0 = (Date.now() ^ 0xdeadbeef) >>> 0;
     let s1 = ((Date.now() / 1000) ^ 0xcafebabe) >>> 0;
     for (let i = 0; i < 16; i++) {
@@ -1969,7 +1796,6 @@ export function _generateUUID() {
   const core = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
   return 'dev-' + core;
 }
-
 export async function _readCacheAnchor() {
 try {
 if (!('caches' in window)) return null;
@@ -1980,7 +1806,6 @@ const text = await resp.text();
 return text || null;
 } catch (e) { return null; }
 }
-
 export async function _writeCacheAnchor(value) {
 try {
 if (!('caches' in window)) return;
@@ -1988,15 +1813,12 @@ const cache = await caches.open(_CACHE_STORE_NAME);
 await cache.put(_CACHE_DEVICE_KEY, new Response(value));
 } catch (e) {  }
 }
-
 export function _readSession(key) {
 try { return sessionStorage.getItem(key) || null; } catch (e) { return null; }
 }
-
 export function _writeSession(key, value) {
 try { sessionStorage.setItem(key, value); } catch (e) {  }
 }
-
 export function _extractDeviceFirstLoginTime(deviceId) {
   if (!deviceId || typeof deviceId !== 'string') return null;
   const match = deviceId.match(/_(\d{13})$/);
@@ -2005,9 +1827,7 @@ export function _extractDeviceFirstLoginTime(deviceId) {
   if (!isFinite(ms) || ms < 1577836800000 || ms > 4102358400000) return null;
   return new Date(ms);
 }
-
 window._extractDeviceFirstLoginTime = _extractDeviceFirstLoginTime;
-
 export async function _persistDeviceId(deviceId) {
 _writeCookie(DEVICE_ID_COOKIE, deviceId);
 try { localStorage.setItem('persistent_device_id', deviceId); } catch (e) {  }
@@ -2015,7 +1835,6 @@ _writeSession('gz_did_session', deviceId);
 try { await sqliteStore.set('device_id', deviceId); } catch (e) {  }
 await _writeCacheAnchor(deviceId);
 }
-
 export async function _clearDeviceIdStorage() {
   try {
     document.cookie = `${DEVICE_ID_COOKIE}=; max-age=0; path=/; SameSite=Strict`;
@@ -2038,9 +1857,7 @@ export async function _clearDeviceIdStorage() {
   _cachedDeviceShard = null;
   _deviceIdOwnerUid = null;
 }
-
 window._clearDeviceIdStorage = _clearDeviceIdStorage;
-
 export async function _recoverDeviceIdByFingerprint() {
 if (!firebaseDB || !currentUser) return null;
 try {
@@ -2060,7 +1877,6 @@ console.warn('Fingerprint-based device ID recovery failed:', _safeErr(e));
 }
 return null;
 }
-
 export async function _recoverDeviceIdByToken() {
 if (!firebaseDB || !currentUser) return null;
 try {
@@ -2082,14 +1898,11 @@ console.warn('Token-based device ID recovery failed:', _safeErr(e));
 }
 return null;
 }
-
 export async function getDeviceId() {
 let _loginTs = 0;
 try { _loginTs = parseInt(sessionStorage.getItem('_gznd_login_ts') || '0', 10) || 0; } catch(_) {}
-
 const _callerUid = currentUser ? (currentUser.uid || currentUser.id) : null;
 const _uidChanged = _callerUid && _deviceIdOwnerUid && _callerUid !== _deviceIdOwnerUid;
-
 function _isStale(did) {
   if (!did || !_loginTs) return false;
   const match = did.match(/_(\d{13})$/);
@@ -2097,9 +1910,7 @@ function _isStale(did) {
   const idTs = parseInt(match[1], 10);
   return idTs < _loginTs;
 }
-
 let deviceId = null;
-
 if (!_uidChanged) {
   let candidate = _readCookie(DEVICE_ID_COOKIE);
   if (!candidate) candidate = _readSession('gz_did_session');
@@ -2110,19 +1921,15 @@ if (!_uidChanged) {
     try { candidate = await sqliteStore.get('device_id'); } catch(e) {}
   }
   if (!candidate) candidate = await _readCacheAnchor();
-
   if (candidate && !_isStale(candidate)) {
     deviceId = candidate;
   }
 }
-
 if (!deviceId) {
   deviceId = _generateUUID() + '_' + Date.now();
 }
-
 await _persistDeviceId(deviceId);
 if (_callerUid) _deviceIdOwnerUid = _callerUid;
-
 const existingToken = _readCookie(INSTALL_TOKEN_COOKIE) || _readSession('gz_itk_session');
 if (!existingToken) {
   const token = _generateUUID();
@@ -2134,7 +1941,6 @@ if (!existingToken) {
 }
 return deviceId;
 }
-
 export async function refreshDeviceIdAnchors() {
 try {
 if (firebaseDB && currentUser) {
@@ -2146,7 +1952,6 @@ const deviceId = await getDeviceId();
 await _persistDeviceId(deviceId);
 } catch (e) {  }
 }
-
 export async function getDeviceFingerprint() {
 const ua = navigator.userAgent;
 let os = 'Unknown OS';
@@ -2224,7 +2029,6 @@ readableName,
 fullUserAgent: ua
 };
 }
-
 export async function getDeviceName() {
 let deviceName = await sqliteStore.get('device_name');
 if (!deviceName) {
@@ -2234,7 +2038,6 @@ await sqliteStore.set('device_name', deviceName);
 }
 return deviceName;
 }
-
 export async function registerDevice() {
 if (!firebaseDB) {
 return;
@@ -2305,20 +2108,15 @@ sqliteBatch.push(['assignedManager', persistedManager]);
 }
 await sqliteStore.setBatch(sqliteBatch);
 }
-
 const isFirstRegistration = !existingDoc.exists;
-
 const deviceShard = _deriveDeviceShard(deviceId);
-
 const firstLoginDate = _extractDeviceFirstLoginTime(deviceId);
 const firstLoginAtMs = firstLoginDate ? firstLoginDate.getTime() : null;
-
 let _persistedModeTs = existing.appMode_timestamp || 0;
 try {
   const _sqliteTs = await sqliteStore.get('appMode_timestamp');
   if (_sqliteTs && Number(_sqliteTs) > _persistedModeTs) _persistedModeTs = Number(_sqliteTs);
 } catch(_) {}
-
 await deviceRef.set({
 deviceId: deviceId,
 deviceShard: deviceShard,
@@ -2377,7 +2175,6 @@ lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
 accountCreated: firebase.firestore.FieldValue.serverTimestamp()
 }, { merge: true });
 startDeviceHeartbeat(deviceRef);
-
 setTimeout(() => {
 listenForDeviceCommands().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
 }, 2000);
@@ -2392,7 +2189,6 @@ browser: browser
 console.error('Device registration failed.', _safeErr(error));
 }
 }
-
 export function startDeviceHeartbeat(deviceRef) {
 if (window.deviceHeartbeatInterval) {
 clearInterval(window.deviceHeartbeatInterval);
@@ -2420,7 +2216,6 @@ console.warn('Heartbeat update failed.', _safeErr(error));
 }
 }, APP_CONFIG.HEARTBEAT_INTERVAL_MS);
 }
-
 export async function logDeviceActivity(activityType, details = {}) {
 if (!firebaseDB || !currentUser) return;
 const LOGGABLE_EVENTS = new Set([
@@ -2452,9 +2247,7 @@ userId: currentUser.uid
 console.warn('Firebase operation failed.', _safeErr(error));
 }
 }
-
 window.logDeviceActivity = logDeviceActivity;
-
 export async function initializeDeviceListeners() {
 try {
 setTimeout(() => {
@@ -2469,7 +2262,6 @@ setTimeout(() => {
   cleanupOldDeletions().catch(e => console.warn('[initializeDeviceListeners] cleanup failed:', _safeErr(e)));
 }, 5000);
 }
-
 window.initializeDeviceListeners = initializeDeviceListeners;
 currentUser = null; window.currentUser = currentUser;
 firebaseDB = null; window.firebaseDB = firebaseDB;
@@ -2481,7 +2273,6 @@ currentRepProfile = 'admin'; window.currentRepProfile = currentRepProfile;
 salesRepsList = ['NORAN SHAH', 'NOMAN SHAH']; window.salesRepsList = salesRepsList;
 userRolesList = []; window.userRolesList = userRolesList;
 export const _VALID_APP_MODES = new Set(['admin','rep','production','factory','userrole']);
-
 export const _MODE_CODES = {
   'admin':      '0',
   'rep':        '1',
@@ -2489,19 +2280,15 @@ export const _MODE_CODES = {
   'factory':    '3',
   'userrole':   '4',
 };
-
 export const _MODE_LABELS = { '0':'admin', '1':'rep', '2':'production', '3':'factory', '4':'userrole' };
-
 export const _UUID_V5_NS = new Uint8Array([
   0x6b,0xa7,0xb8,0x10, 0x9d,0xad, 0x11,0xd1,
   0x80,0xb4, 0x00,0xc0,0x4f,0xd4,0x30,0xc8,
 ]);
-
 export let _cachedDeviceShard = null;
 export let _uuidLastMs = 0;
 export let _uuidSeq    = 0;
 export let _deviceIdOwnerUid = null;
-
 export function _deriveDeviceShard(did) {
   if (!did || typeof did !== 'string') return '0000';
   let h = 0x811c9dc5;
@@ -2511,7 +2298,6 @@ export function _deriveDeviceShard(did) {
   }
   return (h & 0xffff).toString(16).padStart(4, '0');
 }
-
 export function _randomBytes(n) {
   const buf = new Uint8Array(n);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -2528,7 +2314,6 @@ export function _randomBytes(n) {
   }
   return buf;
 }
-
 export function _nextSeq(nowMs) {
   if (nowMs > _uuidLastMs) {
     _uuidLastMs = nowMs;
@@ -2542,15 +2327,12 @@ export function _nextSeq(nowMs) {
   }
   return { ts: _uuidLastMs, seq: _uuidSeq };
 }
-
 export function _encodeModeTag() {
   const mode = (typeof appMode !== 'undefined' ? appMode : 'admin') || 'admin';
   return _MODE_CODES[mode] || '0';
 }
-
 export let _uuidV5Cache   = null;
 export let _uuidV5Pending = false;
-
 export async function _refreshV5Cache() {
   if (_uuidV5Pending) return;
   _uuidV5Pending = true;
@@ -2572,16 +2354,13 @@ export async function _refreshV5Cache() {
     _uuidV5Pending = false;
   }
 }
-
 export function _buildUUIDv3Base() {
-
   if (_uuidV5Cache !== null) {
     const cached = _uuidV5Cache;
     _uuidV5Cache = null;
     _refreshV5Cache();
     return cached;
   }
-
   const name = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
     ? crypto.randomUUID()
     : null;
@@ -2597,7 +2376,6 @@ export function _buildUUIDv3Base() {
   _refreshV5Cache();
   return b;
 }
-
 export async function initUUIDSalts() {
   _cachedDeviceShard = null;
   try {
@@ -2612,36 +2390,29 @@ export async function initUUIDSalts() {
   _refreshV5Cache();
   return _cachedDeviceShard;
 }
-
 export async function initDeviceShard() { return initUUIDSalts(); }
 window.initDeviceShard = initDeviceShard;
-
 export function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverride = null) {
   const MAX_RETRIES = 3;
   const nowMs = tsMs != null ? tsMs : Date.now();
   const { ts, seq } = _nextSeq(nowMs);
   const base = _buildUUIDv3Base();
-
   const tsHi32 = Math.floor(ts / 0x10000);
   base[0] = (tsHi32 >>> 24) & 0xff;
   base[1] = (tsHi32 >>> 16) & 0xff;
   base[2] = (tsHi32 >>>  8) & 0xff;
   base[3] = (tsHi32       ) & 0xff;
-
   const tsLo16 = ts & 0xffff;
   base[4] = (tsLo16 >>> 8) & 0xff;
   base[5] = (tsLo16      ) & 0xff;
-
   const modeNib = modeOverride != null
     ? (parseInt(modeOverride, 16) & 0xf)
     : parseInt(_encodeModeTag(), 16);
   base[6] = 0x40 | ((seq >>> 4) & 0xf);
   base[7] = ((seq & 0xf) << 4) | modeNib;
-
   const shard = parseInt(_cachedDeviceShard || '0000', 16);
   base[10] = (shard >>> 8) & 0xff;
   base[11] = (shard      ) & 0xff;
-
   const h = Array.from(base).map(b => b.toString(16).padStart(2, '0')).join('');
   const uuid = `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
   const finalUUID = prefix ? `${prefix}-${uuid}` : uuid;
@@ -2650,14 +2421,12 @@ export function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverr
   }
   return finalUUID;
 }
-
 export function validateUUID(uuid) {
   if (!uuid || typeof uuid !== 'string') return false;
   const standardRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const prefixedRegex = /^[a-z0-9][a-z0-9_-]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(_\d+)?$/i;
   return standardRegex.test(uuid) || prefixedRegex.test(uuid);
 }
-
 export function extractUUIDMeta(uuid) {
   if (!validateUUID(uuid)) return null;
   const allParts = uuid.split('-');
@@ -2673,7 +2442,6 @@ export function extractUUIDMeta(uuid) {
     const _V3_TS_MAX = 4102358400000;
     if (tsMs >= _V3_TS_MIN && tsMs <= _V3_TS_MAX) {
       const seq = (parseInt(cp3[1], 16) << 4) | parseInt(cp3[2], 16);
-
       const deviceShard = node.slice(0, 4);
       const v5entropy   = node.slice(4, 12);
       return {
@@ -2690,7 +2458,6 @@ export function extractUUIDMeta(uuid) {
   }
   return null;
 }
-
 window.generateUUID       = generateUUID;
 window.validateUUID       = validateUUID;
 window.extractUUIDMeta    = extractUUIDMeta;
@@ -2698,7 +2465,6 @@ window.initUUIDSalts      = initUUIDSalts;
 deriveDeviceShard = _deriveDeviceShard; window.deriveDeviceShard = deriveDeviceShard;
 window._creatorBadgeHtml  = _creatorBadgeHtml;
 window._mergedBadgeHtml   = _mergedBadgeHtml;
-
 export function compareRecordVersions(a, b) {
   if (!a && !b) return 0;
   if (!a) return -1;
@@ -2736,13 +2502,10 @@ export function compareRecordVersions(a, b) {
   };
   return _fieldMs(a) - _fieldMs(b);
 }
-
 window.compareRecordVersions = compareRecordVersions;
-
 export function getTimestamp() {
 return Date.now();
 }
-
 export function validateTimestamp(timestamp, allowFuture = false) {
 if (!timestamp || typeof timestamp !== 'number') return false;
 if (timestamp < 946684800000 || timestamp > 4102444800000) return false;
@@ -2755,7 +2518,6 @@ return false;
 }
 return true;
 }
-
 export function _mergedBadgeHtml(record, opts = {}) {
 if (!record || !record.isMerged) return '';
 if (opts.inline) {
@@ -2763,14 +2525,12 @@ if (opts.inline) {
 }
 return `<span class="merged-badge">MERGED</span>`;
 }
-
 export function _creatorBadgeHtml(record) {
 if (!record || !record.createdBy) return '';
 const name = String(record.createdBy).trim();
 if (!name) return '';
 return `<span class="creator-badge" title="Created by ${esc(name)}">${esc(name)}</span>`;
 }
-
 export function compareTimestamps(timestamp1, timestamp2) {
 if (!validateTimestamp(timestamp1) || !validateTimestamp(timestamp2)) {
 return 0;
@@ -2779,7 +2539,6 @@ if (timestamp1 < timestamp2) return -1;
 if (timestamp1 > timestamp2) return 1;
 return 0;
 }
-
 export function resolveConflict(local, remote) {
 if (!local) return remote;
 if (!remote) return local;
@@ -2787,7 +2546,6 @@ const localTime = getRecordTimestamp(local);
 const remoteTime = getRecordTimestamp(remote);
 return localTime >= remoteTime ? local : remote;
 }
-
 export function getRecordTimestamp(record) {
 if (!record) return 0;
 if (record.timestamp && typeof record.timestamp === 'number') {
@@ -2807,7 +2565,6 @@ return new Date(record.date).getTime();
 }
 return 0;
 }
-
 export function ensureRecordIntegrity(record, isEdit = false, isMigration = false) {
 if (!record) return record;
 const isTrackingObject = record.produced !== undefined ||
@@ -2853,7 +2610,6 @@ record.updatedAt = record.createdAt;
 }
 return record;
 }
-
 export async function cleanupOldTombstones() {
 const ninetyDaysAgo = Date.now() - APP_CONFIG.TOMBSTONE_EXPIRY_MS;
 const dataTypes = [
@@ -2896,21 +2652,17 @@ if (totalCleaned > 0) {
 }
 return totalCleaned;
 }
-
 export function scheduleAutomaticCleanup() {
 setTimeout(() => cleanupOldTombstones(), 5000);
 if (window._tombstoneCleanupInterval) clearInterval(window._tombstoneCleanupInterval);
 window._tombstoneCleanupInterval = setInterval(() => cleanupOldTombstones(), APP_CONFIG.TOMBSTONE_CLEANUP_INTERVAL_MS);
 }
-
 window._safeErr = _safeErr;
 window.escapeHtml = escapeHtml;
 window.esc = esc;
-
 export function balanceAfterHtml(text, tone = 'neutral', label = 'Balance after') {
   return `<div class="txn-balance-after txn-balance-${tone}"><span>${esc(label)}</span><b>${esc(text)}</b></div>`;
 }
-
 window.balanceAfterHtml = balanceAfterHtml;
 window._triggerFileDownload = _triggerFileDownload;
 window._readFileAsArrayBuffer = _readFileAsArrayBuffer;
