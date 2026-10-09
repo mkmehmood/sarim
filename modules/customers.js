@@ -896,7 +896,6 @@ backdrop.className = 'glass-confirm-backdrop';
 backdrop.innerHTML = `
 <div class="gc-wrap gc-tone-${_tone}">
 <div class="glass-confirm-box${_tone === 'danger' ? ' is-danger' : (_tone === 'warning' ? ' is-warning' : '')}" role="alertdialog" aria-modal="true">
-<span class="gc-handle"></span>
 <div class="glass-confirm-head">
 <div class="glass-confirm-icon ${iconClass}">${svgIcon}</div>
 <div class="glass-confirm-title">${esc(String(title).trim())}</div>
@@ -910,6 +909,11 @@ backdrop.innerHTML = `
 </div>
 </div>
 `;
+if (!document.querySelector('.glass-confirm-backdrop')) window._gcPrevOv = [document.body.style.overflow, document.documentElement.style.overflow];
+document.body.style.overflow = 'hidden';
+document.documentElement.style.overflow = 'hidden';
+backdrop.addEventListener('touchmove', e => { if (!e.target.closest('.glass-confirm-msg')) e.preventDefault(); }, { passive: false });
+backdrop.addEventListener('wheel', e => { if (!e.target.closest('.glass-confirm-msg')) e.preventDefault(); }, { passive: false });
 document.body.appendChild(backdrop);
 let settled = false;
 const cleanup = (result) => {
@@ -919,7 +923,7 @@ window._glassConfirmClosing = true;
 const box = backdrop.querySelector('.glass-confirm-box');
 backdrop.classList.add('closing');
 if (box) box.classList.add('closing');
-setTimeout(() => { backdrop.remove(); resolve(result); }, 200);
+setTimeout(() => { backdrop.remove(); if (!document.querySelector('.glass-confirm-backdrop')) { document.body.style.overflow = window._gcPrevOv[0]; document.documentElement.style.overflow = window._gcPrevOv[1]; } resolve(result); }, 200);
 setTimeout(() => { window._glassConfirmClosing = false; }, 400);
 };
 backdrop.querySelector('.gc-confirm').addEventListener('click', () => cleanup(true), { once: true });
