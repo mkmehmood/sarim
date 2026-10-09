@@ -276,6 +276,17 @@ animation: splashBlink 1.4s ease-in-out infinite !important;
 50% { opacity: 0.35; }
 }
 #splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
+@keyframes spIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } }
+@keyframes spInGlow { from { opacity: 0; transform: scale(0.7); } }
+@media (prefers-reduced-motion: no-preference) {
+#splash-screen.splash-ready .splash-glow { animation: spInGlow 1.2s ease-out both !important; }
+#splash-screen.splash-ready .splash-dial { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0s both !important; }
+#splash-screen.splash-ready .splash-brand { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both !important; }
+#splash-screen.splash-ready .splash-rule { animation: spIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both !important; }
+#splash-screen.splash-ready .splash-quote { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.34s both !important; }
+#splash-screen.splash-ready .splash-author { animation: spIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.44s both !important; }
+#splash-screen.splash-ready .splash-foot { animation: spIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both !important; }
+}
 @keyframes spOutUp { to { opacity: 0; transform: translateY(-16px) scale(1.07); } }
 @keyframes spOutGlow { to { opacity: 0; transform: scale(1.6); } }
 @media (prefers-reduced-motion: no-preference) {
