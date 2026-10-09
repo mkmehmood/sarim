@@ -824,6 +824,27 @@ window.addEventListener('unhandledrejection', function(event) {
   }
 });
 
+async function _awaitVisualReady() {
+  const cap = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+  const frame = () => new Promise(r => requestAnimationFrame(() => r()));
+  try {
+    if (document.fonts && document.fonts.load) {
+      await cap(Promise.all([
+        document.fonts.load('400 14px "Manrope"'),
+        document.fonts.load('700 14px "Manrope"'),
+        document.fonts.load('500 14px "JetBrains Mono"'),
+      ]).then(() => document.fonts.ready), 1500);
+    }
+  } catch (_) {}
+  try {
+    const pending = Array.from(document.images).filter(img =>
+      !img.complete && img.offsetParent !== null && img.decode);
+    if (pending.length) await cap(Promise.all(pending.map(img => img.decode().catch(() => {}))), 800);
+  } catch (_) {}
+  await frame();
+  await frame();
+}
+
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   initSplashScreen();
   setTimeout(() => { auditLegacyPartialPayments().catch(() => {}); }, 9000);
@@ -929,7 +950,8 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   if (saleDate2) saleDate2.addEventListener('change', autoFillTotalSoldQuantity);
 
   setProductionView('store');
-  requestAnimationFrame(async () => {
+  const _firstRender = new Promise(_resolveFirst => requestAnimationFrame(async () => {
+   try {
     await syncFactoryProductionStats().catch(e => console.warn('[refreshFactoryTab] stats failed:', _safeErr(e)));
     updateAllTabsWithFactoryCosts();
     await refreshAllDisplays();
@@ -946,7 +968,9 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
       if (expIdEl) { const id2 = generateUUID('exp'); expIdEl.textContent = 'ID: ' + id2.split('-').slice(0,2).join('-') + '\u2026'; expIdEl.title = id2; }
     }
   }, 400);
-  });
+   } catch (e) { console.warn('[Startup] first render failed:', _safeErr(e)); }
+   finally { _resolveFirst(); }
+  }));
   scheduleAutomaticCleanup();
   if (window._connectionCheckInterval) clearInterval(window._connectionCheckInterval);
   window._connectionCheckInterval = setInterval(() => {
@@ -958,6 +982,8 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   window._perfMonitorInterval = setInterval(() => {
     if (typeof PerformanceMonitor !== 'undefined') PerformanceMonitor.report();
   }, 60000);
+  await _firstRender;
+  await _awaitVisualReady();
   window.__splashBooted = true;
   if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 });
