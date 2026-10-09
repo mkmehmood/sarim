@@ -1,5 +1,5 @@
 import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
-import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
+import { txEffectiveDate, txChronoCompare } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
@@ -407,10 +407,10 @@ if (isPartialPayment || isCollection) {
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Entered: ${formatDisplayDate(t.date)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -421,12 +421,12 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">
-      ${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}
+      ${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
     </div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div style="font-size:0.75rem;color:var(--warning);">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${esc(t.notes || 'Brought forward from previous records')}</div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Entered: ${formatDisplayDate(t.date)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -439,11 +439,11 @@ const _displayUnitPrice = lockedUnitPrice(t) > 0
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
-    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-fs-sm2 u-text-muted">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_displayUnitPrice)} = ${await formatCurrency(_txValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? `⇄ Stock transfer from ${esc(t.repTransferFrom || t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Entered: ${formatDisplayDate(t.date)}</div>` : ''}
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
