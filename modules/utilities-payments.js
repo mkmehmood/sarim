@@ -7135,7 +7135,7 @@ export const _overlayStack = (() => {
   }
   document.addEventListener('keydown', function(e) {
     if (e.key !== 'Escape') return;
-    if (document.querySelector('.glass-confirm-backdrop') || window._glassConfirmClosing) return;
+    if (document.querySelector('.dlg-overlay')) return;
     if (closeTop()) e.preventDefault();
   });
   return { closeTop, openLayers: _openLayers };

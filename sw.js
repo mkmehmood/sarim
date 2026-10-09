@@ -13,6 +13,7 @@ const ASSETS_TO_CACHE = [
   './modules/utilities-payments.js',
   './modules/factory.js',
   './modules/customers.js',
+  './modules/dialog.js',
   './modules/rep-sales.js',
   './modules/admin-data.js',
   './modules/custom-date-picker.js',

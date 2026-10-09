@@ -172,7 +172,7 @@ let lastBack = 0;
 function handleBack() {
   const cam = document.getElementById('photo-capture-modal');
   if (cam && isVisible(cam) && typeof window.closePhotoCapture === 'function') { window.closePhotoCapture(); return; }
-  const gc = document.querySelector('.glass-confirm-backdrop:not(.closing) .gc-cancel');
+  const gc = document.querySelector('.dlg-overlay:not(.is-closing) [data-dlg-cancel]');
   if (gc) { gc.click(); return; }
   const lb = document.getElementById('photo-lightbox-modal');
   if (lb && isVisible(lb) && typeof window.closePhotoLightbox === 'function') { window.closePhotoLightbox(); return; }
@@ -274,7 +274,7 @@ function installHaptics() {
   const { Haptics } = P();
   if (!Haptics) return;
   document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest ? e.target.closest('.btn, .tbl-action-btn, .toggle-opt, .glass-confirm-btn') : null;
+    const t = e.target && e.target.closest ? e.target.closest('.btn, .tbl-action-btn, .toggle-opt, .dlg-btn, .dlg-option') : null;
     if (t) { try { Haptics.impact({ style: 'LIGHT' }); } catch (_) {} }
   }, { passive: true });
 }

@@ -23,13 +23,12 @@ export async function confirmGuard(key, run, opts = {}) {
   const isUpdate = inEdit || (typeof opts.isUpdate === 'function' && !!opts.isUpdate());
   const verb = isUpdate ? 'Update' : (opts.verb || 'Save');
   const details = readDetails(opts.fields);
-  const head = `${verb} this ${label.toLowerCase()}?`;
   const tail = isUpdate ? 'The existing record will be replaced.' : 'Please review the details before continuing.';
-  const message = details.length ? `${head}\n${details.join('\n')}\n\n${tail}` : `${head}\n${tail}`;
+  const message = details.length ? `${details.join('\n')}\n\n${tail}` : tail;
   if (opts.late) {
     const ask = async (extra = {}) => {
       const lines = details.concat(extra.lines || []);
-      const parts = [head].concat(lines);
+      const parts = lines.slice();
       if (isUpdate) parts.push('The existing record will be replaced.');
       else if (!lines.length && !extra.warning) parts.push(tail);
       if (extra.warning) parts.push(`Warning: ${extra.warning}`);
