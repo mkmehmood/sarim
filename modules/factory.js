@@ -439,8 +439,30 @@ triggerAutoSync();
 return supplierEntity;
 }
 
+let _invSort = { key: 'name', dir: 'asc' };
+try { const _sv = JSON.parse(localStorage.getItem('factoryInvSort') || 'null'); if (_sv && (_sv.key === 'name' || _sv.key === 'amount') && (_sv.dir === 'asc' || _sv.dir === 'desc')) _invSort = _sv; } catch (_) {}
+export function sortFactoryInventory(key) {
+_invSort = { key, dir: _invSort.key === key && _invSort.dir === 'asc' ? 'desc' : 'asc' };
+try { localStorage.setItem('factoryInvSort', JSON.stringify(_invSort)); } catch (_) {}
+return renderFactoryInventory();
+}
+window.sortFactoryInventory = sortFactoryInventory;
+function _updateInvSortHeaders() {
+['name', 'amount'].forEach(k => {
+const el = document.getElementById(k === 'name' ? 'factoryInvSortName' : 'factoryInvSortAmount');
+if (!el) return;
+const base = k === 'name' ? 'Material' : 'Total Value';
+el.textContent = base + (_invSort.key === k ? (_invSort.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅');
+});
+}
 export async function renderFactoryInventory() {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data')).slice();
+_updateInvSortHeaders();
+const _amt = (m) => (m.quantity * m.cost) || 0;
+factoryInventoryData.sort((a, b) => {
+const r = _invSort.key === 'amount' ? _amt(a) - _amt(b) : String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base', numeric: true });
+return _invSort.dir === 'asc' ? r : -r;
+});
 const tbody = document.getElementById('factoryInventoryTableBody');
 let totalVal = 0;
 if (factoryInventoryData.length === 0) {

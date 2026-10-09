@@ -2849,10 +2849,10 @@ Select a store...
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
-<th style="padding: 8px 2px; text-align: left; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 35%;">Material</th>
+<th style="padding: 8px 2px; text-align: left; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 35%; cursor:pointer; user-select:none;" id="factoryInvSortName" onclick="sortFactoryInventory('name')">Material ⇅</th>
 <th style="padding: 8px 2px; text-align: center; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 20%;">Stock</th>
 <th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 20%;">Cost/Unit</th>
-<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%;">Total Value</th>
+<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%; cursor:pointer; user-select:none;" id="factoryInvSortAmount" onclick="sortFactoryInventory('amount')">Total Value ⇅</th>
 </tr>
 </thead>
 <tbody id="factoryInventoryTableBody">
