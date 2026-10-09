@@ -6220,3 +6220,10 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   .sidebar-nav-btn:hover .ic-sp, .sidebar-settings-btn:hover .ic-sp, .btn-theme:hover .ic-sp { animation: ic-twinkle .9s ease-in-out infinite !important; }
   .sidebar-settings-btn:hover .ic-sync-arrows, .btn-theme:hover .ic-sync-arrows { animation: ic-spin .9s cubic-bezier(.4,0,.2,1) 1 !important; }
 }
+@keyframes appEnterUp { from { opacity: 0; transform: translateY(18px) scale(0.985); } }
+@keyframes appEnterDown { from { opacity: 0; transform: translateY(-14px); } }
+@media (prefers-reduced-motion: no-preference) {
+  html.app-revealing #sys-header { animation: appEnterDown 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.25s backwards !important; }
+  html.app-revealing #system-controls { animation: appEnterUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.4s backwards !important; }
+  html.app-revealing :is(#tab-rep, #tab-prod, #tab-sales, #tab-calc, #tab-factory, #tab-payments):not(.hidden) { animation: appEnterUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.3s backwards !important; }
+}
