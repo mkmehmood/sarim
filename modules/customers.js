@@ -1046,7 +1046,7 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-e
 export function closeCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-edit-screen');
 }
-export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', fields: [['edit-cust-name', 'Name'], ['edit-cust-phone', 'Phone'], ['edit-cust-address', 'Address'], ['edit-cust-old-debit', 'Old Debit'], ['edit-cust-custom-price', 'Custom Price']], isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
+export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['edit-cust-name', 'Name'], ['edit-cust-phone', 'Phone'], ['edit-cust-address', 'Address'], ['edit-cust-old-debit', 'Old Debit'], ['edit-cust-custom-price', 'Custom Price']], isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
 async function _saveCustomerDetailsRaw() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
@@ -1060,6 +1060,7 @@ const customSalePrice = parseFloat(document.getElementById('edit-cust-custom-pri
 if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
 if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning'); return; }
+if (!(await window.gcCommit({}))) return;
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
 const freshContacts = await sqliteStore.get('sales_customers', []);

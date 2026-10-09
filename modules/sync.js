@@ -4154,7 +4154,7 @@ const adminBtn = document.getElementById('acct-role-admin');
 if (userBtn)  userBtn.classList.toggle('active',  role === 'user');
 if (adminBtn) adminBtn.classList.toggle('active', role === 'admin');
 }
-export function adminAddAccount(...a) { return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), { label: 'Account', fields: [['acct-new-email', 'Email']], verb: 'Add' }); }
+export function adminAddAccount(...a) { return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), { label: 'Account', late: true, fields: [['acct-new-email', 'Email']], verb: 'Add' }); }
 async function _adminAddAccountRaw() {
 const emailEl = document.getElementById('acct-new-email');
 const passEl  = document.getElementById('acct-new-password');
@@ -4168,6 +4168,7 @@ const setMsg = (txt, color) => { if (msgEl) { msgEl.textContent = txt; msgEl.sty
 if (!email)              { setMsg('Enter an email address.', 'var(--danger)'); return; }
 if (password.length < 8) { setMsg('Password must be at least 8 characters.', 'var(--danger)'); return; }
 if (!navigator.onLine)   { setMsg('Internet required to create accounts.', 'var(--danger)'); return; }
+if (!(await window.gcCommit({}))) return;
 if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
 setMsg('Creating account...', 'var(--accent)');
 try {

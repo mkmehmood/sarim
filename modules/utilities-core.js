@@ -1107,7 +1107,7 @@ if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 }
 export function updatePaymentStatusVisibility() {
 }
-export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', fields: [['sys-date', 'Date'], ['gross-wt', 'Gross Weight'], ['cont-wt', 'Container'], ['net-wt', 'Net Weight'], ['formula-units', 'Units']], editKinds: ['prod'] }); }
+export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', late: true, fields: [['sys-date', 'Date'], ['gross-wt', 'Gross Weight'], ['cont-wt', 'Container'], ['net-wt', 'Net Weight'], ['formula-units', 'Units']], editKinds: ['prod'] }); }
 async function _recordEntryImpl() {
 const _ed = getEditCtx('prod');
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -1176,6 +1176,7 @@ if (formulaUnits <= 0) {
 window.notifyBlocking('Please enter formula units used.', 'warning');
 return;
 }
+if (!(await window.gcCommit({}))) return;
 const totalCost = net * costData.dynamicCostPerKg;
 const totalSale = net * salePrice;
 const profit = totalSale - totalCost;

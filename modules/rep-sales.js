@@ -215,9 +215,10 @@ const _repTVS = document.getElementById('rep-total-value');
 if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
 }
-export function saveRepTransaction(...a) { return confirmGuard('saveRepTransaction', () => _saveRepTransactionRaw(...a), { label: 'Rep Sale', fields: [['rep-date', 'Date'], ['rep-cust-name', 'Customer'], ['rep-quantity', 'Quantity'], ['rep-amount-collected', 'Collected']], editKinds: ['repsale'] }); }
+export function saveRepTransaction(...a) { return confirmGuard('saveRepTransaction', () => _saveRepTransactionRaw(...a), { label: 'Rep Sale', late: true, fields: [['rep-date', 'Date'], ['rep-cust-name', 'Customer'], ['rep-quantity', 'Quantity'], ['rep-amount-collected', 'Collected']], editKinds: ['repsale'] }); }
 async function _saveRepTransactionRaw() {
 const _ed = getEditCtx('repsale');
+let _gcWarn = null;
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 let repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const submitBtn = document.querySelector('#rep-new-transaction-card .btn-main');
@@ -329,16 +330,7 @@ restoreBtn();
 return;
 } else if (_repOutstanding >= 0 && amount > _repOutstanding) {
 const _overAmt = amount - _repOutstanding;
-const _proceedOver = await showGlassConfirm(
-` Over-collection Warning!
-
-${name} only owes ${fmtAmt ? fmtAmt(_repOutstanding) : _repOutstanding}.
-You are collecting ${fmtAmt ? fmtAmt(amount) : amount} — an overpayment of ${fmtAmt ? fmtAmt(_overAmt) : _overAmt}.
-
-Warning: Proceed only if this is an advance payment.`,
-{ title: ' Over-collection Warning', confirmText: 'Collect Anyway', cancelText: 'Cancel', tone: 'warning' }
-);
-if (!_proceedOver) { restoreBtn(); return; }
+_gcWarn = { lines: [`Owes: ${fmtAmt ? fmtAmt(_repOutstanding) : _repOutstanding}`, `Collecting: ${fmtAmt ? fmtAmt(amount) : amount}`, `Overpayment: ${fmtAmt ? fmtAmt(_overAmt) : _overAmt}`], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
 }
 let collId = _ed ? _ed.id : generateUUID('sale');
 if (!validateUUID(collId)) {
@@ -377,9 +369,21 @@ try {
 _repAlloc = await applyCollectionToSales({ kind: 'rep', arr: repSales, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
 } catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning'); restoreBtn(); return; }
 }
-if (_ed) {
-const _linkIssue = await getSaleEditLinkIssue('rep', _ed.original, transactionRecord);
+const _linkIssue = _ed ? await getSaleEditLinkIssue('rep', _ed.original, transactionRecord) : null;
 if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); window.notifyBlocking(_linkIssue, 'warning'); restoreBtn(); return; }
+if (transactionRecord.paymentType === 'CREDIT' && !_gcWarn) {
+let _rcOwed = 0;
+for (const h of repSales) {
+if (h && !(_ed && h.id === _ed.id) && h.customerName && h.customerName.toLowerCase() === String(transactionRecord.customerName || '').toLowerCase() && h.salesRep === currentRepProfile) _rcOwed = round2(_rcOwed + debtDelta(h, parseFloat(h.totalValue) || 0));
+}
+_rcOwed = Math.max(0, _rcOwed);
+if (_rcOwed > 5000) {
+const _rcSale = parseFloat(transactionRecord.totalValue) || 0;
+_gcWarn = { lines: [`Unpaid balance: ${fmtAmt ? fmtAmt(_rcOwed) : _rcOwed}`, `This credit sale: ${fmtAmt ? fmtAmt(_rcSale) : _rcSale}`, `New total: ${fmtAmt ? fmtAmt(_rcOwed + _rcSale) : _rcOwed + _rcSale}`], warning: `${transactionRecord.customerName} already has unpaid credit. Collect it before adding more.`, confirmText: 'Add Credit Anyway' };
+}
+}
+if (!(await window.gcCommit(_gcWarn || {}))) { if (_repAlloc) _repAlloc.undo(); restoreBtn(); return; }
+if (_ed) {
 const o = _ed.original;
 stampEdit(transactionRecord, o);
 if (transactionRecord.paymentType === 'CREDIT' || transactionRecord.paymentType === 'CASH') applySettlement(transactionRecord, planEditSettlement(o, transactionRecord.paymentType));
@@ -1141,7 +1145,7 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-custom
 export function closeRepCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('rep-customer-edit-screen');
 }
-export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', fields: [['rep-edit-cust-name', 'Name'], ['rep-edit-cust-phone', 'Phone'], ['rep-edit-cust-address', 'Address'], ['rep-edit-cust-old-debit', 'Old Debit']], isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
+export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['rep-edit-cust-name', 'Name'], ['rep-edit-cust-phone', 'Phone'], ['rep-edit-cust-address', 'Address'], ['rep-edit-cust-old-debit', 'Old Debit']], isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
 async function _saveRepCustomerDetailsRaw() {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
@@ -1153,6 +1157,7 @@ const address = document.getElementById('rep-edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('rep-edit-cust-old-debit').value) || 0;
 if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
+if (!(await window.gcCommit({}))) return;
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
 const freshRepContacts = await sqliteStore.get('rep_customers', []);

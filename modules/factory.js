@@ -265,7 +265,7 @@ calculateNetCash();
 renderFactoryInventory();
 }
 }
-export function saveFactoryInventoryItem(...a) { return confirmGuard('saveFactoryInventoryItem', () => runExclusive('saveFactoryInventoryItem', () => _saveFactoryInventoryItemImpl(...a)), { label: 'Inventory Item', fields: [['factoryMaterialName', 'Material'], ['factoryMaterialQuantity', 'Quantity'], ['factoryMaterialUnitName', 'Unit'], ['factoryMaterialCost', 'Cost']], isUpdate: () => !!editingFactoryInventoryId }); }
+export function saveFactoryInventoryItem(...a) { return confirmGuard('saveFactoryInventoryItem', () => runExclusive('saveFactoryInventoryItem', () => _saveFactoryInventoryItemImpl(...a)), { label: 'Inventory Item', late: true, fields: [['factoryMaterialName', 'Material'], ['factoryMaterialQuantity', 'Quantity'], ['factoryMaterialUnitName', 'Unit'], ['factoryMaterialCost', 'Cost']], isUpdate: () => !!editingFactoryInventoryId }); }
 async function _saveFactoryInventoryItemImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -281,6 +281,7 @@ if (!name) return window.notifyBlocking('Name required', 'warning');
 if (qty < 0) return window.notifyBlocking('Quantity cannot be negative', 'warning');
 if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater than 0', 'warning');
 if (conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning');
+if (!(await window.gcCommit({}))) return;
 try {
 const quantityInKg = qty * conversionFactor;
 const costPerKg = conversionFactor > 0 ? cost / conversionFactor : cost;
@@ -727,7 +728,7 @@ if (typeof calculateFactoryProduction === 'function') await calculateFactoryProd
 beginEditMode('factory', rec, { buttonId: 'btn-save-factory-production', watchIds: ['factoryProductionUnits'], label: 'Update Batch', anchorId: 'factoryProductionUnits', cancelFn: _resetFactoryForm });
 }
 registerEditHandler('factory', startEditFactoryEntry);
-export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', fields: [['factoryProductionUnits', 'Units']], editKinds: ['factory'] }); }
+export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', late: true, fields: [['factoryProductionUnits', 'Units']], editKinds: ['factory'] }); }
 async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
 if (!currentFactoryEntryStore) {
@@ -829,6 +830,7 @@ throw new Error(`Insufficient "${inventoryItem.name}" in inventory! Available: $
 }
 }
 }
+if (!(await window.gcCommit({}))) throw new Error('__GC_CANCEL__');
 let factProdId = _ed ? _ed.id : generateUUID('fprod');
 if (!validateUUID(factProdId)) factProdId = generateUUID('fprod');
 const factProdCreatedAt = getTimestamp();
@@ -899,6 +901,7 @@ if (_ed) await unifiedSave('factory_production_history', factoryProductionHistor
 else await unifiedDelete('factory_production_history', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
 } catch (_undoErr) { console.error('Could not undo the saved batch record.', _safeErr(_undoErr)); }
 }
+if (error && error.message === '__GC_CANCEL__') return;
 window.notifyBlocking(error.message || 'Failed to save production data. Please try again.', 'error');
 }
 }

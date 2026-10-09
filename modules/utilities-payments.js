@@ -1365,7 +1365,7 @@ const entity = paymentEntities.find(e => String(e.id) === String(currentEntityId
 if (entity) renderEntityOverlayContent(entity);
 }
 }
-export function saveEntity(...a) { return confirmGuard('saveEntity', () => runExclusive('saveEntity', () => _saveEntityImpl(...a)), { label: 'Entity', fields: [['entityName', 'Name'], ['entityPhone', 'Phone'], ['entityWallet', 'Wallet']], isUpdate: () => !!editingEntityId }); }
+export function saveEntity(...a) { return confirmGuard('saveEntity', () => runExclusive('saveEntity', () => _saveEntityImpl(...a)), { label: 'Entity', late: true, fields: [['entityName', 'Name'], ['entityPhone', 'Phone'], ['entityWallet', 'Wallet']], isUpdate: () => !!editingEntityId }); }
 async function _saveEntityImpl() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -1388,6 +1388,7 @@ if(exists) {
 window.notifyBlocking("An entity with this name already exists", 'warning');
 return;
 }
+if (!(await window.gcCommit({}))) return;
 try {
 let _renameFrom = null;
 if (editingEntityId) {
@@ -2040,7 +2041,7 @@ return;
 }
 }
 const t = paymentTransactions.find(x => x && x.id === o.id);
-if (!t) { showToast('Original transaction not found.', 'error'); return; }
+if (!t) { window.notifyBlocking('Original transaction not found.', 'error'); return; }
 const _proceed = await confirmEditChanges([
 { label: 'Name', from: o.entityName || '', to: v.name },
 { label: 'Amount', from: fmtAmt(o.amount || 0), to: fmtAmt(v.amount) },
@@ -2103,7 +2104,7 @@ if (e && eBefore) await unifiedSave('expenses', expenseRecords, e);
 await unifiedSave('payment_transactions', paymentTransactions, t);
 } catch (_) { }
 console.warn('[edit payment] failed', err);
-showToast('Failed to update transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to update transaction. Please try again.', 'error');
 }
 }
 export async function startEditPayment(id) {
@@ -2134,7 +2135,7 @@ await startEditPayment(t.id);
 }
 registerEditHandler('payment', startEditPayment);
 registerEditHandler('expense', startEditExpenseRecord);
-export function saveExpense(...a) { return confirmGuard('saveExpense', () => runExclusive('saveExpense', () => _saveExpenseImpl(...a)), { label: 'Expense', fields: [['expenseName', 'Expense'], ['expenseAmount', 'Amount'], ['expenseDate', 'Date'], ['expenseDescription', 'Note']], skipKinds: ['payment'] }); }
+export function saveExpense(...a) { return confirmGuard('saveExpense', () => runExclusive('saveExpense', () => _saveExpenseImpl(...a)), { label: 'Expense', late: true, fields: [['expenseName', 'Expense'], ['expenseAmount', 'Amount'], ['expenseDate', 'Date'], ['expenseDescription', 'Note']], skipKinds: ['payment'] }); }
 async function _saveExpenseImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -2189,6 +2190,14 @@ window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0
 return;
 }
 }
+if (category !== 'operating') {
+const _seKnownEnt = paymentEntities.find(e => e.name && e.name.toLowerCase() === name.toLowerCase() && !e.isExpenseEntity);
+if (!_seKnownEnt && expenseCategories.some(cat => typeof cat === 'string' && cat.toLowerCase() === name.toLowerCase())) {
+window.notifyBlocking(`"${name}" is an operating expense category, not an entity. Switch to Operating Expense mode or use a different name.`, 'error');
+return;
+}
+}
+if (!(await window.gcCommit({}))) return;
 const _seDeep = (a) => JSON.parse(JSON.stringify(a));
 let expensesSnapshot = _seDeep(expenseRecords);
 let categoriesSnapshot = [...expenseCategories];
@@ -3529,7 +3538,7 @@ if (overlayEl && overlayEl.style.display !== 'none' && currentExpenseOverlayName
 renderExpenseOverlayContent();
 }
 }
-export function saveQuickExpenseEntry(...a) { return confirmGuard('saveQuickExpenseEntry', () => _saveQuickExpenseEntryRaw(...a), { label: 'Expense', fields: [['quickExpenseAmount', 'Amount'], ['quickExpenseDescription', 'Note']] }); }
+export function saveQuickExpenseEntry(...a) { return confirmGuard('saveQuickExpenseEntry', () => _saveQuickExpenseEntryRaw(...a), { label: 'Expense', late: true, fields: [['quickExpenseAmount', 'Amount'], ['quickExpenseDescription', 'Note']] }); }
 async function _saveQuickExpenseEntryRaw() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -3552,6 +3561,7 @@ if (_sqeeAvail < amount) {
 window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _sqeeAvail))} — Required: ${fmtAmt(amount)}`, 'error');
 return;
 }
+if (!(await window.gcCommit({}))) return;
 try {
 const now = new Date();
 const dateStr = localDateStr(now);
@@ -6990,7 +7000,7 @@ if (tab === 'userrole') renderUserRoleList();
 if (tab === 'rep') renderManageRepsList();
 if (tab === 'accounts' && typeof loadAccountsList === 'function') loadAccountsList();
 }
-export function addNewUserRole(...a) { return confirmGuard('addNewUserRole', () => _addNewUserRoleRaw(...a), { label: 'User', fields: [['new-userrole-name-input', 'Name']], verb: 'Add' }); }
+export function addNewUserRole(...a) { return confirmGuard('addNewUserRole', () => _addNewUserRoleRaw(...a), { label: 'User', late: true, fields: [['new-userrole-name-input', 'Name']], verb: 'Add' }); }
 async function _addNewUserRoleRaw() {
 const input = document.getElementById('new-userrole-name-input');
 if (!input) return;
@@ -6998,6 +7008,7 @@ const name = input.value.trim().toUpperCase();
 if (!name) { window.notifyBlocking('Please enter a name', 'warning'); return; }
 if (_newUserRoleSelectedTabs.size === 0) { window.notifyBlocking('Please select at least one tab', 'warning'); return; }
 if (userRolesList.some(u => u.name === name)) { window.notifyBlocking('User already exists', 'warning'); return; }
+if (!(await window.gcCommit({}))) return;
 userRolesList.push({ name, tabs: [..._newUserRoleSelectedTabs] });
 await saveUserRolesList();
 input.value = '';
@@ -7022,13 +7033,14 @@ await saveUserRolesList();
 renderUserRoleList();
 showToast(`${esc(user.name)} removed`, 'info');
 }
-export function addNewSalesRep(...a) { return confirmGuard('addNewSalesRep', () => _addNewSalesRepRaw(...a), { label: 'Representative', fields: [['new-rep-name-input', 'Name']], verb: 'Add' }); }
+export function addNewSalesRep(...a) { return confirmGuard('addNewSalesRep', () => _addNewSalesRepRaw(...a), { label: 'Representative', late: true, fields: [['new-rep-name-input', 'Name']], verb: 'Add' }); }
 async function _addNewSalesRepRaw() {
 const input = document.getElementById('new-rep-name-input');
 if (!input) return;
 const name = input.value.trim().toUpperCase();
 if (!name) { window.notifyBlocking('Please enter a name', 'warning'); return; }
 if (salesRepsList.includes(name)) { window.notifyBlocking('Rep already exists', 'warning'); return; }
+if (!(await window.gcCommit({}))) return;
 salesRepsList.push(name);
 await saveSalesRepsList();
 input.value = '';
@@ -7950,7 +7962,7 @@ if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransf
 await renderPaymentTransferHistory();
 }
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
-export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransfer', () => runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)), { label: 'Transfer', fields: [['payment-transfer-from-value', 'From'], ['payment-transfer-to-value', 'To'], ['payment-transfer-amount', 'Amount'], ['payment-transfer-date', 'Date'], ['payment-transfer-note', 'Note']], skipKinds: ['paytransfer'] }); }
+export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransfer', () => runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)), { label: 'Transfer', late: true, fields: [['payment-transfer-from-value', 'From'], ['payment-transfer-to-value', 'To'], ['payment-transfer-amount', 'Amount'], ['payment-transfer-date', 'Date'], ['payment-transfer-note', 'Note']], skipKinds: ['paytransfer'] }); }
 async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
@@ -7986,6 +7998,7 @@ const _ok = await confirmEditChanges([
 ], 'Update Transfer?');
 if (!_ok) return;
 }
+if (!(await window.gcCommit({}))) return;
 let pairId = _ed ? _ed.original.pairId : generateUUID('trfpair');
 if (!validateUUID(pairId)) pairId = generateUUID('trfpair');
 const createdAt = getTimestamp();

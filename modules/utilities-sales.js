@@ -1136,6 +1136,7 @@ const totalValue = quantity * _effectiveSalePrice;
 const profit = totalValue - totalCost;
 const existingCustomer = customerSales.find(s => s && s.customerName && name && s.customerName.toLowerCase() === name.toLowerCase());
 let existingCredit = 0;
+let _gcWarn = null;
 if (existingCustomer) {
 for (const sale of customerSales) {
 if (!(sale && sale.customerName && name && sale.customerName.toLowerCase() === name.toLowerCase())) continue;
@@ -1147,16 +1148,10 @@ existingCredit = Math.max(0, existingCredit);
 if (paymentType === 'CREDIT') {
 const creditWarningThreshold = 5000;
 if (existingCredit > creditWarningThreshold) {
-const _cwMsg = `${name} already has an outstanding credit balance.
-Current unpaid balance: ${fmtAmt(safeNumber(existingCredit, 0))}
-This new credit sale: ${fmtAmt(safeNumber(totalValue, 0))}
-New total if you proceed: ${fmtAmt(safeNumber(existingCredit + totalValue, 0))}
-Warning: Collect the existing balance before adding more credit.`;
-if (!(await showGlassConfirm(_cwMsg, { title: " High Credit Warning", confirmText: "Add Credit Anyway", cancelText: "Cancel", tone: "warning" }))) {
-return;
+_gcWarn = { lines: [`Unpaid balance: ${fmtAmt(safeNumber(existingCredit, 0))}`, `This credit sale: ${fmtAmt(safeNumber(totalValue, 0))}`, `New total: ${fmtAmt(safeNumber(existingCredit + totalValue, 0))}`], warning: `${name} already has unpaid credit. Collect it before adding more.`, confirmText: 'Add Credit Anyway' };
 }
 }
-}
+if (!(await window.gcCommit(_gcWarn || {}))) return;
 const now = new Date();
 let hours = now.getHours();
 const minutes = now.getMinutes();
@@ -1426,23 +1421,20 @@ for (const s of _custHistory) _custOutstanding = round2(_custOutstanding + debtD
 if (_ed && Array.isArray(_ed.original.allocations)) _custOutstanding = round2(_custOutstanding + _ed.original.allocations.reduce((t, a) => t + (Number(a.amount) || 0), 0));
 _custOutstanding = Math.max(0, _custOutstanding);
 } catch (_e) { _custOutstanding = -1; }
+let _gcWarn = null;
 if (_custOutstanding === 0 && !_ed) {
 window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error');
 restoreBtn();
 return;
 } else if (_custOutstanding >= 0 && amount > _custOutstanding) {
 const _overAmt = amount - _custOutstanding;
-const _proceed = await showGlassConfirm(
-` Over-collection Warning!
-
-${name} only owes ${fmtAmt(_custOutstanding)}.
-You are collecting ${fmtAmt(amount)} — an overpayment of ${fmtAmt(_overAmt)}.
-
-This will exceed the outstanding balance. Proceed only if this is an advance payment.`,
-{ title: ' Over-collection Warning', confirmText: 'Collect Anyway', cancelText: 'Cancel' }
-);
-if (!_proceed) { restoreBtn(); return; }
+_gcWarn = { lines: [`Owes: ${fmtAmt(_custOutstanding)}`, `Collecting: ${fmtAmt(amount)}`, `Overpayment: ${fmtAmt(_overAmt)}`], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
 }
+if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - amount) > 0.001) {
+window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning');
+restoreBtn(); return;
+}
+if (!(await window.gcCommit(_gcWarn || {}))) { restoreBtn(); return; }
 let gpsCoords = null;
 try {
 gpsCoords = await Promise.race([
@@ -1537,7 +1529,7 @@ window.notifyBlocking('Failed to save collection. Please try again.', 'error');
 restoreBtn();
 }
 }
-export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', fields: [['supply-store-value', 'Store'], ['cust-quantity', 'Quantity'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
+export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [['supply-store-value', 'Store'], ['cust-quantity', 'Quantity'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
 async function _saveCustomerTransactionRaw() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -2536,7 +2528,7 @@ emitSyncUpdate({ customer_sales: null });
 return { saleId: id };
 }
 let _calcSaveInFlight = false;
-export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale', fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']] }); }
+export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale', late: true, fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']] }); }
 async function _saveTransactionRaw() {
 if (_calcSaveInFlight) return;
 _calcSaveInFlight = true;
@@ -2572,28 +2564,28 @@ selectedRep = window._returnRep;
 } else if (window._returnStore) {
 selectedStore = { value: window._returnStore };
 } else {
-showToast('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning', 3000);
+window.notifyBlocking('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning');
 return;
 }
 }
 const costPerKg = (await getCostPriceForStore('STORE_A')) || 0;
 const salePrice = await getSalePriceForStore('STORE_A');
-if(!date) return showToast('Please select a date', 'warning', 3000);
-if(sold <= 0) return showToast('Please enter valid units sold (must be greater than 0)', 'warning', 3000);
-if(salePrice <= 0) return showToast('Please set a sale price in Factory Formulas first', 'warning', 3000);
-if(ret > sold) return showToast('Returned quantity cannot exceed total sold', 'warning', 3000);
-if(exp < 0) return showToast('Expired quantity cannot be negative', 'warning', 3000);
-if(ret < 0) return showToast('Returned quantity cannot be negative', 'warning', 3000);
-if(shared < 0) return showToast('Shared (deduction) quantity cannot be negative', 'warning', 3000);
-if(cred < 0) return showToast('Credit sales cannot be negative', 'warning', 3000);
-if(prev < 0) return showToast('Previous credit received cannot be negative', 'warning', 3000);
-if(rec < 0) return showToast('Received cash cannot be negative', 'warning', 3000);
-if(fieldExp < 0) return showToast('Field expenses cannot be negative', 'warning', 3000);
-if(commissionPerUnit < 0) return showToast('Commission per unit cannot be negative', 'warning', 3000);
-if(commissionPaid < 0) return showToast('Commission paid cannot be negative', 'warning', 3000);
-if((ret + exp + shared) > sold) return showToast('Combined returned + expired + shared quantity cannot exceed total sold', 'warning', 3000);
+if(!date) return window.notifyBlocking('Please select a date', 'warning');
+if(sold <= 0) return window.notifyBlocking('Please enter valid units sold (must be greater than 0)', 'warning');
+if(salePrice <= 0) return window.notifyBlocking('Please set a sale price in Factory Formulas first', 'warning');
+if(ret > sold) return window.notifyBlocking('Returned quantity cannot exceed total sold', 'warning');
+if(exp < 0) return window.notifyBlocking('Expired quantity cannot be negative', 'warning');
+if(ret < 0) return window.notifyBlocking('Returned quantity cannot be negative', 'warning');
+if(shared < 0) return window.notifyBlocking('Shared (deduction) quantity cannot be negative', 'warning');
+if(cred < 0) return window.notifyBlocking('Credit sales cannot be negative', 'warning');
+if(prev < 0) return window.notifyBlocking('Previous credit received cannot be negative', 'warning');
+if(rec < 0) return window.notifyBlocking('Received cash cannot be negative', 'warning');
+if(fieldExp < 0) return window.notifyBlocking('Field expenses cannot be negative', 'warning');
+if(commissionPerUnit < 0) return window.notifyBlocking('Commission per unit cannot be negative', 'warning');
+if(commissionPaid < 0) return window.notifyBlocking('Commission paid cannot be negative', 'warning');
+if((ret + exp + shared) > sold) return window.notifyBlocking('Combined returned + expired + shared quantity cannot exceed total sold', 'warning');
 const netSold = Math.max(0, sold - ret - exp - shared);
-if(cred > netSold) return showToast('Credit sales cannot exceed net sold quantity', 'warning', 3000);
+if(cred > netSold) return window.notifyBlocking('Credit sales cannot exceed net sold quantity', 'warning');
 const cashQty = Math.max(0, netSold - cred);
 const creditValue = cred * salePrice;
 const revenue = netSold * salePrice;
@@ -2614,6 +2606,7 @@ statusText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 statusClass = "result-box discrepancy-ok";
 }
 }
+if (!(await window.gcCommit({}))) return;
 let transferInfo = null;
 let _retIds = null;
 let _expApplied = null;
@@ -6476,7 +6469,7 @@ el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${get
 el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
 window.updateStockTransferAvailability = updateStockTransferAvailability;
-export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer', () => runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)), { label: 'Stock Transfer', fields: [['stock-transfer-from-value', 'From'], ['stock-transfer-to-value', 'To'], ['stock-transfer-qty', 'Quantity'], ['stock-transfer-date', 'Date'], ['stock-transfer-note', 'Note']], editKinds: ['stocktransfer'] }); }
+export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer', () => runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)), { label: 'Stock Transfer', late: true, fields: [['stock-transfer-from-value', 'From'], ['stock-transfer-to-value', 'To'], ['stock-transfer-qty', 'Quantity'], ['stock-transfer-date', 'Date'], ['stock-transfer-note', 'Note']], editKinds: ['stocktransfer'] }); }
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
@@ -6509,6 +6502,7 @@ if (quantity > snapshot.available) {
 window.notifyBlocking(` Insufficient stock at ${getStoreLabel(fromStore)}. Available: ${fmtNum(safeNumber(snapshot.available, 0))} kg, Requested: ${fmtNum(safeNumber(quantity, 0))} kg.`, 'error');
 return;
 }
+if (!(await window.gcCommit({}))) return;
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const now = new Date();
 let hours = now.getHours();
