@@ -6277,3 +6277,15 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 #formula-store-screen .screen-body { padding-bottom: 96px; }
 .formula-fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); cursor: pointer; z-index: 5; transition: transform 0.12s; }
 .formula-fab:active { transform: scale(0.92); }
+
+/* ── Icon polish: hover lift + twinkling accent sparks (respects reduced motion) ── */
+.sidebar-nav-btn svg, .sidebar-settings-btn svg { transition: transform .18s ease, filter .18s ease; }
+.sidebar-nav-btn:hover svg, .sidebar-settings-btn:hover svg { transform: translateY(-1px) scale(1.08); filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
+.ic-sp { transform-box: fill-box; transform-origin: center; }
+@keyframes ic-twinkle { 0%,100% { transform: scale(1) rotate(0); opacity: 1; } 50% { transform: scale(1.55) rotate(18deg); opacity: .75; } }
+.sidebar-nav-btn:hover .ic-sp, .sidebar-settings-btn:hover .ic-sp, .btn-theme:hover .ic-sp { animation: ic-twinkle .9s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-nav-btn svg, .sidebar-settings-btn svg { transition: none; }
+  .sidebar-nav-btn:hover svg, .sidebar-settings-btn:hover svg { transform: none; filter: none; }
+  .ic-sp { animation: none !important; }
+}

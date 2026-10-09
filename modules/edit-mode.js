@@ -53,7 +53,7 @@ export function beginEditMode(kind, original, opts = {}) {
     banner.id = 'edit-mode-banner';
     banner.className = 'edit-mode-banner';
     banner.setAttribute('role', 'status');
-    banner.innerHTML = '<div class="emb-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="currentColor" fill-opacity="0.14" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="currentColor"/></svg></div><div class="emb-text"><b>Editing entry</b><span>Saving updates the original record.</span></div>';
+    banner.innerHTML = '<div class="emb-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="currentColor" fill-opacity="0.14" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="currentColor"/></svg></div><div class="emb-text"><b>Editing entry</b><span>Saving updates the original record.</span></div>';
     const cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.textContent = 'Cancel';

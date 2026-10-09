@@ -3902,7 +3902,7 @@ overlay.innerHTML = `
 <div class="auth-field">
 <input type="email" id="auth-email" placeholder=" " required autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false">
 <label for="auth-email">Email address</label>
-<svg class="auth-ico" width="18" height="18" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="4" y="7.5" width="28" height="21" rx="5" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M6 11.5L18 20 30 11.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M30 4Q30 6 32 6Q30 6 30 8Q30 6 28 6Q30 6 30 4Z" fill="currentColor"/></svg>
+<svg class="auth-ico" width="18" height="18" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="4" y="7.5" width="28" height="21" rx="5" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><path d="M6 11.5L18 20 30 11.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30 4Q30 6 32 6Q30 6 30 8Q30 6 28 6Q30 6 30 4Z" fill="currentColor"/></svg>
 </div>
 <div class="auth-field">
 <input type="password" id="auth-password" placeholder=" " required autocomplete="current-password">
