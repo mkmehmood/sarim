@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   readFileSync, writeFileSync, copyFileSync,
-  mkdirSync, rmSync,
+  mkdirSync, rmSync, readdirSync,
 } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,6 +74,13 @@ for (const [pkg, file] of FONT_FILES) copyFileSync(join(ROOT, 'node_modules', pk
 mkdirSync(join(DIST, 'vendor'), { recursive: true });
 copyFileSync(join(ROOT, 'node_modules/jspdf/dist/jspdf.umd.min.js'), join(DIST, 'vendor/jspdf.umd.min.js'));
 copyFileSync(join(ROOT, 'node_modules/jspdf-autotable/dist/jspdf.plugin.autotable.min.js'), join(DIST, 'vendor/jspdf.plugin.autotable.min.js'));
+mkdirSync(join(DIST, 'vendor/firebase'), { recursive: true });
+mkdirSync(join(DIST, 'vendor/leaflet/images'), { recursive: true });
+for (const n of ['app', 'firestore', 'auth']) copyFileSync(join(ROOT, `node_modules/firebase/firebase-${n}-compat.js`), join(DIST, `vendor/firebase/firebase-${n}-compat.js`));
+for (const f of ['leaflet.js', 'leaflet.css']) copyFileSync(join(ROOT, 'node_modules/leaflet/dist', f), join(DIST, 'vendor/leaflet', f));
+const LEAFLET_IMAGES = readdirSync(join(ROOT, 'node_modules/leaflet/dist/images'));
+for (const f of LEAFLET_IMAGES) copyFileSync(join(ROOT, 'node_modules/leaflet/dist/images', f), join(DIST, 'vendor/leaflet/images', f));
+const VENDOR_ASSETS = ['vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/firebase/firebase-app-compat.js', 'vendor/firebase/firebase-firestore-compat.js', 'vendor/firebase/firebase-auth-compat.js', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', ...LEAFLET_IMAGES.map(f => `vendor/leaflet/images/${f}`)];
 const ASSETS_TO_CACHE_BLOCK =
 `const ASSETS_TO_CACHE = [
   './',
@@ -87,8 +94,7 @@ const ASSETS_TO_CACHE_BLOCK =
   './sql-wasm.js',
   './sql-wasm.wasm',
   './sql.js',
-  './vendor/jspdf.umd.min.js',
-  './vendor/jspdf.plugin.autotable.min.js',
+  ${VENDOR_ASSETS.map(v => `'./${v}'`).join(',\n  ')},
   ${FONT_FILES.map(f => `'./fonts/${f[1]}'`).join(',\n  ')}
 ];`;
 let sw = read(join(ROOT, 'sw.js'));

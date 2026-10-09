@@ -1,4 +1,4 @@
-const BUILD_HASH = 'V.09.10.2026-r9';
+const BUILD_HASH = 'V.09.10.2026-r10';
 const CACHE_NAME = 'app-' + BUILD_HASH;
 const ASSETS_TO_CACHE = [
   './',
@@ -23,14 +23,21 @@ const ASSETS_TO_CACHE = [
   './512.png',
   './sql-wasm.js',
   './sql-wasm.wasm',
-  './sql.js'
+  './sql.js',
+  './vendor/jspdf.umd.min.js',
+  './vendor/jspdf.plugin.autotable.min.js',
+  './vendor/firebase/firebase-app-compat.js',
+  './vendor/firebase/firebase-firestore-compat.js',
+  './vendor/firebase/firebase-auth-compat.js',
+  './vendor/leaflet/leaflet.js',
+  './vendor/leaflet/leaflet.css',
+  './vendor/leaflet/images/layers-2x.png',
+  './vendor/leaflet/images/layers.png',
+  './vendor/leaflet/images/marker-icon-2x.png',
+  './vendor/leaflet/images/marker-icon.png',
+  './vendor/leaflet/images/marker-shadow.png'
 ];
 const CDN_ASSETS_TO_PRECACHE = [
-  'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js',
-  'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
 ];
 const CACHE_FIRST_ORIGINS = [
   'https://www.gstatic.com',
