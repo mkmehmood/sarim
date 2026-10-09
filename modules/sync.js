@@ -3461,6 +3461,7 @@ export async function _doOneClickSync(silent = false) {
   }
 
   _set_isSyncing(true);
+  if (document.body) document.body.classList.add('is-syncing');
   const btn = document.getElementById('sync-btn');
   const originalText = btn ? btn.innerHTML : '';
   if (!silent && btn) btn.innerHTML = 'Syncing…';
@@ -3547,6 +3548,7 @@ export async function _doOneClickSync(silent = false) {
     return { down: 0, up: 0, error: true };
   } finally {
     _set_isSyncing(false);
+    if (document.body) document.body.classList.remove('is-syncing');
     if (!silent && btn) btn.innerHTML = originalText;
     _flushSyncLockQueue().catch(err => console.warn('[SyncLock] Flush error', _safeErr(err)));
   }

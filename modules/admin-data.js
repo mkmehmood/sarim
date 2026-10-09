@@ -1746,7 +1746,7 @@ if (completeSection) {
   <div class="cy-complete-card">
     <div class="cy-complete-header">
       <div class="cy-complete-icon">
-        <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke-dasharray:60;stroke-dashoffset:0;animation:cy-checkmark-draw 0.55s 0.2s cubic-bezier(0.22,1,0.36,1) both;"><circle cx="18" cy="18" r="13.5" fill="var(--accent-emerald)" fill-opacity="0.15" stroke="var(--accent-emerald)" stroke-width="1.7"/><path d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke-dasharray:60;stroke-dashoffset:0;animation:cy-checkmark-draw 0.55s 0.2s cubic-bezier(0.22,1,0.36,1) both;"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--accent-emerald)" fill-opacity="0.15" stroke="var(--accent-emerald)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>
       </div>
       <div class="cy-complete-header-text">
         <h3 class="cy-complete-title">Financial Year Closed</h3>

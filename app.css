@@ -6278,14 +6278,27 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .formula-fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); cursor: pointer; z-index: 5; transition: transform 0.12s; }
 .formula-fab:active { transform: scale(0.92); }
 
-/* ── Icon polish: hover lift + twinkling accent sparks (respects reduced motion) ── */
-.sidebar-nav-btn svg, .sidebar-settings-btn svg { transition: transform .18s ease, filter .18s ease; }
-.sidebar-nav-btn:hover svg, .sidebar-settings-btn:hover svg { transform: translateY(-1px) scale(1.08); filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
+/* ── Icon polish & motion ──
+   The app switches animations off globally (perf block above) and allowlists specific ones with !important,
+   like the toasts. Same pattern here: tiny SVG-only animations, skipped for prefers-reduced-motion. */
 .ic-sp { transform-box: fill-box; transform-origin: center; }
+.ic-sync-arrows { transform-box: view-box; transform-origin: 50% 50%; }
+.ic-chev { flex-shrink: 0; }
+@keyframes ic-ck-draw { to { stroke-dashoffset: 0; } }
+@keyframes ic-ck-pop { 0% { opacity: 0; transform: scale(0); } 70% { opacity: 1; transform: scale(1.4); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ic-spin { to { transform: rotate(360deg); } }
 @keyframes ic-twinkle { 0%,100% { transform: scale(1) rotate(0); opacity: 1; } 50% { transform: scale(1.55) rotate(18deg); opacity: .75; } }
-.sidebar-nav-btn:hover .ic-sp, .sidebar-settings-btn:hover .ic-sp, .btn-theme:hover .ic-sp { animation: ic-twinkle .9s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-nav-btn svg, .sidebar-settings-btn svg { transition: none; }
-  .sidebar-nav-btn:hover svg, .sidebar-settings-btn:hover svg { transform: none; filter: none; }
-  .ic-sp { animation: none !important; }
+@media (prefers-reduced-motion: no-preference) {
+  /* success: ring and tick draw in once, spark pops */
+  .ic-ck-ring { stroke-dasharray: 100; stroke-dashoffset: 100; animation: ic-ck-draw .55s cubic-bezier(.22,1,.36,1) forwards !important; }
+  .ic-ck-tick { stroke-dasharray: 100; stroke-dashoffset: 100; animation: ic-ck-draw .4s .3s cubic-bezier(.22,1,.36,1) forwards !important; }
+  .ic-ck-tick ~ .ic-sp { opacity: 0; animation: ic-ck-pop .35s .65s ease-out forwards !important; }
+  /* sync: arrows spin only while a sync is actually running */
+  body.is-syncing .ic-sync-arrows { animation: ic-spin 1s linear infinite !important; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .sidebar-nav-btn svg, .sidebar-settings-btn svg { transition: transform .18s ease !important; }
+  .sidebar-nav-btn:hover svg, .sidebar-settings-btn:hover svg { transform: translateY(-1px) scale(1.08); }
+  .sidebar-nav-btn:hover .ic-sp, .sidebar-settings-btn:hover .ic-sp, .btn-theme:hover .ic-sp { animation: ic-twinkle .9s ease-in-out infinite !important; }
+  .sidebar-settings-btn:hover .ic-sync-arrows, .btn-theme:hover .ic-sync-arrows { animation: ic-spin .9s cubic-bezier(.4,0,.2,1) 1 !important; }
 }
