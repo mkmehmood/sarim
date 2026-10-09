@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+
 import {
   readFileSync, writeFileSync, copyFileSync,
   mkdirSync, rmSync,
 } from 'node:fs';
+
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,6 +32,7 @@ rmSync(DIST, { recursive: true, force: true });
 mkdirSync(DIST, { recursive: true });
 
 const metafile = join(DIST, 'meta.json');
+
 run([
   join(ROOT, 'modules/main.js'),
   '--bundle', '--splitting', '--format=esm',
@@ -41,6 +44,7 @@ run([
 const meta = JSON.parse(read(metafile));
 let mainOut = null, factoryOut = null, repOut = null;
 const allChunks = [];
+
 for (const [outPath, info] of Object.entries(meta.outputs)) {
   const name = basename(outPath);
   allChunks.push(name);
@@ -48,9 +52,11 @@ for (const [outPath, info] of Object.entries(meta.outputs)) {
   else if (info.entryPoint === 'modules/factory.js') factoryOut = name;
   else if (info.entryPoint === 'modules/rep-sales.js') repOut = name;
 }
+
 if (!mainOut || !factoryOut || !repOut) {
   throw new Error(`Could not identify all entry chunks in esbuild metafile. Found: ${allChunks.join(', ')}`);
 }
+
 rmSync(metafile);
 
 const coreHash = contentHash(join(DIST, mainOut));
@@ -72,10 +78,12 @@ html = html.replace(
   '<link rel="modulepreload" href="modules/main.js">',
   `<link rel="modulepreload" href="${mainOut}">`,
 );
+
 html = html.replace(
   '<link rel="stylesheet" href="app.css">',
   `<link rel="stylesheet" href="${cssOut}">`,
 );
+
 html = html.replace(
   '<script type="module" src="modules/main.js"></script>',
   `<script type="module" src="${mainOut}"></script>`,
@@ -116,10 +124,12 @@ write(join(DIST, 'sw.js'), sw);
 
 const kb = f => (readFileSync(join(DIST, f)).length / 1024).toFixed(1);
 console.log('\nBuild complete:\n');
+
 for (const c of allChunks) {
   const tag = c === mainOut ? '(entry + core)' : c === factoryOut ? '(lazy — factory tab)' : c === repOut ? '(lazy — rep tab)' : '(shared chunk)';
   console.log(`  ${c.padEnd(30)} ${kb(c)} KB  ${tag}`);
 }
+
 console.log(`  ${cssOut.padEnd(30)} ${kb(cssOut)} KB  (styles)`);
 console.log(`\n  SW cache key: sarim-${coreHash}`);
 console.log(`  Output:       dist/\n`);

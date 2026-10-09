@@ -1,5 +1,6 @@
 import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity, debtDelta, debtNeedsGross } from './business.js';
 import { unifiedSave, unifiedDelete } from './sync.js';
+
 import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
@@ -8,14 +9,6 @@ import {
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
-
-// Calculator history entries (noman_history) link to other records through these real fields:
-//   linkedSalesIds     -> customer_sales settled by the calculator
-//   linkedRepSalesIds  -> rep_sales consumed by the calculator (rep_sales.usedInCalcId points back)
-//   transferSaleId     -> customer_sales allocation created by a rep-to-rep transfer
-//   returnEntryId      -> mfg_pro_pkr stock-return record created by a product return
-//   returnLogId        -> stock_returns log record created by a product return
-// Partial payments point at their parent sale through relatedSaleId.
 
 async function _calcHistory() {
   return ensureArray(await sqliteStore.get('noman_history')).filter(h => h && !h.deletedAt);
@@ -52,9 +45,6 @@ export async function findCalcLinkForReturn(rec) {
   return legacy ? { entry: legacy, via: 'return' } : null;
 }
 
-// kind: 'customer' (customer_sales) or 'rep' (rep_sales)
-// opts.forEdit      -> only calculator links block (children do not)
-// opts.ignoreChildren -> used when a whole customer is being removed together with its payments
 export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const all = ensureArray(await sqliteStore.get(key));
@@ -109,16 +99,11 @@ export async function getExpiredDeleteBlockReason(entry) {
   return null;
 }
 
-// Records whose creation had side effects (stock, CHORA, settled sales) cannot be brought back from the
-// recycle bin on their own, because deleting the calculator record already reversed those side effects.
 export function getRecoverBlockReason(collectionName, snapshot) {
   const s = snapshot || {};
-  // Calculator records CAN be recovered: getCalcRestoreBlockReason checks that every record they touched is
-  // still as the delete left it, and the recover re-applies all of their effects together.
   if (collectionName === 'sales' && (s.isRepTransfer || (s.isTransfer && s.transferFrom))) {
     return 'This is a rep stock transfer created by a calculator record. Recover is not allowed; enter the calculation again.';
   }
-  // A return deleted straight from the Production tab (orphan, no calculator record) can come back as a pair.
   const _fromProdTab = s[DELETE_ORIGIN_FIELD] === 'prod-tab';
   if (collectionName === 'production' && s.isReturn === true && s.returnedBy && !_fromProdTab) {
     return 'This stock return was created by a calculator record. Recover is not allowed; enter the calculation again.';
@@ -129,7 +114,6 @@ export function getRecoverBlockReason(collectionName, snapshot) {
   return null;
 }
 
-// Sales still allocated to a rep (unsettled credit) – the rep should not be removed while these exist.
 export async function getPendingAllocationCount(repName) {
   const sales = ensureArray(await sqliteStore.get('customer_sales'));
   const hist = await _calcHistory();
@@ -139,11 +123,6 @@ export async function getPendingAllocationCount(repName) {
     s.paymentType === 'CREDIT' && !s.creditReceived && s.transactionType !== 'OLD_DEBT' && !settled.has(s.id)).length;
 }
 
-
-// ---------------------------------------------------------------------------------------------------
-// Smart link handling shared by every save / delete / recover path
-// ---------------------------------------------------------------------------------------------------
-
 const _ID_MAP_KEY = 'recovered_id_map';
 
 async function _loadIdMap() {
@@ -151,9 +130,6 @@ async function _loadIdMap() {
   return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
 }
 
-// DELETE: a partial payment is being deleted -> take its amount back off the parent credit sale and
-// persist the parent on its own (so the cloud and other devices see the parent change too).
-// kind: 'customer' | 'rep'.  `all` is the in-memory array the caller already loaded.
 export async function detachChildPayment(kind, child, all) {
   if (child && child.paymentType === 'COLLECTION' && Array.isArray(child.allocations) && child.allocations.length) {
     return await revertCollectionToSales(kind, child, all);
@@ -172,7 +148,6 @@ export async function detachChildPayment(kind, child, all) {
   return parent;
 }
 
-// SAVE (edit): refuse edits that would leave payment records out of step with the sale.
 export async function getSaleEditLinkIssue(kind, original, next) {
   if (!original || !original.id) return null;
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
@@ -181,7 +156,6 @@ export async function getSaleEditLinkIssue(kind, original, next) {
   return getEditLinkIssue(original, next, children);
 }
 
-// RECOVER (check): can this tombstone be brought back without corrupting a link?
 export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   if (!snapshot) return null;
   if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
@@ -200,14 +174,12 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return getCollectionReapplyIssue(mapped, live);
   }
   if (collectionName === 'calculator_history') return await getCalcRestoreBlockReason(snapshot);
-  // Stock consumers: a recovered sale or transfer-out must not overdraw that store on that day.
   if (collectionName === 'sales' && Number(snapshot.quantity) > 0 && snapshot.supplyStore &&
       !['COLLECTION', 'PARTIAL_PAYMENT'].includes(snapshot.paymentType) && snapshot.transactionType !== 'OLD_DEBT' &&
       typeof window !== 'undefined' && typeof window.computeStoreStockSnapshot === 'function') {
     const day = snapshot.supplyDate || snapshot.date;
     const snap = await window.computeStoreStockSnapshot(snapshot.supplyStore, day);
     const label = typeof window.getStoreLabel === 'function' ? (window.getStoreLabel(snapshot.supplyStore) || snapshot.supplyStore) : snapshot.supplyStore;
-    // ctx = records recovered together in one go: earlier ones already use up part of the stock.
     const k = `${snapshot.supplyStore}|${day}`;
     const used = ctx && ctx.stockUsed ? (ctx.stockUsed.get(k) || 0) : 0;
     const issue = getStockOverdrawIssue(label, Number(snapshot.quantity) + used, snap.available);
@@ -225,7 +197,6 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     if (!issue && ctx && ctx.stockUsed) ctx.stockUsed.set(k, used + q);
     return issue;
   }
-  // Production entry: it uses up factory formula units again, so the factory must still have them.
   if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
     const ft = snapshot.formulaStore || 'standard';
     const tracking = (await sqliteStore.get('factory_unit_tracking')) || {};
@@ -234,7 +205,6 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     if (!issue && ctx && ctx.unitsUsed) ctx.unitsUsed.set(ft, used + Number(snapshot.formulaUnits));
     return issue;
   }
-  // Raw material that was linked to a supplier: the supplier has to exist, or the link points at nothing.
   if (collectionName === 'inventory' && snapshot.supplierId) {
     const idMap = await _loadIdMap();
     const sid = resolveId(snapshot.supplierId, idMap);
@@ -243,7 +213,6 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
       return `This material was linked to ${snapshot.supplierName || 'a supplier'} who is no longer in your payments. Recover that supplier first, then recover the material.`;
     }
   }
-  // Factory batch: its raw materials have to come back OUT of inventory.
   if (collectionName === 'factory_history') {
     if (ctx && !ctx.inv) ctx.inv = JSON.parse(JSON.stringify(ensureArray(await sqliteStore.get('factory_inventory_data'))));
     const inv = ctx && ctx.inv ? ctx.inv : ensureArray(await sqliteStore.get('factory_inventory_data'));
@@ -252,13 +221,10 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const entry = { ...snapshot, materialsUsed: (snapshot.materialsUsed || []).map(m => ({ ...m, id: resolveId(m.id, idMap) })) };
     const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
     if (block) return block;
-    // Earlier batches in the same recovery already took their share of each material.
     if (ctx && updates) updates.forEach(u => { const it = inv.find(i => i && i.id === u.id); if (it) it.quantity = u.quantity; });
     return null;
   }
   if (collectionName === 'transactions' || collectionName === 'payment_transactions') {
-    // A payment made / expense uses cash again. (The expense it points at either still exists or comes back
-    // in the same deletion group, which the caller handles.)
     const need = getRestoreCashNeed(snapshot);
     if (need > 0 && typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
       const used = ctx && typeof ctx.cashUsed === 'number' ? ctx.cashUsed : 0;
@@ -271,12 +237,6 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   return null;
 }
 
-// RECOVER (apply): the record came back under newId. Keep every link alive:
-//  1. remember oldId -> newId so siblings recovered later can find it
-//  2. re-point live records that still reference oldId (payments, calculator entries, rep sales ...)
-//  3. re-point the recovered record's own outgoing links (its parent may have been recovered earlier)
-//  4. a recovered partial payment is added back to its parent sale
-// Returns the (possibly adjusted) record to store.
 export async function applyRecoveryLinks(collectionName, oldId, newId, cleanRecord) {
   const idMap = await _loadIdMap();
   idMap[String(oldId)] = String(newId);
@@ -360,7 +320,6 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     cleanRecord.allocations = cleanRecord.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) }));
     if (ids.length) await unifiedSave(key, arr, null, ids);
   }
-  // A recovered sale must have its customer back in the customer list (no-op when the contact exists).
   if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales')) {
     try { await ensureContactForRecoveredSale(collectionName, cleanRecord); }
     catch (e) { console.warn('[recover] contact re-create failed', e && e.message); }
@@ -368,16 +327,10 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
   return cleanRecord;
 }
 
-// RECOVER (pre-upload): re-point the snapshot's own links at records that were recovered earlier.
 export async function resolveSnapshotLinks(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
   return resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
 }
-
-
-// ---------------------------------------------------------------------------------------------------
-// Payment <-> expense record: one shared delete path
-// ---------------------------------------------------------------------------------------------------
 
 async function _dropExpensePhoto(expenseId) {
   if (!expenseId) return;
@@ -396,12 +349,6 @@ async function _dropExpensePhoto(expenseId) {
   } catch (e) { console.warn('[deletePaymentTxWithLinks] photo cleanup failed', e); }
 }
 
-// DELETE: remove one payment transaction together with the expense record that was created with it
-// (unless another payment still uses that expense). Both tombstones carry the same deletion group, so
-// recovering either one from the recycle bin brings back both, with the link re-pointed at the new ids.
-// opts.groupId     reuse a group created by the caller (entity delete, bulk expense delete ...)
-// opts.excludeIds  other payments deleted in the same operation (they do not keep the expense alive)
-// Returns { tx, expense } (expense is null when nothing else was removed).
 export async function deletePaymentTxWithLinks(tx, opts = {}) {
   if (!tx || !tx.id) return { tx: null, expense: null };
   const allTxs = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -418,13 +365,11 @@ export async function deletePaymentTxWithLinks(tx, opts = {}) {
   return { tx, expense };
 }
 
-// SAVE (rename): remember old -> new so records still in the recycle bin come back under the new name.
 export async function recordCustomerRename(kind, from, to) {
   const map = (await sqliteStore.get('customer_rename_map')) || {};
   await sqliteStore.set('customer_rename_map', recordRename(map, kind, from, to));
 }
 
-// RECOVER (pre-upload): apply renames made while the record sat in the recycle bin.
 export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
   if (collectionName === 'entities' || collectionName === 'transactions' || collectionName === 'payment_transactions' || collectionName === 'inventory') {
@@ -448,7 +393,6 @@ export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   return cleanRecord;
 }
 
-// RECOVER: a contact/entity with the same name is already live -> merge into it instead of duplicating.
 export async function findLiveSameNameRecord(collectionName, snapshot) {
   if (!snapshot || !snapshot.name) return null;
   if (!['sales_customers', 'rep_customers', 'entities'].includes(collectionName)) return null;
@@ -457,7 +401,6 @@ export async function findLiveSameNameRecord(collectionName, snapshot) {
   return arr.find(r => r && !r.deletedAt && r.name && String(r.name).trim().toLowerCase() === nm) || null;
 }
 
-// SAVE (old debt): changing the opening balance must keep payments that were already collected.
 export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   if (!oldDebtRecord || !oldDebtRecord.id) return { issue: null, collected: 0 };
   const all = ensureArray(await sqliteStore.get('customer_sales'));
@@ -469,8 +412,6 @@ export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   return { issue: getOldDebtEditIssue(newAmount, kids), collected: sumChildPayments(kids) };
 }
 
-// SAVE (mark paid / unpaid): a sale settled by a calculator record, or a cash sale / collection,
-// must not be flipped by hand - that would double-count or erase money the calculator already booked.
 export async function getSettleToggleBlockReason(id, kind = 'customer') {
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const rec = ensureArray(await sqliteStore.get(key)).find(s => s && s.id === id);
@@ -482,14 +423,12 @@ export async function getSettleToggleBlockReason(id, kind = 'customer') {
   const calc = await getSaleBlockReason(id, kind, { forEdit: true });
   if (calc) return calc;
   if (!rec.creditReceived) {
-    // About to be marked PAID: money already collected through separate payment records would count twice.
     const kids = ensureArray(await sqliteStore.get(key)).filter(s => s && !s.deletedAt && s.relatedSaleId === id && s.paymentType === 'PARTIAL_PAYMENT');
     return getPartialPaidIssue(kids.reduce((t, c) => t + (Number(c.totalValue) || 0), 0));
   }
   return null;
 }
 
-// RECOVER (plan): what is live right now, so the planner knows which parents still have to come back.
 export async function getLiveRecoveryRefs() {
   const ids = new Set();
   for (const k of ['customer_sales', 'rep_sales', 'expenses', 'payment_entities']) {
@@ -499,8 +438,6 @@ export async function getLiveRecoveryRefs() {
   return { ids, contacts: { sales: await names('sales_customers'), rep: await names('rep_customers') } };
 }
 
-// RECOVER (apply): a recovered sale must have its customer in the customer list again, or it shows up in
-// statements but nowhere in the customer screen. Re-creates the contact only when none exists.
 export async function ensureContactForRecoveredSale(collectionName, rec) {
   if (!rec || !rec.customerName || !String(rec.customerName).trim()) return null;
   let key, extra = {};
@@ -526,7 +463,6 @@ export async function ensureContactForRecoveredSale(collectionName, rec) {
   return contact;
 }
 
-// RECOVER (calculator record): everything it settled / claimed / created must be re-appliable.
 export async function loadCalcRestoreContext(entry) {
   const tombs = ensureArray(await sqliteStore.get('deletion_records'));
   const tt = entry && entry.transferSaleId
@@ -539,7 +475,7 @@ export async function loadCalcRestoreContext(entry) {
   try {
     const st = typeof window !== 'undefined' && typeof window.getAppStores === 'function' ? await window.getAppStores() : null;
     if (Array.isArray(st) && st.length) storeKeys = st.map(s => s.key);
-  } catch (_) { /* store list unavailable: skip that check */ }
+  } catch (_) { }
   return {
     sales: ensureArray(await sqliteStore.get('customer_sales')),
     repSales: ensureArray(await sqliteStore.get('rep_sales')),
@@ -554,8 +490,6 @@ export async function getCalcRestoreBlockReason(entry) {
   return planCalcRestore(entry, await loadCalcRestoreContext(entry)).block;
 }
 
-// AUDIT: old partly-paid sales that statements and trackers count twice. Read-only: it never changes data.
-// Runs a few seconds after start-up, reports at most once a day, and is also callable as window.auditLegacyPartialPayments().
 export async function auditLegacyPartialPayments(opts = {}) {
   const customer = findPartialConflicts(ensureArray(await sqliteStore.get('customer_sales')));
   const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep_sales')));
@@ -578,16 +512,12 @@ export async function auditLegacyPartialPayments(opts = {}) {
   return report;
 }
 
-
-// ---- bulk / partial collections: apply to / undo from the customer's credit sales ---------------------------
-// Pure rules live in link-graph.js. These wrappers do the store-aware part.
-
 function _snapshotSales(list) { return list.map(x => ({ ref: x, copy: JSON.parse(JSON.stringify(x)) })); }
+
 function _restoreSales(snaps) {
   for (const { ref, copy } of snaps) { Object.keys(ref).forEach(k => { if (!(k in copy)) delete ref[k]; }); Object.assign(ref, copy); }
 }
 
-// Undo what a collection did to its sales (delete path). Saves the touched sales on their own.
 export async function revertCollectionToSales(kind, collection, all) {
   const key = kind === 'rep' ? 'rep_sales' : 'customer_sales';
   const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
@@ -604,13 +534,9 @@ export async function revertCollectionToSales(kind, collection, all) {
   return ids;
 }
 
-// Apply a collection to the customer's unpaid sales. Mutates `record` (totalValue becomes the leftover) and the sales.
-// opts: { kind, arr, record, amount, name, repName, original, when, getGross }
-// Returns { changedIds, allocated, undo } - call undo() if saving afterwards fails. Throws { message } when an edit cannot be redone.
 export async function applyCollectionToSales(opts) {
   const { kind, arr, record, amount, name, repName, original, when, getGross } = opts;
   const lname = String(name || '').trim().toLowerCase();
-  // Opening balances (old debt) are saved with salesRep 'ADMIN', so they are matched by type, not by rep.
   const mine = arr.filter(s => s && !s.deletedAt && !s.isMerged && s.customerName && String(s.customerName).trim().toLowerCase() === lname &&
     (kind === 'rep' ? s.salesRep === repName : (s.currentRepProfile === 'admin' && (s.transactionType === 'OLD_DEBT' || !s.salesRep || s.salesRep === 'NONE'))));
   const snaps = _snapshotSales(mine);
@@ -651,15 +577,12 @@ export async function applyCollectionToSales(opts) {
   return { changedIds, allocated, paidCount: plan.allocs.filter(a => a.full).length, partialCount: plan.allocs.filter(a => !a.full).length, undo };
 }
 
-// DELETE (payment received): its money may already have been spent, so cash in hand must still cover it.
 export async function getPaymentDeleteBlockReason(tx) {
   const drop = getDeleteCashDrop(tx);
   if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
 }
 
-// SAVE (rename an entity): every record that keeps a copy of the name follows, and records still in the
-// recycle bin come back under the new name.
 export async function cascadeEntityRename(entityId, oldName, newName) {
   if (!entityId || !newName || oldName === newName) return { tx: 0, materials: 0 };
   const map = (await sqliteStore.get('customer_rename_map')) || {};

@@ -128,6 +128,7 @@ async function opfsRead(filename) {
     return await (await fh.getFile()).text();
   } catch { return null; }
 }
+
 async function opfsWrite(filename, text) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -157,6 +158,7 @@ function toFirestoreValue(val) {
   if (typeof val === 'object')           return { mapValue: { fields: toFirestoreFields(val) } };
   return { stringValue: String(val) };
 }
+
 function toFirestoreFields(obj) {
   const fields = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -450,7 +452,7 @@ self.addEventListener('fetch', function (event) {
             revalidateInBackground(cache, event.request);
             return cached;
           }
-          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS, opts)
+          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS)
             .then(function (res) { if (res.ok) cache.put(event.request, res.clone()); return res; })
             .catch(function () {
 
@@ -477,7 +479,7 @@ self.addEventListener('fetch', function (event) {
             revalidateInBackground(cache, event.request);
             return cached;
           }
-          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS, opts)
+          return fetchWithTimeout(event.request, NETWORK_TIMEOUT_MS)
             .then(function (res) { if (res.ok) cache.put(event.request, res.clone()); return res; })
             .catch(function () {
               return new Response(JSON.stringify({ error: 'offline' }), {
@@ -512,6 +514,7 @@ self.addEventListener('fetch', function (event) {
 
   cacheFirstResponse(event);
 });
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {

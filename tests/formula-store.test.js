@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const src = readFileSync(new URL('../modules/formula-store.js', import.meta.url), 'utf8');
+
 const DEFAULTS = [
   { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard' },
   { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard' },

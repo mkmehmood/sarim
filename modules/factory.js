@@ -441,12 +441,15 @@ return supplierEntity;
 
 let _invSort = { key: 'name', dir: 'asc' };
 try { const _sv = JSON.parse(localStorage.getItem('factoryInvSort') || 'null'); if (_sv && (_sv.key === 'name' || _sv.key === 'amount') && (_sv.dir === 'asc' || _sv.dir === 'desc')) _invSort = _sv; } catch (_) {}
+
 export function sortFactoryInventory(key) {
 _invSort = { key, dir: _invSort.key === key && _invSort.dir === 'asc' ? 'desc' : 'asc' };
 try { localStorage.setItem('factoryInvSort', JSON.stringify(_invSort)); } catch (_) {}
 return renderFactoryInventory();
 }
+
 window.sortFactoryInventory = sortFactoryInventory;
+
 function _updateInvSortHeaders() {
 ['name', 'amount'].forEach(k => {
 const el = document.getElementById(k === 'name' ? 'factoryInvSortName' : 'factoryInvSortAmount');
@@ -455,7 +458,9 @@ const base = k === 'name' ? 'Material' : 'Total Value';
 el.textContent = base + (_invSort.key === k ? (_invSort.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅');
 });
 }
+
 let _invRenderSeq = 0;
+
 export async function renderFactoryInventory() {
 const _mySeq = ++_invRenderSeq;
 const factoryInventoryData = sortInventoryItems(ensureArray(await sqliteStore.get('factory_inventory_data')), _invSort);
@@ -597,7 +602,6 @@ return;
 if (material.supplierId && String(material.supplierId) !== String(supplierId)) {
 await unlinkSupplierFromMaterial(material, false, true);
 }
-// Already invoiced by this supplier: a second payable would count the same debt twice.
 if (findPayableInTxs(paymentTransactions, material.id, supplier.id).length > 0) {
 if (!skipSideEffects) showToast(`${esc(material.name)} is already linked to ${esc(supplier.name)}.`, 'info');
 return;
@@ -708,8 +712,8 @@ return { salePrice: await getSalePriceForStore(store), costPrice: await getCostP
 }
 
 let _cfpToken = 0;
+
 export async function calculateFactoryProduction() {
-// Newest call wins: a slower, older render must never overwrite a newer one.
 const token = ++_cfpToken;
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 1;
 const sel = await getSelectedFormula(currentFactoryEntryStore);
@@ -760,6 +764,7 @@ const u = document.getElementById('factoryProductionUnits'); if (u) u.value = re
 if (typeof calculateFactoryProduction === 'function') await calculateFactoryProduction();
 beginEditMode('factory', rec, { buttonId: 'btn-save-factory-production', watchIds: ['factoryProductionUnits'], label: 'Update Batch', anchorId: 'factoryProductionUnits', cancelFn: _resetFactoryForm });
 }
+
 registerEditHandler('factory', startEditFactoryEntry);
 
 export function saveFactoryProductionEntry(...a) { return runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)); }
@@ -931,8 +936,6 @@ await sqliteStore.setBatch([
 console.error('Failed to save data locally.', _safeErr(rollbackError));
 showToast('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
-// The batch record was already saved (and queued for the cloud) before the inventory write failed. Undo that
-// too, or other devices would see a batch whose materials were never taken out of inventory.
 if (_histSavedRec) {
 try {
 if (_ed) await unifiedSave('factory_production_history', factoryProductionHistory, _ed.original);
@@ -1335,7 +1338,6 @@ const _lk = await findCalcLinkForReturn(entryToDelete);
 if (_lk) { showToast(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning', 6000); return; }
 }
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
-// A return is two records. Only its stock_returns LOG counts toward stock, so find it: both go together.
 const _retLog = isReturn ? findReturnLogFor(entryToDelete, ensureArray(await sqliteStore.get('stock_returns'))) : null;
 const _stockDrop = isReturn ? getReturnStockDrop(entryToDelete, _retLog) : (entryToDelete.net || 0);
 if (_stockDrop > 0 && typeof window.computeStoreStockSnapshot === 'function') {
@@ -1369,7 +1371,6 @@ if (record) { record.deletedAt = getTimestamp(); record.updatedAt = getTimestamp
 const dbWithoutDeleted = db.filter(item => item.id !== id);
 let _snapRec = record || null;
 if (isReturn && record) {
-// Deleted from the Production tab (not by reversing a calculator record): it may be recovered as a pair.
 const _grp = newGroupId('ret');
 _snapRec = stampGroup({ ...record, [DELETE_ORIGIN_FIELD]: 'prod-tab' }, _grp);
 if (_retLog) {

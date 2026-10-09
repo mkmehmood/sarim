@@ -24,6 +24,7 @@ export function _set_currentRepAnalyticsMode(v) { currentRepAnalyticsMode = v; w
 });
 
 const _bioIsOn = (v) => v === true || v === 'true';
+
 export async function syncBiometricButton() {
 const btn = document.getElementById('bio-toggle-btn');
 if (!btn) return;
@@ -34,6 +35,7 @@ if (lbl) lbl.textContent = on ? 'Disable Fingerprint Lock' : 'Enable Fingerprint
 btn.classList.toggle('active', on);
 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
 }
+
 export async function toggleBiometricLock() {
 let on = false;
 try { on = _bioIsOn(await sqliteStore.get('bio_enabled')); } catch (_) {}
@@ -41,6 +43,7 @@ if (on) await disableBiometricLock();
 else await enableBiometricLock();
 await syncBiometricButton();
 }
+
 export async function enableBiometricLock() {
 try {
 const success = await BiometricAuth.register("Manager");
@@ -149,6 +152,7 @@ set('rep-new-cust-phone', rec.customerPhone);
 }
 beginEditMode('repsale', rec, { buttonId: 'btn-save-rep-transaction', watchIds: ['rep-cust-name','rep-quantity','rep-amount-collected','rep-date','rep-new-cust-phone'], label: 'Update Transaction', anchorId: 'rep-cust-name', cancelFn: _resetRepForm });
 }
+
 registerEditHandler('repsale', startEditRepSale);
 
 export function setRepMode(mode) {
@@ -174,7 +178,9 @@ document.getElementById('rep-cust-name').value = name;
 document.getElementById('rep-customer-search-results').classList.add('hidden');
 calculateRepCustomerStats(name);
 }
+
 window._selectRepCustomerBase = selectRepCustomer;
+
 export async function calculateRepCustomerStatsForDisplay(name) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
@@ -535,9 +541,11 @@ if (typeof showToast === 'function') {
 showToast(`Location confirmed for ${customerName} after 3 consistent visits.`, 'success');
 }
 }
+
 export let repMap = null;
 export let repMapMarkers = [];
 export let repPolyline = null;
+
 export function getPosition() {
 return new Promise((resolve, reject) => {
 if (!navigator.geolocation) {

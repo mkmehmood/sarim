@@ -1,9 +1,11 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+
 import {
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, collectionPartialCash,
   getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection, collectionCollected,
 } from '../modules/link-graph.js';
+
 import { debtDelta } from '../modules/finance.js';
 
 const credit = (id, date, value) => ({ id, date, timestamp: Date.parse(date), paymentType: 'CREDIT', creditReceived: false, totalValue: value });

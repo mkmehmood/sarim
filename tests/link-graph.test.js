@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+
 import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
@@ -260,7 +261,6 @@ describe('production returns are a pair', () => {
       { id: 'l3', store: 'B', date: '2026-01-05', quantity: 12, createdAt: 111 },
     ];
     assert.equal(findReturnLogFor(entry, logs).id, 'l2');
-    // no matching timestamp: fall back to the seller, then to the first same store/date/qty log
     assert.equal(findReturnLogFor({ ...entry, createdAt: 5, returnedBy: 'Ali' }, logs).id, 'l2');
     assert.equal(findReturnLogFor({ ...entry, createdAt: 5, returnedBy: 'Nobody' }, logs).id, 'l1');
   });
@@ -301,7 +301,7 @@ describe('expandGroups (erase / recover together)', () => {
 describe('supplier payables stay tied to what was invoiced', () => {
   const inTx = (id, mat, amt) => ({ id, type: 'IN', isPayable: true, entityId: 'S', materialId: mat, amount: amt });
   it('uses the invoiced amount even after batches used the stock up', () => {
-    const mat = { id: 'm1', totalValue: 200, quantity: 20, cost: 10 }; // was 1000 when bought
+    const mat = { id: 'm1', totalValue: 200, quantity: 20, cost: 10 };
     assert.equal(materialOriginalPayable(mat, [inTx('t', 'm1', 1000)]), 1000);
   });
   it('falls back to stock value only when nothing was invoiced', () => {
@@ -313,7 +313,7 @@ describe('supplier payables stay tied to what was invoiced', () => {
     assert.equal(findPayableInTxs([{ ...inTx('d', 'm1', 5), deletedAt: 1 }], 'm1', 'S').length, 0);
   });
   it('a payment cannot settle more than was invoiced because stock was consumed', () => {
-    const m1 = { id: 'm1', totalValue: 200 }; // consumed down from 1000
+    const m1 = { id: 'm1', totalValue: 200 };
     const txs = [inTx('t', 'm1', 1000)];
     allocatePayments([m1], [{ amount: 400, date: '2026-02-01' }], m => materialOriginalPayable(m, txs));
     assert.equal(m1.totalPayable, 600);

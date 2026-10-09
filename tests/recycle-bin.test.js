@@ -8,6 +8,7 @@ const _UUID_RE = /^[a-z0-9][a-z0-9_-]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89a
 const _STD_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 let _seq = 0;
+
 function generateUUID(prefix = '') {
   const hex = (n, w) => n.toString(16).padStart(w, '0');
   const now = Date.now();

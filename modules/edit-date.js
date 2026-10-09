@@ -1,6 +1,3 @@
-// Resolve the date to show in a date picker when an existing record is opened for editing.
-// Uses the record's original date; falls back to its creation time so the picker is never empty.
-// Returns a local 'YYYY-MM-DD' string (the only format <input type="date"> accepts), or ''.
 const _pad = n => String(n).padStart(2, '0');
 const _local = d => d.getFullYear() + '-' + _pad(d.getMonth() + 1) + '-' + _pad(d.getDate());
 

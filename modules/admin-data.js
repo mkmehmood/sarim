@@ -495,6 +495,7 @@ if (typeof pendingFirestoreYearClose === 'undefined') var pendingFirestoreYearCl
 if (typeof pendingFirestoreRestore === 'undefined') var pendingFirestoreRestore = false;
 
 if (typeof _hasMergeCommitFailure === 'undefined') var _hasMergeCommitFailure = false;
+
 export function _storeCodeToLabel(c) {
   if (c === 'STORE_A') return 'ZUBAIR';
   if (c === 'STORE_B') return 'MAHMOOD';
@@ -2975,6 +2976,7 @@ showToast(' No duplicates found! Data is clean.', 'success');
 }
 return results;
 }
+
 export function dbvShowTab(i) {
   [0,1,2,3].forEach(j => {
     const p = document.getElementById('dbv-pane-'+j);
@@ -2986,11 +2988,13 @@ export function dbvShowTab(i) {
     }
   });
 }
+
 window.dbvShowTab = dbvShowTab;
 
 window.showDeltaSyncDetails = showDeltaSyncDetails;
 window.verifyTimestampConsistency = verifyTimestampConsistency;
 window.deduplicateAllData = deduplicateAllData;
+
 export async function verifyCompleteTimestampConsistency() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -3250,7 +3254,9 @@ if (!isNaN(time)) return time;
 }
 return 0;
 }
+
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
+
 export async function runUnifiedCleanup() {
   const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
   const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -3396,6 +3402,7 @@ try {
   showToast('\u26a0 Cleanup failed: ' + err.message, 'error', 6000);
 }
 }
+
 window.runUnifiedCleanup = runUnifiedCleanup;
 window._showDeltaSyncDetails = showDeltaSyncDetails;
 window._runUnifiedCleanup = runUnifiedCleanup;

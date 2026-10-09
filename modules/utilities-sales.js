@@ -534,11 +534,9 @@ message += ' (Material purchase settled - liability reduced)';
 }
 } catch (error) {
 if (_payPersisted) {
-// The payment IS saved. A screen refresh failing must not be reported as a failed payment.
 console.warn('[savePaymentTransaction] saved, but a screen refresh failed:', error && error.message);
 message = (message || 'Payment saved') + ' (some screens could not refresh - reload to see everything)';
 } else {
-// Put the supplier materials back exactly as they were: they were settled before the payment was written.
 try {
 if (_payRecord) { const pi = paymentTransactions.findIndex(t => t && t.id === _payRecord.id); if (pi !== -1) paymentTransactions.splice(pi, 1); }
 for (const mid of _savedMatIds) {
@@ -606,15 +604,13 @@ notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
-// The supplier payables are derived from the payment records, so re-derive them: whatever step failed, the
-// materials and the payments agree again afterwards.
 try {
 const _healTx = ensureArray(await sqliteStore.get('payment_transactions'));
 const _healInv = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const _healTarget = _healTx.find(t => t && t.id === id);
 if (_healTarget && _healTarget.entityId) await _recomputeSupplierPayables([String(_healTarget.entityId)], _healInv, _healTx, new Set(), new Set((_healTarget.materialIds || []).map(String)));
 await _refreshSupplierLinkViews();
-} catch (_) { /* best effort */ }
+} catch (_) { }
 showToast(" Failed to delete transaction. Please try again.", "error");
 }
 }
@@ -1074,7 +1070,7 @@ cashRatioElement.textContent = (cashRatio === null || cashRatio === undefined) ?
 }
 
 let _saleSaveInFlight = false;
-// A second tap while the first save is still running would record the sale twice.
+
 export async function saveCustomerSale() {
 if (_saleSaveInFlight) return;
 _saleSaveInFlight = true;
@@ -1228,7 +1224,6 @@ saleRecord.date = o.date;
 saleRecord.time = o.time;
 saleRecord.currentRepProfile = o.currentRepProfile || 'admin';
 if (o.partialPaymentReceived) saleRecord.partialPaymentReceived = o.partialPaymentReceived;
-// Editing must not silently un-pay a credit sale that was already settled.
 applySettlement(saleRecord, planEditSettlement(o, paymentType));
 }
 if (_ed) {
@@ -1348,6 +1343,7 @@ set('new-cust-phone', rec.customerPhone);
 updateCollectionPreview();
 beginEditMode('collection', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Collection', watchIds: ['cust-name','cust-amount-collected','cust-date','new-cust-phone'], anchorId: 'cust-amount-collected', cancelFn: _resetSaleForm });
 }
+
 registerEditHandler('sale', startEditSale);
 registerEditHandler('collection', startEditCollection);
 
@@ -1379,6 +1375,7 @@ if (rec.grossWt && typeof window.calcNet === 'function') window.calcNet();
 if (typeof window.calculateDynamicProductionCost === 'function') await window.calculateDynamicProductionCost();
 beginEditMode('prod', rec, { buttonId: 'btn-save-production', watchIds: ['sys-date','storeSelector','formula-units','gross-wt','cont-wt','net-wt'], label: 'Update Production', anchorId: 'sys-date', cancelFn: _resetProdForm });
 }
+
 registerEditHandler('prod', startEditProd);
 
 export function setSaleMode(mode) {
@@ -1596,6 +1593,7 @@ export const _DEFAULT_STORES = [
   { key: 'STORE_B', name: 'MAHMOOD',  formulaType: 'standard' },
   { key: 'STORE_C', name: 'ASAAN',    formulaType: 'asaan'    },
 ];
+
 export let _storesCache = null;
 export let _storesCacheTs = 0;
 export const _STORES_CACHE_TTL = 3000;
@@ -1612,6 +1610,7 @@ export async function getAppStores() {
   _storesCacheTs = now;
   return _storesCache;
 }
+
 export function _invalidateStoresCache() { _storesCache = null; _storesCacheTs = 0; }
 window._invalidateStoresCache = _invalidateStoresCache;
 window.getAppStores = getAppStores;
@@ -1628,16 +1627,19 @@ export function getStoreLabel(storeCode) {
     default: return storeCode || '';
   }
 }
+
 export async function getStoreLabelAsync(storeCode) {
   const stores = await getAppStores();
   const f = stores.find(s => s.key === storeCode);
   return f ? f.name : (storeCode || '');
 }
+
 export async function getStoreFormulaType(storeCode) {
   const stores = await getAppStores();
   const f = stores.find(s => s.key === storeCode);
   return f ? (f.formulaType || 'standard') : 'standard';
 }
+
 window.getStoreFormulaType = getStoreFormulaType;
 
 export async function rebuildStoreUI() {
@@ -1684,6 +1686,7 @@ export async function rebuildStoreUI() {
 
   if (typeof window.refreshFormulaDependentUI === 'function') await window.refreshFormulaDependentUI();
 }
+
 window.rebuildStoreUI = rebuildStoreUI;
 
 export async function getAvailableStoresForDate(date) {
@@ -1991,6 +1994,7 @@ export const firebaseConfig = {
   messagingSenderId: "124313576124",
   appId: "1:124313576124:web:fb721bb61bc19b51db26b9"
 };
+
 export async function loadFirestoreStats() {
 try {
 const saved = await sqliteStore.get('firestore_stats', null);
@@ -2009,12 +2013,14 @@ firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 export function saveFirestoreStats() {
 sqliteStore.set('firestore_stats', firestoreStats).catch(() => {});
 }
+
 export let firestoreStats = {
 reads: 0,
 writes: 0,
 history: [],
 lastReset: Date.now()
 };
+
 export function checkAndAutoResetFirestoreStats() {
 const now = Date.now();
 const hoursSinceReset = (now - firestoreStats.lastReset) / (1000 * 60 * 60);
@@ -2026,11 +2032,13 @@ firestoreStats.lastReset = now;
 saveFirestoreStats();
 }
 }
+
 export const FIRESTORE_THRESHOLDS = {
   reads:  { warn: 40000, critical: 48000 },
   writes: { warn: 16000, critical: 19000 },
   _alerted: { reads_warn: false, reads_critical: false, writes_warn: false, writes_critical: false }
 };
+
 export function _checkFirestoreCostThresholds() {
   const r = firestoreStats.reads;
   const w = firestoreStats.writes;
@@ -2082,7 +2090,9 @@ export function resetFirestoreStats() {
 firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 saveFirestoreStats();
 }
+
 export const originalOpenDataMenu = window.openDataMenu;
+
 window.openDataMenu = function() {
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof performOneClickSync === 'function') {
@@ -2091,6 +2101,7 @@ performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error
 originalOpenDataMenu();
 }
 };
+
 export const DeltaSync = {
 _cache: {},
 _cacheGet(key) {
@@ -2358,6 +2369,7 @@ async recordOperation(collection, reads = 0, writes = 0) {
   await sqliteStore.set('deltaSyncStats', stats);
 }
 };
+
 export async function initializeSyncStatsIfNeeded() {
 const stats = await DeltaSync.getSyncStats();
 const hasStats = Object.keys(stats).length > 0;
@@ -2553,6 +2565,7 @@ export const UUIDSyncRegistry = (() => {
 window.UUIDSyncRegistry = UUIDSyncRegistry;
 
 updateSyncButton();
+
 export function addSignOutButton() {
 removeSignOutButton();
 const systemControls = document.querySelector('.system-controls');
@@ -2640,7 +2653,7 @@ return { saleId: id };
 }
 
 let _calcSaveInFlight = false;
-// A second tap while the first save is running would record the settlement, return, transfer and CHORA twice.
+
 export async function saveTransaction() {
 if (_calcSaveInFlight) return;
 _calcSaveInFlight = true;
@@ -2851,7 +2864,6 @@ if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 }
 } catch (error) {
 if (_persisted) {
-// The record IS saved. A screen refresh failing must never undo the return, transfer, CHORA and settled sales it claims.
 console.warn('[saveTransaction] saved, but a screen refresh failed:', error && error.message);
 showToast('Saved. Some screens could not refresh - reload to see everything.', 'warning', 5000);
 } else {
@@ -3067,7 +3079,6 @@ export async function markAllPendingCreditSalesAsCash(seller, reconciledCustomer
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 if (!seller || seller === 'COMBINED') return [];
 const linkedIds = [];
-// settledAt lets a recovered calculator record keep the date its sales were originally settled on.
 const now = (settledAt instanceof Date && !isNaN(settledAt.getTime())) ? settledAt : new Date();
 const receivedDate = localDateStr(now);
 const receivedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -5048,6 +5059,7 @@ renderRepCustomerTable();
 }
 }
 }
+
 (function() {
 const scrollableElements = new WeakSet();
 window.smoothScrollTo = function(target, options = {}) {
@@ -5096,12 +5108,14 @@ window.getScrollY = function() {
 return lastScrollY;
 };
 })();
+
 export function enableGPUAcceleration(element) {
 if (!element) return;
 element.style.transform = 'translateZ(0)';
 element.style.willChange = 'transform';
 element.style.backfaceVisibility = 'hidden';
 }
+
 export const DOMBatch = {
 reads: [],
 writes: [],
@@ -5131,6 +5145,7 @@ write();
 this.scheduled = false;
 }
 };
+
 export const lazyLoadObserver = new IntersectionObserver((entries) => {
 entries.forEach(entry => {
 if (entry.isIntersecting) {
@@ -5146,6 +5161,7 @@ root: null,
 rootMargin: '50px',
 threshold: 0.1
 });
+
 export function observeLazyLoad(element) {
 if (element) {
 lazyLoadObserver.observe(element);
@@ -5194,8 +5210,10 @@ right: [{ transform: 'translateX(-20px)', opacity: 0 }, { transform: 'translateX
 element.style.display = '';
 return animateElement(element, transforms[direction] || transforms.up, { duration });
 }
+
 export let frameCount = 0;
 export let lastTime = performance.now();
+
 export function measureFPS() {
 frameCount++;
 const currentTime = performance.now();
@@ -5409,10 +5427,12 @@ function _recordUnitWeight(item, fallbackWeight) {
 if (item && Array.isArray(item.formulaMaterials)) return item.formulaMaterials.reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0);
 return fallbackWeight;
 }
+
 function _prodSlot(entry, storeFormulaMap) {
 const ft = entry.formulaStore || storeFormulaMap[entry.store] || (entry.store === 'STORE_C' ? 'asaan' : 'standard');
 return ft === 'asaan' ? 'asaan' : 'standard';
 }
+
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -6626,6 +6646,7 @@ if (effDate === date && s.supplyStore === store) sales += s.quantity || 0;
 const available = production + returns - sales;
 return { production, returns, sales, available };
 }
+
 window.computeStoreStockSnapshot = computeStoreStockSnapshot;
 
 export async function prepareStockTransferScreen() {
@@ -6662,6 +6683,7 @@ const noteInput = document.getElementById('stock-transfer-note'); if (noteInput)
 await updateStockTransferAvailability();
 await renderStockTransferHistory();
 }
+
 window.prepareStockTransferScreen = prepareStockTransferScreen;
 
 export async function updateStockTransferAvailability() {
@@ -6674,6 +6696,7 @@ const snap = await computeStoreStockSnapshot(fromStore, date);
 el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${getStoreLabel(fromStore)} on ${date}`;
 el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
+
 window.updateStockTransferAvailability = updateStockTransferAvailability;
 
 export function saveStockTransfer(...a) { return runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)); }
@@ -6763,6 +6786,7 @@ if (typeof refreshUI === 'function') { try { await refreshUI(); } catch (_) {} }
 if (typeof syncFactoryProductionStats === 'function') { try { await syncFactoryProductionStats(); } catch (_) {} }
 triggerAutoSync();
 }
+
 window.saveStockTransfer = saveStockTransfer;
 
 function _resetStockTransferForm() {
@@ -6792,6 +6816,7 @@ set('stock-transfer-note', out.transferNote || '');
 beginEditMode('stocktransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-stock-transfer', watchIds: ['stock-transfer-from-value','stock-transfer-to-value','stock-transfer-date','stock-transfer-qty','stock-transfer-note'], label: 'Update Transfer', anchorId: 'stock-transfer-qty', cancelFn: _resetStockTransferForm });
 await updateStockTransferAvailability();
 }
+
 registerEditHandler('stocktransfer', startEditStockTransfer, { keepScreens: ['stock-transfer-screen'] });
 
 export async function renderStockTransferHistory() {
@@ -6822,6 +6847,7 @@ fragment.appendChild(div);
 });
 list.replaceChildren(fragment);
 }
+
 window.renderStockTransferHistory = renderStockTransferHistory;
 
 export async function deleteStockTransfer(pairId) {
@@ -6860,6 +6886,7 @@ showToast('Stock transfer removed', 'success');
 showToast('Failed to remove transfer. Please try again.', 'error');
 }
 }
+
 window.deleteStockTransfer = deleteStockTransfer;
 
 window.setCashTrackerMode = setCashTrackerMode;

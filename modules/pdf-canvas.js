@@ -5,6 +5,7 @@ const FONT_TABLE = {
   F5: ['courier', ''], F6: ['courier', 'bold'], F7: ['courier', 'italic'], F8: ['courier', 'bold italic'],
   F9: ['times', ''], F10: ['times', 'bold'], F11: ['times', 'italic'], F12: ['times', 'bold italic']
 };
+
 const FAMILY = {
   helvetica: 'Helvetica, Arial, "Liberation Sans", "Noto Sans", Roboto, sans-serif',
   courier: '"Courier New", Courier, "Liberation Mono", monospace',

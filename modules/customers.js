@@ -22,7 +22,9 @@ if(typeof calculateCustomerStatsForDisplay === 'function') {
 calculateCustomerStatsForDisplay(name);
 }
 }
+
 window._selectCustomerBase = selectCustomer;
+
 export async function calculateCustomerStatsForDisplay(name) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -182,6 +184,7 @@ _setCustH('customers-total-quantity', fmtNum(safeNumber(totalGlobalQty, 0)) + ' 
 
 export let currentManagingCustomer = null;
 export let currentManagingRepCustomer = null;
+
 export async function openCustomerManagement(customerName) {
 currentManagingCustomer = customerName;
 const _setMCT = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -699,16 +702,20 @@ calculatePaymentSummaries();
 refreshEntityBalances();
 updateUnitsAvailableIndicator();
 }
+
 export const toastContainer = document.createElement('div');
 toastContainer.className = 'toast-container';
 document.body.appendChild(toastContainer);
+
 export function _ensureToastOnTop() {
   if (document.body.lastElementChild !== toastContainer) {
     document.body.appendChild(toastContainer);
   }
 }
+
 export const _toastQueue = [];
 export let _toastActive = false;
+
 export function _playNextToast() {
 if (_toastActive || _toastQueue.length === 0) return;
 _toastActive = true;
@@ -769,6 +776,7 @@ _toastQueue.push({ message, type, duration });
 _playNextToast();
 if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type);
 }
+
 window.showToast = showToast;
 
 export function showChoiceDialog(message, choices, { title = 'Choose', cancelText = 'Cancel', icon = null } = {}) {
@@ -813,6 +821,7 @@ ${list.map((c, i) => `<button class="glass-confirm-btn ${i === 0 ? 'primary ' : 
     backdrop.addEventListener('click', e => { if (e.target === backdrop) cleanup(null); });
   });
 }
+
 window.showChoiceDialog = showChoiceDialog;
 
 export const _gcIcons = {
@@ -830,6 +839,7 @@ export const _gcIcons = {
   credit:   '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="8" width="28" height="19" rx="4" fill="var(--accent-gold)" fill-opacity="0.14" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round"/><rect x="3.8" y="12.6" width="26.4" height="4" fill="var(--accent-gold)" fill-opacity=".42"/><rect x="7" y="20" width="6" height="3.6" rx="1" fill="var(--accent)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="1.3" stroke-linejoin="round"/><circle cx="27" cy="26" r="6" fill="var(--accent)" fill-opacity="0.3" stroke="var(--accent)" stroke-width="1.7"/><path d="M27 23.2V28.8M24.8 25.1C26 24 28.4 24.3 28.4 25.6S25.4 26.8 25.6 28C26.5 28.7 28.6 28.4 29 27.6" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31.5 1.7Q31.5 4.5 34.3 4.5Q31.5 4.5 31.5 7.3Q31.5 4.5 28.7 4.5Q31.5 4.5 31.5 1.7Z" fill="var(--accent)"/></svg>',
   confirm:  '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>',
 };
+
 const _GC_WARN_RE = /warning|insufficient|exceed|over-?collect|overpay|high credit|caution|unsaved|mismatch|cannot|can't|not enough|shortage|short by|already (used|sold|has)|outstanding/i;
 
 export function _gcPickTone(title, message, confirmText, danger, tone) {
@@ -948,7 +958,9 @@ if (btn) btn.focus();
 }, 60);
 });
 }
+
 window.showGlassConfirm = showGlassConfirm;
+
 if (typeof window._onShowGlassConfirmReady === 'function') {
 window._onShowGlassConfirmReady();
 }

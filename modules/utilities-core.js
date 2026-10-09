@@ -56,6 +56,7 @@ if (salesCompChart) salesCompChart.update();
 if (indPerformanceChart) indPerformanceChart.update();
 showToast(newTheme === 'dark' ? ' Dark mode enabled' : 'Light mode enabled', 'info', 2000);
 }
+
 export const syncState = {
 lastUpdate: {
 production: 0,
@@ -68,6 +69,7 @@ entities: 0
 isRefreshing: false,
 pendingUpdates: new Set()
 };
+
 export const OfflineQueue = {
 queue: [],
 deadLetterQueue: [],
@@ -400,6 +402,7 @@ finalError: item.finalError
 };
 }
 };
+
 if (typeof window._firestoreNetworkDisabled === 'undefined') window._firestoreNetworkDisabled = false;
 
 export function updateOfflineBanner() {
@@ -509,6 +512,7 @@ window._isSlowConnection = isSlow;
 window._slowConnectionDetail = detail || null;
 updateOfflineBanner();
 }
+
 (function patchOfflineQueueAdd() {
 const _origAdd = OfflineQueue.add.bind(OfflineQueue);
 OfflineQueue.add = async function(operation) {
@@ -528,6 +532,7 @@ showToast(' Offline changes synced', 'success', 3000);
 return result;
 };
 })();
+
 if ('serviceWorker' in navigator) {
 navigator.serviceWorker.addEventListener('message', (event) => {
 if (event.data && event.data.type === 'PROCESS_QUEUE') {
@@ -537,6 +542,7 @@ OfflineQueue.processQueue().catch(() => {});
 }
 });
 }
+
 window.addEventListener('online', async () => {
 updateOfflineBanner();
 if (typeof firebaseDB !== 'undefined' && firebaseDB) {
@@ -570,6 +576,7 @@ if (typeof updateOfflineBanner === 'function') updateOfflineBanner();
 }, 2000);
 showToast(' Back online — syncing…', 'success', 3000);
 });
+
 window.addEventListener('offline', async () => {
 updateOfflineBanner();
 if (typeof firebaseDB !== 'undefined' && firebaseDB) {
@@ -661,6 +668,7 @@ if (typeof updateOfflineBanner === 'function') updateOfflineBanner();
 if (typeof triggerAutoSync === 'function') triggerAutoSync();
 } catch(e) {  }
 }, APP_CONFIG.OFFLINE_MAX_BACKOFF_MS);
+
 export function notifyDataChange(dataType) {
 syncState.lastUpdate[dataType] = Date.now();
 syncState.pendingUpdates.add(dataType);
@@ -671,8 +679,10 @@ if (typeof triggerSeamlessBackup === 'function') {
 triggerSeamlessBackup();
 }
 }
+
 export let autoSyncTimeout = null;
 export const AUTO_SYNC_DELAY = 5000;
+
 export async function invalidateAllCaches() {
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
 try {
@@ -733,7 +743,9 @@ export async function updateSettingTimestamp(settingName) {
 const timestamp = getTimestamp();
 await sqliteStore.set(`${settingName}_timestamp`, timestamp);
 }
+
 export const _tabSyncInProgress = {};
+
 export function processSync() {
 if (syncState.isRefreshing || syncState.pendingUpdates.size === 0) return;
 syncState.isRefreshing = true;
@@ -870,6 +882,7 @@ console.error('Calculation failed.', _safeErr(error));
 showToast('Dashboard calculation failed: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 }
+
 export async function syncCalculatorTab() {
 try {
 if (typeof loadSalesData === 'function') await loadSalesData(currentCompMode);
@@ -943,6 +956,7 @@ if (typeof renderRepCustomerTable === 'function') setTimeout(renderRepCustomerTa
 
 export function stopPeriodicSync() {
 }
+
 export const RefreshDebouncer = {
 timers: {
 production: null,
@@ -977,31 +991,37 @@ this.timers[tab] = null;
 callback();
 }
 };
+
 window.debouncedRefreshUI = function() {
 RefreshDebouncer.debounce('production', () => {
 if (typeof refreshUI === 'function') refreshUI();
 });
 };
+
 window.debouncedRefreshCustomerSales = function() {
 RefreshDebouncer.debounce('sales', () => {
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 });
 };
+
 window.debouncedRefreshFactoryTab = function() {
 RefreshDebouncer.debounce('factory', () => {
 if (typeof refreshFactoryTab === 'function') refreshFactoryTab();
 });
 };
+
 window.debouncedRefreshPaymentTab = function() {
 RefreshDebouncer.debounce('payments', () => {
 if (typeof refreshPaymentTab === 'function') refreshPaymentTab();
 });
 };
+
 window.debouncedRefreshRepUI = function() {
 RefreshDebouncer.debounce('rep', () => {
 if (typeof refreshRepUI === 'function') refreshRepUI();
 });
 };
+
 export async function reloadDataFromStorage() {
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -1022,20 +1042,25 @@ console.error('Failed to load app data.', _safeErr(error));
 showToast('Failed to load app data: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 }
+
 window.forceSync = async function() {
 await reloadDataFromStorage();
 syncState.pendingUpdates.add('all');
 processSync();
 };
+
 setTimeout(() => { try { triggerAutoSync(); } catch (_) {} }, 1000);
+
 window._notifyOnTabChange = function(tab) {
 setTimeout(() => {
 if (typeof notifyDataChange === 'function') notifyDataChange(tab);
 }, 150);
 };
+
 window.addEventListener('beforeunload', function() {
 if (typeof stopPeriodicSync === 'function') stopPeriodicSync();
 });
+
 export let defaultSettings = {
 production: {
 STORE_A: { cost: 0, sale: 0 },
@@ -1049,12 +1074,14 @@ return calc;
 },
 sales: { cost: 0, sale: 0 }
 };
+
 export let mfgBarChart = null, mfgPieChart = null, salesPerfChart = null, salesCompChart = null;
 export let custSalesChart = null, custPaymentChart = null;
 export let storeComparisonChart = null;
 export let indPerformanceChart = null;
 
 export const _UI_STATE_KEY = 'ui_state';
+
 export const _UI_DEFAULTS = {
   currentMfgMode: 'week',
   currentCompMode: 'all',
@@ -1082,6 +1109,7 @@ export const _UI_DEFAULTS = {
   selectedEntityId: null,
   currentFactoryDate: localDateStr(),
 };
+
 export let _uiState = { ..._UI_DEFAULTS };
 
 export function getUI(key) {
@@ -1133,7 +1161,9 @@ Object.defineProperties(window, {
   selectedEntityId:             { get: () => getUI('selectedEntityId'),             set: v => setUI('selectedEntityId', v),             configurable: true },
   currentFactoryDate:           { get: () => getUI('currentFactoryDate'),           set: v => setUI('currentFactoryDate', v),           configurable: true },
 });
+
 export const splashQuotes = (typeof window !== 'undefined' && window.__splashQuotes) || [];
+
 export function initSplashScreen() {
 if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 }
@@ -1606,6 +1636,7 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_prod
   } catch(e) {   }
   return result;
 }
+
 _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
   const result = { displayName: null, displayDetail: null, displayAmount: null };
   if (!snapshotObj) return result;
@@ -1692,6 +1723,7 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
   } catch(e) {   }
   return result;
 };
+
 export async function uploadDeletionToCloud(deletionRecord) {
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
 if (!firebaseDB || typeof currentUser === 'undefined' || !currentUser) {
@@ -2087,12 +2119,14 @@ export async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
 }
 
 const _supplierMatOriginal = (m) => parseFloat((m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : (m.quantity || 0) * (m.cost || 0)) || 0).toFixed(2));
+
 const _txMaterialIds = (t) => {
 const ids = new Set();
 if (t && t.materialId) ids.add(String(t.materialId));
 if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
 return ids;
 };
+
 const _clearMaterialSupplier = (m) => {
 delete m.supplierId;
 delete m.supplierName;
@@ -2104,6 +2138,7 @@ m.paymentStatus = 'pending';
 m.updatedAt = getTimestamp();
 ensureRecordIntegrity(m, true);
 };
+
 export async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
 const saved = [];
 for (const sid of supplierIds) {
@@ -2116,7 +2151,6 @@ const skip = skipMaterialIds || new Set();
 const mats = inventory.filter(m => !skip.has(String(m.id)) && (String(m.supplierId) === String(sid) || (!m.supplierId && ids.has(String(m.id)))));
 if (mats.length === 0) continue;
 mats.sort((a, b) => new Date(a.purchaseDate || a.createdAt || 0) - new Date(b.purchaseDate || b.createdAt || 0));
-// What a material owes is what was INVOICED (its IN payable), not its shrinking stock value.
 const invoices = transactions.filter(t => !excludeIds.has(String(t.id)) && String(t.entityId) === String(sid));
 allocatePayments(mats, payments, m => materialOriginalPayable(m, invoices));
 for (const m of mats) {
@@ -2223,8 +2257,7 @@ return changed || saved.length > 0;
 }
 
 let _ensuringSupplierInvoices = false;
-// Every raw material linked to a supplier must be visible in that supplier's entity details and payment history.
-// If a linked, still-owed material has no live invoice (Payment IN) transaction, recreate it.
+
 export async function _ensureSupplierInvoices() {
 if (_ensuringSupplierInvoices) return 0;
 _ensuringSupplierInvoices = true;
@@ -2519,6 +2552,7 @@ export function _pdfDrawMergedSectionHeader(doc, yPos, pageW, label) {
   doc.setTextColor(80, 80, 80);
   return yPos + 16;
 }
+
 export const PDF_MERGED_HDR_COLOR  = [126, 34, 206];
 export const PDF_MERGED_ROW_COLOR  = [245, 235, 255];
 export const PDF_MERGED_TEXT_COLOR = [126, 34, 206];
@@ -2596,14 +2630,17 @@ const _URDU_HEADS = {
   'outstanding': 'بقایا', 'settled': 'ادا شدہ',
   'invoice amt': 'انوائس رقم', 'paid so far': 'اب تک ادا', 'remaining': 'باقی', 'status': 'حالت'
 };
+
 const _URDU_RANGES = {
   'All Time': 'تمام وقت', 'Today': 'آج', 'This Week': 'اس ہفتے', 'This Month': 'اس مہینے', 'This Year': 'اس سال'
 };
+
 const _URDU_TITLES = {
   'Account Statement': 'اکاؤنٹ اسٹیٹمنٹ',
   'Customer Account Statement': 'کسٹمر اکاؤنٹ اسٹیٹمنٹ',
   'Rep Customer Account Statement': 'ریپ کسٹمر اکاؤنٹ اسٹیٹمنٹ'
 };
+
 const _URDU_VALUE_RULES = [
   [/^[\u21a9\u2714]\s*(Credit Purchase|Supplier Pmt)\s*/i, ''],
   [/Opening Balance\s*\(All activity before this period\)/i, 'ابتدائی بیلنس (اس مدت سے پہلے کا)'],
@@ -2623,6 +2660,7 @@ const _URDU_VALUE_RULES = [
   [/\bkg\b/gi, 'کلو'],
   [/^Prior$/, 'پچھلا']
 ];
+
 function _urduValue(v) {
   let out = String(v == null ? '' : v);
   _URDU_VALUE_RULES.forEach(([re, rep]) => { out = out.replace(re, rep); });
@@ -2634,10 +2672,12 @@ const _LRI = '\u2066';
 const _PDI = '\u2069';
 const _HAS_URDU = /[\u0600-\u06FF]/;
 const _AMOUNT_ONLY = /^(Rs\.?\s*)?[\d,]+(\.\d+)?$/i;
+
 function _ltr(v) {
   const t = String(v == null ? '' : v);
   return t ? _LRI + t + _PDI : t;
 }
+
 function _bidiValue(v) {
   const t = String(v == null ? '' : v);
   if (!t) return t;
@@ -2724,6 +2764,7 @@ export async function promptStatementShare(kind) {
   if (kind === 'customer') return exportCustomerToPDF(opts);
   if (kind === 'rep' && typeof window.exportRepCustomerToPDF === 'function') return window.exportRepCustomerToPDF(opts);
 }
+
 window.promptStatementShare = promptStatementShare;
 
 export async function exportEntityToPDF(opts = {}) {
@@ -3480,12 +3521,14 @@ if (_textMode) {
 showToast("Error generating PDF: " + error.message, "error");
 }
 }
+
 export const SCRIPT_INTEGRITY = {
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js':
     'sha256-mMzxeqEMILsTAXYmGPzJtqs6Tn8mtgcdZNC0EVTfOHU=',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js':
     'sha256-iQWUsO+u9rPj2uc1m13fZG9V4W2wef4jIt5gMh2dRac='
 };
+
 export const _scriptLoadPromises = {};
 
 export let _photoCaptureTarget = null;
@@ -3603,8 +3646,6 @@ export async function _compressPhoto(dataUrl, maxDim, quality) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       let out = canvas.toDataURL('image/jpeg', quality);
-      // Firestore docs are capped at 1 MiB: keep each photo under PHOTO_MAX_CHARS
-      // by lowering quality, then dimensions, until it fits.
       let q = quality, cw = w, ch = h;
       for (let i = 0; i < 6 && out.length > PHOTO_MAX_CHARS; i++) {
         if (q > 0.5) q = Math.max(0.5, q - 0.1);
@@ -3688,6 +3729,7 @@ function _camApplyZoom(z) {
 }
 
 export function setCameraZoom(z) { _camApplyZoom(Number(z) || 1); }
+
 export function stepCameraZoom(dir) {
   const step = _camCaps.max > 6 ? 0.5 : 0.25;
   _camApplyZoom(_camZoom + dir * step * 2);
@@ -4162,6 +4204,7 @@ export function loadScript(url, integrity) {
   });
   return _scriptLoadPromises[url];
 }
+
 export const SarimChart = (() => {
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -4211,8 +4254,10 @@ export const SarimChart = (() => {
       this.options = cfg.options || {};
       if (this.el) { this.el.classList.add('sc-host'); this._render(); }
     }
+
     destroy() { if (this.el) { this.el.innerHTML = ''; this.el.classList.remove('sc-host'); } }
     update() { if (this.el) this._render(); }
+
     _render() {
       if (!this.el) return;
       const t = this.config.type;
@@ -4220,10 +4265,12 @@ export const SarimChart = (() => {
       else if (t === 'pie') this._pie();
       else if (t === 'line') this._line();
     }
+
     _titleHtml() {
       const p = this.options?.plugins?.title;
       return (p?.display && p?.text) ? `<div class="sc-title">${_esc(p.text)}</div>` : '';
     }
+
     _legendHtml(datasets, override) {
       if (this.options?.plugins?.legend?.display === false) return '';
       return '<div class="sc-legend">' + datasets.map((ds, i) => {
@@ -4231,6 +4278,7 @@ export const SarimChart = (() => {
         return `<div class="sc-legend-item"><span class="sc-legend-dot" style="background:${c}"></span><span>${_esc(ds.label||'')}</span></div>`;
       }).join('') + '</div>';
     }
+
     _bar() {
       const { datasets=[], labels=[] } = this.data;
       const stacked = !!this.options?.scales?.y?.stacked;
@@ -4281,6 +4329,7 @@ export const SarimChart = (() => {
 `;
       _bindTips(this.el);
     }
+
     _pie() {
       const { datasets=[], labels=[] } = this.data;
       if (!datasets.length) return;
@@ -4316,6 +4365,7 @@ export const SarimChart = (() => {
 `;
       _bindTips(this.el);
     }
+
     _line() {
       const { datasets=[], labels=[] } = this.data;
       if (!datasets.length || !labels.length) {

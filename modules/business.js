@@ -54,7 +54,9 @@ export function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
 export const esc = escapeHtml;
+
 export function _triggerFileDownload(blob, filename) {
   if (typeof window.navigator.msSaveBlob === 'function') {
     window.navigator.msSaveBlob(blob, filename);
@@ -96,6 +98,7 @@ export function _readFileAsText(file) {
     fr.readAsText(file);
   });
 }
+
 if (window.trustedTypes && window.trustedTypes.createPolicy) {
   window._gndHTMLPolicy = window.trustedTypes.createPolicy('gnd-html-policy', {
     createHTML: (s) => s
@@ -106,6 +109,7 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
 } else {
   window.setHTML = (el, html) => { el.innerHTML = html; };
 }
+
 export const CryptoEngine = (() => {
 
 const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);
@@ -229,6 +233,7 @@ return {
   }
 };
 })();
+
 export const _OPFSStore = (() => {
   const _SUPPORTED = typeof navigator !== 'undefined' &&
                      !!navigator.storage &&
@@ -299,6 +304,7 @@ export const OfflineAuth = {
     return true;
   }
 };
+
 export async function _checkFirebaseSessionExists() {
 try {
 const sessionFlag = sessionStorage.getItem('_gznd_session_active');
@@ -323,6 +329,7 @@ return false;
 return false;
 }
 }
+
 export const SQLiteCrypto = (() => {
   let _sessionKey = null;
   let _keyEmail = null;
@@ -649,6 +656,7 @@ export const SQLiteCrypto = (() => {
 SQLiteCrypto.preWarm();
 
 export const USE_IDB_ONLY = true;
+
 export function safeNumber(value, defaultValue = 0) {
 const num = Number(value);
 return (isNaN(num) || !isFinite(num)) ? defaultValue : num;
@@ -1917,11 +1925,13 @@ if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllUploadedIds === 
 DeltaSync.loadAllUploadedIds().catch(() => {});
 }
 }
+
 export const DEVICE_ID_COOKIE = 'gz_did';
 export const INSTALL_TOKEN_COOKIE = 'gz_itk';
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 3650;
 export const _CACHE_DEVICE_KEY = 'gz_device_anchor';
 export const _CACHE_STORE_NAME = 'gz-device-anchor-v1';
+
 export function _readCookie(name) {
 try {
 const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
@@ -1986,6 +1996,7 @@ try { return sessionStorage.getItem(key) || null; } catch (e) { return null; }
 export function _writeSession(key, value) {
 try { sessionStorage.setItem(key, value); } catch (e) {  }
 }
+
 export function _extractDeviceFirstLoginTime(deviceId) {
   if (!deviceId || typeof deviceId !== 'string') return null;
   const match = deviceId.match(/_(\d{13})$/);
@@ -1994,6 +2005,7 @@ export function _extractDeviceFirstLoginTime(deviceId) {
   if (!isFinite(ms) || ms < 1577836800000 || ms > 4102358400000) return null;
   return new Date(ms);
 }
+
 window._extractDeviceFirstLoginTime = _extractDeviceFirstLoginTime;
 
 export async function _persistDeviceId(deviceId) {
@@ -2026,6 +2038,7 @@ export async function _clearDeviceIdStorage() {
   _cachedDeviceShard = null;
   _deviceIdOwnerUid = null;
 }
+
 window._clearDeviceIdStorage = _clearDeviceIdStorage;
 
 export async function _recoverDeviceIdByFingerprint() {
@@ -2439,7 +2452,9 @@ userId: currentUser.uid
 console.warn('Firebase operation failed.', _safeErr(error));
 }
 }
+
 window.logDeviceActivity = logDeviceActivity;
+
 export async function initializeDeviceListeners() {
 try {
 setTimeout(() => {
@@ -2454,6 +2469,7 @@ setTimeout(() => {
   cleanupOldDeletions().catch(e => console.warn('[initializeDeviceListeners] cleanup failed:', _safeErr(e)));
 }, 5000);
 }
+
 window.initializeDeviceListeners = initializeDeviceListeners;
 currentUser = null; window.currentUser = currentUser;
 firebaseDB = null; window.firebaseDB = firebaseDB;
@@ -2473,12 +2489,14 @@ export const _MODE_CODES = {
   'factory':    '3',
   'userrole':   '4',
 };
+
 export const _MODE_LABELS = { '0':'admin', '1':'rep', '2':'production', '3':'factory', '4':'userrole' };
 
 export const _UUID_V5_NS = new Uint8Array([
   0x6b,0xa7,0xb8,0x10, 0x9d,0xad, 0x11,0xd1,
   0x80,0xb4, 0x00,0xc0,0x4f,0xd4,0x30,0xc8,
 ]);
+
 export let _cachedDeviceShard = null;
 export let _uuidLastMs = 0;
 export let _uuidSeq    = 0;
@@ -2532,6 +2550,7 @@ export function _encodeModeTag() {
 
 export let _uuidV5Cache   = null;
 export let _uuidV5Pending = false;
+
 export async function _refreshV5Cache() {
   if (_uuidV5Pending) return;
   _uuidV5Pending = true;
@@ -2671,6 +2690,7 @@ export function extractUUIDMeta(uuid) {
   }
   return null;
 }
+
 window.generateUUID       = generateUUID;
 window.validateUUID       = validateUUID;
 window.extractUUIDMeta    = extractUUIDMeta;
@@ -2678,6 +2698,7 @@ window.initUUIDSalts      = initUUIDSalts;
 deriveDeviceShard = _deriveDeviceShard; window.deriveDeviceShard = deriveDeviceShard;
 window._creatorBadgeHtml  = _creatorBadgeHtml;
 window._mergedBadgeHtml   = _mergedBadgeHtml;
+
 export function compareRecordVersions(a, b) {
   if (!a && !b) return 0;
   if (!a) return -1;
@@ -2715,7 +2736,9 @@ export function compareRecordVersions(a, b) {
   };
   return _fieldMs(a) - _fieldMs(b);
 }
+
 window.compareRecordVersions = compareRecordVersions;
+
 export function getTimestamp() {
 return Date.now();
 }
@@ -2887,6 +2910,7 @@ window.esc = esc;
 export function balanceAfterHtml(text, tone = 'neutral', label = 'Balance after') {
   return `<div class="txn-balance-after txn-balance-${tone}"><span>${esc(label)}</span><b>${esc(text)}</b></div>`;
 }
+
 window.balanceAfterHtml = balanceAfterHtml;
 window._triggerFileDownload = _triggerFileDownload;
 window._readFileAsArrayBuffer = _readFileAsArrayBuffer;

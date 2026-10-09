@@ -13,6 +13,7 @@ function check(ref, from) {
 }
 
 const html = readFileSync(join(base, 'index.html'), 'utf8');
+
 for (const m of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   const ref = m[1];
   if (/^(https?:|data:|#|\/\/)/.test(ref) || ref === '') continue;
@@ -22,6 +23,7 @@ for (const m of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
 
 const sw = readFileSync(join(base, 'sw.js'), 'utf8');
 const block = sw.match(/ASSETS_TO_CACHE = \[([\s\S]*?)\];/);
+
 if (!block) missing.push('ASSETS_TO_CACHE block not found in sw.js');
 else for (const m of block[1].matchAll(/'\.\/([^']+)'/g)) check(m[1], 'sw.js');
 
@@ -32,4 +34,5 @@ if (missing.length) {
   missing.forEach(m => console.error('  - ' + m));
   process.exit(1);
 }
+
 console.log(`✓ ${checked} references OK in ${base}`);

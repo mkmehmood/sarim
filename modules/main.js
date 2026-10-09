@@ -18,6 +18,7 @@ window._lazyLoadFactory = function (cb) {
   if (!_factoryLoad) _factoryLoad = import('./factory.js');
   _factoryLoad.then(() => cb && cb()).catch(() => cb && cb());
 };
+
 window._lazyLoadRep = function (cb) {
   if (!_repLoad) _repLoad = import('./rep-sales.js');
   _repLoad.then(() => cb && cb()).catch(() => cb && cb());

@@ -655,7 +655,6 @@ stockReturns.push(returnLogEntry);
 try {
 await unifiedSave('stock_returns', stockReturns, returnLogEntry);
 } catch (_logErr) {
-// The two halves must exist together: take the first one back out rather than leave an orphan.
 try { await unifiedDelete('mfg_pro_pkr', db, returnEntry.id, { strict: true }, returnEntry); } catch (_) {}
 throw _logErr;
 }
@@ -680,7 +679,9 @@ if (returnLogEntry) {
 await unifiedDelete('stock_returns', stockReturns, returnLogEntry.id, { strict: true }, returnLogEntry);
 }
 }
+
 export const CHORA_MATERIAL_NAME = 'CHORA';
+
 export async function processExpiredToChora(quantity, date, seller) {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
@@ -825,7 +826,6 @@ window.addEventListener('unhandledrejection', function(event) {
 
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   initSplashScreen();
-  // Read-only data check, a few seconds after start-up so it never slows loading.
   setTimeout(() => { auditLegacyPartialPayments().catch(() => {}); }, 9000);
   const urlParams = new URLSearchParams(window.location.search);
   const _action = urlParams.get('action');
@@ -961,6 +961,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   window.__splashBooted = true;
   if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 });
+
 export function _filterFactoryHistoryByMode(mode) {
 const selectedDateVal = (document.getElementById('factory-date') || {}).value || localDateStr();
 const selectedDate = new Date(selectedDateVal);
@@ -1092,7 +1093,6 @@ return;
 try {
 let history; history = await sqliteStore.get('noman_history', []);
 const _foundEntry = history.find(h => h.id === id);
-// Work on a copy: the recycle-bin snapshot must keep the entry exactly as it was before the delete.
 const entryToDelete = _foundEntry ? JSON.parse(JSON.stringify(_foundEntry)) : _foundEntry;
 if (entryToDelete && entryToDelete.isMerged) {
 showToast('Merged opening balance records cannot be deleted', 'warning');
@@ -1158,13 +1158,11 @@ await reverseReturnFromProduction(_trRec.supplyStore, entryToDelete.returned, en
 if (entryToDelete.expired > 0 && entryToDelete.expiredApplied !== false) {
 await reverseExpiredFromChora(entryToDelete.expired, entryToDelete.date);
 _doneSteps.push('expired');
-// Taking CHORA back out twice would be wrong, so remember it is done.
-if (_liveEntry) { _liveEntry.expiredApplied = false; _liveEntry.updatedAt = getTimestamp(); try { await unifiedSave('noman_history', history, _liveEntry); } catch (_) { /* best effort */ } }
+if (_liveEntry) { _liveEntry.expiredApplied = false; _liveEntry.updatedAt = getTimestamp(); try { await unifiedSave('noman_history', history, _liveEntry); } catch (_) { } }
 }
 const newHistory = history.filter(h => h.id !== id);
 await unifiedDelete('noman_history', newHistory, id, { strict: true }, entryToDelete);
 } catch (_stepErr) {
-// A step failed part-way: put back everything already reversed so the record and what it touched agree again.
 await _reapplyCalcEffects(entryToDelete, _doneSteps, _liveEntry);
 showToast('Could not delete the record: ' + ((_stepErr && _stepErr.message) || 'a step failed') + ' Everything was put back as it was.', 'error', 7000);
 return;
@@ -1450,7 +1448,6 @@ const savedEntity = editingEntityId
 ? paymentEntities.find(e => e.id === editingEntityId)
 : paymentEntities[paymentEntities.length - 1];
 await unifiedSave('payment_entities', paymentEntities, savedEntity);
-// Transactions and supplier-linked materials keep a copy of the entity's name: they follow the rename.
 if (_renameFrom && savedEntity) await cascadeEntityRename(savedEntity.id, _renameFrom, name);
 if (savedEntity) await savePersonPhoto('entity', 'entity:' + String(savedEntity.id));
 emitSyncUpdate({ payment_entities: null});
@@ -1860,6 +1857,7 @@ await sqliteStore.set('payment_transactions', localTransactions);
 }
 
 setTimeout(() => { initPaymentData(); }, 300);
+
 setTimeout(async function initExpenseManager() {
 const store = (typeof sqliteStore !== 'undefined' && sqliteStore) || (typeof window !== 'undefined' && window.sqliteStore);
 if (!store || typeof store.get !== 'function') {
@@ -1882,6 +1880,7 @@ expenseDateInput.value = localDateStr();
 }
 renderRecentExpenses();
 }, 300);
+
 export async function handleExpenseSearch() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
@@ -2009,9 +2008,11 @@ export function hideExpenseSearch() {
 document.getElementById('expense-search-results').classList.add('hidden');
 document.getElementById('expenseAmount').focus();
 }
+
 window._expenseCategory = 'OUT';
 window._returnStore = null;
 window._returnRep = null;
+
 export function selectExpenseCategory(value, clickedBtn) {
 window._expenseCategory = value;
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
@@ -2142,11 +2143,10 @@ showToast('Transaction updated', 'success');
 } catch (err) {
 Object.assign(t, tBefore);
 if (e && eBefore) Object.assign(e, eBefore);
-// Anything already written before the failure is written back too, so the cloud copy does not keep the half-edit.
 try {
 if (e && eBefore) await unifiedSave('expenses', expenseRecords, e);
 await unifiedSave('payment_transactions', paymentTransactions, t);
-} catch (_) { /* best effort */ }
+} catch (_) { }
 console.warn('[edit payment] failed', err);
 showToast('Failed to update transaction. Please try again.', 'error');
 }
@@ -2179,6 +2179,7 @@ const t = txs.find(x => x && String(x.expenseId) === String(expenseId));
 if (!t) { showToast('No linked transaction found for this expense.', 'warning'); return; }
 await startEditPayment(t.id);
 }
+
 registerEditHandler('payment', startEditPayment);
 registerEditHandler('expense', startEditExpenseRecord);
 
@@ -4024,7 +4025,9 @@ performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error
 export function closeDataMenu() {
 
 }
+
 export const _recoveredThisSession = new Set();
+
 export async function purgeRecoveredId(id, collectionName, cleanRecord, newId) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4113,7 +4116,9 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     })();
   }
 }
+
 window.purgeRecoveredId = purgeRecoveredId;
+
 export async function _findPairedTransferTombstone(currentId, transferPairId) {
   if (!transferPairId) return null;
   const allDeletions = ensureArray(await sqliteStore.get('deletion_records'));
@@ -4124,47 +4129,39 @@ export async function _findPairedTransferTombstone(currentId, transferPairId) {
   ) || null;
 }
 
-// ---- Recycle bin safety helpers ---------------------------------------------------------------------------
-// One recycle-bin action at a time: a double tap on Recover / Delete Forever / Empty used to run the same
-// action twice (two recovered copies, or a second erase racing the first).
 let _recycleBusy = false;
+
 async function _withRecycleLock(fn) {
   if (_recycleBusy) { showToast('Please wait, another recycle bin action is still running.', 'info', 2500); return; }
   _recycleBusy = true;
   try { return await fn(); } finally { _recycleBusy = false; }
 }
 
-// Records deleted together recover together, so check the WHOLE group before touching anything. Otherwise one
-// blocked member left the others recovered and the group half restored. ctx makes the stock / material /
-// factory-unit checks cumulative across the group.
 async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
   const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null };
   const blocked = new Map();
   for (const m of orderForRestore(members)) {
     const snap = m && m.snapshot;
-    if (!snap) continue; // snapshot is fetched from the cloud at recover time
+    if (!snap) continue;
     const col = m.collection || m.recordType || 'unknown';
     const mid = String(m.recordId || m.id);
     const hard = getRecoverBlockReason(col, snap);
     if (hard) { blocked.set(mid, hard); continue; }
-    if (snap.relatedSaleId && ids.has(String(snap.relatedSaleId))) continue; // parent comes back in the same group
-    if (col === 'inventory' && snap.supplierId && ids.has(String(snap.supplierId))) continue; // supplier comes back too
+    if (snap.relatedSaleId && ids.has(String(snap.relatedSaleId))) continue;
+    if (col === 'inventory' && snap.supplierId && ids.has(String(snap.supplierId))) continue;
     const link = await getRecoverLinkBlockReason(col, snap, ctx);
     if (link) blocked.set(mid, link);
   }
   return blocked;
 }
 
-// Everything that has to come back with this record: its deletion group, its transfer / return partner and any
-// parent it needs that is still in the bin (this also covers records deleted before groups existed).
 async function _collectRecoveryMembers(tomb, deletionRecords) {
   if (!tomb) return [];
   const live = await getLiveRecoveryRefs();
   return expandRecoveryMembers(tomb, deletionRecords, live);
 }
 
-// What can be recovered right now, and what has to wait (with the reason for each).
 async function _planRecovery(tomb, deletionRecords) {
   const members = await _collectRecoveryMembers(tomb, deletionRecords);
   const blocked = await _getGroupBlockedMap(members);
@@ -4179,15 +4176,13 @@ function _skippedSummary(plan) {
   }).join('\n');
 }
 
-// Production, returns, batches and materials all feed the factory unit totals: refresh them after a recover.
 const _FACTORY_RECOVER_COLLECTIONS = new Set(['production', 'returns', 'factory_history', 'inventory']);
+
 async function _refreshFactoryAfterRecover(collections) {
   if (!collections.some(c => _FACTORY_RECOVER_COLLECTIONS.has(c))) return;
   try { await syncFactoryProductionStats(); } catch (e) { console.warn('[RecycleBin] factory stats refresh failed', _safeErr(e)); }
 }
 
-// Ids erased from the bin whose cloud tombstone delete is not confirmed yet. Sync skips them, so an erased entry
-// can never come back after the app is closed and reopened (offline erase, failed cloud write, slow queue).
 async function _clearErasedIds(ids) {
   try {
     const gone = new Set(ids.map(String));
@@ -4195,6 +4190,7 @@ async function _clearErasedIds(ids) {
     await sqliteStore.set('erased_deletion_ids', left);
   } catch (e) { console.warn('[RecycleBin] clear erased ids failed', _safeErr(e)); }
 }
+
 export async function flushErasedTombstones() {
   try {
     const pending = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String);
@@ -4212,11 +4208,9 @@ export async function flushErasedTombstones() {
     }
   } catch (e) { console.warn('[RecycleBin] flushErasedTombstones failed', _safeErr(e)); }
 }
+
 window.flushErasedTombstones = flushErasedTombstones;
 
-// ---- Calculator record recovery ------------------------------------------------------------------------------
-// Deleting a calculator record reversed everything it did. Recovering it re-applies ALL of it together, using the
-// same functions the calculator save uses, and undoes the lot again if any step fails.
 async function _recreateCalcTransferSale(snap) {
   const tombs = ensureArray(await sqliteStore.get('deletion_records'));
   const t = tombs.find(x => x && String(x.recordId || x.id) === String(snap.transferSaleId) && (x.collection || x.recordType) === 'sales');
@@ -4237,14 +4231,11 @@ async function _recreateCalcTransferSale(snap) {
   return { saleId: r.saleId, oldId: null };
 }
 
-// The moment the calculator record first settled its sales (it was saved at that moment).
 function _calcOriginalMoment(snap) {
   const d = new Date(snap && (snap.syncedAt || snap.createdAt));
   return isNaN(d.getTime()) ? undefined : d;
 }
 
-// Put back the effects of a calculator record that a failed delete had already reversed, so the record and
-// everything it touched stay consistent. `done` lists the steps that were reversed, in order.
 async function _reapplyCalcEffects(snap, done, liveEntry) {
   let entryChanged = false;
   for (const step of done.slice().reverse()) {
@@ -4255,12 +4246,12 @@ async function _reapplyCalcEffects(snap, done, liveEntry) {
       } else if (step === 'transfer') {
         const t = await _recreateCalcTransferSale(snap);
         if (liveEntry) { liveEntry.transferSaleId = t.saleId; entryChanged = true; }
-        try { await purgeRecoveredId(String(snap.transferSaleId), 'sales', null, t.saleId); } catch (_) { /* no stale tombstone */ }
+        try { await purgeRecoveredId(String(snap.transferSaleId), 'sales', null, t.saleId); } catch (_) { }
       } else if (step === 'return') {
         const r = await processReturnToProduction(snap.returnStore, snap.returned, snap.date, snap.seller);
         if (liveEntry) { liveEntry.returnEntryId = r.returnEntryId; liveEntry.returnLogId = r.returnLogId; entryChanged = true; }
-        try { if (snap.returnEntryId) await purgeRecoveredId(String(snap.returnEntryId), 'production', null, r.returnEntryId); } catch (_) { /* none */ }
-        try { if (snap.returnLogId) await purgeRecoveredId(String(snap.returnLogId), 'returns', null, r.returnLogId); } catch (_) { /* none */ }
+        try { if (snap.returnEntryId) await purgeRecoveredId(String(snap.returnEntryId), 'production', null, r.returnEntryId); } catch (_) { }
+        try { if (snap.returnLogId) await purgeRecoveredId(String(snap.returnLogId), 'returns', null, r.returnLogId); } catch (_) { }
       } else if (step === 'rep') {
         await _claimRepSalesForCalc(snap.linkedRepSalesIds || [], snap.id);
       } else if (step === 'sales') {
@@ -4270,7 +4261,7 @@ async function _reapplyCalcEffects(snap, done, liveEntry) {
   }
   if (entryChanged && liveEntry) {
     liveEntry.updatedAt = getTimestamp();
-    try { const h = ensureArray(await sqliteStore.get('noman_history')); await unifiedSave('noman_history', h, liveEntry); } catch (_) { /* best effort */ }
+    try { const h = ensureArray(await sqliteStore.get('noman_history')); await unifiedSave('noman_history', h, liveEntry); } catch (_) { }
   }
 }
 
@@ -4337,12 +4328,10 @@ async function recoverCalcEntry(deletedId, snap) {
     const history = ensureArray(await sqliteStore.get('noman_history'));
     history.push(rec);
     await unifiedSave('noman_history', history, rec);
-    // The old tombstone and the tombstones of the records it created are now stale: hide them so nobody
-    // recovers a second copy.
     await purgeRecoveredId(oldId, 'calculator_history', null, calcId);
     const stale = [[snap.returnEntryId, 'production', retIds && retIds.returnEntryId], [snap.returnLogId, 'returns', retIds && retIds.returnLogId], [snap.transferSaleId, 'sales', transfer && transfer.saleId]];
     for (const [sid, col, nid] of stale) {
-      if (sid) { try { await purgeRecoveredId(String(sid), col, null, nid || null); } catch (_) { /* tombstone may already be gone */ } }
+      if (sid) { try { await purgeRecoveredId(String(sid), col, null, nid || null); } catch (_) { } }
     }
     if (typeof invalidateAllCaches === 'function') await invalidateAllCaches();
     notifyDataChange('calculator');
@@ -4399,8 +4388,6 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
         }
         await _refreshFactoryAfterRecover(_grp.map(m => m.collection || m.recordType || collectionName));
         if (_groupFailed) {
-          // Every record is recovered completely (with its links) before the next one starts, so what was done is
-          // consistent and the rest is still in the bin: recovering again simply continues from here.
           showToast(_doneCount === 0
             ? `Nothing was recovered: "${_failedLabel}" could not be recovered.`
             : `Recovered ${_doneCount} of ${_grp.length}. "${_failedLabel}" could not be recovered, so the other ${_grp.length - _doneCount} stay in the recycle bin. What was recovered is complete and linked correctly; recover again to continue.`, 'warning', 9000);
@@ -4545,8 +4532,10 @@ const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
     return false;
   }
 }
+
 window.recoverRecord = recoverRecord;
 window.registerDeletion = registerDeletion;
+
 export const RECYCLE_COLLECTION_TO_TAB = {
   'sales':              'tab_sales',
   'sales_customers':    'tab_sales',
@@ -4562,6 +4551,7 @@ export const RECYCLE_COLLECTION_TO_TAB = {
   'entities':           'tab_payments',
   'unknown':            'tab_payments',
 };
+
 export const RECYCLE_BIN_COLLECTION_LABELS = {
   'sales':              'Customer Sale',
   'sales_customers':    'Customer Contact',
@@ -4577,6 +4567,7 @@ export const RECYCLE_BIN_COLLECTION_LABELS = {
   'entities':           'Payment Entity',
   'unknown':            'Record',
 };
+
 export const RECYCLE_TAB_LABELS = {
   'tab_sales':       'Sales Tab',
   'tab_rep':         'Rep Tab',
@@ -4585,11 +4576,13 @@ export const RECYCLE_TAB_LABELS = {
   'tab_factory':     'Factory Tab',
   'tab_payments':    'Payments Tab',
 };
+
 export const RECYCLE_RECOVERABLE_COLLECTIONS = new Set([
   'sales','transactions','rep_sales','expenses','production',
   'factory_history','inventory','returns','calculator_history',
   'sales_customers','rep_customers','entities'
 ]);
+
 export async function openRecycleBin() {
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('recycle-bin-screen');
 
@@ -4946,6 +4939,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
 export async function attemptRecoverRecord(id, collectionName) {
   return _withRecycleLock(() => _attemptRecoverRecordImpl(id, collectionName));
 }
+
 async function _attemptRecoverRecordImpl(id, collectionName) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
@@ -5002,6 +4996,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     await renderRecycleBin(_fs ? _fs.value : 'all');
   }
 }
+
 window.openRecycleBin = openRecycleBin;
 window.closeRecycleBin = closeRecycleBin;
 window.renderRecycleBin = renderRecycleBin;
@@ -5010,6 +5005,7 @@ window.attemptRecoverRecord = attemptRecoverRecord;
 export async function emptyRecycleBin() {
   return _withRecycleLock(_emptyRecycleBinImpl);
 }
+
 async function _emptyRecycleBinImpl() {
   const currentFilter = window._recycleBinCurrentFilterKey || (document.getElementById('recycleBinFilter') || {}).value || 'all';
   const shown = (window._recycleBinCurrentFiltered || []).slice();
@@ -5017,7 +5013,6 @@ async function _emptyRecycleBinImpl() {
     showToast('Recycle bin is already empty.', 'info');
     return;
   }
-  // Records deleted together (payment + expense, transfer halves, return + log ...) go together.
   const targets = expandGroups(shown, ensureArray(await sqliteStore.get('deletion_records')).concat(shown));
   const scopeLabel = currentFilter === 'all' ? 'the entire recycle bin' : `all "${RECYCLE_TAB_LABELS[currentFilter] || currentFilter}" items`;
   const confirmed = await showGlassConfirm(
@@ -5053,6 +5048,7 @@ async function _emptyRecycleBinImpl() {
     if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Recycle bin emptied', targets.length + ' record' + (targets.length !== 1 ? 's were' : ' was') + ' permanently deleted and cannot be recovered.', 'recycle-emptied').catch(() => {});
   }
 }
+
 window.emptyRecycleBin = emptyRecycleBin;
 
 export async function hardDeleteRecord(id, collectionName, _isPairDelete = false) {
@@ -5177,6 +5173,7 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
 export async function attemptHardDeleteRecord(id, collectionName) {
   return _withRecycleLock(() => _attemptHardDeleteImpl(id, collectionName));
 }
+
 async function _attemptHardDeleteImpl(id, collectionName) {
   const tabKey   = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
@@ -5223,8 +5220,10 @@ async function _attemptHardDeleteImpl(id, collectionName) {
     await renderRecycleBin(filterSel ? filterSel.value : 'all');
   }
 }
+
 window.hardDeleteRecord = hardDeleteRecord;
 window.attemptHardDeleteRecord = attemptHardDeleteRecord;
+
 export async function triggerLocalBackup() {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -5739,11 +5738,13 @@ showToast('Upload failed: ' + err.message, 'error');
 _set_isSyncing(false);
 }
 }
+
 const _nativeBio = () => {
 const C = window.Capacitor;
 if (!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform())) return null;
 return (C.Plugins && C.Plugins.NativeBiometric) || null;
 };
+
 const _bioErrorMessage = (code) => ({
 1: 'Biometrics are not available on this device.',
 2: 'Too many failed attempts. Try again later or use your device PIN.',
@@ -5752,6 +5753,7 @@ const _bioErrorMessage = (code) => ({
 10: 'Fingerprint not recognised. Please try again.',
 14: 'Set a screen lock (PIN, pattern or password) in Android Settings first.'
 }[code] || 'Biometric authentication failed.');
+
 const _nativeBioError = (e) => {
 const code = e && (e.code !== undefined ? Number(e.code) : NaN);
 const cancelled = code === 11 || code === 15 || code === 13 || /cancel/i.test(String((e && e.message) || ''));
@@ -5760,6 +5762,7 @@ err.name = cancelled ? 'NotAllowedError' : 'BiometricError';
 err.code = code;
 return err;
 };
+
 export const BiometricAuth = {
 isAvailable: async () => {
 const nb = _nativeBio();
@@ -5886,6 +5889,7 @@ throw err;
 }
 }
 };
+
 export async function forceAppModeFromCloud(targetMode, repName = null) {
 if (!firebaseDB || !currentUser) {
 showToast('Not logged in', 'error', 3000);
@@ -5915,7 +5919,9 @@ showToast('Failed to send remote command', 'error', 3000);
 return false;
 }
 }
+
 window.forceAppModeFromCloud = forceAppModeFromCloud;
+
 export function updateSystemName() {
 const el = document.getElementById('system-name-display');
 if (!el) return;
@@ -6542,6 +6548,7 @@ if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 if (typeof openRepCustomerEditModal === 'function') openRepCustomerEditModal(value);
 }
 }
+
 document.addEventListener('click', function(e) {
 
 if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown') &&
@@ -6580,18 +6587,21 @@ resultsDiv.classList.add('hidden');
 }
 });
 });
+
 window.selectCustomer = function(name) {
   const base = window._selectCustomerBase;
   if (typeof base === 'function') base(name);
   document.getElementById('new-customer-phone-container').classList.add('hidden');
   document.getElementById('new-cust-phone').value = '';
 };
+
 window.selectRepCustomer = function(name) {
   const base = window._selectRepCustomerBase;
   if (typeof base === 'function') base(name);
   document.getElementById('rep-new-customer-phone-container').classList.add('hidden');
   document.getElementById('rep-new-cust-phone').value = '';
 };
+
 export async function initTheme() {
 const savedTheme = await sqliteStore.get('theme') || 'dark';
 const html = document.documentElement;
@@ -6606,6 +6616,7 @@ if (metaThemeColor) {
 metaThemeColor.setAttribute('content', savedTheme === 'light' ? '#ffffff' : '#000000');
 }
 }
+
 export const FIRESTORE_ENHANCED_SCHEMA = {
 production: {
 localKey: 'mfg_pro_pkr',
@@ -6688,6 +6699,7 @@ description: 'Unified expense manager records (operating expenses, payments IN/O
 fields: ['name', 'amount', 'category', 'description', 'date', 'time', 'id', 'timestamp', 'syncedAt']
 }
 };
+
 export const FIRESTORE_SETTINGS_SCHEMA = {
 factory_default_formulas: {
 localKey: 'factory_default_formulas',
@@ -6757,6 +6769,7 @@ defaultValue: null,
 description: 'ISO timestamp of the last successful cloud sync'
 }
 };
+
 export const FIRESTORE_LOCAL_ONLY_KEYS = {
 theme: {
 localKey: 'theme',
@@ -6792,9 +6805,11 @@ _setCloudConnectionState('signed-out');
 _setCloudConnectionState(null);
 }
 }
+
 window.addEventListener('online', () => { updateConnectionStatus(); if(typeof updateOfflineBanner==='function') updateOfflineBanner(); });
 window.addEventListener('offline', () => { updateConnectionStatus(); if(typeof updateOfflineBanner==='function') updateOfflineBanner(); });
 export const originalSync = window.performOneClickSync;
+
 window.performOneClickSync = async function(silent) {
 updateConnectionStatus();
 try {
@@ -6817,6 +6832,7 @@ if (typeof renderExpenseTable === 'function') {
 if (typeof renderRepCustomerTable === 'function') {
 }
 })();
+
 export var ThemeManager = {
 currentTheme: 'dark',
 observers: new Set(),
@@ -6855,6 +6871,7 @@ return getComputedStyle(document.documentElement)
 .getPropertyValue(`--${varName}`).trim();
 }
 };
+
 export const IncrementalRenderer = {
 queue: [],
 isRendering: false,
@@ -6893,12 +6910,14 @@ this.state = config.initialState || {};
 this.styleMap = config.styleMap || {};
 this.listeners = new Map();
 }
+
 setState(newState) {
 const oldState = { ...this.state };
 this.state = { ...this.state, ...newState };
 this.syncStyles();
 this.notifyListeners(oldState, this.state);
 }
+
 syncStyles() {
 Object.entries(this.styleMap).forEach(([stateKey, styles]) => {
 if (this.state[stateKey]) {
@@ -6906,12 +6925,14 @@ Object.assign(this.element.style, styles);
 }
 });
 }
+
 on(event, callback) {
 if (!this.listeners.has(event)) {
 this.listeners.set(event, new Set());
 }
 this.listeners.get(event).add(callback);
 }
+
 notifyListeners(oldState, newState) {
 const listeners = this.listeners.get('change');
 if (listeners) {
@@ -6919,6 +6940,7 @@ listeners.forEach(cb => cb(newState, oldState));
 }
 }
 }
+
 export var PerformanceMonitor = {
 metrics: {
 renderTime: [],
@@ -6951,6 +6973,7 @@ report() {
 const averages = this.getAverages();
 }
 };
+
 window.addEventListener('beforeunload', function() {
 if (listenerReconnectTimer) {
 clearTimeout(listenerReconnectTimer);
@@ -6970,6 +6993,7 @@ if (window._syncUpdatesCleanupInterval) { clearInterval(window._syncUpdatesClean
 if (window._connectionCheckInterval) { clearInterval(window._connectionCheckInterval); window._connectionCheckInterval = null; }
 if (window._perfMonitorInterval) { clearInterval(window._perfMonitorInterval); window._perfMonitorInterval = null; }
 });
+
 export async function loadSalesRepsList() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
@@ -7102,7 +7126,9 @@ list.innerHTML = salesRepsList.map((rep, i) => `
 </div>
 `).join('');
 }
+
 export let _newUserRoleSelectedTabs = new Set();
+
 export function toggleUserRoleTabAccess(tabKey) {
 if (_newUserRoleSelectedTabs.has(tabKey)) {
 _newUserRoleSelectedTabs.delete(tabKey);
@@ -7244,6 +7270,7 @@ closeStandaloneScreen('user-roles-screen');
 closeStandaloneScreen('app-accounts-screen');
 }
 }
+
 export const _overlayStack = (() => {
   const _registry = {
     'formula-store-screen':        { closeFn: () => closeStandaloneScreen('formula-store-screen'), contentSel: '.screen-body' },
@@ -7298,6 +7325,7 @@ export const _overlayStack = (() => {
   });
   return { closeTop, openLayers: _openLayers };
 })();
+
 window.loadSalesRepsList = loadSalesRepsList;
 window.saveSalesRepsList = saveSalesRepsList;
 window.renderAllRepUI = renderAllRepUI;
@@ -7306,6 +7334,7 @@ window.removeSalesRep = removeSalesRep;
 window.openManageRepsModal = openManageRepsModal;
 window.closeManageRepsModal = closeManageRepsModal;
 window.switchManageTeamTab = switchManageTeamTab;
+
 export async function loadUserRolesContent() {
 if (firebaseDB && currentUser) {
 try {
@@ -7324,6 +7353,7 @@ console.warn('loadUserRolesContent: cloud fetch failed, showing cached list', _s
 }
 renderUserRoleList();
 }
+
 window.addNewUserRole = addNewUserRole;
 window.removeUserRole = removeUserRole;
 window.toggleUserRoleTabAccess = toggleUserRoleTabAccess;
@@ -7331,6 +7361,7 @@ window.renderUserRoleList = renderUserRoleList;
 window.loadUserRolesContent = loadUserRolesContent;
 window.saveUserRolesList = saveUserRolesList;
 window.lockToUserRoleMode = lockToUserRoleMode;
+
 export function phoneActionHTML(phone, opts = {}) {
 const raw = (phone || '').toString().trim();
 const empty = !raw || raw === '-' || raw === 'N/A' || raw === 'No Phone' || raw === 'No contact';
@@ -7342,19 +7373,24 @@ const clean = raw.replace(/[\s\-().]/g, '');
 const wa = clean.startsWith('0') ? '92' + clean.slice(1) : clean;
 return `<a href="tel:${clean}" title="Tap to call · Long-press for WhatsApp" style="color:inherit;text-decoration:none;cursor:pointer;border-bottom:1px dotted currentColor;touch-action:manipulation;-webkit-touch-callout:default;" oncontextmenu="event.preventDefault();window.open('https://wa.me/${wa}','_blank')">${esc(raw)}</a>`;
 }
+
 window.phoneActionHTML = phoneActionHTML;
+
 window.initDatabase = async function(silent = false) {
 const result = await initializeCompleteFirestoreDatabase(silent);
 return result;
 };
+
 window.checkDatabase = async function() {
 const isComplete = await isCompleteDatabaseInitialized();
 return isComplete;
 };
+
 window.safeInitDatabase = async function(silent = false) {
 const result = await safeInitializeCompleteDatabase(silent);
 return result;
 };
+
 window.analyzeBackupFile = async function(file) {
 if (!file) {
 return;
@@ -7487,6 +7523,7 @@ console.error('analyzeBackupFile error:', _safeErr(error));
 showToast('Could not parse backup file: ' + error.message, 'error');
 }
 };
+
 (function() {
   let _adminLoaded = false;
   let _adminLoading = null;
@@ -7515,6 +7552,7 @@ showToast('Could not parse backup file: ' + error.message, 'error');
     }
   };
 })();
+
 export async function loadDeviceList() {
 const container = document.getElementById('device-list-container');
 if (!container) return;
@@ -7844,6 +7882,7 @@ await loadDeviceList();
 showToast('Failed to remove device: ' + error.message, 'error', 3000);
 }
 }
+
 window.loadDeviceList = loadDeviceList;
 window.refreshDeviceList = refreshDeviceList;
 window.remoteControlDevice = remoteControlDevice;
@@ -7851,6 +7890,7 @@ window.removeDevice = removeDevice;
 window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
+
 export function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, assignedUserTabs, remoteApplied) {
   const previousMode = appMode;
   _set_appMode(modeStr);
@@ -7877,7 +7917,9 @@ export function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, as
     : `Switching to ${modeLabel}...`, 'info', 2000);
   setTimeout(() => { window.location.reload(); }, 1500);
 }
+
 window._applyModeFromData = _applyModeFromData;
+
 export async function restoreDeviceModeOnLogin(uid) {
 try {
   const localTimestamp = Number(await sqliteStore.get('appMode_timestamp')) || 0;
@@ -7937,7 +7979,9 @@ try {
   console.warn('[restoreDeviceMode] could not restore device mode:', _safeErr(error));
 }
 }
+
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
+
 export async function listenForDeviceCommands() {
 if (!firebaseDB || !currentUser) return;
 
@@ -8113,13 +8157,16 @@ if (typeof notifyDataChange === 'function') notifyDataChange('all');
 showToast('Device unlocked to Admin mode', 'info', 4000);
 }
 }
+
 window.listenForDeviceCommands = listenForDeviceCommands;
+
 export function listenForTeamChanges() {
 if (window._teamUnsubscribe) {
 try { window._teamUnsubscribe(); } catch(e) {}
 window._teamUnsubscribe = null;
 }
 }
+
 window.listenForTeamChanges = listenForTeamChanges;
 window.applyRemoteModeChange = applyRemoteModeChange;
 
@@ -8145,6 +8192,7 @@ const noteInput = document.getElementById('payment-transfer-note'); if (noteInpu
 if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(null);
 await renderPaymentTransferHistory();
 }
+
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
 
 export function saveEntityTransfer(...a) { return runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)); }
@@ -8241,6 +8289,7 @@ if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(tru
 if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
 triggerAutoSync();
 }
+
 window.saveEntityTransfer = saveEntityTransfer;
 
 function _resetPaymentTransferForm() {
@@ -8271,11 +8320,13 @@ const prefix = `Transfer to ${inn.entityName}: `;
 set('payment-transfer-note', (out.description || '').startsWith(prefix) ? out.description.slice(prefix.length) : '');
 beginEditMode('paytransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-payment-transfer', watchIds: ['payment-transfer-from-value','payment-transfer-to-value','payment-transfer-date','payment-transfer-amount','payment-transfer-note'], label: 'Update Transfer', anchorId: 'payment-transfer-amount', cancelFn: _resetPaymentTransferForm });
 }
+
 registerEditHandler('paytransfer', startEditPaymentTransfer, { keepScreens: ['payment-transfer-screen'] });
 
 export function openPaymentTransferPhotoCapture() {
 openPhotoCapture('paytransfer');
 }
+
 window.openPaymentTransferPhotoCapture = openPaymentTransferPhotoCapture;
 
 export function handlePaymentTransferPhotoFile(event) {
@@ -8286,9 +8337,11 @@ reader.onload = (e) => _applyPaymentTransferPendingPhoto(e.target.result);
 reader.readAsDataURL(file);
 event.target.value = '';
 }
+
 window.handlePaymentTransferPhotoFile = handlePaymentTransferPhotoFile;
 
 window._paymentTransferPendingPhoto = null;
+
 export function _applyPaymentTransferPendingPhoto(dataUrl) {
 window._paymentTransferPendingPhoto = dataUrl || null;
 const dot = document.getElementById('payment-transfer-photo-dot');
@@ -8299,6 +8352,7 @@ btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
 btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
 }
 }
+
 window._applyPaymentTransferPendingPhoto = _applyPaymentTransferPendingPhoto;
 
 export async function renderPaymentTransferHistory() {
@@ -8353,6 +8407,7 @@ if (t.id) {
 });
 list.replaceChildren(fragment);
 }
+
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 
 export async function deletePaymentTransfer(pairId, skipConfirm = false) {
@@ -8404,6 +8459,7 @@ if (!skipConfirm) showToast('Payment transfer removed', 'success');
 showToast('Failed to remove transfer. Please try again.', 'error');
 }
 }
+
 window.deletePaymentTransfer = deletePaymentTransfer;
 
 window.toggleCustomerCreditReceived = toggleCustomerCreditReceived;

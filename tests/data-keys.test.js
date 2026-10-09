@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+
 import {
   RECORD_STORES, AUX_STATE, SQLITE_TO_FIRESTORE, FIRESTORE_TO_SQLITE,
   normaliseBackupFields, collectAuxBackupFields, applyAuxBackupFields,
@@ -24,12 +25,14 @@ function fnBody(src, name) {
   }
   throw new Error('unbalanced ' + name);
 }
+
 function objectLiteral(src, name) {
   const start = src.indexOf(`export const ${name} = {`);
   assert.ok(start >= 0, `${name} not found`);
   const end = src.indexOf('\n};', start);
   return src.slice(start, end);
 }
+
 function memStore(init = {}) {
   const m = new Map(Object.entries(init));
   return { async get(k) { return m.has(k) ? m.get(k) : undefined; }, async set(k, v) { m.set(k, v); }, _m: m };

@@ -4,6 +4,7 @@ let _nativeGranted = null;
 let _lastKey = '';
 let _lastAt = 0;
 let _seq = Date.now() % 1000000000;
+
 async function _ensureNativePermission(LocalNotifications) {
   if (_nativeGranted !== null) return _nativeGranted;
   try {
@@ -15,12 +16,14 @@ async function _ensureNativePermission(LocalNotifications) {
   }
   return _nativeGranted;
 }
+
 async function _ensureWebPermission() {
   if (!('Notification' in window)) return false;
   if (Notification.permission === 'granted') return true;
   if (Notification.permission === 'denied') return false;
   try { return (await Notification.requestPermission()) === 'granted'; } catch (_) { return false; }
 }
+
 async function _showWeb(title, body, tag) {
   if (!(await _ensureWebPermission())) return;
   const options = { body, tag, icon: '192.png', badge: '192.png', renotify: true };
@@ -30,6 +33,7 @@ async function _showWeb(title, body, tag) {
   } catch (_) {}
   try { new Notification(title, options); } catch (_) {}
 }
+
 async function _showNative(title, body) {
   const { LocalNotifications } = _plugins();
   if (!LocalNotifications) return;
@@ -37,9 +41,11 @@ async function _showNative(title, body) {
   _seq = (_seq + 1) % 2147483000;
   try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
 }
+
 const _recent = new Map();
 let _lastExplicitAt = 0;
 let _pendingMirrors = [];
+
 function _isDuplicate(title, text, tag) {
   const now = Date.now();
   for (const [k, t] of _recent) if (now - t > 15000) _recent.delete(k);
@@ -50,6 +56,7 @@ function _isDuplicate(title, text, tag) {
   if (tagKey) _recent.set(tagKey, now);
   return false;
 }
+
 export async function sendDeviceNotification(title, body, tag, opts) {
   const text = String(body == null ? '' : body).replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
   if (!text) return;
@@ -63,6 +70,7 @@ export async function sendDeviceNotification(title, body, tag, opts) {
   if (_isNative()) await _showNative(title, text);
   else await _showWeb(title, text, tag || 'app-toast');
 }
+
 export function primeNotificationPermission() {
   if (_isNative()) {
     const { LocalNotifications } = _plugins();
@@ -73,6 +81,7 @@ export function primeNotificationPermission() {
     document.addEventListener('click', () => { _ensureWebPermission(); }, { once: true });
   }
 }
+
 window.sendDeviceNotification = sendDeviceNotification;
 
 const _bootAt = Date.now();
@@ -80,6 +89,7 @@ const _STARTUP_QUIET_MS = 25000;
 const _BURST_MAX = 4;
 const _BURST_WINDOW_MS = 30000;
 let _burst = [];
+
 const _NOISE_RE = new RegExp([
   '^\\s*(please|enter|select|choose|add at least|no .* (selected|found|data)|nothing)',
   '\\b(is|are) required\\b',
@@ -95,11 +105,13 @@ const _NOISE_RE = new RegExp([
   'refreshed|updated successfully!?$',
   'deleted successfully|all records deleted|permanently deleted|recovered|restore complete|^(transferred|transfer updated)\\b'
 ].join('|'), 'i');
+
 const _FALLBACK = {
   success: { title: 'All done', hint: '' },
   warning: { title: 'Please check this', hint: ' Open the app to take a look.' },
   error: { title: 'Something did not work', hint: ' Open the app and try again.' }
 };
+
 const _EXPLAIN = [
   [/failed to save (production|data locally|data)/i, () => ['Could not save your data', 'The latest entry was NOT saved on this phone. Open the app, check the entry and save it again.']],
   [/failed to save (transaction|expense)/i, (m) => ['Could not save the ' + m[1].toLowerCase(), 'The ' + m[1].toLowerCase() + ' was NOT saved. Open the app, check the details and try again.']],
@@ -127,6 +139,7 @@ const _EXPLAIN = [
   [/table failed to render|calculation failed/i, () => ['A screen failed to load', 'One screen could not be shown. Close and reopen the app to fix it.']],
   [/invalid transaction id/i, () => ['Transaction not found', 'This transaction could not be found. It may have been deleted on another device.']]
 ];
+
 function _explainToast(text, type) {
   for (const [re, fn] of _EXPLAIN) {
     const m = re.exec(text);
@@ -164,5 +177,6 @@ export function notifyFromToast(message, type) {
     _pendingMirrors.push(timer);
   } catch (_) {}
 }
+
 window.notifyFromToast = notifyFromToast;
 primeNotificationPermission();

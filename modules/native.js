@@ -111,6 +111,7 @@ async function saveAndShareBlob(blob, name) {
 }
 
 const _blobRegistry = new Map();
+
 function installBlobRegistry() {
   const origCreate = URL.createObjectURL.bind(URL);
   const origRevoke = URL.revokeObjectURL.bind(URL);
@@ -186,6 +187,7 @@ function isVisible(el) {
 }
 
 let lastBack = 0;
+
 function handleBack() {
   const cam = document.getElementById('photo-capture-modal');
   if (cam && isVisible(cam) && typeof window.closePhotoCapture === 'function') { window.closePhotoCapture(); return; }

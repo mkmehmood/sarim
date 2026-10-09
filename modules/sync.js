@@ -24,6 +24,7 @@ if (collectionEntry) {
 }
 return result;
 }
+
 export const SQLiteToFirestoreMap = {
 'mfg_pro_pkr': { collection: 'production', varName: 'db' },
 'customer_sales': { collection: 'sales', varName: 'customerSales' },
@@ -38,6 +39,7 @@ export const SQLiteToFirestoreMap = {
 'expenses': { collection: 'expenses', varName: 'expenseRecords' },
 'stock_returns': { collection: 'returns', varName: 'stockReturns' }
 };
+
 export const FirestoreToSQLiteMap = {
 'production': 'mfg_pro_pkr',
 'sales': 'customer_sales',
@@ -52,6 +54,7 @@ export const FirestoreToSQLiteMap = {
 'expenses': 'expenses',
 'returns': 'stock_returns'
 };
+
 export function getFirestoreCollection(sqliteKey) {
 return SQLiteToFirestoreMap[sqliteKey]?.collection || sqliteKey;
 }
@@ -257,6 +260,7 @@ const _DELETE_LABELS = {
   mfg_pro_pkr: 'Production entry', payment_entities: 'Entity', sales_customers: 'Customer', rep_customers: 'Customer',
   factory_inventory_data: 'Raw material', factory_production_history: 'Factory entry', stock_returns: 'Return', noman_history: 'Calculation'
 };
+
 function _notifyDeletion(key, r) {
   try {
     const label = _DELETE_LABELS[key] || 'Record';
@@ -271,6 +275,7 @@ function _notifyDeletion(key, r) {
     sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
   } catch (_) {}
 }
+
 export async function unifiedDelete(sqliteKey, dataArray, deletedRecordId, opts = {}, preDeletedRecord = null) {
 if (opts.strict !== true) {
   console.warn(`[RecycleBin] BLOCKED unifiedDelete on "${sqliteKey}" id=${deletedRecordId} — strict flag missing. Pass { strict: true } to confirm intentional deletion.`);
@@ -342,12 +347,14 @@ await sqliteStore.remove('deltaSyncStats');
 if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
 showToast('Delta sync reset - next sync will download all data', 'info');
 }
+
 window.verifyDeltaSyncSystem = verifyDeltaSyncSystem;
 window.resetDeltaSync = resetDeltaSync;
 window.getFirestoreCollection = getFirestoreCollection;
 window.getSQLiteKey = getSQLiteKey;
 window.saveRecordToFirestore = saveRecordToFirestore;
 window.deleteRecordFromFirestore = deleteRecordFromFirestore;
+
 export async function initializeFirebaseSystem() {
 if (typeof firebase === 'undefined') {
 if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('loading');
@@ -622,6 +629,7 @@ if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('er
 setTimeout(initializeFirebaseSystem, APP_CONFIG.FIREBASE_INIT_RETRY_DELAY);
 }
 }
+
 export class FirestoreDatabaseInitializer {
 constructor(firebaseDB, currentUser) {
 this.firebaseDB = firebaseDB;
@@ -633,6 +641,7 @@ errors: []
 };
 this.timestamp = new Date().toISOString();
 }
+
 async initialize(silent = false) {
 if (!this.firebaseDB || !this.currentUser) {
 throw new Error('Firebase DB and Current User are required');
@@ -673,6 +682,7 @@ results: this.results
 };
 }
 }
+
 async createUserDocument() {
 try {
 await this.userRef.set({
@@ -692,6 +702,7 @@ this.results.errors.push({ collection: 'users', error: error.message });
 throw error;
 }
 }
+
 async createDevicesCollection() {
 try {
 const deviceRef = this.userRef.collection('devices').doc('default_device');
@@ -726,6 +737,7 @@ this.results.success.push('devices');
 this.results.errors.push({ collection: 'devices', error: error.message });
 }
 }
+
 async createAccountCollection() {
 try {
 const infoRef = this.userRef.collection('account').doc('info');
@@ -741,6 +753,7 @@ this.results.success.push('account');
 this.results.errors.push({ collection: 'account', error: error.message });
 }
 }
+
 async createActivityLogCollection() {
 try {
 const activityRef = this.userRef.collection('activityLog').doc('initial');
@@ -758,6 +771,7 @@ this.results.success.push('activityLog');
 this.results.errors.push({ collection: 'activityLog', error: error.message });
 }
 }
+
 async createProductionCollection() {
 try {
 const placeholderRef = this.userRef.collection('production').doc('_placeholder_');
@@ -772,6 +786,7 @@ this.results.success.push('production');
 this.results.errors.push({ collection: 'production', error: error.message });
 }
 }
+
 async createSalesCollections() {
 try {
 const salesPlaceholder = this.userRef.collection('sales').doc('_placeholder_');
@@ -786,6 +801,7 @@ this.results.success.push('sales');
 this.results.errors.push({ collection: 'sales', error: error.message });
 }
 }
+
 async createRepCollections() {
 try {
 const repSalesPlaceholder = this.userRef.collection('rep_sales').doc('_placeholder_');
@@ -808,6 +824,7 @@ this.results.success.push('rep_customers');
 this.results.errors.push({ collection: 'rep_sales', error: error.message });
 }
 }
+
 async createPaymentCollections() {
 try {
 const transactionsPlaceholder = this.userRef.collection('transactions').doc('_placeholder_');
@@ -830,6 +847,7 @@ this.results.success.push('entities');
 this.results.errors.push({ collection: 'transactions', error: error.message });
 }
 }
+
 async createFactoryCollections() {
 try {
 const inventoryPlaceholder = this.userRef.collection('inventory').doc('_placeholder_');
@@ -852,6 +870,7 @@ this.results.success.push('factory_history');
 this.results.errors.push({ collection: 'inventory', error: error.message });
 }
 }
+
 async createExpenseCollections() {
 try {
 const expensesPlaceholder = this.userRef.collection('expenses').doc('_placeholder_');
@@ -874,6 +893,7 @@ this.results.success.push('returns');
 this.results.errors.push({ collection: 'expenses', error: error.message });
 }
 }
+
 async createCalculatorCollection() {
 try {
 const calculatorPlaceholder = this.userRef.collection('calculator_history').doc('_placeholder_');
@@ -888,6 +908,7 @@ this.results.success.push('calculator_history');
 this.results.errors.push({ collection: 'calculator_history', error: error.message });
 }
 }
+
 async createSettingsCollections() {
 try {
 const settingsRef = this.userRef.collection('settings').doc('config');
@@ -933,6 +954,7 @@ this.results.success.push('expenseCategories');
 this.results.errors.push({ collection: 'settings', error: error.message });
 }
 }
+
 async createContactCollections() {
 try {
 const repContactsPlaceholder = this.userRef.collection('rep_customers').doc('_placeholder_');
@@ -955,6 +977,7 @@ this.results.success.push('sales_customers');
 this.results.errors.push({ collection: 'rep_customers', error: error.message });
 }
 }
+
 async createTeamSettingsDocument() {
 try {
 const teamRef = this.userRef.collection('settings').doc('team');
@@ -970,6 +993,7 @@ this.results.success.push('settings/team');
 this.results.errors.push({ collection: 'settings/team', error: error.message });
 }
 }
+
 async createDeletionsCollection() {
 try {
 const deletionsPlaceholder = this.userRef.collection('deletions').doc('_placeholder_');
@@ -984,6 +1008,7 @@ this.results.success.push('deletions');
 this.results.errors.push({ collection: 'deletions', error: error.message });
 }
 }
+
 async createSyncUpdatesCollection() {
 try {
 const syncUpdateRef = this.userRef.collection('sync_updates').doc('initial');
@@ -1116,6 +1141,7 @@ export const _syncQueue = (() => {
     }
   };
 })();
+
 window._syncQueue = _syncQueue;
 
 export const SYNC_COLLECTIONS = [
@@ -2381,6 +2407,7 @@ function _keepLocalSalePrices(cloudStores, localStores) {
     return out;
   });
 }
+
 function _fillStoresFromCloud(localStores, cloudStores) {
   const cloud = Array.isArray(cloudStores) ? cloudStores.filter((c) => c && c.key) : [];
   const local = Array.isArray(localStores) ? localStores : [];
@@ -2399,6 +2426,7 @@ function _fillStoresFromCloud(localStores, cloudStores) {
   });
   return { stores: out, changed };
 }
+
 export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   if (depth > 20) return null;
   if (obj === null || obj === undefined) return null;
@@ -2712,6 +2740,7 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
 
 const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
 const _REMOTE_TX_KEYS = ['rep_sales', 'customer_sales', 'payment_transactions', 'expenses'];
+
 function _describeRemoteTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const created = Number(r.createdAt || r.timestamp || 0);
@@ -2730,10 +2759,12 @@ function _describeRemoteTx(key, r) {
   }
   return { title: 'New expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
 }
+
 function _pushTxNotification(item) {
   showToast(item.body, 'info', 4500);
   sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {});
 }
+
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   if (appMode !== 'admin') return;
   const items = [];
@@ -2748,7 +2779,9 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   items.slice(0, 5).forEach(_pushTxNotification);
   if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
 }
+
 const _LOCAL_TX_KEYS = new Set(['rep_sales', 'customer_sales', 'payment_transactions', 'expenses', 'mfg_pro_pkr']);
+
 function _describeLocalTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const who = r.customerName || 'customer';
@@ -2765,10 +2798,13 @@ function _describeLocalTx(key, r) {
   if (r.isReturn) return { title: 'Stock return', body: `${kg} kg returned` };
   return { title: 'Production', body: `${kg} kg produced` };
 }
+
 const _EDIT_FIELDS = ['totalValue', 'amount', 'quantity', 'net', 'customerName', 'entityName', 'name', 'description', 'date', 'type', 'paymentType', 'price'];
+
 function _txChanged(before, after) {
   return _EDIT_FIELDS.some(f => String(before && before[f] == null ? '' : before[f]) !== String(after && after[f] == null ? '' : after[f]));
 }
+
 async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds) {
   let candidates = [];
   if (specificRecord && specificRecord.id) candidates = [specificRecord];
@@ -2784,6 +2820,7 @@ async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds
   });
   return { created, edited };
 }
+
 function _notifyLocalTransactions(key, records) {
   const items = [];
   records.forEach(r => {
@@ -2793,6 +2830,7 @@ function _notifyLocalTransactions(key, records) {
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
+
 function _notifyEditedTransactions(key, records) {
   const items = [];
   records.forEach(r => {
@@ -2802,7 +2840,9 @@ function _notifyEditedTransactions(key, records) {
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
+
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
+
 async function _applyFormulaStoreFromCloud(cloud) {
   if (!cloud || typeof cloud !== 'object') return;
   const localList = await sqliteStore.get('factory_formula_store');
@@ -2821,6 +2861,7 @@ async function _applyFormulaStoreFromCloud(cloud) {
     await sqliteStore.setBatch([['factory_formula_slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['factory_formula_slots_timestamp', cloud.formula_slots_timestamp || Date.now()]]);
   }
 }
+
 export async function _mergeAndPersist(cloudData) {
 
   try {
@@ -3342,11 +3383,9 @@ export async function _uploadChanges(userRef) {
     collectionsUploaded.add('appStores');
   }
 
-  // Photos go in their own batches, capped by bytes (Firestore rejects commits
-  // near 10 MiB) and committed separately so a photo failure never blocks records.
   if (operationCount > 0) { batches.push(currentBatch); currentBatch = firebaseDB.batch(); operationCount = 0; }
-  const PHOTO_DOC_MAX_CHARS = 900000;      // stay safely under the 1 MiB doc limit
-  const PHOTO_BATCH_MAX_CHARS = 4000000;   // ~4 MB of base64 per batch
+  const PHOTO_DOC_MAX_CHARS = 900000;
+  const PHOTO_BATCH_MAX_CHARS = 4000000;
   const photoBatches = [];
   let _photoBatch = firebaseDB.batch();
   let _photoBatchOps = 0, _photoBatchChars = 0;
@@ -3792,9 +3831,11 @@ export async function showSyncHealthPanel() {
     document.body.appendChild(panel);
   } catch (e) { console.warn('[SyncHealth]', _safeErr(e)); }
 }
+
 window.showSyncHealthPanel = showSyncHealthPanel;
 export let seamlessBackupTimer = null;
 export const SEAMLESS_DELAY_MS = 5000;
+
 export async function triggerSeamlessBackup() {
 if (seamlessBackupTimer) {
 clearTimeout(seamlessBackupTimer);
@@ -3814,6 +3855,7 @@ clearInterval(window.deviceHeartbeatInterval);
 window.deviceHeartbeatInterval = null;
 }
 }
+
 export const AUTO_BACKUP_INTERVAL = 900000;
 
 export async function scheduleAutoBackup() {
@@ -3969,6 +4011,7 @@ setTimeout(() => {
 }
 document.body.style.overflow = '';
 }
+
 export const LoginRateLimiter = (() => {
 const KEY_ATTEMPTS = '_gznd_login_attempts';
 const KEY_LOCKOUT  = '_gznd_login_lockout';
@@ -4228,6 +4271,7 @@ google.accounts.id.prompt(notification => {
 }
 doPrompt();
 }
+
 window._handleGoogleBtnClick = _handleGoogleBtnClick;
 
 export async function handleSignIn(e) {
@@ -4429,6 +4473,7 @@ await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: fals
 }
 
 export let _newAccountRole = 'user';
+
 export function setNewAccountRole(role) {
 _newAccountRole = role;
 const userBtn  = document.getElementById('acct-role-user');

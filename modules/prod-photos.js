@@ -206,6 +206,7 @@ export function toggleProdPhotoSelect(id, on) {
 }
 
 let _hold = null;
+
 function _endHold(box, fired) {
   if (!_hold) return;
   clearTimeout(_hold.timer);
@@ -242,6 +243,7 @@ function _installBoxGestures() {
   document.addEventListener('pointercancel', () => { if (_hold) { clearTimeout(_hold.timer); _hold.box.classList.remove('holding'); _hold = null; } });
   document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('[data-pp-box]')) e.preventDefault(); });
 }
+
 _installBoxGestures();
 
 export function clearProdPhotoSelection() {
@@ -323,9 +325,6 @@ export async function shareProdPhotos(ids) {
   const plural = files.length === 1 ? '' : 's';
   const isAbort = (err) => !!err && (err.name === 'AbortError' || /cancel/i.test(String(err.message || err)));
 
-  // WhatsApp's share receiver keeps only the text when a payload carries both files and
-  // text, dropping every file stream. Photos already have their details burned into the
-  // caption band, so share FILES ONLY and put the text on the clipboard instead.
   const copyText = async () => {
     try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; }
   };
@@ -372,8 +371,6 @@ export async function shareProdPhotos(ids) {
     }
   }
 
-  // Desktop / unsupported browsers: wa.me can only carry text, never images. Save the photos,
-  // copy the details, and open WhatsApp so the saved photos can be attached there.
   files.forEach((f, i) => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(f);
@@ -381,8 +378,6 @@ export async function shareProdPhotos(ids) {
     document.body.appendChild(a);
     setTimeout(() => { a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, i * 250);
   });
-  // Put the captioned image (image/png) on the clipboard so Ctrl+V in WhatsApp attaches it.
-  // The clipboard holds one image, so the first photo is copied; all photos are downloaded.
   let imageCopied = false;
   try {
     if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {

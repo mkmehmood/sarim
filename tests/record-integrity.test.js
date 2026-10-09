@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const src = readFileSync(new URL('../modules/business.js', import.meta.url), 'utf8');
+
 function grab(name) {
   const start = src.indexOf(`export function ${name}(`);
   assert.ok(start >= 0, `${name} not found`);
@@ -14,7 +15,9 @@ function grab(name) {
   }
   throw new Error('unbalanced ' + name);
 }
+
 const NOW = 1_800_000_000_000;
+
 const { ensure } = new Function('generateUUID', 'getTimestamp',
   `${grab('validateTimestamp')}\n${grab('ensureRecordIntegrity')}\nreturn { ensure: ensureRecordIntegrity };`
 )((p) => p + '_id', () => NOW);

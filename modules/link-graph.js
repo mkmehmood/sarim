@@ -1,14 +1,3 @@
-// Pure link-graph helpers. NO imports on purpose: everything here works on plain arrays/objects so it
-// can be unit-tested in node and reused by the store-aware wrappers in link-guards.js.
-//
-// Record links in this app:
-//   customer_sales / rep_sales : relatedSaleId  (partial payment -> parent credit sale)
-//   rep_sales                  : usedInCalcId   (rep sale consumed by a calculator record)
-//   noman_history              : linkedSalesIds[], linkedRepSalesIds[], transferSaleId, returnEntryId, returnLogId
-//   payment_transactions       : expenseId      (payment -> expense record), entityId (payment -> entity)
-// Recovering a record from the recycle bin gives it a NEW id (so cloud tombstones on other devices
-// cannot re-delete it). Every field above therefore has to be re-pointed at the new id.
-
 export const GROUP_FIELD = '_deletionGroup';
 
 export const REF_FIELDS = {
@@ -19,7 +8,6 @@ export const REF_FIELDS = {
   factory_inventory_data: { scalar: ['supplierId'], array: [] },
 };
 
-// Tombstone collection name -> storage key
 export const COLLECTION_TO_KEY = {
   sales: 'customer_sales',
   rep_sales: 'rep_sales',
@@ -39,7 +27,6 @@ export const COLLECTION_TO_KEY = {
 const _n = (v) => Number(v) || 0;
 const _r2 = (v) => Math.round((_n(v) + Number.EPSILON) * 100) / 100;
 
-// Follow oldId -> newId chains (a record can be deleted and recovered more than once).
 export function resolveId(id, idMap) {
   if (!id || !idMap) return id;
   let cur = String(id);
@@ -51,8 +38,6 @@ export function resolveId(id, idMap) {
   return cur;
 }
 
-// Re-point every reference to oldId at newId. `stores` is { storeKey: record[] }.
-// Mutates records in place and returns { storeKey: [changedRecord, ...] } so callers save only what changed.
 export function remapReferences(stores, oldId, newId) {
   const changed = {};
   const o = String(oldId);
@@ -76,7 +61,6 @@ export function remapReferences(stores, oldId, newId) {
   return changed;
 }
 
-// Re-point a snapshot's OWN outgoing links using the recovered-id map (parent was recovered earlier).
 export function resolveOwnLinks(collectionName, snapshot, idMap) {
   const key = COLLECTION_TO_KEY[collectionName];
   const spec = REF_FIELDS[key];
@@ -86,10 +70,6 @@ export function resolveOwnLinks(collectionName, snapshot, idMap) {
   return snapshot;
 }
 
-// ---- partial payment <-> parent credit sale -------------------------------------------------------
-
-// Delete side: take a child payment's amount back off its parent. Returns the NEW parent state
-// (a patch) or null when nothing needs to change. Pure: does not mutate.
 export function planChildDetach(parent, child) {
   if (!parent || !child) return null;
   const paid = Math.max(0, _r2(_n(parent.partialPaymentReceived) - _n(child.totalValue)));
@@ -98,7 +78,6 @@ export function planChildDetach(parent, child) {
   return patch;
 }
 
-// Restore side: put the child's amount back on the parent. Returns { patch } or { block }.
 export function planChildReattach(parent, child) {
   if (!child || child.paymentType !== 'PARTIAL_PAYMENT' || !child.relatedSaleId) return { patch: null };
   if (!parent) return { block: 'The credit sale this payment belongs to is not in your records. Recover that sale first, then recover the payment.' };
@@ -120,8 +99,6 @@ export function applyPatch(rec, patch) {
   return rec;
 }
 
-// Save side: an edit must not leave children inconsistent with their parent.
-// children = records whose relatedSaleId === original.id
 export function getEditLinkIssue(original, next, children) {
   if (!original || !next) return null;
   const kids = Array.isArray(children) ? children : [];
@@ -136,11 +113,6 @@ export function getEditLinkIssue(original, next, children) {
   return null;
 }
 
-// ---- payment transaction <-> expense record --------------------------------------------------------
-
-// Delete side: deleting a payment must also remove the expense record that was created with it, but only
-// when no OTHER payment still points at that expense. Pure: returns the expense to remove, or null.
-// excludeIds = ids of payments that are being deleted in the same operation.
 export function planExpenseCascade(tx, allTxs, expenses, excludeIds) {
   if (!tx || !tx.expenseId) return null;
   const skip = new Set([String(tx.id), ...(excludeIds ? [...excludeIds].map(String) : [])]);
@@ -149,9 +121,6 @@ export function planExpenseCascade(tx, allTxs, expenses, excludeIds) {
   return (Array.isArray(expenses) ? expenses : []).find(e => e && String(e.id) === String(tx.expenseId)) || null;
 }
 
-// ---- deletion groups ---------------------------------------------------------------------------
-
-// Stamp a snapshot so the recycle bin knows which tombstones were deleted together.
 export function stampGroup(rec, groupId) {
   return rec && groupId ? { ...rec, [GROUP_FIELD]: groupId } : rec;
 }
@@ -160,8 +129,8 @@ export function newGroupId(prefix = 'grp') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// Order tombstones for restore: parents before children, expenses/customers before the rows that point at them.
 const _COLLECTION_RANK = { sales_customers: 0, rep_customers: 0, expenses: 0, entities: 0, inventory: 0 };
+
 export function orderForRestore(tombstones) {
   const list = tombstones.slice();
   const ids = new Set(list.map(t => String(t.recordId || t.id)));
@@ -181,7 +150,6 @@ export function orderForRestore(tombstones) {
     .map(x => x.t);
 }
 
-// All tombstones that belong to the same deletion as `tomb` (including itself).
 export function findGroupMembers(tomb, allTombstones) {
   const snap = (tomb && tomb.snapshot) || {};
   const gid = snap[GROUP_FIELD];
@@ -196,8 +164,6 @@ export function findGroupMembers(tomb, allTombstones) {
   return members;
 }
 
-// Every tombstone that must be erased / recovered with the given ones: each record plus the other members of
-// its deletion group or transfer pair, de-duplicated by record id. `all` is every tombstone known to the bin.
 export function expandGroups(recs, all) {
   const out = new Map();
   for (const r of recs || []) {
@@ -210,9 +176,6 @@ export function expandGroups(recs, all) {
   return Array.from(out.values());
 }
 
-// ---- nested material references (factory batches + formulas point at inventory item ids) -------------
-
-// history: factory_production_history[], formulas: { formulaKey: [{id,...}] }
 export function remapMaterialRefs(history, formulas, oldId, newId) {
   const o = String(oldId), nw = String(newId);
   const historyChanged = [];
@@ -234,8 +197,6 @@ export function remapMaterialRefs(history, formulas, oldId, newId) {
   return { historyChanged, formulasChanged };
 }
 
-// ---- restoring a factory batch must take its raw materials out of inventory again --------------------
-// Deleting a batch ADDED the materials back; restoring it must remove them, or they are counted twice.
 export function planMaterialDeduction(entry, inventory, formulas, formulaKey) {
   if (!entry) return { updates: [] };
   const used = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
@@ -256,7 +217,6 @@ export function planMaterialDeduction(entry, inventory, formulas, formulaKey) {
   return { updates };
 }
 
-// ---- restoring something that CONSUMES store stock must not overdraw that store/day -------------------
 export function getStockOverdrawIssue(label, qty, availableNow) {
   const q = _n(qty);
   if (q <= 0) return null;
@@ -266,7 +226,6 @@ export function getStockOverdrawIssue(label, qty, availableNow) {
   return null;
 }
 
-// ---- customer renames: records deleted before a rename must come back under the new name -------------
 export function recordRename(map, kind, from, to) {
   const m = map && typeof map === 'object' ? map : {};
   const f = String(from || '').trim().toLowerCase();
@@ -275,6 +234,7 @@ export function recordRename(map, kind, from, to) {
   m[`${kind}:${f}`] = t;
   return m;
 }
+
 export function resolveRename(map, kind, name) {
   if (!map || !name) return name;
   let cur = String(name);
@@ -286,7 +246,6 @@ export function resolveRename(map, kind, name) {
   return cur;
 }
 
-// ---- old-debt edits: changing the amount must not erase payments that were already collected ---------
 export function getOldDebtEditIssue(newAmount, children) {
   const paid = (Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0);
   if (paid > 0 && _n(newAmount) + 0.01 < paid) {
@@ -294,13 +253,11 @@ export function getOldDebtEditIssue(newAmount, children) {
   }
   return null;
 }
+
 export function sumChildPayments(children) {
   return _r2((Array.isArray(children) ? children : []).reduce((s, c) => s + _n(c && c.totalValue), 0));
 }
 
-// ---- production returns --------------------------------------------------------------------------------
-// A return is TWO records: the production-tab entry (mfg_pro_pkr, isReturn) and the stock_returns log.
-// Only the log counts toward store stock, so the pair must always be deleted / restored together.
 export const DELETE_ORIGIN_FIELD = '_deleteOrigin';
 
 export function findReturnLogFor(entry, logs) {
@@ -313,12 +270,10 @@ export function findReturnLogFor(entry, logs) {
     || cands[0];
 }
 
-// How many kg of store stock disappear when this return is deleted (0 when no log counts it).
 export function getReturnStockDrop(entry, log) {
   return entry && log ? _n(log.quantity) : 0;
 }
 
-// ---- factory formula units consumed by a production entry -------------------------------------------
 export function getUnitsShortIssue(label, requested, available) {
   const r = _n(requested);
   if (r <= 0) return null;
@@ -328,15 +283,13 @@ export function getUnitsShortIssue(label, requested, available) {
   return null;
 }
 
-// ---- supplier payables (Factory raw materials <-> Payment tab) ---------------------------------------------
-// A linked material owes its supplier the amount that was INVOICED (the IN payable transaction), not its
-// current stock value: batches use stock up, which lowers totalValue, but the debt does not shrink.
 const _txMatIds = (t) => {
   const ids = new Set();
   if (t && t.materialId) ids.add(String(t.materialId));
   if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
   return ids;
 };
+
 const _stockValueFallback = (m) => _r2(m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : _n(m.quantity) * _n(m.cost)) || 0);
 
 export function findPayableInTxs(txs, materialId, supplierId) {
@@ -344,10 +297,6 @@ export function findPayableInTxs(txs, materialId, supplierId) {
     (supplierId == null || String(t.entityId) === String(supplierId)) && _txMatIds(t).has(String(materialId)));
 }
 
-
-// A payable transaction that names raw material(s) is only a live debt/payment while at least one of those
-// materials is still linked to that same supplier. Once the material is deleted or unlinked the transaction is
-// an orphan and must not inflate (or reduce) the entity's outstanding balance.
 export function isOrphanSupplierTx(t, inventory) {
   if (!t || t.isPayable !== true) return false;
   const ids = _txMatIds(t);
@@ -356,20 +305,16 @@ export function isOrphanSupplierTx(t, inventory) {
   return !inv.some(m => m && !m.deletedAt && ids.has(String(m.id)) && m.supplierId && String(m.supplierId) === String(t.entityId));
 }
 
-// A linked material only contributes to its supplier's outstanding balance while the supplier still has a live
-// invoice (payable IN transaction) for it. A stale totalPayable left behind by re-linking / sync must not count.
 export function hasLiveSupplierInvoice(material, txs) {
   return !!(material && material.supplierId && findPayableInTxs(txs, material.id, material.supplierId).length > 0);
 }
 
-// inTxs: payable IN transactions of the material's supplier (already excluding any being deleted).
 export function materialOriginalPayable(material, inTxs) {
   const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);
   if (direct.length) return _r2(direct.reduce((s, t) => s + _n(t.amount), 0));
   return _stockValueFallback(material || {});
 }
 
-// Pay oldest materials first. Mutates the materials; originalOf(m) gives each one's invoiced amount.
 export function allocatePayments(mats, payments, originalOf) {
   mats.forEach(m => { m.totalPayable = originalOf(m); m.paymentStatus = 'pending'; delete m.paidDate; });
   payments.forEach(pay => {
@@ -391,15 +336,14 @@ export function allocatePayments(mats, payments, originalOf) {
   return mats;
 }
 
-// Editing a linked material's stock value by `delta` moves the invoiced amount by the same delta.
 export function planPayableAdjustment(currentInvoiced, delta) {
   const next = Math.max(0, _r2(_n(currentInvoiced) + _n(delta)));
   return { next, change: _r2(next - _n(currentInvoiced)) };
 }
 
-// ---- which formula will a store actually use? (pure; callers pass freshly-read data) -------------------------
 const _SLOTS = ['standard', 'asaan'];
 const _SLOT_LABEL = { standard: 'Standard', asaan: 'Asaan' };
+
 export function resolveSelectedFormula(data, storeKey) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
   const slots = data.slots || {};
@@ -429,16 +373,12 @@ export function resolveSelectedFormula(data, storeKey) {
   return { source: 'feed', type, formulaId: null, name: _SLOT_LABEL[type] || 'Formula', additionalCost: _n(costs[type] != null ? costs[type] : costs[storeKey]), ingredients: (Array.isArray(feed[type] || feed[storeKey]) ? (feed[type] || feed[storeKey]) : []).map(resolve) };
 }
 
-// ---- credit settlement (Sales tab) ------------------------------------------------------------------------
-// The customer statement shows creditReceivedDate as the "settled on" date and sorts by it, so every path
-// that flips creditReceived has to set or clear it together with the flag.
 const _SETTLE_FIELDS = ['creditReceivedDate', 'creditReceivedTime', 'creditReceivedManually'];
 
 export function isSettleableSale(rec) {
   return !!rec && (rec.paymentType === 'CREDIT' || rec.transactionType === 'OLD_DEBT');
 }
 
-// Manual "mark paid / mark unpaid" toggle. Returns the fields to apply (and the ones to clear).
 export function planCreditToggle(rec, today, nowTime) {
   const next = !rec.creditReceived;
   return next
@@ -446,7 +386,6 @@ export function planCreditToggle(rec, today, nowTime) {
     : { set: { creditReceived: false }, clear: _SETTLE_FIELDS.slice() };
 }
 
-// Editing a sale must not silently un-pay it. CREDIT -> CREDIT keeps the settlement, anything else follows the new type.
 export function planEditSettlement(original, newPaymentType) {
   if (newPaymentType === 'CASH') return { set: { creditReceived: true }, clear: _SETTLE_FIELDS.slice() };
   if (original && original.paymentType === 'CREDIT' && newPaymentType === 'CREDIT') {
@@ -464,10 +403,6 @@ export function applySettlement(rec, plan) {
   return rec;
 }
 
-// ---- recovery planning -----------------------------------------------------------------------------------
-// Records deleted before deletion groups existed have no group id, but they still point at what they depend
-// on. Recovering a record therefore also brings back the PARENT it needs (never the other way round, so
-// recovering one payment does not drag back every other payment of that supplier).
 const _tid = (t) => String((t && (t.recordId || t.id)) || '');
 const _tcol = (t) => (t && (t.collection || t.recordType)) || '';
 const _lc = (v) => String(v || '').trim().toLowerCase();
@@ -478,7 +413,6 @@ function _returnPairMatches(entry, log) {
     ((entry.createdAt != null && log.createdAt === entry.createdAt) || (entry.returnedBy && log.seller === entry.returnedBy));
 }
 
-// live = { ids: Set<string> of live record ids, contacts: { sales: Set<lowercase name>, rep: Set<lowercase name> } }
 export function findParentTombstones(tomb, allTombs, live) {
   const all = Array.isArray(allTombs) ? allTombs : [];
   const snap = (tomb && tomb.snapshot) || {};
@@ -511,8 +445,6 @@ export function findParentTombstones(tomb, allTombs, live) {
   return out;
 }
 
-// Everything that has to come back together with `tomb`: its deletion group, its transfer / return partner,
-// and any parent it needs that is still sitting in the bin.
 export function expandRecoveryMembers(tomb, allTombs, live) {
   if (!tomb) return [];
   const seen = new Map();
@@ -528,8 +460,6 @@ export function expandRecoveryMembers(tomb, allTombs, live) {
   return Array.from(seen.values());
 }
 
-// Decide what can be recovered now. blocked: Map<recordId, reason>. A blocked record is skipped, and so is
-// everything that depends on it (its payments, its customer's sales...) or must travel with it (pairs).
 export function planGroupRecovery(members, blocked, requestedId) {
   const list = (members || []).filter(Boolean);
   const byId = new Map(list.map(t => [_tid(t), t]));
@@ -571,7 +501,6 @@ export function planGroupRecovery(members, blocked, requestedId) {
   return { restore, skipped, requestedSkipped };
 }
 
-// Marking a sale paid while payment records exist against it would count that money twice.
 export function getPartialPaidIssue(childTotal) {
   const c = _n(childTotal);
   return c > 0
@@ -579,10 +508,6 @@ export function getPartialPaidIssue(childTotal) {
     : null;
 }
 
-// ---- calculator entry restore ----------------------------------------------------------------------------
-// A calculator record settles credit sales, claims rep sales, and may create a return, a rep transfer and
-// CHORA stock. Deleting it reverses all of that, so restoring it has to re-apply ALL of it - and only when
-// every record it touched is still exactly as the delete left it. Otherwise nothing is restored.
 export function planCalcRestore(entry, ctx) {
   const e = entry || {};
   const c = ctx || {};
@@ -631,9 +556,6 @@ export function planCalcRestore(entry, ctx) {
   return { block: problems.length ? `This calculator record cannot be recovered because ${problems.join('; ')}. Enter the calculation again.` : null };
 }
 
-// ---- legacy partly-paid sales -----------------------------------------------------------------------------
-// Old versions saved a partial payment twice: a PARTIAL_PAYMENT record AND a running total on the credit sale.
-// Statements and trackers apply both, so such a sale is counted twice. This finds exactly those sales.
 export function findPartialConflicts(sales) {
   const list = (Array.isArray(sales) ? sales : []).filter(s => s && !s.deletedAt);
   const kids = new Map();
@@ -652,31 +574,19 @@ export function findPartialConflicts(sales) {
     if (childSum <= 0) return;
     const parentPaid = _n(p.partialPaymentReceived);
     if (p.creditReceived) {
-      // Marked paid: its full value is already counted as received, and the payment records add it again.
       out.push({ id: p.id, customerName: p.customerName, kind: 'cash-counted-twice', amount: childSum, children: c.length });
     } else if (parentPaid > 0) {
-      // Unpaid: the running total and the payment records both reduce what the customer owes.
       out.push({ id: p.id, customerName: p.customerName, kind: 'debt-reduced-twice', amount: _r2(Math.min(parentPaid, childSum)), children: c.length });
     }
   });
   return out;
 }
 
-// ---- bulk / partial collections -> credit sales ------------------------------------------------------------
-// A collection used to be a lone record that lowered the customer's balance while every credit sale kept
-// showing UNPAID. Now the money is applied to the customer's unpaid credit sales, oldest first: a sale the money
-// fully covers is marked PAID, the next one is marked partly paid (partialPaymentReceived).
-// To keep every balance and cash figure exact, the sales carry the money they absorbed and the collection record
-// keeps only what no sale could absorb (`totalValue` = leftover / advance). The amount the person actually handed
-// over stays on the collection as `collectedAmount`, and what it did is listed in `allocations`.
-// Each sale remembers the collections that touched it in `collectionAllocs` so a delete or edit can undo it.
-
 export function collectionCollected(rec) {
   if (!rec) return 0;
   return rec.collectedAmount != null ? _n(rec.collectedAmount) : _n(rec.totalValue);
 }
 
-// Oldest first; opening balances (old debt) before everything else.
 export function sortForCollection(list) {
   const day = (s) => String(s.supplyDate || s.date || '');
   return list.slice().sort((a, b) => {
@@ -687,7 +597,6 @@ export function sortForCollection(list) {
   });
 }
 
-// dues: [{ id, due }] already in payment order. Returns what to apply to each and what is left over.
 export function planCollectionAllocation(amount, dues) {
   let left = _r2(Math.max(0, _n(amount)));
   const allocs = [];
@@ -705,9 +614,6 @@ export function applyCollectionAlloc(sale, alloc, cid, when) {
   if (!sale || !alloc) return sale;
   if (!Array.isArray(sale.collectionAllocs)) sale.collectionAllocs = [];
   sale.collectionAllocs.push({ cid, amount: _r2(alloc.amount), full: !!alloc.full });
-  // The sale's own dates are never touched: it keeps the date it was made on (no creditReceivedDate is set).
-  // An opening balance (old debt) is shown as debit = total, credit = partialPaymentReceived, so when it becomes
-  // PAID its received amount must reach the full total or statements would still show a balance.
   if (alloc.full) {
     sale.creditReceived = true;
     sale.creditReceivedManually = true;
@@ -734,13 +640,11 @@ export function revertCollectionAlloc(sale, cid) {
   return true;
 }
 
-// Money a sale took in through collections but could not show as PAID yet. The cash tracker counts it.
 export function collectionPartialCash(sale) {
   if (!sale || sale.creditReceived || !Array.isArray(sale.collectionAllocs)) return 0;
   return _r2(sale.collectionAllocs.reduce((t, a) => t + (a && !a.full ? _n(a.amount) : 0), 0));
 }
 
-// Undo is last-in-first-out per sale: a newer collection may sit on top of this one.
 export function getCollectionRevertIssue(collection, sales) {
   const list = Array.isArray(collection && collection.allocations) ? collection.allocations : [];
   for (const a of list) {
@@ -754,7 +658,6 @@ export function getCollectionRevertIssue(collection, sales) {
   return null;
 }
 
-// Recover side: can this collection's effect be put back on the sales it settled?
 export function getCollectionReapplyIssue(collection, sales) {
   const list = Array.isArray(collection && collection.allocations) ? collection.allocations : [];
   for (const a of list) {
@@ -765,35 +668,30 @@ export function getCollectionReapplyIssue(collection, sales) {
   return null;
 }
 
-// ---- Payments tab ----------------------------------------------------------------------------------------
-// One save at a time per action: a second tap while the first is still running is ignored, not queued.
 const _held = new Set();
+
 export function runExclusive(key, fn) {
   if (_held.has(key)) return Promise.resolve(undefined);
   _held.add(key);
   return Promise.resolve().then(fn).finally(() => _held.delete(key));
 }
 
-// Cash in hand = production + sales + calculator + payments IN - payments OUT - expenses. Transfers move money
-// between entities (an OUT and an IN of the same amount) and a credit-purchase record is a liability, not cash.
 const _cashRelevant = (tx) => !!tx && !tx.isTransfer && !tx.isMerged && !(tx.isPayable && tx.type === 'IN');
 
-// Cash that DELETING this transaction takes away (a payment received).
 export function getDeleteCashDrop(tx) {
   return _cashRelevant(tx) && tx.type === 'IN' ? _n(tx.amount) : 0;
 }
-// Cash that RECOVERING this transaction uses up (a payment made or an expense). Paying down a supplier payable
-// is not cash-checked when saved, so it is not checked here either.
+
 export function getRestoreCashNeed(tx) {
   return _cashRelevant(tx) && tx.type === 'OUT' && !tx.isPayable ? _n(tx.amount) : 0;
 }
+
 export function getCashShortIssue(need, available, what) {
   const n = _n(need);
   if (n <= 0 || _n(available) - n >= -0.0001) return null;
   return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
 }
 
-// Renaming an entity: every record that stores a COPY of its name has to follow.
 export function planEntityRename(entityId, newName, txs, materials) {
   const id = String(entityId);
   const tx = [], mat = [];
@@ -809,6 +707,7 @@ export function planEntityRename(entityId, newName, txs, materials) {
   });
   return { txIds: tx, materialIds: mat };
 }
+
 export function applyEntityRename(entityId, newName, txs, materials, plan) {
   const id = String(entityId);
   const T = new Set(plan.txIds.map(String)), M = new Set(plan.materialIds.map(String));
