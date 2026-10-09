@@ -1463,7 +1463,7 @@ try {
       window.showGlassAlert(' Encrypted year-end backup downloaded!', { tone: 'success', title: 'Backup Downloaded' });
     } catch (encErr) {
       console.error('Encryption failed:', _safeErr(encErr));
-      showToast('Local backup encryption failed — proceeding with cloud backup only.', 'warning', 4000);
+      window.notifyBlocking('Local backup encryption failed — proceeding with cloud backup only.', 'warning');
     }
   } else {
     showToast('No verified password — skipping local encrypted backup.', 'info', 2500);
@@ -1486,7 +1486,7 @@ try {
   backupTimestamp = await createMergeBackup();
 } catch (backupErr) {
   closeYearInProgress = false;
-  showToast('Failed to create rollback snapshot: ' + backupErr.message, 'error');
+  window.notifyBlocking('Failed to create rollback snapshot: ' + backupErr.message, 'error');
   closeCloseYearDialog();
   return;
 }
@@ -1720,7 +1720,7 @@ if (error.name === 'AbortError') {
   showToast('Close Financial Year was cancelled', 'info');
 } else {
   console.error('Close Financial Year failed:', _safeErr(error));
-  showToast('Close Financial Year failed: ' + error.message, 'error');
+  window.notifyBlocking('Close Financial Year failed: ' + error.message, 'error');
   if (typeof backupTimestamp !== 'undefined') {
     updateCloseYearProgress('Restoring from backup...', 0);
     try {
@@ -1728,7 +1728,7 @@ if (error.name === 'AbortError') {
       showToast('Data restored from backup. No changes were committed.', 'info');
     } catch (restoreErr) {
       console.error('Failed to restore from backup:', _safeErr(restoreErr));
-      showToast('CRITICAL: Failed to restore from backup. Manual intervention required.', 'error');
+      window.notifyBlocking('CRITICAL: Failed to restore from backup. Manual intervention required.', 'error');
     }
   }
   closeCloseYearDialog();

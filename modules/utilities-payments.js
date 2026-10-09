@@ -1075,7 +1075,7 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (!id || !validateUUID(id)) {
-showToast('Invalid sales entry ID', 'error');
+window.notifyBlocking('Invalid sales entry ID', 'error');
 return;
 }
 try {
@@ -1083,7 +1083,7 @@ let history; history = await sqliteStore.get('noman_history', []);
 const _foundEntry = history.find(h => h.id === id);
 const entryToDelete = _foundEntry ? JSON.parse(JSON.stringify(_foundEntry)) : _foundEntry;
 if (entryToDelete && entryToDelete.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 if (entryToDelete) {
@@ -1184,10 +1184,10 @@ successMsg += ` ${entryToDelete.expired} kg expired removed from CHORA.`;
 showToast(successMsg, 'success');
 }
 } else {
-showToast("Error: Record not found.", "error");
+window.notifyBlocking("Error: Record not found.", 'error');
 }
 } catch (error) {
-showToast("Failed to delete entry. Please try again.", "error");
+window.notifyBlocking("Failed to delete entry. Please try again.", 'error');
 }
 }
 export async function revertSpecificSalesEntries(saleIds) {
@@ -1380,12 +1380,12 @@ const hasIN = entityTxs.some(t => t.type === 'IN');
 const hasOUT = entityTxs.some(t => t.type === 'OUT');
 const type = (hasIN && !hasOUT) ? 'payor' : 'payee';
 if (!name) {
-showToast("Please enter an entity name", "warning");
+window.notifyBlocking("Please enter an entity name", 'warning');
 return;
 }
 const exists = paymentEntities.some(e => e && e.name && e.name.toLowerCase() === name.toLowerCase() && e.id !== editingEntityId);
 if(exists) {
-showToast("An entity with this name already exists", "warning");
+window.notifyBlocking("An entity with this name already exists", 'warning');
 return;
 }
 try {
@@ -1436,7 +1436,7 @@ closeEntityManagement();
 if (typeof renderEntityTable === 'function') await renderEntityTable(1);
 if (typeof calculateNetCash === 'function') calculateNetCash();
 } catch (error) {
-showToast('Failed to save entity. Please try again.', 'error');
+window.notifyBlocking('Failed to save entity. Please try again.', 'error');
 }
 }
 export async function editEntityBasicInfo(id) {
@@ -1677,7 +1677,7 @@ const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventor
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (editingFactoryInventoryId) {
 if (!validateUUID(String(editingFactoryInventoryId))) {
-showToast('Invalid inventory item ID', 'error');
+window.notifyBlocking('Invalid inventory item ID', 'error');
 return;
 }
 const _diMat = factoryInventoryData.find(i => i.id === editingFactoryInventoryId);
@@ -1721,7 +1721,7 @@ if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 showToast("Inventory item deleted!", 'success');
 } catch (error) {
-showToast('Failed to delete item. Please try again.', 'error');
+window.notifyBlocking('Failed to delete item. Please try again.', 'error');
 }
 }
 }
@@ -2142,7 +2142,7 @@ const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-showToast('Access Denied — Payments not in your assigned tabs', 'warning', 3000); return;
+window.notifyBlocking('Access Denied — Payments not in your assigned tabs', 'warning'); return;
 }
 const name = document.getElementById('expenseName').value.trim();
 const amount = parseFloat(document.getElementById('expenseAmount').value);
@@ -2150,15 +2150,15 @@ const date = document.getElementById('expenseDate').value;
 const description = document.getElementById('expenseDescription').value.trim();
 const category = window._expenseCategory || 'operating';
 if (!name) {
-showToast("Please enter name/entity", "warning");
+window.notifyBlocking("Please enter name/entity", 'warning');
 return;
 }
 if (!amount || amount <= 0) {
-showToast("Please enter valid amount", "warning");
+window.notifyBlocking("Please enter valid amount", 'warning');
 return;
 }
 if (!date) {
-showToast("Please select date", "warning");
+window.notifyBlocking("Please select date", 'warning');
 return;
 }
 const _edPay = getEditCtx('payment');
@@ -2288,7 +2288,7 @@ const isKnownExpenseCategory = expenseCategories.some(
 cat => typeof cat === 'string' && cat.toLowerCase() === name.toLowerCase()
 );
 if (isKnownExpenseCategory) {
-showToast(`"${name}" is an operating expense category, not an entity. Switch to Operating Expense mode or use a different name.`, 'error', 5000);
+window.notifyBlocking(`"${name}" is an operating expense category, not an entity. Switch to Operating Expense mode or use a different name.`, 'error');
 return;
 }
 let _seEntityId = generateUUID('ent');
@@ -2415,7 +2415,7 @@ try {
 renderUnifiedTable(1);
 } catch (e) {
 console.error('Failed to render data.', _safeErr(e));
-showToast('Transaction table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
+window.notifyBlocking('Transaction table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof refreshPaymentTab === 'function') {
@@ -2423,7 +2423,7 @@ try {
 await refreshPaymentTab(true);
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Payments tab failed to refresh: ' + (_safeErr(e).message || 'please reload the app'), 'error');
+window.notifyBlocking('Payments tab failed to refresh: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof renderExpenseTable === 'function') {
@@ -2431,7 +2431,7 @@ try {
 renderExpenseTable(1);
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Expense table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
+window.notifyBlocking('Expense table failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof handleExpenseSearch === 'function') {
@@ -2439,7 +2439,7 @@ try {
 handleExpenseSearch();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Expense search failed to run: ' + (_safeErr(e).message || 'please reload the app'), 'error');
+window.notifyBlocking('Expense search failed to run: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof calculateNetCash === 'function') {
@@ -2447,7 +2447,7 @@ try {
 calculateNetCash();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Economic health calculation failed: ' + (_safeErr(e).message || 'please reload the app'), 'error');
+window.notifyBlocking('Economic health calculation failed: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 if (typeof renderFactoryInventory === 'function') {
@@ -2455,7 +2455,7 @@ try {
 renderFactoryInventory();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
-showToast('Factory inventory failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
+window.notifyBlocking('Factory inventory failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error');
 }
 }
 triggerAutoSync();
@@ -2480,9 +2480,9 @@ await sqliteStore.setBatch([
 ]);
 } catch (rollbackError) {
 console.error('Failed to render data.', _safeErr(rollbackError));
-showToast('Expense rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+window.notifyBlocking('Expense rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
-showToast('Failed to save expense. Please try again.', 'error');
+window.notifyBlocking('Failed to save expense. Please try again.', 'error');
 }
 }
 export async function createExpenseTransaction(expense) {
@@ -3539,12 +3539,12 @@ const descEl = document.getElementById('quickExpenseDescription');
 if (!amountEl) return;
 const amount = parseFloat(amountEl.value);
 if (!amount || amount <= 0) {
-showToast('Please enter a valid amount', 'warning');
+window.notifyBlocking('Please enter a valid amount', 'warning');
 return;
 }
 const expenseName = currentExpenseOverlayName;
 if (!expenseName) {
-showToast('No expense category selected. Please close and reopen the expense panel.', 'warning');
+window.notifyBlocking('No expense category selected. Please close and reopen the expense panel.', 'warning');
 return;
 }
 const _sqeeAvail = await getAvailableCashInHand();
@@ -3579,7 +3579,7 @@ renderExpenseOverlayContent();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 if (typeof calculateCashTracker === 'function') calculateCashTracker();
 } catch (error) {
-showToast('Failed to save expense. Please try again.', 'error');
+window.notifyBlocking('Failed to save expense. Please try again.', 'error');
 }
 }
 export async function deleteAllExpensesByName() {
@@ -3646,7 +3646,7 @@ if (typeof calculateNetCash === 'function') calculateNetCash();
 if (typeof calculateCashTracker === 'function') calculateCashTracker();
 if (typeof renderRecentExpenses === 'function') renderRecentExpenses();
 } catch (error) {
-showToast('Failed to delete all expense records. Please try again.', 'error');
+window.notifyBlocking('Failed to delete all expense records. Please try again.', 'error');
 }
 }
 export async function exportExpenseOverlayToPDF() {
@@ -3822,7 +3822,7 @@ const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 if (!expenseId || !validateUUID(expenseId)) {
-showToast('Invalid expense ID', 'error');
+window.notifyBlocking('Invalid expense ID', 'error');
 return;
 }
 const expense = expenseRecords.find(e => e.id === expenseId);
@@ -3896,7 +3896,7 @@ await _refreshSupplierLinkViews();
 const label = expense.category === 'operating' ? 'Expense' : `Payment ${expense.category}`;
 showToast(` ${label} deleted — all balances and views restored!`, 'success');
 } catch (error) {
-showToast('Failed to delete expense. Please try again.', 'error');
+window.notifyBlocking('Failed to delete expense. Please try again.', 'error');
 }
 }
 export function clearExpenseForm() {
@@ -4832,7 +4832,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const _recov = ownTomb ? await _planRecovery(ownTomb, deletionRecords) : { members: [], plan: { restore: [], skipped: [], requestedSkipped: null } };
   const _grpMembers = _recov.plan.restore.length > 0 ? _recov.plan.restore : _recov.members;
   if (_recov.members.length > 1) {
-    if (_recov.plan.requestedSkipped) { showToast(_recov.plan.requestedSkipped, 'warning', 7000); return; }
+    if (_recov.plan.requestedSkipped) { window.notifyBlocking(_recov.plan.requestedSkipped, 'warning'); return; }
   } else {
     const _rb = getRecoverBlockReason(collectionName, ownTomb && ownTomb.snapshot);
     if (_rb) { window.notifyBlocking(_rb, 'warning'); return; }
@@ -4871,7 +4871,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
     const current = filterSel ? filterSel.value : 'all';
     await renderRecycleBin(current);
   } else {
-    showToast('Recovery failed. The record may have been permanently purged from cloud.', 'error');
+    window.notifyBlocking('Recovery failed. The record may have been permanently purged from cloud.', 'error');
     notifyDataChange('all');
     const _fs = document.getElementById('recycleBinFilter');
     await renderRecycleBin(_fs ? _fs.value : 'all');
@@ -5082,7 +5082,7 @@ async function _attemptHardDeleteImpl(id, collectionName) {
     const current = filterSel ? filterSel.value : 'all';
     await renderRecycleBin(current);
   } else {
-    showToast('Hard delete failed. Please try again.', 'error');
+    window.notifyBlocking('Hard delete failed. Please try again.', 'error');
     const filterSel = document.getElementById('recycleBinFilter');
     await renderRecycleBin(filterSel ? filterSel.value : 'all');
   }
@@ -5178,7 +5178,7 @@ const file = event.target.files[0];
 event.target.value = '';
 if (!file) return;
 if (!firebaseDB || !currentUser) {
-showToast('Please sign in first before uploading.', 'warning');
+window.notifyBlocking('Please sign in first before uploading.', 'warning');
 closeDataMenu();
 showAuthOverlay();
 return;
@@ -5193,7 +5193,7 @@ try {
 const text = await _readFileAsText(file);
 const data = JSON.parse(text);
 if (!data.mfg && !data.mfg_pro_pkr && !data.customerSales && !data.repSales && !data.repCustomers) {
-showToast('This file does not look like a valid backup.', 'error');
+window.notifyBlocking('This file does not look like a valid backup.', 'error');
 return;
 }
 const _utcMsg = `Upload this device's local data to the cloud database?\n\n• Existing cloud records will NOT be deleted\n• Where duplicates exist, the newer version wins\n• Deleted records (tombstones) are respected\n• Other devices will receive your changes on their next sync\n\nThis is a one-way push — cloud records newer than yours are preserved.`;
@@ -6092,7 +6092,7 @@ location.reload();
 export async function deleteRepTransaction(id) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (!id || !validateUUID(id)) {
-showToast('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
 const transaction = repSales.find(t => t.id === id);
@@ -6101,7 +6101,7 @@ await refreshRepUI(true);
 return;
 }
 if (transaction.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 {
@@ -6166,7 +6166,7 @@ message += ` Payment of ${fmtAmt(refundAmount)} reversed.`;
 }
 showToast(message, "success");
 } catch (error) {
-showToast('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
 }
 }
 }
@@ -6995,9 +6995,9 @@ async function _addNewUserRoleRaw() {
 const input = document.getElementById('new-userrole-name-input');
 if (!input) return;
 const name = input.value.trim().toUpperCase();
-if (!name) { showToast('Please enter a name', 'warning'); return; }
-if (_newUserRoleSelectedTabs.size === 0) { showToast('Please select at least one tab', 'warning'); return; }
-if (userRolesList.some(u => u.name === name)) { showToast('User already exists', 'warning'); return; }
+if (!name) { window.notifyBlocking('Please enter a name', 'warning'); return; }
+if (_newUserRoleSelectedTabs.size === 0) { window.notifyBlocking('Please select at least one tab', 'warning'); return; }
+if (userRolesList.some(u => u.name === name)) { window.notifyBlocking('User already exists', 'warning'); return; }
 userRolesList.push({ name, tabs: [..._newUserRoleSelectedTabs] });
 await saveUserRolesList();
 input.value = '';
@@ -7027,8 +7027,8 @@ async function _addNewSalesRepRaw() {
 const input = document.getElementById('new-rep-name-input');
 if (!input) return;
 const name = input.value.trim().toUpperCase();
-if (!name) { showToast('Please enter a name', 'warning'); return; }
-if (salesRepsList.includes(name)) { showToast('Rep already exists', 'warning'); return; }
+if (!name) { window.notifyBlocking('Please enter a name', 'warning'); return; }
+if (salesRepsList.includes(name)) { window.notifyBlocking('Rep already exists', 'warning'); return; }
 salesRepsList.push(name);
 await saveSalesRepsList();
 input.value = '';
@@ -7036,7 +7036,7 @@ showToast(`${name} added`, 'success');
 }
 export async function removeSalesRep(index) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-if (salesRepsList.length <= 1) { showToast('Must have at least one representative', 'warning'); return; }
+if (salesRepsList.length <= 1) { window.notifyBlocking('Must have at least one representative', 'warning'); return; }
 const name = salesRepsList[index];
 {
 const _pend = await getPendingAllocationCount(name);
@@ -7572,7 +7572,7 @@ showToast(' Device list refreshed', 'success', 2000);
 }
 export async function remoteControlDevice(deviceId, targetMode, repName = null, userTabs = null) {
 if (!firebaseDB || !currentUser) {
-showToast('Not logged in', 'error', 3000);
+window.notifyBlocking('Not logged in', 'error');
 return;
 }
 let _rcTitle, _rcMsg, _rcConfirm;
@@ -7638,11 +7638,11 @@ window.notifyBlocking('Failed to control device: ' + error.message, 'error');
 }
 export async function removeDevice(deviceId) {
 if (!firebaseDB || !currentUser) {
-showToast('Not logged in', 'error', 3000);
+window.notifyBlocking('Not logged in', 'error');
 return;
 }
 if (!deviceId || !validateUUID(String(deviceId))) {
-showToast('Invalid device ID', 'error', 3000);
+window.notifyBlocking('Invalid device ID', 'error');
 return;
 }
 const _rdMsg = `Remove this device from the trusted list?\n\nThe device will be logged out immediately and will no longer be able to sync data or receive remote commands. It will need to be re-approved if the user tries to reconnect.\n\nThis does not delete any data already on the device.`;
@@ -7664,7 +7664,7 @@ await deviceRef.delete();
 showToast('Device removed and logged out', 'success', 3000);
 await loadDeviceList();
 } catch (error) {
-showToast('Failed to remove device: ' + error.message, 'error', 3000);
+window.notifyBlocking('Failed to remove device: ' + error.message, 'error');
 }
 }
 window.loadDeviceList = loadDeviceList;
@@ -7954,7 +7954,7 @@ export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransf
 async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
+window.notifyBlocking('Access Denied — Payment Transfer not in your assigned tabs', 'warning');
 return;
 }
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -7964,13 +7964,13 @@ const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
 const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
 const date = (document.getElementById('payment-transfer-date') || {}).value;
 const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
-if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
-if (!fromId || !toId) { showToast('Please search and select both entities from the list.', 'warning', 3000); return; }
-if (String(fromId) === String(toId)) { showToast('From and To entities must be different.', 'warning', 3000); return; }
-if (amount <= 0) { showToast('Please enter a valid amount.', 'warning', 3000); return; }
+if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
+if (!fromId || !toId) { window.notifyBlocking('Please search and select both entities from the list.', 'warning'); return; }
+if (String(fromId) === String(toId)) { window.notifyBlocking('From and To entities must be different.', 'warning'); return; }
+if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning'); return; }
 const fromEntity = paymentEntities.find(e => String(e.id) === String(fromId));
 const toEntity = paymentEntities.find(e => String(e.id) === String(toId));
-if (!fromEntity || !toEntity) { showToast('Selected entity not found.', 'error', 3000); return; }
+if (!fromEntity || !toEntity) { window.notifyBlocking('Selected entity not found.', 'error'); return; }
 if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { window.notifyBlocking('Expense-only entities cannot be used in a transfer.', 'warning'); return; }
 const _oOut = _ed ? _ed.original.records.find(r => r.type === 'OUT') : null;
 const _oIn = _ed ? _ed.original.records.find(r => r.type === 'IN') : null;
@@ -8196,7 +8196,7 @@ if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(tru
 if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
 if (!skipConfirm) showToast('Payment transfer removed', 'success');
 } catch (e) {
-showToast('Failed to remove transfer. Please try again.', 'error');
+window.notifyBlocking('Failed to remove transfer. Please try again.', 'error');
 }
 }
 window.deletePaymentTransfer = deletePaymentTransfer;

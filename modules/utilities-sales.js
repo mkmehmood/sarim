@@ -546,12 +546,12 @@ const paymentTransactions = ensureArray(await sqliteStore.get('payment_transacti
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 if (!id || !validateUUID(id)) {
-showToast('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
 const _dpTx = paymentTransactions.find(t => t.id === id);
 if (_dpTx && _dpTx.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 if (_dpTx && _dpTx.isTransfer === true) {
@@ -600,7 +600,7 @@ const _healTarget = _healTx.find(t => t && t.id === id);
 if (_healTarget && _healTarget.entityId) await _recomputeSupplierPayables([String(_healTarget.entityId)], _healInv, _healTx, new Set(), new Set((_healTarget.materialIds || []).map(String)));
 await _refreshSupplierLinkViews();
 } catch (_) { }
-showToast(" Failed to delete transaction. Please try again.", "error");
+window.notifyBlocking(" Failed to delete transaction. Please try again.", 'error');
 }
 }
 }
@@ -1064,7 +1064,7 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-showToast('Access Denied — Sales not in your assigned tabs', 'warning', 3000); return;
+window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
 }
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
@@ -1077,15 +1077,15 @@ const phoneNumber = (!document.getElementById('new-customer-phone-container').cl
 ? phoneInput.value.trim()
 : '';
 if (!date) {
-showToast('Please select a date.', 'warning', 3000);
+window.notifyBlocking('Please select a date.', 'warning');
 return;
 }
 if (!name) {
-showToast('Please enter customer name.', 'warning', 3000);
+window.notifyBlocking('Please enter customer name.', 'warning');
 return;
 }
 if (quantity <= 0) {
-showToast('Please enter a valid quantity.', 'warning', 3000);
+window.notifyBlocking('Please enter a valid quantity.', 'warning');
 return;
 }
 let storeSpecificProduction = 0;
@@ -1151,8 +1151,8 @@ const _cwMsg = `${name} already has an outstanding credit balance.
 Current unpaid balance: ${fmtAmt(safeNumber(existingCredit, 0))}
 This new credit sale: ${fmtAmt(safeNumber(totalValue, 0))}
 New total if you proceed: ${fmtAmt(safeNumber(existingCredit + totalValue, 0))}
- Consider collecting the existing balance before adding more credit. Proceeding will increase their total debt beyond the threshold.`;
-if (!(await showGlassConfirm(_cwMsg, { title: " High Credit Warning", confirmText: "Add Credit Anyway", cancelText: "Cancel" }))) {
+Warning: Collect the existing balance before adding more credit.`;
+if (!(await showGlassConfirm(_cwMsg, { title: " High Credit Warning", confirmText: "Add Credit Anyway", cancelText: "Cancel", tone: "warning" }))) {
 return;
 }
 }
@@ -1169,7 +1169,7 @@ const deviceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2
 const recordId = _ed ? _ed.id : generateUUID('sale');
 const recordTimestamp = getTimestamp();
 if (!validateUUID(recordId)) {
-showToast(' Error generating transaction ID. Please try again.', 'error');
+window.notifyBlocking(' Error generating transaction ID. Please try again.', 'error');
 return;
 }
 const saleRecord = {
@@ -1258,9 +1258,9 @@ try {
 await unifiedSave('customer_sales', customerSales);
 } catch (rollbackError) {
 console.error('UI refresh failed.', _safeErr(rollbackError));
-showToast('Sale rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+window.notifyBlocking('Sale rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
-showToast(' Failed to save sale. Please try again.', 'error');
+window.notifyBlocking(' Failed to save sale. Please try again.', 'error');
 }
 }
 function _resetSaleForm() {
@@ -1398,7 +1398,7 @@ const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-showToast('Access Denied — Sales not in your assigned tabs', 'warning', 3000); return;
+window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
 }
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
@@ -1408,9 +1408,9 @@ const phoneInput = document.getElementById('new-cust-phone');
 const phoneNumber = (!document.getElementById('new-customer-phone-container').classList.contains('hidden'))
 ? phoneInput.value.trim()
 : '';
-if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
-if (!name) { showToast('Please enter customer name.', 'warning', 3000); return; }
-if (amount <= 0) { showToast('Please enter a valid amount.', 'warning', 3000); return; }
+if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
+if (!name) { window.notifyBlocking('Please enter customer name.', 'warning'); return; }
+if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning'); return; }
 const btn = document.getElementById('btn-save-cust-transaction');
 if (btn) { if (btn.disabled) return; btn.disabled = true; }
 const restoreBtn = () => { if (btn) btn.disabled = false; };
@@ -1461,7 +1461,7 @@ restoreBtn(); return;
 }
 const recordId = _ed ? _ed.id : generateUUID('sale');
 if (!validateUUID(recordId)) {
-showToast('Error generating transaction ID. Please try again.', 'error');
+window.notifyBlocking('Error generating transaction ID. Please try again.', 'error');
 restoreBtn(); return;
 }
 const recordTimestamp = getTimestamp();
@@ -1531,7 +1531,7 @@ if (_alloc) _alloc.undo();
 customerSales.length = 0;
 customerSales.push(...snapshot);
 try { await unifiedSave('customer_sales', customerSales); } catch (_) {}
-showToast('Failed to save collection. Please try again.', 'error');
+window.notifyBlocking('Failed to save collection. Please try again.', 'error');
 }
 } finally {
 restoreBtn();
@@ -1804,7 +1804,7 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (!id || !validateUUID(id)) {
-showToast(' Invalid transaction ID. Cannot delete.', 'error');
+window.notifyBlocking(' Invalid transaction ID. Cannot delete.', 'error');
 return;
 }
 const recordToDelete = customerSales.find(item => item.id === id);
@@ -1814,7 +1814,7 @@ renderCustomersTable();
 return;
 }
 if (recordToDelete.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 {
@@ -1868,7 +1868,7 @@ const _delToast = _dcIsCollection
 : ` Sale deleted! ${recordToDelete.quantity} kg restored to ${recordDate} inventory.`;
 showToast(_delToast, "success");
 } catch (error) {
-showToast(" Failed to delete sale. Please try again.", "error");
+window.notifyBlocking(" Failed to delete sale. Please try again.", 'error');
 }
 }
 }
@@ -3842,7 +3842,7 @@ const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustm
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 if (!currentUser) {
-showToast('Please sign in to create a backup.', 'error');
+window.notifyBlocking('Please sign in to create a backup.', 'error');
 showAuthOverlay();
 return;
 }
@@ -3890,7 +3890,7 @@ _triggerFileDownload(encryptedBlob, `NaswarDealers_SecureBackup_${timestamp}.gzn
 window.showGlassAlert(' Encrypted backup created! File requires your credentials to restore.', { tone: 'success', title: 'Backup Created' });
 } catch(encErr) {
 console.error('Encryption failed:', _safeErr(encErr));
-showToast('Encryption failed: ' + encErr.message, 'error');
+window.notifyBlocking('Encryption failed: ' + encErr.message, 'error');
 }
 }
 export async function unifiedRestore(event) {
@@ -3908,7 +3908,7 @@ const file = event.target.files[0];
 if (!file) return;
 event.target.value = '';
 if (!currentUser) {
-showToast('Please sign in before restoring a backup.', 'error');
+window.notifyBlocking('Please sign in before restoring a backup.', 'error');
 showAuthOverlay();
 return;
 }
@@ -3962,7 +3962,7 @@ window.notifyBlocking('Incorrect password. Decryption failed.', 'error');
 } else if (decErr.message === 'INVALID_FORMAT') {
 window.notifyBlocking('This file is not a valid encrypted backup.', 'error');
 } else {
-showToast('Decryption failed: ' + decErr.message, 'error');
+window.notifyBlocking('Decryption failed: ' + decErr.message, 'error');
 }
 return;
 }
@@ -4023,7 +4023,7 @@ await _doYearCloseRestore(data, _honourDeletions);
 await _doRestoreMerge(data);
 }
 } catch(err) {
-showToast('Restore error: ' + err.message, 'error');
+window.notifyBlocking('Restore error: ' + err.message, 'error');
 }
 } else {
 try {
@@ -4035,10 +4035,10 @@ if (await showGlassConfirm(_rfbMsg, { title: "Restore From Backup File", confirm
 await _doRestoreMerge(data);
 }
 } else {
-showToast("Invalid backup file structure", 'error');
+window.notifyBlocking("Invalid backup file structure", 'error');
 }
 } catch (err) {
-showToast("Error reading file: " + err.message, 'error');
+window.notifyBlocking("Error reading file: " + err.message, 'error');
 }
 }
 }
@@ -6480,7 +6480,7 @@ export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-showToast('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 3000);
+window.notifyBlocking('Access Denied — Stock Transfer not in your assigned tabs', 'warning');
 return;
 }
 const fromStore = (document.getElementById('stock-transfer-from-value') || {}).value;
@@ -6488,10 +6488,10 @@ const toStore = (document.getElementById('stock-transfer-to-value') || {}).value
 const date = (document.getElementById('stock-transfer-date') || {}).value;
 const quantity = parseFloat((document.getElementById('stock-transfer-qty') || {}).value) || 0;
 const note = ((document.getElementById('stock-transfer-note') || {}).value || '').trim();
-if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
-if (!fromStore || !toStore) { showToast('Please select both stores.', 'warning', 3000); return; }
-if (fromStore === toStore) { showToast('From and To stores must be different.', 'warning', 3000); return; }
-if (quantity <= 0) { showToast('Please enter a valid quantity.', 'warning', 3000); return; }
+if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
+if (!fromStore || !toStore) { window.notifyBlocking('Please select both stores.', 'warning'); return; }
+if (fromStore === toStore) { window.notifyBlocking('From and To stores must be different.', 'warning'); return; }
+if (quantity <= 0) { window.notifyBlocking('Please enter a valid quantity.', 'warning'); return; }
 const _pairIds = _ed ? _ed.original.records.map(r => r.id) : null;
 const snapshot = await computeStoreStockSnapshot(fromStore, date, _pairIds);
 if (_ed) {
@@ -6652,7 +6652,7 @@ if (typeof updateStockTransferAvailability === 'function') await updateStockTran
 if (typeof refreshUI === 'function') { try { await refreshUI(); } catch (_) {} }
 showToast('Stock transfer removed', 'success');
 } catch (e) {
-showToast('Failed to remove transfer. Please try again.', 'error');
+window.notifyBlocking('Failed to remove transfer. Please try again.', 'error');
 }
 }
 window.deleteStockTransfer = deleteStockTransfer;

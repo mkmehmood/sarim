@@ -3600,7 +3600,7 @@ export async function wakeUpDatabaseAndSync() {
 }
 export async function triggerCloudAction(action) {
 if (!firebaseDB) {
-showToast("Cloud system not initialized. Check internet.", "error");
+window.notifyBlocking("Cloud system not initialized. Check internet.", 'error');
 return;
 }
 if (isSyncing) {
@@ -4271,12 +4271,12 @@ await _writeAccountsIndex(updated);
 showToast('Account ' + (currentlyApproved ? 'suspended' : 'reinstated') + ': ' + email, currentlyApproved ? 'warning' : 'success');
 await loadAccountsList();
 } catch(err) {
-showToast('Failed to update account.', 'error');
+window.notifyBlocking('Failed to update account.', 'error');
 console.error('adminToggleApproval:', _safeErr(err));
 }
 }
 export async function adminRemoveAccount(uid, email) {
-if (uid === currentUser.uid) { showToast('You cannot remove your own account.', 'warning'); return; }
+if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning'); return; }
 const confirmed = await showGlassConfirm(
 'Remove access for ' + email + '?\n\nThey will be blocked immediately. Their stored data is preserved.\n\nTo fully delete the Firebase Auth account, use Firebase Console.',
 { title: 'Remove Account', confirmText: 'Remove', cancelText: 'Cancel', danger: true }
@@ -4290,7 +4290,7 @@ await _writeAccountsIndex(updated);
 showToast('Access removed: ' + email, 'success');
 await loadAccountsList();
 } catch(err) {
-showToast('Failed to remove account.', 'error');
+window.notifyBlocking('Failed to remove account.', 'error');
 console.error('adminRemoveAccount:', _safeErr(err));
 }
 }

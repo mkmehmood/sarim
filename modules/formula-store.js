@@ -367,8 +367,8 @@ export async function addFormulaIngredientRow() {
 export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', isUpdate: () => !!_editingId }); }
 async function _saveFormulaStoreEntryRaw() {
   const c = _collectEditor();
-  if (!c.name) { showToast('Enter a formula name', 'warning'); return false; }
-  if (!c.ingredients.length) { showToast('Add at least one ingredient with quantity', 'warning'); return false; }
+  if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning'); return false; }
+  if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning'); return false; }
   const [list, slots, batch] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS)]);
   const now = getTimestamp();
   const idx = _editingId ? list.findIndex((f) => String(f.id) === String(_editingId)) : -1;
@@ -390,7 +390,7 @@ export async function deleteFormulaStoreEntry() {
   const [slots, stores] = await Promise.all([getFormulaSlots(), getAppStores()]);
   const users = stores.filter((s) => String(s.formulaId || slots[s.formulaType || 'standard']) === String(_editingId)).map((s) => s.name);
   if (users.length || SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId))) {
-    showToast(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning', 4500);
+    window.notifyBlocking(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning');
     return;
   }
   const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });

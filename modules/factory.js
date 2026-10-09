@@ -277,10 +277,10 @@ const cost = parseFloat(document.getElementById('factoryMaterialCost').value) ||
 const conversionFactor = parseFloat(document.getElementById('factoryMaterialConversionFactor').value) || 1;
 const unitName = document.getElementById('factoryMaterialUnitName').value.trim() || '';
 const supplierType = document.getElementById('factoryMaterialSupplierType').value;
-if (!name) return showToast('Name required', 'warning');
-if (qty < 0) return showToast('Quantity cannot be negative', 'warning');
-if (cost <= 0) return showToast('Please enter a valid cost greater than 0', 'warning');
-if (conversionFactor <= 0) return showToast('Conversion factor must be greater than 0', 'warning');
+if (!name) return window.notifyBlocking('Name required', 'warning');
+if (qty < 0) return window.notifyBlocking('Quantity cannot be negative', 'warning');
+if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater than 0', 'warning');
+if (conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning');
 try {
 const quantityInKg = qty * conversionFactor;
 const costPerKg = conversionFactor > 0 ? cost / conversionFactor : cost;
@@ -369,7 +369,7 @@ closeFactoryInventoryModal();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 showToast('Material saved successfully!', 'success');
 } catch (error) {
-showToast('Failed to save material. Please try again.', 'error');
+window.notifyBlocking('Failed to save material. Please try again.', 'error');
 }
 }
 export async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false, groupId = null) {
@@ -507,8 +507,8 @@ if (Array.isArray(reloadedData)) {
 material = factoryInventoryData.find(m => m.id === materialId);
 }
 }
-if (!material) { showToast('Material not found', 'error'); return; }
-if (!material.supplierId) { showToast('No supplier linked', 'warning'); return; }
+if (!material) { window.notifyBlocking('Material not found', 'error'); return; }
+if (!material.supplierId) { window.notifyBlocking('No supplier linked', 'warning'); return; }
 const linkedTransactions = paymentTransactions.filter(t => t.materialId === materialId && t.entityId === material.supplierId && t.isPayable === true);
 const _us2Total = linkedTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 let confirmMsg = `Unlink ${material.supplierName} from "${material.name}"?`;
@@ -731,7 +731,7 @@ export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFact
 async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
 if (!currentFactoryEntryStore) {
-showToast('Please select a formula before saving.', 'warning', 3000);
+window.notifyBlocking('Please select a formula before saving.', 'warning');
 return;
 }
 const _sfpeBatch = await sqliteStore.getBatch([
@@ -743,11 +743,11 @@ const factoryAdditionalCosts = _sfpeBatch.get('factory_additional_costs') || {};
 const factoryInventoryData = ensureArray(_sfpeBatch.get('factory_inventory_data'));
 const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory_production_history'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
-showToast('Access Denied — Factory not in your assigned tabs', 'warning', 3000);
+window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning');
 return;
 }
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
-if (units <= 0) return showToast('Invalid units', 'warning', 3000);
+if (units <= 0) return window.notifyBlocking('Invalid units', 'warning');
 const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
 let _histSavedRec = null;
@@ -756,7 +756,7 @@ const _sfpeType = typeof getStoreFormulaType === 'function' ? await getStoreForm
 const _freshFormula = await getSelectedFormula(currentFactoryEntryStore);
 const settings = _freshFormula.ingredients.filter(i => i.quantity > 0);
 if (!settings || settings.length === 0) {
-showToast('No formula configured for this store. Assign a formula to it in Store Manager first.', 'warning', 5000);
+window.notifyBlocking('No formula configured for this store. Assign a formula to it in Store Manager first.', 'warning');
 return;
 }
 let _edHistIdx = -1;
@@ -891,7 +891,7 @@ await sqliteStore.setBatch([
 ]);
 } catch (rollbackError) {
 console.error('Failed to save data locally.', _safeErr(rollbackError));
-showToast('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+window.notifyBlocking('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
 }
 if (_histSavedRec) {
 try {
@@ -1027,11 +1027,11 @@ export async function deleteFactoryEntry(id) {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-if (!id || !validateUUID(id)) { showToast('Invalid factory entry ID', 'error'); return; }
+if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid factory entry ID', 'error'); return; }
 const entryIndex = factoryProductionHistory.findIndex(e => e.id === id);
 if (entryIndex === -1) { await refreshFactoryTab(); return; }
 const entry = factoryProductionHistory[entryIndex];
-if (entry.isMerged) { showToast('Merged opening balance records cannot be deleted', 'warning'); return; }
+if (entry.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning'); return; }
 const _feStoreLabel = getStoreLabel(entry.store) || entry.store;
 const _feFormulaKey = entry.formulaType || (typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(entry.store) : entry.store);
 const _feRestore = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
@@ -1096,7 +1096,7 @@ showToast(` Entry deleted! Raw materials restored: ${restoredMaterials.map(m => 
 showToast(' Entry deleted and inventory restored.', 'success');
 }
 } catch (error) {
-showToast(' Failed to delete entry. Please try again.', 'error');
+window.notifyBlocking(' Failed to delete entry. Please try again.', 'error');
 }
 }
 }
@@ -1264,10 +1264,10 @@ export async function deleteProdEntry(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-if (!id || !validateUUID(id)) { showToast('Invalid production record ID', 'error'); return; }
+if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid production record ID', 'error'); return; }
 const entryToDelete = db.find(item => item.id === id);
 if (!entryToDelete) return;
-if (entryToDelete.isMerged) { showToast('Merged opening balance records cannot be deleted', 'warning'); return; }
+if (entryToDelete.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning'); return; }
 if (entryToDelete.isTransfer === true) {
 if (typeof deleteStockTransfer === 'function') await deleteStockTransfer(entryToDelete.transferPairId);
 return;
@@ -1331,7 +1331,7 @@ showToast(` Return record removed. ${deletedQuantity} kg removed from ${entryToD
 showToast(` Production deleted. ${deletedQuantity} kg removed from ${entryToDelete.date} inventory. Sales on this date may be affected.`, 'success');
 }
 } catch (error) {
-showToast(' Failed to delete entry. Please try again.', 'error');
+window.notifyBlocking(' Failed to delete entry. Please try again.', 'error');
 }
 }
 }

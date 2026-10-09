@@ -238,7 +238,7 @@ const phoneNumber = (!document.getElementById('rep-new-customer-phone-container'
 ? phoneInput.value.trim()
 : '';
 if(!date || !name) {
-showToast("Date and Name required", "warning");
+window.notifyBlocking("Date and Name required", 'warning');
 restoreBtn();
 return;
 }
@@ -256,7 +256,7 @@ if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
 const payType = document.getElementById('rep-payment-value').value;
 if(qty <= 0) {
-showToast("Enter Quantity", "warning");
+window.notifyBlocking("Enter Quantity", 'warning');
 restoreBtn();
 return;
 }
@@ -266,7 +266,7 @@ restoreBtn();
 return;
 }
 if(costPerKg < 0) {
-showToast(" Invalid cost price detected. Please check Factory Formulas.", "warning", 4000);
+window.notifyBlocking(" Invalid cost price detected. Please check Factory Formulas.", 'warning');
 restoreBtn();
 return;
 }
@@ -275,7 +275,7 @@ const _lockedCost = (_ed && _ed.original.quantity > 0) ? (_ed.original.totalCost
 const totalValue = qty * _lockedPrice;
 const computedProfit = totalValue - (qty * _lockedCost);
 if(computedProfit < 0) {
-showToast(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, "warning", 6000);
+window.notifyBlocking(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, 'warning');
 restoreBtn();
 return;
 }
@@ -309,7 +309,7 @@ transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 } else {
 const amount = parseFloat(document.getElementById('rep-amount-collected').value) || 0;
 if(amount <= 0) {
-showToast("Enter Amount", "warning");
+window.notifyBlocking("Enter Amount", 'warning');
 restoreBtn();
 return;
 }
@@ -335,8 +335,8 @@ const _proceedOver = await showGlassConfirm(
 ${name} only owes ${fmtAmt ? fmtAmt(_repOutstanding) : _repOutstanding}.
 You are collecting ${fmtAmt ? fmtAmt(amount) : amount} — an overpayment of ${fmtAmt ? fmtAmt(_overAmt) : _overAmt}.
 
-This will exceed the outstanding balance. Proceed only if this is an advance payment.`,
-{ title: ' Over-collection Warning', confirmText: 'Collect Anyway', cancelText: 'Cancel' }
+Warning: Proceed only if this is an advance payment.`,
+{ title: ' Over-collection Warning', confirmText: 'Collect Anyway', cancelText: 'Cancel', tone: 'warning' }
 );
 if (!_proceedOver) { restoreBtn(); return; }
 }
@@ -447,7 +447,7 @@ renderRepHistory();
 showToast(_ed ? "Transaction updated" : "Transaction Saved Successfully", "success");
 setTimeout(updateRepLiveMap, 300);
 } catch (error) {
-showToast('Failed to save transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to save transaction. Please try again.', 'error');
 } finally {
 restoreBtn();
 }
@@ -912,7 +912,7 @@ triggerAutoSync();
 closeRepCustomerManagement();
 showToast(`Rep customer "${name}" and all records deleted.`, 'success');
 } catch (e) {
-showToast('Failed to delete rep customer. Please try again.', 'error');
+window.notifyBlocking('Failed to delete rep customer. Please try again.', 'error');
 }
 }
 export async function renderRepCustomerTransactions(name) {
@@ -1151,7 +1151,7 @@ const originalName = nameInput.dataset.originalName || name;
 const phone = document.getElementById('rep-edit-cust-phone').value.trim();
 const address = document.getElementById('rep-edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('rep-edit-cust-old-debit').value) || 0;
-if (!name) { showToast('Customer name is required', 'error'); return; }
+if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
@@ -1278,7 +1278,7 @@ if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 notifyDataChange('rep');
 triggerAutoSync();
 } catch (error) {
-showToast('Failed to save rep customer details. Please try again.', 'error');
+window.notifyBlocking('Failed to save rep customer details. Please try again.', 'error');
 }
 }
 export async function fetchRepDeviceLocation() {

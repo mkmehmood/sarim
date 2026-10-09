@@ -246,7 +246,7 @@ triggerAutoSync();
 closeCustomerManagement();
 showToast(`Customer "${name}" and all records deleted.`, 'success');
 } catch (e) {
-showToast('Failed to delete customer. Please try again.', 'error');
+window.notifyBlocking('Failed to delete customer. Please try again.', 'error');
 }
 }
 export async function renderCustomerTransactions(name) {
@@ -516,12 +516,12 @@ export async function deleteTransactionFromOverlay(id) {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (!id || !validateUUID(id)) {
-showToast('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
 const _txItem = customerSales.find(s => s.id === id);
 if (_txItem?.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 {
@@ -590,18 +590,18 @@ notifyDataChange('sales');
 triggerAutoSync();
 showToast(` Transaction deleted successfully.`, 'success');
 } catch (e) {
-showToast('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
 }
 }
 export async function deleteRepTransactionFromOverlay(id) {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 if (!id || !validateUUID(id)) {
-showToast('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
 const _rItem = repSales.find(s => s.id === id);
 if (_rItem?.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 {
@@ -665,7 +665,7 @@ notifyDataChange('rep');
 triggerAutoSync();
 showToast(` Transaction deleted successfully.`, 'success');
 } catch (e) {
-showToast('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
 }
 }
 export function filterCustomerManagementHistory() {
@@ -954,8 +954,22 @@ const _icon = icon || (_t === 'error' ? _gcIcons.remove : (_t === 'success' ? _g
 return showGlassConfirm(message, { title: title || _gcAlertTitles[_t], confirmText: buttonText, tone: _t, icon: _icon, alertOnly: true });
 }
 window.showGlassAlert = showGlassAlert;
+export function _gcSplitFigures(message) {
+return String(message == null ? '' : message)
+.replace(/[.!]?\s+(?=(?:Available|Current balance):)/g, '\n')
+.replace(/\s*(?:\u2014|,|\.)\s+(?=(?:Required|Requested|Shortage|Extra required)\b[^:]*:)/g, '\n');
+}
+export function _gcAlertTitle(message, tone) {
+const m = String(message || '');
+if (/cash in hand/i.test(m)) return 'Low Cash in Hand';
+if (/insufficient|not enough|not in raw material|short by|shortage/i.test(m) && /inventory|material|stock|units|kg/i.test(m)) return tone === 'error' ? 'Low Inventory' : 'Inventory Warning';
+if (/credit/i.test(m)) return tone === 'error' ? 'Credit Error' : 'Credit Warning';
+if (/cannot delete|cannot be deleted|cannot change|cannot be edited/i.test(m)) return 'Cannot Complete';
+if (/payment/i.test(m)) return tone === 'error' ? 'Payment Error' : 'Payment Warning';
+return null;
+}
 export function notifyBlocking(message, tone = 'warning', title = null) {
-if (typeof window.showGlassAlert === 'function') return showGlassAlert(message, { tone, title });
+if (typeof window.showGlassAlert === 'function') return showGlassAlert(_gcSplitFigures(message), { tone, title: title || _gcAlertTitle(message, tone) });
 showToast(message, tone, 5000);
 }
 window.notifyBlocking = notifyBlocking;
@@ -1040,7 +1054,7 @@ const phone = document.getElementById('edit-cust-phone').value.trim();
 const address = document.getElementById('edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('edit-cust-old-debit').value) || 0;
 const customSalePrice = parseFloat(document.getElementById('edit-cust-custom-price').value) || 0;
-if (!name) { showToast('Customer name is required', 'error'); return; }
+if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
 if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning'); return; }
 try {
@@ -1176,7 +1190,7 @@ if (typeof renderCustomersTable === 'function') renderCustomersTable();
 notifyDataChange('entities');
 triggerAutoSync();
 } catch (error) {
-showToast('Failed to save customer details. Please try again.', 'error');
+window.notifyBlocking('Failed to save customer details. Please try again.', 'error');
 }
 }
 export async function fetchDeviceLocation() {

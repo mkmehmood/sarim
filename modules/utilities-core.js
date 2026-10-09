@@ -1118,7 +1118,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas'
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('prod')) {
-showToast('Access Denied — Production not in your assigned tabs', 'warning', 3000); return;
+window.notifyBlocking('Access Denied — Production not in your assigned tabs', 'warning'); return;
 }
 const netElement = document.getElementById('net-wt');
 const dateElement = document.getElementById('sys-date');
@@ -1127,7 +1127,7 @@ const formulaUnitsElement = document.getElementById('formula-units');
 const grossWtEl = document.getElementById('gross-wt');
 const contWtEl = document.getElementById('cont-wt');
 if (!netElement || !dateElement || !storeElement || !formulaUnitsElement) {
-showToast('Form error: Missing required fields', 'error');
+window.notifyBlocking('Form error: Missing required fields', 'error');
 return;
 }
 const net = parseFloat(netElement.value) || 0;
@@ -1165,15 +1165,15 @@ window.notifyBlocking('Net production must be greater than zero. Please check we
 return;
 }
 if (!inputDate) {
-showToast('Please select a date.', 'warning', 3000);
+window.notifyBlocking('Please select a date.', 'warning');
 return;
 }
 if (salePrice <= 0) {
-showToast('Please set a sale price in Factory Formulas first.', 'warning', 3000);
+window.notifyBlocking('Please set a sale price in Factory Formulas first.', 'warning');
 return;
 }
 if (formulaUnits <= 0) {
-showToast('Please enter formula units used.', 'warning', 3000);
+window.notifyBlocking('Please enter formula units used.', 'warning');
 return;
 }
 const totalCost = net * costData.dynamicCostPerKg;
@@ -1239,7 +1239,7 @@ notifyDataChange('production');
 emitSyncUpdate({ mfg_pro_pkr: null});
 } catch (error) {
 if (_ed && _edIdx >= 0) db[_edIdx] = _ed.original; else db.pop();
-showToast(" Failed to save production entry. Please try again.", "error");
+window.notifyBlocking(" Failed to save production entry. Please try again.", 'error');
 return;
 }
 await syncFactoryProductionStats().catch(e => console.warn('[saveProductionEntry] stats failed:', _safeErr(e)));
@@ -2230,7 +2230,7 @@ const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 if (!id || !validateUUID(id)) {
-showToast('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
 const _dt = paymentTransactions.find(t => t.id === id);
@@ -2247,7 +2247,7 @@ if (_ent0b) renderEntityOverlayContent(_ent0b);
 return;
 }
 if (_dt.isMerged) {
-showToast('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
 const _dtEntity = paymentEntities.find(e => String(e.id) === String(_dt.entityId));
@@ -2280,7 +2280,7 @@ const _dtEntityRefreshed = ensureArray(await sqliteStore.get('payment_entities')
 if (_dtEntityRefreshed) await renderEntityOverlayContent(_dtEntityRefreshed);
 showToast(_dt.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
-showToast('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
 }
 }
 }
@@ -2290,12 +2290,12 @@ const paymentTransactions = ensureArray(await sqliteStore.get('payment_transacti
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 if (!currentEntityId) return;
 if (!validateUUID(String(currentEntityId))) {
-showToast('Invalid entity ID', 'error');
+window.notifyBlocking('Invalid entity ID', 'error');
 return;
 }
 const _entityToDel = paymentEntities.find(e => String(e.id) === String(currentEntityId));
 if (!_entityToDel) {
-showToast('Entity not found', 'error');
+window.notifyBlocking('Entity not found', 'error');
 return;
 }
 const _entityName = _entityToDel.name || 'this entity';
@@ -2367,7 +2367,7 @@ closeEntityDetailsOverlay();
 await _refreshSupplierLinkViews();
 showToast(`"${_entityName}" and all its transactions deleted.`, 'success');
 } catch (error) {
-showToast('Failed to delete entity. Please try again.', 'error');
+window.notifyBlocking('Failed to delete entity. Please try again.', 'error');
 }
 }
 export async function exportEntityData() {
