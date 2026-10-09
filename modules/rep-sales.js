@@ -10,6 +10,7 @@ import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsA
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
 import { _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
+import { confirmGuard } from './confirm-guard.js';
 export let repTransactionMode = 'sale';
 window.repTransactionMode = repTransactionMode;
 export function _set_repTransactionMode(v) { repTransactionMode = v; window.repTransactionMode = v; }
@@ -214,7 +215,8 @@ const _repTVS = document.getElementById('rep-total-value');
 if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
 }
-export async function saveRepTransaction() {
+export function saveRepTransaction(...a) { return confirmGuard('saveRepTransaction', () => _saveRepTransactionRaw(...a), { label: 'Rep Sale', editKinds: ['repsale'] }); }
+async function _saveRepTransactionRaw() {
 const _ed = getEditCtx('repsale');
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 let repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
@@ -1139,7 +1141,8 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-custom
 export function closeRepCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('rep-customer-edit-screen');
 }
-export async function saveRepCustomerDetails() {
+export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
+async function _saveRepCustomerDetailsRaw() {
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 const nameInput = document.getElementById('rep-edit-cust-name');

@@ -3258,6 +3258,13 @@ async function saveStoreFromForm() {
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     stores.push({ key: newKey, name: nameRaw, formulaType: 'standard', formulaId, salePrice });
   }
+  if (typeof window.showGlassConfirm === 'function') {
+    const _storeOk = await window.showGlassConfirm(
+      (editIndex >= 0 ? 'Update store "' : 'Add store "') + nameRaw + '"?\nPlease review the details before continuing.',
+      { title: editIndex >= 0 ? 'Update Store?' : 'Save Store?', confirmText: editIndex >= 0 ? 'Update' : 'Save', cancelText: 'Cancel', tone: editIndex >= 0 ? 'warning' : 'primary' }
+    );
+    if (!_storeOk) return;
+  }
   const commitResult = await commitStoresWithFormulas(stores);
   if (!commitResult.ok) {
     if (typeof showToast === 'function') showToast(commitResult.error, 'warning', 5000);

@@ -8,6 +8,7 @@ import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLa
 import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, safeValue } from './utilities-payments.js';
 import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, updateUnitsAvailableIndicator } from './factory.js';
 import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
+import { confirmGuard } from './confirm-guard.js';
 export function selectCustomer(name) {
 const input = document.getElementById('cust-name');
 const resultsDiv = document.getElementById('customer-search-results');
@@ -999,7 +1000,8 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-e
 export function closeCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-edit-screen');
 }
-export async function saveCustomerDetails() {
+export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
+async function _saveCustomerDetailsRaw() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const nameInput = document.getElementById('edit-cust-name');

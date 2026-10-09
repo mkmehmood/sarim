@@ -13,6 +13,7 @@ import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, ge
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { normaliseBackupFields as _normaliseBackupFieldsShared, collectAuxBackupFields, applyAuxBackupFields } from './data-keys.js';
+import { confirmGuard } from './confirm-guard.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
@@ -1536,7 +1537,8 @@ showToast('Failed to save collection. Please try again.', 'error');
 restoreBtn();
 }
 }
-export async function saveCustomerTransaction() {
+export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', editKinds: ['sale', 'collection'] }); }
+async function _saveCustomerTransactionRaw() {
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -2534,7 +2536,8 @@ emitSyncUpdate({ customer_sales: null });
 return { saleId: id };
 }
 let _calcSaveInFlight = false;
-export async function saveTransaction() {
+export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale' }); }
+async function _saveTransactionRaw() {
 if (_calcSaveInFlight) return;
 _calcSaveInFlight = true;
 try { return await _saveTransactionImpl(); } finally { _calcSaveInFlight = false; }
@@ -6473,7 +6476,7 @@ el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${get
 el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
 window.updateStockTransferAvailability = updateStockTransferAvailability;
-export function saveStockTransfer(...a) { return runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)); }
+export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer', () => runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)), { label: 'Stock Transfer', editKinds: ['stocktransfer'] }); }
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {

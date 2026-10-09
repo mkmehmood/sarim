@@ -4,6 +4,7 @@ import { sendDeviceNotification } from './notify.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
+import { confirmGuard } from './confirm-guard.js';
 const STORE_KEY = 'factory_formula_store';
 const STORE_TS_KEY = 'factory_formula_store_timestamp';
 const SLOTS_KEY = 'factory_formula_slots';
@@ -363,7 +364,8 @@ export async function addFormulaIngredientRow() {
   if (inp) setTimeout(() => inp.focus(), 200);
   updateFormulaStoreSummary();
 }
-export async function saveFormulaStoreEntry() {
+export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', isUpdate: () => !!_editingId }); }
+async function _saveFormulaStoreEntryRaw() {
   const c = _collectEditor();
   if (!c.name) { showToast('Enter a formula name', 'warning'); return false; }
   if (!c.ingredients.length) { showToast('Add at least one ingredient with quantity', 'warning'); return false; }

@@ -12,6 +12,7 @@ import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryIn
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
 import { collectAuxBackupFields } from './data-keys.js';
+import { confirmGuard } from './confirm-guard.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCompMode = 'all';
 window.currentCompMode = currentCompMode;
@@ -1364,7 +1365,7 @@ const entity = paymentEntities.find(e => String(e.id) === String(currentEntityId
 if (entity) renderEntityOverlayContent(entity);
 }
 }
-export function saveEntity(...a) { return runExclusive('saveEntity', () => _saveEntityImpl(...a)); }
+export function saveEntity(...a) { return confirmGuard('saveEntity', () => runExclusive('saveEntity', () => _saveEntityImpl(...a)), { label: 'Entity', isUpdate: () => !!editingEntityId }); }
 async function _saveEntityImpl() {
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
@@ -2133,7 +2134,7 @@ await startEditPayment(t.id);
 }
 registerEditHandler('payment', startEditPayment);
 registerEditHandler('expense', startEditExpenseRecord);
-export function saveExpense(...a) { return runExclusive('saveExpense', () => _saveExpenseImpl(...a)); }
+export function saveExpense(...a) { return confirmGuard('saveExpense', () => runExclusive('saveExpense', () => _saveExpenseImpl(...a)), { label: 'Expense', skipKinds: ['payment'] }); }
 async function _saveExpenseImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
@@ -3528,7 +3529,8 @@ if (overlayEl && overlayEl.style.display !== 'none' && currentExpenseOverlayName
 renderExpenseOverlayContent();
 }
 }
-export async function saveQuickExpenseEntry() {
+export function saveQuickExpenseEntry(...a) { return confirmGuard('saveQuickExpenseEntry', () => _saveQuickExpenseEntryRaw(...a), { label: 'Expense' }); }
+async function _saveQuickExpenseEntryRaw() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -6988,7 +6990,8 @@ if (tab === 'userrole') renderUserRoleList();
 if (tab === 'rep') renderManageRepsList();
 if (tab === 'accounts' && typeof loadAccountsList === 'function') loadAccountsList();
 }
-export async function addNewUserRole() {
+export function addNewUserRole(...a) { return confirmGuard('addNewUserRole', () => _addNewUserRoleRaw(...a), { label: 'User', verb: 'Add' }); }
+async function _addNewUserRoleRaw() {
 const input = document.getElementById('new-userrole-name-input');
 if (!input) return;
 const name = input.value.trim().toUpperCase();
@@ -7019,7 +7022,8 @@ await saveUserRolesList();
 renderUserRoleList();
 showToast(`${esc(user.name)} removed`, 'info');
 }
-export async function addNewSalesRep() {
+export function addNewSalesRep(...a) { return confirmGuard('addNewSalesRep', () => _addNewSalesRepRaw(...a), { label: 'Representative', verb: 'Add' }); }
+async function _addNewSalesRepRaw() {
 const input = document.getElementById('new-rep-name-input');
 if (!input) return;
 const name = input.value.trim().toUpperCase();
@@ -7946,7 +7950,7 @@ if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransf
 await renderPaymentTransferHistory();
 }
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
-export function saveEntityTransfer(...a) { return runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)); }
+export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransfer', () => runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)), { label: 'Transfer', skipKinds: ['paytransfer'] }); }
 async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {

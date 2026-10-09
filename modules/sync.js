@@ -8,6 +8,7 @@ import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDis
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { resolveExpenseCategories } from './data-keys.js';
+import { confirmGuard } from './confirm-guard.js';
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await sqliteStore.set(key, data);
 const collectionEntry = SQLiteToFirestoreMap[key];
@@ -4153,7 +4154,8 @@ const adminBtn = document.getElementById('acct-role-admin');
 if (userBtn)  userBtn.classList.toggle('active',  role === 'user');
 if (adminBtn) adminBtn.classList.toggle('active', role === 'admin');
 }
-export async function adminAddAccount() {
+export function adminAddAccount(...a) { return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), { label: 'Account', verb: 'Add' }); }
+async function _adminAddAccountRaw() {
 const emailEl = document.getElementById('acct-new-email');
 const passEl  = document.getElementById('acct-new-password');
 const msgEl   = document.getElementById('acct-add-msg');

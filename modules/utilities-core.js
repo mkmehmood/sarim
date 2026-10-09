@@ -12,6 +12,7 @@ import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculate
 import { calculateDynamicCost, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, currentRepAnalyticsMode, refreshRepUI, renderRepCustomerTable, repTransactionMode } from './rep-sales.js';
+import { confirmGuard } from './confirm-guard.js';
 export let currentEntityId;
 window.currentEntityId = currentEntityId;
 export function _set_currentEntityId(v) { currentEntityId = v; window.currentEntityId = v; }
@@ -1106,7 +1107,7 @@ if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 }
 export function updatePaymentStatusVisibility() {
 }
-export function recordEntry(...a) { return runExclusive('recordEntry', () => _recordEntryImpl(...a)); }
+export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', editKinds: ['prod'] }); }
 async function _recordEntryImpl() {
 const _ed = getEditCtx('prod');
 const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
