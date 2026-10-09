@@ -743,11 +743,11 @@ const factoryAdditionalCosts = _sfpeBatch.get('factory_additional_costs') || {};
 const factoryInventoryData = ensureArray(_sfpeBatch.get('factory_inventory_data'));
 const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory_production_history'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
-window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning');
+showToast('Access Denied — Factory not in your assigned tabs', 'warning', 3000);
 return;
 }
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
-if (units <= 0) return window.notifyBlocking('Invalid units', 'warning');
+if (units <= 0) return showToast('Invalid units', 'warning', 3000);
 const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
 let _histSavedRec = null;

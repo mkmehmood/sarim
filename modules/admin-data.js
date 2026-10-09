@@ -37,7 +37,7 @@ export async function updateDeltaSyncStatsDisplay() {
     }
   } catch (e) {
     if (typeof showToast === 'function') {
-      window.notifyBlocking('Could not refresh stats: ' + e.message, 'warning');
+      showToast('Could not refresh stats: ' + e.message, 'warning', 3000);
     }
   }
 }

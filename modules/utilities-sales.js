@@ -1064,7 +1064,7 @@ const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
+showToast('Access Denied — Sales not in your assigned tabs', 'warning', 3000); return;
 }
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
@@ -1398,7 +1398,7 @@ const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
+showToast('Access Denied — Sales not in your assigned tabs', 'warning', 3000); return;
 }
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
@@ -1408,9 +1408,9 @@ const phoneInput = document.getElementById('new-cust-phone');
 const phoneNumber = (!document.getElementById('new-customer-phone-container').classList.contains('hidden'))
 ? phoneInput.value.trim()
 : '';
-if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
-if (!name) { window.notifyBlocking('Please enter customer name.', 'warning'); return; }
-if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning'); return; }
+if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
+if (!name) { showToast('Please enter customer name.', 'warning', 3000); return; }
+if (amount <= 0) { showToast('Please enter a valid amount.', 'warning', 3000); return; }
 const btn = document.getElementById('btn-save-cust-transaction');
 if (btn) { if (btn.disabled) return; btn.disabled = true; }
 const restoreBtn = () => { if (btn) btn.disabled = false; };
@@ -2572,28 +2572,28 @@ selectedRep = window._returnRep;
 } else if (window._returnStore) {
 selectedStore = { value: window._returnStore };
 } else {
-window.notifyBlocking('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning');
+showToast('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning', 3000);
 return;
 }
 }
 const costPerKg = (await getCostPriceForStore('STORE_A')) || 0;
 const salePrice = await getSalePriceForStore('STORE_A');
-if(!date) return window.notifyBlocking('Please select a date', 'warning');
-if(sold <= 0) return window.notifyBlocking('Please enter valid units sold (must be greater than 0)', 'warning');
-if(salePrice <= 0) return window.notifyBlocking('Please set a sale price in Factory Formulas first', 'warning');
-if(ret > sold) return window.notifyBlocking('Returned quantity cannot exceed total sold', 'warning');
-if(exp < 0) return window.notifyBlocking('Expired quantity cannot be negative', 'warning');
-if(ret < 0) return window.notifyBlocking('Returned quantity cannot be negative', 'warning');
-if(shared < 0) return window.notifyBlocking('Shared (deduction) quantity cannot be negative', 'warning');
-if(cred < 0) return window.notifyBlocking('Credit sales cannot be negative', 'warning');
-if(prev < 0) return window.notifyBlocking('Previous credit received cannot be negative', 'warning');
-if(rec < 0) return window.notifyBlocking('Received cash cannot be negative', 'warning');
-if(fieldExp < 0) return window.notifyBlocking('Field expenses cannot be negative', 'warning');
-if(commissionPerUnit < 0) return window.notifyBlocking('Commission per unit cannot be negative', 'warning');
-if(commissionPaid < 0) return window.notifyBlocking('Commission paid cannot be negative', 'warning');
-if((ret + exp + shared) > sold) return window.notifyBlocking('Combined returned + expired + shared quantity cannot exceed total sold', 'warning');
+if(!date) return showToast('Please select a date', 'warning', 3000);
+if(sold <= 0) return showToast('Please enter valid units sold (must be greater than 0)', 'warning', 3000);
+if(salePrice <= 0) return showToast('Please set a sale price in Factory Formulas first', 'warning', 3000);
+if(ret > sold) return showToast('Returned quantity cannot exceed total sold', 'warning', 3000);
+if(exp < 0) return showToast('Expired quantity cannot be negative', 'warning', 3000);
+if(ret < 0) return showToast('Returned quantity cannot be negative', 'warning', 3000);
+if(shared < 0) return showToast('Shared (deduction) quantity cannot be negative', 'warning', 3000);
+if(cred < 0) return showToast('Credit sales cannot be negative', 'warning', 3000);
+if(prev < 0) return showToast('Previous credit received cannot be negative', 'warning', 3000);
+if(rec < 0) return showToast('Received cash cannot be negative', 'warning', 3000);
+if(fieldExp < 0) return showToast('Field expenses cannot be negative', 'warning', 3000);
+if(commissionPerUnit < 0) return showToast('Commission per unit cannot be negative', 'warning', 3000);
+if(commissionPaid < 0) return showToast('Commission paid cannot be negative', 'warning', 3000);
+if((ret + exp + shared) > sold) return showToast('Combined returned + expired + shared quantity cannot exceed total sold', 'warning', 3000);
 const netSold = Math.max(0, sold - ret - exp - shared);
-if(cred > netSold) return window.notifyBlocking('Credit sales cannot exceed net sold quantity', 'warning');
+if(cred > netSold) return showToast('Credit sales cannot exceed net sold quantity', 'warning', 3000);
 const cashQty = Math.max(0, netSold - cred);
 const creditValue = cred * salePrice;
 const revenue = netSold * salePrice;
@@ -6432,7 +6432,7 @@ return { production, returns, sales, available };
 window.computeStoreStockSnapshot = computeStoreStockSnapshot;
 export async function prepareStockTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Stock Transfer not in your assigned tabs', 'warning');
+showToast('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 3000);
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('stock-transfer-screen');
 return;
 }
@@ -6480,7 +6480,7 @@ export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Stock Transfer not in your assigned tabs', 'warning');
+showToast('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 3000);
 return;
 }
 const fromStore = (document.getElementById('stock-transfer-from-value') || {}).value;
@@ -6488,10 +6488,10 @@ const toStore = (document.getElementById('stock-transfer-to-value') || {}).value
 const date = (document.getElementById('stock-transfer-date') || {}).value;
 const quantity = parseFloat((document.getElementById('stock-transfer-qty') || {}).value) || 0;
 const note = ((document.getElementById('stock-transfer-note') || {}).value || '').trim();
-if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
-if (!fromStore || !toStore) { window.notifyBlocking('Please select both stores.', 'warning'); return; }
-if (fromStore === toStore) { window.notifyBlocking('From and To stores must be different.', 'warning'); return; }
-if (quantity <= 0) { window.notifyBlocking('Please enter a valid quantity.', 'warning'); return; }
+if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
+if (!fromStore || !toStore) { showToast('Please select both stores.', 'warning', 3000); return; }
+if (fromStore === toStore) { showToast('From and To stores must be different.', 'warning', 3000); return; }
+if (quantity <= 0) { showToast('Please enter a valid quantity.', 'warning', 3000); return; }
 const _pairIds = _ed ? _ed.original.records.map(r => r.id) : null;
 const snapshot = await computeStoreStockSnapshot(fromStore, date, _pairIds);
 if (_ed) {

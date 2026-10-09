@@ -1118,7 +1118,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas'
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('prod')) {
-window.notifyBlocking('Access Denied — Production not in your assigned tabs', 'warning'); return;
+showToast('Access Denied — Production not in your assigned tabs', 'warning', 3000); return;
 }
 const netElement = document.getElementById('net-wt');
 const dateElement = document.getElementById('sys-date');

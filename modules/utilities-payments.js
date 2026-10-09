@@ -2142,7 +2142,7 @@ const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-window.notifyBlocking('Access Denied — Payments not in your assigned tabs', 'warning'); return;
+showToast('Access Denied — Payments not in your assigned tabs', 'warning', 3000); return;
 }
 const name = document.getElementById('expenseName').value.trim();
 const amount = parseFloat(document.getElementById('expenseAmount').value);
@@ -5773,7 +5773,7 @@ await settingsRef.set(updatePayload, { merge: true });
 showToast(`Remote command sent: ${targetMode} mode`, 'success', 3000);
 return true;
 } catch (error) {
-window.notifyBlocking('Failed to send remote command', 'error');
+showToast('Failed to send remote command', 'error', 3000);
 return false;
 }
 }
@@ -6001,7 +6001,7 @@ const originalShowTab = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 const adminTabs = ['prod', 'sales', 'calc', 'factory', 'payments'];
 if (adminTabs.includes(tab)) {
-window.notifyBlocking("Access Denied - Device in Rep Mode", 'warning');
+showToast("Access Denied - Device in Rep Mode", "warning", 3000);
 return;
 }
 if (tab === 'rep' || !adminTabs.includes(tab)) {
@@ -6016,7 +6016,7 @@ const allowedTabs = window._userRoleAllowedTabs || window._assignedUserTabs || [
 const originalShowTabUR = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 if (!allowedTabs.includes(tab)) {
-window.notifyBlocking('Access Denied — not in your assigned sections', 'warning');
+showToast('Access Denied — not in your assigned sections', 'warning', 3000);
 return;
 }
 if (typeof originalShowTabUR === 'function') originalShowTabUR(tab);
@@ -6042,7 +6042,7 @@ window._userRoleAllowedTabs = allowedTabs;
 const originalShowTabProd = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 if (tab !== 'prod') {
-window.notifyBlocking("Access Denied - Device in Production Manager Mode", 'warning');
+showToast("Access Denied - Device in Production Manager Mode", "warning", 3000);
 return;
 }
 if (typeof originalShowTabProd === 'function') originalShowTabProd(tab);
@@ -6054,7 +6054,7 @@ btn.style.display = 'none';
 const originalShowTabFactory = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
 if (tab !== 'factory') {
-window.notifyBlocking("Access Denied - Device in Factory Manager Mode", 'warning');
+showToast("Access Denied - Device in Factory Manager Mode", "warning", 3000);
 return;
 }
 if (typeof originalShowTabFactory === 'function') originalShowTabFactory(tab);
@@ -7664,7 +7664,7 @@ await deviceRef.delete();
 showToast('Device removed and logged out', 'success', 3000);
 await loadDeviceList();
 } catch (error) {
-window.notifyBlocking('Failed to remove device: ' + error.message, 'error');
+showToast('Failed to remove device: ' + error.message, 'error', 3000);
 }
 }
 window.loadDeviceList = loadDeviceList;
@@ -7929,7 +7929,7 @@ window.listenForTeamChanges = listenForTeamChanges;
 window.applyRemoteModeChange = applyRemoteModeChange;
 export async function prepareEntityTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-window.notifyBlocking('Access Denied — Payment Transfer not in your assigned tabs', 'warning');
+showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('payment-transfer-screen');
 return;
 }
@@ -7954,7 +7954,7 @@ export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransf
 async function _saveEntityTransferImpl() {
 const _ed = getEditCtx('paytransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-window.notifyBlocking('Access Denied — Payment Transfer not in your assigned tabs', 'warning');
+showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
 return;
 }
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
@@ -7964,13 +7964,13 @@ const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
 const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
 const date = (document.getElementById('payment-transfer-date') || {}).value;
 const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
-if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
-if (!fromId || !toId) { window.notifyBlocking('Please search and select both entities from the list.', 'warning'); return; }
-if (String(fromId) === String(toId)) { window.notifyBlocking('From and To entities must be different.', 'warning'); return; }
-if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning'); return; }
+if (!date) { showToast('Please select a date.', 'warning', 3000); return; }
+if (!fromId || !toId) { showToast('Please search and select both entities from the list.', 'warning', 3000); return; }
+if (String(fromId) === String(toId)) { showToast('From and To entities must be different.', 'warning', 3000); return; }
+if (amount <= 0) { showToast('Please enter a valid amount.', 'warning', 3000); return; }
 const fromEntity = paymentEntities.find(e => String(e.id) === String(fromId));
 const toEntity = paymentEntities.find(e => String(e.id) === String(toId));
-if (!fromEntity || !toEntity) { window.notifyBlocking('Selected entity not found.', 'error'); return; }
+if (!fromEntity || !toEntity) { showToast('Selected entity not found.', 'error', 3000); return; }
 if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { window.notifyBlocking('Expense-only entities cannot be used in a transfer.', 'warning'); return; }
 const _oOut = _ed ? _ed.original.records.find(r => r.type === 'OUT') : null;
 const _oIn = _ed ? _ed.original.records.find(r => r.type === 'IN') : null;
