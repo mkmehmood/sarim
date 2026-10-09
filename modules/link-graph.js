@@ -818,3 +818,14 @@ export function applyEntityRename(entityId, newName, txs, materials, plan) {
   } });
   (materials || []).forEach(m => { if (m && M.has(String(m.id))) m.supplierName = newName; });
 }
+
+export function sortInventoryItems(items, sort) {
+const amt = (m) => (Number(m.quantity) * Number(m.cost)) || 0;
+const dir = sort.dir === 'desc' ? -1 : 1;
+return items.slice().sort((a, b) => {
+const r = sort.key === 'amount'
+? amt(a) - amt(b)
+: String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base', numeric: true });
+return dir * (r || String(a.name || '').localeCompare(String(b.name || '')));
+});
+}

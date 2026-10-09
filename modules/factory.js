@@ -1,5 +1,5 @@
 import { findCalcLinkForReturn } from './link-guards.js';
-import { runExclusive, findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment } from './link-graph.js';
+import { sortInventoryItems, runExclusive, findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
@@ -455,14 +455,11 @@ const base = k === 'name' ? 'Material' : 'Total Value';
 el.textContent = base + (_invSort.key === k ? (_invSort.dir === 'asc' ? ' ▲' : ' ▼') : ' ⇅');
 });
 }
+let _invRenderSeq = 0;
 export async function renderFactoryInventory() {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data')).slice();
+const _mySeq = ++_invRenderSeq;
+const factoryInventoryData = sortInventoryItems(ensureArray(await sqliteStore.get('factory_inventory_data')), _invSort);
 _updateInvSortHeaders();
-const _amt = (m) => (m.quantity * m.cost) || 0;
-factoryInventoryData.sort((a, b) => {
-const r = _invSort.key === 'amount' ? _amt(a) - _amt(b) : String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base', numeric: true });
-return _invSort.dir === 'asc' ? r : -r;
-});
 const tbody = document.getElementById('factoryInventoryTableBody');
 let totalVal = 0;
 if (factoryInventoryData.length === 0) {
@@ -510,6 +507,7 @@ tr.style.cursor = 'pointer';
 tr.innerHTML = `<td style="padding:8px 2px; cursor:pointer;" onclick="editFactoryInventoryItem('${itemId}')"><div style="font-weight:600;font-size:0.8rem;color:var(--accent);">${itemName}</div>${supplierHtml}</td><td style="text-align:center;padding:8px 2px;">${quantityHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.75rem;color:var(--text-muted);">${costHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.8rem;font-weight:700;color:var(--accent);">${totalValueStr}</td>`;
 prebuiltRows.push(tr);
 }
+if (_mySeq !== _invRenderSeq) return;
 tbody.innerHTML = '';
 const _fragF = document.createDocumentFragment();
 prebuiltRows.forEach(el => { if (el) _fragF.appendChild(el); });
