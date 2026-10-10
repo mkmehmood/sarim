@@ -7,7 +7,8 @@ export const dialogIcons = {
   success: SVG('<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.4 2.4 4.6-5"/>'),
   chevron: SVG('<path d="m9 6 6 6-6 6"/>')
 };
-const EYEBROWS = { primary: 'Confirmation', danger: 'Permanent action', warning: 'Warning', error: 'Error', success: 'Completed' };
+const EYEBROWS = { primary: 'Confirm', danger: 'Permanent', warning: 'Warning', error: 'Error', success: 'Success' };
+const CAPTIONS = { primary: 'Review before you continue', danger: 'This action is permanent', warning: 'Needs your attention', error: 'The action could not be completed', success: 'All done' };
 const ROLES = { primary: 'dialog', success: 'dialog', danger: 'alertdialog', warning: 'alertdialog', error: 'alertdialog' };
 const WARN_RE = /warning|insufficient|exceed|over-?collect|overpay|high credit|caution|unsaved|mismatch|cannot|can't|not enough|shortage|short by|already (used|sold|has)|outstanding/i;
 const DELETE_RE = /delete|remove|erase|purge|discard|clear|wipe/i;
@@ -55,41 +56,66 @@ const LEADING_GLYPHS = /^[\s\u00A0\u2190-\u21FF\u2600-\u27BF\uFE0F\u{1F300}-\u{1
 const BULLET_RE = /^[\u2022\u00B7\u25CF*\-\u2013]\s+(.+)$/;
 const NOTE_RE = /^(warning|note|caution|important):\s+(.+)$/i;
 const FACT_RE = /^([A-Za-z0-9][A-Za-z0-9 ()/&'.\u2019-]{0,32}):\s+(.{1,70})$/;
-export function formatMessage(message) {
+const FIGURE_PRIORITY = [/^new total$/i, /^total( value| sold)?$/i, /^amount$/i, /^required/i, /^overpayment$/i, /^collecting$/i, /^this credit sale$/i, /^credit sales?$/i, /^net profit$/i];
+export function parseMessage(message) {
   const lines = String(message == null ? '' : message).replace(/\r/g, '').split('\n').map((l) => l.replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, ''));
-  const out = [];
+  const blocks = [];
   let facts = null;
   let points = null;
   let paragraphs = 0;
   const flush = () => {
-    if (facts) { out.push(`<dl class="dlg-facts">${facts.join('')}</dl>`); facts = null; }
-    if (points) { out.push(`<ul class="dlg-points">${points.join('')}</ul>`); points = null; }
+    if (facts) { blocks.push({ type: 'facts', items: facts }); facts = null; }
+    if (points) { blocks.push({ type: 'points', items: points }); points = null; }
   };
-  const callout = (kind, label, text) => out.push(`<div class="dlg-callout dlg-callout--${kind}" role="note"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(text)}</span></div>`);
+  const callout = (kind, label, text) => blocks.push({ type: 'callout', kind, label, text });
   lines.forEach((raw) => {
     if (!raw) { flush(); return; }
     if (/^\u26A0/.test(raw)) { flush(); callout('warning', 'Warning', raw.replace(LEADING_GLYPHS, '')); return; }
     if (/^[\u21A9\u2139]/.test(raw)) { flush(); callout('info', 'Note', raw.replace(LEADING_GLYPHS, '')); return; }
     const line = raw.replace(LEADING_GLYPHS, '') || raw;
     const bullet = line.match(BULLET_RE);
-    if (bullet) { if (facts) flush(); (points = points || []).push(`<li>${escapeHtml(bullet[1])}</li>`); return; }
+    if (bullet) { if (facts) flush(); (points = points || []).push(bullet[1]); return; }
     if (/^this (action )?cannot be undone\.?$/i.test(line)) { flush(); callout('danger', 'Permanent', line); return; }
     const note = line.match(NOTE_RE);
     if (note) { flush(); callout(/^(note|important)$/i.test(note[1]) ? 'info' : 'warning', note[1][0].toUpperCase() + note[1].slice(1).toLowerCase(), note[2]); return; }
     const fact = line.match(FACT_RE);
-    if (fact && !/^https?$/i.test(fact[1])) { if (points) flush(); (facts = facts || []).push(`<div><dt>${escapeHtml(fact[1])}</dt><dd>${escapeHtml(fact[2])}</dd></div>`); return; }
+    if (fact && !/^https?$/i.test(fact[1])) { if (points) flush(); (facts = facts || []).push({ k: fact[1], v: fact[2] }); return; }
     flush();
-    if (/:$/.test(line)) { out.push(`<p class="dlg-subhead">${escapeHtml(line)}</p>`); return; }
-    out.push(`<p class="${paragraphs === 0 && !out.length ? 'dlg-lead' : 'dlg-text'}">${escapeHtml(line)}</p>`);
+    if (/:$/.test(line)) { blocks.push({ type: 'subhead', text: line }); return; }
+    blocks.push({ type: 'p', text: line, lead: paragraphs === 0 && !blocks.length });
     paragraphs += 1;
   });
   flush();
-  return out.join('');
+  let figure = null;
+  for (const re of FIGURE_PRIORITY) {
+    for (const blk of blocks) {
+      if (blk.type !== 'facts') continue;
+      const idx = blk.items.findIndex((f) => re.test(f.k) && /\d/.test(f.v) && f.v.length <= 18);
+      if (idx >= 0) { figure = blk.items.splice(idx, 1)[0]; break; }
+    }
+    if (figure) break;
+  }
+  return { blocks: blocks.filter((blk) => blk.type !== 'facts' || blk.items.length), figure };
+}
+export function renderBlocks(blocks) {
+  return blocks.map((blk) => {
+    if (blk.type === 'facts') {
+      if (blk.items.length <= 3) return `<dl class="dlg-meta">${blk.items.map((f) => `<div><dt>${escapeHtml(f.k)}</dt><dd>${escapeHtml(f.v)}</dd></div>`).join('')}</dl>`;
+      return `<dl class="dlg-facts">${blk.items.map((f) => `<div><dt>${escapeHtml(f.k)}</dt><dd>${escapeHtml(f.v)}</dd></div>`).join('')}</dl>`;
+    }
+    if (blk.type === 'points') return `<ul class="dlg-points">${blk.items.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+    if (blk.type === 'callout') return `<div class="dlg-callout dlg-callout--${blk.kind}" role="note"><strong>${escapeHtml(blk.label)}</strong><span>${escapeHtml(blk.text)}</span></div>`;
+    if (blk.type === 'subhead') return `<p class="dlg-subhead">${escapeHtml(blk.text)}</p>`;
+    return `<p class="${blk.lead ? 'dlg-lead' : 'dlg-text'}">${escapeHtml(blk.text)}</p>`;
+  }).join('');
+}
+export function formatMessage(message) {
+  return renderBlocks(parseMessage(message).blocks);
 }
 function closeActive() {
   if (active) active.force();
 }
-export function openDialog({ tone = 'primary', title = '', eyebrow = null, icon = null, body = '', actions = [], dismissIndex = -1, dismissOnBackdrop = true, focusIndex = -1, onBodyClick = null }) {
+export function openDialog({ tone = 'primary', title = '', eyebrow = null, caption = null, icon = null, body = '', figure = null, actions = [], dismissIndex = -1, dismissOnBackdrop = true, focusIndex = -1, onBodyClick = null }) {
   return new Promise((resolve) => {
     closeActive();
     const id = `dlg-${++seq}`;
@@ -98,7 +124,9 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, icon 
     overlay.className = 'dlg-overlay';
     overlay.dataset.tone = tone;
     const buttons = actions.map((a, i) => `<button type="button" class="dlg-btn dlg-btn--${a.variant === 'solid' ? 'solid' : 'ghost'}" data-act="${i}"${i === dismissIndex ? ' data-dlg-cancel' : ''}>${escapeHtml(a.label)}</button>`).join('');
-    overlay.innerHTML = `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><header class="dlg-head"><span class="dlg-glyph">${icon || pickIcon(tone, title, '')}</span><div class="dlg-heading"><span class="dlg-eyebrow">${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span><h2 class="dlg-title" id="${id}-t">${escapeHtml(String(title).trim())}</h2></div></header><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot">${buttons}</footer></div>`;
+    const glyph = icon || pickIcon(tone, title, '');
+    const figureHtml = figure ? `<div class="dlg-figure"><span class="dlg-figure-label">${escapeHtml(figure.k)}</span><strong class="dlg-figure-value">${escapeHtml(figure.v)}</strong></div>` : '';
+    overlay.innerHTML = `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><div class="dlg-chip"><span class="dlg-chip-icon" aria-hidden="true">${glyph}</span><span>${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span></div><div class="dlg-card"><div class="dlg-top"><span class="dlg-glyph" aria-hidden="true">${glyph}</span><span class="dlg-caption">${escapeHtml(caption || CAPTIONS[tone] || '')}</span></div><h2 class="dlg-title" id="${id}-t">${escapeHtml(String(title).trim())}</h2><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot${figure ? ' has-figure' : ''}">${figureHtml}<div class="dlg-actions">${buttons}</div></footer></div></div>`;
     const dialog = overlay.firstElementChild;
     let settled = false;
     const finish = (value, immediate) => {
@@ -153,6 +181,13 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, icon 
     active = { force: () => finish(dismissValue, true) };
     lockPage();
     document.body.appendChild(overlay);
+    const chip = dialog.querySelector('.dlg-chip');
+    const fitNotch = () => {
+      dialog.style.setProperty('--nw', `${Math.ceil(chip.offsetWidth) + 10}px`);
+      dialog.style.setProperty('--nh', `${Math.ceil(chip.offsetHeight) + 10}px`);
+    };
+    fitNotch();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNotch);
     document.addEventListener('keydown', onKey, true);
     requestAnimationFrame(() => {
       const items = Array.from(dialog.querySelectorAll('[data-act],[data-opt]'));
@@ -168,11 +203,13 @@ export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Co
     ? [{ label: confirmText, variant: 'solid', value: true }]
     : [{ label: cancelText, variant: 'ghost', value: false }, { label: confirmText, variant: 'solid', value: true }];
   const safeFirst = !alertOnly && resolvedTone === 'danger';
+  const parsed = parseMessage(message);
   return openDialog({
     tone: resolvedTone,
     title,
     icon: svg,
-    body: formatMessage(message),
+    body: renderBlocks(parsed.blocks),
+    figure: parsed.figure,
     actions,
     dismissIndex: 0,
     dismissOnBackdrop: !safeFirst,
