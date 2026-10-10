@@ -2254,11 +2254,11 @@ async updateSyncStats(collection) {
   }
   stats[collection].syncCount++;
   stats[collection].lastSync = new Date().toISOString();
-  await sqliteStore.set('deltaSyncStats', stats);
+  await sqliteStore.set('delta_sync_stats', stats);
 },
 async getSyncStats() {
   try {
-    const stats = await sqliteStore.get('deltaSyncStats');
+    const stats = await sqliteStore.get('delta_sync_stats');
     return (stats && typeof stats === 'object') ? stats : {};
   } catch (e) {
     return {};
@@ -2271,7 +2271,7 @@ async recordOperation(collection, reads = 0, writes = 0) {
   }
   stats[collection].totalReads += reads;
   stats[collection].totalWrites += writes;
-  await sqliteStore.set('deltaSyncStats', stats);
+  await sqliteStore.set('delta_sync_stats', stats);
 }
 };
 export async function initializeSyncStatsIfNeeded() {
@@ -2301,7 +2301,7 @@ totalReads: 0,
 totalWrites: 0
 };
 }
-await sqliteStore.set('deltaSyncStats', stats);
+await sqliteStore.set('delta_sync_stats', stats);
 return true;
 }
 return false;
@@ -3327,9 +3327,9 @@ export async function refreshUI(page = 1, force = false) {
 const _ruiBatch = await sqliteStore.getBatch([
 'production','returns','sales','customers',
 'calculator','transactions','entities',
-'expenses','deleted_records',
+'expenses','deletion_ids',
 ]);
-const deletedRecordIds = new Set(ensureArray(_ruiBatch.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(_ruiBatch.get('deletion_ids')));
 const _rdAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const db = ensureArray(_ruiBatch.get('production')).filter(_rdAlive);
 const stockReturns = ensureArray(_ruiBatch.get('returns')).filter(_rdAlive);
@@ -3565,7 +3565,7 @@ card.style.display = 'none';
 });
 }
 export async function renderEntityTable(page = 1) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const _retAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const paymentEntities = ensureArray(await sqliteStore.get('entities')).filter(_retAlive);
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions')).filter(_retAlive);
@@ -3828,7 +3828,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas'
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 if (!currentUser) {
 window.notifyBlocking('Please sign in to create a backup.', 'error');
 showAuthOverlay();
@@ -3861,7 +3861,7 @@ expenses: expenseRecords,
 returns: stockReturns,
 settings: await sqliteStore.get('settings', defaultSettings),
 app_stores: await sqliteStore.get('app_stores') || [],
-deleted_records: Array.from(deletedRecordIds),
+deletion_ids: Array.from(deletedRecordIds),
 ...(await collectAuxBackupFields(sqliteStore)),
 _meta: { dataKeyVersion: DATA_KEY_VERSION, encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 }
 };
@@ -3892,7 +3892,7 @@ const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const file = event.target.files[0];
 if (!file) return;
 event.target.value = '';
@@ -4043,7 +4043,7 @@ const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
@@ -4101,9 +4101,9 @@ if (data.transactions)     data.transactions     = deduplicateByUUID(data.transa
 if (data.entities)         data.entities         = deduplicateByUUID(data.entities,         'Payment Entities');
 if (data.expenses)                data.expenses                = deduplicateByUUID(data.expenses,                'Expenses');
 showToast(' Backup cleaned! Restoring with smart merge...', 'success');
-if (data.deleted_records && Array.isArray(data.deleted_records)) {
-data.deleted_records.forEach(id => deletedRecordIds.add(id));
-await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
+if (data.deletion_ids && Array.isArray(data.deletion_ids)) {
+data.deletion_ids.forEach(id => deletedRecordIds.add(id));
+await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
 }
 const isAlive = (item) => item && item.id && !deletedRecordIds.has(item.id);
 const currentLocalData = {
@@ -4341,7 +4341,7 @@ try {
       last_synced:                     new Date().toISOString()
     };
     currentBatch.set(
-      userRef.collection('factorySettings').doc('config'),
+      userRef.collection('factory_settings').doc('config'),
       sanitizeForFirestore(factorySettingsPayload),
       { merge: true }
     );
@@ -4349,7 +4349,7 @@ try {
     const _restoreStores = await sqliteStore.get('app_stores');
     if (Array.isArray(_restoreStores) && _restoreStores.length > 0) {
       currentBatch.set(
-        userRef.collection('appStores').doc('stores'),
+        userRef.collection('app_stores').doc('stores'),
         sanitizeForFirestore({ stores: _restoreStores, stores_timestamp: settingsTimestamp }),
         { merge: true }
       );
@@ -4390,31 +4390,31 @@ showToast('Not logged in to cloud. Data restored locally only.', 'warning');
 }
 const statsMessage = `Added: ${totalAdded}, Updated: ${totalUpdated}, Skipped: ${totalSkipped}`;
 const syncMessage = cloudSyncSuccess ? ' and new/updated records uploaded to cloud' : '';
-if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArray(data.person_photos)) {
+if (data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos)) {
   try {
-    const existingPhotos = (await sqliteStore.get('person_photos')) || {};
-    const backupPhotos = data.person_photos;
+    const existingPhotos = (await sqliteStore.get('photos')) || {};
+    const backupPhotos = data.photos;
     const mergedPhotos = Object.assign({}, existingPhotos, backupPhotos);
-    await sqliteStore.set('person_photos', mergedPhotos);
-    const existingTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-    const backupTs   = (data.person_photos_timestamps && typeof data.person_photos_timestamps === 'object')
-      ? data.person_photos_timestamps : {};
+    await sqliteStore.set('photos', mergedPhotos);
+    const existingTs = (await sqliteStore.get('photos_timestamps')) || {};
+    const backupTs   = (data.photos_timestamps && typeof data.photos_timestamps === 'object')
+      ? data.photos_timestamps : {};
     const nowMs = Date.now();
     const mergedTs = Object.assign({}, existingTs);
     for (const key of Object.keys(backupPhotos)) {
       mergedTs[key] = backupTs[key] || nowMs;
     }
-    await sqliteStore.set('person_photos_timestamps', mergedTs);
+    await sqliteStore.set('photos_timestamps', mergedTs);
     const restoredKeys = Object.keys(backupPhotos);
     if (restoredKeys.length > 0) {
-      const dirtyKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+      const dirtyKeys = (await sqliteStore.get('photos_dirty_keys')) || [];
       for (const k of restoredKeys) { if (!dirtyKeys.includes(k)) dirtyKeys.push(k); }
-      await sqliteStore.set('person_photos_dirty_keys', dirtyKeys);
-      await sqliteStore.set('person_photos_timestamp', nowMs);
+      await sqliteStore.set('photos_dirty_keys', dirtyKeys);
+      await sqliteStore.set('photos_timestamp', nowMs);
       if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
       showToast(`Restored ${restoredKeys.length} photo(s) from backup.`, 'info', 3000);
     }
-  } catch(e) { console.warn('[restore] person_photos merge failed', e); }
+  } catch(e) { console.warn('[restore] photos merge failed', e); }
 }
 window.showGlassAlert(`Restore complete${syncMessage}! ${statsMessage}`, { tone: 'success', title: 'Restore Complete' });
 if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Backup restored', 'Your data was restored from the backup file. Open the app to check your records.', 'backup-restored').catch(() => {});
@@ -4429,7 +4429,7 @@ const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const currentDb = ensureArray(await sqliteStore.get('production'));
 const currentSalesHistory = ensureArray(await sqliteStore.get('calculator'));
@@ -4461,7 +4461,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   ].filter(r => r && r.id && r.isMerged === true && !_backupIds.has(String(r.id)));
   if (_mergedToTombstone.length > 0) {
     _mergedToTombstone.forEach(r => deletedRecordIds.add(String(r.id)));
-    await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
+    await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
   }
   const isAlive = honourPostCloseDeletions
     ? (item) => item && item.id && !deletedRecordIds.has(item.id)
@@ -4596,7 +4596,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     const _restoreMetaTs = Date.now();
     await sqliteStore.set('settings', currentSettings);
     await sqliteStore.set('settings_timestamp', _restoreMetaTs);
-    await sqliteStore.set('pendingFirestoreYearClose', false);
+    await sqliteStore.set('pending_year_close', false);
     _set_defaultSettings(currentSettings);
     if (firebaseDB && currentUser) {
       try {
@@ -4687,7 +4687,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     } catch(cloudErr) {
       console.warn('Cloud replace failed:', _safeErr(cloudErr));
       _set_pendingFirestoreRestore(true);
-      await sqliteStore.set('pendingFirestoreRestore', true)
+      await sqliteStore.set('pending_restore', true)
         .catch(e => console.warn('[ycRestore] Could not persist pendingFirestoreRestore:', _safeErr(e)));
       showToast('Local data reversed. Cloud sync failed — will retry automatically.', 'warning', 5000);
     }
@@ -4708,37 +4708,37 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     }
   } else {
     _set_pendingFirestoreRestore(true);
-    await sqliteStore.set('pendingFirestoreRestore', true)
+    await sqliteStore.set('pending_restore', true)
       .catch(e => console.warn('[ycRestore] Could not persist pendingFirestoreRestore:', _safeErr(e)));
   }
   await loadAllData();
   try { syncFactoryProductionStats(); } catch(e) {}
   try { await invalidateAllCaches(); } catch(e) {}
   try { await refreshAllDisplays(); } catch(e) {}
-  if (data.person_photos && typeof data.person_photos === 'object' && !Array.isArray(data.person_photos)) {
+  if (data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos)) {
     try {
-      const _ycExisting = (await sqliteStore.get('person_photos')) || {};
-      const _ycBackup   = data.person_photos;
+      const _ycExisting = (await sqliteStore.get('photos')) || {};
+      const _ycBackup   = data.photos;
       const _ycMerged = Object.assign({}, _ycExisting, _ycBackup);
-      await sqliteStore.set('person_photos', _ycMerged);
-      const _ycExistingTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-      const _ycBackupTs   = (data.person_photos_timestamps && typeof data.person_photos_timestamps === 'object')
-        ? data.person_photos_timestamps : {};
+      await sqliteStore.set('photos', _ycMerged);
+      const _ycExistingTs = (await sqliteStore.get('photos_timestamps')) || {};
+      const _ycBackupTs   = (data.photos_timestamps && typeof data.photos_timestamps === 'object')
+        ? data.photos_timestamps : {};
       const _ycNowMs = Date.now();
       const _ycMergedTs = Object.assign({}, _ycExistingTs);
       for (const _ycKey of Object.keys(_ycBackup)) {
         _ycMergedTs[_ycKey] = _ycBackupTs[_ycKey] || _ycNowMs;
       }
-      await sqliteStore.set('person_photos_timestamps', _ycMergedTs);
+      await sqliteStore.set('photos_timestamps', _ycMergedTs);
       const _ycDirty = Object.keys(_ycBackup);
       if (_ycDirty.length > 0) {
-        const _ycExistingDirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+        const _ycExistingDirty = (await sqliteStore.get('photos_dirty_keys')) || [];
         const _ycMergedDirty = Array.from(new Set([..._ycExistingDirty, ..._ycDirty]));
-        await sqliteStore.set('person_photos_dirty_keys', _ycMergedDirty);
-        await sqliteStore.set('person_photos_timestamp', _ycNowMs);
+        await sqliteStore.set('photos_dirty_keys', _ycMergedDirty);
+        await sqliteStore.set('photos_timestamp', _ycNowMs);
         if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
       }
-    } catch(_ycPhErr) { console.warn('[ycRestore] person_photos restore error', _ycPhErr); }
+    } catch(_ycPhErr) { console.warn('[ycRestore] photos restore error', _ycPhErr); }
   }
   const totalRecords = Object.values(replaceData).reduce((s, a) => s + a.length, 0);
   window.showGlassAlert(` Financial year close reversed! ${totalRecords} pre-close records restored.`, { tone: 'success', title: 'Year Close Reversed' });
@@ -6128,7 +6128,7 @@ font: { size: 13, weight: 'bold' }
 }));
 }
 export async function refreshCustomerSales(page = 1, force = false) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const _rcsAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const customerSales = ensureArray(await sqliteStore.get('sales')).filter(_rcsAlive);
 const salesCustomers = ensureArray(await sqliteStore.get('customers')).filter(_rcsAlive);

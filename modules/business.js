@@ -675,7 +675,7 @@ export const sqliteStore = (() => {
     'appMode', 'appMode_timestamp',
     'repProfile', 'repProfile_timestamp',
     'assignedManager', 'assignedUserTabs',
-    'device_name', 'theme', 'app_theme',
+    'device_name', 'theme', 'theme',
     'last_synced', 'firestore_initialized', 'firestore_init_timestamp',
     'ui_state', 'firestore_stats', 'session_start',
     'bio_enabled', 'bio_cred_id',
@@ -686,8 +686,8 @@ export const sqliteStore = (() => {
   // bookkeeping keys keep their own collection names.
   const _IDB_KEY_TO_COLLECTION = {
     ...Object.fromEntries(RECORD_KEYS.map(k => [k, k])),
-    'deletion_records': 'deletions',
-    'deleted_records':  'deleted_ids',
+    'deletions': 'deletions',
+    'deletion_ids':  'deleted_ids',
   };
   const _SETTINGS_KEYS = new Set([
     'factory_default_formulas', 'factory_additional_costs',
@@ -695,7 +695,7 @@ export const sqliteStore = (() => {
     'factory_unit_tracking', 'settings',
     'expense_categories', 'sales_reps_list', 'user_roles_list',
     'offline_operation_queue', 'offline_dead_letter_queue',
-    'ui_state', 'app_theme', 'firestore_stats', 'session_start',
+    'ui_state', 'theme', 'firestore_stats', 'session_start',
     'app_stores', 'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
@@ -708,9 +708,9 @@ export const sqliteStore = (() => {
     if (key.startsWith('uploadedIds_'))                           return 'sync_meta';
     if (key.startsWith('factory_') && key.endsWith('_timestamp')) return 'sync_meta';
     if (key.endsWith('_timestamp'))                               return 'sync_meta';
-    if (key === 'last_synced' || key === 'deltaSyncStats'
+    if (key === 'last_synced' || key === 'delta_sync_stats'
       || key === 'firestore_initialized' || key === 'firestore_init_timestamp'
-      || key === 'pendingFirestoreYearClose' || key === 'team_list_timestamp'
+      || key === 'pending_year_close' || key === 'team_list_timestamp'
       || key === 'user_state')                                    return 'sync_meta';
     return 'config';
   }
@@ -2227,7 +2227,7 @@ return;
 try {
 const deviceId = await getDeviceId();
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-const activityRef = userRef.collection('activityLog').doc();
+const activityRef = userRef.collection('activity_log').doc();
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
 deviceId: deviceId,

@@ -13,6 +13,10 @@
 //      (other stores get a key made from their name) in every record, the store list, the
 //      per-store prices and the recycle-bin entries; merges stores that exist twice
 //    * renames settings/config fields  naswar_default_settings(_timestamp) -> settings(_timestamp)
+//    * moves the support collections/documents to snake_case names (version 4)
+//        appStores/stores -> app_stores/stores   factorySettings/config -> factory_settings/config
+//        expenseCategories/categories -> expense_categories/categories
+//        activityLog -> activity_log              personPhotos -> photos
 //    * fixes mismatches: store values written as a name ("Zubair"), "store-a" spellings,
 //      and reports any record that still points at a store that does not exist
 //    * stamps every rewritten record with a new updatedAt so the app's delta sync picks it up
@@ -51,11 +55,18 @@ export const DATASETS = [
   ['transactions', 'transactions'], ['entities', 'entities'], ['inventory', 'inventory'],
   ['factory_history', 'factory'], ['expenses', 'expenses'], ['returns', 'returns'],
 ];
-export const COLLECTION_RENAMES = Object.fromEntries(DATASETS.filter(([o, n]) => o !== n));
+// version 4: support collections (whole collections) and single documents moved to snake_case
+export const SUPPORT_COLLECTIONS = [['activityLog', 'activity_log'], ['personPhotos', 'photos']];
+export const SUPPORT_DOCS = [
+  ['appStores/stores', 'app_stores/stores'],
+  ['factorySettings/config', 'factory_settings/config'],
+  ['expenseCategories/categories', 'expense_categories/categories'],
+];
+export const COLLECTION_RENAMES = Object.fromEntries([...DATASETS, ...SUPPORT_COLLECTIONS].filter(([o, n]) => o !== n));
 export const DEFAULT_STORE_MAP = { STORE_A: 'zubair', STORE_B: 'mahmood', STORE_C: 'asaan' };
 export const STORE_KEY_FIELDS = ['store', 'supplyStore', 'returnStore', 'transferPeerStore'];
 const SLOT_KEYS = ['standard', 'asaan'];
-export const DATA_KEY_VERSION = 3;
+export const DATA_KEY_VERSION = 4;
 // every historical backup field name -> current name
 export const BACKUP_FIELD_RENAMES = {
   mfg: 'production', mfg_pro_pkr: 'production', db: 'production',
@@ -71,6 +82,9 @@ export const BACKUP_FIELD_RENAMES = {
   stockReturns: 'returns', stock_returns: 'returns',
   expenseCategories: 'expense_categories', factoryFormulaStore: 'factory_formula_store', formula_store: 'factory_formula_store',
   factoryFormulaSlots: 'factory_formula_slots', formula_slots: 'factory_formula_slots',
+  deleted_records: 'deletion_ids', deletion_records: 'deletions',
+  person_photos: 'photos', person_photos_timestamps: 'photos_timestamps', person_photos_dirty_keys: 'photos_dirty_keys',
+  app_theme: 'theme',
   naswar_default_settings: 'settings', appStores: 'app_stores',
   factoryDefaultFormulas: 'factory_default_formulas', factoryAdditionalCosts: 'factory_additional_costs',
   factoryCostAdjustmentFactor: 'factory_cost_adjustment_factor', factoryUnitTracking: 'factory_unit_tracking',
@@ -274,16 +288,21 @@ const ms = (d) => {
 export async function migrateCloud(client, opts = {}) {
   const log = opts.log || (() => {});
   const apply = !!opts.apply;
-  const report = { applied: apply, catalog: { changed: false, merged: 0, map: {} }, datasets: {}, settings: 0, deletions: 0, unknown: {}, writes: 0, deleted: 0, warnings: [] };
+  const report = { applied: apply, catalog: { changed: false, merged: 0, map: {} }, datasets: {}, support: [], settings: 0, deletions: 0, unknown: {}, writes: 0, deleted: 0, supportDeleted: 0, warnings: [] };
   const ops = [];
-  // 1. store list -> decides every store key
-  const catDoc = await client.get('appStores/stores');
+  // 1. store list -> decides every store key. Read the new location first, then the old one.
+  const [catNew, catOld] = [await client.get('app_stores/stores'), await client.get('appStores/stores')];
+  const catDoc = catNew || catOld;
+  const catMoved = !catNew && !!catOld;
   const plan = planCatalog(catDoc && catDoc.data.stores);
-  report.catalog = { changed: plan.changed, merged: plan.merged, map: plan.map };
+  report.catalog = { changed: plan.changed, merged: plan.merged, map: plan.map, moved: catMoved };
   const resolve = makeResolver(plan.stores, plan.map);
-  if (catDoc && plan.changed) {
-    ops.push({ op: 'update', path: 'appStores/stores', data: { stores: plan.stores, stores_timestamp: opts.now || Date.now() } });
-    log(`store list: ${Object.entries(plan.map).map(([a, b]) => `${a}->${b}`).join(', ')}${plan.merged ? ` (${plan.merged} duplicate store(s) merged)` : ''}`);
+  if (catDoc && catMoved) {
+    ops.push({ op: 'set', path: 'app_stores/stores', data: { ...catOld.data, stores: plan.stores, stores_timestamp: plan.changed ? (opts.now || Date.now()) : catOld.data.stores_timestamp } });
+    log(`appStores/stores -> app_stores/stores${plan.changed ? ` (stores re-keyed: ${Object.entries(plan.map).map(([x, y]) => `${x}->${y}`).join(', ')})` : ''}`);
+  } else if (catDoc && plan.changed) {
+    ops.push({ op: 'update', path: 'app_stores/stores', data: { stores: plan.stores, stores_timestamp: opts.now || Date.now() } });
+    log(`store list: ${Object.entries(plan.map).map(([x, y]) => `${x}->${y}`).join(', ')}${plan.merged ? ` (${plan.merged} duplicate store(s) merged)` : ''}`);
   }
   const noteUnknown = (col, arr) => { for (const v of arr) { const k = `${col}: ${v}`; report.unknown[k] = (report.unknown[k] || 0) + 1; } };
   // 2. datasets
@@ -307,6 +326,36 @@ export async function migrateCloud(client, opts = {}) {
     }
     if (renamed) copiedAll.push([oldCol, newCol, oldDocs]);
     log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer, ${r.storeFixes} store field(s) fixed`);
+  }
+  // 2b. support documents and collections (version 4 names). Never overwrites a newer copy.
+  const supportCopied = [];
+  for (const [oldPath, newPath] of SUPPORT_DOCS.filter(([o]) => o !== 'appStores/stores')) {
+    const old = await client.get(oldPath);
+    const r = { from: oldPath, to: newPath, found: old ? 1 : 0, written: 0, skippedNewer: 0 };
+    report.support.push(r);
+    if (!old) continue;
+    const cur = await client.get(newPath);
+    if (cur) r.skippedNewer++;
+    else { ops.push({ op: 'set', path: newPath, data: old.data }); r.written++; }
+    supportCopied.push({ doc: true, oldPath, newPath });
+    log(`${oldPath} -> ${newPath}: ${r.written ? 'copy' : 'already there'}`);
+  }
+  if (catOld) supportCopied.push({ doc: true, oldPath: 'appStores/stores', newPath: 'app_stores/stores' });
+  report.support.unshift({ from: 'appStores/stores', to: 'app_stores/stores', found: catOld ? 1 : 0, written: catMoved ? 1 : 0, skippedNewer: catOld && catNew ? 1 : 0 });
+  for (const [oldCol, newCol] of SUPPORT_COLLECTIONS) {
+    const r = { from: oldCol, to: newCol, found: 0, written: 0, skippedNewer: 0 };
+    report.support.push(r);
+    const oldDocs = (await client.list(oldCol)).filter(d => d.id !== '_placeholder_');
+    r.found = oldDocs.length;
+    if (!oldDocs.length) continue;
+    const existing = new Map((await client.list(newCol)).map(d => [d.id, d.data]));
+    for (const d of oldDocs) {
+      if (existing.has(d.id) && ms(existing.get(d.id)) >= ms(d.data)) { r.skippedNewer++; continue; }
+      ops.push({ op: 'set', path: `${newCol}/${d.id}`, data: d.data, serverTime: newCol === 'photos' ? ['updatedAt'] : [] });
+      r.written++;
+    }
+    supportCopied.push({ doc: false, oldCol, newCol, oldDocs });
+    log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer`);
   }
   // 3. settings/config
   const sDoc = await client.get('settings/config');
@@ -345,6 +394,20 @@ export async function migrateCloud(client, opts = {}) {
       if (missing.length) { report.warnings.push(`${oldCol}: ${missing.length} document(s) are not in ${newCol}; old collection kept`); continue; }
       await client.commit(oldDocs.map(d => ({ op: 'delete', path: `${oldCol}/${d.id}` })));
       report.deleted += oldDocs.length; log(`deleted old collection ${oldCol} (${oldDocs.length} docs)`);
+    }
+  }
+  if (apply && opts.deleteOld) {
+    for (const c of supportCopied) {
+      if (c.doc) {
+        if (!(await client.get(c.newPath))) { report.warnings.push(`${c.oldPath}: not copied to ${c.newPath}; old document kept`); continue; }
+        await client.commit([{ op: 'delete', path: c.oldPath }]); report.supportDeleted++; log(`deleted old document ${c.oldPath}`);
+      } else {
+        const have = new Set((await client.list(c.newCol)).map(d => d.id));
+        const missing = c.oldDocs.filter(d => !have.has(d.id));
+        if (missing.length) { report.warnings.push(`${c.oldCol}: ${missing.length} document(s) are not in ${c.newCol}; old collection kept`); continue; }
+        await client.commit(c.oldDocs.map(d => ({ op: 'delete', path: `${c.oldCol}/${d.id}` })));
+        report.supportDeleted += c.oldDocs.length; log(`deleted old collection ${c.oldCol} (${c.oldDocs.length} docs)`);
+      }
     }
   }
   return report;
@@ -441,6 +504,7 @@ function printReport(r) {
   console.log('\n=== summary ' + (r.applied ? '(APPLIED)' : '(dry run - nothing was written)') + ' ===');
   console.log(`store list: ${r.catalog.changed ? 'will be re-keyed' : 'already current'}${r.catalog.merged ? `, ${r.catalog.merged} duplicate store(s) merged` : ''}`);
   for (const [n, d] of Object.entries(r.datasets)) if (d.found) console.log(`${d.from.padEnd(20)} -> ${n.padEnd(13)} found ${String(d.found).padStart(5)}  write ${String(d.written).padStart(5)}  store fixes ${d.storeFixes}`);
+  for (const x of r.support) if (x.found) console.log(`${x.from.padEnd(30)} -> ${x.to.padEnd(30)} found ${String(x.found).padStart(5)}  write ${String(x.written).padStart(5)}`);
   console.log(`settings doc: ${r.settings ? 'updated' : 'ok'};  recycle-bin entries updated: ${r.deletions}`);
   const unk = Object.entries(r.unknown);
   if (unk.length) { console.log('\nMISMATCH - records pointing at a store that does not exist (left untouched, please review):'); for (const [k, n] of unk) console.log(`  ${k}  x${n}`); }

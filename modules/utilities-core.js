@@ -1276,8 +1276,8 @@ export function _dedupDeletionRecordsLocal(arr) {
   return Array.from(seen.values());
 }
 export async function registerDeletion(id, collectionName = 'unknown', preDeletedRecord = null) {
-const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 if (!id) {
 return;
 }
@@ -1393,14 +1393,14 @@ snapshot: _snapshot.record || null,
 };
 if (collectionName === 'entities') {
   try {
-    const _entPhAll = (await sqliteStore.get('person_photos')) || {};
+    const _entPhAll = (await sqliteStore.get('photos')) || {};
     const _entPhV = _entPhAll['entity:' + id];
     if (_entPhV && String(_entPhV).length < 700000) deletionRecord._photos = { ['entity:' + id]: _entPhV };
   } catch (_entPhErr) { console.warn('[registerDeletion] entity photo snapshot failed', _entPhErr); }
 }
 if (collectionName === 'expenses' || collectionName === 'transactions') {
   try {
-    const _regPh = (await sqliteStore.get('person_photos')) || {};
+    const _regPh = (await sqliteStore.get('photos')) || {};
     const _regKeys = ['expense:' + id];
     const _snapRec = _snapshot.record || null;
     if (_snapRec && _snapRec.expenseId) _regKeys.push('expense:' + _snapRec.expenseId);
@@ -1427,8 +1427,8 @@ deletionRecords[existingIndex] = deletionRecord;
 deletionRecords.push(deletionRecord);
 }
 const _deduped = _dedupDeletionRecordsLocal(deletionRecords);
-await sqliteStore.set('deletion_records', _deduped);
-await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
+await sqliteStore.set('deletions', _deduped);
+await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
 triggerAutoSync();
 uploadDeletionToCloud(deletionRecord).catch(e => console.warn('[registerDeletion] cloud upload failed:', _safeErr(e)));
 cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed:', _safeErr(e)));
@@ -1649,7 +1649,7 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
   return result;
 };
 export async function uploadDeletionToCloud(deletionRecord) {
-const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
+const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
 if (!firebaseDB || typeof currentUser === 'undefined' || !currentUser) {
 return;
 }
@@ -1693,7 +1693,7 @@ if (Array.isArray(deletionRecords)) {
 const index = deletionRecords.findIndex(r => String(r.id) === String(deletionRecord.id) || String(r.recordId) === String(deletionRecord.id));
 if (index > -1) {
 deletionRecords[index].syncedToCloud = true;
-await sqliteStore.set('deletion_records', deletionRecords);
+await sqliteStore.set('deletions', deletionRecords);
 }
 }
 } catch (error) {
@@ -1710,8 +1710,8 @@ data: null
 }
 }
 export async function cleanupOldDeletions() {
-const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
 const validDeletions = deletionRecords.filter(record => record.deletedAt > threeMonthsAgo);
 if (validDeletions.length !== deletionRecords.length) {
@@ -1722,8 +1722,8 @@ for (const r of expiredRecs) {
   catch (_e) { console.warn('[cleanupOldDeletions] photo cleanup failed', _safeErr(_e)); }
 }
 expiredIds.forEach(id => deletedRecordIds.delete(id));
-await sqliteStore.set('deletion_records', validDeletions);
-await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
+await sqliteStore.set('deletions', validDeletions);
+await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
 }
 if (firebaseDB && typeof currentUser !== 'undefined' && currentUser &&
 !window._firestoreNetworkDisabled && navigator.onLine) {
@@ -1985,7 +1985,7 @@ item.innerHTML = `
 _entityFrag.appendChild(item);
 if (_photoRefId) {
   const _phKey = 'expense:' + _photoRefId;
-  sqliteStore.get('person_photos').then(ph => {
+  sqliteStore.get('photos').then(ph => {
     if (ph && ph[_phKey]) {
       const badge = document.getElementById(photoBadgeId);
       if (badge) badge.style.display = 'inline-flex';
@@ -2008,7 +2008,7 @@ export async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
   const photoKey = expenseId ? 'expense:' + expenseId : null;
   if (photoKey) {
     try {
-      const stored = (await sqliteStore.get('person_photos')) || {};
+      const stored = (await sqliteStore.get('photos')) || {};
       const dataUrl = stored[photoKey] || null;
       if (dataUrl) { openPhotoLightbox(dataUrl); return; }
     } catch(_) {}
@@ -2337,9 +2337,9 @@ await deletePaymentTxWithLinks(tx, { groupId: _entGroup, excludeIds: _entTxIds }
 const filteredEntities = ensureArray(await sqliteStore.get('entities')).filter(e => String(e.id) !== String(currentEntityId));
 await unifiedDelete('entities', filteredEntities, _entityToDel.id, { strict: true }, stampGroup(_entityToDel, _entGroup));
 try {
-const _delEntPh = (await sqliteStore.get('person_photos')) || {};
-const _delEntPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
-const _delEntDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+const _delEntPh = (await sqliteStore.get('photos')) || {};
+const _delEntPhTs = (await sqliteStore.get('photos_timestamps')) || {};
+const _delEntDk = (await sqliteStore.get('photos_dirty_keys')) || [];
 let _delEntPhChanged = false;
 const _entityPhotoKeys = [
 'entity:' + String(currentEntityId),
@@ -2354,9 +2354,9 @@ _delEntPhChanged = true;
 }
 }
 if (_delEntPhChanged) {
-await sqliteStore.set('person_photos', _delEntPh);
-await sqliteStore.set('person_photos_timestamps', _delEntPhTs);
-await sqliteStore.set('person_photos_dirty_keys', _delEntDk);
+await sqliteStore.set('photos', _delEntPh);
+await sqliteStore.set('photos_timestamps', _delEntPhTs);
+await sqliteStore.set('photos_dirty_keys', _delEntDk);
 if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
 }
 } catch(_delEntPhErr) { console.warn('[deleteCurrentEntity] photo cleanup failed', _delEntPhErr); }
@@ -3432,7 +3432,7 @@ export async function loadPersonPhotoIntoEditor(prefix, storageKey) {
   clearPersonPhoto(prefix);
   if (!storageKey) return;
   try {
-    const stored = await sqliteStore.get('person_photos');
+    const stored = await sqliteStore.get('photos');
     const photos = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
     const dataUrl = photos[storageKey];
     if (dataUrl) applyPersonPhoto(prefix, dataUrl);
@@ -3446,9 +3446,9 @@ export async function savePersonPhoto(prefix, storageKey) {
   const pending = preview.dataset.pendingPhoto;
   if (pending === undefined) return;
   try {
-    const stored = await sqliteStore.get('person_photos');
+    const stored = await sqliteStore.get('photos');
     const photos = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
-    const timestamps = (await sqliteStore.get('person_photos_timestamps')) || {};
+    const timestamps = (await sqliteStore.get('photos_timestamps')) || {};
     const now = Date.now();
     if (pending) {
       const compressed = await _compressPhoto(pending, 1280, 0.75);
@@ -3458,19 +3458,19 @@ export async function savePersonPhoto(prefix, storageKey) {
       delete photos[storageKey];
       delete timestamps[storageKey];
     }
-    await sqliteStore.set('person_photos', photos);
-    await sqliteStore.set('person_photos_timestamps', timestamps);
-    const _dirtyKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    await sqliteStore.set('photos', photos);
+    await sqliteStore.set('photos_timestamps', timestamps);
+    const _dirtyKeys = (await sqliteStore.get('photos_dirty_keys')) || [];
     if (!_dirtyKeys.includes(storageKey)) _dirtyKeys.push(storageKey);
-    await sqliteStore.set('person_photos_dirty_keys', _dirtyKeys);
-    await sqliteStore.set('person_photos_timestamp', now);
+    await sqliteStore.set('photos_dirty_keys', _dirtyKeys);
+    await sqliteStore.set('photos_timestamp', now);
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   } catch(e) { console.warn('Photo save failed', e); }
 }
 export async function getPersonPhoto(storageKey) {
   if (!storageKey) return null;
   try {
-    const stored = await sqliteStore.get('person_photos');
+    const stored = await sqliteStore.get('photos');
     const photos = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
     return photos[storageKey] || null;
   } catch(e) { return null; }

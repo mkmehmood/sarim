@@ -20,13 +20,13 @@ async function _compress(dataUrl, maxDim = 1280, quality = 0.75) {
   return dataUrl;
 }
 async function _photoStore() {
-  const stored = await sqliteStore.get('person_photos');
+  const stored = await sqliteStore.get('photos');
   return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
 }
 async function _writePhotoKeys(setMap, deleteKeys) {
   const photos = await _photoStore();
-  const ts = (await sqliteStore.get('person_photos_timestamps')) || {};
-  const dirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+  const ts = (await sqliteStore.get('photos_timestamps')) || {};
+  const dirty = (await sqliteStore.get('photos_dirty_keys')) || [];
   const now = Date.now();
   for (const [k, v] of Object.entries(setMap)) {
     photos[k] = v;
@@ -40,10 +40,10 @@ async function _writePhotoKeys(setMap, deleteKeys) {
     if (!dirty.includes(k)) dirty.push(k);
     _thumbCache.delete(k);
   }
-  await sqliteStore.set('person_photos', photos);
-  await sqliteStore.set('person_photos_timestamps', ts);
-  await sqliteStore.set('person_photos_dirty_keys', dirty);
-  await sqliteStore.set('person_photos_timestamp', now);
+  await sqliteStore.set('photos', photos);
+  await sqliteStore.set('photos_timestamps', ts);
+  await sqliteStore.set('photos_dirty_keys', dirty);
+  await sqliteStore.set('photos_timestamp', now);
   if (typeof window.triggerAutoSync === 'function') { try { window.triggerAutoSync(); } catch (_) {} }
 }
 function _renderPicker() {

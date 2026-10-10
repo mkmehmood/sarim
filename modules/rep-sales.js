@@ -711,7 +711,7 @@ if (cashSalesEl) cashSalesEl.textContent = `${fmtAmt(cashSales)}`;
 if (creditSalesEl) creditSalesEl.textContent = `${fmtAmt(creditSales)}`;
 }
 export async function renderRepCustomerTable(page = 1) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const _rrctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const repSales = ensureArray(await sqliteStore.get('rep')).filter(_rrctAlive);
 const repCustomers = ensureArray(await sqliteStore.get('clients')).filter(_rrctAlive);
@@ -900,16 +900,16 @@ await unifiedDelete('rep', prunedRepSales, tx.id, { strict: true }, stampGroup(t
 }
 try {
 const _rcPhKey = 'rep-cust:' + (currentRepProfile || '') + ':' + name.toLowerCase();
-const _rcPh = (await sqliteStore.get('person_photos')) || {};
+const _rcPh = (await sqliteStore.get('photos')) || {};
 if (_rcPh[_rcPhKey] !== undefined) {
 delete _rcPh[_rcPhKey];
-await sqliteStore.set('person_photos', _rcPh);
-const _rcPhTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+await sqliteStore.set('photos', _rcPh);
+const _rcPhTs = (await sqliteStore.get('photos_timestamps')) || {};
 delete _rcPhTs[_rcPhKey];
-await sqliteStore.set('person_photos_timestamps', _rcPhTs);
-const _rcDk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+await sqliteStore.set('photos_timestamps', _rcPhTs);
+const _rcDk = (await sqliteStore.get('photos_dirty_keys')) || [];
 if (!_rcDk.includes(_rcPhKey)) _rcDk.push(_rcPhKey);
-await sqliteStore.set('person_photos_dirty_keys', _rcDk);
+await sqliteStore.set('photos_dirty_keys', _rcDk);
 }
 } catch(_rcPhErr) { console.warn('[deleteCurrentRepCustomer] photo cleanup failed', _rcPhErr); }
 notifyDataChange('rep');
@@ -1255,15 +1255,15 @@ const _repPhotoKeyNew = 'rep-cust:' + (currentRepProfile || '') + ':' + name.toL
 if (nameChanged) {
 const _oldRepPhoto = await getPersonPhoto(_repPhotoKeyOld);
 if (_oldRepPhoto) {
-const _repPhotos = await sqliteStore.get('person_photos') || {};
+const _repPhotos = await sqliteStore.get('photos') || {};
 _repPhotos[_repPhotoKeyNew] = _oldRepPhoto;
 delete _repPhotos[_repPhotoKeyOld];
-await sqliteStore.set('person_photos', _repPhotos);
-const _rdk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+await sqliteStore.set('photos', _repPhotos);
+const _rdk = (await sqliteStore.get('photos_dirty_keys')) || [];
 if (!_rdk.includes(_repPhotoKeyNew)) _rdk.push(_repPhotoKeyNew);
 if (!_rdk.includes(_repPhotoKeyOld)) _rdk.push(_repPhotoKeyOld);
-await sqliteStore.set('person_photos_dirty_keys', _rdk);
-await sqliteStore.set('person_photos_timestamp', Date.now());
+await sqliteStore.set('photos_dirty_keys', _rdk);
+await sqliteStore.set('photos_timestamp', Date.now());
 const _repPreview = document.getElementById('rep-cust-photo-preview');
 if (_repPreview) _repPreview.dataset.pendingPhoto = undefined;
 } else {
@@ -1752,7 +1752,7 @@ tableHTML += `
 list.innerHTML = tableHTML;
 }
 export async function refreshRepUI(force = false) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
 const repSales = ensureArray(await sqliteStore.get('rep'));
 const repCustomers = ensureArray(await sqliteStore.get('clients'));
 if (sqliteStore && sqliteStore.getBatch) {

@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import {
   planCatalog, makeResolver, fixStoreFields, fixSettingsStores, migrateCloud, convertBackup, decodeValue, encodeValue, decodeFields, encodeFields,
-  encryptBackup, decryptBackup, createRestClient, signIn, DATASETS, DATA_KEY_VERSION,
+  encryptBackup, decryptBackup, createRestClient, signIn, DATASETS, DATA_KEY_VERSION, SUPPORT_DOCS, SUPPORT_COLLECTIONS,
 } from '../tools/migrate-cloud.mjs';
-import { RECORD_KEYS, DATA_KEY_VERSION as APP_VERSION } from '../modules/data-keys.js';
+import { RECORD_KEYS, DATA_KEY_VERSION as APP_VERSION, FIRESTORE_SUPPORT_PATHS, SUPPORT_STORES } from '../modules/data-keys.js';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 function memClient(seed) {
@@ -110,7 +110,7 @@ describe('cloud migration', () => {
     assert.equal(c.docs.get('sales/s1').supplyStore, 'mahmood');
     assert.equal(c.docs.get('returns/x1').returnStore, 'zubair');
     assert.equal(c.docs.get('factory/f1').store, 'asaan');
-    assert.deepEqual(c.docs.get('appStores/stores').stores.map(s => s.key), ['zubair', 'mahmood', 'asaan']);
+    assert.deepEqual(c.docs.get('app_stores/stores').stores.map(s => s.key), ['zubair', 'mahmood', 'asaan']);
     assert.equal(r.datasets.production.upToDate, 1);
   });
   it('stamps rewritten records with a server updatedAt (but not merged ones) so delta sync sees them', async () => {
@@ -172,11 +172,58 @@ describe('cloud migration', () => {
     const c = memClient(s);
     await migrateCloud(c, { apply: true });
     assert.equal(c.docs.get('production/p1').store, 'zubair');
-    assert.ok(!c.docs.has('appStores/stores'));
+    assert.ok(!c.docs.has('app_stores/stores'));
   });
   it('covers every dataset the app knows, under the names the app uses', () => {
     assert.deepEqual(DATASETS.map(([, n]) => n), RECORD_KEYS);
     assert.equal(DATA_KEY_VERSION, APP_VERSION);
+  });
+});
+describe('version 4: support collections and documents', () => {
+  const seed4 = () => ({
+    'appStores/stores': { stores: [{ key: 'STORE_A', name: 'ZUBAIR' }], stores_timestamp: 5 },
+    'factorySettings/config': { formula_store: [{ id: 'f' }], formula_store_timestamp: 9 },
+    'expenseCategories/categories': { categories: ['Fuel'], categories_timestamp: 3 },
+    'activityLog/a1': { action: 'x' }, 'personPhotos/k1': { data: 'AAA' },
+    'deletions/d1': { id: 'd1', collection: 'personPhotos' },
+  });
+  it('moves every support document and collection to its snake_case name', async () => {
+    const c = memClient(seed4());
+    const r = await migrateCloud(c, { apply: true });
+    assert.deepEqual(c.docs.get('app_stores/stores').stores.map(s => s.key), ['zubair']);
+    assert.equal(c.docs.get('app_stores/stores').stores_timestamp > 5, true);
+    assert.deepEqual(c.docs.get('factory_settings/config').formula_store, [{ id: 'f' }]);
+    assert.deepEqual(c.docs.get('expense_categories/categories').categories, ['Fuel']);
+    assert.equal(c.docs.get('activity_log/a1').action, 'x');
+    assert.equal(c.docs.get('photos/k1').data, 'AAA');
+    assert.ok(c.docs.get('photos/k1').updatedAt, 'photos get a server updatedAt for delta sync');
+    assert.equal(c.docs.get('deletions/d1').collection, 'photos');
+    assert.ok(r.support.some(x => x.from === 'personPhotos' && x.written === 1));
+  });
+  it('keeps the old copies by default, removes them only with deleteOld after verifying', async () => {
+    const keep = memClient(seed4()); await migrateCloud(keep, { apply: true });
+    assert.ok(keep.docs.has('appStores/stores') && keep.docs.has('personPhotos/k1'));
+    const del = memClient(seed4()); const r = await migrateCloud(del, { apply: true, deleteOld: true });
+    for (const k of ['appStores/stores', 'factorySettings/config', 'expenseCategories/categories', 'activityLog/a1', 'personPhotos/k1']) assert.ok(!del.docs.has(k), k);
+    assert.equal(r.supportDeleted, 5);
+  });
+  it('is idempotent and never overwrites a copy that already exists', async () => {
+    const s = seed4(); s['factory_settings/config'] = { formula_store: [{ id: 'newer' }], formula_store_timestamp: 99 };
+    const c = memClient(s);
+    await migrateCloud(c, { apply: true });
+    assert.deepEqual(c.docs.get('factory_settings/config').formula_store, [{ id: 'newer' }]);
+    assert.equal((await migrateCloud(c, { apply: true })).writes, 0);
+  });
+  it('the paths the tool writes are exactly the ones the app uses', () => {
+    assert.deepEqual(SUPPORT_DOCS.map(([, n]) => n), [FIRESTORE_SUPPORT_PATHS.appStores, FIRESTORE_SUPPORT_PATHS.factorySettings, FIRESTORE_SUPPORT_PATHS.expenseCategories]);
+    assert.deepEqual(SUPPORT_COLLECTIONS.map(([, n]) => n), [FIRESTORE_SUPPORT_PATHS.activityLog, SUPPORT_STORES.photos.collection]);
+  });
+  it('converts a version-3 backup: renames the support fields and re-stamps it as version 4', () => {
+    const { data, changed } = convertBackup({ dataKeyVersion: 3, production: [], person_photos: { a: 1 }, person_photos_timestamps: { a: 2 }, deleted_records: ['x'], deletion_records: [{ id: 'x' }] });
+    assert.ok(changed);
+    assert.deepEqual([data.photos, data.photos_timestamps, data.deletion_ids, data.deletions], [{ a: 1 }, { a: 2 }, ['x'], [{ id: 'x' }]]);
+    for (const k of ['person_photos', 'person_photos_timestamps', 'deleted_records', 'deletion_records']) assert.ok(!(k in data), k);
+    assert.equal(data.dataKeyVersion, 4);
   });
 });
 describe('backup conversion', () => {

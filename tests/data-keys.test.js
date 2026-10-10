@@ -97,7 +97,9 @@ describe('one single-word name per dataset', () => {
   it('the app code carries no old dataset name and no migration code', () => {
     const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'formula-store.js', 'prod-photos.js', 'data-keys.js', 'store-keys.js'];
     const old = ['mfg_pro_pkr', 'noman_history', 'customer_sales', 'payment_transactions', 'payment_entities', 'factory_inventory_data',
-      'factory_production_history', 'stock_returns', 'calculator_history', 'rep_sales', 'rep_customers', 'sales_customers', 'factory_history', 'naswar_default_settings', 'STORE_A', 'STORE_B', 'STORE_C'];
+      'factory_production_history', 'stock_returns', 'calculator_history', 'rep_sales', 'rep_customers', 'sales_customers', 'factory_history', 'naswar_default_settings', 'STORE_A', 'STORE_B', 'STORE_C',
+      'deletion_records', 'deleted_records', 'person_photos', 'app_theme', 'pendingFirestoreYearClose\'', 'pendingFirestoreRestore\'', 'deltaSyncStats\'',
+      "'appStores'", "'appStores/", "'factorySettings'", "'factorySettings/", "'expenseCategories'", "'expenseCategories/", "'activityLog'", "'personPhotos'"];
     for (const f of files) {
       const code = read(f).split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
       for (const k of old) assert.ok(!code.includes(k), `${f} still mentions ${k}`);
@@ -122,13 +124,13 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
     expense_categories: ['Fuel', 'Tea'],
     factory_formula_store: [{ id: 'f1', name: 'Std' }, { id: 'f2', name: 'Asaan' }],
     factory_formula_slots: { standard: 'f1', asaan: 'f2' },
-    person_photos: { a: 'data:x' },
-    person_photos_timestamps: { a: 5 },
+    photos: { a: 'data:x' },
+    photos_timestamps: { a: 5 },
   });
   it('collect captures every aux key', async () => {
     const out = await collectAuxBackupFields(source());
     for (const s of AUX_STATE) assert.ok(s.backup in out, s.backup);
-    assert.deepEqual(out.person_photos, { a: 'data:x' });
+    assert.deepEqual(out.photos, { a: 'data:x' });
   });
   it('merge restore fills an empty device and stamps timestamps', async () => {
     const data = await collectAuxBackupFields(source());
@@ -212,5 +214,19 @@ describe('one registry for names, variables, tabs and buttons', () => {
     for (const bad of ['Submit Transaction', 'Update Details', 'Permanently</button>', 'Save Production Entry', '>Delete material<'])
       assert.ok(!html.includes(bad), `index.html still has "${bad}"`);
     assert.ok(!/<\/svg> Recover<\/button>/.test(read('utilities-payments.js')), 'recycle bin still says Recover');
+  });
+});
+describe('support data follows the same naming rule', () => {
+  it('names are snake_case and identical locally, in Firestore and in backups', async () => {
+    const { SUPPORT_STORES, FIRESTORE_SUPPORT_PATHS } = await import('../modules/data-keys.js');
+    assert.equal(SUPPORT_STORES.tombstones.sqlite, SUPPORT_STORES.tombstones.collection);
+    assert.equal(SUPPORT_STORES.photos.sqlite, SUPPORT_STORES.photos.collection);
+    for (const v of Object.values(FIRESTORE_SUPPORT_PATHS)) assert.ok(/^[a-z_]+(\/[a-z_]+)?$/.test(v), v);
+  });
+  it('the app really uses those names', () => {
+    for (const k of ['deletions', 'deletion_ids', 'photos', 'photos_timestamps', 'photos_dirty_keys']) assert.ok(sync.includes(`'${k}'`) || sales.includes(`'${k}'`) || payments.includes(`'${k}'`), k);
+    for (const c of ['app_stores', 'factory_settings', 'expense_categories', 'activity_log']) assert.ok(sync.includes(`collection('${c}')`), c);
+    assert.ok(sync.includes("collection('photos')"));
+    assert.ok(!/sqliteStore\.\w+\(\s*'app_theme'/.test(payments + read('utilities-core.js')), 'one theme key');
   });
 });

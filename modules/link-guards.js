@@ -340,16 +340,16 @@ async function _dropExpensePhoto(expenseId) {
   if (!expenseId) return;
   try {
     const key = 'expense:' + expenseId;
-    const photos = (await sqliteStore.get('person_photos')) || {};
+    const photos = (await sqliteStore.get('photos')) || {};
     if (photos[key] === undefined) return;
     delete photos[key];
-    await sqliteStore.set('person_photos', photos);
-    const ts = (await sqliteStore.get('person_photos_timestamps')) || {};
+    await sqliteStore.set('photos', photos);
+    const ts = (await sqliteStore.get('photos_timestamps')) || {};
     delete ts[key];
-    await sqliteStore.set('person_photos_timestamps', ts);
-    const dk = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    await sqliteStore.set('photos_timestamps', ts);
+    const dk = (await sqliteStore.get('photos_dirty_keys')) || [];
     if (!dk.includes(key)) dk.push(key);
-    await sqliteStore.set('person_photos_dirty_keys', dk);
+    await sqliteStore.set('photos_dirty_keys', dk);
   } catch (e) { console.warn('[deletePaymentTxWithLinks] photo cleanup failed', e); }
 }
 export async function deletePaymentTxWithLinks(tx, opts = {}) {
@@ -459,7 +459,7 @@ export async function ensureContactForRecoveredSale(collectionName, rec) {
   return contact;
 }
 export async function loadCalcRestoreContext(entry) {
-  const tombs = ensureArray(await sqliteStore.get('deletion_records'));
+  const tombs = ensureArray(await sqliteStore.get('deletions'));
   const tt = entry && entry.transferSaleId
     ? tombs.find(t => t && String(t.recordId || t.id) === String(entry.transferSaleId) && (t.collection || t.recordType) === 'sales')
     : null;

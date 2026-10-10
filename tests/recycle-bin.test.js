@@ -50,13 +50,13 @@ function purgeRecoveredId(id, collectionName, cleanRecord, newId, { sqliteStore,
   }
   const purgeLocal = async () => {
     try {
-      const fresh  = await sqliteStore.get('deletion_records', []);
+      const fresh  = await sqliteStore.get('deletions', []);
       const pruned = Array.isArray(fresh) ? fresh.filter(r => r.id !== sid && r.recordId !== sid) : [];
-      await sqliteStore.set('deletion_records', pruned);
-    } catch(e) { console.warn('[RecycleBin] purge SQLite deletion_records failed:', _safeErr(e)); }
+      await sqliteStore.set('deletions', pruned);
+    } catch(e) { console.warn('[RecycleBin] purge SQLite deletions failed:', _safeErr(e)); }
     try {
-      await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
-    } catch(e) { console.warn('[RecycleBin] purge SQLite deleted_records failed:', _safeErr(e)); }
+      await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
+    } catch(e) { console.warn('[RecycleBin] purge SQLite deletion_ids failed:', _safeErr(e)); }
     if (typeof OfflineQueue !== 'undefined' && OfflineQueue !== null) {
       const _isStale = (item) => {
         const op = item.operation || {};
@@ -91,7 +91,7 @@ async function recoverRecord(deletedId, collectionName, { sqliteStore, OfflineQu
     };
     const sqliteKey = sqliteKeyMap[collectionName] || collectionName;
     let recoveredData = null;
-    const localDeletionRecords = await sqliteStore.get('deletion_records', []);
+    const localDeletionRecords = await sqliteStore.get('deletions', []);
     const tombstoneLocal = Array.isArray(localDeletionRecords)
       ? localDeletionRecords.find(r => r.id === deletedId || r.recordId === deletedId)
       : null;
@@ -176,16 +176,16 @@ describe('recoverRecord', () => {
       const result = await recoverRecord('some-id', '', { sqliteStore, OfflineQueue });
       assert.equal(result, false);
     });
-    it('returns true when record is in deletion_records with snapshot', async () => {
+    it('returns true when record is in deletions with snapshot', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       const result = await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(result, true);
     });
     it('returns true even when there is no snapshot (id-only tombstone)', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [{ id, recordId: id, collection: 'sales', snapshot: null }]);
+      await sqliteStore.set('deletions', [{ id, recordId: id, collection: 'sales', snapshot: null }]);
       deletedRecordIds.add(id);
       const result = await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(result, true);
@@ -195,7 +195,7 @@ describe('recoverRecord', () => {
     it('removes the id from deletedRecordIds', async () => {
       const id = generateUUID('test');
       deletedRecordIds.add(id);
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(deletedRecordIds.has(id), false);
     });
@@ -204,44 +204,44 @@ describe('recoverRecord', () => {
       const id2 = generateUUID('test');
       deletedRecordIds.add(id1);
       deletedRecordIds.add(id2);
-      await sqliteStore.set('deletion_records', [makeTombstone(id1)]);
+      await sqliteStore.set('deletions', [makeTombstone(id1)]);
       await recoverRecord(id1, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(deletedRecordIds.has(id2), true);
     });
   });
-  describe('deletion_records cleanup', () => {
-    it('removes tombstone from SQLite deletion_records', async () => {
+  describe('deletions cleanup', () => {
+    it('removes tombstone from SQLite deletions', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const remaining = await sqliteStore.get('deletion_records', []);
+      const remaining = await sqliteStore.get('deletions', []);
       assert.equal(remaining.length, 0);
     });
     it('only removes the matching tombstone, leaves others', async () => {
       const id1 = generateUUID('test');
       const id2 = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id1), makeTombstone(id2)]);
+      await sqliteStore.set('deletions', [makeTombstone(id1), makeTombstone(id2)]);
       deletedRecordIds.add(id1);
       await recoverRecord(id1, 'sales', { sqliteStore, OfflineQueue });
-      const remaining = await sqliteStore.get('deletion_records', []);
+      const remaining = await sqliteStore.get('deletions', []);
       assert.equal(remaining.length, 1);
       assert.equal(remaining[0].id, id2);
     });
     it('also matches on recordId field, not just id', async () => {
       const id = generateUUID('test');
       const tombstone = { ...makeTombstone('other'), recordId: id };
-      await sqliteStore.set('deletion_records', [tombstone]);
+      await sqliteStore.set('deletions', [tombstone]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const remaining = await sqliteStore.get('deletion_records', []);
+      const remaining = await sqliteStore.get('deletions', []);
       assert.equal(remaining.length, 0);
     });
   });
   describe('snapshot field cleaning', () => {
     it('restored record has deletion fields stripped', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -257,7 +257,7 @@ describe('recoverRecord', () => {
     });
     it('restored record has originalId removed', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -265,7 +265,7 @@ describe('recoverRecord', () => {
     });
     it('restored record gets a fresh UUID prefixed with "recovered"', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -274,7 +274,7 @@ describe('recoverRecord', () => {
     });
     it('new id is a valid UUID', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -283,7 +283,7 @@ describe('recoverRecord', () => {
     it('restored record has recoveredAt set', async () => {
       const before = Date.now();
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -292,7 +292,7 @@ describe('recoverRecord', () => {
     it('restored record has updatedAt refreshed', async () => {
       const before = Date.now();
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -300,7 +300,7 @@ describe('recoverRecord', () => {
     });
     it('preserves original business data from snapshot', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const restored = await sqliteStore.get('sales', []);
@@ -311,7 +311,7 @@ describe('recoverRecord', () => {
   describe('SQLite write-back', () => {
     it('writes the cleaned record to the correct SQLite key for the collection', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const inSales = await sqliteStore.get('sales', []);
@@ -321,7 +321,7 @@ describe('recoverRecord', () => {
       const id = generateUUID('test');
       const existing = { id: generateUUID('existing'), customerName: 'Pre-existing', totalValue: 1000 };
       await sqliteStore.set('sales', [existing]);
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const all = await sqliteStore.get('sales', []);
@@ -331,7 +331,7 @@ describe('recoverRecord', () => {
       const id = generateUUID('test');
       const stale = { id, customerName: 'Stale', totalValue: 0 };
       await sqliteStore.set('sales', [stale]);
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const all = await sqliteStore.get('sales', []);
@@ -346,7 +346,7 @@ describe('recoverRecord', () => {
         { operation: { action: 'delete', docId: id } },
         { operation: { action: 'delete', docId: 'unrelated-id' } },
       ];
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       const remaining = OfflineQueue.queue.map(i => i.operation.docId);
@@ -358,7 +358,7 @@ describe('recoverRecord', () => {
       OfflineQueue.queue = [
         { operation: { action: 'set', docId: id, data: null } },
       ];
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(OfflineQueue.queue.length, 0);
@@ -368,7 +368,7 @@ describe('recoverRecord', () => {
       OfflineQueue.queue = [
         { operation: { action: 'set', docId: id, data: { id, name: 'keep' } } },
       ];
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(OfflineQueue.queue.length, 1);
@@ -378,14 +378,14 @@ describe('recoverRecord', () => {
       OfflineQueue.deadLetterQueue = [
         { operation: { action: 'delete', docId: id } },
       ];
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
       assert.equal(OfflineQueue.deadLetterQueue.length, 0);
     });
     it('works correctly when OfflineQueue is null', async () => {
       const id = generateUUID('test');
-      await sqliteStore.set('deletion_records', [makeTombstone(id)]);
+      await sqliteStore.set('deletions', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       const result = await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue: null });
       assert.equal(result, true);
@@ -397,7 +397,7 @@ describe('recoverRecord', () => {
       const tombstone = makeTombstone(id);
       tombstone.collection = 'transactions';
       tombstone.snapshot = { ...tombstone.snapshot, entityName: 'Test Entity', amount: 1000 };
-      await sqliteStore.set('deletion_records', [tombstone]);
+      await sqliteStore.set('deletions', [tombstone]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'transactions', { sqliteStore, OfflineQueue });
       const txns = await sqliteStore.get('transactions', []);
@@ -408,7 +408,7 @@ describe('recoverRecord', () => {
       const tombstone = makeTombstone(id);
       tombstone.collection = 'production';
       tombstone.snapshot = { ...tombstone.snapshot, store: 'standard', net: 50 };
-      await sqliteStore.set('deletion_records', [tombstone]);
+      await sqliteStore.set('deletions', [tombstone]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'production', { sqliteStore, OfflineQueue });
       const prod = await sqliteStore.get('production', []);

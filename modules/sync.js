@@ -300,7 +300,7 @@ return results;
 }
 export async function resetDeltaSync() {
 await DeltaSync.clearAllTimestamps();
-await sqliteStore.remove('deltaSyncStats');
+await sqliteStore.remove('delta_sync_stats');
 if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
 showToast('Delta sync reset - next sync will download all data', 'info');
 }
@@ -688,7 +688,7 @@ this.results.errors.push({ collection: 'account', error: error.message });
 }
 async createActivityLogCollection() {
 try {
-const activityRef = this.userRef.collection('activityLog').doc('initial');
+const activityRef = this.userRef.collection('activity_log').doc('initial');
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
 deviceId: 'default_device',
@@ -698,9 +698,9 @@ message: 'Firestore database initialized with complete structure'
 },
 userId: this.currentUser.uid
 });
-this.results.success.push('activityLog');
+this.results.success.push('activity_log');
 } catch (error) {
-this.results.errors.push({ collection: 'activityLog', error: error.message });
+this.results.errors.push({ collection: 'activity_log', error: error.message });
 }
 }
 async createProductionCollection() {
@@ -847,7 +847,7 @@ initialized_at: this.timestamp,
 last_synced: this.timestamp,
 version: '2.0'
 });
-const factorySettingsRef = this.userRef.collection('factorySettings').doc('config');
+const factorySettingsRef = this.userRef.collection('factory_settings').doc('config');
 await factorySettingsRef.set({
 default_formulas: { standard: [], asaan: [] },
 default_formulas_timestamp: Date.now(),
@@ -862,7 +862,7 @@ asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 unit_tracking_timestamp: Date.now(),
 last_synced: this.timestamp
 });
-const expenseCategoriesRef = this.userRef.collection('expenseCategories').doc('categories');
+const expenseCategoriesRef = this.userRef.collection('expense_categories').doc('categories');
 await expenseCategoriesRef.set({
 categories: [
 { id: 'operating', name: 'Operating Expense', color: '#3b82f6' },
@@ -872,8 +872,8 @@ categories: [
 last_synced: this.timestamp
 });
 this.results.success.push('settings');
-this.results.success.push('factorySettings');
-this.results.success.push('expenseCategories');
+this.results.success.push('factory_settings');
+this.results.success.push('expense_categories');
 } catch (error) {
 this.results.errors.push({ collection: 'settings', error: error.message });
 }
@@ -958,11 +958,11 @@ if (!firebaseDB || !currentUser) return false;
 try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const requiredCollections = [
-'devices', 'account', 'activityLog', 'production', 'sales',
+'devices', 'account', 'activity_log', 'production', 'sales',
 'rep', 'clients',
 'customers',
 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns',
-'calculator', 'settings', 'factorySettings', 'expenseCategories',
+'calculator', 'settings', 'factory_settings', 'expense_categories',
 'deletions', 'sync_updates'
 ];
 const checks = await Promise.all(
@@ -1000,7 +1000,7 @@ try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const batch = firebaseDB.batch();
 const collections = [
-'devices', 'account', 'activityLog',
+'devices', 'account', 'activity_log',
 'production', 'sales',
 'rep', 'clients',
 'customers',
@@ -1008,7 +1008,7 @@ const collections = [
 'inventory', 'factory',
 'expenses', 'returns',
 'calculator',
-'settings', 'factorySettings', 'expenseCategories',
+'settings', 'factory_settings', 'expense_categories',
 'deletions', 'sync_updates'
 ];
 let deleteCount = 0;
@@ -1180,11 +1180,11 @@ console.warn(`[Snapshot:${col.firestoreId}] doc error`, _safeErr(docErr));
 const hasChanges = addedOrModified.length > 0 || removedIds.length > 0;
 if (!hasChanges) { recordSuccessfulConnection(); return; }
 {
-const deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+const deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
 const deletedSet = new Set(deletedArr);
 addedOrModified.forEach(d => deletedSet.delete(d.id));
 removedIds.forEach(id => deletedSet.add(id));
-await sqliteStore.set('deleted_records', Array.from(deletedSet));
+await sqliteStore.set('deletion_ids', Array.from(deletedSet));
 }
 let arr = _existingArr;
 for (const docData of addedOrModified) {
@@ -1214,16 +1214,16 @@ export function _ensureLocalTombstone(recordId, collectionName) {
 const sid = String(recordId);
 _syncQueue.run(async () => {
   try {
-    const existing = ensureArray(await sqliteStore.get('deletion_records'));
+    const existing = ensureArray(await sqliteStore.get('deletions'));
     const already = existing.some(r => String(r.id) === sid || String(r.recordId) === sid);
     if (!already) {
       existing.push({ id: sid, recordId: sid, collection: collectionName, recordType: collectionName, deletedAt: Date.now(), syncedToCloud: true });
-      await sqliteStore.set('deletion_records', existing);
+      await sqliteStore.set('deletions', existing);
     }
-    const deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+    const deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
     const set = new Set(deletedArr);
     set.add(sid);
-    await sqliteStore.set('deleted_records', Array.from(set));
+    await sqliteStore.set('deletion_ids', Array.from(set));
   } catch (e) {}
 });
 }
@@ -1422,7 +1422,7 @@ export async function subscribeToRealtime() {
   if (window._firestoreNetworkDisabled) return;
   try {
     if (!pendingFirestoreYearClose) {
-      const storedFlag = await sqliteStore.get('pendingFirestoreYearClose');
+      const storedFlag = await sqliteStore.get('pending_year_close');
       if (storedFlag === true) _set_pendingFirestoreYearClose(true);
     }
   } catch (_flagErr) {  }
@@ -1455,7 +1455,7 @@ export async function subscribeToRealtime() {
       }
       if (allOk) {
         _set_pendingFirestoreYearClose(false);
-        await sqliteStore.set('pendingFirestoreYearClose', false);
+        await sqliteStore.set('pending_year_close', false);
         try {
           const _fySettings = await sqliteStore.get('settings', {});
           const _fyTs = Date.now();
@@ -1490,7 +1490,7 @@ export async function subscribeToRealtime() {
   }
   if (!pendingFirestoreRestore) {
     try {
-      const _storedRestoreFlag = await sqliteStore.get('pendingFirestoreRestore');
+      const _storedRestoreFlag = await sqliteStore.get('pending_restore');
       if (_storedRestoreFlag === true) _set_pendingFirestoreRestore(true);
     } catch (_rfErr) {}
   }
@@ -1554,7 +1554,7 @@ export async function subscribeToRealtime() {
       }
       if (_restoreAllOk) {
         _set_pendingFirestoreRestore(false);
-        await sqliteStore.set('pendingFirestoreRestore', false);
+        await sqliteStore.set('pending_restore', false);
         try {
           const _rRetryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
           await _restoreUserRef.collection('settings').doc('yearCloseSignal').set({
@@ -1765,14 +1765,14 @@ export async function subscribeToRealtime() {
         );
         await _applyFormulaStoreFromCloud(cfs);
         if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
-        emitSyncUpdate({ factorySettings: null});
+        emitSyncUpdate({ factory_settings: null});
         flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
         console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
-    const factorySettingsUnsub = userRef.collection('factorySettings').doc('config').onSnapshot(async (doc) => {
+    const factorySettingsUnsub = userRef.collection('factory_settings').doc('config').onSnapshot(async (doc) => {
       if (isSyncing) { _enqueueSyncLocked(_handleFactorySettingsSnapshot, doc); return; }
       await _handleFactorySettingsSnapshot(doc);
     }, _e => {
@@ -1797,7 +1797,7 @@ export async function subscribeToRealtime() {
         if (_ecRes.changed) {
           await sqliteStore.set('expense_categories', _ecRes.value);
           if (_ecRes.ts) await sqliteStore.set('expense_categories_timestamp', _ecRes.ts);
-          emitSyncUpdate({ expenseCategories: null});
+          emitSyncUpdate({ expense_categories: null});
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -1805,7 +1805,7 @@ export async function subscribeToRealtime() {
         console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
-    const expenseCategoriesUnsub = userRef.collection('expenseCategories').doc('categories').onSnapshot(async (doc) => {
+    const expenseCategoriesUnsub = userRef.collection('expense_categories').doc('categories').onSnapshot(async (doc) => {
       if (isSyncing) { _enqueueSyncLocked(_handleExpenseCategoriesSnapshot, doc); return; }
       await _handleExpenseCategoriesSnapshot(doc);
     }, _e => {
@@ -1833,7 +1833,7 @@ export async function subscribeToRealtime() {
           await sqliteStore.set('app_stores', cloudStores);
           if (cloudTs) await sqliteStore.set('app_stores_timestamp', cloudTs);
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
-          emitSyncUpdate({ appStores: null });
+          emitSyncUpdate({ app_stores: null });
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
           if (localTs) sendDeviceNotification('Stores updated', 'Another phone changed store prices or formulas. They are now updated on this phone too.', 'stores-remote').catch(() => {});
           flashLivePulse();
@@ -1843,7 +1843,7 @@ export async function subscribeToRealtime() {
         console.warn('[sync] local save error in appStores snapshot handler:', _safeErr(error));
       }
     };
-    const appStoresUnsub = userRef.collection('appStores').doc('stores').onSnapshot(async (doc) => {
+    const appStoresUnsub = userRef.collection('app_stores').doc('stores').onSnapshot(async (doc) => {
       if (isSyncing) { _enqueueSyncLocked(_handleAppStoresSnapshot, doc); return; }
       await _handleAppStoresSnapshot(doc);
     }, _e => {
@@ -1879,8 +1879,8 @@ export async function subscribeToRealtime() {
         const changes = snapshot.docChanges();
         if (changes.length === 0) return;
         let hasChanges = false;
-        let deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
-        const deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+        let deletionRecords = ensureArray(await sqliteStore.get('deletions'));
+        const deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
         const deletedSet = new Set(deletedArr);
         const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
         for (const change of changes) {
@@ -1967,9 +1967,9 @@ export async function subscribeToRealtime() {
         }
         if (hasChanges) {
           deletionRecords = _dedupDeletionRecords(deletionRecords);
-          await sqliteStore.set('deletion_records', deletionRecords);
-          await sqliteStore.set('deleted_records', Array.from(deletedSet));
-          emitSyncUpdate({ deletion_records: null});
+          await sqliteStore.set('deletions', deletionRecords);
+          await sqliteStore.set('deletion_ids', Array.from(deletedSet));
+          emitSyncUpdate({ deletions: null});
           flashLivePulse();
           recordSuccessfulConnection();
         }
@@ -2059,7 +2059,7 @@ export async function subscribeToRealtime() {
             'production', 'sales', 'calculator', 'rep',
             'clients', 'customers', 'transactions',
             'entities', 'inventory', 'factory',
-            'returns', 'expenses', 'deleted_records', 'deletion_records',
+            'returns', 'expenses', 'deletion_ids', 'deletions',
           ];
           await sqliteStore.setBatch(_wipeKeys.map(k => [k, []]));
         } catch (_wipeErr) {
@@ -2476,9 +2476,9 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     expensesSnap, returnsSnap,
   ] = await Promise.all([
     userRef.collection('settings').doc('config').get(),
-    userRef.collection('factorySettings').doc('config').get(),
-    userRef.collection('expenseCategories').doc('categories').get(),
-    userRef.collection('appStores').doc('stores').get(),
+    userRef.collection('factory_settings').doc('config').get(),
+    userRef.collection('expense_categories').doc('categories').get(),
+    userRef.collection('app_stores').doc('stores').get(),
     buildQuery(userRef.collection('production'), 'production'),
     buildQuery(userRef.collection('sales'), 'sales'),
     buildQuery(userRef.collection('calculator'), 'calculator'),
@@ -2502,10 +2502,10 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
   trackFirestoreRead(realCollectionReads);
   let personPhotosSnap = null;
   try {
-    const lastPhotoSync = await DeltaSync.getLastSyncFirestoreTimestamp('personPhotos');
+    const lastPhotoSync = await DeltaSync.getLastSyncFirestoreTimestamp('photos');
     personPhotosSnap = lastPhotoSync && !forceDownload
-      ? await userRef.collection('personPhotos').where('updatedAt', '>', lastPhotoSync).get()
-      : await userRef.collection('personPhotos').get();
+      ? await userRef.collection('photos').where('updatedAt', '>', lastPhotoSync).get()
+      : await userRef.collection('photos').get();
     if (personPhotosSnap && !personPhotosSnap.empty) trackFirestoreRead(personPhotosSnap.docs.length);
   } catch(_phe) { console.warn('[downloadDeltas] personPhotos fetch error', _phe); }
   const extract = (snap) => snap
@@ -2670,7 +2670,7 @@ export async function _mergeAndPersist(cloudData) {
         };
       })
       .filter(r => r.deletedAt > threeMonthsAgo);
-    let localDels = await sqliteStore.get('deletion_records') || [];
+    let localDels = await sqliteStore.get('deletions') || [];
     if (!Array.isArray(localDels)) localDels = [];
     const mergedDels = [...localDels];
     cloudDels.forEach(cd => {
@@ -2697,9 +2697,9 @@ export async function _mergeAndPersist(cloudData) {
       : mergedDels
     ).filter(r => r.deletedAt > threeMonthsAgo);
   const deduped = window._dedupDeletionRecords ? window._dedupDeletionRecords(safeDels) : safeDels;
-  await sqliteStore.set('deletion_records', deduped);
+  await sqliteStore.set('deletions', deduped);
   const _deletedSet = new Set(deduped.map(r => r.id));
-  await sqliteStore.set('deleted_records', Array.from(_deletedSet));
+  await sqliteStore.set('deletion_ids', Array.from(_deletedSet));
   trackFirestoreRead(deletionsSnap.docs.length);
   } catch (_delErr) {
   console.warn('[Sync] Failed to refresh deletions:', _safeErr(_delErr));
@@ -2711,7 +2711,7 @@ export async function _mergeAndPersist(cloudData) {
   'inventory','factory','returns','expenses',
   ];
   const _localBatch = await sqliteStore.getBatch(_localKeys);
-  const _deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
+  const _deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
   const _notDeleted = item => !_deletedArr.includes(item.id);
   const _yearCloseCollectionKeys = [
     ['production',                'production'],
@@ -2933,9 +2933,9 @@ export async function _syncSettings(cloudData) {
   }
   if (personPhotosSnap && !personPhotosSnap.empty) {
     try {
-      const localPhotos = (await sqliteStore.get('person_photos')) || {};
-      const localPhotoTimestamps = (await sqliteStore.get('person_photos_timestamps')) || {};
-      const localDirtyKeys = new Set((await sqliteStore.get('person_photos_dirty_keys')) || []);
+      const localPhotos = (await sqliteStore.get('photos')) || {};
+      const localPhotoTimestamps = (await sqliteStore.get('photos_timestamps')) || {};
+      const localDirtyKeys = new Set((await sqliteStore.get('photos_dirty_keys')) || []);
       let photosChanged = false;
       let timestampsChanged = false;
       for (const doc of personPhotosSnap.docs) {
@@ -2963,9 +2963,9 @@ export async function _syncSettings(cloudData) {
           }
         }
       }
-      if (photosChanged) await sqliteStore.set('person_photos', localPhotos);
-      if (timestampsChanged) await sqliteStore.set('person_photos_timestamps', localPhotoTimestamps);
-      await DeltaSync.setLastSyncTimestamp('personPhotos');
+      if (photosChanged) await sqliteStore.set('photos', localPhotos);
+      if (timestampsChanged) await sqliteStore.set('photos_timestamps', localPhotoTimestamps);
+      await DeltaSync.setLastSyncTimestamp('photos');
     } catch(_phe) { console.warn('[syncSettings] personPhotos merge error', _phe); }
   }
 }
@@ -3046,7 +3046,7 @@ export async function _uploadChanges(userRef) {
   const localUnitTs    = await sqliteStore.get('factory_unit_tracking_timestamp');
   const localStoreTs   = await sqliteStore.get('factory_formula_store_timestamp');
   const localSlotsTs   = await sqliteStore.get('factory_formula_slots_timestamp');
-  const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factorySettings');
+  const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factory_settings');
   const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs, localSlotsTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
@@ -3071,9 +3071,9 @@ export async function _uploadChanges(userRef) {
       ...(Array.isArray(_ffs) && localStoreTs ? { formula_store: _ffs, formula_store_timestamp: localStoreTs } : {}),
       ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { formula_slots: _ffsl, formula_slots_timestamp: localSlotsTs || _nowTs } : {}),
     };
-    configBatch.set(userRef.collection('factorySettings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
+    configBatch.set(userRef.collection('factory_settings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
-    collectionsUploaded.add('factorySettings');
+    collectionsUploaded.add('factory_settings');
   }
   const localSettingsTs = await sqliteStore.get('settings_timestamp');
   const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
@@ -3088,24 +3088,24 @@ export async function _uploadChanges(userRef) {
     collectionsUploaded.add('settings');
   }
   const localExpCatTs = await sqliteStore.get('expense_categories_timestamp');
-  const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('expenseCategories');
+  const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('expense_categories');
   if (localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
     const _ec = await sqliteStore.get('expense_categories');
     configBatch.set(
-      userRef.collection('expenseCategories').doc('categories'),
+      userRef.collection('expense_categories').doc('categories'),
       sanitizeForFirestore({ categories: _ec || [], categories_timestamp: localExpCatTs }),
       { merge: true }
     );
     operationCount++;
-    collectionsUploaded.add('expenseCategories');
+    collectionsUploaded.add('expense_categories');
   }
   const localStoresTs = await sqliteStore.get('app_stores_timestamp');
-  const lastStoresSync = await DeltaSync.getLastSyncTimestamp('appStores');
+  const lastStoresSync = await DeltaSync.getLastSyncTimestamp('app_stores');
   if (localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
     let _as = await sqliteStore.get('app_stores');
     if (!lastStoresSync) {
       try {
-        const _cloudStoresSnap = await userRef.collection('appStores').doc('stores').get();
+        const _cloudStoresSnap = await userRef.collection('app_stores').doc('stores').get();
         const _cd = _cloudStoresSnap && _cloudStoresSnap.exists ? _cloudStoresSnap.data() : null;
         if (_cd && Array.isArray(_cd.stores)) {
           const filled = _fillStoresFromCloud(_as || [], _cd.stores);
@@ -3118,12 +3118,12 @@ export async function _uploadChanges(userRef) {
       } catch (_fe) { console.warn('[sync] stores pre-upload cloud check failed:', _safeErr(_fe)); }
     }
     configBatch.set(
-      userRef.collection('appStores').doc('stores'),
+      userRef.collection('app_stores').doc('stores'),
       sanitizeForFirestore({ stores: _as || [], stores_timestamp: localStoresTs }),
       { merge: true }
     );
     operationCount++;
-    collectionsUploaded.add('appStores');
+    collectionsUploaded.add('app_stores');
   }
   if (operationCount > 0) { batches.push(currentBatch); currentBatch = firebaseDB.batch(); operationCount = 0; }
   const PHOTO_DOC_MAX_CHARS = 900000;
@@ -3134,10 +3134,10 @@ export async function _uploadChanges(userRef) {
   let _uploadedPhotoKeys = [];
   let _pendingPhotoKeys = [];
   try {
-    const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+    const _dirtyPhotoKeys = (await sqliteStore.get('photos_dirty_keys')) || [];
     if (_dirtyPhotoKeys.length > 0) {
-      const _allPhotos = (await sqliteStore.get('person_photos')) || {};
-      const _photosRef = userRef.collection('personPhotos');
+      const _allPhotos = (await sqliteStore.get('photos')) || {};
+      const _photosRef = userRef.collection('photos');
       for (const _photoKey of _dirtyPhotoKeys) {
         const _safeDocId = btoa(unescape(encodeURIComponent(_photoKey))).replace(/[+/=]/g, c => ({'+':'-','/':'_','=':''})[c] || '');
         let _photoVal = _allPhotos[_photoKey];
@@ -3165,7 +3165,7 @@ export async function _uploadChanges(userRef) {
       }
       if (_photoBatchOps > 0) photoBatches.push({ batch: _photoBatch, keys: _pendingPhotoKeys });
     }
-  } catch(_photoUploadErr) { console.warn('[uploadChanges] person_photos upload error', _photoUploadErr); }
+  } catch(_photoUploadErr) { console.warn('[uploadChanges] photos upload error', _photoUploadErr); }
   if (operationCount > 0) batches.push(currentBatch);
   for (const batch of batches) {
     await batch.commit();
@@ -3174,7 +3174,7 @@ export async function _uploadChanges(userRef) {
     try {
       await batch.commit();
       _uploadedPhotoKeys.push(...keys);
-      collectionsUploaded.add('personPhotos');
+      collectionsUploaded.add('photos');
     } catch (_pbErr) {
       console.warn('[uploadChanges] photo batch commit failed; will retry next sync', _pbErr);
     }
@@ -3188,14 +3188,14 @@ export async function _uploadChanges(userRef) {
   }
   if (_uploadedPhotoKeys.length > 0) {
     try {
-      const _remainingDirty = (await sqliteStore.get('person_photos_dirty_keys')) || [];
+      const _remainingDirty = (await sqliteStore.get('photos_dirty_keys')) || [];
       const _uploadedSet = new Set(_uploadedPhotoKeys);
-      await sqliteStore.set('person_photos_dirty_keys', _remainingDirty.filter(k => !_uploadedSet.has(k)));
-      const _localTs = (await sqliteStore.get('person_photos_timestamps')) || {};
+      await sqliteStore.set('photos_dirty_keys', _remainingDirty.filter(k => !_uploadedSet.has(k)));
+      const _localTs = (await sqliteStore.get('photos_timestamps')) || {};
       const _nowMs = Date.now();
       _uploadedPhotoKeys.forEach(k => { _localTs[k] = _nowMs; });
-      await sqliteStore.set('person_photos_timestamps', _localTs);
-    } catch(_postPhErr) { console.warn('[uploadChanges] person_photos post-commit cleanup error', _postPhErr); }
+      await sqliteStore.set('photos_timestamps', _localTs);
+    } catch(_postPhErr) { console.warn('[uploadChanges] photos post-commit cleanup error', _postPhErr); }
   }
   for (const col of collectionsUploaded) {
     await DeltaSync.setLastSyncTimestamp(col);
@@ -3206,10 +3206,10 @@ export async function _uploadChanges(userRef) {
       DeltaSync.clearDirty(col);
     }
   }
-  const configItemCount = (collectionsUploaded.has('factorySettings') ? 1 : 0)
+  const configItemCount = (collectionsUploaded.has('factory_settings') ? 1 : 0)
     + (collectionsUploaded.has('settings') ? 1 : 0)
-    + (collectionsUploaded.has('expenseCategories') ? 1 : 0)
-    + (collectionsUploaded.has('appStores') ? 1 : 0);
+    + (collectionsUploaded.has('expense_categories') ? 1 : 0)
+    + (collectionsUploaded.has('app_stores') ? 1 : 0);
   const totalUploaded = totalItemsToWrite + configItemCount;
   if (totalUploaded > 0 && typeof emitSyncUpdate === 'function') {
     const uploadedCollections = Array.from(collectionsUploaded).reduce((acc, col) => { acc[col] = null; return acc; }, {});
@@ -3339,7 +3339,7 @@ export async function _doPushDataToCloud(silent = false) {
     }
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     const operationCount = await _uploadChanges(userRef);
-    const deletionRecordsLocal = await sqliteStore.get('deletion_records', []);
+    const deletionRecordsLocal = await sqliteStore.get('deletions', []);
     const unsyncedDeletions = deletionRecordsLocal.filter(r => !r.syncedToCloud);
     if (unsyncedDeletions.length > 0) {
       const dBatch = firebaseDB.batch();
@@ -3363,7 +3363,7 @@ export async function _doPushDataToCloud(silent = false) {
         if (dOps >= 450) break;
       }
       await dBatch.commit();
-      await sqliteStore.set('deletion_records', deletionRecordsLocal);
+      await sqliteStore.set('deletions', deletionRecordsLocal);
     }
     const now = new Date().toISOString();
     await sqliteStore.set('last_synced', now);
