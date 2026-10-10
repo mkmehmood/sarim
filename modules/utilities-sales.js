@@ -4588,7 +4588,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
     currentSettings.fyCloseCount       = snap.fyCloseCount       ?? Math.max(0, (currentSettings.fyCloseCount || 1) - 1);
     currentSettings.lastYearClosedAt   = snap.lastYearClosedAt   ?? null;
     currentSettings.lastYearClosedDate = snap.lastYearClosedDate ?? null;
-    currentSettings.pendingFirestoreYearClose = false;
+    currentSettings.closing = false;
     _set_pendingFirestoreYearClose(false);
     const _restoreMetaTs = Date.now();
     await sqliteStore.set('settings', currentSettings);

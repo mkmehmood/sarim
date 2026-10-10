@@ -99,12 +99,20 @@ describe('one single-word name per dataset', () => {
     const old = ['mfg_pro_pkr', 'noman_history', 'customer_sales', 'payment_transactions', 'payment_entities', 'factory_inventory_data',
       'factory_production_history', 'stock_returns', 'calculator_history', 'rep_sales', 'rep_customers', 'sales_customers', 'factory_history', 'naswar_default_settings', 'STORE_A', 'STORE_B', 'STORE_C',
       'deletion_records', 'deleted_records', 'person_photos', 'app_theme', 'pendingFirestoreYearClose\'', 'pendingFirestoreRestore\'', 'deltaSyncStats\'',
-      "'appStores'", "'appStores/", "'factorySettings'", "'factorySettings/", "'expenseCategories'", "'expenseCategories/", "'activityLog'", "'personPhotos'"];
+      "'appStores'", "'appStores/", "'factorySettings'", "'factorySettings/", "'expenseCategories'", "'expenseCategories/", "'activityLog'", "'personPhotos'",
+      "'mfg'", "case 'repCustomers'", "'repCustomers')", 'fyMeta.pendingFirestore', 'currentSettings.pendingFirestore',
+      'factorySettings listener', 'appStores listener', 'expenseCategories listener', 'personPhotos fetch', 'personPhotos merge', 'personPhotos delta'];
     for (const f of files) {
       const code = read(f).split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
       for (const k of old) assert.ok(!code.includes(k), `${f} still mentions ${k}`);
       assert.ok(!/migrateStoreKeys|migrateLegacy|normaliseBackupFields|upgradeSettingsDoc/.test(code), `${f} still has migration code`);
     }
+  });
+  it('the backup integrity report lists the datasets from the one table, not from old field names', () => {
+    const at = payments.indexOf("label: 'Collection Summary'");
+    assert.ok(at > 0, 'report section found');
+    const body = payments.slice(at, at + 300);
+    assert.ok(body.includes('RECORD_STORES.map(s => [s.backup, s.label])'), 'report must read RECORD_STORES');
   });
   it('every backup writer stamps dataKeyVersion', () => {
     assert.ok(fnBody(sales, 'unifiedBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));

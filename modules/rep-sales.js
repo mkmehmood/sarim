@@ -1115,7 +1115,7 @@ if (saveBtn) saveBtn.textContent = isAddMode ? 'Add Customer' : 'Update Details'
 if (isAddMode) {
 nameInput.placeholder = 'Type name to search or add...';
 nameInput.oninput = function() {
-handleUniversalSearch('rep-edit-cust-name', 'rep-cust-add-search-results', 'repCustomers');
+handleUniversalSearch('rep-edit-cust-name', 'rep-cust-add-search-results', 'clients');
 };
 if (nameLabel) nameLabel.textContent = 'Customer Name';
 if (nameHint) nameHint.textContent = 'Search existing customers or type a new name to add.';

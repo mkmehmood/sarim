@@ -11,7 +11,7 @@ import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculate
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
-import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE } from './data-keys.js';
+import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, RECORD_STORES } from './data-keys.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formulaTypeFor } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -6348,7 +6348,7 @@ No matching suppliers found
 </div>`;
 }
 break;
-case 'repCustomers': {
+case 'clients': {
 let _freshRepReg = [];
 try { _freshRepReg = await sqliteStore.get('clients', []) || []; } catch(e) {}
 const _repRegMap = new Map((_freshRepReg).filter(c => c && c.id).map(c => [c.id, c]));
@@ -7241,20 +7241,7 @@ reportLines.push({ type: 'row', label: 'Device', value: meta.deviceInfo ? meta.d
 reportLines.push({ type: 'warning', label: 'No backup metadata found.' });
 }
 reportLines.push({ type: 'section', label: 'Collection Summary' });
-const collections = [
-['mfg', 'Production'],
-['sales', 'Calculator History'],
-['customerSales', 'Customer Sales'],
-['repSales', 'Rep Sales'],
-['repCustomers', 'Rep Customers'],
-['salesCustomers', 'Sales Customers'],
-['paymentTransactions', 'Payment Transactions'],
-['paymentEntities', 'Payment Entities'],
-['factoryInventoryData', 'Factory Inventory'],
-['factoryProductionHistory', 'Factory History'],
-['stockReturns', 'Stock Returns'],
-['expenses', 'Expenses'],
-];
+const collections = RECORD_STORES.map(s => [s.backup, s.label]);
 let totalIssues = 0;
 for (const [key, label] of collections) {
 if (!data[key] || !Array.isArray(data[key])) {

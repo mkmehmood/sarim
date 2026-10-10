@@ -1777,7 +1777,7 @@ export async function subscribeToRealtime() {
       await _handleFactorySettingsSnapshot(doc);
     }, _e => {
       const _ec = _e && _e.code;
-      console.warn('[sync] factorySettings listener error:', _ec, _safeErr(_e));
+      console.warn('[sync] formulas listener error:', _ec, _safeErr(_e));
       if (_ec === 'permission-denied' || _ec === 'failed-precondition') { updateSignalUI('offline'); }
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
@@ -1810,7 +1810,7 @@ export async function subscribeToRealtime() {
       await _handleExpenseCategoriesSnapshot(doc);
     }, _e => {
       const _ec = _e && _e.code;
-      console.warn('[sync] expenseCategories listener error:', _ec, _safeErr(_e));
+      console.warn('[sync] categories listener error:', _ec, _safeErr(_e));
       if (_ec === 'permission-denied' || _ec === 'failed-precondition') { updateSignalUI('offline'); }
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
@@ -1840,7 +1840,7 @@ export async function subscribeToRealtime() {
         }
         recordSuccessfulConnection();
       } catch (error) {
-        console.warn('[sync] local save error in appStores snapshot handler:', _safeErr(error));
+        console.warn('[sync] local save error in stores snapshot handler:', _safeErr(error));
       }
     };
     const appStoresUnsub = userRef.collection('stores').doc('list').onSnapshot(async (doc) => {
@@ -1848,7 +1848,7 @@ export async function subscribeToRealtime() {
       await _handleAppStoresSnapshot(doc);
     }, _e => {
       const _ec = _e && _e.code;
-      console.warn('[sync] appStores listener error:', _ec, _safeErr(_e));
+      console.warn('[sync] stores listener error:', _ec, _safeErr(_e));
       if (_ec === 'permission-denied' || _ec === 'failed-precondition') { updateSignalUI('offline'); }
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
@@ -2507,7 +2507,7 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
       ? await userRef.collection('photos').where('updatedAt', '>', lastPhotoSync).get()
       : await userRef.collection('photos').get();
     if (personPhotosSnap && !personPhotosSnap.empty) trackFirestoreRead(personPhotosSnap.docs.length);
-  } catch(_phe) { console.warn('[downloadDeltas] personPhotos fetch error', _phe); }
+  } catch(_phe) { console.warn('[downloadDeltas] photos fetch error', _phe); }
   const extract = (snap) => snap
     ? snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => !d._placeholder)
     : [];
@@ -2966,7 +2966,7 @@ export async function _syncSettings(cloudData) {
       if (photosChanged) await sqliteStore.set('photos', localPhotos);
       if (timestampsChanged) await sqliteStore.set('photostamps', localPhotoTimestamps);
       await DeltaSync.setLastSyncTimestamp('photos');
-    } catch(_phe) { console.warn('[syncSettings] personPhotos merge error', _phe); }
+    } catch(_phe) { console.warn('[syncSettings] photos merge error', _phe); }
   }
 }
 export async function _uploadChanges(userRef) {

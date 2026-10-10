@@ -347,7 +347,7 @@ try {
     { name:'categories/list',     type:'doc',  path:'_handleExpenseCategoriesSnapshot',                purpose:'categories', fires:'categories_timestamp change or content diff' },
     { name:'devices/{deviceId}',               type:'doc',  path:'_handleDeviceSnapshot',                           purpose:'Live remote mode changes (admin→rep etc.) without re-login', fires:'remoteAppliedMode flag + appMode_timestamp > local' },
     { name:'deletions',                        type:'col',  path:'_handleDeletionsSnapshot',                        purpose:'Propagate soft deletes to all devices, filter from data arrays', fires:'Any add/modify/remove on the deletions collection' },
-    { name:'photos',                     type:'col',  path:'pullDataFromCloud → personPhotos delta fetch',    purpose:'Sync person/customer/entity photos (base64) from cloud; upload dirty keys on push', fires:'Delta pull on sync — not a live onSnapshot listener; uploads via dirty-key queue' },
+    { name:'photos',                     type:'col',  path:'pullDataFromCloud → photos delta fetch',    purpose:'Sync person/customer/entity photos (base64) from cloud; upload dirty keys on push', fires:'Delta pull on sync — not a live onSnapshot listener; uploads via dirty-key queue' },
     ...COLLECTIONS.filter(c => c.fsName !== 'deletions').map(c => ({
       name: c.fsName,
       type: 'col',
@@ -1596,11 +1596,11 @@ try {
   fyMeta.lastConsistencyCheck = consistencyCheck;
   const hasSyncWarning = typeof _hasMergeCommitFailure !== 'undefined' && _hasMergeCommitFailure === true;
   if (hasSyncWarning) {
-    fyMeta.pendingFirestoreYearClose = true;
+    fyMeta.closing = true;
     pendingFirestoreYearClose = true;
     await sqliteStore.set('closing', true);
   } else {
-    fyMeta.pendingFirestoreYearClose = false;
+    fyMeta.closing = false;
     pendingFirestoreYearClose = false;
     await sqliteStore.set('closing', false);
   }
