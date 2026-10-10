@@ -7,11 +7,43 @@
 // Backups carry DATA_KEY_VERSION so a file written with older names is recognised and refused
 // (convert it first with tools/migrate-cloud.mjs --convert-backup).
 export const DATA_KEY_VERSION = 3;
-const rec = (key) => ({ key, sqlite: key, collection: key, backup: key });
+// One row per dataset. Everything that names a dataset reads it from here, so the names cannot drift:
+//   key      local SQLite key = Firestore collection = backup field = delta-sync name
+//   jsVar    the in-memory JS variable the app holds the records in
+//   label    the name shown to the person (sync tab, data viewer, dialogs)
+//   tab      the app tab the dataset belongs to (a TABS key)
+//   desc     one-line description for the data viewer
+const rec = (key, jsVar, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar, label, tab, desc });
 export const RECORD_STORES = Object.freeze([
-  'production', 'sales', 'calculator', 'rep', 'clients', 'customers',
-  'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns',
-].map(rec));
+  rec('production',   'db',                        'Production',           'production', 'Factory production batches'),
+  rec('sales',        'customerSales',             'Customer Sales',       'sales',      'Direct customer sales'),
+  rec('calculator',   'salesHistory',              'Calculator History',   'calculator', 'Daily calculator / ledger entries'),
+  rec('rep',          'repSales',                  'Rep Sales',            'rep',        'Rep sales to customers'),
+  rec('clients',      'repCustomers',              'Rep Customers',        'rep',        'Rep customer contact registry'),
+  rec('customers',    'salesCustomers',            'Sales Customers',      'sales',      'Sales tab customer contacts'),
+  rec('transactions', 'paymentTransactions',       'Payment Transactions', 'payments',   'Cash & entity payment transactions'),
+  rec('entities',     'paymentEntities',           'Payment Entities',     'payments',   'Payment entity accounts'),
+  rec('inventory',    'factoryInventoryData',      'Factory Inventory',    'factory',    'Raw material inventory'),
+  rec('factory',      'factoryProductionHistory',  'Factory History',      'factory',    'Factory batch production history'),
+  rec('expenses',     'expenseRecords',            'Expenses',             'payments',   'Expense entries'),
+  rec('returns',      'stockReturns',              'Stock Returns',        'production', 'Stock return records'),
+].map(Object.freeze));
+// App tabs. `id` is the tab key used by showTab()/sidebarNav() and the nav button (snav-<id>);
+// `syncFn` is the refresh function the sync tab calls; `inProgressKey` is the re-entrancy guard name.
+export const TABS = Object.freeze([
+  { name: 'production', id: 'prod',     syncFn: 'syncProductionTab' },
+  { name: 'sales',      id: 'sales',    syncFn: 'syncSalesTab' },
+  { name: 'calculator', id: 'calc',     syncFn: 'syncCalculatorTab' },
+  { name: 'factory',    id: 'factory',  syncFn: 'syncFactoryTab' },
+  { name: 'payments',   id: 'payments', syncFn: 'syncPaymentsTab' },
+  { name: 'rep',        id: 'rep',      syncFn: 'syncRepTab' },
+].map(Object.freeze));
+export const TAB_BY_NAME = Object.freeze(Object.fromEntries(TABS.map(t => [t.name, t])));
+export const DATASET_BY_KEY = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.key, s])));
+// Standard button wording: Save <Noun> (create), Update <Noun> (edit), Delete <Noun> (soft delete to the
+// recycle bin), Restore <Noun> (bring back from the recycle bin), Delete Forever (purge).
+export const ACTION_LABELS = Object.freeze({ save: 'Save', update: 'Update', delete: 'Delete', restore: 'Restore', purge: 'Delete Forever' });
+export const actionLabel = (action, noun = '') => `${ACTION_LABELS[action]}${noun ? ' ' + noun : ''}`;
 export const RECORD_KEYS = Object.freeze(RECORD_STORES.map(s => s.key));
 export const AUX_STATE = Object.freeze([
   {

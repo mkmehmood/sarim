@@ -7,7 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { resolveExpenseCategories } from './data-keys.js';
+import { resolveExpenseCategories, RECORD_STORES } from './data-keys.js';
 import { confirmGuard } from './confirm-guard.js';
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await sqliteStore.set(key, data);
@@ -24,34 +24,8 @@ if (collectionEntry) {
 }
 return result;
 }
-export const SQLiteToFirestoreMap = {
-'production': { collection: 'production', varName: 'db' },
-'sales': { collection: 'sales', varName: 'customerSales' },
-'calculator': { collection: 'calculator', varName: 'salesHistory' },
-'rep': { collection: 'rep', varName: 'repSales' },
-'clients': { collection: 'clients', varName: 'repCustomers' },
-'customers': { collection: 'customers', varName: 'salesCustomers' },
-'transactions': { collection: 'transactions', varName: 'paymentTransactions' },
-'entities': { collection: 'entities', varName: 'paymentEntities' },
-'inventory': { collection: 'inventory', varName: 'factoryInventoryData' },
-'factory': { collection: 'factory', varName: 'factoryProductionHistory' },
-'expenses': { collection: 'expenses', varName: 'expenseRecords' },
-'returns': { collection: 'returns', varName: 'stockReturns' }
-};
-export const FirestoreToSQLiteMap = {
-'production': 'production',
-'sales': 'sales',
-'calculator': 'calculator',
-'rep': 'rep',
-'clients': 'clients',
-'customers': 'customers',
-'transactions': 'transactions',
-'entities': 'entities',
-'inventory': 'inventory',
-'factory': 'factory',
-'expenses': 'expenses',
-'returns': 'returns'
-};
+export const SQLiteToFirestoreMap = Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, { collection: s.collection, varName: s.jsVar }]));
+export const FirestoreToSQLiteMap = Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite]));
 export function getFirestoreCollection(sqliteKey) {
 return SQLiteToFirestoreMap[sqliteKey]?.collection || sqliteKey;
 }

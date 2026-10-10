@@ -1002,7 +1002,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
     </div>
     <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:14px;padding:9px 13px;font-size:0.73rem;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">
-      Recover restores the record to its original collection. Records expire after <strong style="color:var(--text-main);">90 days</strong>. Use <strong style="color:#ef4444;">Delete Forever</strong> to erase a record immediately and permanently.
+      Restore puts the record back to its original collection. Records expire after <strong style="color:var(--text-main);">90 days</strong>. Use <strong style="color:#ef4444;">Delete Forever</strong> to erase a record immediately and permanently.
     </div>
     <div id="recycleBinList"></div>
   </div>
@@ -1205,8 +1205,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
     </div>
     <div class="u-action-row">
-      <button class="btn btn-danger u-flex-1" id="deleteFactoryInventoryBtn" style="display:none;" onclick="(async()=>{await deleteFactoryInventoryItem()})()">Delete material</button>
-      <button class="btn btn-noman u-flex-2" onclick="(async()=>{await saveFactoryInventoryItem()})()">Save Material &amp; Entity</button>
+      <button class="btn btn-danger u-flex-1" id="deleteFactoryInventoryBtn" style="display:none;" onclick="(async()=>{await deleteFactoryInventoryItem()})()">Delete Material</button>
+      <button class="btn btn-noman u-flex-2" onclick="(async()=>{await saveFactoryInventoryItem()})()">Save Material</button>
     </div>
   </div>
 </div>
@@ -1431,7 +1431,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div id="entityManagementHistoryList"></div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
-      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteCurrentEntity()">Delete Entity Permanently</button>
+      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteCurrentEntity()">Delete Entity</button>
     </div>
   </div>
 </div>
@@ -1476,7 +1476,7 @@ window._showLogoutConfirmDialog = async function() {
       </div>
     </div>
     <div class="u-action-row">
-      <button class="btn btn-danger u-hidden u-flex-1" id="deleteEntityBtn" onclick="(async()=>{await deleteCurrentEntity()})()">Delete</button>
+      <button class="btn btn-danger u-hidden u-flex-1" id="deleteEntityBtn" onclick="(async()=>{await deleteCurrentEntity()})()">Delete Entity</button>
       <button class="btn btn-noman u-flex-2" onclick="(async()=>{await saveEntity()})()">Save Entity</button>
     </div>
   </div>
@@ -1513,13 +1513,13 @@ window._showLogoutConfirmDialog = async function() {
           <label>Description (optional)</label>
           <input class="u-w-full" type="text" id="quickExpenseDescription" placeholder="e.g. Monthly rent">
         </div>
-        <button class="btn btn-noman u-quick-btn" onclick="(async()=>{await saveQuickExpenseEntry()})()">Save</button>
+        <button class="btn btn-noman u-quick-btn" onclick="(async()=>{await saveQuickExpenseEntry()})()">Save Expense</button>
       </div>
       <div class="u-field-hint">* Adds a new expense record under "<span class="u-text-warning u-fw-600" id="quickExpenseNameLabel"></span>" for today's date.</div>
     </div>
     <div id="expenseManagementHistoryList"></div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
-      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteAllExpensesByName()">Delete All Records Permanently</button>
+      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteAllExpensesByName()">Delete All Expenses</button>
     </div>
   </div>
 </div>
@@ -1546,7 +1546,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div id="customerManagementHistoryList"></div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
-      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="(async()=>{await deleteCurrentCustomer()})()">Delete Customer Permanently</button>
+      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="(async()=>{await deleteCurrentCustomer()})()">Delete Customer</button>
     </div>
   </div>
 </div>
@@ -1606,7 +1606,7 @@ window._showLogoutConfirmDialog = async function() {
         <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Override the default sale price for this customer. Leave blank to use the standard rate.</div>
       </div>
     </div>
-    <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="cust-edit-save-btn" onclick="(async()=>{await saveCustomerDetails()})()">Update Details</button>
+    <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="cust-edit-save-btn" onclick="(async()=>{await saveCustomerDetails()})()">Update Customer</button>
   </div>
 </div>
 <div id="rep-customer-management-screen" class="standalone-screen" style="display:none">
@@ -1632,7 +1632,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div id="repCustomerManagementHistoryList"></div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
-      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="(async()=>{await deleteCurrentRepCustomer()})()">Delete Customer Permanently</button>
+      <button class="btn btn-danger btn-sm" style="width:100%;" onclick="(async()=>{await deleteCurrentRepCustomer()})()">Delete Customer</button>
     </div>
   </div>
 </div>
@@ -1687,7 +1687,7 @@ window._showLogoutConfirmDialog = async function() {
         <div id="rep-location-status" style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;font-style:italic;"></div>
       </div>
     </div>
-    <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="rep-cust-edit-save-btn" onclick="(async()=>{await saveRepCustomerDetails()})()">Update Details</button>
+    <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" style="width:100%;" id="rep-cust-edit-save-btn" onclick="(async()=>{await saveRepCustomerDetails()})()">Update Customer</button>
   </div>
 </div>
 <div id="sys-header" aria-hidden="true"></div>
@@ -1824,7 +1824,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 <span id="rep-result-label">Transaction Value:</span>
 <span id="rep-total-value" style="font-size: 1.1rem; color: var(--accent);">0.00</span>
 </div>
-<button class="btn btn-main" id="btn-save-rep-transaction" onclick="(async () => { await saveRepTransaction() })()">Submit Transaction</button>
+<button class="btn btn-main" id="btn-save-rep-transaction" onclick="(async () => { await saveRepTransaction() })()">Save Transaction</button>
 </div>
 <div id="admin-rep-controls" class="section liquid-card hidden">
 <div class="section-header">
@@ -2449,7 +2449,7 @@ No records found
 <div id="factoryFormulaDisplay" class="formula-display">
 Select a store...
 </div>
-<button class="btn btn-noman" id="btn-save-factory-production" onclick="(async () => { await saveFactoryProductionEntry() })()">Save Production Entry</button>
+<button class="btn btn-noman" id="btn-save-factory-production" onclick="(async () => { await saveFactoryProductionEntry() })()">Save Factory Production</button>
 </div>
 <div class="section liquid-card">
 <div class="section-header">

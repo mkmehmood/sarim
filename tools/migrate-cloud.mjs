@@ -18,6 +18,8 @@
 //    * stamps every rewritten record with a new updatedAt so the app's delta sync picks it up
 //
 //  USAGE
+//    Or open tools/migrate.html (npm run dev, then /tools/migrate.html): same code, in the browser.
+//
 //    node tools/migrate-cloud.mjs --email you@example.com              dry run (writes nothing)
 //    node tools/migrate-cloud.mjs --email you@example.com --apply      do it
 //    node tools/migrate-cloud.mjs --email you@example.com --apply --delete-old
@@ -33,9 +35,8 @@
 //  AFTER A SUCCESSFUL --apply, on every phone/browser: let it sync, sign out (this clears the
 //  local copy), update the app, sign in again. The new app then downloads the migrated data.
 // =====================================================================================
-import { readFile, writeFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
-import { createInterface } from 'node:readline';
+// Runs unchanged in Node (command line) and in the browser (tools/migrate.html): the Node-only
+// modules are loaded lazily, only by the command-line code below.
 
 // ---------------------------------------------------------------- the rules (all legacy knowledge lives here)
 export const FIREBASE = {
@@ -424,14 +425,16 @@ function parseArgs(argv) {
   }
   return a;
 }
-function askHidden(question) {
+async function askHidden(question) {
+  const { createInterface } = await import('node:readline');
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
     rl._writeToOutput = (s) => { if (s.includes(question)) process.stdout.write(s); };
     rl.question(question, (ans) => { rl.close(); process.stdout.write('\n'); resolve(ans); });
   });
 }
-function ask(question) {
+async function ask(question) {
+  const { createInterface } = await import('node:readline');
   return new Promise((resolve) => { const rl = createInterface({ input: process.stdin, output: process.stdout }); rl.question(question, (a) => { rl.close(); resolve(a); }); });
 }
 function printReport(r) {
@@ -445,6 +448,7 @@ function printReport(r) {
   console.log(`total writes: ${r.writes}${r.applied ? '' : '   (run again with --apply to perform them)'}`);
 }
 export async function main(argv = process.argv.slice(2)) {
+  const { readFile, writeFile } = await import('node:fs/promises');
   const a = parseArgs(argv);
   if (a.help || (!a.email && !a['id-token'] && !a['convert-backup'])) { console.log('See the header of this file for usage.'); return 0; }
   const email = a.email;
@@ -489,6 +493,9 @@ export async function main(argv = process.argv.slice(2)) {
   if (report.applied) console.log('\nNext: on every phone/browser let it sync, sign out, update the app, sign in again.');
   return report.warnings.length ? 2 : 0;
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().then((c) => process.exit(c || 0)).catch((e) => { console.error('\nError: ' + e.message); process.exit(1); });
+if (typeof process !== 'undefined' && process.versions && process.versions.node && process.argv && process.argv[1]) {
+  const { pathToFileURL } = await import('node:url');
+  if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+    main().then((c) => process.exit(c || 0)).catch((e) => { console.error('\nError: ' + e.message); process.exit(1); });
+  }
 }

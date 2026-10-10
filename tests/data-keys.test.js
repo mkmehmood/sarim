@@ -33,16 +33,6 @@ function memStore(init = {}) {
   return { async get(k) { return m.has(k) ? m.get(k) : undefined; }, async set(k, v) { m.set(k, v); }, _m: m };
 }
 describe('registry matches the maps the cloud sync really uses', () => {
-  it('SQLiteToFirestoreMap in sync.js equals the registry', () => {
-    const lit = objectLiteral(sync, 'SQLiteToFirestoreMap');
-    const pairs = [...lit.matchAll(/'([a-z_]+)':\s*\{\s*collection:\s*'([a-z_]+)'/g)].map(m => [m[1], m[2]]);
-    assert.deepEqual(Object.fromEntries(pairs), SQLITE_TO_FIRESTORE);
-  });
-  it('FirestoreToSQLiteMap in sync.js equals the registry inverse', () => {
-    const lit = objectLiteral(sync, 'FirestoreToSQLiteMap');
-    const pairs = [...lit.matchAll(/'([a-z_]+)':\s*'([a-z_]+)'/g)].map(m => [m[1], m[2]]);
-    assert.deepEqual(Object.fromEntries(pairs), FIRESTORE_TO_SQLITE);
-  });
   it('registry has no duplicate keys', () => {
     for (const field of ['sqlite', 'collection', 'backup']) {
       const vals = RECORD_STORES.map(s => s[field]);
@@ -195,5 +185,32 @@ describe('merge helpers and cloud category resolution', () => {
   it('older cloud stamp leaves local untouched', () => {
     const r = resolveExpenseCategories(['A', 'B'], ['Z'], 30, 20);
     assert.deepEqual(r, { value: ['A', 'B'], ts: 30, changed: false });
+  });
+});
+describe('one registry for names, variables, tabs and buttons', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const core = read('utilities-core.js');
+  it('every dataset has a unique JS variable, a label and a known tab', async () => {
+    const { TABS } = await import('../modules/data-keys.js');
+    const tabs = new Set(TABS.map(t => t.name));
+    assert.equal(new Set(RECORD_STORES.map(s => s.jsVar)).size, RECORD_STORES.length);
+    for (const s of RECORD_STORES) assert.ok(s.jsVar && s.label && s.desc && tabs.has(s.tab), s.key);
+  });
+  it('sync maps are derived from the registry', () => {
+    for (const s of RECORD_STORES) { assert.equal(SQLITE_TO_FIRESTORE[s.sqlite], s.collection); assert.equal(FIRESTORE_TO_SQLITE[s.collection], s.sqlite); }
+    assert.ok(/SQLiteToFirestoreMap = Object\.fromEntries\(RECORD_STORES/.test(sync));
+    assert.ok(/FirestoreToSQLiteMap = Object\.fromEntries\(RECORD_STORES/.test(sync));
+  });
+  it('every tab has a nav button and an exported sync function', async () => {
+    const { TABS } = await import('../modules/data-keys.js');
+    for (const t of TABS) {
+      assert.ok(html.includes(`id="snav-${t.id}"`), `nav button for ${t.name}`);
+      assert.ok(core.includes(`export async function ${t.syncFn}(`), t.syncFn);
+    }
+  });
+  it('buttons use one wording: Save / Update / Delete / Restore', () => {
+    for (const bad of ['Submit Transaction', 'Update Details', 'Permanently</button>', 'Save Production Entry', '>Delete material<'])
+      assert.ok(!html.includes(bad), `index.html still has "${bad}"`);
+    assert.ok(!/<\/svg> Recover<\/button>/.test(read('utilities-payments.js')), 'recycle bin still says Recover');
   });
 });

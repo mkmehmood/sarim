@@ -4706,7 +4706,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
     if (filtered.length === 0) {
       container.innerHTML = `<div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
         <div style="font-size:1rem;font-weight:600;">Recycle Bin is empty</div>
-        <div style="font-size:0.78rem;margin-top:6px;">Deleted transactions will appear here and can be recovered within 90 days.</div>
+        <div style="font-size:0.78rem;margin-top:6px;">Deleted transactions will appear here and can be restored within 90 days.</div>
       </div>`;
       return;
     }
@@ -4836,7 +4836,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
           ${canRecover
-            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Recover</button>`
+            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
           <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:999px;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
@@ -4888,9 +4888,9 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletion_records'));
   const pairNote = isTransferPair ? '\n\nThis is one side of a linked transfer — both sides will be recovered together.' : '';
   if (!(await showGlassConfirm(
     `Recover this ${label}?\n\nIt will be restored to its original collection and become visible again in all views.${pairNote}${groupNote}${calcNote}`,
-    { title: 'Recover Record', confirmText: 'Recover', danger: false }
+    { title: 'Restore Record', confirmText: 'Restore', danger: false }
   ))) return;
-  showToast('Recovering record…', 'info', 1500);
+  showToast('Restoring record…', 'info', 1500);
   const ok = await recoverRecord(id, collectionName);
   if (ok) {
     showToast(isTransferPair ? `${label} recovered — both sides of the transfer restored!` : `${label} recovered successfully!`, 'success');

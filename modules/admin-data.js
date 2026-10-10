@@ -5,7 +5,7 @@ import { DeltaSync, UUIDSyncRegistry, trackFirestoreWrite, verifyAccountPassword
 import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE } from './data-keys.js';
+import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, RECORD_STORES, DATASET_BY_KEY } from './data-keys.js';
 import { getDefaultStoreKey, storeLabelFor } from './store-keys.js';
 export async function updateDeltaSyncStatsDisplay() {
   const db = ensureArray(await sqliteStore.get('production'));
@@ -106,19 +106,20 @@ try {
   }));
   const _dirtyPhotoKeys = (await sqliteStore.get('person_photos_dirty_keys')) || [];
   sqliteCounts['_person_photos_dirty'] = Array.isArray(_dirtyPhotoKeys) ? _dirtyPhotoKeys.length : 0;
+  const _rs = (k) => DATASET_BY_KEY[k];
   const COLLECTIONS = [
-    { fsName:'production',         sqliteKey:'production',               jsVar:'db',                       snap:productionSnap,      tabFn:'syncProductionTab',  lock:true,  desc:'Factory production batches' },
-    { fsName:'sales',              sqliteKey:'sales',             jsVar:'customerSales',            snap:salesSnap,           tabFn:'syncSalesTab',       lock:true,  desc:'Direct customer sales' },
-    { fsName:'calculator', sqliteKey:'calculator',              jsVar:'salesHistory',             snap:calcHistorySnap,     tabFn:'syncCalculatorTab',  lock:true,  desc:'Daily calculator / ledger entries' },
-    { fsName:'rep',          sqliteKey:'rep',                  jsVar:'repSales',                 snap:repSalesSnap,        tabFn:'syncRepTab',         lock:true,  desc:'Rep sales to customers' },
-    { fsName:'clients',      sqliteKey:'clients',              jsVar:'repCustomers',             snap:repCustomersSnap,    tabFn:'syncRepTab',         lock:false, desc:'Rep customer contact registry' },
-    { fsName:'customers',    sqliteKey:'customers',            jsVar:'salesCustomers',           snap:salesCustomersSnap,  tabFn:'renderCustomersTable',lock:false,desc:'Sales tab customer contacts' },
-    { fsName:'transactions',       sqliteKey:'transactions',       jsVar:'paymentTransactions',      snap:transactionsSnap,    tabFn:'syncPaymentsTab',    lock:true,  desc:'Cash & entity payment transactions' },
-    { fsName:'entities',           sqliteKey:'entities',           jsVar:'paymentEntities',          snap:entitiesSnap,        tabFn:'refreshPaymentTab',  lock:false, desc:'Payment entity accounts' },
-    { fsName:'inventory',          sqliteKey:'inventory',     jsVar:'factoryInventoryData',     snap:inventorySnap,       tabFn:'syncFactoryTab',     lock:false, desc:'Raw material inventory' },
-    { fsName:'factory',    sqliteKey:'factory', jsVar:'factoryProductionHistory', snap:factoryHistorySnap,  tabFn:'syncFactoryTab',     lock:true,  desc:'Factory batch production history' },
-    { fsName:'returns',            sqliteKey:'returns',              jsVar:'stockReturns',             snap:returnsSnap,         tabFn:'syncProductionTab',  lock:true,  desc:'Stock return records' },
-    { fsName:'expenses',           sqliteKey:'expenses',                   jsVar:'expenseRecords',           snap:expensesSnap,        tabFn:'refreshPaymentTab',  lock:true,  desc:'Expense entries' },
+    { fsName:_rs('production').collection, sqliteKey:_rs('production').sqlite, jsVar:_rs('production').jsVar, snap:productionSnap, tabFn:'syncProductionTab', lock:true, desc:_rs('production').desc },
+    { fsName:_rs('sales').collection, sqliteKey:_rs('sales').sqlite, jsVar:_rs('sales').jsVar, snap:salesSnap, tabFn:'syncSalesTab', lock:true, desc:_rs('sales').desc },
+    { fsName:_rs('calculator').collection, sqliteKey:_rs('calculator').sqlite, jsVar:_rs('calculator').jsVar, snap:calcHistorySnap, tabFn:'syncCalculatorTab', lock:true, desc:_rs('calculator').desc },
+    { fsName:_rs('rep').collection, sqliteKey:_rs('rep').sqlite, jsVar:_rs('rep').jsVar, snap:repSalesSnap, tabFn:'syncRepTab', lock:true, desc:_rs('rep').desc },
+    { fsName:_rs('clients').collection, sqliteKey:_rs('clients').sqlite, jsVar:_rs('clients').jsVar, snap:repCustomersSnap, tabFn:'syncRepTab', lock:false, desc:_rs('clients').desc },
+    { fsName:_rs('customers').collection, sqliteKey:_rs('customers').sqlite, jsVar:_rs('customers').jsVar, snap:salesCustomersSnap, tabFn:'renderCustomersTable', lock:false, desc:_rs('customers').desc },
+    { fsName:_rs('transactions').collection, sqliteKey:_rs('transactions').sqlite, jsVar:_rs('transactions').jsVar, snap:transactionsSnap, tabFn:'syncPaymentsTab', lock:true, desc:_rs('transactions').desc },
+    { fsName:_rs('entities').collection, sqliteKey:_rs('entities').sqlite, jsVar:_rs('entities').jsVar, snap:entitiesSnap, tabFn:'refreshPaymentTab', lock:false, desc:_rs('entities').desc },
+    { fsName:_rs('inventory').collection, sqliteKey:_rs('inventory').sqlite, jsVar:_rs('inventory').jsVar, snap:inventorySnap, tabFn:'syncFactoryTab', lock:false, desc:_rs('inventory').desc },
+    { fsName:_rs('factory').collection, sqliteKey:_rs('factory').sqlite, jsVar:_rs('factory').jsVar, snap:factoryHistorySnap, tabFn:'syncFactoryTab', lock:true, desc:_rs('factory').desc },
+    { fsName:_rs('returns').collection, sqliteKey:_rs('returns').sqlite, jsVar:_rs('returns').jsVar, snap:returnsSnap, tabFn:'syncProductionTab', lock:true, desc:_rs('returns').desc },
+    { fsName:_rs('expenses').collection, sqliteKey:_rs('expenses').sqlite, jsVar:_rs('expenses').jsVar, snap:expensesSnap, tabFn:'refreshPaymentTab', lock:true, desc:_rs('expenses').desc },
     { fsName:'deletions',          sqliteKey:'deletion_records',           jsVar:'deletedRecordIds',         snap:deletionsSnap,       tabFn:null,                 lock:false, desc:'Tombstone records for soft-deleted IDs' },
     { fsName:'personPhotos',       sqliteKey:'person_photos',              jsVar:'person_photos{}',          snap:personPhotosSnap,    tabFn:null,                 lock:false, desc:'Person/customer/entity photos (keyed object: cust:name, entity:id, rep-cust:rep:name)', isPhotoStore:true },
   ];
@@ -3191,20 +3192,7 @@ if (!(await showGlassConfirm(
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }
 ))) return;
 showToast('Scanning for duplicates\u2026', 'info', 4000);
-const COLLECTIONS = [
-  { sqliteKey: 'production',                firestore: 'production',         label: 'Production',           liveVar: 'db'                       },
-  { sqliteKey: 'calculator',              firestore: 'calculator',  label: 'Calculator History',   liveVar: 'salesHistory'             },
-  { sqliteKey: 'sales',             firestore: 'sales',               label: 'Customer Sales',       liveVar: 'customerSales'            },
-  { sqliteKey: 'rep',                  firestore: 'rep',           label: 'Rep Sales',            liveVar: 'repSales'                 },
-  { sqliteKey: 'clients',              firestore: 'clients',       label: 'Rep Customers',        liveVar: 'repCustomers'             },
-  { sqliteKey: 'customers',            firestore: 'customers',     label: 'Sales Customers',      liveVar: 'salesCustomers'           },
-  { sqliteKey: 'inventory',     firestore: 'inventory',           label: 'Factory Inventory',    liveVar: 'factoryInventoryData'     },
-  { sqliteKey: 'factory', firestore: 'factory',     label: 'Factory History',      liveVar: 'factoryProductionHistory' },
-  { sqliteKey: 'returns',              firestore: 'returns',             label: 'Stock Returns',        liveVar: 'stockReturns'             },
-  { sqliteKey: 'transactions',       firestore: 'transactions',        label: 'Payment Transactions', liveVar: 'paymentTransactions'      },
-  { sqliteKey: 'entities',           firestore: 'entities',            label: 'Payment Entities',     liveVar: 'paymentEntities'          },
-  { sqliteKey: 'expenses',                   firestore: 'expenses',            label: 'Expenses',             liveVar: 'expenseRecords'           },
-];
+const COLLECTIONS = RECORD_STORES.map(r => ({ sqliteKey: r.sqlite, firestore: r.collection, label: r.label, liveVar: r.jsVar }));
 try {
   let totalDuplicates = 0;
   const dirtyCollections = [];
