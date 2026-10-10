@@ -320,3 +320,15 @@ describe('tools/migrate.html is a self-contained copy of the migration code', ()
     assert.ok(!/node:(fs|readline|url)/.test(html), 'no Node-only imports');
   });
 });
+
+describe('support documents that already exist under the new name', () => {
+  it('mergeSupportFields keeps old data the new document lacks or has older', async () => {
+    const { mergeSupportFields } = await import('../tools/migrate-cloud.mjs');
+    const p = mergeSupportFields(
+      { categories: ['Rent', 'Fuel'], categories_timestamp: 200, formula_slots: { a: 1 }, formula_slots_timestamp: 5 },
+      { categories: [], categories_timestamp: 100, formula_slots: { a: 2 }, formula_slots_timestamp: 9 });
+    assert.deepEqual(p.categories, ['Rent', 'Fuel']);
+    assert.equal(p.formula_slots, undefined);
+    assert.deepEqual(mergeSupportFields({ categories: ['x'], categories_timestamp: 1 }, { categories: ['x'], categories_timestamp: 1 }), {});
+  });
+});

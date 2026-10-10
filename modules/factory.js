@@ -250,14 +250,15 @@ export async function unlinkSupplierConfirmation(material) {
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const linkedTransactions = paymentTransactions.filter(t => t.materialId === material.id && t.entityId === material.supplierId && t.isPayable === true);
-let confirmMsg = ` Unlink ${material.supplierName} from ${material.name}?\n\n`;
-confirmMsg += `This will:\n Remove supplier association\n Reset payment status to 'pending'\n`;
+let confirmMsg = `Unlink ${material.supplierName} from "${material.name}"?`;
+confirmMsg += `\nCurrent Stock: ${fmtNum(material.quantity || 0)} kg`;
+if (material.totalPayable) confirmMsg += `\nOutstanding Payable: ${fmtAmt(material.totalPayable || 0)}`;
 if (linkedTransactions.length > 0) {
-const totalReversed = linkedTransactions.reduce((sum, t) => sum + t.amount, 0);
-confirmMsg += ` Reverse ${linkedTransactions.length} payment transaction(s) totaling ${fmtAmt(safeNumber(totalReversed, 0))}\n`;
-}
-confirmMsg += `\nThe material will be ready to link with a different supplier.\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: 'Unlink', danger: true })) {
+const totalReversed = linkedTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+confirmMsg += `\n\n\u21A9 ${linkedTransactions.length} payment transaction${linkedTransactions.length !== 1 ? 's' : ''} totaling ${fmtAmt(safeNumber(totalReversed, 0))} will be reversed and the payable reset to pending.`;
+} else confirmMsg += `\n\n\u21A9 The payable status will be reset to pending.`;
+confirmMsg += `\n\nThe material will be available to link with a different supplier.\n\nThis cannot be undone.`;
+if (await showGlassConfirm(confirmMsg, { title: `Unlink ${material.supplierName}`, confirmText: 'Unlink', danger: true })) {
 await unlinkSupplierFromMaterial(material, true);
 closeFactoryInventoryModal();
 setTimeout(() => editFactoryInventoryItem(material.id), 100);
@@ -351,7 +352,7 @@ if (_inv.length > 0) {
 const _tx = _inv[_inv.length - 1];
 const _plan = planPayableAdjustment(_tx.amount, _delta);
 if (_plan.change !== 0) {
-const _go = await showGlassConfirm(`You changed the stock value of ${savedMaterial.name} by ${fmtAmt(_delta)}.\n\nWhat you owe ${savedMaterial.supplierName || 'the supplier'} for it is ${fmtAmt(_tx.amount)}. Update it to ${fmtAmt(_plan.next)}?`, { title: 'Update supplier payable?', confirmText: 'Update payable', cancelText: 'Keep as is' });
+const _go = await showGlassConfirm(`The stock value changed. Update what you owe the supplier?\nMaterial: ${savedMaterial.name}\nSupplier: ${savedMaterial.supplierName || 'Not set'}\nStock Value Change: ${fmtAmt(_delta)}\nCurrently Owed: ${fmtAmt(_tx.amount)}\nNew Amount Owed: ${fmtAmt(_plan.next)}`, { title: 'Update Supplier Payable?', confirmText: 'Update Payable', cancelText: 'Keep As Is' });
 if (_go) {
 _tx.amount = _plan.next; _tx.updatedAt = getTimestamp();
 ensureRecordIntegrity(_tx, true);
@@ -518,7 +519,7 @@ confirmMsg += `\nCurrent Stock: ${fmtNum(material.quantity || 0)} kg`;
 if (material.totalPayable) confirmMsg += `\nOutstanding Payable: ${fmtAmt(material.totalPayable || 0)}`;
 if (linkedTransactions.length > 0) confirmMsg += `\n\n↩ ${linkedTransactions.length} payment transaction${linkedTransactions.length !== 1 ? 's' : ''} totaling ${fmtAmt(_us2Total)} will be reversed and the material reverted to "Pending Payable" status.`;
 confirmMsg += `\n\nThe material will be available to link with a different supplier.\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: 'Unlink', danger: true })) {
+if (await showGlassConfirm(confirmMsg, { title: `Unlink ${material.supplierName}`, confirmText: 'Unlink', danger: true })) {
 await unlinkSupplierFromMaterial(material, true);
 }
 }
@@ -729,7 +730,7 @@ if (typeof calculateFactoryProduction === 'function') await calculateFactoryProd
 beginEditMode('factory', rec, { buttonId: 'btn-save-factory-production', watchIds: ['factoryProductionUnits'], label: 'Update Batch', anchorId: 'factoryProductionUnits', cancelFn: _resetFactoryForm });
 }
 registerEditHandler('factory', startEditFactoryEntry);
-export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', late: true, fields: [['factoryProductionUnits', 'Units']], editKinds: ['factory'] }); }
+export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', late: true, fields: [], editKinds: ['factory'] }); }
 async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
 if (!currentFactoryEntryStore) {
@@ -807,6 +808,14 @@ const _notInInventory = settings.filter(it => !factoryInventoryData.find(i => St
 if (_notInInventory.length) {
 throw new Error(`Cannot produce: ${_notInInventory.map(m => '"' + m.name + '"').join(', ')} ${_notInInventory.length === 1 ? 'is' : 'are'} not in Raw Material Inventory. Add ${_notInInventory.length === 1 ? 'it' : 'them'} with the Add Raw Material button first.`);
 }
+const _shortages = [];
+for (const it of settings) {
+const inv0 = factoryInventoryData.find(i => String(i.id) === String(it.id)) || (it.name && factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === it.name.trim().toLowerCase()));
+const need = it.quantity * units;
+if (inv0 && inv0.quantity + 1e-6 < need) _shortages.push({ name: inv0.name, have: inv0.quantity, need });
+}
+if (_shortages.length === 1) throw new Error(`Insufficient "${_shortages[0].name}" in inventory! Available: ${fmtNum(_shortages[0].have)} kg, Required: ${fmtNum(_shortages[0].need)} kg. Shortage: ${fmtNum(_shortages[0].need - _shortages[0].have)} kg`);
+if (_shortages.length > 1) throw new Error(`Insufficient inventory for ${_shortages.length} materials:\n${_shortages.map(s => ` \u2022 ${s.name}: ${fmtNum(s.have)} kg available, ${fmtNum(s.need)} kg required (short ${fmtNum(s.need - s.have)} kg)`).join('\n')}`);
 for (const item of settings) {
 const materialUsed = item.quantity * units;
 let inventoryItem = factoryInventoryData.find(i => String(i.id) === String(item.id));
@@ -831,7 +840,16 @@ throw new Error(`Insufficient "${inventoryItem.name}" in inventory! Available: $
 }
 }
 }
-if (!(await window.gcCommit({}))) throw new Error('__GC_CANCEL__');
+const _gcFormula = (await getFormulaSlotLabels())[_sfpeType] || 'Formula';
+const _gcLow = materialsUsed.map(m => { const inv = factoryInventoryData.find(i => String(i.id) === String(m.id)); return inv && inv.quantity + 1e-6 < m.quantity ? `${m.name} (${fmtNum(inv.quantity)} kg left)` : null; }).filter(Boolean);
+const _gcExtra = {
+lead: _ed ? 'Update this factory production batch?' : 'Save this factory production batch?',
+lines: [`Formula: ${_gcFormula}`, `Date: ${localDateStr()}`, `Units Produced: ${fmtNum(units)}`, `Total Cost: ${fmtAmt(totalCost)}`, `Cost Per Unit: ${fmtAmt(units > 0 ? totalCost / units : 0)}`],
+notes: [`\u21A9 Raw materials deducted from inventory:`].concat(materialsUsed.map(m => ` \u2022 ${m.name}: ${fmtNum(m.quantity)} kg used`)),
+confirmText: _ed ? 'Update Production' : 'Save Production'
+};
+if (_gcLow.length) _gcExtra.warning = `Low stock after this batch: ${_gcLow.join(', ')}. You cannot repeat a batch of this size.`;
+if (!(await window.gcCommit(_gcExtra))) throw new Error('__GC_CANCEL__');
 let factProdId = _ed ? _ed.id : generateUUID('fprod');
 if (!validateUUID(factProdId)) factProdId = generateUUID('fprod');
 const factProdCreatedAt = getTimestamp();
@@ -942,7 +960,6 @@ if (factoryProductionHistory.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No recent activity' }));
 return;
 }
-await getAppStores();
 const _fhFrag = document.createDocumentFragment();
 const recent = [...factoryProductionHistory].sort((a, b) => {
 const timeA = a.timestamp || new Date(a.date + ' ' + a.time).getTime();
@@ -1010,9 +1027,8 @@ div.innerHTML = `
 ${entry.managedBy ? `<span class="managed-by-badge">${esc(entry.managedBy)}</span>` : ''}
 ${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}
 </div>
-<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+<div style="display:flex;gap:6px;align-items:center;">
 ${_mergedBadgeHtml(entry)}
-${entry.store ? `<span class="supply-tag ${window.getStoreBadgeClass ? window.getStoreBadgeClass(entry.store) : 'store-asaan'}" style="margin-top:0;">Store: ${esc(getStoreLabel(entry.store) || entry.store)}</span>` : ''}
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
 </div>
@@ -1038,7 +1054,6 @@ const entryIndex = factoryProductionHistory.findIndex(e => e.id === id);
 if (entryIndex === -1) { await refreshFactoryTab(); return; }
 const entry = factoryProductionHistory[entryIndex];
 if (entry.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning'); return; }
-const _feStoreLabel = getStoreLabel(entry.store) || entry.store;
 const _feFormulaKey = entry.formulaType || (typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(entry.store) : entry.store);
 const _feRestore = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
 ? entry.materialsUsed.map(m => ({ id: m.id, name: m.name, quantity: m.quantity }))
@@ -1059,7 +1074,7 @@ return;
 }
 }
 let _feMsg = `Delete this factory production batch permanently?`;
-_feMsg += `\nStore: ${_feStoreLabel}\nDate: ${entry.date}\nUnits Produced: ${entry.units}`;
+_feMsg += `\nFormula: ${entry.formulaName || _feFormulaKey}\nDate: ${entry.date}\nUnits Produced: ${entry.units}`;
 if (entry.totalCost) _feMsg += `\nTotal Cost: ${fmtAmt(entry.totalCost || 0)}`;
 _feMsg += _feMatsDetail ? `\n\n↩ Raw materials restored to inventory:\n${_feMatsDetail}` : `\n\n↩ Raw materials used in this batch will be restored to inventory.`;
 _feMsg += `\n\n Sales already made from this batch will NOT be reversed — but available stock will change.\n\nThis cannot be undone.`;

@@ -56,7 +56,7 @@ const LEADING_GLYPHS = /^[\s\u00A0\u2190-\u21FF\u2600-\u27BF\uFE0F\u{1F300}-\u{1
 const BULLET_RE = /^[\u2022\u00B7\u25CF*\-\u2013]\s+(.+)$/;
 const NOTE_RE = /^(warning|note|caution|important):\s+(.+)$/i;
 const FACT_RE = /^([A-Za-z0-9][A-Za-z0-9 ()/&'.\u2019-]{0,32}):\s+(.{1,70})$/;
-const FIGURE_PRIORITY = [/^new total$/i, /^total( value| sold)?$/i, /^amount$/i, /^required/i, /^overpayment$/i, /^collecting$/i, /^this credit sale$/i, /^credit sales?$/i, /^net profit$/i];
+const FIGURE_PRIORITY = [/^new total$/i, /^total( value| sold)?$/i, /^amount$/i, /^total cost$/i, /^required/i, /^overpayment$/i, /^collecting$/i, /^this credit sale$/i, /^credit sales?$/i, /^net profit$/i];
 export function humanizeKeys(text) {
   const s = String(text == null ? '' : text);
   if (typeof window.getStoreLabel !== 'function') return s;
@@ -248,6 +248,7 @@ export function splitFigures(message) {
 export function alertTitle(message, tone) {
   const m = String(message || '');
   if (/cash in hand/i.test(m)) return 'Low cash in hand';
+  if (/formula units/i.test(m)) return 'Low formula units';
   if (/insufficient|not enough|not in raw material|short by|shortage/i.test(m) && /inventory|material|stock|units|kg/i.test(m)) return tone === 'error' ? 'Low inventory' : 'Inventory warning';
   if (/credit/i.test(m)) return tone === 'error' ? 'Credit error' : 'Credit warning';
   if (/cannot delete|cannot be deleted|cannot change|cannot be edited/i.test(m)) return 'Action not allowed';

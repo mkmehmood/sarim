@@ -1595,10 +1595,10 @@ card.innerHTML = `
 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(transaction.date, transaction.time || null)}${creatorBadge}${mergedBadge}${settledBadge}</span>
 </div>
-<div class="customer-name">${esc(entityName)} <span class="entity-type-badge">${esc(entityType)}</span></div>
+<div class="customer-name">${esc(entityName)}</div>
 <p><span>Description:</span> <span>${esc(transaction.description || 'No description')}</span></p>
 <hr>
-<p><span>${transaction.type === 'IN' ? 'Amount Received:' : 'Amount Paid:'}</span> <span class="${transaction.type === 'IN' ? 'profit-val' : 'cost-val'}">${fmtAmt(safeValue(transaction.amount))}</span></p>
+<p><span>Amount:</span> <span class="${transaction.type === 'IN' ? 'profit-val' : 'cost-val'}">${fmtAmt(safeValue(transaction.amount))}</span></p>
 ${deleteButton}
 `;
 _phFrag.appendChild(card);
@@ -3862,10 +3862,10 @@ const _dePayableOuts = linkedTransactions.filter(t => t.type === 'OUT' && t.isPa
 const _deEntityIds = [...new Set(_dePayableOuts.map(t => t.entityId))];
 const _deEntityNames = _deEntityIds.map(eid => { const e = paymentEntities.find(x => String(x.id) === String(eid)); return e?.name || 'Supplier'; });
 let confirmMsg = `Permanently delete this ${categoryLabel}?`;
-confirmMsg += `\n\nName: ${esc(expense.name || 'Unnamed')}`;
+confirmMsg += `\n\nName: ${expense.name || 'Unnamed'}`;
 confirmMsg += `\nAmount: ${(parseFloat(expense.amount)||0).toFixed(2)}`;
 confirmMsg += `\nDate: ${expense.date || 'Unknown'}`;
-if (expense.description) confirmMsg += `\nNote: ${esc(expense.description)}`;
+if (expense.description) confirmMsg += `\nNote: ${expense.description}`;
 if (linkedTransactions.length > 0) {
 const _deTxTotal = linkedTransactions.reduce((s, t) => s + (parseFloat(t.amount)||0), 0);
 confirmMsg += `\n\n\u21a9 ${linkedTransactions.length} linked payment transaction${linkedTransactions.length !== 1 ? 's' : ''} (${fmtAmt(_deTxTotal)}) will be reversed.`;
@@ -7048,7 +7048,7 @@ showToast(`${name} added as User`, 'success');
 export async function removeUserRole(index) {
 const user = userRolesList[index];
 if (!user) return;
-const _rMsg = `Remove ${esc(user.name)} from the team?\n\nThey will lose access to their assigned sections. This does not delete any recorded data.`;
+const _rMsg = `Remove ${user.name} from the team?\n\nThey will lose access to their assigned sections. This does not delete any recorded data.`;
 const confirmed = await showGlassConfirm(_rMsg, { title: 'Remove User', confirmText: 'Remove', cancelText: 'Cancel', danger: true });
 if (!confirmed) return;
 userRolesList.splice(index, 1);

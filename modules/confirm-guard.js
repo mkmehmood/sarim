@@ -3,9 +3,13 @@ const _pending = new Set();
 function readDetails(fields) {
   const out = [];
   (fields || []).forEach(([id, label]) => {
-    const el = document.getElementById(id);
-    if (!el || el.closest('.hidden')) return;
-    let v = el.tagName === 'SELECT' ? ((el.options[el.selectedIndex] || {}).text || '') : String(el.value ?? '');
+    let v;
+    if (typeof id === 'function') v = String(id() ?? '');
+    else {
+      const el = document.getElementById(id);
+      if (!el || el.closest('.hidden')) return;
+      v = el.tagName === 'SELECT' ? ((el.options[el.selectedIndex] || {}).text || '') : String(el.value ?? '');
+    }
     v = v.replace(/\s+/g, ' ').trim();
     if (!v) return;
     if (v.length > 44) v = v.slice(0, 43) + '\u2026';
@@ -28,9 +32,9 @@ export async function confirmGuard(key, run, opts = {}) {
   if (opts.late) {
     const ask = async (extra = {}) => {
       const lines = details.concat(extra.lines || []);
-      const parts = lines.slice();
+      const parts = (extra.lead ? [extra.lead] : []).concat(lines, extra.notes || []);
       if (isUpdate) parts.push('The existing record will be replaced.');
-      else if (!lines.length && !extra.warning) parts.push(tail);
+      else if (!lines.length && !extra.warning && !extra.lead) parts.push(tail);
       if (extra.warning) parts.push(`Warning: ${extra.warning}`);
       return window.showGlassConfirm(parts.join('\n'), {
         title: `${verb} ${label}?`,

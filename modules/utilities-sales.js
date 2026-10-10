@@ -3425,12 +3425,11 @@ if (totalItems === 0) {
 histContainer.replaceChildren(Object.assign(document.createElement('p'), {textContent:'No records found for this selection.',style:'text-align:center;color:var(--text-muted);width:100%;font-size:0.85rem'}));
 } else {
 const fragment = document.createDocumentFragment();
-const _appStoresProd = typeof getAppStores === 'function' ? await getAppStores() : [];
 filteredProduction.forEach(item => {
 const isSelected = item.date === selectedDate;
 const highlightClass = isSelected ? 'highlight-card' : '';
 const dateDisplay = isSelected ? `${formatDisplayDateTime(item.date, item.time)} (Selected)` : formatDisplayDateTime(item.date, item.time);
-const storeLabel = getStoreLabel(item.store) || 'Unknown store';
+const storeLabel = getStoreLabel(item.store) || item.store || 'Unknown store';
 const storeBadgeClass = getStoreBadgeClass(item.store);
 let paymentBadge = '';
 let mergedBadge = '';
@@ -3455,7 +3454,6 @@ ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeC
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
-<div class="supply-tag ${storeBadgeClass}">Store: ${esc(storeLabel)}</div>
 <p style="color:${isOutSide ? 'var(--danger)' : 'var(--accent-emerald)'};font-size:0.75rem;font-style:italic;">${isOutSide ? `Stock Transfer Out &rarr; ${esc(peerLabel)}` : `Stock Transfer In &larr; ${esc(peerLabel)}`}</p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
 ${item.transferNote ? `<p><span>Note:</span> <span style="color:var(--text-muted);">${esc(item.transferNote)}</span></p>` : ''}
@@ -3470,7 +3468,6 @@ ${item.isMerged ? '' : paymentBadge}
 ${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>` : ''}
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
-<div class="supply-tag ${storeBadgeClass}">${item.isReturn ? 'Returned to' : 'Produced at'}: ${esc(storeLabel)}</div>
 ${item.isReturn ? `
 <p style="color:var(--accent-emerald);font-size:0.75rem;font-style:italic;">${item.isMerged ? 'Merged returns by' : 'Returned by'} ${esc(item.returnedBy || 'Representative')}</p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(safeValue(item.net))} kg</span></p>
@@ -6292,7 +6289,6 @@ const histContainer = document.getElementById('custHistoryList');
 if (totalItems === 0) {
 histContainer.replaceChildren(Object.assign(document.createElement('p'), {textContent:'No sales found.',style:'text-align:center;color:var(--text-muted);width:100%;font-size:0.85rem'}));
 } else {
-if (typeof getAppStores === 'function') await getAppStores();
 const fragment = document.createDocumentFragment();
 displayData.forEach(async item => {
 const effDate = item.date;
@@ -6382,10 +6378,7 @@ ${supplyDateLine}
 <div class="supply-tag ${supplyTagClass}">Supply: ${supplyTagText}</div>
 <hr>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(item.quantity))} kg</span></p>
-${_unitRate > 0 ? `<p><span>Unit Price:</span> <span class="rev-val">${fmtAmt(_unitRate)} / kg</span></p>` : ''}
 <p><span>Total Value:</span> <span class="rev-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
-${_partialIn > 0 ? `<p><span>Received So Far:</span> <span class="profit-val">${fmtAmt(_partialIn)}</span></p>
-<p><span>Balance Due:</span> <span class="cost-val">${fmtAmt(Math.max(0, safeValue(item.totalValue) - _partialIn))}</span></p>` : ''}
 <p><span>Net Profit:</span> <span class="profit-val">${fmtAmt(safeValue(item.profit))}</span></p>
 ${creditSection}
 ${deleteBtnHtml}

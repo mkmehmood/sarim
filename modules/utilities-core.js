@@ -1097,7 +1097,7 @@ if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 }
 export function updatePaymentStatusVisibility() {
 }
-export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', late: true, fields: [['sys-date', 'Date'], ['gross-wt', 'Gross Weight'], ['cont-wt', 'Container'], ['net-wt', 'Net Weight'], ['formula-units', 'Units']], editKinds: ['prod'] }); }
+export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', late: true, fields: [['storeSelector', 'Store'], ['sys-date', 'Date'], ['gross-wt', 'Gross Weight'], ['cont-wt', 'Container'], ['net-wt', 'Net Weight'], ['formula-units', 'Units']], editKinds: ['prod'] }); }
 async function _recordEntryImpl() {
 const _ed = getEditCtx('prod');
 const db = ensureArray(await sqliteStore.get('production'));
@@ -1131,7 +1131,7 @@ const salePrice = await getSalePriceForStore(store);
 const validation = await validateFormulaAvailability(store, formulaUnits);
 const _unitCredit = (_ed && _ed.original.formulaStore === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;
 if (!validation.sufficient && !(_ed && validation.available + _unitCredit + 1e-9 >= formulaUnits)) {
-window.notifyBlocking(` Insufficient formula units! Available: ${validation.available}, Requested: ${formulaUnits}`, 'warning');
+window.notifyBlocking(`Not enough formula units at ${(typeof window.getStoreLabel === 'function' && window.getStoreLabel(store)) || store}\nAvailable: ${fmtNum(validation.available)} units\nRequested: ${fmtNum(formulaUnits)} units\nShortage: ${fmtNum(Math.max(0, formulaUnits - validation.available))} units`, 'error');
 return;
 }
 if (_ed) {
@@ -1166,7 +1166,7 @@ if (formulaUnits <= 0) {
 window.notifyBlocking('Please enter formula units used.', 'warning');
 return;
 }
-if (!(await window.gcCommit({}))) return;
+if (!(await window.gcCommit({ lead: _ed ? 'Update this production entry?' : 'Save this production entry?', lines: [`Total Cost: ${fmtAmt(net * costData.dynamicCostPerKg)}`, `Net Profit: ${fmtAmt(net * salePrice - net * costData.dynamicCostPerKg)}`] }))) return;
 const totalCost = net * costData.dynamicCostPerKg;
 const totalSale = net * salePrice;
 const profit = totalSale - totalCost;

@@ -56,7 +56,7 @@
 <meta name="description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits.">
 <meta property="og:title" content="Gull and Zubair Naswar Dealers">
 <meta property="og:description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits."><script>
-(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#ffffff":"#000000");try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();
+(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#EEF1F4":"#0F172A");window.__restoreThemeColor=function(){var q=document.querySelector('meta[name="theme-color"]');if(q)q.setAttribute("content",d.getAttribute("data-theme")==="light"?"#ffffff":"#000000")};try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();
 </script><link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/cinzel-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/playfair-display-latin-wght-italic.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/plus-jakarta-sans-latin-wght-normal.woff2">
@@ -85,14 +85,23 @@ html[data-theme="light"]{background:#EEF1F4}
 --sp-g2: rgba(8, 145, 178, 0.14);
 --sp-dot: #F59E0B;
 position: fixed;
+top: 0;
+right: 0;
+bottom: 0;
+left: 0;
 inset: 0;
 overflow: hidden;
+overscroll-behavior: none;
+-webkit-user-select: none;
+user-select: none;
+-webkit-text-size-adjust: 100%;
+text-size-adjust: 100%;
 z-index: 10200;
 display: flex;
 flex-direction: column;
 align-items: center;
 justify-content: center;
-padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 72px;
+padding: calc(env(safe-area-inset-top, 0px) + 24px) max(24px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 72px) max(24px, env(safe-area-inset-left, 0px));
 color: var(--sp-text);
 font-family: var(--sp-ui);
 background: var(--sp-bg);
@@ -114,10 +123,10 @@ transition: opacity 0.55s ease;
 .splash-glow {
 position: absolute;
 left: 50%;
-top: 120px;
-width: 520px;
-height: 520px;
-margin-left: -260px;
+top: 50%;
+width: min(520px, 130vw);
+height: min(520px, 130vw);
+transform: translate(-50%, -64%);
 border-radius: 50%;
 pointer-events: none;
 filter: blur(30px);
@@ -228,7 +237,7 @@ box-shadow: 0 0 0 5px var(--sp-soft);
 }
 .splash-quote {
 position: relative;
-max-width: 320px;
+max-width: min(320px, 86vw);
 font-family: var(--sp-display);
 font-style: italic;
 font-weight: 500;
@@ -271,20 +280,58 @@ background: var(--sp-ink);
 box-shadow: 0 0 0 4px var(--sp-soft);
 animation: splashBlink 1.4s ease-in-out infinite !important;
 }
+@media (min-width: 900px) and (min-height: 760px) {
+#splash-screen .splash-dial { width: 420px; }
+#splash-screen .splash-clock { font-size: 3.7rem; }
+#splash-screen .splash-brand b { font-size: 1.75rem; }
+#splash-screen .splash-quote { max-width: 460px; font-size: 1.3rem; }
+}
+@media (max-height: 780px) {
+#splash-screen .splash-clock { font-size: 2.7rem; }
+#splash-screen .splash-brand { margin-top: 30px; }
+#splash-screen .splash-rule { margin: 18px 0 16px; }
+#splash-screen .splash-dial { width: min(320px, 86vw); }
+#splash-screen .splash-quote { font-size: 1.04rem; }
+}
+@media (max-height: 700px) {
+#splash-screen .splash-clock { font-size: 2.3rem; }
+#splash-screen .splash-brand { margin-top: 18px; }
+#splash-screen .splash-rule { margin: 12px 0; }
+#splash-screen .splash-dial { width: min(280px, 76vw); }
+}
+@media (max-height: 640px) {
+#splash-screen .splash-rule,
+#splash-screen .splash-quote,
+#splash-screen .splash-author { display: none; }
+}
+@media (max-height: 560px) {
+#splash-screen .splash-foot { display: none; }
+}
+@media (max-height: 440px) {
+#splash-screen .splash-brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+#splash-screen { transition: opacity 0.2s ease; }
+#splash-screen .splash-foot i { animation: none !important; }
+}
 @keyframes splashBlink {
 0%, 100% { opacity: 1; }
 50% { opacity: 0.35; }
 }
-#splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
+#splash-screen { transition: opacity 0.55s ease; }
+@media (max-width: 700px) {
 html[data-bio="1"] #splash-screen {
---sp-sheet: clamp(300px, 44vh, 420px);
+--sp-sheet: 380px;
 justify-content: center;
 padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px var(--sp-sheet);
 }
-@supports (height: 100dvh) {
-html[data-bio="1"] #splash-screen { --sp-sheet: clamp(300px, 44dvh, 420px); }
+@media (max-height: 800px) {
+html[data-bio="1"] #splash-screen { --sp-sheet: 340px; }
 }
-html[data-bio="1"] .splash-glow { top: 40px; width: 420px; height: 420px; margin-left: -210px; }
+@media (max-height: 700px) {
+html[data-bio="1"] #splash-screen { --sp-sheet: 300px; }
+}
+html[data-bio="1"] .splash-glow { top: 40px; width: min(420px, 110vw); height: min(420px, 110vw); transform: translateX(-50%); }
 html[data-bio="1"] .splash-dial { width: min(250px, 66vw); }
 html[data-bio="1"] .splash-clock { font-size: 2.35rem; margin-top: 2px; }
 html[data-bio="1"] .splash-clock small { font-size: 0.75rem; }
@@ -304,6 +351,7 @@ html[data-bio="1"] .splash-author { display: none; }
 }
 @media (max-height: 560px) {
 html[data-bio="1"] .splash-brand { display: none; }
+}
 }
 #splash-screen.splash-locked {
   animation: none !important;
@@ -762,15 +810,31 @@ var holdDone=false,hidden=false,revealed=false;
 function tryHide(){
 if(hidden||!holdDone||window.__appLocked)return;
 if(!window.__splashBooted&&!window.__splashForce)return;
+if(document.documentElement.hasAttribute("data-bio")&&!window.__lockResolved&&!window.__splashForce2)return;
 hidden=true;
 el.classList.add("splash-out");
+if(window.__restoreThemeColor)window.__restoreThemeColor();
 setTimeout(function(){if(!window.__appLocked)el.style.display="none"},FADE+30);
 }
 window.__splashTryHide=tryHide;
+function settle(done){
+var last="",stable=0,t0=Date.now();
+function snap(){var cs=getComputedStyle(el);return window.innerWidth+"x"+window.innerHeight+"|"+cs.paddingTop+"|"+cs.paddingBottom+"|"+cs.paddingLeft+"|"+cs.paddingRight}
+function tick(){
+var cur=snap();
+if(cur===last)stable++;else{stable=0;last=cur}
+if(stable>=4||Date.now()-t0>700){done();return}
+requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+}
 function reveal(){
 if(revealed)return;
 revealed=true;
-requestAnimationFrame(function(){
+settle(function(){
+el.style.minHeight=window.innerHeight+"px";
+var w0=window.innerWidth;
+window.addEventListener("resize",function(){if(window.innerWidth!==w0){w0=window.innerWidth;el.style.minHeight=window.innerHeight+"px"}});
 el.classList.add("splash-ready");
 requestAnimationFrame(function(){
 window.__splashPainted=true;
@@ -784,6 +848,7 @@ if(hidden||el.style.display==="none"){clearInterval(timer);return}
 render();
 },30000);
 setTimeout(function(){window.__splashForce=true;tryHide()},MAXW);
+setTimeout(function(){window.__splashForce2=true;tryHide()},MAXW+6000);
 if(document.fonts&&document.fonts.load){
 var fl=Promise.all([document.fonts.load('600 16px "Cinzel"'),document.fonts.load('italic 500 16px "Playfair Display"'),document.fonts.load('700 16px "Plus Jakarta Sans"')]).then(function(){return document.fonts.ready});
 Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,reveal);

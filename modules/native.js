@@ -304,10 +304,15 @@ if (isNative) {
   applyStatusBar();
   new MutationObserver(applyStatusBar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   let nativeSplashHidden = false;
+  const markNativeSplashGone = () => {
+    window.__nativeSplashHidden = true;
+    try { window.dispatchEvent(new Event('sarim:native-splash-hidden')); } catch (_) {}
+  };
   const hideNativeSplash = () => {
-    if (nativeSplashHidden || !SplashScreen) return;
+    if (nativeSplashHidden) return;
     nativeSplashHidden = true;
-    SplashScreen.hide({ fadeOutDuration: 120 }).catch(() => {});
+    if (!SplashScreen) { markNativeSplashGone(); return; }
+    SplashScreen.hide({ fadeOutDuration: 220 }).catch(() => {}).then(() => setTimeout(markNativeSplashGone, 260));
   };
   if (window.__splashPainted) hideNativeSplash();
   else window.addEventListener('sarim:splash-painted', hideNativeSplash, { once: true });

@@ -346,6 +346,20 @@ const ms = (d) => {
   if (t.__timestamp) return Date.parse(t.__timestamp) || 0;
   return Date.parse(t) || 0;
 };
+// Fields of an old support document that the new one is missing or has older (<field>_timestamp).
+export function mergeSupportFields(oldData, curData) {
+  const patch = {}; const o = oldData || {}; const c = curData || {};
+  for (const k of Object.keys(o)) {
+    if (k.endsWith('_timestamp')) continue;
+    const empty = c[k] === undefined || c[k] === null || (Array.isArray(c[k]) && !c[k].length && Array.isArray(o[k]) && o[k].length);
+    const newer = (Number(o[k + '_timestamp']) || 0) > (Number(c[k + '_timestamp']) || 0) && !empty && JSON.stringify(o[k]) !== JSON.stringify(c[k]);
+    if (empty || newer) {
+      patch[k] = o[k];
+      if (o[k + '_timestamp'] !== undefined) patch[k + '_timestamp'] = o[k + '_timestamp'];
+    }
+  }
+  return patch;
+}
 // opts: { apply, deleteOld, now, log }
 export async function migrateCloud(client, opts = {}) {
   const log = opts.log || (() => {});
@@ -356,6 +370,11 @@ export async function migrateCloud(client, opts = {}) {
   const [catNew, catOld] = [await client.get('app_stores/stores'), await client.get('appStores/stores')];
   const catDoc = catNew || catOld;
   const catMoved = !catNew && !!catOld;
+  if (catNew && catOld) {
+    const newKeys = new Set((catNew.data.stores || []).map(x => x && x.key));
+    const lost = (catOld.data.stores || []).filter(x => x && !newKeys.has(x.key) && !newKeys.has(DEFAULT_STORE_MAP[x.key]) && ![...(catNew.data.stores || [])].some(n => n && slugify(n.name) === slugify(x.name)));
+    if (lost.length) opts.log && opts.log(`WARNING: old appStores has store(s) not in app_stores: ${lost.map(x => x.name || x.key).join(', ')}`);
+  }
   const plan = planCatalog(catDoc && catDoc.data.stores);
   report.catalog = { changed: plan.changed, merged: plan.merged, map: plan.map, moved: catMoved };
   const resolve = makeResolver(plan.stores, plan.map);
@@ -397,8 +416,14 @@ export async function migrateCloud(client, opts = {}) {
     report.support.push(r);
     if (!old) continue;
     const cur = await client.get(newPath);
-    if (cur) r.skippedNewer++;
-    else { ops.push({ op: 'set', path: newPath, data: old.data }); r.written++; }
+    if (!cur) { ops.push({ op: 'set', path: newPath, data: old.data }); r.written++; }
+    else {
+      // The new document already exists (e.g. the new app created it): never drop the old data.
+      // Copy every field the new one lacks, and any field whose old timestamp is newer.
+      const patch = mergeSupportFields(old.data, cur.data);
+      if (Object.keys(patch).length) { ops.push({ op: 'update', path: newPath, data: patch }); r.written++; }
+      else r.skippedNewer++;
+    }
     supportCopied.push({ doc: true, oldPath, newPath });
     log(`${oldPath} -> ${newPath}: ${r.written ? 'copy' : 'already there'}`);
   }

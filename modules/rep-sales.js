@@ -67,12 +67,24 @@ await syncBiometricButton();
 export async function checkBiometricLock() {
 const isEnabled = await sqliteStore.get('bio_enabled');
 syncBiometricButton();
-if (!(isEnabled === 'true' || isEnabled === true)) { window.__appLocked = false; if (window.__setBioHint) window.__setBioHint(false); return; }
+const resolved = () => { window.__lockResolved = true; if (typeof window.__splashTryHide === 'function') window.__splashTryHide(); };
+if (!(isEnabled === 'true' || isEnabled === true)) { window.__appLocked = false; if (window.__setBioHint) window.__setBioHint(false); resolved(); return; }
 if (window.__setBioHint) window.__setBioHint(true);
 const splash = document.getElementById('splash-screen');
-if (!splash) return;
+if (!splash) { resolved(); return; }
 window.__appLocked = true;
+window.__lockResolved = true;
 splash.classList.add('splash-locked');
+const isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+const whenSettled = () => new Promise(resolve => {
+const started = Date.now();
+const ready = () => window.__splashPainted && (!isNativeApp || window.__nativeSplashHidden);
+const tick = () => {
+if (ready() || Date.now() - started > 3000) { setTimeout(resolve, 350); return; }
+setTimeout(tick, 60);
+};
+tick();
+});
 let busy = false;
 let failures = 0;
 let retryTimer = null;
@@ -88,10 +100,11 @@ await BiometricAuth.authenticate();
 window.__appLocked = false;
 failures = 0;
 if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-splash.style.transition = 'opacity 0.35s ease';
-splash.style.opacity = '0';
+splash.classList.remove('splash-locked');
+splash.classList.add('splash-out');
 splash.style.pointerEvents = 'none';
-setTimeout(() => { splash.style.display = 'none'; splash.classList.remove('splash-locked'); }, 380);
+if (window.__restoreThemeColor) window.__restoreThemeColor();
+setTimeout(() => { splash.style.display = 'none'; }, 620);
 } catch (e) {
 const errName = e && e.name ? e.name : '';
 failures++;
@@ -110,7 +123,7 @@ document.addEventListener('visibilitychange', () => {
 if (document.visibilityState === 'visible' && window.__appLocked) { failures = 0; scheduleRetry(250); }
 });
 }
-setTimeout(unlock, 150);
+whenSettled().then(unlock);
 }
 function _resetRepForm() {
 ['rep-cust-name', 'rep-quantity', 'rep-amount-collected', 'rep-new-cust-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
