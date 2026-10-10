@@ -831,11 +831,11 @@ throw new Error(`Insufficient "${inventoryItem.name}" in inventory! Available: $
 }
 }
 }
-const _gcStore = getStoreLabel(currentFactoryEntryStore) || currentFactoryEntryStore;
+const _gcFormula = (await getFormulaSlotLabels())[_sfpeType] || 'Formula';
 const _gcLow = materialsUsed.map(m => { const inv = factoryInventoryData.find(i => String(i.id) === String(m.id)); return inv && inv.quantity + 1e-6 < m.quantity ? `${m.name} (${fmtNum(inv.quantity)} kg left)` : null; }).filter(Boolean);
 const _gcExtra = {
 lead: _ed ? 'Update this factory production batch?' : 'Save this factory production batch?',
-lines: [`Store: ${_gcStore}`, `Date: ${localDateStr()}`, `Units Produced: ${fmtNum(units)}`, `Total Cost: ${fmtAmt(totalCost)}`, `Cost Per Unit: ${fmtAmt(units > 0 ? totalCost / units : 0)}`],
+lines: [`Formula: ${_gcFormula}`, `Date: ${localDateStr()}`, `Units Produced: ${fmtNum(units)}`, `Total Cost: ${fmtAmt(totalCost)}`, `Cost Per Unit: ${fmtAmt(units > 0 ? totalCost / units : 0)}`],
 notes: [`\u21A9 Raw materials deducted from inventory:`].concat(materialsUsed.map(m => ` \u2022 ${m.name}: ${fmtNum(m.quantity)} kg used`)),
 confirmText: _ed ? 'Update Production' : 'Save Production'
 };
@@ -951,7 +951,6 @@ if (factoryProductionHistory.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No recent activity' }));
 return;
 }
-await getAppStores();
 const _fhFrag = document.createDocumentFragment();
 const recent = [...factoryProductionHistory].sort((a, b) => {
 const timeA = a.timestamp || new Date(a.date + ' ' + a.time).getTime();
@@ -1021,11 +1020,10 @@ ${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml
 </div>
 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
 ${_mergedBadgeHtml(entry)}
-${entry.store ? `<span class="supply-tag ${window.getStoreBadgeClass ? window.getStoreBadgeClass(entry.store) : 'store-c'}" style="margin-top:0;">Store: ${esc(getStoreLabel(entry.store) || entry.store)}</span>` : ''}
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
 </div>
-<div class="factory-summary-row"><span class="factory-summary-label">Store</span><span class="qty-val">${esc(getStoreLabel(entry.store) || 'Not recorded')}</span></div>
+<div class="factory-summary-row"><span class="factory-summary-label">Formula</span><span class="qty-val">${formulaLabel}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Units Produced</span><span class="qty-val">${entry.units}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Material Cost</span><span class="cost-val">${await formatCurrency(entry.materialsCost || 0)}</span></div>
 ${totalAdditionalCost > 0 ? `<div class="factory-summary-row"><span class="factory-summary-label">Additional Cost</span><span class="cost-val">${await formatCurrency(totalAdditionalCost)}</span></div>` : ''}
@@ -1048,7 +1046,6 @@ const entryIndex = factoryProductionHistory.findIndex(e => e.id === id);
 if (entryIndex === -1) { await refreshFactoryTab(); return; }
 const entry = factoryProductionHistory[entryIndex];
 if (entry.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning'); return; }
-const _feStoreLabel = getStoreLabel(entry.store) || entry.store;
 const _feFormulaKey = entry.formulaType || (typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(entry.store) : entry.store);
 const _feRestore = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
 ? entry.materialsUsed.map(m => ({ id: m.id, name: m.name, quantity: m.quantity }))
@@ -1069,7 +1066,7 @@ return;
 }
 }
 let _feMsg = `Delete this factory production batch permanently?`;
-_feMsg += `\nStore: ${_feStoreLabel}\nDate: ${entry.date}\nUnits Produced: ${entry.units}`;
+_feMsg += `\nFormula: ${entry.formulaName || _feFormulaKey}\nDate: ${entry.date}\nUnits Produced: ${entry.units}`;
 if (entry.totalCost) _feMsg += `\nTotal Cost: ${fmtAmt(entry.totalCost || 0)}`;
 _feMsg += _feMatsDetail ? `\n\n↩ Raw materials restored to inventory:\n${_feMatsDetail}` : `\n\n↩ Raw materials used in this batch will be restored to inventory.`;
 _feMsg += `\n\n Sales already made from this batch will NOT be reversed — but available stock will change.\n\nThis cannot be undone.`;
