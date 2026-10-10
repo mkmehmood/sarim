@@ -2,12 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { DEFAULT_STORES, getDefaultStoreKey, formulaTypeFor } from '../modules/store-keys.js';
 const src = readFileSync(new URL('../modules/formula-store.js', import.meta.url), 'utf8');
-const DEFAULTS = [
-  { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard' },
-  { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard' },
-  { key: 'STORE_C', name: 'ASAAN', formulaType: 'asaan' },
-];
+const DEFAULTS = DEFAULT_STORES.map(x => ({ ...x }));
 function load(initial = {}) {
   const data = new Map(Object.entries(initial));
   const writes = [];
@@ -28,7 +25,7 @@ function load(initial = {}) {
     notifyDataChange: () => {}, triggerAutoSync: () => {},
     _invalidateStoresCache: () => {}, _set_currentFactoryEntryStore: () => {},
     getAppStores: async () => { const s = data.get('app_stores'); return Array.isArray(s) && s.length ? structuredClone(s) : structuredClone(DEFAULTS); },
-    window, document,
+    window, document, getDefaultStoreKey, formulaTypeFor,
   };
   const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function');
   const ctx = vm.createContext({ ...stubs, console, structuredClone, Promise, Number, String, Array, Math, Date, JSON });

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   RECORD_STORES, AUX_STATE, SQLITE_TO_FIRESTORE, FIRESTORE_TO_SQLITE,
   normaliseBackupFields, collectAuxBackupFields, applyAuxBackupFields,
-  mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories,
+  mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories, DATA_KEY_VERSION, LEGACY_SQLITE_KEYS,
 } from '../modules/data-keys.js';
 const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 const sync = read('sync.js');
@@ -95,19 +95,77 @@ describe('cloud sync uses the same keys the app reads', () => {
   });
 });
 describe('backup field normalisation', () => {
-  it('keeps the legacy mfg/sales twins', () => {
-    const d = normaliseBackupFields({ mfg: [1], sales: [2] });
-    assert.deepEqual([d.mfg_pro_pkr, d.noman_history], [[1], [2]]);
+  it('maps every field of a pre-rename backup, where "sales" was the calculator history', () => {
+    const d = normaliseBackupFields({
+      mfg: [1], sales: [2], customerSales: [3], repSales: [4], paymentTransactions: [5], paymentEntities: [6],
+      factoryInventoryData: [7], factoryProductionHistory: [8], stockReturns: [9], expenses: [10],
+      appStores: [{ key: 'STORE_A', name: 'ZUBAIR' }], factoryUnitTracking: { standard: {} },
+    });
+    assert.deepEqual(
+      [d.production, d.calculator_history, d.sales, d.rep_sales, d.transactions, d.entities, d.inventory, d.factory_history, d.returns, d.expenses],
+      [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]
+    );
+    assert.equal(d.app_stores[0].key, 'zubair');
+    assert.deepEqual(d.factory_unit_tracking, { standard: {} });
+    for (const legacy of ['mfg', 'customerSales', 'repSales', 'paymentTransactions', 'paymentEntities', 'factoryInventoryData', 'factoryProductionHistory', 'stockReturns', 'appStores', 'factoryUnitTracking', 'salesHistory']) {
+      assert.ok(!(legacy in d), `${legacy} should be gone`);
+    }
   });
-  it('accepts snake_case spellings from older exports', () => {
-    const d = normaliseBackupFields({ expense_categories: ['Fuel'], factory_formula_store: [{ id: 'a' }], customer_sales: [{ id: 's' }] });
-    assert.deepEqual(d.expenseCategories, ['Fuel']);
-    assert.deepEqual(d.factoryFormulaStore, [{ id: 'a' }]);
-    assert.deepEqual(d.customerSales, [{ id: 's' }]);
+  it('also reads the old local key names and the close-year snapshot names', () => {
+    const d = normaliseBackupFields({ mfg_pro_pkr: [1], noman_history: [2], customer_sales: [3], db: [9], salesHistory: [4], expenseRecords: [5] });
+    assert.deepEqual([d.production, d.calculator_history, d.sales, d.expenses], [[1], [2], [3], [5]]);
+  });
+  it('leaves a stamped backup alone: "sales" means customer sales', () => {
+    const d = normaliseBackupFields({ dataKeyVersion: DATA_KEY_VERSION, sales: [3], calculator_history: [2], production: [1] });
+    assert.deepEqual([d.production, d.calculator_history, d.sales], [[1], [2], [3]]);
+  });
+  it('is idempotent', () => {
+    const once = normaliseBackupFields({ mfg: [1], sales: [2], customerSales: [3] });
+    const twice = normaliseBackupFields(JSON.parse(JSON.stringify(once)));
+    assert.deepEqual(twice, once);
+  });
+  it('accepts the old camelCase / snake_case spellings of aux fields', () => {
+    const d = normaliseBackupFields({ expenseCategories: ['Fuel'], factory_formula_store: [{ id: 'a' }], factoryFormulaSlots: { standard: 'x' } });
+    assert.deepEqual(d.expense_categories, ['Fuel']);
+    assert.deepEqual(d.factory_formula_store, [{ id: 'a' }]);
+    assert.deepEqual(d.factory_formula_slots, { standard: 'x' });
   });
   it('never overwrites a field that is already present', () => {
-    const d = normaliseBackupFields({ expenseCategories: ['A'], expense_categories: ['B'] });
-    assert.deepEqual(d.expenseCategories, ['A']);
+    const d = normaliseBackupFields({ dataKeyVersion: 2, expense_categories: ['A'], expenseCategories: ['B'] });
+    assert.deepEqual(d.expense_categories, ['A']);
+  });
+  it('rewrites legacy store keys inside records and settings', () => {
+    const d = normaliseBackupFields({
+      mfg: [{ id: 1, store: 'STORE_A' }], customerSales: [{ id: 2, supplyStore: 'STORE_B' }], stockReturns: [{ id: 3, returnStore: 'STORE_C' }],
+      factoryProductionHistory: [{ id: 4, store: 'standard' }],
+      settings: { production: { STORE_A: { cost: 1, sale: 2 }, STORE_B: { cost: 3, sale: 4 } } },
+    });
+    assert.equal(d.production[0].store, 'zubair');
+    assert.equal(d.sales[0].supplyStore, 'mahmood');
+    assert.equal(d.returns[0].returnStore, 'asaan');
+    assert.equal(d.factory_history[0].store, 'standard');
+    assert.deepEqual(Object.keys(d.settings.production), ['zubair', 'mahmood']);
+  });
+});
+describe('one canonical name per dataset', () => {
+  it('local key, Firestore collection and backup field are the same string', () => {
+    for (const s of RECORD_STORES) assert.ok(s.sqlite === s.collection && s.collection === s.backup && s.backup === s.key, s.key);
+  });
+  it('no old name survives in the app code', () => {
+    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'link-graph.js', 'link-guards.js', 'business.js', 'formula-store.js', 'prod-photos.js'];
+    const legacy = Object.keys(LEGACY_SQLITE_KEYS);
+    for (const f of files) {
+      const src = read(f);
+      for (const k of legacy) {
+        const hits = src.split('\n').filter(l => new RegExp(`\\b${k}\\b`).test(l) && !/^\s*(\/\/|\*)/.test(l));
+        assert.deepEqual(hits, [], `${f} still mentions ${k}`);
+      }
+    }
+  });
+  it('every backup writer stamps dataKeyVersion', () => {
+    assert.ok(fnBody(sales, 'unifiedBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
+    assert.ok(fnBody(payments, 'triggerLocalBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
+    assert.ok(admin.slice(admin.indexOf('const backupData = {')).slice(0, 400).includes('dataKeyVersion: DATA_KEY_VERSION'));
   });
 });
 describe('aux state round trip: backup -> restore into a fresh device', () => {

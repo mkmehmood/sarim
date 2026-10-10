@@ -14,19 +14,19 @@ describe('recovered-id remapping', () => {
   });
   it('re-points every reference to a recovered record and reports only changed records', () => {
     const stores = {
-      customer_sales: [{ id: 'p1', relatedSaleId: 'old' }, { id: 'p2', relatedSaleId: 'other' }],
-      noman_history: [{ id: 'h1', linkedSalesIds: ['x', 'old'], transferSaleId: 'old' }],
-      payment_transactions: [{ id: 't1', expenseId: 'old' }],
+      sales: [{ id: 'p1', relatedSaleId: 'old' }, { id: 'p2', relatedSaleId: 'other' }],
+      calculator_history: [{ id: 'h1', linkedSalesIds: ['x', 'old'], transferSaleId: 'old' }],
+      transactions: [{ id: 't1', expenseId: 'old' }],
       rep_sales: [],
     };
     const changed = remapReferences(stores, 'old', 'new');
-    assert.equal(stores.customer_sales[0].relatedSaleId, 'new');
-    assert.equal(stores.customer_sales[1].relatedSaleId, 'other');
-    assert.deepEqual(stores.noman_history[0].linkedSalesIds, ['x', 'new']);
-    assert.equal(stores.noman_history[0].transferSaleId, 'new');
-    assert.equal(stores.payment_transactions[0].expenseId, 'new');
-    assert.deepEqual(Object.keys(changed).sort(), ['customer_sales', 'noman_history', 'payment_transactions']);
-    assert.equal(changed.customer_sales.length, 1);
+    assert.equal(stores.sales[0].relatedSaleId, 'new');
+    assert.equal(stores.sales[1].relatedSaleId, 'other');
+    assert.deepEqual(stores.calculator_history[0].linkedSalesIds, ['x', 'new']);
+    assert.equal(stores.calculator_history[0].transferSaleId, 'new');
+    assert.equal(stores.transactions[0].expenseId, 'new');
+    assert.deepEqual(Object.keys(changed).sort(), ['calculator_history', 'sales', 'transactions']);
+    assert.equal(changed.sales.length, 1);
   });
   it('re-points a recovered child at its already-recovered parent', () => {
     const snap = { id: 'c', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'oldParent' };
@@ -117,11 +117,11 @@ describe('payment <-> expense cascade', () => {
 });
 describe('entity restore keeps payments attached', () => {
   it('re-points payments at a recovered entity and at a recovered expense', () => {
-    const stores = { payment_transactions: [{ id: 't1', entityId: 'oldEnt', expenseId: 'oldExp' }] };
+    const stores = { transactions: [{ id: 't1', entityId: 'oldEnt', expenseId: 'oldExp' }] };
     remapReferences(stores, 'oldEnt', 'newEnt');
     remapReferences(stores, 'oldExp', 'newExp');
-    assert.equal(stores.payment_transactions[0].entityId, 'newEnt');
-    assert.equal(stores.payment_transactions[0].expenseId, 'newExp');
+    assert.equal(stores.transactions[0].entityId, 'newEnt');
+    assert.equal(stores.transactions[0].expenseId, 'newExp');
   });
   it('re-points a recovered payment snapshot at an entity recovered earlier', () => {
     const snap = { id: 't1', entityId: 'oldEnt', expenseId: 'oldExp' };
@@ -141,16 +141,16 @@ describe('entity restore keeps payments attached', () => {
 describe('more id references', () => {
   it('re-points materials -> supplier and payments -> material', () => {
     const stores = {
-      factory_inventory_data: [{ id: 'm1', supplierId: 'oldS' }, { id: 'm2', supplierId: 'other' }],
-      payment_transactions: [{ id: 't', materialId: 'oldM', materialIds: ['oldM', 'z'], entityId: 'oldS' }],
+      inventory: [{ id: 'm1', supplierId: 'oldS' }, { id: 'm2', supplierId: 'other' }],
+      transactions: [{ id: 't', materialId: 'oldM', materialIds: ['oldM', 'z'], entityId: 'oldS' }],
     };
     remapReferences(stores, 'oldS', 'newS');
     remapReferences(stores, 'oldM', 'newM');
-    assert.equal(stores.factory_inventory_data[0].supplierId, 'newS');
-    assert.equal(stores.factory_inventory_data[1].supplierId, 'other');
-    assert.equal(stores.payment_transactions[0].entityId, 'newS');
-    assert.equal(stores.payment_transactions[0].materialId, 'newM');
-    assert.deepEqual(stores.payment_transactions[0].materialIds, ['newM', 'z']);
+    assert.equal(stores.inventory[0].supplierId, 'newS');
+    assert.equal(stores.inventory[1].supplierId, 'other');
+    assert.equal(stores.transactions[0].entityId, 'newS');
+    assert.equal(stores.transactions[0].materialId, 'newM');
+    assert.deepEqual(stores.transactions[0].materialIds, ['newM', 'z']);
   });
   it('re-points factory batches and formulas at a recovered material', () => {
     const hist = [{ id: 'h', materialsUsed: [{ id: 'oldM', quantity: 2 }] }, { id: 'h2', materialsUsed: [{ id: 'x' }] }];
@@ -239,7 +239,7 @@ describe('transfer halves recover together even without a deletion group', () =>
 });
 describe('production returns are a pair', () => {
   const entry = { id: 'e', store: 'A', date: '2026-01-05', net: 12, createdAt: 111, returnedBy: 'Ali' };
-  it('finds the stock_returns log that belongs to the entry', () => {
+  it('finds the returns log that belongs to the entry', () => {
     const logs = [
       { id: 'l1', store: 'A', date: '2026-01-05', quantity: 12, createdAt: 999, seller: 'Bilal' },
       { id: 'l2', store: 'A', date: '2026-01-05', quantity: 12, createdAt: 111, seller: 'Ali' },
@@ -321,7 +321,7 @@ describe('new production card always shows the selected formula, freshly', () =>
     { id: 'F2', name: 'Basic', additionalCost: 0, ingredients: [{ id: 'fl', name: 'Flour', quantity: 1 }] },
   ];
   it('reads the formula from the formula store, with live names, costs and stock', () => {
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores: [], inventory: inv, feed: { standard: [{ id: 'old', name: 'Stale', quantity: 9 }] } }, 'STORE_A');
+    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores: [], inventory: inv, feed: { standard: [{ id: 'old', name: 'Stale', quantity: 9 }] } }, 'zubair');
     assert.equal(r.source, 'store');
     assert.equal(r.name, 'Premium');
     assert.equal(r.additionalCost, 7);
@@ -331,25 +331,25 @@ describe('new production card always shows the selected formula, freshly', () =>
     assert.equal(r.ingredients[1].stock, 3);
   });
   it("uses the store's own selected formula before the slot's formula", () => {
-    const stores = [{ key: 'STORE_A', formulaType: 'standard', formulaId: 'F2' }];
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores, inventory: inv }, 'STORE_A');
+    const stores = [{ key: 'zubair', formulaType: 'standard', formulaId: 'F2' }];
+    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores, inventory: inv }, 'zubair');
     assert.equal(r.name, 'Basic');
   });
   it('picks up an edited formula immediately (no stale copy kept anywhere)', () => {
-    const before = resolveSelectedFormula({ list, slots: { standard: 'F2' }, inventory: inv }, 'STORE_A');
+    const before = resolveSelectedFormula({ list, slots: { standard: 'F2' }, inventory: inv }, 'zubair');
     const edited = list.map(f => f.id === 'F2' ? { ...f, ingredients: [{ id: 'fl', name: 'Flour', quantity: 6 }] } : f);
-    const after = resolveSelectedFormula({ list: edited, slots: { standard: 'F2' }, inventory: inv }, 'STORE_A');
+    const after = resolveSelectedFormula({ list: edited, slots: { standard: 'F2' }, inventory: inv }, 'zubair');
     assert.equal(before.ingredients[0].quantity, 1);
     assert.equal(after.ingredients[0].quantity, 6);
   });
   it('falls back to the derived feed only when the formula no longer exists', () => {
-    const r = resolveSelectedFormula({ list: [], slots: { standard: 'F1' }, inventory: inv, feed: { standard: [{ id: 'fl', name: 'Flour', quantity: 2 }] }, costs: { standard: 4 } }, 'STORE_A');
+    const r = resolveSelectedFormula({ list: [], slots: { standard: 'F1' }, inventory: inv, feed: { standard: [{ id: 'fl', name: 'Flour', quantity: 2 }] }, costs: { standard: 4 } }, 'zubair');
     assert.equal(r.source, 'feed');
     assert.equal(r.additionalCost, 4);
     assert.equal(r.ingredients.length, 1);
   });
   it('maps the asaan slot and slot-key inputs correctly', () => {
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1', asaan: 'F2' }, inventory: inv }, 'STORE_C');
+    const r = resolveSelectedFormula({ list, slots: { standard: 'F1', asaan: 'F2' }, inventory: inv }, 'asaan');
     assert.equal(r.type, 'asaan'); assert.equal(r.name, 'Basic');
     assert.equal(resolveSelectedFormula({ list, slots: { asaan: 'F2' }, inventory: inv }, 'asaan').name, 'Basic');
   });

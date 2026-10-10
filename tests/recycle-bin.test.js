@@ -85,9 +85,9 @@ async function recoverRecord(deletedId, collectionName, { sqliteStore, OfflineQu
   if (!deletedId || !collectionName) return false;
   try {
     const sqliteKeyMap = {
-      sales: 'customer_sales', transactions: 'payment_transactions',
-      rep_sales: 'rep_sales', expenses: 'expenses', production: 'mfg_pro_pkr',
-      returns: 'stock_returns',
+      sales: 'sales', transactions: 'transactions',
+      rep_sales: 'rep_sales', expenses: 'expenses', production: 'production',
+      returns: 'returns',
     };
     const sqliteKey = sqliteKeyMap[collectionName] || collectionName;
     let recoveredData = null;
@@ -244,7 +244,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.equal(restored.length, 1);
       const r = restored[0];
       assert.equal(r.deletedAt,        undefined);
@@ -260,7 +260,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.equal(restored[0].originalId, undefined);
     });
     it('restored record gets a fresh UUID prefixed with "recovered"', async () => {
@@ -268,7 +268,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.ok(restored[0].id.startsWith('recovered-'), `id should start with "recovered-", got: ${restored[0].id}`);
       assert.notEqual(restored[0].id, id);
     });
@@ -277,7 +277,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.ok(validateUUID(restored[0].id), `expected valid UUID, got: ${restored[0].id}`);
     });
     it('restored record has recoveredAt set', async () => {
@@ -286,7 +286,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.ok(restored[0].recoveredAt >= before);
     });
     it('restored record has updatedAt refreshed', async () => {
@@ -295,7 +295,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.ok(restored[0].updatedAt >= before);
     });
     it('preserves original business data from snapshot', async () => {
@@ -303,7 +303,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const restored = await sqliteStore.get('customer_sales', []);
+      const restored = await sqliteStore.get('sales', []);
       assert.equal(restored[0].customerName, 'Test Customer');
       assert.equal(restored[0].totalValue, 5000);
     });
@@ -314,27 +314,27 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const inSales = await sqliteStore.get('customer_sales', []);
+      const inSales = await sqliteStore.get('sales', []);
       assert.equal(inSales.length, 1);
     });
     it('appends to existing records in SQLite rather than replacing all', async () => {
       const id = generateUUID('test');
       const existing = { id: generateUUID('existing'), customerName: 'Pre-existing', totalValue: 1000 };
-      await sqliteStore.set('customer_sales', [existing]);
+      await sqliteStore.set('sales', [existing]);
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const all = await sqliteStore.get('customer_sales', []);
+      const all = await sqliteStore.get('sales', []);
       assert.equal(all.length, 2);
     });
     it('does not duplicate if old id already in SQLite array', async () => {
       const id = generateUUID('test');
       const stale = { id, customerName: 'Stale', totalValue: 0 };
-      await sqliteStore.set('customer_sales', [stale]);
+      await sqliteStore.set('sales', [stale]);
       await sqliteStore.set('deletion_records', [makeTombstone(id)]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'sales', { sqliteStore, OfflineQueue });
-      const all = await sqliteStore.get('customer_sales', []);
+      const all = await sqliteStore.get('sales', []);
       const byOldId = all.filter(r => r.id === id);
       assert.equal(byOldId.length, 0);
     });
@@ -392,7 +392,7 @@ describe('recoverRecord', () => {
     });
   });
   describe('collection key mapping', () => {
-    it('maps "transactions" collection to payment_transactions sqlite key', async () => {
+    it('maps "transactions" collection to transactions sqlite key', async () => {
       const id = generateUUID('test');
       const tombstone = makeTombstone(id);
       tombstone.collection = 'transactions';
@@ -400,10 +400,10 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [tombstone]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'transactions', { sqliteStore, OfflineQueue });
-      const txns = await sqliteStore.get('payment_transactions', []);
+      const txns = await sqliteStore.get('transactions', []);
       assert.equal(txns.length, 1);
     });
-    it('maps "production" collection to mfg_pro_pkr sqlite key', async () => {
+    it('maps "production" collection to production sqlite key', async () => {
       const id = generateUUID('test');
       const tombstone = makeTombstone(id);
       tombstone.collection = 'production';
@@ -411,7 +411,7 @@ describe('recoverRecord', () => {
       await sqliteStore.set('deletion_records', [tombstone]);
       deletedRecordIds.add(id);
       await recoverRecord(id, 'production', { sqliteStore, OfflineQueue });
-      const prod = await sqliteStore.get('mfg_pro_pkr', []);
+      const prod = await sqliteStore.get('production', []);
       assert.equal(prod.length, 1);
     });
   });

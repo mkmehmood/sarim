@@ -940,7 +940,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <p class="settings-group-label">Existing Stores</p>
     <div id="store-list-container"></div>
     <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
-      <strong style="color:var(--warning);">Note:</strong> Store keys (STORE_A, STORE_B, etc.) are permanent and link to all historical records.
+      <strong style="color:var(--warning);">Note:</strong> A store's key is generated from its name when the store is created (ZUBAIR becomes <code>zubair</code>). It is permanent and links to all historical records, so renaming a store later is safe.
       Renaming a store updates its display name everywhere. Deleting is only allowed if the store has no production records.
       Changes sync to all connected devices automatically.
     </div>
@@ -2124,11 +2124,11 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <div class="field u-mb-15" >
 <label>Supply</label>
 <div class="toggle-group" id="supply-store-toggles">
-<button class="toggle-opt active" onclick="selectSupplyStore(this,'STORE_A')">ZUBAIR</button>
-<button class="toggle-opt" onclick="selectSupplyStore(this,'STORE_B')">MAHMOOD</button>
-<button class="toggle-opt" onclick="selectSupplyStore(this,'STORE_C')">ASAAN</button>
+<button class="toggle-opt active" onclick="selectSupplyStore(this,'zubair')">ZUBAIR</button>
+<button class="toggle-opt" onclick="selectSupplyStore(this,'mahmood')">MAHMOOD</button>
+<button class="toggle-opt" onclick="selectSupplyStore(this,'asaan')">ASAAN</button>
 </div>
-<input type="hidden" id="supply-store-value" value="STORE_A">
+<input type="hidden" id="supply-store-value" value="zubair">
 </div>
 <div class="field u-mb-15" >
 <label>Payment:</label>
@@ -2272,8 +2272,8 @@ No records found
 <div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
 <label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group" style="margin-top: 8px;">
-<button id="ret-store-a" class="toggle-opt" onclick="selectReturnStore('STORE_A', this)">ZUBAIR</button>
-<button id="ret-store-b" class="toggle-opt" onclick="selectReturnStore('STORE_B', this)">MAHMOOD</button>
+<button id="ret-store-a" class="toggle-opt" onclick="selectReturnStore('zubair', this)">ZUBAIR</button>
+<button id="ret-store-b" class="toggle-opt" onclick="selectReturnStore('mahmood', this)">MAHMOOD</button>
 </div>
 <div class="u-field-hint" >
 * This will increase the store's stock level without creating a new production record.
@@ -3140,7 +3140,7 @@ async function renderStoreList() {
   if (!container) return;
   let productionData = [];
   try {
-    productionData = (typeof sqliteStore !== 'undefined') ? (await sqliteStore.get('mfg_pro_pkr') || []) : [];
+    productionData = (typeof sqliteStore !== 'undefined') ? (await sqliteStore.get('production') || []) : [];
   } catch(e) {}
   const usedKeys = new Set(productionData.map(r => r.store).filter(Boolean));
   if (!stores.length) {
@@ -3151,7 +3151,7 @@ async function renderStoreList() {
   const fTypeColor = { standard: 'var(--accent)', asaan: 'var(--accent-purple,#a78bfa)' };
   container.innerHTML = stores.map((s, i) => {
     const isUsed = usedKeys.has(s.key);
-    const isBuiltin = ['STORE_A','STORE_B','STORE_C'].includes(s.key);
+    const isBuiltin = typeof window.isBuiltinStoreKey === 'function' ? window.isBuiltinStoreKey(s.key) : false;
     return `
     <div class="settings-list-item" style="flex-direction:column;align-items:stretch;gap:0;padding:12px 14px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -3248,14 +3248,8 @@ async function saveStoreFromForm() {
     s.formulaId = formulaId;
     s.salePrice = isNaN(salePriceRaw) ? (s.salePrice > 0 ? s.salePrice : 0) : salePrice;
   } else {
-    const existingNums = stores.map(s => {
-      const m = s.key.match(/^STORE_([A-Z])$/);
-      if (m) return m[1].charCodeAt(0) - 65;
-      return -1;
-    }).filter(n => n >= 0);
-    const nextNum = existingNums.length ? Math.max(...existingNums) + 1 : 0;
-    if (nextNum > 25) { if (typeof showToast === 'function') showToast('Maximum 26 stores allowed', 'warning'); return; }
-    const newKey = 'STORE_' + String.fromCharCode(65 + nextNum);
+    // The key is derived from the name once and never changes afterwards (renaming keeps it).
+    const newKey = window.makeStoreKey(nameRaw, stores.map(function(st) { return st.key; }));
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
     stores.push({ key: newKey, name: nameRaw, formulaType: 'standard', formulaId, salePrice });

@@ -1,25 +1,25 @@
 export const GROUP_FIELD = '_deletionGroup';
+import { formulaTypeFor } from './store-keys.js';
 export const REF_FIELDS = {
-  customer_sales:       { scalar: ['relatedSaleId'], array: [] },
+  sales:       { scalar: ['relatedSaleId'], array: [] },
   rep_sales:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
-  noman_history:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
-  payment_transactions: { scalar: ['expenseId', 'entityId', 'transferPeerEntityId', 'materialId'], array: ['materialIds'] },
-  factory_inventory_data: { scalar: ['supplierId'], array: [] },
+  calculator_history:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
+  transactions: { scalar: ['expenseId', 'entityId', 'transferPeerEntityId', 'materialId'], array: ['materialIds'] },
+  inventory: { scalar: ['supplierId'], array: [] },
 };
 export const COLLECTION_TO_KEY = {
-  sales: 'customer_sales',
+  sales: 'sales',
   rep_sales: 'rep_sales',
-  calculator_history: 'noman_history',
-  transactions: 'payment_transactions',
-  payment_transactions: 'payment_transactions',
+  calculator_history: 'calculator_history',
+  transactions: 'transactions',
   expenses: 'expenses',
-  production: 'mfg_pro_pkr',
-  returns: 'stock_returns',
+  production: 'production',
+  returns: 'returns',
   sales_customers: 'sales_customers',
   rep_customers: 'rep_customers',
-  entities: 'payment_entities',
-  inventory: 'factory_inventory_data',
-  factory_history: 'factory_production_history',
+  entities: 'entities',
+  inventory: 'inventory',
+  factory_history: 'factory_history',
 };
 const _n = (v) => Number(v) || 0;
 const _r2 = (v) => Math.round((_n(v) + Number.EPSILON) * 100) / 100;
@@ -310,7 +310,7 @@ export function resolveSelectedFormula(data, storeKey) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
   const slots = data.slots || {};
   const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === storeKey);
-  const type = _SLOTS.includes(storeKey) ? storeKey : ((st && st.formulaType) || (storeKey === 'STORE_C' ? 'asaan' : 'standard'));
+  const type = _SLOTS.includes(storeKey) ? storeKey : ((st && st.formulaType) || formulaTypeFor(storeKey));
   const formulaId = (st && st.formulaId) || slots[type] || null;
   const f = formulaId ? list.find(x => String(x.id) === String(formulaId)) : null;
   const inv = (Array.isArray(data.inventory) ? data.inventory : []).filter(i => i && !i.deletedAt);
@@ -375,7 +375,7 @@ export function findParentTombstones(tomb, allTombs, live) {
   const out = [];
   // An expense and its payment transaction are ONE logical entry: bringing back either brings back the other.
   if (col === 'expenses') {
-    all.forEach(t => { if (t && ['transactions', 'payment_transactions'].includes(_tcol(t)) && t.snapshot && t.snapshot.expenseId && String(t.snapshot.expenseId) === _tid(tomb)) out.push(t); });
+    all.forEach(t => { if (t && ['transactions'].includes(_tcol(t)) && t.snapshot && t.snapshot.expenseId && String(t.snapshot.expenseId) === _tid(tomb)) out.push(t); });
   }
   const byId = (id, cols) => all.find(t => t && _tid(t) === String(id) && cols.includes(_tcol(t)));
   const need = (id, cols) => { if (id && !liveIds.has(String(id))) { const p = byId(id, cols); if (p) out.push(p); } };

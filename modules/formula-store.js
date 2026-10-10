@@ -5,6 +5,7 @@ import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 import { confirmGuard } from './confirm-guard.js';
+import { formulaTypeFor, getDefaultStoreKey } from './store-keys.js';
 const STORE_KEY = 'factory_formula_store';
 const STORE_TS_KEY = 'factory_formula_store_timestamp';
 const SLOTS_KEY = 'factory_formula_slots';
@@ -24,10 +25,10 @@ export async function getFormulaSlots() {
   return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
 }
 export async function getSelectedFormula(storeKey) {
-  const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'app_stores', 'factory_default_formulas', 'factory_additional_costs', 'factory_inventory_data']);
+  const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'app_stores', 'factory_default_formulas', 'factory_additional_costs', 'inventory']);
   return resolveSelectedFormula({
     list: ensureArray(b.get(STORE_KEY)), slots: b.get(SLOTS_KEY) || {}, stores: ensureArray(b.get('app_stores')),
-    feed: b.get('factory_default_formulas') || {}, costs: b.get('factory_additional_costs') || {}, inventory: ensureArray(b.get('factory_inventory_data')),
+    feed: b.get('factory_default_formulas') || {}, costs: b.get('factory_additional_costs') || {}, inventory: ensureArray(b.get('inventory')),
   }, storeKey);
 }
 export async function getFormulaSlotLabels() {
@@ -52,7 +53,7 @@ export async function getStoreFormulaNames() {
 }
 function _slotOfStore(key, typeMap) {
   if (key === 'standard' || key === 'asaan') return key;
-  return typeMap[key] || (key === 'STORE_C' ? 'asaan' : 'standard');
+  return typeMap[key] || formulaTypeFor(key);
 }
 function _feedWrites(list, slots, base, now) {
   const formulas = { standard: [], asaan: [], ...(base.get('factory_default_formulas') || {}) };
@@ -156,7 +157,7 @@ export async function renderFormulaStoreList() {
     box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
-  const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  const inventory = ensureArray(await sqliteStore.get('inventory'));
   box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId || slotsNow[s.formulaType || 'standard']) === String(f.id)).map((s) => s.name))).join('');
 }
 export async function openFormulaStore() {
@@ -286,7 +287,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   return div;
 }
 async function _fillEditor(entry) {
-  const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  const inventory = ensureArray(await sqliteStore.get('inventory'));
   const container = _el('fsEditContainer');
   if (!container) return;
   container.replaceChildren();
@@ -357,7 +358,7 @@ export async function addFormulaIngredientRow() {
   const container = _el('fsEditContainer');
   if (!container) return;
   _bindEditor();
-  const inventory = ensureArray(await sqliteStore.get('factory_inventory_data'));
+  const inventory = ensureArray(await sqliteStore.get('inventory'));
   const row = _createRow(container, '', '', null, '', inventory);
   row.scrollIntoView({ block: 'center', behavior: 'smooth' });
   const inp = row.querySelector('.factory-mat-search-input');
@@ -486,7 +487,7 @@ export async function refreshFormulaDependentUI() {
   SLOT_KEYS.forEach((k) => { shown[k] = slots[k] ? labels[k] : 'No formula'; });
   window._formulaSlotLabels = labels;
   window._formulaSlotView = { labels: shown, entryOrder, availOrder };
-  let activeSlot = _slotOfStore(window.currentFactoryEntryStore || 'STORE_A', typeMap);
+  let activeSlot = _slotOfStore(window.currentFactoryEntryStore || getDefaultStoreKey(), typeMap);
   if (!entryOrder.includes(activeSlot)) activeSlot = entryOrder[0];
   const rep = stores.find((s) => (s.formulaType || 'standard') === activeSlot);
   if (rep && typeMap[window.currentFactoryEntryStore] !== activeSlot) _set_currentFactoryEntryStore(rep.key);

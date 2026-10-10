@@ -10,6 +10,7 @@ import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTra
 import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, notifyBlocking } from './dialog.js';
+import { getDefaultStoreKey } from './store-keys.js';
 export { showGlassConfirm, showGlassAlert, showChoiceDialog, notifyBlocking };
 export function selectCustomer(name) {
 const input = document.getElementById('cust-name');
@@ -26,7 +27,7 @@ calculateCustomerStatsForDisplay(name);
 }
 window._selectCustomerBase = selectCustomer;
 export async function calculateCustomerStatsForDisplay(name) {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
@@ -56,14 +57,14 @@ updateCollectionPreview();
 export async function renderCustomersTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _rctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
-const customerSales = ensureArray(await sqliteStore.get('customer_sales')).filter(_rctAlive);
+const customerSales = ensureArray(await sqliteStore.get('sales')).filter(_rctAlive);
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers')).filter(_rctAlive);
 const tbody = document.getElementById('customers-table-body');
 if (!tbody) {
 return;
 }
 try {
-const freshSales = await sqliteStore.get('customer_sales', []);
+const freshSales = await sqliteStore.get('sales', []);
 if (Array.isArray(freshSales) && freshSales.length > 0) {
 customerSales.length = 0;
 freshSales.forEach(s => customerSales.push(s));
@@ -194,7 +195,7 @@ if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer
 currentManagingCustomer = null;
 setTimeout(async () => {
 try {
-await sqliteStore.get('customer_sales', []);
+await sqliteStore.get('sales', []);
 await sqliteStore.get('sales_customers', []);
 } catch(e) {
 showToast('Customer data operation failed.', 'error');
@@ -204,7 +205,7 @@ if (typeof renderCustomersTable === 'function') renderCustomersTable();
 }, 100);
 }
 export async function deleteCurrentCustomer() {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 if (!currentManagingCustomer) return;
 const name = currentManagingCustomer;
@@ -241,7 +242,7 @@ const idsToDelete = new Set(txsToDelete.map(t => t.id));
 let prunedSales = customerSales.filter(s => !idsToDelete.has(s.id));
 for (const tx of txsToDelete) {
 prunedSales = prunedSales.filter(s => s.id !== tx.id);
-await unifiedDelete('customer_sales', prunedSales, tx.id, { strict: true }, stampGroup(tx, _custGroup));
+await unifiedDelete('sales', prunedSales, tx.id, { strict: true }, stampGroup(tx, _custGroup));
 }
 notifyDataChange('sales');
 triggerAutoSync();
@@ -253,14 +254,14 @@ window.notifyBlocking('Failed to delete customer. Please try again.', 'error');
 }
 export async function renderCustomerTransactions(name) {
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const list = document.getElementById('customerManagementHistoryList');
 if (!list) return;
 let transactions = [];
 try {
-const dbSales = await sqliteStore.get('customer_sales', []);
+const dbSales = await sqliteStore.get('sales', []);
 if (Array.isArray(dbSales)) {
 const recordMap = new Map(dbSales.map(s => [s.id, s]));
 if (Array.isArray(customerSales)) {
@@ -396,7 +397,7 @@ const deleteBtnHtml = t.isMerged ? '' : `${editBtnHtml}<button class="btn btn-sm
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;
 const kebabBtn = t.isMerged
-  ? `<button class="txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','customer_sales','sale')">⋮</button>`
+  ? `<button class="txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','sales','sale')">⋮</button>`
   : '';
 const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
 let itemContent = '';
@@ -432,7 +433,7 @@ itemContent = `
 } else {
 const _displayUnitPrice = lockedUnitPrice(t) > 0
   ? lockedUnitPrice(t)
-  : await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || 'STORE_A');
+  : await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey());
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
@@ -457,7 +458,7 @@ _custFrag.appendChild(item);
 list.replaceChildren(_custFrag);
 }
 export async function toggleSingleTransactionStatus(id) {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const record = customerSales.find(s => s.id === id);
 if (record?.isMerged) {
 window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning');
@@ -472,7 +473,7 @@ if (idx !== -1) {
 applySettlement(customerSales[idx], planCreditToggle(customerSales[idx], localDateStr(), new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })));
 customerSales[idx].updatedAt = getTimestamp();
 customerSales[idx] = ensureRecordIntegrity(customerSales[idx], true);
-await unifiedSave('customer_sales', customerSales, customerSales[idx]);
+await unifiedSave('sales', customerSales, customerSales[idx]);
 notifyDataChange('sales');
 triggerAutoSync();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
@@ -481,7 +482,7 @@ refreshAllCalculations();
 }
 } catch (e) {
 customerSales.length = 0; customerSales.push(...snapshot);
-await sqliteStore.set('customer_sales', customerSales).catch(() => {});
+await sqliteStore.set('sales', customerSales).catch(() => {});
 showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
@@ -515,8 +516,8 @@ showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
 export async function deleteTransactionFromOverlay(id) {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 if (!id || !validateUUID(id)) {
 window.notifyBlocking('Invalid transaction ID', 'error');
 return;
@@ -582,7 +583,7 @@ const item = customerSales.find(s => s.id === id);
 if (!item) { renderCustomerTransactions(currentManagingCustomer); return; }
 await detachChildPayment('customer', item, customerSales);
 const customerSalesFiltered = customerSales.filter(s => s.id !== id);
-await unifiedDelete('customer_sales', customerSalesFiltered, id, { strict: true }, item);
+await unifiedDelete('sales', customerSalesFiltered, id, { strict: true }, item);
 refreshAllCalculations();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
@@ -763,7 +764,7 @@ if (typeof window._onShowGlassConfirmReady === 'function') {
 window._onShowGlassConfirmReady();
 }
 export async function filterCustomers() {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 renderCustomersTable();
 }
@@ -792,7 +793,7 @@ nameInput.oninput = null;
 if (nameLabel) nameLabel.textContent = 'Customer Name';
 if (nameHint) nameHint.textContent = 'Editing the name will update all records for this customer';
 }
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
@@ -831,7 +832,7 @@ if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer
 }
 export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['edit-cust-name', 'Name'], ['edit-cust-phone', 'Phone'], ['edit-cust-address', 'Address'], ['edit-cust-old-debit', 'Old Debit'], ['edit-cust-custom-price', 'Custom Price']], isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
 async function _saveCustomerDetailsRaw() {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const nameInput = document.getElementById('edit-cust-name');
 const name = nameInput.value.trim();
@@ -844,7 +845,7 @@ if (!name) { window.notifyBlocking('Customer name is required', 'error'); return
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
 if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning'); return; }
 if (oldDebit > 0) {
-const _pcSales = ensureArray(await sqliteStore.get('customer_sales'));
+const _pcSales = ensureArray(await sqliteStore.get('sales'));
 const _pcTx = _pcSales.find(s => s && s.transactionType === 'OLD_DEBT' && s.customerName && (s.customerName === name || s.customerName.toLowerCase() === originalName.toLowerCase()));
 if (_pcTx && _pcTx.totalValue !== oldDebit) {
 const _pcChk = await getOldDebtChangeIssue(_pcTx, oldDebit);
@@ -875,7 +876,7 @@ salesCustomers.push(contact);
 }
 await unifiedSave('sales_customers', salesCustomers, contact);
 notifyDataChange('sales');
-let salesArray = await sqliteStore.get('customer_sales', []);
+let salesArray = await sqliteStore.get('sales', []);
 if (!Array.isArray(salesArray)) salesArray = [];
 if (Array.isArray(customerSales) && customerSales.length > 0) {
 const mSales = new Map(salesArray.map(s => [s.id, s]));
@@ -939,12 +940,12 @@ if (nameChanged || oldDebtModified || phoneUpdated) {
 if (deletedOldDebtId) {
 const _deletedRecord = window._oldDebtRecordForDeletion || null;
 window._oldDebtRecordForDeletion = null;
-await unifiedDelete('customer_sales', salesArray, deletedOldDebtId, { strict: true }, _deletedRecord);
+await unifiedDelete('sales', salesArray, deletedOldDebtId, { strict: true }, _deletedRecord);
 } else {
-await unifiedSave('customer_sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
+await unifiedSave('sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
 }
 if (nameChanged && renamedRecords.length > 0) {
-await unifiedSave('customer_sales', salesArray, null, renamedRecords.map(r => r.id));
+await unifiedSave('sales', salesArray, null, renamedRecords.map(r => r.id));
 }
 }
 const message = nameChanged ? `Customer renamed to "${name}" and details updated`

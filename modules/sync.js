@@ -25,32 +25,32 @@ if (collectionEntry) {
 return result;
 }
 export const SQLiteToFirestoreMap = {
-'mfg_pro_pkr': { collection: 'production', varName: 'db' },
-'customer_sales': { collection: 'sales', varName: 'customerSales' },
-'noman_history': { collection: 'calculator_history', varName: 'salesHistory' },
+'production': { collection: 'production', varName: 'db' },
+'sales': { collection: 'sales', varName: 'customerSales' },
+'calculator_history': { collection: 'calculator_history', varName: 'salesHistory' },
 'rep_sales': { collection: 'rep_sales', varName: 'repSales' },
 'rep_customers': { collection: 'rep_customers', varName: 'repCustomers' },
 'sales_customers': { collection: 'sales_customers', varName: 'salesCustomers' },
-'payment_transactions': { collection: 'transactions', varName: 'paymentTransactions' },
-'payment_entities': { collection: 'entities', varName: 'paymentEntities' },
-'factory_inventory_data': { collection: 'inventory', varName: 'factoryInventoryData' },
-'factory_production_history': { collection: 'factory_history', varName: 'factoryProductionHistory' },
+'transactions': { collection: 'transactions', varName: 'paymentTransactions' },
+'entities': { collection: 'entities', varName: 'paymentEntities' },
+'inventory': { collection: 'inventory', varName: 'factoryInventoryData' },
+'factory_history': { collection: 'factory_history', varName: 'factoryProductionHistory' },
 'expenses': { collection: 'expenses', varName: 'expenseRecords' },
-'stock_returns': { collection: 'returns', varName: 'stockReturns' }
+'returns': { collection: 'returns', varName: 'stockReturns' }
 };
 export const FirestoreToSQLiteMap = {
-'production': 'mfg_pro_pkr',
-'sales': 'customer_sales',
-'calculator_history': 'noman_history',
+'production': 'production',
+'sales': 'sales',
+'calculator_history': 'calculator_history',
 'rep_sales': 'rep_sales',
 'rep_customers': 'rep_customers',
 'sales_customers': 'sales_customers',
-'transactions': 'payment_transactions',
-'entities': 'payment_entities',
-'inventory': 'factory_inventory_data',
-'factory_history': 'factory_production_history',
+'transactions': 'transactions',
+'entities': 'entities',
+'inventory': 'inventory',
+'factory_history': 'factory_history',
 'expenses': 'expenses',
-'returns': 'stock_returns'
+'returns': 'returns'
 };
 export function getFirestoreCollection(sqliteKey) {
 return SQLiteToFirestoreMap[sqliteKey]?.collection || sqliteKey;
@@ -245,9 +245,9 @@ triggerAutoSync();
 return true;
 }
 const _DELETE_LABELS = {
-  rep_sales: 'Sale', customer_sales: 'Sale', payment_transactions: 'Payment', expenses: 'Expense',
-  mfg_pro_pkr: 'Production entry', payment_entities: 'Entity', sales_customers: 'Customer', rep_customers: 'Customer',
-  factory_inventory_data: 'Raw material', factory_production_history: 'Factory entry', stock_returns: 'Return', noman_history: 'Calculation'
+  rep_sales: 'Sale', sales: 'Sale', transactions: 'Payment', expenses: 'Expense',
+  production: 'Production entry', entities: 'Entity', sales_customers: 'Customer', rep_customers: 'Customer',
+  inventory: 'Raw material', factory_history: 'Factory entry', returns: 'Return', calculator_history: 'Calculation'
 };
 function _notifyDeletion(key, r) {
   try {
@@ -1084,13 +1084,13 @@ window._syncQueue = _syncQueue;
 export const SYNC_COLLECTIONS = [
   {
     firestoreId:  'production',
-    sqliteKey:       'mfg_pro_pkr',
+    sqliteKey:       'production',
     tabSyncFn:    'syncProductionTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'sales',
-    sqliteKey:       'customer_sales',
+    sqliteKey:       'sales',
     tabSyncFn:    'syncSalesTab',
     lockOnClose:  true,
   },
@@ -1114,31 +1114,31 @@ export const SYNC_COLLECTIONS = [
   },
   {
     firestoreId:  'transactions',
-    sqliteKey:       'payment_transactions',
+    sqliteKey:       'transactions',
     tabSyncFn:    'syncPaymentsTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'entities',
-    sqliteKey:       'payment_entities',
+    sqliteKey:       'entities',
     tabSyncFn:    'refreshPaymentTab',
     lockOnClose:  false,
   },
   {
     firestoreId:  'inventory',
-    sqliteKey:       'factory_inventory_data',
+    sqliteKey:       'inventory',
     tabSyncFn:    'syncFactoryTab',
     lockOnClose:  false,
   },
   {
     firestoreId:  'factory_history',
-    sqliteKey:       'factory_production_history',
+    sqliteKey:       'factory_history',
     tabSyncFn:    'syncFactoryTab',
     lockOnClose:  true,
   },
   {
     firestoreId:  'returns',
-    sqliteKey:       'stock_returns',
+    sqliteKey:       'returns',
     tabSyncFn:    'syncProductionTab',
     lockOnClose:  true,
   },
@@ -1150,7 +1150,7 @@ export const SYNC_COLLECTIONS = [
   },
   {
     firestoreId:  'calculator_history',
-    sqliteKey:       'noman_history',
+    sqliteKey:       'calculator_history',
     tabSyncFn:    'syncCalculatorTab',
     lockOnClose:  true,
   },
@@ -1456,10 +1456,10 @@ export async function subscribeToRealtime() {
     try {
       const userRef = firebaseDB.collection('users').doc(currentUser.uid);
       const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
-        sqliteStore.get('mfg_pro_pkr',[]), sqliteStore.get('customer_sales',[]),
-        sqliteStore.get('rep_sales',[]), sqliteStore.get('noman_history',[]),
-        sqliteStore.get('payment_transactions',[]), sqliteStore.get('factory_production_history',[]),
-        sqliteStore.get('expenses',[]), sqliteStore.get('stock_returns',[]),
+        sqliteStore.get('production',[]), sqliteStore.get('sales',[]),
+        sqliteStore.get('rep_sales',[]), sqliteStore.get('calculator_history',[]),
+        sqliteStore.get('transactions',[]), sqliteStore.get('factory_history',[]),
+        sqliteStore.get('expenses',[]), sqliteStore.get('returns',[]),
       ]);
       const yearCloseCollections = [
         { name: 'production',         data: ensureArray(_db),   filter: d => !d.isMerged },
@@ -1525,17 +1525,17 @@ export async function subscribeToRealtime() {
       showToast('Retrying restore cloud sync...', 'info', 3000);
       const _restoreUserRef = firebaseDB.collection('users').doc(currentUser.uid);
       const _restoreKeys = [
-        'mfg_pro_pkr', 'customer_sales', 'noman_history', 'rep_sales',
-        'rep_customers', 'sales_customers', 'factory_inventory_data',
-        'factory_production_history', 'stock_returns', 'payment_transactions',
-        'payment_entities', 'expenses',
+        'production', 'sales', 'calculator_history', 'rep_sales',
+        'rep_customers', 'sales_customers', 'inventory',
+        'factory_history', 'returns', 'transactions',
+        'entities', 'expenses',
       ];
       const _restoreColMap = {
-        mfg_pro_pkr: 'production', customer_sales: 'sales', noman_history: 'calculator_history',
+        production: 'production', sales: 'sales', calculator_history: 'calculator_history',
         rep_sales: 'rep_sales', rep_customers: 'rep_customers', sales_customers: 'sales_customers',
-        factory_inventory_data: 'inventory', factory_production_history: 'factory_history',
-        stock_returns: 'returns', payment_transactions: 'transactions',
-        payment_entities: 'entities', expenses: 'expenses',
+        inventory: 'inventory', factory_history: 'factory_history',
+        returns: 'returns', transactions: 'transactions',
+        entities: 'entities', expenses: 'expenses',
       };
       let _restoreAllOk = true;
       for (const sqlKey of _restoreKeys) {
@@ -1952,17 +1952,17 @@ export async function subscribeToRealtime() {
                 const rt = docData.recordType;
                 const rid = docData.recordId;
                 const _filterOut = (key) => sqliteStore.get(key, []).then(arr => sqliteStore.set(key, ensureArray(arr).filter(i => i.id !== rid)));
-                if (rt === 'production' && rid)                                    await _filterOut('mfg_pro_pkr');
-                else if ((rt === 'sale' || rt === 'sales') && rid)                 await _filterOut('customer_sales');
+                if (rt === 'production' && rid)                                    await _filterOut('production');
+                else if ((rt === 'sale' || rt === 'sales') && rid)                 await _filterOut('sales');
                 else if ((rt === 'expenses' || rt === 'expense') && rid)           await _filterOut('expenses');
-                else if ((rt === 'transactions' || rt === 'transaction') && rid)   await _filterOut('payment_transactions');
+                else if ((rt === 'transactions' || rt === 'transaction') && rid)   await _filterOut('transactions');
                 else if ((rt === 'rep_sales' || rt === 'rep_sale') && rid)         await _filterOut('rep_sales');
                 else if (rt === 'rep_customers' && rid)                            await _filterOut('rep_customers');
-                else if (rt === 'inventory' && rid)                                await _filterOut('factory_inventory_data');
-                else if (rt === 'factory_history' && rid)                          await _filterOut('factory_production_history');
-                else if (rt === 'returns' && rid)                                  await _filterOut('stock_returns');
-                else if (rt === 'calculator_history' && rid)                       await _filterOut('noman_history');
-                else if (rt === 'entities' && rid)                                 await _filterOut('payment_entities');
+                else if (rt === 'inventory' && rid)                                await _filterOut('inventory');
+                else if (rt === 'factory_history' && rid)                          await _filterOut('factory_history');
+                else if (rt === 'returns' && rid)                                  await _filterOut('returns');
+                else if (rt === 'calculator_history' && rid)                       await _filterOut('calculator_history');
+                else if (rt === 'entities' && rid)                                 await _filterOut('entities');
               } catch (collectionError) { console.warn('Failed to apply deletion to collection', _safeErr(collectionError)); }
               hasChanges = true;
             } else if (change.type === 'removed') {
@@ -2082,10 +2082,10 @@ export async function subscribeToRealtime() {
         if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry && OfflineQueue.cancelRetry();
         try {
           const _wipeKeys = [
-            'mfg_pro_pkr', 'customer_sales', 'noman_history', 'rep_sales',
-            'rep_customers', 'sales_customers', 'payment_transactions',
-            'payment_entities', 'factory_inventory_data', 'factory_production_history',
-            'stock_returns', 'expenses', 'deleted_records', 'deletion_records',
+            'production', 'sales', 'calculator_history', 'rep_sales',
+            'rep_customers', 'sales_customers', 'transactions',
+            'entities', 'inventory', 'factory_history',
+            'returns', 'expenses', 'deleted_records', 'deletion_records',
           ];
           await sqliteStore.setBatch(_wipeKeys.map(k => [k, []]));
         } catch (_wipeErr) {
@@ -2454,10 +2454,10 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
 export async function _detectUserType(userRef) {
   const hasInitialized = await sqliteStore.get('firestore_initialized');
   const sqliteArrays = await Promise.all([
-    sqliteStore.get('mfg_pro_pkr', []), sqliteStore.get('customer_sales', []), sqliteStore.get('rep_sales', []),
-    sqliteStore.get('noman_history', []), sqliteStore.get('payment_transactions', []), sqliteStore.get('payment_entities', []),
-    sqliteStore.get('factory_inventory_data', []), sqliteStore.get('factory_production_history', []),
-    sqliteStore.get('stock_returns', []), sqliteStore.get('rep_customers', []), sqliteStore.get('expenses', []),
+    sqliteStore.get('production', []), sqliteStore.get('sales', []), sqliteStore.get('rep_sales', []),
+    sqliteStore.get('calculator_history', []), sqliteStore.get('transactions', []), sqliteStore.get('entities', []),
+    sqliteStore.get('inventory', []), sqliteStore.get('factory_history', []),
+    sqliteStore.get('returns', []), sqliteStore.get('rep_customers', []), sqliteStore.get('expenses', []),
   ]);
   const totalLocal = sqliteArrays.reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0);
   if (hasInitialized && totalLocal > 0) return 'returning';
@@ -2544,23 +2544,23 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     appStores: appStoresSnap,
     personPhotosSnap,
     data: {
-      mfg_pro_pkr:              extract(productionSnap),
-      customer_sales:           extract(salesSnap),
-      noman_history:            extract(calcHistorySnap),
+      production:              extract(productionSnap),
+      sales:           extract(salesSnap),
+      calculator_history:            extract(calcHistorySnap),
       rep_sales:                extract(repSalesSnap),
       rep_customers:            extract(repCustomersSnap),
       sales_customers:          extract(salesCustomersSnap),
-      payment_transactions:     extract(transactionsSnap),
-      payment_entities:         extract(entitiesSnap),
-      factory_inventory_data:   extract(inventorySnap),
-      factory_production_history: extract(factoryHistorySnap),
-      stock_returns:            extract(returnsSnap),
+      transactions:     extract(transactionsSnap),
+      entities:         extract(entitiesSnap),
+      inventory:   extract(inventorySnap),
+      factory_history: extract(factoryHistorySnap),
+      returns:            extract(returnsSnap),
       expenses:                 extract(expensesSnap),
     },
   };
 }
 const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
-const _REMOTE_TX_KEYS = ['rep_sales', 'customer_sales', 'payment_transactions', 'expenses'];
+const _REMOTE_TX_KEYS = ['rep_sales', 'sales', 'transactions', 'expenses'];
 function _describeRemoteTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const created = Number(r.createdAt || r.timestamp || 0);
@@ -2572,8 +2572,8 @@ function _describeRemoteTx(key, r) {
   }
   const who = r.createdBy;
   if (!who) return null;
-  if (key === 'customer_sales') return { title: 'New sale', body: `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
-  if (key === 'payment_transactions') {
+  if (key === 'sales') return { title: 'New sale', body: `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
+  if (key === 'transactions') {
     if (r.isExpense) return null;
     return { title: 'New payment', body: `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
   }
@@ -2597,13 +2597,13 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   items.slice(0, 5).forEach(_pushTxNotification);
   if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
 }
-const _LOCAL_TX_KEYS = new Set(['rep_sales', 'customer_sales', 'payment_transactions', 'expenses', 'mfg_pro_pkr']);
+const _LOCAL_TX_KEYS = new Set(['rep_sales', 'sales', 'transactions', 'expenses', 'production']);
 function _describeLocalTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const who = r.customerName || 'customer';
   if (key === 'rep_sales') return r.isCollection ? { title: 'Collection', body: `Collected ${fmtAmt(r.totalValue)} from ${who}` } : { title: 'Sale', body: `Sold to ${who} — ${fmtAmt(r.totalValue)}` };
-  if (key === 'customer_sales') return { title: 'Sale', body: `${who} — ${fmtAmt(r.totalValue)}` };
-  if (key === 'payment_transactions') {
+  if (key === 'sales') return { title: 'Sale', body: `${who} — ${fmtAmt(r.totalValue)}` };
+  if (key === 'transactions') {
     if (r.isExpense) return null;
     if (r.isTransfer) return r.type === 'OUT' ? { title: 'Transfer', body: `${r.entityName || 'entity'} → ${r.transferPeerEntityName || 'entity'} — ${fmtAmt(r.amount)}` } : null;
     return { title: 'Payment', body: `${r.type === 'IN' ? 'Received from' : 'Paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
@@ -2732,21 +2732,21 @@ export async function _mergeAndPersist(cloudData) {
   }
   const { data } = cloudData;
   const _localKeys = [
-  'mfg_pro_pkr','customer_sales','noman_history','rep_sales','rep_customers',
-  'sales_customers','payment_transactions','payment_entities',
-  'factory_inventory_data','factory_production_history','stock_returns','expenses',
+  'production','sales','calculator_history','rep_sales','rep_customers',
+  'sales_customers','transactions','entities',
+  'inventory','factory_history','returns','expenses',
   ];
   const _localBatch = await sqliteStore.getBatch(_localKeys);
   const _deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
   const _notDeleted = item => !_deletedArr.includes(item.id);
   const _yearCloseCollectionKeys = [
-    ['mfg_pro_pkr',                'mfg_pro_pkr'],
-    ['customer_sales',             'customer_sales'],
-    ['noman_history',              'noman_history'],
+    ['production',                'production'],
+    ['sales',             'sales'],
+    ['calculator_history',              'calculator_history'],
     ['rep_sales',                  'rep_sales'],
-    ['payment_transactions',       'payment_transactions'],
-    ['factory_production_history', 'factory_production_history'],
-    ['stock_returns',              'stock_returns'],
+    ['transactions',       'transactions'],
+    ['factory_history', 'factory_history'],
+    ['returns',              'returns'],
     ['expenses',                   'expenses'],
   ];
   const _applyYearCloseCompaction = (localArr, cloudArr) => {
@@ -2787,17 +2787,17 @@ export async function _mergeAndPersist(cloudData) {
       col
     ).filter(_notDeleted);
   const _merged = {
-  mfg_pro_pkr:                _m('mfg_pro_pkr',                'production',       'mfg_pro_pkr'),
-  customer_sales:             _m('customer_sales',             'sales',             'customer_sales'),
-  noman_history:              _m('noman_history',              'calculator_history','noman_history'),
+  production:                _m('production',                'production',       'production'),
+  sales:             _m('sales',             'sales',             'sales'),
+  calculator_history:              _m('calculator_history',              'calculator_history','calculator_history'),
   rep_sales:                  _m('rep_sales',                  'rep_sales',         'rep_sales'),
   rep_customers:              _m('rep_customers',              'rep_customers',     'rep_customers'),
   sales_customers:            _m('sales_customers',            'sales_customers',   'sales_customers'),
-  payment_transactions:       _m('payment_transactions',       'transactions',      'payment_transactions'),
-  payment_entities:           _m('payment_entities',           'entities',          'payment_entities'),
-  factory_inventory_data:     _m('factory_inventory_data',     'inventory',         'factory_inventory_data'),
-  factory_production_history: _m('factory_production_history', 'factory_history',   'factory_production_history'),
-  stock_returns:              _m('stock_returns',              'returns',           'stock_returns'),
+  transactions:       _m('transactions',       'transactions',      'transactions'),
+  entities:           _m('entities',           'entities',          'entities'),
+  inventory:     _m('inventory',     'inventory',         'inventory'),
+  factory_history: _m('factory_history', 'factory_history',   'factory_history'),
+  returns:              _m('returns',              'returns',           'returns'),
   expenses:                   _m('expenses',                   'expenses',          'expenses'),
   };
   const _mark = (col, arr) => {
@@ -2811,22 +2811,22 @@ export async function _mergeAndPersist(cloudData) {
   }
   });
   };
-  _mark('production', data.mfg_pro_pkr);       _mark('sales', data.customer_sales);
-  _mark('calculator_history', data.noman_history); _mark('rep_sales', data.rep_sales);
+  _mark('production', data.production);       _mark('sales', data.sales);
+  _mark('calculator_history', data.calculator_history); _mark('rep_sales', data.rep_sales);
   _mark('rep_customers', data.rep_customers);   _mark('sales_customers', data.sales_customers);
-  _mark('transactions', data.payment_transactions); _mark('entities', data.payment_entities);
-  _mark('inventory', data.factory_inventory_data); _mark('factory_history', data.factory_production_history);
-  _mark('returns', data.stock_returns);         _mark('expenses', data.expenses);
+  _mark('transactions', data.transactions); _mark('entities', data.entities);
+  _mark('inventory', data.inventory); _mark('factory_history', data.factory_history);
+  _mark('returns', data.returns);         _mark('expenses', data.expenses);
   await sqliteStore.setBatch([
   ...Object.entries(_merged).map(([k, v]) => [k, v]),
   ['last_synced', new Date().toISOString()],
   ]);
   try { notifyAdminOfRemoteTransactions(_localBatch, _merged); } catch (_) {}
   const _colMap = {
-  production: data.mfg_pro_pkr, sales: data.customer_sales,
-  calculator_history: data.noman_history, transactions: data.payment_transactions,
-  entities: data.payment_entities, inventory: data.factory_inventory_data,
-  factory_history: data.factory_production_history, returns: data.stock_returns,
+  production: data.production, sales: data.sales,
+  calculator_history: data.calculator_history, transactions: data.transactions,
+  entities: data.entities, inventory: data.inventory,
+  factory_history: data.factory_history, returns: data.returns,
   expenses: data.expenses, rep_sales: data.rep_sales,
   rep_customers: data.rep_customers, sales_customers: data.sales_customers,
   };
@@ -2998,24 +2998,24 @@ export async function _syncSettings(cloudData) {
 export async function _uploadChanges(userRef) {
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
   const _keys = [
-  'mfg_pro_pkr','customer_sales','rep_sales','rep_customers','sales_customers',
-  'noman_history','factory_inventory_data','factory_production_history',
-  'payment_entities','payment_transactions','expenses','stock_returns',
+  'production','sales','rep_sales','rep_customers','sales_customers',
+  'calculator_history','inventory','factory_history',
+  'entities','transactions','expenses','returns',
   ];
   const _batch = await sqliteStore.getBatch(_keys);
   const collections = {
-  production:         ensureArray(_batch.get('mfg_pro_pkr')).filter(isRealRecord),
-  sales:              ensureArray(_batch.get('customer_sales')).filter(isRealRecord),
+  production:         ensureArray(_batch.get('production')).filter(isRealRecord),
+  sales:              ensureArray(_batch.get('sales')).filter(isRealRecord),
   rep_sales:          ensureArray(_batch.get('rep_sales')).filter(isRealRecord),
   rep_customers:      ensureArray(_batch.get('rep_customers')).filter(isRealRecord),
   sales_customers:    ensureArray(_batch.get('sales_customers')).filter(isRealRecord),
-  calculator_history: ensureArray(_batch.get('noman_history')).filter(isRealRecord),
-  inventory:          ensureArray(_batch.get('factory_inventory_data')).filter(isRealRecord),
-  factory_history:    ensureArray(_batch.get('factory_production_history')).filter(isRealRecord),
-  entities:           ensureArray(_batch.get('payment_entities')).filter(isRealRecord),
-  transactions:       ensureArray(_batch.get('payment_transactions')).filter(isRealRecord),
+  calculator_history: ensureArray(_batch.get('calculator_history')).filter(isRealRecord),
+  inventory:          ensureArray(_batch.get('inventory')).filter(isRealRecord),
+  factory_history:    ensureArray(_batch.get('factory_history')).filter(isRealRecord),
+  entities:           ensureArray(_batch.get('entities')).filter(isRealRecord),
+  transactions:       ensureArray(_batch.get('transactions')).filter(isRealRecord),
   expenses:           ensureArray(_batch.get('expenses')).filter(isRealRecord),
-  returns:            ensureArray(_batch.get('stock_returns')).filter(isRealRecord),
+  returns:            ensureArray(_batch.get('returns')).filter(isRealRecord),
   };
   const batches = [];
   let currentBatch = firebaseDB.batch();

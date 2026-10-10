@@ -17,14 +17,14 @@ const { keepLocal, fillFromCloud } = new Function(
   `${grab('_keepLocalSalePrices')}\n${grab('_fillStoresFromCloud')}\nreturn { keepLocal: _keepLocalSalePrices, fillFromCloud: _fillStoresFromCloud };`
 )();
 const cloud = [
-  { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard', formulaId: 'f1', salePrice: 520 },
-  { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard', formulaId: 'f1', salePrice: 515 },
-  { key: 'STORE_C', name: 'ASAAN', formulaType: 'asaan', formulaId: 'f2', salePrice: 610 },
+  { key: 'zubair', name: 'ZUBAIR', formulaType: 'standard', formulaId: 'f1', salePrice: 520 },
+  { key: 'mahmood', name: 'MAHMOOD', formulaType: 'standard', formulaId: 'f1', salePrice: 515 },
+  { key: 'asaan', name: 'ASAAN', formulaType: 'asaan', formulaId: 'f2', salePrice: 610 },
 ];
 const defaults = [
-  { key: 'STORE_A', name: 'ZUBAIR', formulaType: 'standard' },
-  { key: 'STORE_B', name: 'MAHMOOD', formulaType: 'standard' },
-  { key: 'STORE_C', name: 'ASAAN', formulaType: 'asaan' },
+  { key: 'zubair', name: 'ZUBAIR', formulaType: 'standard' },
+  { key: 'mahmood', name: 'MAHMOOD', formulaType: 'standard' },
+  { key: 'asaan', name: 'ASAAN', formulaType: 'asaan' },
 ];
 describe('store sync never replaces real cloud data with defaults', () => {
   it('first upload from a device holding default stores keeps cloud prices and formulas', () => {
@@ -42,14 +42,14 @@ describe('store sync never replaces real cloud data with defaults', () => {
     assert.equal(stores[2].salePrice, 610);
   });
   it('does not override a real local price', () => {
-    const local = [{ key: 'STORE_A', salePrice: 999, formulaId: 'x' }];
+    const local = [{ key: 'zubair', salePrice: 999, formulaId: 'x' }];
     const { stores } = fillFromCloud(local, cloud);
     assert.equal(stores[0].salePrice, 999);
     assert.equal(stores[0].formulaId, 'x');
   });
   it('stores that exist only in the cloud are kept', () => {
     const { stores } = fillFromCloud([defaults[0]], cloud);
-    assert.deepEqual(stores.map(s => s.key), ['STORE_A', 'STORE_B', 'STORE_C']);
+    assert.deepEqual(stores.map(s => s.key), ['zubair', 'mahmood', 'asaan']);
   });
   it('cloud download keeps local price/formula when the cloud copy lacks them', () => {
     const out = keepLocal(defaults, cloud);
@@ -57,7 +57,7 @@ describe('store sync never replaces real cloud data with defaults', () => {
     assert.equal(out[2].formulaId, 'f2');
   });
   it('cloud download still wins when it has real values', () => {
-    const out = keepLocal(cloud, [{ key: 'STORE_A', salePrice: 1, formulaId: 'old' }]);
+    const out = keepLocal(cloud, [{ key: 'zubair', salePrice: 1, formulaId: 'old' }]);
     assert.equal(out[0].salePrice, 520);
     assert.equal(out[0].formulaId, 'f1');
   });

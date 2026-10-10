@@ -35,35 +35,35 @@ describe('recovered ids: every link follows, only changed rows sync', () => {
 
   it('recovered entity: payments, transfer peers and supplier materials follow it to the new id', async () => {
     seed({
-      payment_transactions: [
+      transactions: [
         { id: 't1', entityId: 'E_old' },
         { id: 't2', entityId: 'other', transferPeerEntityId: 'E_old' },
         { id: 't3', entityId: 'other' },
       ],
-      factory_inventory_data: [{ id: 'm1', supplierId: 'E_old' }],
+      inventory: [{ id: 'm1', supplierId: 'E_old' }],
     });
     await G.applyRecoveryLinks('entities', 'E_old', 'E_new', { id: 'E_new', name: 'Sup' });
-    const tx = await get('payment_transactions');
+    const tx = await get('transactions');
     assert.equal(tx[0].entityId, 'E_new');
     assert.equal(tx[1].transferPeerEntityId, 'E_new');
     assert.equal(tx[2].entityId, 'other');
-    assert.equal((await get('factory_inventory_data'))[0].supplierId, 'E_new');
+    assert.equal((await get('inventory'))[0].supplierId, 'E_new');
     assert.equal((await get('recovered_id_map')).E_old, 'E_new');
-    const s = saves.find(x => x.key === 'payment_transactions');
+    const s = saves.find(x => x.key === 'transactions');
     assert.deepEqual(s.ids.sort(), ['t1', 't2']);
   });
 
   it('recovered material: the payments that settled it and the batches/formulas that use it follow', async () => {
     seed({
-      payment_transactions: [{ id: 'p', materialId: 'M_old', materialIds: ['M_old', 'z'] }],
-      factory_production_history: [{ id: 'h', materialsUsed: [{ id: 'M_old', quantity: 2 }] }],
+      transactions: [{ id: 'p', materialId: 'M_old', materialIds: ['M_old', 'z'] }],
+      factory_history: [{ id: 'h', materialsUsed: [{ id: 'M_old', quantity: 2 }] }],
       factory_default_formulas: { standard: [{ id: 'M_old', quantity: 1 }] },
     });
     await G.applyRecoveryLinks('inventory', 'M_old', 'M_new', { id: 'M_new' });
-    const p = (await get('payment_transactions'))[0];
+    const p = (await get('transactions'))[0];
     assert.equal(p.materialId, 'M_new');
     assert.deepEqual(p.materialIds, ['M_new', 'z']);
-    assert.equal((await get('factory_production_history'))[0].materialsUsed[0].id, 'M_new');
+    assert.equal((await get('factory_history'))[0].materialsUsed[0].id, 'M_new');
     assert.equal((await get('factory_default_formulas')).standard[0].id, 'M_new');
   });
 });
@@ -73,17 +73,17 @@ describe('payments need their entity', () => {
   const snap = { id: 'P', type: 'IN', amount: 5, entityId: 'E', entityName: 'Ali' };
 
   it('blocked when the entity is gone, allowed when live, when mapped, or when it comes back in the same set', async () => {
-    seed({ payment_entities: [] });
+    seed({ entities: [] });
     assert.match(await G.getRecoverLinkBlockReason('transactions', snap), /"Ali"/);
     assert.equal(await G.getRecoverLinkBlockReason('transactions', snap, { entityInSet: (id) => id === 'E' }), null);
-    seed({ payment_entities: [{ id: 'E' }] });
+    seed({ entities: [{ id: 'E' }] });
     assert.equal(await G.getRecoverLinkBlockReason('transactions', snap), null);
-    seed({ payment_entities: [{ id: 'E_new' }], recovered_id_map: { E: 'E_new' } });
+    seed({ entities: [{ id: 'E_new' }], recovered_id_map: { E: 'E_new' } });
     assert.equal(await G.getRecoverLinkBlockReason('transactions', snap), null);
   });
 
   it('a transfer needs both of its entities', async () => {
-    seed({ payment_entities: [{ id: 'A' }] });
+    seed({ entities: [{ id: 'A' }] });
     const t = { id: 'T', type: 'OUT', amount: 1, isTransfer: true, entityId: 'A', transferPeerEntityId: 'B', transferPeerEntityName: 'Bilal' };
     assert.match(await G.getRecoverLinkBlockReason('transactions', t), /"Bilal"/);
   });
@@ -94,11 +94,11 @@ describe('a partial payment is never added to its parent twice', () => {
   const child = { id: 'C_new', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'S', totalValue: 400 };
 
   it('skips the re-attach when the parent came back with the amount already in it, adds it otherwise', async () => {
-    seed({ customer_sales: [{ id: 'S', paymentType: 'CREDIT', totalValue: 1000, partialPaymentReceived: 400 }] });
+    seed({ sales: [{ id: 'S', paymentType: 'CREDIT', totalValue: 1000, partialPaymentReceived: 400 }] });
     await G.applyRecoveryLinks('sales', 'C_old', 'C_new', child, { skipReattach: true });
-    assert.equal((await get('customer_sales'))[0].partialPaymentReceived, 400);
+    assert.equal((await get('sales'))[0].partialPaymentReceived, 400);
     await G.applyRecoveryLinks('sales', 'C_old2', 'C_new2', { ...child, id: 'C_new2' }, {});
-    assert.equal((await get('customer_sales'))[0].partialPaymentReceived, 800, 'a payment deleted on its own IS added back');
+    assert.equal((await get('sales'))[0].partialPaymentReceived, 800, 'a payment deleted on its own IS added back');
   });
 });
 
@@ -112,7 +112,7 @@ describe('snapshots never keep links to things that no longer exist', () => {
   });
 
   it('material: refreshes the supplier name, or comes back unlinked with nothing owed', async () => {
-    seed({ payment_entities: [{ id: 'E', name: 'Fresh Name' }] });
+    seed({ entities: [{ id: 'E', name: 'Fresh Name' }] });
     assert.equal((await G.resolveSnapshotLinks('inventory', { id: 'm', supplierId: 'E', supplierName: 'Stale' })).supplierName, 'Fresh Name');
     const orphan = await G.resolveSnapshotLinks('inventory', { id: 'm2', supplierId: 'NOPE', supplierName: 'x', totalPayable: 9 });
     assert.equal(orphan.supplierId, undefined);
@@ -126,18 +126,18 @@ describe('factory batch restore', () => {
   const batch = { id: 'F', store: 's', units: 2, materialsUsed: [{ id: 'i1', name: 'Chora', quantity: 6 }] };
 
   it('blocked when the stock is gone, otherwise takes the materials out again', async () => {
-    seed({ factory_inventory_data: [{ id: 'i1', name: 'Chora', quantity: 4, cost: 10 }], factory_default_formulas: {} });
+    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 4, cost: 10 }], factory_default_formulas: {} });
     assert.match(await G.getRecoverLinkBlockReason('factory_history', batch), /Not enough Chora/);
-    seed({ factory_inventory_data: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
+    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
     assert.equal(await G.getRecoverLinkBlockReason('factory_history', batch), null);
     await G.applyRecoveryLinks('factory_history', 'F_old', 'F', batch);
-    const item = (await get('factory_inventory_data'))[0];
+    const item = (await get('inventory'))[0];
     assert.equal(item.quantity, 4);
     assert.equal(item.totalValue, 40);
   });
 
   it('two batches in one recovery cannot both use the same stock', async () => {
-    seed({ factory_inventory_data: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
+    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
     const ctx = { inv: null };
     assert.equal(await G.getRecoverLinkBlockReason('factory_history', batch, ctx), null);
     assert.match(await G.getRecoverLinkBlockReason('factory_history', { ...batch, id: 'F2' }, ctx), /Not enough Chora/);
@@ -149,28 +149,28 @@ describe('entity rename reaches every stored copy', () => {
 
   it('updates payments, transfer peers, materials and records the rename for the bin', async () => {
     seed({
-      payment_entities: [{ id: 'E', name: 'New' }],
-      payment_transactions: [{ id: 't1', entityId: 'E', entityName: 'Old' }, { id: 't2', entityId: 'F', entityName: 'F' }, { id: 't3', entityId: 'G', transferPeerEntityId: 'E', transferPeerEntityName: 'Old' }],
-      factory_inventory_data: [{ id: 'm', supplierId: 'E', supplierName: 'Old' }],
+      entities: [{ id: 'E', name: 'New' }],
+      transactions: [{ id: 't1', entityId: 'E', entityName: 'Old' }, { id: 't2', entityId: 'F', entityName: 'F' }, { id: 't3', entityId: 'G', transferPeerEntityId: 'E', transferPeerEntityName: 'Old' }],
+      inventory: [{ id: 'm', supplierId: 'E', supplierName: 'Old' }],
       expenses: [],
     });
     const r = await G.cascadeEntityRename('E', 'Old', 'New');
     assert.deepEqual([r.tx, r.materials], [2, 1]);
-    const tx = await get('payment_transactions');
+    const tx = await get('transactions');
     assert.equal(tx[0].entityName, 'New');
     assert.equal(tx[1].entityName, 'F');
     assert.equal(tx[2].transferPeerEntityName, 'New');
-    assert.deepEqual(saves.find(s => s.key === 'payment_transactions').ids.sort(), ['t1', 't3']);
+    assert.deepEqual(saves.find(s => s.key === 'transactions').ids.sort(), ['t1', 't3']);
     assert.equal((await get('customer_rename_map'))['entity:old'], 'New');
   });
 
   it('an expense-only entity also renames its expense records; an ordinary one does not', async () => {
-    seed({ payment_entities: [{ id: 'E', name: 'Fuel2', isExpenseEntity: true }], payment_transactions: [], factory_inventory_data: [], expenses: [{ id: 'x1', name: 'Fuel' }, { id: 'x2', name: 'Rent' }] });
+    seed({ entities: [{ id: 'E', name: 'Fuel2', isExpenseEntity: true }], transactions: [], inventory: [], expenses: [{ id: 'x1', name: 'Fuel' }, { id: 'x2', name: 'Rent' }] });
     assert.equal((await G.cascadeEntityRename('E', 'Fuel', 'Fuel2')).expenses, 1);
     const ex = await get('expenses');
     assert.equal(ex[0].name, 'Fuel2');
     assert.equal(ex[1].name, 'Rent');
-    seed({ payment_entities: [{ id: 'E', name: 'Fuel2' }], payment_transactions: [], factory_inventory_data: [], expenses: [{ id: 'x1', name: 'Fuel' }] });
+    seed({ entities: [{ id: 'E', name: 'Fuel2' }], transactions: [], inventory: [], expenses: [{ id: 'x1', name: 'Fuel' }] });
     assert.equal((await G.cascadeEntityRename('E', 'Fuel', 'Fuel2')).expenses, 0);
   });
 });
@@ -189,7 +189,7 @@ describe('cash guards', () => {
     globalThis.window.getAvailableCashInHand = async () => 100;
     const ctx = {};
     const out = (id, amount) => ({ id, type: 'OUT', amount, entityId: 'E' });
-    seed({ payment_entities: [{ id: 'E' }] });
+    seed({ entities: [{ id: 'E' }] });
     globalThis.window.getAvailableCashInHand = async () => 100;
     assert.equal(await G.getRecoverLinkBlockReason('transactions', out('a', 60), ctx), null);
     assert.match(await G.getRecoverLinkBlockReason('transactions', out('b', 60), ctx), /only 100 is available/);
@@ -217,14 +217,14 @@ describe('sales: contacts and settlement', () => {
 
   it('paid/unpaid toggle: blocked for cash sales, calculator-settled sales and partly-paid sales', async () => {
     seed({
-      customer_sales: [
+      sales: [
         { id: 'cash', paymentType: 'CASH' },
         { id: 'plain', paymentType: 'CREDIT', creditReceived: false },
         { id: 'calc', paymentType: 'CREDIT', creditReceived: true },
         { id: 'part', paymentType: 'CREDIT', creditReceived: false },
         { id: 'k', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'part', totalValue: 250 },
       ],
-      noman_history: [{ id: 'h', linkedSalesIds: ['calc'] }],
+      calculator_history: [{ id: 'h', linkedSalesIds: ['calc'] }],
     });
     assert.match(await G.getSettleToggleBlockReason('cash'), /Only credit sales/);
     assert.equal(await G.getSettleToggleBlockReason('plain'), null);
@@ -238,11 +238,11 @@ describe('calculator record restore against real data', () => {
   const entry = { id: 'c1', linkedSalesIds: ['s1'], linkedRepSalesIds: [] };
 
   it('allowed while the sale is still pending, refused once it was paid or settled elsewhere', async () => {
-    seed({ customer_sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep_sales: [], noman_history: [] });
+    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep_sales: [], calculator_history: [] });
     assert.equal(await G.getCalcRestoreBlockReason(entry), null);
-    seed({ customer_sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: true }], rep_sales: [], noman_history: [] });
+    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: true }], rep_sales: [], calculator_history: [] });
     assert.match(await G.getCalcRestoreBlockReason(entry), /already paid or changed/);
-    seed({ customer_sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep_sales: [], noman_history: [{ id: 'other', linkedSalesIds: ['s1'] }] });
+    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep_sales: [], calculator_history: [{ id: 'other', linkedSalesIds: ['s1'] }] });
     assert.match(await G.getCalcRestoreBlockReason(entry), /another calculator record/);
   });
 });
@@ -270,7 +270,7 @@ describe('stock and factory units on restore', () => {
 describe('legacy partly-paid audit', () => {
   it('finds the double-counted sales and stays read-only', async () => {
     seed({
-      customer_sales: [{ id: 'p', paymentType: 'CREDIT', customerName: 'Ali', partialPaymentReceived: 300 }, { id: 'k', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'p', totalValue: 300 }],
+      sales: [{ id: 'p', paymentType: 'CREDIT', customerName: 'Ali', partialPaymentReceived: 300 }, { id: 'k', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'p', totalValue: 300 }],
       rep_sales: [],
     });
     const r = await G.auditLegacyPartialPayments({ silent: true });

@@ -9,13 +9,14 @@ import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderU
 import { showGlassConfirm, showToast } from './customers.js';
 import { getFormulaSlotLabels, getSelectedFormula } from './formula-store.js';
 import { confirmGuard } from './confirm-guard.js';
+import { formulaTypeFor, getDefaultStoreKey } from './store-keys.js';
 export let editingFactoryInventoryId;
 window.editingFactoryInventoryId = editingFactoryInventoryId;
 export function _set_editingFactoryInventoryId(v) { editingFactoryInventoryId = v; window.editingFactoryInventoryId = v; }
 export let currentFactorySummaryMode = 'daily';
 window.currentFactorySummaryMode = currentFactorySummaryMode;
 export function _set_currentFactorySummaryMode(v) { currentFactorySummaryMode = v; window.currentFactorySummaryMode = v; }
-export let currentStore = 'STORE_A';
+export let currentStore = getDefaultStoreKey();
 window.currentStore = currentStore;
 export function _set_currentStore(v) { currentStore = v; window.currentStore = v; }
 (window.__uiSyncers = window.__uiSyncers || []).push(() => {
@@ -32,7 +33,7 @@ return Number.isFinite(c) && c > 0 ? c : (Number(item.cost) || 0);
 export async function getCostPerUnit(storeType) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const formula = factoryDefaultFormulas[storeType];
 const additionalCost = factoryAdditionalCosts[storeType] || 0;
@@ -57,7 +58,7 @@ return totalUnits > 0 ? totalWeightedCost / totalUnits : 0;
 return 0;
 }
 export async function calculateFactoryInventoryValue() {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
@@ -74,7 +75,7 @@ totalValue += (asaanTracking.available * asaanCostPerUnit);
 return totalValue;
 }
 export async function updateFactoryInventoryDisplay() {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
@@ -93,7 +94,7 @@ if (rawMaterialsEl) rawMaterialsEl.textContent = `${fmtAmt(safeValue(rawMaterial
 if (unitsValueEl) unitsValueEl.textContent = `${fmtAmt(safeValue(formulaUnitsValue))}`;
 }
 export async function calculatePaymentSummaries() {
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const today = localDateStr();
 const todayObj = new Date();
 const year = todayObj.getFullYear();
@@ -179,8 +180,8 @@ document.getElementById('factoryMaterialCost').value = '';
 updateFactoryKgCalculation();
 }
 export async function editFactoryInventoryItem(id) {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
+const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const item = factoryInventoryData.find(i => i.id === id);
 if (!item) return;
 openFactoryInventoryModal();
@@ -246,8 +247,8 @@ existingSupplierSection.appendChild(unlinkButton);
 }
 }
 export async function unlinkSupplierConfirmation(material) {
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
+const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const linkedTransactions = paymentTransactions.filter(t => t.materialId === material.id && t.entityId === material.supplierId && t.isPayable === true);
 let confirmMsg = ` Unlink ${material.supplierName} from ${material.name}?\n\n`;
 confirmMsg += `This will:\n Remove supplier association\n Reset payment status to 'pending'\n`;
@@ -267,9 +268,9 @@ renderFactoryInventory();
 }
 export function saveFactoryInventoryItem(...a) { return confirmGuard('saveFactoryInventoryItem', () => runExclusive('saveFactoryInventoryItem', () => _saveFactoryInventoryItemImpl(...a)), { label: 'Inventory Item', late: true, fields: [['factoryMaterialName', 'Material'], ['factoryMaterialQuantity', 'Quantity'], ['factoryMaterialUnitName', 'Unit'], ['factoryMaterialCost', 'Cost']], isUpdate: () => !!editingFactoryInventoryId }); }
 async function _saveFactoryInventoryItemImpl() {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
+const paymentEntities = ensureArray(await sqliteStore.get('entities'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
 const name = document.getElementById('factoryMaterialName').value;
 const qty = parseFloat(document.getElementById('factoryMaterialQuantity').value) || 0;
@@ -340,11 +341,11 @@ if (newSupplier && newSupplier.id) await linkMaterialToSupplier(materialId, newS
 }
 }
 const savedMaterial = factoryInventoryData.find(m => m.id === materialId);
-await unifiedSave('factory_inventory_data', factoryInventoryData, savedMaterial);
+await unifiedSave('inventory', factoryInventoryData, savedMaterial);
 if (editingFactoryInventoryId && _supplierUnchanged && savedMaterial && savedMaterial.supplierId) {
 const _delta = (Number(savedMaterial.totalValue) || 0) - _oldStockValue;
 if (Math.abs(_delta) > 0.01) {
-const _allTx = ensureArray(await sqliteStore.get('payment_transactions'));
+const _allTx = ensureArray(await sqliteStore.get('transactions'));
 const _inv = findPayableInTxs(_allTx, savedMaterial.id, savedMaterial.supplierId).filter(t => t.materialId === savedMaterial.id && !(t.materialIds && t.materialIds.length > 1));
 if (_inv.length > 0) {
 const _tx = _inv[_inv.length - 1];
@@ -354,8 +355,8 @@ const _go = await showGlassConfirm(`You changed the stock value of ${savedMateri
 if (_go) {
 _tx.amount = _plan.next; _tx.updatedAt = getTimestamp();
 ensureRecordIntegrity(_tx, true);
-await unifiedSave('payment_transactions', _allTx, _tx);
-await _recomputeSupplierPayables([String(savedMaterial.supplierId)], ensureArray(await sqliteStore.get('factory_inventory_data')), _allTx, new Set(), new Set([String(savedMaterial.id)]));
+await unifiedSave('transactions', _allTx, _tx);
+await _recomputeSupplierPayables([String(savedMaterial.supplierId)], ensureArray(await sqliteStore.get('inventory')), _allTx, new Set(), new Set([String(savedMaterial.id)]));
 await _refreshSupplierLinkViews();
 }
 }
@@ -363,7 +364,7 @@ await _refreshSupplierLinkViews();
 }
 }
 notifyDataChange('inventory');
-emitSyncUpdate({ factory_inventory_data: null});
+emitSyncUpdate({ inventory: null});
 if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 closeFactoryInventoryModal();
@@ -374,8 +375,8 @@ window.notifyBlocking('Failed to save material. Please try again.', 'error');
 }
 }
 export async function unlinkSupplierFromMaterial(material, showToastOnNoSupplier = false, skipSideEffects = false, groupId = null) {
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 if (!material) { showToast('Invalid material data', 'error'); return; }
 if (!material.supplierId) {
 if (showToastOnNoSupplier) showToast('No supplier to unlink', 'info');
@@ -388,7 +389,7 @@ const removedTransactions = linkedTransactions.slice();
 let filteredTx = paymentTransactions.slice();
 for (const tx of removedTransactions) {
 filteredTx = filteredTx.filter(t => t.id !== tx.id);
-await unifiedDelete('payment_transactions', filteredTx, tx.id, { strict: true }, groupId ? stampGroup(tx, groupId) : tx);
+await unifiedDelete('transactions', filteredTx, tx.id, { strict: true }, groupId ? stampGroup(tx, groupId) : tx);
 }
 }
 delete material.supplierId;
@@ -401,15 +402,15 @@ delete material.paidDate;
 material.updatedAt = getTimestamp();
 ensureRecordIntegrity(material, true);
 if (!skipSideEffects) {
-await unifiedSave('factory_inventory_data', factoryInventoryData, material);
+await unifiedSave('inventory', factoryInventoryData, material);
 triggerAutoSync();
 await _refreshSupplierLinkViews();
 showToast(`Unlinked from ${esc(material.name)}`, 'success');
 }
 }
 export async function createSupplierFromMaterial(supplierData) {
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const paymentEntities = ensureArray(await sqliteStore.get('entities'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const existingSupplier = paymentEntities.find(e => e && e.name && supplierData && supplierData.name && e.name.toLowerCase() === supplierData.name.toLowerCase() && e.type === 'payee');
 if (existingSupplier) return existingSupplier;
 let suppId = generateUUID('supp');
@@ -417,7 +418,7 @@ if (!validateUUID(suppId)) suppId = generateUUID('supp');
 const suppCreatedAt = getTimestamp();
 let supplierEntity = ensureRecordIntegrity({ id: suppId, name: supplierData.name, type: 'payee', phone: supplierData.phone || '', wallet: '', createdAt: suppCreatedAt, updatedAt: suppCreatedAt, timestamp: suppCreatedAt, isSupplier: true, supplierCategory: 'raw_materials' }, false);
 paymentEntities.push(supplierEntity);
-await unifiedSave('payment_entities', paymentEntities, supplierEntity);
+await unifiedSave('entities', paymentEntities, supplierEntity);
 notifyDataChange('entities');
 triggerAutoSync();
 return supplierEntity;
@@ -441,7 +442,7 @@ el.textContent = base + (_invSort.key === k ? (_invSort.dir === 'asc' ? ' ▲' :
 let _invRenderSeq = 0;
 export async function renderFactoryInventory() {
 const _mySeq = ++_invRenderSeq;
-const factoryInventoryData = sortInventoryItems(ensureArray(await sqliteStore.get('factory_inventory_data')), _invSort);
+const factoryInventoryData = sortInventoryItems(ensureArray(await sqliteStore.get('inventory')), _invSort);
 _updateInvSortHeaders();
 const tbody = document.getElementById('factoryInventoryTableBody');
 let totalVal = 0;
@@ -499,11 +500,11 @@ const _invEl = document.getElementById('factoryTotalInventoryValue');
 if (_invEl) _invEl.innerText = await formatCurrency(totalVal);
 }
 export async function unlinkSupplierFromMaterialById(materialId) {
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 let material = factoryInventoryData.find(m => m.id === materialId);
 if (!material) {
-const reloadedData = await sqliteStore.get('factory_inventory_data');
+const reloadedData = await sqliteStore.get('inventory');
 if (Array.isArray(reloadedData)) {
 material = factoryInventoryData.find(m => m.id === materialId);
 }
@@ -531,7 +532,7 @@ if (supplierType === 'existing') { if (existingSection) existingSection.classLis
 else if (supplierType === 'new') { if (newSection) newSection.classList.remove('hidden'); }
 }
 export async function loadExistingSuppliers() {
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
+const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const selectElement = document.getElementById('factoryExistingSupplier');
 if (!selectElement) return;
 selectElement.innerHTML = '<option value="">Choose Supplier</option>';
@@ -551,12 +552,12 @@ selectElement.appendChild(option);
 }
 }
 export async function linkMaterialToSupplier(materialId, supplierId, totalCost, skipSideEffects = false, sharedInventory = null) {
-const factoryInventoryData = sharedInventory || ensureArray(await sqliteStore.get('factory_inventory_data'));
-const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const factoryInventoryData = sharedInventory || ensureArray(await sqliteStore.get('inventory'));
+const paymentEntities = ensureArray(await sqliteStore.get('entities'));
+const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 let material = factoryInventoryData.find(m => m.id === materialId);
 if (!material) {
-const reloadedData = await sqliteStore.get('factory_inventory_data');
+const reloadedData = await sqliteStore.get('inventory');
 if (Array.isArray(reloadedData)) {
 material = reloadedData.find(m => m.id === materialId);
 }
@@ -587,7 +588,7 @@ material.paymentStatus = 'pending';
 material.totalPayable = totalCost;
 material.updatedAt = getTimestamp();
 ensureRecordIntegrity(material, true);
-const payableTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
+const payableTransactions = ensureArray(await sqliteStore.get('transactions'));
 const now = new Date();
 const dateStr = localDateStr(now);
 const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -614,8 +615,8 @@ syncedAt: now.toISOString()
 payableTx = ensureRecordIntegrity(payableTx, false);
 payableTransactions.push(payableTx);
 if (!skipSideEffects) {
-await unifiedSave('factory_inventory_data', factoryInventoryData, material);
-await unifiedSave('payment_transactions', payableTransactions, payableTx);
+await unifiedSave('inventory', factoryInventoryData, material);
+await unifiedSave('transactions', payableTransactions, payableTx);
 notifyDataChange('all');
 triggerAutoSync();
 await renderFactoryInventory();
@@ -623,7 +624,7 @@ await refreshPaymentTab();
 calculateNetCash();
 showToast(`Linked to ${esc(supplier.name)}`, 'success');
 } else {
-await sqliteStore.set('payment_transactions', payableTransactions);
+await sqliteStore.set('transactions', payableTransactions);
 }
 }
 export async function selectFactoryFormula(formulaType) {
@@ -661,14 +662,14 @@ if (t.transactionType === 'OLD_DEBT') return parseFloat(t.totalValue) || 0;
 const qty = parseFloat(t.quantity) || 0;
 const locked = lockedSaleValue(t);
 if (locked !== null) return locked;
-return round2(qty * (await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || 'STORE_A')));
+return round2(qty * (await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey())));
 }
 export async function getCostPriceForStore(store) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 if (!store) return 0;
-const formulaType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : (store === 'STORE_C' ? 'asaan' : 'standard');
+const formulaType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : formulaTypeFor(store);
 return await calculateSalesCostPerKg(formulaType);
 }
 export async function getStorePricing(store) {
@@ -716,7 +717,7 @@ const u = document.getElementById('factoryProductionUnits'); if (u) u.value = '1
 if (typeof calculateFactoryProduction === 'function') calculateFactoryProduction();
 }
 export async function startEditFactoryEntry(id) {
-const hist = ensureArray(await sqliteStore.get('factory_production_history'));
+const hist = ensureArray(await sqliteStore.get('factory_history'));
 const rec = hist.find(h => h && String(h.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This batch cannot be edited.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('factory');
@@ -737,12 +738,12 @@ return;
 }
 const _sfpeBatch = await sqliteStore.getBatch([
 'factory_default_formulas','factory_additional_costs',
-'factory_inventory_data','factory_production_history',
+'inventory','factory_history',
 ]);
 const factoryDefaultFormulas = _sfpeBatch.get('factory_default_formulas') || {};
 const factoryAdditionalCosts = _sfpeBatch.get('factory_additional_costs') || {};
-const factoryInventoryData = ensureArray(_sfpeBatch.get('factory_inventory_data'));
-const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory_production_history'));
+const factoryInventoryData = ensureArray(_sfpeBatch.get('inventory'));
+const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory_history'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
 window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning');
 return;
@@ -753,7 +754,7 @@ const inventorySnapshot = JSON.parse(JSON.stringify(factoryInventoryData));
 const historySnapshot = [...factoryProductionHistory];
 let _histSavedRec = null;
 try {
-const _sfpeType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : (currentFactoryEntryStore === 'STORE_C' ? 'asaan' : 'standard');
+const _sfpeType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : formulaTypeFor(currentFactoryEntryStore);
 const _freshFormula = await getSelectedFormula(currentFactoryEntryStore);
 const settings = _freshFormula.ingredients.filter(i => i.quantity > 0);
 if (!settings || settings.length === 0) {
@@ -834,7 +835,7 @@ if (!(await window.gcCommit({}))) throw new Error('__GC_CANCEL__');
 let factProdId = _ed ? _ed.id : generateUUID('fprod');
 if (!validateUUID(factProdId)) factProdId = generateUUID('fprod');
 const factProdCreatedAt = getTimestamp();
-const _savedFormulaType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : (currentFactoryEntryStore === 'STORE_C' ? 'asaan' : 'standard');
+const _savedFormulaType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(currentFactoryEntryStore) : formulaTypeFor(currentFactoryEntryStore);
 const productionRecord = {
 id: factProdId,
 date: localDateStr(),
@@ -864,16 +865,16 @@ if (o.managedBy) productionRecord.managedBy = o.managedBy;
 }
 const validatedRecord = ensureRecordIntegrity(productionRecord, !!_ed);
 if (_ed && _edHistIdx >= 0) factoryProductionHistory.splice(_edHistIdx, 0, validatedRecord); else factoryProductionHistory.unshift(validatedRecord);
-await unifiedSave('factory_production_history', factoryProductionHistory, validatedRecord);
+await unifiedSave('factory_history', factoryProductionHistory, validatedRecord);
 _histSavedRec = validatedRecord;
 if (inventoryUpdated) {
 const inventoryIds = factoryInventoryData.filter(i => i && i.id).map(i => i.id);
-await unifiedSave('factory_inventory_data', factoryInventoryData, null, inventoryIds);
+await unifiedSave('inventory', factoryInventoryData, null, inventoryIds);
 } else {
-await unifiedSave('factory_inventory_data', factoryInventoryData);
+await unifiedSave('inventory', factoryInventoryData);
 }
 notifyDataChange('factory');
-emitSyncUpdate({ factory_inventory_data: null, factory_production_history: null});
+emitSyncUpdate({ inventory: null, factory_history: null});
 await syncFactoryProductionStats();
 await refreshFactoryTab();
 calculateNetCash();
@@ -888,8 +889,8 @@ factoryProductionHistory.length = 0;
 factoryProductionHistory.push(...historySnapshot);
 try {
 await sqliteStore.setBatch([
-['factory_inventory_data', factoryInventoryData],
-['factory_production_history', factoryProductionHistory]
+['inventory', factoryInventoryData],
+['factory_history', factoryProductionHistory]
 ]);
 } catch (rollbackError) {
 console.error('Failed to save data locally.', _safeErr(rollbackError));
@@ -897,8 +898,8 @@ window.notifyBlocking('Production rollback failed: ' + (_safeErr(rollbackError).
 }
 if (_histSavedRec) {
 try {
-if (_ed) await unifiedSave('factory_production_history', factoryProductionHistory, _ed.original);
-else await unifiedDelete('factory_production_history', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
+if (_ed) await unifiedSave('factory_history', factoryProductionHistory, _ed.original);
+else await unifiedDelete('factory_history', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
 } catch (_undoErr) { console.error('Could not undo the saved batch record.', _safeErr(_undoErr)); }
 }
 if (error && error.message === '__GC_CANCEL__') return;
@@ -929,11 +930,11 @@ if (typeof window.syncFactoryAvailPicker === 'function') window.syncFactoryAvail
 await updateFactoryUnitsAvailableStats();
 }
 export async function renderFactoryHistory() {
-const _fhBatch = await sqliteStore.getBatch(['factory_production_history','factory_additional_costs','factory_default_formulas','factory_inventory_data']);
-const factoryProductionHistory = ensureArray(_fhBatch.get('factory_production_history'));
+const _fhBatch = await sqliteStore.getBatch(['factory_history','factory_additional_costs','factory_default_formulas','inventory']);
+const factoryProductionHistory = ensureArray(_fhBatch.get('factory_history'));
 const factoryAdditionalCosts = (_fhBatch.get('factory_additional_costs')) || {};
 const factoryDefaultFormulas = (_fhBatch.get('factory_default_formulas')) || {};
-const factoryInventoryData = ensureArray(_fhBatch.get('factory_inventory_data'));
+const factoryInventoryData = ensureArray(_fhBatch.get('inventory'));
 const _fhLabels = await getFormulaSlotLabels();
 const list = document.getElementById('factoryHistoryList');
 if (!list) return;
@@ -954,7 +955,7 @@ const month = dateObj.toLocaleDateString('en-US', { month: 'short' });
 const day = String(dateObj.getDate()).padStart(2, '0');
 const year = String(dateObj.getFullYear()).slice(-2);
 const dateStr = `${month} ${day} ${year} ${esc(entry.time || '')}`;
-const _histFtype = entry.formulaType || (entry.store === 'asaan' || entry.store === 'STORE_C' ? 'asaan' : 'standard');
+const _histFtype = entry.formulaType || (formulaTypeFor(entry.store) === 'asaan' ? 'asaan' : 'standard');
 const badgeClass = _histFtype === 'asaan' ? 'factory-badge-asn' : 'factory-badge-std';
 const formulaLabel = esc(entry.formulaName || _fhLabels[_histFtype] || 'Formula');
 const perUnitCost = entry.units > 0 ? entry.totalCost / entry.units : 0;
@@ -1029,8 +1030,8 @@ list.replaceChildren(_fhFrag);
 _filterFactoryHistoryByMode(currentFactorySummaryMode || 'all');
 }
 export async function deleteFactoryEntry(id) {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid factory entry ID', 'error'); return; }
 const entryIndex = factoryProductionHistory.findIndex(e => e.id === id);
@@ -1088,8 +1089,8 @@ restoredMaterials.push({ name: inventoryItem.name || 'Unknown', quantity: materi
 factoryProductionHistory.splice(entryIndex, 1);
 const inventoryIds = factoryInventoryData.filter(i => i && i.id).map(i => i.id);
 await Promise.all([
-unifiedDelete('factory_production_history', factoryProductionHistory, id, { strict: true }, entry),
-unifiedSave('factory_inventory_data', factoryInventoryData, null, inventoryIds)
+unifiedDelete('factory_history', factoryProductionHistory, id, { strict: true }, entry),
+unifiedSave('inventory', factoryInventoryData, null, inventoryIds)
 ]);
 await refreshFactoryTab();
 calculateNetCash();
@@ -1108,14 +1109,14 @@ window.notifyBlocking(' Failed to delete entry. Please try again.', 'error');
 export async function calculateDynamicCost(storeType, formulaUnits, netWeight) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const _dcInv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const _dcInv = ensureArray(await sqliteStore.get('inventory'));
 let formulaStore = 'standard';
 if (storeType === 'standard' || storeType === 'asaan') {
   formulaStore = storeType;
 } else if (typeof getStoreFormulaType === 'function') {
   formulaStore = await getStoreFormulaType(storeType);
 } else {
-  formulaStore = storeType === 'STORE_C' ? 'asaan' : 'standard';
+  formulaStore = formulaTypeFor(storeType);
 }
 const formula = factoryDefaultFormulas[formulaStore];
 if (!formula || formula.length === 0 || netWeight <= 0) {
@@ -1143,7 +1144,7 @@ export async function calculateSalesCostPerKg(formulaStore) {
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
-const _scInv = ensureArray(await sqliteStore.get('factory_inventory_data'));
+const _scInv = ensureArray(await sqliteStore.get('inventory'));
 const formula = factoryDefaultFormulas[formulaStore];
 if (!formula || formula.length === 0) return 0;
 let rawMaterialCost = 0;
@@ -1153,9 +1154,9 @@ const adjustmentFactor = factoryCostAdjustmentFactor[formulaStore] || 1;
 return adjustmentFactor > 0 ? (rawMaterialCost + additionalCost) / adjustmentFactor : rawMaterialCost + additionalCost;
 }
 export async function updateFormulaInventory() {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_production_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const db = ensureArray(await sqliteStore.get('production'));
 const tracking = {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
@@ -1165,7 +1166,7 @@ const _storeTypeMap = {};
 _appStores.forEach(s => { _storeTypeMap[s.key] = s.formulaType || 'standard'; });
 function _resolveFormulaType(storeVal) {
   if (storeVal === 'standard' || storeVal === 'asaan') return storeVal;
-  return _storeTypeMap[storeVal] || (storeVal === 'STORE_C' ? 'asaan' : 'standard');
+  return _storeTypeMap[storeVal] || formulaTypeFor(storeVal);
 }
 factoryProductionHistory.forEach(entry => {
 if (entry.store && entry.units > 0) {
@@ -1205,7 +1206,7 @@ if (storeType === 'standard' || storeType === 'asaan') {
 } else if (typeof getStoreFormulaType === 'function') {
   formulaStore = await getStoreFormulaType(storeType);
 } else {
-  formulaStore = storeType === 'STORE_C' ? 'asaan' : 'standard';
+  formulaStore = formulaTypeFor(storeType);
 }
 const available = factoryUnitTracking[formulaStore]?.available || 0;
 return { available, sufficient: available >= requestedUnits, deficit: Math.max(0, requestedUnits - available) };
@@ -1214,7 +1215,7 @@ export async function updateUnitsAvailableIndicator(preloadedTracking) {
 const factoryUnitTracking = preloadedTracking || (await sqliteStore.get('factory_unit_tracking')) || {};
 const store = document.getElementById('storeSelector').value;
 if (!store) return;
-const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : (store === 'STORE_C' ? 'asaan' : 'standard');
+const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : formulaTypeFor(store);
 const available = factoryUnitTracking[formulaStore]?.available || 0;
 const indicator = document.getElementById('currentUnitsAvailable');
 const warning = document.getElementById('insufficientUnitsWarning');
@@ -1266,8 +1267,8 @@ document.getElementById('net-wt').value = safeNumber(Math.max(0, g - c), 0).toFi
 calculateDynamicProductionCost();
 }
 export async function deleteProdEntry(id) {
-const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-const db = ensureArray(await sqliteStore.get('mfg_pro_pkr'));
+const customerSales = ensureArray(await sqliteStore.get('sales'));
+const db = ensureArray(await sqliteStore.get('production'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid production record ID', 'error'); return; }
 const entryToDelete = db.find(item => item.id === id);
@@ -1283,7 +1284,7 @@ const _lk = await findCalcLinkForReturn(entryToDelete);
 if (_lk) { window.notifyBlocking(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning'); return; }
 }
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
-const _retLog = isReturn ? findReturnLogFor(entryToDelete, ensureArray(await sqliteStore.get('stock_returns'))) : null;
+const _retLog = isReturn ? findReturnLogFor(entryToDelete, ensureArray(await sqliteStore.get('returns'))) : null;
 const _stockDrop = isReturn ? getReturnStockDrop(entryToDelete, _retLog) : (entryToDelete.net || 0);
 if (_stockDrop > 0 && typeof window.computeStoreStockSnapshot === 'function') {
 const _snap = await window.computeStoreStockSnapshot(entryToDelete.store, entryToDelete.date);
@@ -1319,11 +1320,11 @@ if (isReturn && record) {
 const _grp = newGroupId('ret');
 _snapRec = stampGroup({ ...record, [DELETE_ORIGIN_FIELD]: 'prod-tab' }, _grp);
 if (_retLog) {
-const _logs = ensureArray(await sqliteStore.get('stock_returns'));
-await unifiedDelete('stock_returns', _logs.filter(l => l.id !== _retLog.id), _retLog.id, { strict: true }, stampGroup({ ..._retLog, [DELETE_ORIGIN_FIELD]: 'prod-tab' }, _grp));
+const _logs = ensureArray(await sqliteStore.get('returns'));
+await unifiedDelete('returns', _logs.filter(l => l.id !== _retLog.id), _retLog.id, { strict: true }, stampGroup({ ..._retLog, [DELETE_ORIGIN_FIELD]: 'prod-tab' }, _grp));
 }
 }
-await unifiedDelete('mfg_pro_pkr', dbWithoutDeleted, id, { strict: true }, _snapRec);
+await unifiedDelete('production', dbWithoutDeleted, id, { strict: true }, _snapRec);
 notifyDataChange('production');
 void syncFactoryProductionStats().catch(() => {});
 await refreshUI();

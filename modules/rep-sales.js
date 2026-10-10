@@ -11,6 +11,7 @@ import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime
 import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
 import { _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
 import { confirmGuard } from './confirm-guard.js';
+import { getDefaultStoreKey } from './store-keys.js';
 export let repTransactionMode = 'sale';
 window.repTransactionMode = repTransactionMode;
 export function _set_repTransactionMode(v) { repTransactionMode = v; window.repTransactionMode = v; }
@@ -210,7 +211,7 @@ export async function calculateRepSalePreview() {
 const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
 if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
-const salePrice = await getSalePriceForStore('STORE_A');
+const salePrice = await getSalePriceForStore(getDefaultStoreKey());
 const _repTVS = document.getElementById('rep-total-value');
 if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
@@ -250,8 +251,8 @@ const _gpsBgPromise = Promise.race([
 ]).catch(() => null);
 const now = new Date();
 const timeString = now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
-const costPerKg = await getCostPriceForStore('STORE_A');
-const salePrice = await getSalePriceForStore('STORE_A');
+const costPerKg = await getCostPriceForStore(getDefaultStoreKey());
+const salePrice = await getSalePriceForStore(getDefaultStoreKey());
 let transactionRecord = {};
 if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
@@ -291,7 +292,7 @@ time: timeString,
 customerName: name,
 customerPhone: phoneNumber,
 quantity: qty,
-supplyStore: 'STORE_A',
+supplyStore: getDefaultStoreKey(),
 paymentType: payType,
 salesRep: currentRepProfile,
 gps: gpsCoords,
@@ -343,7 +344,7 @@ time: timeString,
 customerName: name,
 customerPhone: phoneNumber,
 quantity: 0,
-supplyStore: 'STORE_A',
+supplyStore: getDefaultStoreKey(),
 paymentType: 'COLLECTION',
 salesRep: currentRepProfile,
 gps: gpsCoords,
@@ -1068,7 +1069,7 @@ itemContent = `
 } else {
 const _repDisplayUnitPrice = lockedUnitPrice(t) > 0
   ? lockedUnitPrice(t)
-  : await getSalePriceForStore(t.supplyStore || 'STORE_A');
+  : await getSalePriceForStore(t.supplyStore || getDefaultStoreKey());
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
@@ -1496,7 +1497,7 @@ const buildRow = async (t, runBal) => {
 const pt = t.paymentType || 'CASH';
 const isOldDebt = t.transactionType === 'OLD_DEBT';
 let debit = 0, credit = 0, typeLabel = '', detailLabel = '', displayDate = formatDisplayDate(t.supplyDate || t.date);
-const unitPrice = lockedUnitPrice(t) > 0 ? lockedUnitPrice(t) : await getSalePriceForStore(t.supplyStore || 'STORE_A');
+const unitPrice = lockedUnitPrice(t) > 0 ? lockedUnitPrice(t) : await getSalePriceForStore(t.supplyStore || getDefaultStoreKey());
 if (isOldDebt) {
 debit = parseFloat(t.totalValue) || 0;
 credit = parseFloat(t.partialPaymentReceived) || 0;
