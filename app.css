@@ -5989,7 +5989,7 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   --co-info: #67e8f9;
   position: fixed;
   inset: 0;
-  z-index: var(--z-confirm, 10010);
+  z-index: var(--z-confirm, 10300);
   display: flex;
   align-items: center;
   justify-content: center;
