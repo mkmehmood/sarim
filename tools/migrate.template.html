@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data migration</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#111827; --muted:#6b7280; --accent:#2563eb; --danger:#dc2626; --ok:#059669; --line:#e5e7eb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --line:#334155; } }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width:640px; margin:0 auto; display:grid; gap:14px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; }
+  h1 { font-size:1.2rem; margin:0 0 4px; } h2 { font-size:1rem; margin:0 0 10px; }
+  p, label small { color:var(--muted); margin:0 0 10px; font-size:.85rem; }
+  label { display:block; margin:10px 0 4px; font-weight:600; font-size:.85rem; }
+  input[type=email], input[type=password], input[type=file] { width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:transparent; color:inherit; font:inherit; }
+  .check { display:flex; gap:8px; align-items:center; margin:10px 0; font-weight:500; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  button { flex:1; min-width:140px; height:42px; border:0; border-radius:999px; color:#fff; font-weight:700; font-size:.9rem; cursor:pointer; background:var(--accent); }
+  button.danger { background:var(--danger); } button:disabled { opacity:.5; cursor:not-allowed; }
+  pre { margin:0; padding:12px; background:rgba(127,127,127,.1); border-radius:12px; font:12px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; word-break:break-word; max-height:50vh; overflow:auto; }
+  .warn { color:var(--danger); }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>Data migration</h1>
+    <p>Moves your Firestore data to the single-word dataset names and name-based store keys. It runs the same code as <code>tools/migrate-cloud.mjs</code>, in this browser. Nothing leaves your device except the calls to Firebase.</p>
+    <p class="warn">Make an encrypted backup in the app first. Open this page from the app's own domain (or <code>npm run dev</code>) so the sign-in is accepted.</p>
+  </section>
+
+  <section>
+    <h2>1. Sign in</h2>
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+  </section>
+
+  <section>
+    <h2>2. Cloud data</h2>
+    <label class="check"><input id="deleteOld" type="checkbox"> Delete the old collections after the copy is verified</label>
+    <div class="row">
+      <button id="btnDry">Run Dry Run</button>
+      <button id="btnApply" class="danger">Apply Migration</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Old backup file</h2>
+    <p>Convert a backup made before the rename (<code>.gznd</code> or <code>.json</code>). Uses the email and password above.</p>
+    <input id="backupFile" type="file" accept=".gznd,.json">
+    <div class="row"><button id="btnConvert">Convert Backup</button></div>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <pre id="log">Ready.</pre>
+  </section>
+</main>
+<script type="module">
+/*__MIGRATE_LIB__*/
+
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+const log = (m) => { logEl.textContent += '\n' + m; logEl.scrollTop = logEl.scrollHeight; };
+const buttons = ['btnDry', 'btnApply', 'btnConvert'].map($);
+const busy = (b) => buttons.forEach(x => { x.disabled = b; });
+const creds = () => {
+  const email = $('email').value.trim(); const password = $('password').value;
+  if (!email || !password) throw new Error('Enter your email and password first.');
+  return { email, password };
+};
+
+function summary(r) {
+  log('\n=== summary ' + (r.applied ? '(APPLIED)' : '(dry run - nothing was written)') + ' ===');
+  log(`store list: ${r.catalog.changed ? 'will be re-keyed' : 'already current'}${r.catalog.merged ? `, ${r.catalog.merged} duplicate store(s) merged` : ''}`);
+  for (const [n, d] of Object.entries(r.datasets)) if (d.found) log(`${d.from} -> ${n}: found ${d.found}, write ${d.written}, store fixes ${d.storeFixes}`);
+  log(`settings doc: ${r.settings ? 'updated' : 'ok'};  recycle-bin entries updated: ${r.deletions}`);
+  const unk = Object.entries(r.unknown);
+  if (unk.length) { log('\nMISMATCH - records pointing at a store that does not exist (left untouched, please review):'); unk.forEach(([k, n]) => log(`  ${k}  x${n}`)); }
+  r.warnings.forEach(w => log('WARNING: ' + w));
+  log(`total writes: ${r.writes}${r.applied ? '' : '   (use Apply Migration to perform them)'}`);
+  if (r.applied) log('\nNext: on every phone/browser let it sync, sign out, update the app, sign in again.');
+}
+
+async function run(apply) {
+  busy(true);
+  try {
+    const { email, password } = creds();
+    if (apply && !confirm('This rewrites your data in Firestore' + ($('deleteOld').checked ? ' and DELETES the old collections afterwards' : '') + '.\nDid you make a backup?\n\nContinue?')) { log('Cancelled.'); return; }
+    log(`\nSigning in as ${email}...`);
+    const s = await signIn({ email, password });
+    log(`Signed in (uid ${s.uid}).`);
+    const client = createRestClient({ idToken: s.idToken, uid: s.uid, refresh: s.refresh });
+    summary(await migrateCloud(client, { apply, deleteOld: apply && $('deleteOld').checked, log: (m) => log('  ' + m) }));
+  } catch (e) { log('\nError: ' + e.message); } finally { busy(false); }
+}
+
+async function convert() {
+  busy(true);
+  try {
+    const { email, password } = creds();
+    const file = $('backupFile').files[0];
+    if (!file) throw new Error('Choose a backup file first.');
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const encrypted = new TextDecoder().decode(buf.slice(0, 11)) === 'GZND_ENC_V';
+    let obj; let uid = '';
+    if (encrypted) {
+      log(`\nSigning in to find your uid...`);
+      uid = (await signIn({ email, password })).uid;
+      obj = await decryptBackup(buf, email, password, uid);
+    } else obj = JSON.parse(new TextDecoder().decode(buf));
+    const res = convertBackup(obj);
+    log('\n' + res.notes.join('\n'));
+    if (res.unknown && res.unknown.length) log(`MISMATCH: ${res.unknown.length} record field(s) point at a store that does not exist.`);
+    const bytes = encrypted ? await encryptBackup(res.data, email, password, uid) : new TextEncoder().encode(JSON.stringify(res.data));
+    const name = file.name.replace(/(\.[^.]+)?$/, '.migrated$1');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' })); a.download = name; a.click();
+    log(`Saved: ${name}`);
+  } catch (e) { log('\nError: ' + e.message); } finally { busy(false); }
+}
+
+$('btnDry').onclick = () => run(false);
+$('btnApply').onclick = () => run(true);
+$('btnConvert').onclick = convert;
+</script>
+</body>
+</html>

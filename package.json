@@ -13,6 +13,7 @@
     "build": "node build.js",
     "verify": "node scripts/verify.js",
     "migrate": "node tools/migrate-cloud.mjs",
+    "migrate:html": "node tools/build-migrate-html.mjs",
     "test": "node --test --experimental-test-module-mocks tests/*.test.js",
     "check": "npm run verify && npm test && npm run build && npm run verify -- dist",
     "serve": "node scripts/serve.js",

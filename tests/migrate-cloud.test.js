@@ -261,3 +261,15 @@ describe('Firestore REST codec and client', () => {
     await assert.rejects(signIn({ email: 'a@b.c', password: 'x', fetchImpl }), /Sign-in failed.*Google/);
   });
 });
+describe('tools/migrate.html is a self-contained copy of the migration code', () => {
+  it('has no external script/module imports and matches tools/migrate-cloud.mjs', async () => {
+    const { readFileSync } = await import('node:fs');
+    const html = readFileSync(new URL('../tools/migrate.html', import.meta.url), 'utf8');
+    const mjs = readFileSync(new URL('../tools/migrate-cloud.mjs', import.meta.url), 'utf8');
+    assert.ok(!/from\s+'\.\/migrate-cloud\.mjs'/.test(html), 'must not import a sibling file (breaks on file:// and phones)');
+    assert.ok(!/<script[^>]+src=/.test(html), 'no external scripts');
+    const lib = mjs.slice(0, mjs.indexOf('// ---------------------------------------------------------------- command line')).replace(/^#!.*\n/, '');
+    assert.ok(html.includes(lib.trim().slice(200, 1200)) && html.includes('export async function migrateCloud'), 'run: npm run migrate:html');
+    assert.ok(!/node:(fs|readline|url)/.test(html), 'no Node-only imports');
+  });
+});
