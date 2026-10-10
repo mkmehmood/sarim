@@ -1026,12 +1026,11 @@ div.innerHTML = `
 ${entry.managedBy ? `<span class="managed-by-badge">${esc(entry.managedBy)}</span>` : ''}
 ${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}
 </div>
-<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+<div style="display:flex;gap:6px;align-items:center;">
 ${_mergedBadgeHtml(entry)}
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
 </div>
-<div class="factory-summary-row"><span class="factory-summary-label">Formula</span><span class="qty-val">${formulaLabel}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Units Produced</span><span class="qty-val">${entry.units}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Material Cost</span><span class="cost-val">${await formatCurrency(entry.materialsCost || 0)}</span></div>
 ${totalAdditionalCost > 0 ? `<div class="factory-summary-row"><span class="factory-summary-label">Additional Cost</span><span class="cost-val">${await formatCurrency(totalAdditionalCost)}</span></div>` : ''}

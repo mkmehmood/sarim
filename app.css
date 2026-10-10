@@ -1805,11 +1805,6 @@ margin-top: 5px;
 }
 .supply-tag.store-a { color: var(--supply-a); }
 .supply-tag.store-b { color: var(--supply-b); }
-.supply-tag.store-c { color: var(--store-c); }
-.supply-tag.store-d { color: var(--warning); }
-.supply-tag.store-e { color: var(--danger); }
-.store-badge.store-d { color: var(--warning); }
-.store-badge.store-e { color: var(--danger); }
 .factory-store-selector {
 display: flex;
 background: transparent;
