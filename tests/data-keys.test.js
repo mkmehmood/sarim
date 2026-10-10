@@ -121,6 +121,12 @@ describe('one single-word name per dataset', () => {
     for (const f of files) assert.ok(!oldVars.test(read(f)), `${f} still uses an old variable name`);
     assert.ok(!oldVars.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')), 'index.html still uses an old variable name');
   });
+  it('the entity range select calls a real function instead of a dataset global that does not exist', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const tag = html.slice(html.indexOf('id="entityPdfRange"'), html.indexOf('id="entityPdfRange"') + 200);
+    assert.ok(tag.includes('onchange="refreshEntityOverlay()"'), 'select must call refreshEntityOverlay');
+    assert.ok(read('utilities-core.js').includes('window.refreshEntityOverlay = refreshEntityOverlay;'), 'handler must be on window');
+  });
   it('every backup writer stamps dataKeyVersion', () => {
     assert.ok(fnBody(sales, 'unifiedBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
     assert.ok(fnBody(payments, 'triggerLocalBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));

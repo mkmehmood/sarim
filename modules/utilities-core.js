@@ -1865,6 +1865,13 @@ if (!entity) return;
 await renderEntityOverlayContent(entity);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('entity-details-screen');
 }
+// Re-draws the open entity overlay (used by the date-range select, which changes what the overlay lists).
+export async function refreshEntityOverlay() {
+if (!currentEntityId) return;
+const entities = ensureArray(await sqliteStore.get('entities'));
+const entity = entities.find(e => String(e.id) === String(currentEntityId));
+if (entity) await renderEntityOverlayContent(entity);
+}
 export function closeEntityDetailsOverlay() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('entity-details-screen');
 currentEntityId = null; window.currentEntityId = currentEntityId;
@@ -4269,6 +4276,7 @@ window.openEntityDetailsOverlay = openEntityDetailsOverlay;
 window.closeEntityDetailsOverlay = closeEntityDetailsOverlay;
 window.openEditEntityFromDetails = openEditEntityFromDetails;
 window.renderEntityOverlayContent = renderEntityOverlayContent;
+window.refreshEntityOverlay = refreshEntityOverlay;
 window.filterEntityManagementHistory = filterEntityManagementHistory;
 window._toggleEntityTxnPanel = _toggleEntityTxnPanel;
 window._restorePayableFromDeletedTransaction = _restorePayableFromDeletedTransaction;
