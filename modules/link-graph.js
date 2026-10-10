@@ -2,24 +2,24 @@ export const GROUP_FIELD = '_deletionGroup';
 import { formulaTypeFor } from './store-keys.js';
 export const REF_FIELDS = {
   sales:       { scalar: ['relatedSaleId'], array: [] },
-  rep_sales:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
-  calculator_history:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
+  rep:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
+  calculator:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
   transactions: { scalar: ['expenseId', 'entityId', 'transferPeerEntityId', 'materialId'], array: ['materialIds'] },
   inventory: { scalar: ['supplierId'], array: [] },
 };
 export const COLLECTION_TO_KEY = {
   sales: 'sales',
-  rep_sales: 'rep_sales',
-  calculator_history: 'calculator_history',
+  rep: 'rep',
+  calculator: 'calculator',
   transactions: 'transactions',
   expenses: 'expenses',
   production: 'production',
   returns: 'returns',
-  sales_customers: 'sales_customers',
-  rep_customers: 'rep_customers',
+  customers: 'customers',
+  clients: 'clients',
   entities: 'entities',
   inventory: 'inventory',
-  factory_history: 'factory_history',
+  factory: 'factory',
 };
 const _n = (v) => Number(v) || 0;
 const _r2 = (v) => Math.round((_n(v) + Number.EPSILON) * 100) / 100;
@@ -115,7 +115,7 @@ export function stampGroup(rec, groupId) {
 export function newGroupId(prefix = 'grp') {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
-const _COLLECTION_RANK = { sales_customers: 0, rep_customers: 0, expenses: 0, entities: 0, inventory: 0 };
+const _COLLECTION_RANK = { customers: 0, clients: 0, expenses: 0, entities: 0, inventory: 0 };
 export function orderForRestore(tombstones) {
   const list = tombstones.slice();
   const ids = new Set(list.map(t => String(t.recordId || t.id)));
@@ -379,16 +379,16 @@ export function findParentTombstones(tomb, allTombs, live) {
   }
   const byId = (id, cols) => all.find(t => t && _tid(t) === String(id) && cols.includes(_tcol(t)));
   const need = (id, cols) => { if (id && !liveIds.has(String(id))) { const p = byId(id, cols); if (p) out.push(p); } };
-  need(snap.relatedSaleId, ['sales', 'rep_sales']);
+  need(snap.relatedSaleId, ['sales', 'rep']);
   need(snap.expenseId, ['expenses']);
   need(snap.entityId, ['entities']);
   if (snap.isTransfer) need(snap.transferPeerEntityId, ['entities']);
   if (col === 'inventory') need(snap.supplierId, ['entities']);
-  if ((col === 'sales' || col === 'rep_sales') && snap.customerName && !snap.isRepTransfer && !(col === 'sales' && snap.salesRep && snap.salesRep !== 'NONE')) {
+  if ((col === 'sales' || col === 'rep') && snap.customerName && !snap.isRepTransfer && !(col === 'sales' && snap.salesRep && snap.salesRep !== 'NONE')) {
     const kind = col === 'sales' ? 'sales' : 'rep';
     const names = (live && live.contacts && live.contacts[kind]) || new Set();
     if (!names.has(_lc(snap.customerName))) {
-      const ccol = kind === 'sales' ? 'sales_customers' : 'rep_customers';
+      const ccol = kind === 'sales' ? 'customers' : 'clients';
       const c = all.find(t => t && _tcol(t) === ccol && t.snapshot && _lc(t.snapshot.name) === _lc(snap.customerName));
       if (c) out.push(c);
     }
@@ -444,8 +444,8 @@ export function planGroupRecovery(members, blocked, requestedId) {
           (_tcol(t) === 'returns' && _tcol(x) === 'production' && x.snapshot && x.snapshot.isReturn && _returnPairMatches(x.snapshot, s))));
         if (partner) why = 'its matching return record cannot be recovered yet';
       }
-      if (!why && (_tcol(t) === 'sales' || _tcol(t) === 'rep_sales') && s.customerName) {
-        const cc = _tcol(t) === 'sales' ? 'sales_customers' : 'rep_customers';
+      if (!why && (_tcol(t) === 'sales' || _tcol(t) === 'rep') && s.customerName) {
+        const cc = _tcol(t) === 'sales' ? 'customers' : 'clients';
         const contact = list.find(x => skip.has(_tid(x)) && _tcol(x) === cc && x.snapshot && _lc(x.snapshot.name) === _lc(s.customerName));
         if (contact) why = `its customer "${s.customerName}" cannot be recovered yet`;
       }

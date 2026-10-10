@@ -59,9 +59,9 @@
 --backdrop-blur-heavy: blur(40px) saturate(200%);
 --highlight-bg: rgba(74, 222, 128, 0.10);
 --highlight-border: rgba(74, 222, 128, 0.28);
---store-a: #4ADE80;
---store-b: #c084fc;
---store-c: #67e8f9;
+--store-zubair: #4ADE80;
+--store-mahmood: #c084fc;
+--store-asaan: #67e8f9;
 --cash-color: #4ADE80;
 --credit-color: #fbbf24;
 --liquid-blue: rgba(103, 232, 249, 0.08);
@@ -69,8 +69,8 @@
 --liquid-purple: rgba(192, 132, 252, 0.08);
 --noran-color: #4ADE80;
 --noman-color: #67e8f9;
---supply-a: #4ADE80;
---supply-b: #c084fc;
+--supply-zubair: #4ADE80;
+--supply-mahmood: #c084fc;
 --factory-std: #4ADE80;
 --factory-asn: #c084fc;
 --toggle-bg: rgba(30, 41, 59, 0.70);
@@ -181,9 +181,9 @@
 --backdrop-blur-heavy: blur(32px) saturate(180%);
 --highlight-bg: rgba(16, 185, 129, 0.08);
 --highlight-border: rgba(16, 185, 129, 0.26);
---store-a: #059669;
---store-b: #7C3AED;
---store-c: #0891B2;
+--store-zubair: #059669;
+--store-mahmood: #7C3AED;
+--store-asaan: #0891B2;
 --cash-color: #059669;
 --credit-color: #D97706;
 --liquid-blue: rgba(8, 145, 178, 0.06);
@@ -191,8 +191,8 @@
 --liquid-purple: rgba(124, 58, 237, 0.06);
 --noran-color: #059669;
 --noman-color: #0891B2;
---supply-a: #059669;
---supply-b: #7C3AED;
+--supply-zubair: #059669;
+--supply-mahmood: #7C3AED;
 --factory-std: #059669;
 --factory-asn: #7C3AED;
 --toggle-bg: rgba(203, 213, 225, 0.70);
@@ -1147,9 +1147,9 @@ font-weight: 700;
 text-transform: uppercase;
 color: var(--text-muted);
 }
-.store-badge.store-a { color: var(--store-a); }
-.store-badge.store-b { color: var(--store-b); }
-.store-badge.store-c { color: var(--store-c); }
+.store-badge.store-zubair { color: var(--store-zubair); }
+.store-badge.store-mahmood { color: var(--store-mahmood); }
+.store-badge.store-asaan { color: var(--store-asaan); }
 #combinedOverview {
 overflow: visible !important;
 }
@@ -1552,7 +1552,7 @@ animation-delay: 2s;
 .liquid-3 {
 width: 120px;
 height: 120px;
-background: var(--store-b);
+background: var(--store-mahmood);
 top: 50%;
 left: 15%;
 animation-delay: 4s;
@@ -1803,13 +1803,13 @@ font-size: 0.65rem;
 font-weight: 400;
 margin-top: 5px;
 }
-.supply-tag.store-a { color: var(--supply-a); }
-.supply-tag.store-b { color: var(--supply-b); }
-.supply-tag.store-c { color: var(--store-c); }
-.supply-tag.store-d { color: var(--warning); }
-.supply-tag.store-e { color: var(--danger); }
-.store-badge.store-d { color: var(--warning); }
-.store-badge.store-e { color: var(--danger); }
+.supply-tag.store-zubair { color: var(--supply-zubair); }
+.supply-tag.store-mahmood { color: var(--supply-mahmood); }
+.supply-tag.store-asaan { color: var(--store-asaan); }
+.supply-tag.store-custom-1 { color: var(--warning); }
+.supply-tag.store-custom-2 { color: var(--danger); }
+.store-badge.store-custom-1 { color: var(--warning); }
+.store-badge.store-custom-2 { color: var(--danger); }
 .factory-store-selector {
 display: flex;
 background: transparent;
@@ -2684,17 +2684,17 @@ body.dark-mode {
 --shadow: 0 4px 20px rgba(0,0,0,0.45);
 --highlight-bg: rgba(74,222,128,0.10);
 --highlight-border: rgba(74,222,128,0.28);
---store-a: #4ADE80;
---store-b: #c084fc;
---store-c: #67e8f9;
+--store-zubair: #4ADE80;
+--store-mahmood: #c084fc;
+--store-asaan: #67e8f9;
 --cash-color: #4ADE80;
 --credit-color: #FBBF24;
 --liquid-blue: rgba(103,232,249,0.08);
 --liquid-green: rgba(74,222,128,0.08);
 --noran-color: #4ADE80;
 --noman-color: #67e8f9;
---supply-a: #4ADE80;
---supply-b: #c084fc;
+--supply-zubair: #4ADE80;
+--supply-mahmood: #c084fc;
 --factory-std: #4ADE80;
 --factory-asn: #c084fc;
 --toggle-opt-active-bg: rgba(74,222,128,0.16);

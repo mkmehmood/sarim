@@ -2272,8 +2272,8 @@ No records found
 <div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
 <label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group" style="margin-top: 8px;">
-<button id="ret-store-a" class="toggle-opt" onclick="selectReturnStore('zubair', this)">ZUBAIR</button>
-<button id="ret-store-b" class="toggle-opt" onclick="selectReturnStore('mahmood', this)">MAHMOOD</button>
+<button id="ret-store-zubair" class="toggle-opt" onclick="selectReturnStore('zubair', this)">ZUBAIR</button>
+<button id="ret-store-mahmood" class="toggle-opt" onclick="selectReturnStore('mahmood', this)">MAHMOOD</button>
 </div>
 <div class="u-field-hint" >
 * This will increase the store's stock level without creating a new production record.
@@ -2814,18 +2814,18 @@ Save Transaction
 <span>NET CASH IN HAND:</span>
 <span class="formula-value u-text-emerald" id="cashDetailNet">0.00</span>
 </div>
-<h4 style="color:var(--store-a); margin:15px 0 10px 0; border-bottom:2px solid var(--store-a); padding-bottom:5px;">CURRENT ASSETS</h4>
+<h4 style="color:var(--store-zubair); margin:15px 0 10px 0; border-bottom:2px solid var(--store-zubair); padding-bottom:5px;">CURRENT ASSETS</h4>
 <div class="formula-item">
 <span>Cash in Hand (Above):</span>
 <span class="formula-value" id="formulaProdTotal">0.00</span>
 </div>
 <div class="formula-item">
 <span>Raw Materials Inventory:</span>
-<span class="formula-value" style="color:var(--store-a);" id="formulaRawMaterials">0.00</span>
+<span class="formula-value" style="color:var(--store-zubair);" id="formulaRawMaterials">0.00</span>
 </div>
 <div class="formula-item">
 <span>Formula Units Inventory:</span>
-<span class="formula-value" style="color:var(--store-b);" id="formulaUnitsValue">0.00</span>
+<span class="formula-value" style="color:var(--store-mahmood);" id="formulaUnitsValue">0.00</span>
 </div>
 <h4 style="color:var(--accent); margin:15px 0 10px 0; border-bottom:2px solid var(--accent); padding-bottom:5px;">ACCOUNTS RECEIVABLE</h4>
 <div class="formula-item">

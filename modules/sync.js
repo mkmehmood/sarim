@@ -27,28 +27,28 @@ return result;
 export const SQLiteToFirestoreMap = {
 'production': { collection: 'production', varName: 'db' },
 'sales': { collection: 'sales', varName: 'customerSales' },
-'calculator_history': { collection: 'calculator_history', varName: 'salesHistory' },
-'rep_sales': { collection: 'rep_sales', varName: 'repSales' },
-'rep_customers': { collection: 'rep_customers', varName: 'repCustomers' },
-'sales_customers': { collection: 'sales_customers', varName: 'salesCustomers' },
+'calculator': { collection: 'calculator', varName: 'salesHistory' },
+'rep': { collection: 'rep', varName: 'repSales' },
+'clients': { collection: 'clients', varName: 'repCustomers' },
+'customers': { collection: 'customers', varName: 'salesCustomers' },
 'transactions': { collection: 'transactions', varName: 'paymentTransactions' },
 'entities': { collection: 'entities', varName: 'paymentEntities' },
 'inventory': { collection: 'inventory', varName: 'factoryInventoryData' },
-'factory_history': { collection: 'factory_history', varName: 'factoryProductionHistory' },
+'factory': { collection: 'factory', varName: 'factoryProductionHistory' },
 'expenses': { collection: 'expenses', varName: 'expenseRecords' },
 'returns': { collection: 'returns', varName: 'stockReturns' }
 };
 export const FirestoreToSQLiteMap = {
 'production': 'production',
 'sales': 'sales',
-'calculator_history': 'calculator_history',
-'rep_sales': 'rep_sales',
-'rep_customers': 'rep_customers',
-'sales_customers': 'sales_customers',
+'calculator': 'calculator',
+'rep': 'rep',
+'clients': 'clients',
+'customers': 'customers',
 'transactions': 'transactions',
 'entities': 'entities',
 'inventory': 'inventory',
-'factory_history': 'factory_history',
+'factory': 'factory',
 'expenses': 'expenses',
 'returns': 'returns'
 };
@@ -245,9 +245,9 @@ triggerAutoSync();
 return true;
 }
 const _DELETE_LABELS = {
-  rep_sales: 'Sale', sales: 'Sale', transactions: 'Payment', expenses: 'Expense',
-  production: 'Production entry', entities: 'Entity', sales_customers: 'Customer', rep_customers: 'Customer',
-  inventory: 'Raw material', factory_history: 'Factory entry', returns: 'Return', calculator_history: 'Calculation'
+  rep: 'Sale', sales: 'Sale', transactions: 'Payment', expenses: 'Expense',
+  production: 'Production entry', entities: 'Entity', customers: 'Customer', clients: 'Customer',
+  inventory: 'Raw material', factory: 'Factory entry', returns: 'Return', calculator: 'Calculation'
 };
 function _notifyDeletion(key, r) {
   try {
@@ -293,9 +293,9 @@ return true;
 }
 export async function verifyDeltaSyncSystem() {
 const collections = [
-'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
-'sales_customers',
-'transactions', 'entities', 'inventory', 'factory_history', 'returns', 'expenses', 'deletions'
+'production', 'sales', 'calculator', 'rep', 'clients',
+'customers',
+'transactions', 'entities', 'inventory', 'factory', 'returns', 'expenses', 'deletions'
 ];
 const results = {
 valid: [],
@@ -759,24 +759,24 @@ this.results.errors.push({ collection: 'sales', error: error.message });
 }
 async createRepCollections() {
 try {
-const repSalesPlaceholder = this.userRef.collection('rep_sales').doc('_placeholder_');
+const repSalesPlaceholder = this.userRef.collection('rep').doc('_placeholder_');
 await repSalesPlaceholder.set({
 _placeholder: true,
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Rep sales collection initialized'
 });
-const repCustomersPlaceholder = this.userRef.collection('rep_customers').doc('_placeholder_');
+const repCustomersPlaceholder = this.userRef.collection('clients').doc('_placeholder_');
 await repCustomersPlaceholder.set({
 _placeholder: true,
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Rep customers collection initialized'
 });
-this.results.success.push('rep_sales');
-this.results.success.push('rep_customers');
+this.results.success.push('rep');
+this.results.success.push('clients');
 } catch (error) {
-this.results.errors.push({ collection: 'rep_sales', error: error.message });
+this.results.errors.push({ collection: 'rep', error: error.message });
 }
 }
 async createPaymentCollections() {
@@ -810,7 +810,7 @@ createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Inventory collection initialized'
 });
-const factoryHistoryPlaceholder = this.userRef.collection('factory_history').doc('_placeholder_');
+const factoryHistoryPlaceholder = this.userRef.collection('factory').doc('_placeholder_');
 await factoryHistoryPlaceholder.set({
 _placeholder: true,
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -818,7 +818,7 @@ type: 'placeholder',
 message: 'Factory history collection initialized'
 });
 this.results.success.push('inventory');
-this.results.success.push('factory_history');
+this.results.success.push('factory');
 } catch (error) {
 this.results.errors.push({ collection: 'inventory', error: error.message });
 }
@@ -847,23 +847,23 @@ this.results.errors.push({ collection: 'expenses', error: error.message });
 }
 async createCalculatorCollection() {
 try {
-const calculatorPlaceholder = this.userRef.collection('calculator_history').doc('_placeholder_');
+const calculatorPlaceholder = this.userRef.collection('calculator').doc('_placeholder_');
 await calculatorPlaceholder.set({
 _placeholder: true,
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Calculator history collection initialized'
 });
-this.results.success.push('calculator_history');
+this.results.success.push('calculator');
 } catch (error) {
-this.results.errors.push({ collection: 'calculator_history', error: error.message });
+this.results.errors.push({ collection: 'calculator', error: error.message });
 }
 }
 async createSettingsCollections() {
 try {
 const settingsRef = this.userRef.collection('settings').doc('config');
 await settingsRef.set({
-naswar_default_settings: {},
+settings: {},
 appMode: 'admin',
 repProfile: salesRepsList[0] || 'NORAN SHAH',
 theme: 'dark',
@@ -906,24 +906,24 @@ this.results.errors.push({ collection: 'settings', error: error.message });
 }
 async createContactCollections() {
 try {
-const repContactsPlaceholder = this.userRef.collection('rep_customers').doc('_placeholder_');
+const repContactsPlaceholder = this.userRef.collection('clients').doc('_placeholder_');
 await repContactsPlaceholder.set({
 _placeholder: true,
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Rep customers collection initialized'
 });
-const salesContactsPlaceholder = this.userRef.collection('sales_customers').doc('_placeholder_');
+const salesContactsPlaceholder = this.userRef.collection('customers').doc('_placeholder_');
 await salesContactsPlaceholder.set({
 _placeholder: true,
 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
 type: 'placeholder',
 message: 'Sales customers collection initialized'
 });
-this.results.success.push('rep_customers');
-this.results.success.push('sales_customers');
+this.results.success.push('clients');
+this.results.success.push('customers');
 } catch (error) {
-this.results.errors.push({ collection: 'rep_customers', error: error.message });
+this.results.errors.push({ collection: 'clients', error: error.message });
 }
 }
 async createTeamSettingsDocument() {
@@ -985,10 +985,10 @@ try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const requiredCollections = [
 'devices', 'account', 'activityLog', 'production', 'sales',
-'rep_sales', 'rep_customers',
-'sales_customers',
-'transactions', 'entities', 'inventory', 'factory_history', 'expenses', 'returns',
-'calculator_history', 'settings', 'factorySettings', 'expenseCategories',
+'rep', 'clients',
+'customers',
+'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns',
+'calculator', 'settings', 'factorySettings', 'expenseCategories',
 'deletions', 'sync_updates'
 ];
 const checks = await Promise.all(
@@ -1028,12 +1028,12 @@ const batch = firebaseDB.batch();
 const collections = [
 'devices', 'account', 'activityLog',
 'production', 'sales',
-'rep_sales', 'rep_customers',
-'sales_customers',
+'rep', 'clients',
+'customers',
 'transactions', 'entities',
-'inventory', 'factory_history',
+'inventory', 'factory',
 'expenses', 'returns',
-'calculator_history',
+'calculator',
 'settings', 'factorySettings', 'expenseCategories',
 'deletions', 'sync_updates'
 ];
@@ -1095,20 +1095,20 @@ export const SYNC_COLLECTIONS = [
     lockOnClose:  true,
   },
   {
-    firestoreId:  'rep_sales',
-    sqliteKey:       'rep_sales',
+    firestoreId:  'rep',
+    sqliteKey:       'rep',
     tabSyncFn:    'syncRepTab',
     lockOnClose:  true,
   },
   {
-    firestoreId:  'rep_customers',
-    sqliteKey:       'rep_customers',
+    firestoreId:  'clients',
+    sqliteKey:       'clients',
     tabSyncFn:    'syncRepTab',
     lockOnClose:  false,
   },
   {
-    firestoreId:  'sales_customers',
-    sqliteKey:       'sales_customers',
+    firestoreId:  'customers',
+    sqliteKey:       'customers',
     tabSyncFn:    'renderCustomersTable',
     lockOnClose:  false,
   },
@@ -1131,8 +1131,8 @@ export const SYNC_COLLECTIONS = [
     lockOnClose:  false,
   },
   {
-    firestoreId:  'factory_history',
-    sqliteKey:       'factory_history',
+    firestoreId:  'factory',
+    sqliteKey:       'factory',
     tabSyncFn:    'syncFactoryTab',
     lockOnClose:  true,
   },
@@ -1149,8 +1149,8 @@ export const SYNC_COLLECTIONS = [
     lockOnClose:  true,
   },
   {
-    firestoreId:  'calculator_history',
-    sqliteKey:       'calculator_history',
+    firestoreId:  'calculator',
+    sqliteKey:       'calculator',
     tabSyncFn:    'syncCalculatorTab',
     lockOnClose:  true,
   },
@@ -1457,17 +1457,17 @@ export async function subscribeToRealtime() {
       const userRef = firebaseDB.collection('users').doc(currentUser.uid);
       const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
         sqliteStore.get('production',[]), sqliteStore.get('sales',[]),
-        sqliteStore.get('rep_sales',[]), sqliteStore.get('calculator_history',[]),
-        sqliteStore.get('transactions',[]), sqliteStore.get('factory_history',[]),
+        sqliteStore.get('rep',[]), sqliteStore.get('calculator',[]),
+        sqliteStore.get('transactions',[]), sqliteStore.get('factory',[]),
         sqliteStore.get('expenses',[]), sqliteStore.get('returns',[]),
       ]);
       const yearCloseCollections = [
         { name: 'production',         data: ensureArray(_db),   filter: d => !d.isMerged },
         { name: 'sales',              data: ensureArray(_cs),   filter: d => !d.isMerged },
-        { name: 'rep_sales',          data: ensureArray(_rs),   filter: d => !d.isMerged },
-        { name: 'calculator_history', data: ensureArray(_sh),   filter: d => !d.isMerged },
+        { name: 'rep',          data: ensureArray(_rs),   filter: d => !d.isMerged },
+        { name: 'calculator', data: ensureArray(_sh),   filter: d => !d.isMerged },
         { name: 'transactions',       data: ensureArray(_pt),   filter: d => !d.isMerged },
-        { name: 'factory_history',    data: ensureArray(_fph),  filter: d => !d.isMerged },
+        { name: 'factory',    data: ensureArray(_fph),  filter: d => !d.isMerged },
         { name: 'expenses',           data: ensureArray(_er),   filter: d => !d.isMerged },
         { name: 'returns',            data: ensureArray(_sr),   filter: d => !d.isMerged },
       ];
@@ -1483,16 +1483,16 @@ export async function subscribeToRealtime() {
         _set_pendingFirestoreYearClose(false);
         await sqliteStore.set('pendingFirestoreYearClose', false);
         try {
-          const _fySettings = await sqliteStore.get('naswar_default_settings', {});
+          const _fySettings = await sqliteStore.get('settings', {});
           const _fyTs = Date.now();
-          await sqliteStore.set('naswar_default_settings_timestamp', _fyTs);
+          await sqliteStore.set('settings_timestamp', _fyTs);
           await userRef.collection('settings').doc('config').set({
-            naswar_default_settings: {
+            settings: {
               fyCloseCount:       _fySettings.fyCloseCount       || 0,
               lastYearClosedAt:   _fySettings.lastYearClosedAt   || null,
               lastYearClosedDate: _fySettings.lastYearClosedDate || null,
             },
-            naswar_default_settings_timestamp: _fyTs,
+            settings_timestamp: _fyTs,
           }, { merge: true });
           if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp('settings');
         } catch (_metaRetryErr) {
@@ -1504,7 +1504,7 @@ export async function subscribeToRealtime() {
             type:        'close',
             triggeredAt: Date.now(),
             triggeredBy: _retryDeviceId,
-            fyCloseCount: (await sqliteStore.get('naswar_default_settings', {})).fyCloseCount || 0,
+            fyCloseCount: (await sqliteStore.get('settings', {})).fyCloseCount || 0,
             _retryBroadcast: true,
           });
         } catch (_reBroadcastErr) {
@@ -1525,15 +1525,15 @@ export async function subscribeToRealtime() {
       showToast('Retrying restore cloud sync...', 'info', 3000);
       const _restoreUserRef = firebaseDB.collection('users').doc(currentUser.uid);
       const _restoreKeys = [
-        'production', 'sales', 'calculator_history', 'rep_sales',
-        'rep_customers', 'sales_customers', 'inventory',
-        'factory_history', 'returns', 'transactions',
+        'production', 'sales', 'calculator', 'rep',
+        'clients', 'customers', 'inventory',
+        'factory', 'returns', 'transactions',
         'entities', 'expenses',
       ];
       const _restoreColMap = {
-        production: 'production', sales: 'sales', calculator_history: 'calculator_history',
-        rep_sales: 'rep_sales', rep_customers: 'rep_customers', sales_customers: 'sales_customers',
-        inventory: 'inventory', factory_history: 'factory_history',
+        production: 'production', sales: 'sales', calculator: 'calculator',
+        rep: 'rep', clients: 'clients', customers: 'customers',
+        inventory: 'inventory', factory: 'factory',
         returns: 'returns', transactions: 'transactions',
         entities: 'entities', expenses: 'expenses',
       };
@@ -1662,7 +1662,7 @@ export async function subscribeToRealtime() {
         if (!cloudSettings || typeof cloudSettings !== 'object') return;
         let hasUpdates = false;
         const timestampChecks = [
-          { cloud: cloudSettings.naswar_default_settings_timestamp, local: await sqliteStore.get('naswar_default_settings_timestamp') },
+          { cloud: cloudSettings.settings_timestamp, local: await sqliteStore.get('settings_timestamp') },
           { cloud: cloudSettings.repProfile_timestamp,              local: await sqliteStore.get('repProfile_timestamp') },
           { cloud: cloudSettings.sales_reps_timestamp,             local: await sqliteStore.get('sales_reps_list_timestamp') },
         ];
@@ -1670,12 +1670,12 @@ export async function subscribeToRealtime() {
           if ((check.cloud || 0) > (check.local || 0)) { hasUpdates = true; break; }
         }
         if (!hasUpdates) return;
-        if (cloudSettings.naswar_default_settings) {
-          const ct = cloudSettings.naswar_default_settings_timestamp || 0;
-          const lt = (await sqliteStore.get('naswar_default_settings_timestamp')) || 0;
+        if (cloudSettings.settings) {
+          const ct = cloudSettings.settings_timestamp || 0;
+          const lt = (await sqliteStore.get('settings_timestamp')) || 0;
           if (ct > lt) {
-            const cloudFy = cloudSettings.naswar_default_settings;
-            const localFy = (await sqliteStore.get('naswar_default_settings')) || {};
+            const cloudFy = cloudSettings.settings;
+            const localFy = (await sqliteStore.get('settings')) || {};
             const mergedFy = {
               ...localFy,
               ...cloudFy,
@@ -1692,8 +1692,8 @@ export async function subscribeToRealtime() {
             };
             _set_defaultSettings(mergedFy);
             await sqliteStore.setBatch([
-              ['naswar_default_settings', defaultSettings],
-              ['naswar_default_settings_timestamp', ct],
+              ['settings', defaultSettings],
+              ['settings_timestamp', ct],
             ]);
           }
         }
@@ -1956,12 +1956,12 @@ export async function subscribeToRealtime() {
                 else if ((rt === 'sale' || rt === 'sales') && rid)                 await _filterOut('sales');
                 else if ((rt === 'expenses' || rt === 'expense') && rid)           await _filterOut('expenses');
                 else if ((rt === 'transactions' || rt === 'transaction') && rid)   await _filterOut('transactions');
-                else if ((rt === 'rep_sales' || rt === 'rep_sale') && rid)         await _filterOut('rep_sales');
-                else if (rt === 'rep_customers' && rid)                            await _filterOut('rep_customers');
+                else if ((rt === 'rep' || rt === 'rep_sale') && rid)         await _filterOut('rep');
+                else if (rt === 'clients' && rid)                            await _filterOut('clients');
                 else if (rt === 'inventory' && rid)                                await _filterOut('inventory');
-                else if (rt === 'factory_history' && rid)                          await _filterOut('factory_history');
+                else if (rt === 'factory' && rid)                          await _filterOut('factory');
                 else if (rt === 'returns' && rid)                                  await _filterOut('returns');
-                else if (rt === 'calculator_history' && rid)                       await _filterOut('calculator_history');
+                else if (rt === 'calculator' && rid)                       await _filterOut('calculator');
                 else if (rt === 'entities' && rid)                                 await _filterOut('entities');
               } catch (collectionError) { console.warn('Failed to apply deletion to collection', _safeErr(collectionError)); }
               hasChanges = true;
@@ -2082,9 +2082,9 @@ export async function subscribeToRealtime() {
         if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry && OfflineQueue.cancelRetry();
         try {
           const _wipeKeys = [
-            'production', 'sales', 'calculator_history', 'rep_sales',
-            'rep_customers', 'sales_customers', 'transactions',
-            'entities', 'inventory', 'factory_history',
+            'production', 'sales', 'calculator', 'rep',
+            'clients', 'customers', 'transactions',
+            'entities', 'inventory', 'factory',
             'returns', 'expenses', 'deleted_records', 'deletion_records',
           ];
           await sqliteStore.setBatch(_wipeKeys.map(k => [k, []]));
@@ -2454,10 +2454,10 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
 export async function _detectUserType(userRef) {
   const hasInitialized = await sqliteStore.get('firestore_initialized');
   const sqliteArrays = await Promise.all([
-    sqliteStore.get('production', []), sqliteStore.get('sales', []), sqliteStore.get('rep_sales', []),
-    sqliteStore.get('calculator_history', []), sqliteStore.get('transactions', []), sqliteStore.get('entities', []),
-    sqliteStore.get('inventory', []), sqliteStore.get('factory_history', []),
-    sqliteStore.get('returns', []), sqliteStore.get('rep_customers', []), sqliteStore.get('expenses', []),
+    sqliteStore.get('production', []), sqliteStore.get('sales', []), sqliteStore.get('rep', []),
+    sqliteStore.get('calculator', []), sqliteStore.get('transactions', []), sqliteStore.get('entities', []),
+    sqliteStore.get('inventory', []), sqliteStore.get('factory', []),
+    sqliteStore.get('returns', []), sqliteStore.get('clients', []), sqliteStore.get('expenses', []),
   ]);
   const totalLocal = sqliteArrays.reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0);
   if (hasInitialized && totalLocal > 0) return 'returning';
@@ -2466,7 +2466,7 @@ export async function _detectUserType(userRef) {
       userRef.collection('production').limit(20).get(),
       userRef.collection('sales').limit(20).get(),
       userRef.collection('transactions').limit(20).get(),
-      userRef.collection('rep_sales').limit(20).get(),
+      userRef.collection('rep').limit(20).get(),
       userRef.collection('entities').limit(20).get(),
       userRef.collection('inventory').limit(20).get(),
       userRef.collection('expenses').limit(20).get(),
@@ -2507,14 +2507,14 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     userRef.collection('appStores').doc('stores').get(),
     buildQuery(userRef.collection('production'), 'production'),
     buildQuery(userRef.collection('sales'), 'sales'),
-    buildQuery(userRef.collection('calculator_history'), 'calculator_history'),
-    buildQuery(userRef.collection('rep_sales'), 'rep_sales'),
-    buildQuery(userRef.collection('rep_customers'), 'rep_customers'),
-    buildQuery(userRef.collection('sales_customers'), 'sales_customers'),
+    buildQuery(userRef.collection('calculator'), 'calculator'),
+    buildQuery(userRef.collection('rep'), 'rep'),
+    buildQuery(userRef.collection('clients'), 'clients'),
+    buildQuery(userRef.collection('customers'), 'customers'),
     buildQuery(userRef.collection('transactions'), 'transactions'),
     buildQuery(userRef.collection('entities'), 'entities'),
     buildQuery(userRef.collection('inventory'), 'inventory'),
-    buildQuery(userRef.collection('factory_history'), 'factory_history'),
+    buildQuery(userRef.collection('factory'), 'factory'),
     buildQuery(userRef.collection('expenses'), 'expenses'),
     buildQuery(userRef.collection('returns'), 'returns'),
   ]);
@@ -2546,26 +2546,26 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     data: {
       production:              extract(productionSnap),
       sales:           extract(salesSnap),
-      calculator_history:            extract(calcHistorySnap),
-      rep_sales:                extract(repSalesSnap),
-      rep_customers:            extract(repCustomersSnap),
-      sales_customers:          extract(salesCustomersSnap),
+      calculator:            extract(calcHistorySnap),
+      rep:                extract(repSalesSnap),
+      clients:            extract(repCustomersSnap),
+      customers:          extract(salesCustomersSnap),
       transactions:     extract(transactionsSnap),
       entities:         extract(entitiesSnap),
       inventory:   extract(inventorySnap),
-      factory_history: extract(factoryHistorySnap),
+      factory: extract(factoryHistorySnap),
       returns:            extract(returnsSnap),
       expenses:                 extract(expensesSnap),
     },
   };
 }
 const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
-const _REMOTE_TX_KEYS = ['rep_sales', 'sales', 'transactions', 'expenses'];
+const _REMOTE_TX_KEYS = ['rep', 'sales', 'transactions', 'expenses'];
 function _describeRemoteTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const created = Number(r.createdAt || r.timestamp || 0);
   if (!created || Date.now() - created > _REMOTE_TX_WINDOW_MS) return null;
-  if (key === 'rep_sales') {
+  if (key === 'rep') {
     const rep = r.salesRep;
     if (!rep || rep === 'NONE' || rep === 'admin') return null;
     return r.isCollection ? { title: 'New collection', body: `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` } : { title: 'New sale', body: `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
@@ -2597,11 +2597,11 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   items.slice(0, 5).forEach(_pushTxNotification);
   if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
 }
-const _LOCAL_TX_KEYS = new Set(['rep_sales', 'sales', 'transactions', 'expenses', 'production']);
+const _LOCAL_TX_KEYS = new Set(['rep', 'sales', 'transactions', 'expenses', 'production']);
 function _describeLocalTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const who = r.customerName || 'customer';
-  if (key === 'rep_sales') return r.isCollection ? { title: 'Collection', body: `Collected ${fmtAmt(r.totalValue)} from ${who}` } : { title: 'Sale', body: `Sold to ${who} — ${fmtAmt(r.totalValue)}` };
+  if (key === 'rep') return r.isCollection ? { title: 'Collection', body: `Collected ${fmtAmt(r.totalValue)} from ${who}` } : { title: 'Sale', body: `Sold to ${who} — ${fmtAmt(r.totalValue)}` };
   if (key === 'sales') return { title: 'Sale', body: `${who} — ${fmtAmt(r.totalValue)}` };
   if (key === 'transactions') {
     if (r.isExpense) return null;
@@ -2732,9 +2732,9 @@ export async function _mergeAndPersist(cloudData) {
   }
   const { data } = cloudData;
   const _localKeys = [
-  'production','sales','calculator_history','rep_sales','rep_customers',
-  'sales_customers','transactions','entities',
-  'inventory','factory_history','returns','expenses',
+  'production','sales','calculator','rep','clients',
+  'customers','transactions','entities',
+  'inventory','factory','returns','expenses',
   ];
   const _localBatch = await sqliteStore.getBatch(_localKeys);
   const _deletedArr = ensureArray(await sqliteStore.get('deleted_records'));
@@ -2742,10 +2742,10 @@ export async function _mergeAndPersist(cloudData) {
   const _yearCloseCollectionKeys = [
     ['production',                'production'],
     ['sales',             'sales'],
-    ['calculator_history',              'calculator_history'],
-    ['rep_sales',                  'rep_sales'],
+    ['calculator',              'calculator'],
+    ['rep',                  'rep'],
     ['transactions',       'transactions'],
-    ['factory_history', 'factory_history'],
+    ['factory', 'factory'],
     ['returns',              'returns'],
     ['expenses',                   'expenses'],
   ];
@@ -2789,14 +2789,14 @@ export async function _mergeAndPersist(cloudData) {
   const _merged = {
   production:                _m('production',                'production',       'production'),
   sales:             _m('sales',             'sales',             'sales'),
-  calculator_history:              _m('calculator_history',              'calculator_history','calculator_history'),
-  rep_sales:                  _m('rep_sales',                  'rep_sales',         'rep_sales'),
-  rep_customers:              _m('rep_customers',              'rep_customers',     'rep_customers'),
-  sales_customers:            _m('sales_customers',            'sales_customers',   'sales_customers'),
+  calculator:              _m('calculator',              'calculator','calculator'),
+  rep:                  _m('rep',                  'rep',         'rep'),
+  clients:              _m('clients',              'clients',     'clients'),
+  customers:            _m('customers',            'customers',   'customers'),
   transactions:       _m('transactions',       'transactions',      'transactions'),
   entities:           _m('entities',           'entities',          'entities'),
   inventory:     _m('inventory',     'inventory',         'inventory'),
-  factory_history: _m('factory_history', 'factory_history',   'factory_history'),
+  factory: _m('factory', 'factory',   'factory'),
   returns:              _m('returns',              'returns',           'returns'),
   expenses:                   _m('expenses',                   'expenses',          'expenses'),
   };
@@ -2812,10 +2812,10 @@ export async function _mergeAndPersist(cloudData) {
   });
   };
   _mark('production', data.production);       _mark('sales', data.sales);
-  _mark('calculator_history', data.calculator_history); _mark('rep_sales', data.rep_sales);
-  _mark('rep_customers', data.rep_customers);   _mark('sales_customers', data.sales_customers);
+  _mark('calculator', data.calculator); _mark('rep', data.rep);
+  _mark('clients', data.clients);   _mark('customers', data.customers);
   _mark('transactions', data.transactions); _mark('entities', data.entities);
-  _mark('inventory', data.inventory); _mark('factory_history', data.factory_history);
+  _mark('inventory', data.inventory); _mark('factory', data.factory);
   _mark('returns', data.returns);         _mark('expenses', data.expenses);
   await sqliteStore.setBatch([
   ...Object.entries(_merged).map(([k, v]) => [k, v]),
@@ -2824,11 +2824,11 @@ export async function _mergeAndPersist(cloudData) {
   try { notifyAdminOfRemoteTransactions(_localBatch, _merged); } catch (_) {}
   const _colMap = {
   production: data.production, sales: data.sales,
-  calculator_history: data.calculator_history, transactions: data.transactions,
+  calculator: data.calculator, transactions: data.transactions,
   entities: data.entities, inventory: data.inventory,
-  factory_history: data.factory_history, returns: data.returns,
-  expenses: data.expenses, rep_sales: data.rep_sales,
-  rep_customers: data.rep_customers, sales_customers: data.sales_customers,
+  factory: data.factory, returns: data.returns,
+  expenses: data.expenses, rep: data.rep,
+  clients: data.clients, customers: data.customers,
   };
   for (const [col, arr] of Object.entries(_colMap)) {
   if (Array.isArray(arr)) {
@@ -2842,12 +2842,12 @@ export async function _syncSettings(cloudData) {
   const { settings: settingsSnap, factorySettings: factorySettingsSnap, expenseCategories: expCatSnap, appStores: appStoresSnap, personPhotosSnap } = cloudData;
   if (settingsSnap && settingsSnap.exists) {
     const sd = settingsSnap.data();
-    if (sd && sd.naswar_default_settings) {
-      const ct = sd.naswar_default_settings_timestamp || 0;
-      const lt = (await sqliteStore.get('naswar_default_settings_timestamp')) || 0;
-      const localSettings = (await sqliteStore.get('naswar_default_settings')) || {};
+    if (sd && sd.settings) {
+      const ct = sd.settings_timestamp || 0;
+      const lt = (await sqliteStore.get('settings_timestamp')) || 0;
+      const localSettings = (await sqliteStore.get('settings')) || {};
       if (ct >= lt) {
-        const cloudFy = sd.naswar_default_settings;
+        const cloudFy = sd.settings;
         const mergedFy = {
           ...localSettings,
           ...cloudFy,
@@ -2867,11 +2867,11 @@ export async function _syncSettings(cloudData) {
         };
         _set_defaultSettings(mergedFy);
         await sqliteStore.setBatch([
-          ['naswar_default_settings', defaultSettings],
-          ['naswar_default_settings_timestamp', ct || Date.now()],
+          ['settings', defaultSettings],
+          ['settings_timestamp', ct || Date.now()],
         ]);
       } else {
-        const cloudFy = sd.naswar_default_settings;
+        const cloudFy = sd.settings;
         const mergedFy = {
           ...cloudFy,
           ...localSettings,
@@ -2881,7 +2881,7 @@ export async function _syncSettings(cloudData) {
           ),
         };
         _set_defaultSettings(mergedFy);
-        await sqliteStore.set('naswar_default_settings', defaultSettings);
+        await sqliteStore.set('settings', defaultSettings);
       }
     }
     if (sd && sd.repProfile) {
@@ -2998,20 +2998,20 @@ export async function _syncSettings(cloudData) {
 export async function _uploadChanges(userRef) {
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
   const _keys = [
-  'production','sales','rep_sales','rep_customers','sales_customers',
-  'calculator_history','inventory','factory_history',
+  'production','sales','rep','clients','customers',
+  'calculator','inventory','factory',
   'entities','transactions','expenses','returns',
   ];
   const _batch = await sqliteStore.getBatch(_keys);
   const collections = {
   production:         ensureArray(_batch.get('production')).filter(isRealRecord),
   sales:              ensureArray(_batch.get('sales')).filter(isRealRecord),
-  rep_sales:          ensureArray(_batch.get('rep_sales')).filter(isRealRecord),
-  rep_customers:      ensureArray(_batch.get('rep_customers')).filter(isRealRecord),
-  sales_customers:    ensureArray(_batch.get('sales_customers')).filter(isRealRecord),
-  calculator_history: ensureArray(_batch.get('calculator_history')).filter(isRealRecord),
+  rep:          ensureArray(_batch.get('rep')).filter(isRealRecord),
+  clients:      ensureArray(_batch.get('clients')).filter(isRealRecord),
+  customers:    ensureArray(_batch.get('customers')).filter(isRealRecord),
+  calculator: ensureArray(_batch.get('calculator')).filter(isRealRecord),
   inventory:          ensureArray(_batch.get('inventory')).filter(isRealRecord),
-  factory_history:    ensureArray(_batch.get('factory_history')).filter(isRealRecord),
+  factory:    ensureArray(_batch.get('factory')).filter(isRealRecord),
   entities:           ensureArray(_batch.get('entities')).filter(isRealRecord),
   transactions:       ensureArray(_batch.get('transactions')).filter(isRealRecord),
   expenses:           ensureArray(_batch.get('expenses')).filter(isRealRecord),
@@ -3101,13 +3101,13 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('factorySettings');
   }
-  const localSettingsTs = await sqliteStore.get('naswar_default_settings_timestamp');
+  const localSettingsTs = await sqliteStore.get('settings_timestamp');
   const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
   if (localSettingsTs && (!lastSettingsSync || localSettingsTs > lastSettingsSync)) {
-    const _ds = await sqliteStore.get('naswar_default_settings');
+    const _ds = await sqliteStore.get('settings');
     configBatch.set(
       userRef.collection('settings').doc('config'),
-      sanitizeForFirestore({ naswar_default_settings: _ds || {}, naswar_default_settings_timestamp: localSettingsTs }),
+      sanitizeForFirestore({ settings: _ds || {}, settings_timestamp: localSettingsTs }),
       { merge: true }
     );
     operationCount++;
@@ -3479,13 +3479,13 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       ['factory_additional_costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
       ['factory_cost_adjustment_factor', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
       ['factory_unit_tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
-      ['naswar_default_settings', defaultSettings],
+      ['settings', defaultSettings],
       ['appMode', appMode],
       ['repProfile', currentRepProfile],
       ['current_rep_profile', currentRepProfile],
     ]);
-    const statsCols = ['production','sales','rep_sales','rep_customers','calculator_history',
-      'transactions','entities','inventory','factory_history','returns','expenses','sales_customers'];
+    const statsCols = ['production','sales','rep','clients','calculator',
+      'transactions','entities','inventory','factory','returns','expenses','customers'];
     void Promise.all(statsCols.map(c => DeltaSync.updateSyncStats(c))).catch(() => {});
     if (!silent) window.showGlassAlert(' Data Restored Successfully', { tone: 'success', title: 'Data Restored' });
     if (typeof updateUnitsAvailableIndicator === 'function') updateUnitsAvailableIndicator();
@@ -3573,7 +3573,7 @@ if (!currentUser) return;
 autoSaveTimer = setInterval(async () => {
 if (!currentUser) { clearAutoBackup(); return; }
 try {
-const cols = ['production','sales','rep_sales','transactions','expenses','returns','calculator_history'];
+const cols = ['production','sales','rep','transactions','expenses','returns','calculator'];
 const hasChanges = await DeltaSync.hasAnyChanges(cols);
 if (!hasChanges) return;
 await performOneClickSync(true);

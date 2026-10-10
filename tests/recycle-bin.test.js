@@ -86,7 +86,7 @@ async function recoverRecord(deletedId, collectionName, { sqliteStore, OfflineQu
   try {
     const sqliteKeyMap = {
       sales: 'sales', transactions: 'transactions',
-      rep_sales: 'rep_sales', expenses: 'expenses', production: 'production',
+      rep: 'rep', expenses: 'expenses', production: 'production',
       returns: 'returns',
     };
     const sqliteKey = sqliteKeyMap[collectionName] || collectionName;

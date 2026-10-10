@@ -15,17 +15,17 @@ describe('recovered-id remapping', () => {
   it('re-points every reference to a recovered record and reports only changed records', () => {
     const stores = {
       sales: [{ id: 'p1', relatedSaleId: 'old' }, { id: 'p2', relatedSaleId: 'other' }],
-      calculator_history: [{ id: 'h1', linkedSalesIds: ['x', 'old'], transferSaleId: 'old' }],
+      calculator: [{ id: 'h1', linkedSalesIds: ['x', 'old'], transferSaleId: 'old' }],
       transactions: [{ id: 't1', expenseId: 'old' }],
-      rep_sales: [],
+      rep: [],
     };
     const changed = remapReferences(stores, 'old', 'new');
     assert.equal(stores.sales[0].relatedSaleId, 'new');
     assert.equal(stores.sales[1].relatedSaleId, 'other');
-    assert.deepEqual(stores.calculator_history[0].linkedSalesIds, ['x', 'new']);
-    assert.equal(stores.calculator_history[0].transferSaleId, 'new');
+    assert.deepEqual(stores.calculator[0].linkedSalesIds, ['x', 'new']);
+    assert.equal(stores.calculator[0].transferSaleId, 'new');
     assert.equal(stores.transactions[0].expenseId, 'new');
-    assert.deepEqual(Object.keys(changed).sort(), ['calculator_history', 'sales', 'transactions']);
+    assert.deepEqual(Object.keys(changed).sort(), ['calculator', 'sales', 'transactions']);
     assert.equal(changed.sales.length, 1);
   });
   it('re-points a recovered child at its already-recovered parent', () => {
@@ -87,7 +87,7 @@ describe('deletion groups', () => {
     const tombs = [
       { id: 'c', recordId: 'c', collection: 'sales', snapshot: { [GROUP_FIELD]: 'g', relatedSaleId: 'p' } },
       { id: 'p', recordId: 'p', collection: 'sales', snapshot: { [GROUP_FIELD]: 'g' } },
-      { id: 'k', recordId: 'k', collection: 'sales_customers', snapshot: { [GROUP_FIELD]: 'g' } },
+      { id: 'k', recordId: 'k', collection: 'customers', snapshot: { [GROUP_FIELD]: 'g' } },
       { id: 'z', recordId: 'z', collection: 'sales', snapshot: {} },
     ];
     const members = findGroupMembers(tombs[0], tombs);
@@ -400,7 +400,7 @@ describe('old bin records come back with what they depend on', () => {
     assert.deepEqual(expandRecoveryMembers(pay, [pay, tomb('e1', 'expenses', {})], live(['e1', 's1'])).map(t => t.id), ['t1']);
   });
   it('a sale brings back its deleted customer contact, matched by name', () => {
-    const contact = tomb('c1', 'sales_customers', { name: 'Ali Khan' });
+    const contact = tomb('c1', 'customers', { name: 'Ali Khan' });
     const sale = tomb('x1', 'sales', { customerName: 'ali khan', salesRep: 'NONE' });
     assert.deepEqual(expandRecoveryMembers(sale, [contact, sale], live()).map(t => t.id).sort(), ['c1', 'x1']);
     assert.deepEqual(expandRecoveryMembers(sale, [contact, sale], live([], ['ali khan'])).map(t => t.id), ['x1']);
@@ -423,7 +423,7 @@ describe('old bin records come back with what they depend on', () => {
 describe('recover what can be recovered, skip what cannot', () => {
   const tomb = (id, collection, snapshot) => ({ id, recordId: id, collection, snapshot });
   it('skips the blocked record and everything that depends on it, restores the rest', () => {
-    const contact = tomb('c', 'sales_customers', { name: 'Ali' });
+    const contact = tomb('c', 'customers', { name: 'Ali' });
     const parent = tomb('p', 'sales', { customerName: 'Ali', quantity: 90 });
     const child = tomb('k', 'sales', { customerName: 'Ali', relatedSaleId: 'p' });
     const free = tomb('f', 'sales', { customerName: 'Ali', quantity: 1 });
@@ -434,7 +434,7 @@ describe('recover what can be recovered, skip what cannot', () => {
     assert.match(plan.skipped.find(x => x.tomb.id === 'k').reason, /depends on/);
   });
   it('skips every sale of a customer whose contact cannot come back', () => {
-    const contact = tomb('c', 'sales_customers', { name: 'Ali' });
+    const contact = tomb('c', 'customers', { name: 'Ali' });
     const sale = tomb('s', 'sales', { customerName: 'Ali' });
     const plan = planGroupRecovery([contact, sale], new Map([['c', 'blocked']]), 's');
     assert.equal(plan.restore.length, 0);

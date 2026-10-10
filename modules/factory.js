@@ -271,7 +271,7 @@ async function _saveFactoryInventoryItemImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const name = document.getElementById('factoryMaterialName').value;
 const qty = parseFloat(document.getElementById('factoryMaterialQuantity').value) || 0;
 const cost = parseFloat(document.getElementById('factoryMaterialCost').value) || 0;
@@ -645,7 +645,7 @@ const storeEntry = stores.find(s => s.key === store);
 return (storeEntry && storeEntry.salePrice > 0) ? storeEntry.salePrice : 0;
 }
 export async function getEffectiveSalePriceForCustomer(customerName, store) {
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 if (customerName) {
 const _reg = Array.isArray(salesCustomers) ? salesCustomers.find(c => c && c.name && c.name.toLowerCase() === String(customerName).toLowerCase()) : null;
 if (_reg && _reg.customSalePrice > 0) return _reg.customSalePrice;
@@ -653,7 +653,7 @@ if (_reg && _reg.customSalePrice > 0) return _reg.customSalePrice;
 return await getSalePriceForStore(store);
 }
 export async function getSaleTransactionValue(t) {
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 if (!t) return 0;
 if (t.isMerged) return parseFloat(t.totalValue) || 0;
 const pt = t.paymentType || 'CASH';
@@ -717,7 +717,7 @@ const u = document.getElementById('factoryProductionUnits'); if (u) u.value = '1
 if (typeof calculateFactoryProduction === 'function') calculateFactoryProduction();
 }
 export async function startEditFactoryEntry(id) {
-const hist = ensureArray(await sqliteStore.get('factory_history'));
+const hist = ensureArray(await sqliteStore.get('factory'));
 const rec = hist.find(h => h && String(h.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This batch cannot be edited.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('factory');
@@ -738,12 +738,12 @@ return;
 }
 const _sfpeBatch = await sqliteStore.getBatch([
 'factory_default_formulas','factory_additional_costs',
-'inventory','factory_history',
+'inventory','factory',
 ]);
 const factoryDefaultFormulas = _sfpeBatch.get('factory_default_formulas') || {};
 const factoryAdditionalCosts = _sfpeBatch.get('factory_additional_costs') || {};
 const factoryInventoryData = ensureArray(_sfpeBatch.get('inventory'));
-const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory_history'));
+const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
 window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning');
 return;
@@ -865,7 +865,7 @@ if (o.managedBy) productionRecord.managedBy = o.managedBy;
 }
 const validatedRecord = ensureRecordIntegrity(productionRecord, !!_ed);
 if (_ed && _edHistIdx >= 0) factoryProductionHistory.splice(_edHistIdx, 0, validatedRecord); else factoryProductionHistory.unshift(validatedRecord);
-await unifiedSave('factory_history', factoryProductionHistory, validatedRecord);
+await unifiedSave('factory', factoryProductionHistory, validatedRecord);
 _histSavedRec = validatedRecord;
 if (inventoryUpdated) {
 const inventoryIds = factoryInventoryData.filter(i => i && i.id).map(i => i.id);
@@ -874,7 +874,7 @@ await unifiedSave('inventory', factoryInventoryData, null, inventoryIds);
 await unifiedSave('inventory', factoryInventoryData);
 }
 notifyDataChange('factory');
-emitSyncUpdate({ inventory: null, factory_history: null});
+emitSyncUpdate({ inventory: null, factory: null});
 await syncFactoryProductionStats();
 await refreshFactoryTab();
 calculateNetCash();
@@ -890,7 +890,7 @@ factoryProductionHistory.push(...historySnapshot);
 try {
 await sqliteStore.setBatch([
 ['inventory', factoryInventoryData],
-['factory_history', factoryProductionHistory]
+['factory', factoryProductionHistory]
 ]);
 } catch (rollbackError) {
 console.error('Failed to save data locally.', _safeErr(rollbackError));
@@ -898,8 +898,8 @@ window.notifyBlocking('Production rollback failed: ' + (_safeErr(rollbackError).
 }
 if (_histSavedRec) {
 try {
-if (_ed) await unifiedSave('factory_history', factoryProductionHistory, _ed.original);
-else await unifiedDelete('factory_history', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
+if (_ed) await unifiedSave('factory', factoryProductionHistory, _ed.original);
+else await unifiedDelete('factory', factoryProductionHistory, _histSavedRec.id, { strict: false }, _histSavedRec);
 } catch (_undoErr) { console.error('Could not undo the saved batch record.', _safeErr(_undoErr)); }
 }
 if (error && error.message === '__GC_CANCEL__') return;
@@ -930,8 +930,8 @@ if (typeof window.syncFactoryAvailPicker === 'function') window.syncFactoryAvail
 await updateFactoryUnitsAvailableStats();
 }
 export async function renderFactoryHistory() {
-const _fhBatch = await sqliteStore.getBatch(['factory_history','factory_additional_costs','factory_default_formulas','inventory']);
-const factoryProductionHistory = ensureArray(_fhBatch.get('factory_history'));
+const _fhBatch = await sqliteStore.getBatch(['factory','factory_additional_costs','factory_default_formulas','inventory']);
+const factoryProductionHistory = ensureArray(_fhBatch.get('factory'));
 const factoryAdditionalCosts = (_fhBatch.get('factory_additional_costs')) || {};
 const factoryDefaultFormulas = (_fhBatch.get('factory_default_formulas')) || {};
 const factoryInventoryData = ensureArray(_fhBatch.get('inventory'));
@@ -1012,7 +1012,7 @@ ${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml
 </div>
 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
 ${_mergedBadgeHtml(entry)}
-${entry.store ? `<span class="supply-tag ${window.getStoreBadgeClass ? window.getStoreBadgeClass(entry.store) : 'store-c'}" style="margin-top:0;">Store: ${esc(getStoreLabel(entry.store) || entry.store)}</span>` : ''}
+${entry.store ? `<span class="supply-tag ${window.getStoreBadgeClass ? window.getStoreBadgeClass(entry.store) : 'store-asaan'}" style="margin-top:0;">Store: ${esc(getStoreLabel(entry.store) || entry.store)}</span>` : ''}
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
 </div>
@@ -1030,7 +1030,7 @@ list.replaceChildren(_fhFrag);
 _filterFactoryHistoryByMode(currentFactorySummaryMode || 'all');
 }
 export async function deleteFactoryEntry(id) {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid factory entry ID', 'error'); return; }
@@ -1089,7 +1089,7 @@ restoredMaterials.push({ name: inventoryItem.name || 'Unknown', quantity: materi
 factoryProductionHistory.splice(entryIndex, 1);
 const inventoryIds = factoryInventoryData.filter(i => i && i.id).map(i => i.id);
 await Promise.all([
-unifiedDelete('factory_history', factoryProductionHistory, id, { strict: true }, entry),
+unifiedDelete('factory', factoryProductionHistory, id, { strict: true }, entry),
 unifiedSave('inventory', factoryInventoryData, null, inventoryIds)
 ]);
 await refreshFactoryTab();
@@ -1154,7 +1154,7 @@ const adjustmentFactor = factoryCostAdjustmentFactor[formulaStore] || 1;
 return adjustmentFactor > 0 ? (rawMaterialCost + additionalCost) / adjustmentFactor : rawMaterialCost + additionalCost;
 }
 export async function updateFormulaInventory() {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const db = ensureArray(await sqliteStore.get('production'));
 const tracking = {

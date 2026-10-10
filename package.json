@@ -9,9 +9,10 @@
   },
   "scripts": {
     "dev": "node scripts/serve.js",
-    "lint": "node --check modules/*.js scripts/*.js tests/*.test.js sw.js build.js && node scripts/verify.js",
+    "lint": "node --check modules/*.js scripts/*.js tests/*.test.js tools/*.mjs sw.js build.js && node scripts/verify.js",
     "build": "node build.js",
     "verify": "node scripts/verify.js",
+    "migrate": "node tools/migrate-cloud.mjs",
     "test": "node --test --experimental-test-module-mocks tests/*.test.js",
     "check": "npm run verify && npm test && npm run build && npm run verify -- dist",
     "serve": "node scripts/serve.js",

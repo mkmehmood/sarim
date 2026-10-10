@@ -12,9 +12,9 @@ import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalance
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
-import { DATA_KEY_VERSION, normaliseBackupFields as _normaliseBackupFieldsShared, collectAuxBackupFields, applyAuxBackupFields } from './data-keys.js';
+import { DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, collectAuxBackupFields, applyAuxBackupFields } from './data-keys.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
+import { formulaTypeFor, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
@@ -80,7 +80,7 @@ calculateCashTracker();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 }
 export async function calculateCashTracker() {
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const db = ensureArray(await sqliteStore.get('production'));
@@ -200,7 +200,7 @@ rawData.expenses += (parseFloat(exp.amount) || 0);
 }
 });
 }
-const factoryProductionHistoryCT = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistoryCT = ensureArray(await sqliteStore.get('factory'));
 factoryProductionHistoryCT.forEach(entry => {
 if (entry.isMerged) return;
 const entryDate = new Date(entry.date);
@@ -622,15 +622,15 @@ card.style.display = 'none';
 }
 export async function getAvailableCashInHand() {
 const _gacBatch = await sqliteStore.getBatch([
-'calculator_history','production','sales','transactions','expenses',
-'factory_history'
+'calculator','production','sales','transactions','expenses',
+'factory'
 ]);
-const _gacSalesHistory = ensureArray(_gacBatch.get('calculator_history'));
+const _gacSalesHistory = ensureArray(_gacBatch.get('calculator'));
 const _gacDb = ensureArray(_gacBatch.get('production'));
 const _gacCustomerSales = ensureArray(_gacBatch.get('sales'));
 const _gacPayTx = ensureArray(_gacBatch.get('transactions'));
 const _gacExpenses = ensureArray(_gacBatch.get('expenses'));
-const _gacProdHistory = ensureArray(_gacBatch.get('factory_history'));
+const _gacProdHistory = ensureArray(_gacBatch.get('factory'));
 let _gacProdVal = 0;
 _gacDb.forEach(item => {
 if (item.isReturn) return;
@@ -676,12 +676,12 @@ return _gacProdVal + _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _ga
 }
 export async function calculateNetCash() {
 const _cncBatch = await sqliteStore.getBatch([
-'calculator_history','factory_unit_tracking','transactions','entities',
+'calculator','factory_unit_tracking','transactions','entities',
 'expenses','production','sales','returns',
-'inventory','factory_history',
+'inventory','factory',
 'factory_default_formulas','factory_additional_costs',
 ]);
-const salesHistory = ensureArray(_cncBatch.get('calculator_history'));
+const salesHistory = ensureArray(_cncBatch.get('calculator'));
 const factoryUnitTracking = _cncBatch.get('factory_unit_tracking') || {};
 const paymentTransactions = ensureArray(_cncBatch.get('transactions'));
 const paymentEntities = ensureArray(_cncBatch.get('entities'));
@@ -690,7 +690,7 @@ const db = ensureArray(_cncBatch.get('production'));
 const customerSales = ensureArray(_cncBatch.get('sales'));
 const stockReturns = ensureArray(_cncBatch.get('returns'));
 const factoryInventoryData = ensureArray(_cncBatch.get('inventory'));
-const factoryProductionHistory = ensureArray(_cncBatch.get('factory_history'));
+const factoryProductionHistory = ensureArray(_cncBatch.get('factory'));
 const factoryDefaultFormulas = _cncBatch.get('factory_default_formulas') || {};
 const factoryAdditionalCosts = _cncBatch.get('factory_additional_costs') || {};
 const paymentDateEl = document.getElementById('expenseDate');
@@ -1060,7 +1060,7 @@ async function _saveCustomerSaleImpl() {
 const _ed = getEditCtx('sale');
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-let salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+let salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const db = ensureArray(await sqliteStore.get('production'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -1218,7 +1218,7 @@ if (_scIdx === -1) {
 const _scContact = { id: generateUUID('cust'), name: _scName, phone: _scPhone, address: '', oldDebit: 0, customSalePrice: 0, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 if (!Array.isArray(salesCustomers)) salesCustomers = [];
 salesCustomers.push(_scContact);
-await unifiedSave('sales_customers', salesCustomers, _scContact);
+await unifiedSave('customers', salesCustomers, _scContact);
 }
 }
 } catch (_scErr) { console.warn('Auto-register sales customer failed:', _safeErr(_scErr)); }
@@ -1567,11 +1567,8 @@ export function getStoreLabel(storeCode) {
 window.getStoreLabel = getStoreLabel;
 window.makeStoreKey = makeStoreKey;
 window.isBuiltinStoreKey = (k) => DEFAULT_STORE_KEYS.includes(k);
-const _STORE_BADGE_CLASSES = ['store-a', 'store-b', 'store-c', 'store-d', 'store-e'];
 export function getStoreBadgeClass(storeCode) {
-  const list = _storesCache || _DEFAULT_STORES;
-  const idx = list.findIndex(s => s.key === storeCode);
-  return idx >= 0 ? (_STORE_BADGE_CLASSES[idx] || 'store-c') : 'store-c';
+  return storeBadgeClass(storeCode, _storesCache || _DEFAULT_STORES);
 }
 window.getStoreBadgeClass = getStoreBadgeClass;
 export async function getStoreLabelAsync(storeCode) {
@@ -1662,7 +1659,7 @@ export async function calculateCustomerSale() {
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 if (typeof custTransactionMode !== 'undefined' && custTransactionMode === 'collection') return;
 const quantity = parseFloat(document.getElementById('cust-quantity').value) || 0;
@@ -1789,7 +1786,7 @@ return warningDiv;
 }
 export async function deleteCustomerSale(id) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const db = ensureArray(await sqliteStore.get('production'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
@@ -2095,8 +2092,8 @@ async loadUploadedIds(collection) {
   } catch (_e) {}
 },
 async loadAllUploadedIds() {
-  const cols = ['production','sales','calculator_history','rep_sales','rep_customers',
-    'sales_customers','transactions','entities','inventory','factory_history',
+  const cols = ['production','sales','calculator','rep','clients',
+    'customers','transactions','entities','inventory','factory',
     'returns','expenses'];
   await Promise.all(cols.map(c => this.loadUploadedIds(c)));
 },
@@ -2110,8 +2107,8 @@ async loadPendingIds(collection) {
   } catch (_e) {}
 },
 async loadAllPendingIds() {
-  const cols = ['production','sales','calculator_history','rep_sales','rep_customers',
-    'sales_customers','transactions','entities','inventory','factory_history',
+  const cols = ['production','sales','calculator','rep','clients',
+    'customers','transactions','entities','inventory','factory',
     'returns','expenses'];
   await Promise.all(cols.map(c => this.loadPendingIds(c)));
 },
@@ -2206,9 +2203,9 @@ async hasAnyChanges(collections) {
 },
 async clearAllTimestamps() {
   const knownCollections = [
-    'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
-    'sales_customers', 'transactions', 'entities', 'inventory',
-    'factory_history', 'returns', 'expenses', 'sales_customers', 'deletions'
+    'production', 'sales', 'calculator', 'rep', 'clients',
+    'customers', 'transactions', 'entities', 'inventory',
+    'factory', 'returns', 'expenses', 'customers', 'deletions'
   ];
   for (const col of knownCollections) {
     const lsKey = `lastSync_${col}`;
@@ -2229,9 +2226,9 @@ async getSyncSummary() {
   const currentAppMode = appMode || 'admin';
   const isRepMode = currentAppMode === 'rep';
   const collections = [
-    'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
-    'sales_customers', 'transactions', 'entities', 'inventory',
-    'factory_history', 'returns', 'expenses', 'deletions'
+    'production', 'sales', 'calculator', 'rep', 'clients',
+    'customers', 'transactions', 'entities', 'inventory',
+    'factory', 'returns', 'expenses', 'deletions'
   ];
   const summary = { mode: currentAppMode, isRepMode };
   for (const collection of collections) {
@@ -2291,9 +2288,9 @@ lastSyncTime = lastSynced;
 console.warn('Could not read last sync time', _safeErr(e));
 }
 const collections = [
-'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
-'sales_customers',
-'transactions', 'entities', 'inventory', 'factory_history',
+'production', 'sales', 'calculator', 'rep', 'clients',
+'customers',
+'transactions', 'entities', 'inventory', 'factory',
 'returns', 'expenses', 'deletions'
 ];
 for (const collection of collections) {
@@ -2312,9 +2309,9 @@ return false;
 export const UUIDSyncRegistry = (() => {
   const MAX_IDS_PER_COL = 10000;
   const ALL_COLLECTIONS = [
-    'production', 'sales', 'calculator_history', 'rep_sales', 'rep_customers',
-    'sales_customers', 'transactions', 'entities', 'inventory',
-    'factory_history', 'returns', 'expenses',
+    'production', 'sales', 'calculator', 'rep', 'clients',
+    'customers', 'transactions', 'entities', 'inventory',
+    'factory', 'returns', 'expenses',
   ];
   const _uploaded   = new Map();
   const _downloaded = new Map();
@@ -2493,7 +2490,7 @@ showTab(targetTab);
 }
 export async function processRepTransfer(targetRep, quantity, date, seller) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const _contact = salesCustomers.find(c => c && c.name && c.name.toLowerCase() === String(targetRep).toLowerCase());
 const unitPrice = _contact && _contact.customSalePrice > 0 ? _contact.customSalePrice : 0;
 if (!unitPrice) throw new Error(`No sale price set for ${targetRep}. Set it in Customer Manager first.`);
@@ -2533,15 +2530,15 @@ _calcSaveInFlight = true;
 try { return await _saveTransactionImpl(); } finally { _calcSaveInFlight = false; }
 }
 async function _saveTransactionImpl() {
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
 const seller = document.getElementById('sellerSelect').value;
 const date = document.getElementById('sale-date').value;
 const sold = parseFloat(document.getElementById('totalSold').value) || 0;
@@ -2700,13 +2697,13 @@ return;
 }
 let _persisted = false;
 try {
-let history = await sqliteStore.get('calculator_history', []);
+let history = await sqliteStore.get('calculator', []);
 if (!Array.isArray(history)) history = [];
 history.push(entry);
-await unifiedSave('calculator_history', history, entry);
+await unifiedSave('calculator', history, entry);
 _persisted = true;
 notifyDataChange('calculator');
-emitSyncUpdate({ calculator_history: null});
+emitSyncUpdate({ calculator: null});
 if (Array.isArray(salesHistory)) {
 salesHistory.push(entry);
 }
@@ -2748,10 +2745,10 @@ export async function exportCustomerData(type) {
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const db = ensureArray(await sqliteStore.get('production'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
 showToast("Generating PDF...", "info");
 try {
 if (!window.jspdf) {
@@ -3018,7 +3015,7 @@ refreshCustomerSales(1, false);
 return linkedIds;
 }
 export async function markRepSalesEntriesAsUsed(seller, date, calcId, fromDate) {
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
   if (!seller || seller === 'COMBINED' || !date || !calcId) return [];
   const linkedRepIds = [];
   repSales.forEach(sale => {
@@ -3035,12 +3032,12 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
     }
   });
   if (linkedRepIds.length > 0) {
-    await unifiedSave('rep_sales', repSales, null, linkedRepIds);
+    await unifiedSave('rep', repSales, null, linkedRepIds);
   }
   return linkedRepIds;
 }
 export async function revertRepSalesEntries(repSaleIds) {
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
   if (!repSaleIds || repSaleIds.length === 0) return 0;
   let revertedCount = 0;
   repSaleIds.forEach(saleId => {
@@ -3053,7 +3050,7 @@ const repSales = ensureArray(await sqliteStore.get('rep_sales'));
     }
   });
   if (revertedCount > 0) {
-    await unifiedSave('rep_sales', repSales, null, repSaleIds);
+    await unifiedSave('rep', repSales, null, repSaleIds);
     notifyDataChange('rep');
     triggerAutoSync();
   }
@@ -3069,8 +3066,8 @@ updateSalesCharts(comp);
 export async function setIndChartMode(mode) {
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
 currentIndMode = mode; window.currentIndMode = currentIndMode;
 document.getElementById('ind-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
 document.getElementById('ind-month-btn').className = `toggle-opt ${mode === 'month' ? 'active' : ''}`;
@@ -3081,20 +3078,20 @@ await updateIndChart();
 export async function setIndChartMetric(metric) {
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
 currentIndMetric = metric; window.currentIndMetric = currentIndMetric;
 await updateIndChart();
 }
 export async function updateIndChart() {
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
 const seller = document.getElementById('sellerSelect').value;
 if (seller === 'COMBINED') return;
 if(indPerformanceChart) indPerformanceChart.destroy();
-let history; history = await sqliteStore.get('calculator_history', []);
+let history; history = await sqliteStore.get('calculator', []);
 const sellerHistory = history.filter(h => h.seller === seller);
 const now = new Date(document.getElementById('sale-date').value);
 const selectedYear = now.getFullYear();
@@ -3226,7 +3223,7 @@ export async function updateStoreComparisonChart(mode = 'day') {
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 if(storeComparisonChart) storeComparisonChart.destroy();
 const selectedDate = document.getElementById('sys-date').value;
 const selectedDateObj = new Date(selectedDate);
@@ -3328,8 +3325,8 @@ ticks: { color: colors.text }
 }
 export async function refreshUI(page = 1, force = false) {
 const _ruiBatch = await sqliteStore.getBatch([
-'production','returns','sales','sales_customers',
-'calculator_history','transactions','entities',
+'production','returns','sales','customers',
+'calculator','transactions','entities',
 'expenses','deleted_records',
 ]);
 const deletedRecordIds = new Set(ensureArray(_ruiBatch.get('deleted_records')));
@@ -3337,8 +3334,8 @@ const _rdAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.
 const db = ensureArray(_ruiBatch.get('production')).filter(_rdAlive);
 const stockReturns = ensureArray(_ruiBatch.get('returns')).filter(_rdAlive);
 const customerSales = ensureArray(_ruiBatch.get('sales')).filter(_rdAlive);
-const salesCustomers = ensureArray(_ruiBatch.get('sales_customers')).filter(_rdAlive);
-const salesHistory = ensureArray(_ruiBatch.get('calculator_history')).filter(_rdAlive);
+const salesCustomers = ensureArray(_ruiBatch.get('customers')).filter(_rdAlive);
+const salesHistory = ensureArray(_ruiBatch.get('calculator')).filter(_rdAlive);
 const paymentTransactions = ensureArray(_ruiBatch.get('transactions')).filter(_rdAlive);
 const paymentEntities = ensureArray(_ruiBatch.get('entities')).filter(_rdAlive);
 const expenseRecords = ensureArray(_ruiBatch.get('expenses')).filter(_rdAlive);
@@ -3428,7 +3425,6 @@ if (totalItems === 0) {
 histContainer.replaceChildren(Object.assign(document.createElement('p'), {textContent:'No records found for this selection.',style:'text-align:center;color:var(--text-muted);width:100%;font-size:0.85rem'}));
 } else {
 const fragment = document.createDocumentFragment();
-const _badgeClasses = ['store-a', 'store-b', 'store-c', 'store-d', 'store-e'];
 const _appStoresProd = typeof getAppStores === 'function' ? await getAppStores() : [];
 filteredProduction.forEach(item => {
 const isSelected = item.date === selectedDate;
@@ -3819,14 +3815,14 @@ export async function promptVerifiedBackupPassword({ title = 'Confirm Password',
 export async function unifiedBackup() {
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
@@ -3848,13 +3844,13 @@ return;
 const data = {
 dataKeyVersion: DATA_KEY_VERSION,
 production: db,
-calculator_history: await sqliteStore.get('calculator_history', []),
+calculator: await sqliteStore.get('calculator', []),
 sales: await sqliteStore.get('sales', []),
-rep_sales: repSales,
-rep_customers: repCustomers,
-sales_customers: salesCustomers,
+rep: repSales,
+clients: repCustomers,
+customers: salesCustomers,
 inventory: factoryInventoryData,
-factory_history: factoryProductionHistory,
+factory: factoryProductionHistory,
 factory_default_formulas: factoryDefaultFormulas,
 factory_additional_costs: factoryAdditionalCosts,
 factory_cost_adjustment_factor: factoryCostAdjustmentFactor,
@@ -3863,7 +3859,7 @@ entities: paymentEntities,
 transactions: paymentTransactions,
 expenses: expenseRecords,
 returns: stockReturns,
-settings: await sqliteStore.get('naswar_default_settings', defaultSettings),
+settings: await sqliteStore.get('settings', defaultSettings),
 app_stores: await sqliteStore.get('app_stores') || [],
 deleted_records: Array.from(deletedRecordIds),
 ...(await collectAuxBackupFields(sqliteStore)),
@@ -3888,14 +3884,14 @@ window.notifyBlocking('Encryption failed: ' + encErr.message, 'error');
 }
 export async function unifiedRestore(event) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const file = event.target.files[0];
 if (!file) return;
@@ -3959,15 +3955,15 @@ window.notifyBlocking('Decryption failed: ' + decErr.message, 'error');
 return;
 }
 showToast('Decryption successful.', 'success', 2000);
-if (data) normaliseBackupFields(data);
+if (data && !isCurrentBackup(data)) { window.notifyBlocking(OLD_BACKUP_MESSAGE, 'error'); return; }
 if (data && data._meta && data._meta.isYearCloseBackup) {
 const snap = data._meta.fyCloseSnapshot || {};
 const closedDate = snap.lastYearClosedDate ? new Date(snap.lastYearClosedDate).toLocaleDateString() : 'unknown date';
 const _ycEstItems = [
-  ...(data.production || []), ...(data.calculator_history || []),
-  ...(data.sales || []), ...(data.rep_sales || []),
-  ...(data.rep_customers || []), ...(data.sales_customers || []),
-  ...(data.inventory || []), ...(data.factory_history || []),
+  ...(data.production || []), ...(data.calculator || []),
+  ...(data.sales || []), ...(data.rep || []),
+  ...(data.clients || []), ...(data.customers || []),
+  ...(data.inventory || []), ...(data.factory || []),
   ...(data.returns || []), ...(data.transactions || []),
   ...(data.entities || []), ...(data.expenses || [])
 ];
@@ -3982,13 +3978,13 @@ return;
 }
 const _allBackupItems = [
   ...(data.production || []),
-  ...(data.calculator_history || []),
+  ...(data.calculator || []),
   ...(data.sales || []),
-  ...(data.rep_sales || []),
-  ...(data.rep_customers || []),
-  ...(data.sales_customers || []),
+  ...(data.rep || []),
+  ...(data.clients || []),
+  ...(data.customers || []),
   ...(data.inventory || []),
-  ...(data.factory_history || []),
+  ...(data.factory || []),
   ...(data.returns || []),
   ...(data.transactions || []),
   ...(data.entities || []),
@@ -4022,8 +4018,9 @@ window.notifyBlocking('Restore error: ' + err.message, 'error');
 } else {
 try {
 const text = await _readFileAsText(file);
-const data = normaliseBackupFields(JSON.parse(text));
-if (data.rep_customers || data.sales_customers || data.sales || data.rep_sales || data.production) {
+const data = JSON.parse(text);
+if (!isCurrentBackup(data)) { window.notifyBlocking(OLD_BACKUP_MESSAGE, 'error'); return; }
+if (data.clients || data.customers || data.sales || data.rep || data.production) {
 const _rfbMsg = `Restore data from this backup file?\n\nHow it works:\n \u2022 Records are merged, not overwritten \u2014 your current data stays\n \u2022 Duplicates are automatically removed\n \u2022 Only new (non-duplicate) records are uploaded to cloud\n \u2022 Other devices are not affected until their next sync\n\nIf the backup contains older versions of records you have edited since, the newer version is always kept.`;
 if (await showGlassConfirm(_rfbMsg, { title: "Restore From Backup File", confirmText: "Restore & Merge", cancelText: "Cancel" })) {
 await _doRestoreMerge(data);
@@ -4036,26 +4033,23 @@ window.notifyBlocking("Error reading file: " + err.message, 'error');
 }
 }
 }
-export function normaliseBackupFields(data) {
-  return _normaliseBackupFieldsShared(data);
-}
 export async function _doRestoreMerge(data) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
 showToast('Analyzing backup file...', 'info', 5000);
-data = normaliseBackupFields(data);
+if (!isCurrentBackup(data)) { window.notifyBlocking(OLD_BACKUP_MESSAGE, 'error'); return; }
 const getTimestampValue = (record) => {
 if (!record) return 0;
 let ts = record.updatedAt || record.timestamp || record.createdAt || 0;
@@ -4095,13 +4089,13 @@ if (duplicatesFound > 0) showToast(`Cleaned ${collectionName}: removed ${duplica
 return Array.from(seen.values());
 };
 if (data.production)             data.production             = deduplicateByUUID(data.production,             'Production');
-if (data.calculator_history)           data.calculator_history           = deduplicateByUUID(data.calculator_history,           'Calculator History');
+if (data.calculator)           data.calculator           = deduplicateByUUID(data.calculator,           'Calculator History');
 if (data.sales)           data.sales           = deduplicateByUUID(data.sales,           'Customer Sales');
-if (data.rep_sales)                data.rep_sales                = deduplicateByUUID(data.rep_sales,                'Rep Sales');
-if (data.rep_customers)            data.rep_customers            = deduplicateByUUID(data.rep_customers,            'Rep Customers');
-if (data.sales_customers)          data.sales_customers          = deduplicateByUUID(data.sales_customers,          'Sales Customers');
+if (data.rep)                data.rep                = deduplicateByUUID(data.rep,                'Rep Sales');
+if (data.clients)            data.clients            = deduplicateByUUID(data.clients,            'Rep Customers');
+if (data.customers)          data.customers          = deduplicateByUUID(data.customers,          'Sales Customers');
 if (data.inventory)    data.inventory    = deduplicateByUUID(data.inventory,    'Factory Inventory');
-if (data.factory_history)data.factory_history= deduplicateByUUID(data.factory_history,'Factory History');
+if (data.factory)data.factory= deduplicateByUUID(data.factory,'Factory History');
 if (data.returns)            data.returns            = deduplicateByUUID(data.returns,            'Stock Returns');
 if (data.transactions)     data.transactions     = deduplicateByUUID(data.transactions,     'Payment Transactions');
 if (data.entities)         data.entities         = deduplicateByUUID(data.entities,         'Payment Entities');
@@ -4114,13 +4108,13 @@ await sqliteStore.set('deleted_records', Array.from(deletedRecordIds));
 const isAlive = (item) => item && item.id && !deletedRecordIds.has(item.id);
 const currentLocalData = {
 production:                await sqliteStore.get('production') || [],
-calculator_history:              await sqliteStore.get('calculator_history') || [],
+calculator:              await sqliteStore.get('calculator') || [],
 sales:             await sqliteStore.get('sales') || [],
-rep_sales:                  await sqliteStore.get('rep_sales') || [],
-rep_customers:              await sqliteStore.get('rep_customers') || [],
-sales_customers:            await sqliteStore.get('sales_customers') || [],
+rep:                  await sqliteStore.get('rep') || [],
+clients:              await sqliteStore.get('clients') || [],
+customers:            await sqliteStore.get('customers') || [],
 inventory:     await sqliteStore.get('inventory') || [],
-factory_history: await sqliteStore.get('factory_history') || [],
+factory: await sqliteStore.get('factory') || [],
 returns:              await sqliteStore.get('returns') || [],
 transactions:       await sqliteStore.get('transactions') || [],
 entities:           await sqliteStore.get('entities') || [],
@@ -4134,13 +4128,13 @@ const _repNameSet = new Set((Array.isArray(salesRepsList) ? salesRepsList : []).
 const _isNotRepName = (c) => !c || !c.name || !_repNameSet.has(c.name.toLowerCase());
 const cleanBackupData = {
 production:                ensureArray(data.production).filter(isAlive),
-calculator_history:              ensureArray(data.calculator_history).filter(isAlive),
+calculator:              ensureArray(data.calculator).filter(isAlive),
 sales:             ensureArray(data.sales).filter(isAlive),
-rep_sales:                  ensureArray(data.rep_sales).filter(isAlive),
-rep_customers:              mergeDatasets(ensureArray(data.rep_customers).filter(isAlive), ensureArray(currentLocalData.rep_customers || []).filter(isAlive)),
-sales_customers:            mergeDatasets(ensureArray(data.sales_customers).filter(isAlive).filter(_isNotRepName), ensureArray(currentLocalData.sales_customers || []).filter(isAlive).filter(_isNotRepName)),
+rep:                  ensureArray(data.rep).filter(isAlive),
+clients:              mergeDatasets(ensureArray(data.clients).filter(isAlive), ensureArray(currentLocalData.clients || []).filter(isAlive)),
+customers:            mergeDatasets(ensureArray(data.customers).filter(isAlive).filter(_isNotRepName), ensureArray(currentLocalData.customers || []).filter(isAlive).filter(_isNotRepName)),
 inventory:     ensureArray(data.inventory).filter(isAlive),
-factory_history: ensureArray(data.factory_history).filter(isAlive),
+factory: ensureArray(data.factory).filter(isAlive),
 returns:              ensureArray(data.returns).filter(isAlive),
 transactions:       ensureArray(data.transactions).filter(isAlive),
 entities:           ensureArray(data.entities).filter(isAlive),
@@ -4151,10 +4145,10 @@ let totalUpdated = 0;
 let totalSkipped = 0;
 const mergedData = {};
 const _sqliteToFirestore = {
-production: 'production', calculator_history: 'calculator_history',
-sales: 'sales', rep_sales: 'rep_sales',
-rep_customers: 'rep_customers', sales_customers: 'sales_customers',
-inventory: 'inventory', factory_history: 'factory_history',
+production: 'production', calculator: 'calculator',
+sales: 'sales', rep: 'rep',
+clients: 'clients', customers: 'customers',
+inventory: 'inventory', factory: 'factory',
 returns: 'returns', transactions: 'transactions',
 entities: 'entities', expenses: 'expenses'
 };
@@ -4202,13 +4196,13 @@ mergedData[key] = merged.map(item => {
 }
 await sqliteStore.setBatch([
 ['production',                mergedData.production],
-['calculator_history',              mergedData.calculator_history],
+['calculator',              mergedData.calculator],
 ['sales',             mergedData.sales],
-['rep_sales',                  mergedData.rep_sales],
-['rep_customers',              mergedData.rep_customers],
-['sales_customers',            mergedData.sales_customers],
+['rep',                  mergedData.rep],
+['clients',              mergedData.clients],
+['customers',            mergedData.customers],
 ['inventory',     mergedData.inventory],
-['factory_history', mergedData.factory_history],
+['factory', mergedData.factory],
 ['returns',              mergedData.returns],
 ['transactions',       mergedData.transactions],
 ['entities',           mergedData.entities],
@@ -4219,7 +4213,7 @@ factoryDefaultFormulas:       await sqliteStore.get('factory_default_formulas'),
 factoryAdditionalCosts:       await sqliteStore.get('factory_additional_costs'),
 factoryCostAdjustmentFactor:  await sqliteStore.get('factory_cost_adjustment_factor'),
 factoryUnitTracking:          await sqliteStore.get('factory_unit_tracking'),
-naswarDefaultSettings:        await sqliteStore.get('naswar_default_settings')
+naswarDefaultSettings:        await sqliteStore.get('settings')
 };
 const settingsTimestamp = Date.now();
 const _stripFsMeta = (obj) => {
@@ -4252,8 +4246,8 @@ await sqliteStore.set('factory_unit_tracking', _cleanTracking);
 await sqliteStore.set('factory_unit_tracking_timestamp', settingsTimestamp);
 }
 if (data.settings && JSON.stringify(data.settings) !== JSON.stringify(currentSettings.naswarDefaultSettings)) {
-await sqliteStore.set('naswar_default_settings', data.settings);
-await sqliteStore.set('naswar_default_settings_timestamp', settingsTimestamp);
+await sqliteStore.set('settings', data.settings);
+await sqliteStore.set('settings_timestamp', settingsTimestamp);
 _set_defaultSettings(data.settings);
 }
 if (Array.isArray(data.app_stores) && data.app_stores.length > 0) {
@@ -4279,12 +4273,12 @@ try {
   const collectionMapping = {
     'production':         { data: ensureArray(mergedData.production),                deltaName: 'production' },
     'sales':              { data: ensureArray(mergedData.sales), deltaName: 'sales' },
-    'calculator_history': { data: ensureArray(mergedData.calculator_history),              deltaName: 'calculator_history' },
-    'rep_sales':          { data: ensureArray(mergedData.rep_sales),                  deltaName: 'rep_sales' },
-    'rep_customers':      { data: ensureArray(mergedData.rep_customers),              deltaName: 'rep_customers' },
-    'sales_customers':    { data: ensureArray(mergedData.sales_customers),            deltaName: 'sales_customers' },
+    'calculator': { data: ensureArray(mergedData.calculator),              deltaName: 'calculator' },
+    'rep':          { data: ensureArray(mergedData.rep),                  deltaName: 'rep' },
+    'clients':      { data: ensureArray(mergedData.clients),              deltaName: 'clients' },
+    'customers':    { data: ensureArray(mergedData.customers),            deltaName: 'customers' },
     'inventory':          { data: ensureArray(mergedData.inventory),     deltaName: 'inventory' },
-    'factory_history':    { data: ensureArray(mergedData.factory_history), deltaName: 'factory_history' },
+    'factory':    { data: ensureArray(mergedData.factory), deltaName: 'factory' },
     'returns':            { data: ensureArray(mergedData.returns),              deltaName: 'returns' },
     'transactions':       { data: ensureArray(mergedData.transactions),       deltaName: 'transactions' },
     'entities':           { data: ensureArray(mergedData.entities),           deltaName: 'entities' },
@@ -4427,31 +4421,31 @@ if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotifi
 }
 export async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const currentDb = ensureArray(await sqliteStore.get('production'));
-const currentSalesHistory = ensureArray(await sqliteStore.get('calculator_history'));
+const currentSalesHistory = ensureArray(await sqliteStore.get('calculator'));
 let factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 let factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 let factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
 let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-  data = normaliseBackupFields(data);
+  if (!isCurrentBackup(data)) { window.notifyBlocking(OLD_BACKUP_MESSAGE, 'error'); return; }
   showToast('↩ Reversing financial year close — replacing data...', 'info', 5000);
   const _backupIds = new Set([
     ...ensureArray(data.production),
-    ...ensureArray(data.calculator_history),
+    ...ensureArray(data.calculator),
     ...ensureArray(data.sales),
-    ...ensureArray(data.rep_sales),
+    ...ensureArray(data.rep),
     ...ensureArray(data.transactions),
-    ...ensureArray(data.factory_history),
+    ...ensureArray(data.factory),
     ...ensureArray(data.returns),
     ...ensureArray(data.expenses),
   ].filter(r => r && r.id).map(r => String(r.id)));
@@ -4489,17 +4483,17 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   const replaceData = {
     production:                [...ensureArray(data.production).filter(isAlive),
                                   ..._postCloseKeep(currentDb, data.production)],
-    calculator_history:              [...ensureArray(data.calculator_history).filter(isAlive),
-                                  ..._postCloseKeep(currentSalesHistory, data.calculator_history)],
+    calculator:              [...ensureArray(data.calculator).filter(isAlive),
+                                  ..._postCloseKeep(currentSalesHistory, data.calculator)],
     sales:             [...ensureArray(data.sales).filter(isAlive),
                                   ..._postCloseKeep(customerSales, data.sales)],
-    rep_sales:                  [...ensureArray(data.rep_sales).filter(isAlive),
-                                  ..._postCloseKeep(repSales, data.rep_sales)],
-    rep_customers:              mergeDatasets(ensureArray(data.rep_customers).filter(isAlive), ensureArray(repCustomers || []).filter(isAlive)),
-    sales_customers:            mergeDatasets(ensureArray(data.sales_customers).filter(isAlive).filter(_ycNotRepName), ensureArray(salesCustomers || []).filter(isAlive).filter(_ycNotRepName)),
+    rep:                  [...ensureArray(data.rep).filter(isAlive),
+                                  ..._postCloseKeep(repSales, data.rep)],
+    clients:              mergeDatasets(ensureArray(data.clients).filter(isAlive), ensureArray(repCustomers || []).filter(isAlive)),
+    customers:            mergeDatasets(ensureArray(data.customers).filter(isAlive).filter(_ycNotRepName), ensureArray(salesCustomers || []).filter(isAlive).filter(_ycNotRepName)),
     inventory:     ensureArray(data.inventory).filter(isAlive),
-    factory_history: [...ensureArray(data.factory_history).filter(isAlive),
-                                  ..._postCloseKeep(factoryProductionHistory, data.factory_history)],
+    factory: [...ensureArray(data.factory).filter(isAlive),
+                                  ..._postCloseKeep(factoryProductionHistory, data.factory)],
     returns:              [...ensureArray(data.returns).filter(isAlive),
                                   ..._postCloseKeep(stockReturns, data.returns)],
     transactions:       [...ensureArray(data.transactions).filter(isAlive),
@@ -4518,13 +4512,13 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   }
   await sqliteStore.setBatch([
     ['production',                replaceData.production],
-    ['calculator_history',              replaceData.calculator_history],
+    ['calculator',              replaceData.calculator],
     ['sales',             replaceData.sales],
-    ['rep_sales',                  replaceData.rep_sales],
-    ['rep_customers',              replaceData.rep_customers],
-    ['sales_customers',            replaceData.sales_customers],
+    ['rep',                  replaceData.rep],
+    ['clients',              replaceData.clients],
+    ['customers',            replaceData.customers],
     ['inventory',     replaceData.inventory],
-    ['factory_history', replaceData.factory_history],
+    ['factory', replaceData.factory],
     ['returns',              replaceData.returns],
     ['transactions',       replaceData.transactions],
     ['entities',           replaceData.entities],
@@ -4534,12 +4528,12 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     const _restoreDeltaMap = {
       production:          replaceData.production,
       sales:               replaceData.sales,
-      calculator_history:  replaceData.calculator_history,
-      rep_sales:           replaceData.rep_sales,
-      rep_customers:       replaceData.rep_customers,
-      sales_customers:     replaceData.sales_customers,
+      calculator:  replaceData.calculator,
+      rep:           replaceData.rep,
+      clients:       replaceData.clients,
+      customers:     replaceData.customers,
       inventory:           replaceData.inventory,
-      factory_history:     replaceData.factory_history,
+      factory:     replaceData.factory,
       returns:             replaceData.returns,
       transactions:        replaceData.transactions,
       entities:            replaceData.entities,
@@ -4569,7 +4563,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     }
     if (typeof repSales !== 'undefined' && Array.isArray(repSales)) {
       repSales.length = 0;
-      replaceData.rep_sales.forEach(r => repSales.push(r));
+      replaceData.rep.forEach(r => repSales.push(r));
     }
     if (typeof paymentTransactions !== 'undefined' && Array.isArray(paymentTransactions)) {
       paymentTransactions.length = 0;
@@ -4592,7 +4586,7 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
   if (Array.isArray(data.app_stores) && data.app_stores.length > 0) { await sqliteStore.set('app_stores', data.app_stores); await sqliteStore.set('app_stores_timestamp', settingsTimestamp); if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache(); }
   try { await applyAuxBackupFields(data, sqliteStore, settingsTimestamp, 'replace'); } catch (_auxErr) { console.warn('[ycRestore] aux settings restore failed', _safeErr(_auxErr)); }
   try {
-    const currentSettings = await sqliteStore.get('naswar_default_settings', {});
+    const currentSettings = await sqliteStore.get('settings', {});
     const snap = (data._meta && data._meta.fyCloseSnapshot) || {};
     currentSettings.fyCloseCount       = snap.fyCloseCount       ?? Math.max(0, (currentSettings.fyCloseCount || 1) - 1);
     currentSettings.lastYearClosedAt   = snap.lastYearClosedAt   ?? null;
@@ -4600,8 +4594,8 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
     currentSettings.pendingFirestoreYearClose = false;
     _set_pendingFirestoreYearClose(false);
     const _restoreMetaTs = Date.now();
-    await sqliteStore.set('naswar_default_settings', currentSettings);
-    await sqliteStore.set('naswar_default_settings_timestamp', _restoreMetaTs);
+    await sqliteStore.set('settings', currentSettings);
+    await sqliteStore.set('settings_timestamp', _restoreMetaTs);
     await sqliteStore.set('pendingFirestoreYearClose', false);
     _set_defaultSettings(currentSettings);
     if (firebaseDB && currentUser) {
@@ -4609,12 +4603,12 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
         await firebaseDB.collection('users').doc(currentUser.uid)
           .collection('settings').doc('config')
           .set({
-            naswar_default_settings: {
+            settings: {
               fyCloseCount:      currentSettings.fyCloseCount,
               lastYearClosedAt:  currentSettings.lastYearClosedAt,
               lastYearClosedDate:currentSettings.lastYearClosedDate
             },
-            naswar_default_settings_timestamp: _restoreMetaTs
+            settings_timestamp: _restoreMetaTs
           }, { merge: true });
         if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp('settings');
       } catch(e) { console.warn('Cloud FY meta reversal failed:', _safeErr(e)); }
@@ -4627,9 +4621,9 @@ let factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {}
       const userRef = firebaseDB.collection('users').doc(currentUser.uid);
       const cloudCollections = {
         production: replaceData.production, sales: replaceData.sales,
-        calculator_history: replaceData.calculator_history, rep_sales: replaceData.rep_sales,
-        rep_customers: replaceData.rep_customers, sales_customers: replaceData.sales_customers,
-        inventory: replaceData.inventory, factory_history: replaceData.factory_history,
+        calculator: replaceData.calculator, rep: replaceData.rep,
+        clients: replaceData.clients, customers: replaceData.customers,
+        inventory: replaceData.inventory, factory: replaceData.factory,
         returns: replaceData.returns, transactions: replaceData.transactions,
         entities: replaceData.entities, expenses: replaceData.expenses
       };
@@ -5034,7 +5028,7 @@ export async function handleAdminRepDateChange(val) {
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const mainInput = document.getElementById('rep-date');
 if(mainInput) {
 mainInput.value = val;
@@ -5232,7 +5226,7 @@ const ft = entry.formulaStore || storeFormulaMap[entry.store] || formulaTypeFor(
 return ft === 'asaan' ? 'asaan' : 'standard';
 }
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
@@ -5254,7 +5248,7 @@ return 0;
 }
 export async function updateFactoryUnitsAvailableStats() {
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
 const stores = typeof getAppStores === 'function' ? await getAppStores() : [];
@@ -5313,7 +5307,7 @@ _setFac('factoryS2Profit', await formatCurrency(asaanTotalProfit));
 _setFac('factoryS2ProfitUnit', await formatCurrency(asaanProfitPerKg) + '/kg');
 }
 export async function updateFactorySummaryCard() {
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
@@ -5480,12 +5474,12 @@ return getPreviousDayAvailableUnits(storeType, startDate);
 }
 export async function refreshFactoryTab() {
 const _rftBatch = await sqliteStore.getBatch([
-'inventory','factory_history',
+'inventory','factory',
 'factory_default_formulas','factory_additional_costs',
 'factory_cost_adjustment_factor','factory_unit_tracking',
 ]);
 const factoryInventoryData = ensureArray(_rftBatch.get('inventory'));
-const factoryProductionHistory = ensureArray(_rftBatch.get('factory_history'));
+const factoryProductionHistory = ensureArray(_rftBatch.get('factory'));
 const factoryDefaultFormulas = _rftBatch.get('factory_default_formulas') || {};
 const factoryAdditionalCosts = _rftBatch.get('factory_additional_costs') || {};
 const factoryCostAdjustmentFactor = _rftBatch.get('factory_cost_adjustment_factor') || {};
@@ -5495,7 +5489,7 @@ if (sqliteStore && sqliteStore.getBatch) {
 try {
 const factoryKeys = [
 'inventory',
-'factory_history',
+'factory',
 'factory_unit_tracking',
 'factory_default_formulas'
 ];
@@ -5518,8 +5512,8 @@ await sqliteStore.set('inventory', freshInventory);
 }
 }
 }
-if (factoryDataMap.get('factory_history')) {
-let freshHistory = factoryDataMap.get('factory_history') || [];
+if (factoryDataMap.get('factory')) {
+let freshHistory = factoryDataMap.get('factory') || [];
 let fixedCount = 0;
 if (Array.isArray(freshHistory) && freshHistory.length > 0) {
 freshHistory = freshHistory.map(record => {
@@ -5532,7 +5526,7 @@ fixedCount++;
 return record;
 });
 if (fixedCount > 0) {
-await sqliteStore.set('factory_history', freshHistory);
+await sqliteStore.set('factory', freshHistory);
 }
 freshHistory.sort((a, b) => compareTimestamps(getRecordTimestamp(b), getRecordTimestamp(a)));
 }
@@ -5626,11 +5620,11 @@ updateAllStoresOverview(currentOverviewMode);
 refreshUI();
 }
 export async function updateAllStoresOverview(mode = 'day') {
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 currentOverviewMode = mode; window.currentOverviewMode = currentOverviewMode;
@@ -5641,7 +5635,7 @@ const selectedMonth = selectedDateObj.getMonth();
 const _appStoresOv = await getAppStores();
 const stores = _appStoresOv.map(s => s.key);
 const storeNames = _appStoresOv.map(s => s.name);
-const storeColors = _appStoresOv.map((s,i) => ['store-a','store-b','store-c','store-d','store-e'][i] || 'store-a');
+const storeColors = _appStoresOv.map(s => storeBadgeClass(s.key, _appStoresOv));
 let totalCombined = {
 production: 0,
 returns: 0,
@@ -5900,7 +5894,7 @@ updateCustomerCharts();
 }
 export async function updateCustomerCharts() {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 if(custSalesChart) custSalesChart.destroy();
 if(custPaymentChart) custPaymentChart.destroy();
@@ -6137,7 +6131,7 @@ export async function refreshCustomerSales(page = 1, force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted_records')));
 const _rcsAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const customerSales = ensureArray(await sqliteStore.get('sales')).filter(_rcsAlive);
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers')).filter(_rcsAlive);
+const salesCustomers = ensureArray(await sqliteStore.get('customers')).filter(_rcsAlive);
 const db = ensureArray(await sqliteStore.get('production')).filter(_rcsAlive);
 const stockReturns = ensureArray(await sqliteStore.get('returns')).filter(_rcsAlive);
 const selectedDate = document.getElementById('cust-date').value;
@@ -6314,7 +6308,7 @@ const badgeText = creditReceived ? 'RECEIVED' : paymentType;
 const isOldDebtItem = item.transactionType === 'OLD_DEBT';
 const isAdminCollItem = !((item.salesRep && item.salesRep !== 'NONE')) && paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
 const _isXfer = !!(item.isRepTransfer || (item.isTransfer && item.transferFrom));
-const supplyTagClass = _isXfer ? 'store-c' : getStoreBadgeClass(item.supplyStore);
+const supplyTagClass = _isXfer ? 'store-asaan' : getStoreBadgeClass(item.supplyStore);
 const supplyTagText = _isXfer ? 'Stock transfer' : (getStoreLabel(item.supplyStore) || 'Unknown store');
 const _unitRate = safeValue(item.quantity) > 0 ? safeValue(item.totalValue) / safeValue(item.quantity) : 0;
 const _partialIn = (paymentType === 'CREDIT' && !creditReceived) ? safeValue(item.partialPaymentReceived) : 0;
@@ -6736,7 +6730,6 @@ window.verifyAccountPassword = verifyAccountPassword;
 window.promptVerifiedBackupPassword = promptVerifiedBackupPassword;
 window.unifiedBackup = unifiedBackup;
 window.unifiedRestore = unifiedRestore;
-window.normaliseBackupFields = normaliseBackupFields;
 window._doRestoreMerge = _doRestoreMerge;
 window._doYearCloseRestore = _doYearCloseRestore;
 window.showTab = showTab;

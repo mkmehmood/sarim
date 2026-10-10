@@ -56,14 +56,14 @@ describe('recovered ids: every link follows, only changed rows sync', () => {
   it('recovered material: the payments that settled it and the batches/formulas that use it follow', async () => {
     seed({
       transactions: [{ id: 'p', materialId: 'M_old', materialIds: ['M_old', 'z'] }],
-      factory_history: [{ id: 'h', materialsUsed: [{ id: 'M_old', quantity: 2 }] }],
+      factory: [{ id: 'h', materialsUsed: [{ id: 'M_old', quantity: 2 }] }],
       factory_default_formulas: { standard: [{ id: 'M_old', quantity: 1 }] },
     });
     await G.applyRecoveryLinks('inventory', 'M_old', 'M_new', { id: 'M_new' });
     const p = (await get('transactions'))[0];
     assert.equal(p.materialId, 'M_new');
     assert.deepEqual(p.materialIds, ['M_new', 'z']);
-    assert.equal((await get('factory_history'))[0].materialsUsed[0].id, 'M_new');
+    assert.equal((await get('factory'))[0].materialsUsed[0].id, 'M_new');
     assert.equal((await get('factory_default_formulas')).standard[0].id, 'M_new');
   });
 });
@@ -127,10 +127,10 @@ describe('factory batch restore', () => {
 
   it('blocked when the stock is gone, otherwise takes the materials out again', async () => {
     seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 4, cost: 10 }], factory_default_formulas: {} });
-    assert.match(await G.getRecoverLinkBlockReason('factory_history', batch), /Not enough Chora/);
+    assert.match(await G.getRecoverLinkBlockReason('factory', batch), /Not enough Chora/);
     seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
-    assert.equal(await G.getRecoverLinkBlockReason('factory_history', batch), null);
-    await G.applyRecoveryLinks('factory_history', 'F_old', 'F', batch);
+    assert.equal(await G.getRecoverLinkBlockReason('factory', batch), null);
+    await G.applyRecoveryLinks('factory', 'F_old', 'F', batch);
     const item = (await get('inventory'))[0];
     assert.equal(item.quantity, 4);
     assert.equal(item.totalValue, 40);
@@ -139,8 +139,8 @@ describe('factory batch restore', () => {
   it('two batches in one recovery cannot both use the same stock', async () => {
     seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
     const ctx = { inv: null };
-    assert.equal(await G.getRecoverLinkBlockReason('factory_history', batch, ctx), null);
-    assert.match(await G.getRecoverLinkBlockReason('factory_history', { ...batch, id: 'F2' }, ctx), /Not enough Chora/);
+    assert.equal(await G.getRecoverLinkBlockReason('factory', batch, ctx), null);
+    assert.match(await G.getRecoverLinkBlockReason('factory', { ...batch, id: 'F2' }, ctx), /Not enough Chora/);
   });
 });
 
@@ -200,17 +200,17 @@ describe('sales: contacts and settlement', () => {
   beforeEach(() => seed({}));
 
   it('a recovered sale gets its customer back exactly once', async () => {
-    seed({ sales_customers: [] });
+    seed({ customers: [] });
     const sale = { id: 's', customerName: 'Ali Khan', customerPhone: '0300', salesRep: 'NONE' };
     assert.ok(await G.ensureContactForRecoveredSale('sales', sale));
     assert.equal(await G.ensureContactForRecoveredSale('sales', sale), null);
-    const c = await get('sales_customers');
+    const c = await get('customers');
     assert.equal(c.length, 1);
     assert.equal(c[0].phone, '0300');
   });
 
   it('rep-linked and transfer sales do not create a customer', async () => {
-    seed({ sales_customers: [] });
+    seed({ customers: [] });
     assert.equal(await G.ensureContactForRecoveredSale('sales', { id: 's', customerName: 'X', salesRep: 'R1' }), null);
     assert.equal(await G.ensureContactForRecoveredSale('sales', { id: 's', customerName: 'X', isRepTransfer: true }), null);
   });
@@ -224,7 +224,7 @@ describe('sales: contacts and settlement', () => {
         { id: 'part', paymentType: 'CREDIT', creditReceived: false },
         { id: 'k', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'part', totalValue: 250 },
       ],
-      calculator_history: [{ id: 'h', linkedSalesIds: ['calc'] }],
+      calculator: [{ id: 'h', linkedSalesIds: ['calc'] }],
     });
     assert.match(await G.getSettleToggleBlockReason('cash'), /Only credit sales/);
     assert.equal(await G.getSettleToggleBlockReason('plain'), null);
@@ -238,11 +238,11 @@ describe('calculator record restore against real data', () => {
   const entry = { id: 'c1', linkedSalesIds: ['s1'], linkedRepSalesIds: [] };
 
   it('allowed while the sale is still pending, refused once it was paid or settled elsewhere', async () => {
-    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep_sales: [], calculator_history: [] });
+    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep: [], calculator: [] });
     assert.equal(await G.getCalcRestoreBlockReason(entry), null);
-    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: true }], rep_sales: [], calculator_history: [] });
+    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: true }], rep: [], calculator: [] });
     assert.match(await G.getCalcRestoreBlockReason(entry), /already paid or changed/);
-    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep_sales: [], calculator_history: [{ id: 'other', linkedSalesIds: ['s1'] }] });
+    seed({ sales: [{ id: 's1', paymentType: 'CREDIT', creditReceived: false }], rep: [], calculator: [{ id: 'other', linkedSalesIds: ['s1'] }] });
     assert.match(await G.getCalcRestoreBlockReason(entry), /another calculator record/);
   });
 });
@@ -271,7 +271,7 @@ describe('legacy partly-paid audit', () => {
   it('finds the double-counted sales and stays read-only', async () => {
     seed({
       sales: [{ id: 'p', paymentType: 'CREDIT', customerName: 'Ali', partialPaymentReceived: 300 }, { id: 'k', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'p', totalValue: 300 }],
-      rep_sales: [],
+      rep: [],
     });
     const r = await G.auditLegacyPartialPayments({ silent: true });
     assert.equal(r.count, 1);

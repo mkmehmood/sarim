@@ -9,7 +9,7 @@ import {
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
 async function _calcHistory() {
-  return ensureArray(await sqliteStore.get('calculator_history')).filter(h => h && !h.deletedAt);
+  return ensureArray(await sqliteStore.get('calculator')).filter(h => h && !h.deletedAt);
 }
 function _calcLabel(h) {
   return `${h.seller || 'a seller'}'s calculator record of ${h.date || 'unknown date'}`;
@@ -39,7 +39,7 @@ export async function findCalcLinkForReturn(rec) {
   return legacy ? { entry: legacy, via: 'return' } : null;
 }
 export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
-  const key = kind === 'rep' ? 'rep_sales' : 'sales';
+  const key = kind === 'rep' ? 'rep' : 'sales';
   const all = ensureArray(await sqliteStore.get(key));
   const rec = all.find(s => s && s.id === id);
   if (!rec) return null;
@@ -121,7 +121,7 @@ export async function detachChildPayment(kind, child, all) {
     return await revertCollectionToSales(kind, child, all);
   }
   if (!child || child.paymentType !== 'PARTIAL_PAYMENT' || !child.relatedSaleId) return null;
-  const key = kind === 'rep' ? 'rep_sales' : 'sales';
+  const key = kind === 'rep' ? 'rep' : 'sales';
   const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
   const parent = arr.find(s => s && s.id === child.relatedSaleId);
   if (!parent) return null;
@@ -135,14 +135,14 @@ export async function detachChildPayment(kind, child, all) {
 }
 export async function getSaleEditLinkIssue(kind, original, next) {
   if (!original || !original.id) return null;
-  const key = kind === 'rep' ? 'rep_sales' : 'sales';
+  const key = kind === 'rep' ? 'rep' : 'sales';
   const all = ensureArray(await sqliteStore.get(key));
   const children = all.filter(s => s && s.id !== original.id && s.relatedSaleId === original.id);
   return getEditLinkIssue(original, next, children);
 }
 export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   if (!snapshot) return null;
-  if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
+  if ((collectionName === 'sales' || collectionName === 'rep') && snapshot.paymentType === 'PARTIAL_PAYMENT' && snapshot.relatedSaleId) {
     const key = COLLECTION_TO_KEY[collectionName];
     const idMap = await _loadIdMap();
     const parentId = resolveId(snapshot.relatedSaleId, idMap);
@@ -150,14 +150,14 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const { block } = planChildReattach(parent, snapshot);
     return block || null;
   }
-  if ((collectionName === 'sales' || collectionName === 'rep_sales') && snapshot.paymentType === 'COLLECTION' && Array.isArray(snapshot.allocations) && snapshot.allocations.length) {
+  if ((collectionName === 'sales' || collectionName === 'rep') && snapshot.paymentType === 'COLLECTION' && Array.isArray(snapshot.allocations) && snapshot.allocations.length) {
     const key = COLLECTION_TO_KEY[collectionName];
     const idMap = await _loadIdMap();
     const live = ensureArray(await sqliteStore.get(key)).filter(r => r && !r.deletedAt);
     const mapped = { ...snapshot, allocations: snapshot.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) })) };
     return getCollectionReapplyIssue(mapped, live);
   }
-  if (collectionName === 'calculator_history') return await getCalcRestoreBlockReason(snapshot);
+  if (collectionName === 'calculator') return await getCalcRestoreBlockReason(snapshot);
   if (collectionName === 'sales' && Number(snapshot.quantity) > 0 && snapshot.supplyStore &&
       !['COLLECTION', 'PARTIAL_PAYMENT'].includes(snapshot.paymentType) && snapshot.transactionType !== 'OLD_DEBT' &&
       typeof window !== 'undefined' && typeof window.computeStoreStockSnapshot === 'function') {
@@ -197,7 +197,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
       return `This material was linked to ${snapshot.supplierName || 'a supplier'} who is no longer in your payments. Recover that supplier first, then recover the material.`;
     }
   }
-  if (collectionName === 'factory_history') {
+  if (collectionName === 'factory') {
     if (ctx && !ctx.inv) ctx.inv = JSON.parse(JSON.stringify(ensureArray(await sqliteStore.get('inventory'))));
     const inv = ctx && ctx.inv ? ctx.inv : ensureArray(await sqliteStore.get('inventory'));
     const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
@@ -246,20 +246,20 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     await unifiedSave(k, stores[k], null, changed[k].map(r => r.id));
   }
   if (collectionName === 'inventory') {
-    const hist = ensureArray(await sqliteStore.get('factory_history'));
+    const hist = ensureArray(await sqliteStore.get('factory'));
     const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
     const r = remapMaterialRefs(hist, formulas, oldId, newId);
     if (r.historyChanged.length) {
       const now = getTimestamp();
       r.historyChanged.forEach(h => { h.updatedAt = now; });
-      await unifiedSave('factory_history', hist, null, r.historyChanged.map(h => h.id));
+      await unifiedSave('factory', hist, null, r.historyChanged.map(h => h.id));
     }
     if (r.formulasChanged) {
       await sqliteStore.set('factory_default_formulas', formulas);
       await sqliteStore.set('factory_default_formulas_timestamp', Date.now());
     }
   }
-  if (collectionName === 'factory_history' && cleanRecord) {
+  if (collectionName === 'factory' && cleanRecord) {
     const inv = ensureArray(await sqliteStore.get('inventory'));
     const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
     const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaType || cleanRecord.store);
@@ -277,7 +277,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave('inventory', inv, null, updates.map(u => u.id));
     }
   }
-  if (cleanRecord && !opts.skipReattach && (collectionName === 'sales' || collectionName === 'rep_sales') &&
+  if (cleanRecord && !opts.skipReattach && (collectionName === 'sales' || collectionName === 'rep') &&
       cleanRecord.paymentType === 'PARTIAL_PAYMENT' && cleanRecord.relatedSaleId) {
     const key = COLLECTION_TO_KEY[collectionName];
     const arr = ensureArray(await sqliteStore.get(key));
@@ -290,7 +290,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave(key, arr, parent);
     }
   }
-  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales') &&
+  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep') &&
       cleanRecord.paymentType === 'COLLECTION' && Array.isArray(cleanRecord.allocations) && cleanRecord.allocations.length) {
     const key = COLLECTION_TO_KEY[collectionName];
     const arr = ensureArray(await sqliteStore.get(key));
@@ -309,7 +309,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     cleanRecord.allocations = cleanRecord.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) }));
     if (ids.length) await unifiedSave(key, arr, null, ids);
   }
-  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep_sales')) {
+  if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep')) {
     try { await ensureContactForRecoveredSale(collectionName, cleanRecord); }
     catch (e) { console.warn('[recover] contact re-create failed', e && e.message); }
   }
@@ -383,19 +383,19 @@ export async function applyRenameOnRecovery(collectionName, cleanRecord) {
     if (collectionName === 'inventory' && cleanRecord.supplierName) cleanRecord.supplierName = resolveRename(emap, 'entity', cleanRecord.supplierName);
     return cleanRecord;
   }
-  const kind = (collectionName === 'sales' || collectionName === 'sales_customers') ? 'sales'
-    : (collectionName === 'rep_sales' || collectionName === 'rep_customers') ? ('rep|' + (cleanRecord.salesRep || '')) : null;
+  const kind = (collectionName === 'sales' || collectionName === 'customers') ? 'sales'
+    : (collectionName === 'rep' || collectionName === 'clients') ? ('rep|' + (cleanRecord.salesRep || '')) : null;
   if (!kind) return cleanRecord;
   const map = (await sqliteStore.get('customer_rename_map')) || {};
   if (cleanRecord.customerName) cleanRecord.customerName = resolveRename(map, kind, cleanRecord.customerName);
-  if ((collectionName === 'sales_customers' || collectionName === 'rep_customers') && cleanRecord.name) {
+  if ((collectionName === 'customers' || collectionName === 'clients') && cleanRecord.name) {
     cleanRecord.name = resolveRename(map, kind, cleanRecord.name);
   }
   return cleanRecord;
 }
 export async function findLiveSameNameRecord(collectionName, snapshot) {
   if (!snapshot || !snapshot.name) return null;
-  if (!['sales_customers', 'rep_customers', 'entities'].includes(collectionName)) return null;
+  if (!['customers', 'clients', 'entities'].includes(collectionName)) return null;
   const arr = ensureArray(await sqliteStore.get(COLLECTION_TO_KEY[collectionName]));
   const nm = String(snapshot.name).trim().toLowerCase();
   return arr.find(r => r && !r.deletedAt && r.name && String(r.name).trim().toLowerCase() === nm) || null;
@@ -411,7 +411,7 @@ export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
   return { issue: getOldDebtEditIssue(newAmount, kids), collected: sumChildPayments(kids) };
 }
 export async function getSettleToggleBlockReason(id, kind = 'customer') {
-  const key = kind === 'rep' ? 'rep_sales' : 'sales';
+  const key = kind === 'rep' ? 'rep' : 'sales';
   const rec = ensureArray(await sqliteStore.get(key)).find(s => s && s.id === id);
   if (!rec) return null;
   if (!isSettleableSale(rec)) return 'Only credit sales can be marked paid or unpaid.';
@@ -428,30 +428,30 @@ export async function getSettleToggleBlockReason(id, kind = 'customer') {
 }
 export async function getLiveRecoveryRefs() {
   const ids = new Set();
-  for (const k of ['sales', 'rep_sales', 'expenses', 'entities']) {
+  for (const k of ['sales', 'rep', 'expenses', 'entities']) {
     ensureArray(await sqliteStore.get(k)).forEach(r => { if (r && r.id && !r.deletedAt) ids.add(String(r.id)); });
   }
   const names = async (k) => new Set(ensureArray(await sqliteStore.get(k)).filter(c => c && c.name && !c.deletedAt).map(c => String(c.name).trim().toLowerCase()));
-  return { ids, contacts: { sales: await names('sales_customers'), rep: await names('rep_customers') } };
+  return { ids, contacts: { sales: await names('customers'), rep: await names('clients') } };
 }
 export async function ensureContactForRecoveredSale(collectionName, rec) {
   if (!rec || !rec.customerName || !String(rec.customerName).trim()) return null;
   let key, extra = {};
   if (collectionName === 'sales') {
     if (rec.isRepTransfer || (rec.salesRep && rec.salesRep !== 'NONE')) return null;
-    key = 'sales_customers';
+    key = 'customers';
     extra = { customSalePrice: 0 };
-  } else if (collectionName === 'rep_sales') {
-    key = 'rep_customers';
+  } else if (collectionName === 'rep') {
+    key = 'clients';
     extra = { salesRep: rec.salesRep };
   } else return null;
   const arr = ensureArray(await sqliteStore.get(key));
   const nm = String(rec.customerName).trim().toLowerCase();
   const exists = arr.some(c => c && !c.deletedAt && c.name && String(c.name).trim().toLowerCase() === nm &&
-    (key !== 'rep_customers' || !c.salesRep || !rec.salesRep || c.salesRep === rec.salesRep));
+    (key !== 'clients' || !c.salesRep || !rec.salesRep || c.salesRep === rec.salesRep));
   if (exists) return null;
   const now = getTimestamp();
-  const contact = { id: `${key === 'sales_customers' ? 'cust' : 'rep_cust'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+  const contact = { id: `${key === 'customers' ? 'cust' : 'rep_cust'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
     name: String(rec.customerName).trim(), phone: rec.customerPhone || '', address: '', oldDebit: 0, createdAt: now, updatedAt: now, timestamp: now, ...extra };
   ensureRecordIntegrity(contact, false);
   arr.push(contact);
@@ -463,7 +463,7 @@ export async function loadCalcRestoreContext(entry) {
   const tt = entry && entry.transferSaleId
     ? tombs.find(t => t && String(t.recordId || t.id) === String(entry.transferSaleId) && (t.collection || t.recordType) === 'sales')
     : null;
-  const contacts = ensureArray(await sqliteStore.get('sales_customers'));
+  const contacts = ensureArray(await sqliteStore.get('customers'));
   const rep = entry && entry.returnRep ? String(entry.returnRep).toLowerCase() : null;
   const repContact = rep ? contacts.find(c => c && !c.deletedAt && c.name && c.name.toLowerCase() === rep) : null;
   let storeKeys;
@@ -473,8 +473,8 @@ export async function loadCalcRestoreContext(entry) {
   } catch (_) { }
   return {
     sales: ensureArray(await sqliteStore.get('sales')),
-    repSales: ensureArray(await sqliteStore.get('rep_sales')),
-    history: ensureArray(await sqliteStore.get('calculator_history')),
+    repSales: ensureArray(await sqliteStore.get('rep')),
+    history: ensureArray(await sqliteStore.get('calculator')),
     storeKeys,
     transferSnapshot: tt && tt.snapshot ? tt.snapshot : null,
     repPriceOk: !!(repContact && Number(repContact.customSalePrice) > 0),
@@ -485,7 +485,7 @@ export async function getCalcRestoreBlockReason(entry) {
 }
 export async function auditLegacyPartialPayments(opts = {}) {
   const customer = findPartialConflicts(ensureArray(await sqliteStore.get('sales')));
-  const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep_sales')));
+  const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep')));
   const all = [...customer.map(c => ({ ...c, where: 'customer' })), ...rep.map(c => ({ ...c, where: 'rep' }))];
   const debt = all.filter(c => c.kind === 'debt-reduced-twice').reduce((t, c) => t + c.amount, 0);
   const cash = all.filter(c => c.kind === 'cash-counted-twice').reduce((t, c) => t + c.amount, 0);
@@ -509,7 +509,7 @@ function _restoreSales(snaps) {
   for (const { ref, copy } of snaps) { Object.keys(ref).forEach(k => { if (!(k in copy)) delete ref[k]; }); Object.assign(ref, copy); }
 }
 export async function revertCollectionToSales(kind, collection, all) {
-  const key = kind === 'rep' ? 'rep_sales' : 'sales';
+  const key = kind === 'rep' ? 'rep' : 'sales';
   const arr = Array.isArray(all) ? all : ensureArray(await sqliteStore.get(key));
   const ids = [];
   for (const a of collection.allocations || []) {

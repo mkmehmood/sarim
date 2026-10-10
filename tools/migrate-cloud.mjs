@@ -1,0 +1,494 @@
+#!/usr/bin/env node
+// =====================================================================================
+//  migrate-cloud.mjs  -  one-time data migration for the new naming. Standalone: needs
+//  only Node 18+ (no npm packages) and is NOT part of the app.
+//
+//  It signs in with your account (email + password) and fixes your data in Firestore:
+//    * moves the collections to their single-word names
+//        calculator_history -> calculator     rep_sales      -> rep
+//        rep_customers      -> clients        sales_customers-> customers
+//        factory_history    -> factory        (production, sales, transactions, entities,
+//                                              inventory, expenses, returns keep their name)
+//    * replaces the store codes STORE_A / STORE_B / STORE_C with zubair / mahmood / asaan
+//      (other stores get a key made from their name) in every record, the store list, the
+//      per-store prices and the recycle-bin entries; merges stores that exist twice
+//    * renames settings/config fields  naswar_default_settings(_timestamp) -> settings(_timestamp)
+//    * fixes mismatches: store values written as a name ("Zubair"), "store-a" spellings,
+//      and reports any record that still points at a store that does not exist
+//    * stamps every rewritten record with a new updatedAt so the app's delta sync picks it up
+//
+//  USAGE
+//    node tools/migrate-cloud.mjs --email you@example.com              dry run (writes nothing)
+//    node tools/migrate-cloud.mjs --email you@example.com --apply      do it
+//    node tools/migrate-cloud.mjs --email you@example.com --apply --delete-old
+//                                  also delete the old collections once the copy is verified
+//    node tools/migrate-cloud.mjs --email you@example.com --convert-backup Backup.gznd
+//                                  convert an old encrypted backup (or .json) -> Backup.migrated.gznd
+//    node tools/migrate-cloud.mjs --convert-backup old.json --uid <uid>   offline, plain JSON only
+//
+//  The password is asked for (hidden); or set MIGRATE_PASSWORD. Nothing is written without --apply.
+//  Old collections are kept unless you pass --delete-old, so the run can be repeated safely
+//  (it is idempotent: a second run changes nothing).
+//
+//  AFTER A SUCCESSFUL --apply, on every phone/browser: let it sync, sign out (this clears the
+//  local copy), update the app, sign in again. The new app then downloads the migrated data.
+// =====================================================================================
+import { readFile, writeFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import { createInterface } from 'node:readline';
+
+// ---------------------------------------------------------------- the rules (all legacy knowledge lives here)
+export const FIREBASE = {
+  apiKey: 'AIzaSyDYjGQILtrcG2nfKACSfsVtfIPZOAgbr_s',
+  projectId: 'calculator-fabd3',
+  referer: 'https://calculator-fabd3.firebaseapp.com/',
+};
+// [old Firestore collection, new collection]
+export const DATASETS = [
+  ['production', 'production'], ['sales', 'sales'], ['calculator_history', 'calculator'],
+  ['rep_sales', 'rep'], ['rep_customers', 'clients'], ['sales_customers', 'customers'],
+  ['transactions', 'transactions'], ['entities', 'entities'], ['inventory', 'inventory'],
+  ['factory_history', 'factory'], ['expenses', 'expenses'], ['returns', 'returns'],
+];
+export const COLLECTION_RENAMES = Object.fromEntries(DATASETS.filter(([o, n]) => o !== n));
+export const DEFAULT_STORE_MAP = { STORE_A: 'zubair', STORE_B: 'mahmood', STORE_C: 'asaan' };
+export const STORE_KEY_FIELDS = ['store', 'supplyStore', 'returnStore', 'transferPeerStore'];
+const SLOT_KEYS = ['standard', 'asaan'];
+export const DATA_KEY_VERSION = 3;
+// every historical backup field name -> current name
+export const BACKUP_FIELD_RENAMES = {
+  mfg: 'production', mfg_pro_pkr: 'production', db: 'production',
+  customerSales: 'sales', customer_sales: 'sales',
+  salesHistory: 'calculator', noman_history: 'calculator', calculator_history: 'calculator',
+  repSales: 'rep', rep_sales: 'rep', repCustomers: 'clients', rep_customers: 'clients',
+  salesCustomers: 'customers', sales_customers: 'customers',
+  paymentTransactions: 'transactions', payment_transactions: 'transactions',
+  paymentEntities: 'entities', payment_entities: 'entities',
+  factoryInventoryData: 'inventory', factory_inventory_data: 'inventory',
+  factoryProductionHistory: 'factory', factory_production_history: 'factory', factory_history: 'factory',
+  expenseRecords: 'expenses', expense_records: 'expenses',
+  stockReturns: 'returns', stock_returns: 'returns',
+  expenseCategories: 'expense_categories', factoryFormulaStore: 'factory_formula_store', formula_store: 'factory_formula_store',
+  factoryFormulaSlots: 'factory_formula_slots', formula_slots: 'factory_formula_slots',
+  naswar_default_settings: 'settings', appStores: 'app_stores',
+  factoryDefaultFormulas: 'factory_default_formulas', factoryAdditionalCosts: 'factory_additional_costs',
+  factoryCostAdjustmentFactor: 'factory_cost_adjustment_factor', factoryUnitTracking: 'factory_unit_tracking',
+};
+const RECORD_FIELDS = ['production', 'sales', 'calculator', 'rep', 'clients', 'customers', 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns'];
+
+// ---------------------------------------------------------------- store keys
+export function slugify(name) {
+  const s = String(name == null ? '' : name).normalize('NFKC').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
+  return s || 'store';
+}
+export function makeKey(name, taken) {
+  let base = slugify(name);
+  if (SLOT_KEYS.includes(base)) base += '_store';
+  let key = base;
+  for (let n = 2; taken.has(key); n++) key = `${base}_${n}`;
+  return key;
+}
+const isLegacy = (k) => typeof k === 'string' && /^STORE_[A-Z]$/.test(k);
+// STORE_A catalog -> name-derived keys. Built-ins always get zubair/mahmood/asaan; a store that
+// already exists under its new key is merged with its old twin instead of being listed twice.
+export function planCatalog(stores) {
+  const list = Array.isArray(stores) ? stores.filter(s => s && typeof s === 'object') : [];
+  const twins = new Map(list.filter(s => !isLegacy(s.key)).map(s => [s.key, { ...s }]));
+  const taken = new Set(twins.keys());
+  const map = {};
+  for (const s of list) {
+    if (!isLegacy(s.key)) continue;
+    let key = DEFAULT_STORE_MAP[s.key];
+    if (!key) {
+      const twin = [...twins.values()].find(t => t.legacyKey === s.key || slugify(t.name) === slugify(s.name));
+      if (twin) key = twin.key; else { key = makeKey(s.name, taken); taken.add(key); }
+    }
+    map[s.key] = key;
+  }
+  const out = []; const emitted = new Map(); let merged = 0; let changed = false;
+  for (const s of list) {
+    if (!isLegacy(s.key)) { const t = twins.get(s.key); emitted.set(t.key, t); out.push(t); continue; }
+    changed = true;
+    const key = map[s.key]; const into = twins.get(key) || emitted.get(key);
+    if (into) {
+      if (!(into.salePrice > 0) && s.salePrice > 0) into.salePrice = s.salePrice;
+      if (!into.formulaId && s.formulaId) { into.formulaId = s.formulaId; if (s.formulaType) into.formulaType = s.formulaType; }
+      if (!into.formulaType && s.formulaType) into.formulaType = s.formulaType;
+      delete into.legacyKey; merged++;
+      continue;
+    }
+    const n = { ...s, key }; delete n.legacyKey; emitted.set(key, n); out.push(n);
+  }
+  for (const s of out) delete s.legacyKey;
+  return { stores: out, map, changed: changed || list.some(s => 'legacyKey' in s), merged };
+}
+// Maps any way a store may have been written to a current key (or returns null when it cannot).
+export function makeResolver(catalogStores, legacyMap) {
+  const stores = Array.isArray(catalogStores) && catalogStores.length ? catalogStores
+    : [{ key: 'zubair', name: 'ZUBAIR' }, { key: 'mahmood', name: 'MAHMOOD' }, { key: 'asaan', name: 'ASAAN' }];
+  const keys = new Set(stores.map(s => s.key));
+  const byName = new Map();
+  for (const s of stores) { byName.set(slugify(s.key), s.key); byName.set(slugify(s.name), s.key); }
+  const map = { ...DEFAULT_STORE_MAP, ...(legacyMap || {}) };
+  return function resolve(v) {
+    if (typeof v !== 'string' || v === '') return null;
+    if (keys.has(v)) return v;
+    if (map[v] && keys.has(map[v])) return map[v];
+    const m = /^store[\s_-]*([a-z])$/i.exec(v.trim());
+    if (m && map['STORE_' + m[1].toUpperCase()] && keys.has(map['STORE_' + m[1].toUpperCase()])) return map['STORE_' + m[1].toUpperCase()];
+    return byName.get(slugify(v)) || null;
+  };
+}
+// Rewrites store fields in place (records can nest). `resolve` returns the current key or null.
+// Slot values ("standard"/"asaan" in factory entries) are left alone. Returns { fixed, unknown[] }.
+export function fixStoreFields(node, resolve, acc = { fixed: 0, unknown: [] }, depth = 0) {
+  if (!node || typeof node !== 'object' || depth > 5) return acc;
+  if (Array.isArray(node)) { node.forEach(x => fixStoreFields(x, resolve, acc, depth + 1)); return acc; }
+  for (const k of Object.keys(node)) {
+    const v = node[k];
+    if (typeof v === 'string') {
+      if (!STORE_KEY_FIELDS.includes(k) || v === '' || SLOT_KEYS.includes(v)) continue;
+      const r = resolve(v);
+      if (r && r !== v) { node[k] = r; acc.fixed++; }
+      else if (!r) acc.unknown.push(v);
+    } else if (v && typeof v === 'object') fixStoreFields(v, resolve, acc, depth + 1);
+  }
+  return acc;
+}
+export function fixSettingsStores(settings, resolve) {
+  let n = 0;
+  if (!settings || typeof settings !== 'object' || !settings.production || typeof settings.production !== 'object') return n;
+  for (const k of Object.keys(settings.production)) {
+    const r = isLegacy(k) || !SLOT_KEYS.includes(k) ? resolve(k) : null;
+    if (r && r !== k) { if (settings.production[r] === undefined) settings.production[r] = settings.production[k]; delete settings.production[k]; n++; }
+  }
+  return n;
+}
+
+// ---------------------------------------------------------------- Firestore REST codec
+export function decodeValue(v) {
+  if (v == null) return null;
+  if ('nullValue' in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('timestampValue' in v) return { __timestamp: v.timestampValue };
+  if ('stringValue' in v) return v.stringValue;
+  if ('bytesValue' in v) return { __bytes: v.bytesValue };
+  if ('referenceValue' in v) return { __ref: v.referenceValue };
+  if ('geoPointValue' in v) return { __geo: v.geoPointValue };
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(decodeValue);
+  if ('mapValue' in v) return decodeFields(v.mapValue.fields || {});
+  return null;
+}
+export function decodeFields(fields) { const o = {}; for (const [k, v] of Object.entries(fields || {})) o[k] = decodeValue(v); return o; }
+export function encodeValue(x) {
+  if (x === null || x === undefined) return { nullValue: null };
+  if (typeof x === 'boolean') return { booleanValue: x };
+  if (typeof x === 'number') return Number.isInteger(x) ? { integerValue: String(x) } : { doubleValue: Number.isFinite(x) ? x : 0 };
+  if (typeof x === 'string') return { stringValue: x };
+  if (Array.isArray(x)) return { arrayValue: { values: x.map(encodeValue) } };
+  if (x.__timestamp) return { timestampValue: x.__timestamp };
+  if (x.__bytes) return { bytesValue: x.__bytes };
+  if (x.__ref) return { referenceValue: x.__ref };
+  if (x.__geo) return { geoPointValue: x.__geo };
+  return { mapValue: { fields: encodeFields(x) } };
+}
+export function encodeFields(o) { const f = {}; for (const [k, v] of Object.entries(o || {})) f[k] = encodeValue(v); return f; }
+
+// ---------------------------------------------------------------- Firestore REST client (the "adapter")
+export function createRestClient({ idToken, uid, projectId = FIREBASE.projectId, fetchImpl = fetch, refresh = null }) {
+  const root = `projects/${projectId}/databases/(default)/documents`;
+  const base = `https://firestore.googleapis.com/v1/${root}`;
+  let token = idToken;
+  const userPath = (p) => `users/${uid}/${p}`;
+  const url = (p) => `${base}/${p.split('/').map(encodeURIComponent).join('/')}`;
+  async function call(u, init = {}, retried = false) {
+    const res = await fetchImpl(u, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(init.headers || {}) } });
+    if (res.status === 401 && refresh && !retried) { token = await refresh(); return call(u, init, true); }
+    const text = await res.text(); const body = text ? JSON.parse(text) : {};
+    if (!res.ok) throw new Error(`Firestore ${res.status}: ${(body.error && body.error.message) || text}`);
+    return body;
+  }
+  const idOf = (name) => name.split('/').pop();
+  return {
+    async list(col) {
+      const out = []; let pageToken = '';
+      do {
+        const body = await call(`${url(userPath(col))}?pageSize=300${pageToken ? '&pageToken=' + encodeURIComponent(pageToken) : ''}`);
+        for (const d of body.documents || []) out.push({ id: idOf(d.name), data: decodeFields(d.fields) });
+        pageToken = body.nextPageToken || '';
+      } while (pageToken);
+      return out;
+    },
+    async get(path) {
+      try { const d = await call(url(userPath(path))); return { id: idOf(d.name), data: decodeFields(d.fields) }; }
+      catch (e) { if (/ 404:/.test(e.message)) return null; throw e; }
+    },
+    // ops: { op:'set'|'update'|'delete', path, data, removeFields, serverTime:[fields] }
+    async commit(ops) {
+      for (let i = 0; i < ops.length; i += 200) {
+        const writes = ops.slice(i, i + 200).map(o => {
+          const name = `${root}/${userPath(o.path)}`;
+          if (o.op === 'delete') return { delete: name };
+          const w = { update: { name, fields: encodeFields(o.data) } };
+          if (o.op === 'update') w.updateMask = { fieldPaths: [...Object.keys(o.data || {}), ...(o.removeFields || [])] };
+          if (o.serverTime && o.serverTime.length) w.updateTransforms = o.serverTime.map(f => ({ fieldPath: f, setToServerValue: 'REQUEST_TIME' }));
+          return w;
+        });
+        await call(`${base}:commit`, { method: 'POST', body: JSON.stringify({ writes }) });
+      }
+    },
+  };
+}
+export async function signIn({ email, password, apiKey = FIREBASE.apiKey, referer = FIREBASE.referer, fetchImpl = fetch }) {
+  const res = await fetchImpl(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Referer: referer },
+    body: JSON.stringify({ email, password, returnSecureToken: true }),
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    const m = (body.error && body.error.message) || 'sign-in failed';
+    throw new Error(/PASSWORD|CREDENTIALS|EMAIL/.test(m) ? `Sign-in failed (${m}). Accounts that only use "Sign in with Google" have no password: use --id-token and --uid instead.` : `Sign-in failed (${m})`);
+  }
+  const refresh = async () => {
+    const r = await fetchImpl(`https://securetoken.googleapis.com/v1/token?key=${apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: referer },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(body.refreshToken)}`,
+    });
+    const j = await r.json(); if (!r.ok) throw new Error('token refresh failed'); return j.id_token;
+  };
+  return { idToken: body.idToken, uid: body.localId, refresh };
+}
+
+// ---------------------------------------------------------------- the cloud migration
+const ms = (d) => {
+  const t = d && (d.updatedAt || d.timestamp || d.createdAt);
+  if (!t) return 0;
+  if (typeof t === 'number') return t;
+  if (t.__timestamp) return Date.parse(t.__timestamp) || 0;
+  return Date.parse(t) || 0;
+};
+// opts: { apply, deleteOld, now, log }
+export async function migrateCloud(client, opts = {}) {
+  const log = opts.log || (() => {});
+  const apply = !!opts.apply;
+  const report = { applied: apply, catalog: { changed: false, merged: 0, map: {} }, datasets: {}, settings: 0, deletions: 0, unknown: {}, writes: 0, deleted: 0, warnings: [] };
+  const ops = [];
+  // 1. store list -> decides every store key
+  const catDoc = await client.get('appStores/stores');
+  const plan = planCatalog(catDoc && catDoc.data.stores);
+  report.catalog = { changed: plan.changed, merged: plan.merged, map: plan.map };
+  const resolve = makeResolver(plan.stores, plan.map);
+  if (catDoc && plan.changed) {
+    ops.push({ op: 'update', path: 'appStores/stores', data: { stores: plan.stores, stores_timestamp: opts.now || Date.now() } });
+    log(`store list: ${Object.entries(plan.map).map(([a, b]) => `${a}->${b}`).join(', ')}${plan.merged ? ` (${plan.merged} duplicate store(s) merged)` : ''}`);
+  }
+  const noteUnknown = (col, arr) => { for (const v of arr) { const k = `${col}: ${v}`; report.unknown[k] = (report.unknown[k] || 0) + 1; } };
+  // 2. datasets
+  const copiedAll = [];
+  for (const [oldCol, newCol] of DATASETS) {
+    const r = report.datasets[newCol] = { from: oldCol, found: 0, written: 0, storeFixes: 0, skippedNewer: 0, upToDate: 0 };
+    const oldDocs = await client.list(oldCol);
+    r.found = oldDocs.length;
+    if (!oldDocs.length) continue;
+    const renamed = oldCol !== newCol;
+    const existing = renamed ? new Map((await client.list(newCol)).map(d => [d.id, d.data])) : null;
+    for (const d of oldDocs) {
+      if (d.id === '_placeholder_') continue;
+      const rec = JSON.parse(JSON.stringify(d.data));
+      const fx = fixStoreFields(rec, resolve);
+      r.storeFixes += fx.fixed; noteUnknown(newCol, fx.unknown);
+      if (!renamed && fx.fixed === 0) { r.upToDate++; continue; }
+      if (renamed && existing.has(d.id) && ms(existing.get(d.id)) >= ms(rec)) { r.skippedNewer++; continue; }
+      ops.push({ op: 'set', path: `${newCol}/${d.id}`, data: rec, serverTime: rec.isMerged ? [] : ['updatedAt'] });
+      r.written++;
+    }
+    if (renamed) copiedAll.push([oldCol, newCol, oldDocs]);
+    log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer, ${r.storeFixes} store field(s) fixed`);
+  }
+  // 3. settings/config
+  const sDoc = await client.get('settings/config');
+  if (sDoc) {
+    const d = sDoc.data; const data = {}; const remove = [];
+    if (d.naswar_default_settings !== undefined) {
+      if (d.settings === undefined) data.settings = d.naswar_default_settings;
+      if (d.settings_timestamp === undefined && d.naswar_default_settings_timestamp !== undefined) data.settings_timestamp = d.naswar_default_settings_timestamp;
+      remove.push('naswar_default_settings');
+      if (d.naswar_default_settings_timestamp !== undefined) remove.push('naswar_default_settings_timestamp');
+    }
+    const cur = JSON.parse(JSON.stringify(data.settings !== undefined ? data.settings : d.settings || null));
+    if (cur && fixSettingsStores(cur, resolve) > 0) data.settings = cur;
+    if (Object.keys(data).length || remove.length) {
+      ops.push({ op: 'update', path: 'settings/config', data, removeFields: remove }); report.settings = 1;
+      log('settings/config: fields renamed / store prices re-keyed');
+    }
+  }
+  // 4. recycle bin
+  for (const d of await client.list('deletions')) {
+    if (d.id === '_placeholder_') continue;
+    const rec = JSON.parse(JSON.stringify(d.data)); let changed = false;
+    for (const f of ['collection', 'recordType']) if (typeof rec[f] === 'string' && COLLECTION_RENAMES[rec[f]]) { rec[f] = COLLECTION_RENAMES[rec[f]]; changed = true; }
+    if (fixStoreFields(rec, resolve).fixed > 0) changed = true;
+    if (changed) { ops.push({ op: 'set', path: `deletions/${d.id}`, data: rec }); report.deletions++; }
+  }
+  if (report.deletions) log(`deletions: ${report.deletions} recycle-bin entr${report.deletions === 1 ? 'y' : 'ies'} updated`);
+  report.writes = ops.length;
+  // 5. write
+  if (apply && ops.length) { await client.commit(ops); log(`committed ${ops.length} write(s)`); }
+  // 6. optionally remove the old collections, only after verifying every doc exists under the new name
+  if (apply && opts.deleteOld) {
+    for (const [oldCol, newCol, oldDocs] of copiedAll) {
+      const have = new Set((await client.list(newCol)).map(d => d.id));
+      const missing = oldDocs.filter(d => d.id !== '_placeholder_' && !have.has(d.id));
+      if (missing.length) { report.warnings.push(`${oldCol}: ${missing.length} document(s) are not in ${newCol}; old collection kept`); continue; }
+      await client.commit(oldDocs.map(d => ({ op: 'delete', path: `${oldCol}/${d.id}` })));
+      report.deleted += oldDocs.length; log(`deleted old collection ${oldCol} (${oldDocs.length} docs)`);
+    }
+  }
+  return report;
+}
+
+// ---------------------------------------------------------------- backup conversion
+// Works on the decrypted backup object. Backups before the key rename name "sales" the calculator history.
+export function convertBackup(data) {
+  if (!data || typeof data !== 'object') throw new Error('not a backup');
+  const out = { ...data };
+  const stamped = Number(out.dataKeyVersion || (out._meta && out._meta.dataKeyVersion) || 0);
+  if (stamped >= DATA_KEY_VERSION) return { data: out, changed: false, notes: ['already in the current format'] };
+  const notes = [];
+  if (!stamped && out.sales !== undefined) {
+    if (out.calculator === undefined && out.calculator_history === undefined && out.noman_history === undefined && out.salesHistory === undefined) out.calculator = out.sales;
+    delete out.sales; notes.push('"sales" (old calculator history) -> calculator');
+  }
+  for (const [oldName, newName] of Object.entries(BACKUP_FIELD_RENAMES)) {
+    if (!(oldName in out) || oldName === newName) continue;
+    if (out[newName] === undefined || out[newName] === null) out[newName] = out[oldName];
+    delete out[oldName]; notes.push(`${oldName} -> ${newName}`);
+  }
+  const plan = planCatalog(out.app_stores);
+  if (Array.isArray(out.app_stores)) out.app_stores = plan.stores;
+  const resolve = makeResolver(plan.stores, plan.map);
+  let fixed = 0; const unknown = [];
+  for (const k of RECORD_FIELDS) if (Array.isArray(out[k])) { const r = fixStoreFields(out[k], resolve); fixed += r.fixed; unknown.push(...r.unknown); }
+  if (out.settings) fixed += fixSettingsStores(out.settings, resolve);
+  out.dataKeyVersion = DATA_KEY_VERSION;
+  out._meta = { ...(out._meta || {}), dataKeyVersion: DATA_KEY_VERSION };
+  notes.push(`${fixed} store field(s) fixed`);
+  return { data: out, changed: true, notes, unknown };
+}
+// same container format as the app's CryptoEngine (AES-256-GCM, PBKDF2 bound to email + password + uid)
+const MAGIC_V2 = Uint8Array.from('GZND_ENC_V2', c => c.charCodeAt(0));
+const MAGIC_V4 = Uint8Array.from('GZND_ENC_V4', c => c.charCodeAt(0));
+async function deriveKey(email, password, uid, salt, v4) {
+  const ikm = new TextEncoder().encode(email.toLowerCase().trim() + ':' + password + (v4 ? ':' + (uid || '') : ''));
+  const km = await crypto.subtle.importKey('raw', ikm, 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: v4 ? 210000 : 100000, hash: v4 ? 'SHA-512' : 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+const sameBytes = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+export async function decryptBackup(buf, email, password, uid) {
+  const b = new Uint8Array(buf); const m = MAGIC_V4.length;
+  const v4 = sameBytes(b.slice(0, m), MAGIC_V4); const v2 = !v4 && sameBytes(b.slice(0, m), MAGIC_V2);
+  if (!v4 && !v2) throw new Error('Not an encrypted backup file');
+  let o = m;
+  if (v4) {
+    const stored = b.slice(o, o + 32); o += 32;
+    const actual = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(uid || '')));
+    if (!sameBytes(stored, actual)) throw new Error('This backup belongs to a different account');
+  }
+  const salt = b.slice(o, o + 32); o += 32; const iv = b.slice(o, o + 12); o += 12;
+  try {
+    const key = await deriveKey(email, password, uid, salt, v4);
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b.slice(o))));
+  } catch { throw new Error('Wrong email or password for this backup'); }
+}
+export async function encryptBackup(obj, email, password, uid) {
+  const salt = crypto.getRandomValues(new Uint8Array(32)); const iv = crypto.getRandomValues(new Uint8Array(12));
+  const uidHash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(uid || '')));
+  const key = await deriveKey(email, password, uid, salt, true);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj))));
+  const out = new Uint8Array(MAGIC_V4.length + 32 + 32 + 12 + ct.length);
+  let o = 0; for (const part of [MAGIC_V4, uidHash, salt, iv, ct]) { out.set(part, o); o += part.length; }
+  return out;
+}
+
+// ---------------------------------------------------------------- command line
+function parseArgs(argv) {
+  const a = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const t = argv[i];
+    if (!t.startsWith('--')) { a._.push(t); continue; }
+    const k = t.slice(2); const next = argv[i + 1];
+    if (['apply', 'delete-old', 'yes', 'help'].includes(k)) a[k] = true;
+    else { a[k] = next; i++; }
+  }
+  return a;
+}
+function askHidden(question) {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    rl._writeToOutput = (s) => { if (s.includes(question)) process.stdout.write(s); };
+    rl.question(question, (ans) => { rl.close(); process.stdout.write('\n'); resolve(ans); });
+  });
+}
+function ask(question) {
+  return new Promise((resolve) => { const rl = createInterface({ input: process.stdin, output: process.stdout }); rl.question(question, (a) => { rl.close(); resolve(a); }); });
+}
+function printReport(r) {
+  console.log('\n=== summary ' + (r.applied ? '(APPLIED)' : '(dry run - nothing was written)') + ' ===');
+  console.log(`store list: ${r.catalog.changed ? 'will be re-keyed' : 'already current'}${r.catalog.merged ? `, ${r.catalog.merged} duplicate store(s) merged` : ''}`);
+  for (const [n, d] of Object.entries(r.datasets)) if (d.found) console.log(`${d.from.padEnd(20)} -> ${n.padEnd(13)} found ${String(d.found).padStart(5)}  write ${String(d.written).padStart(5)}  store fixes ${d.storeFixes}`);
+  console.log(`settings doc: ${r.settings ? 'updated' : 'ok'};  recycle-bin entries updated: ${r.deletions}`);
+  const unk = Object.entries(r.unknown);
+  if (unk.length) { console.log('\nMISMATCH - records pointing at a store that does not exist (left untouched, please review):'); for (const [k, n] of unk) console.log(`  ${k}  x${n}`); }
+  for (const w of r.warnings) console.log('WARNING: ' + w);
+  console.log(`total writes: ${r.writes}${r.applied ? '' : '   (run again with --apply to perform them)'}`);
+}
+export async function main(argv = process.argv.slice(2)) {
+  const a = parseArgs(argv);
+  if (a.help || (!a.email && !a['id-token'] && !a['convert-backup'])) { console.log('See the header of this file for usage.'); return 0; }
+  const email = a.email;
+  let password = process.env.MIGRATE_PASSWORD || a.password;
+  const getPassword = async () => (password ||= await askHidden(`Password for ${email}: `));
+  let session = null;
+  // Converting a backup offline only needs --uid; everything else signs in.
+  const offline = !!a['convert-backup'] && !!a.uid;
+  if (a['id-token']) {
+    if (!a.uid) throw new Error('--id-token needs --uid');
+    session = { idToken: a['id-token'], uid: a.uid, refresh: null };
+  } else if (email && !offline) {
+    session = await signIn({ email, password: await getPassword(), apiKey: a['api-key'] || FIREBASE.apiKey, referer: a.referer || FIREBASE.referer });
+    console.log(`Signed in (uid ${session.uid}).`);
+  }
+  if (a['convert-backup']) {
+    const file = a['convert-backup']; const raw = await readFile(file);
+    const uid = session ? session.uid : a.uid;
+    let obj; let encrypted = false;
+    if (raw.slice(0, 11).toString() === 'GZND_ENC_V') {
+      if (!email || !uid) throw new Error('This backup is encrypted: pass --email (it signs in to find your uid) or --email with --uid.');
+      await getPassword();
+      obj = await decryptBackup(raw, email, password, uid); encrypted = true;
+    } else obj = JSON.parse(raw.toString('utf8'));
+    const res = convertBackup(obj);
+    console.log(res.notes.join('\n'));
+    if (res.unknown && res.unknown.length) console.log(`MISMATCH: ${res.unknown.length} record field(s) point at a store that does not exist.`);
+    const out = a.out || file.replace(/(\.[^.]+)?$/, '.migrated$1');
+    if (encrypted) await writeFile(out, await encryptBackup(res.data, email, password, uid)); else await writeFile(out, JSON.stringify(res.data));
+    console.log(`Written: ${out}`);
+    return 0;
+  }
+  if (!session) throw new Error('Sign-in is required: pass --email (or --id-token with --uid).');
+  const client = createRestClient({ idToken: session.idToken, uid: session.uid, refresh: session.refresh });
+  if (a.apply && !a.yes) {
+    console.log(`\nThis will rewrite data in Firestore for ${email || session.uid}${a['delete-old'] ? ' and DELETE the old collections afterwards' : ''}.`);
+    console.log('Make an encrypted backup in the app first if you have not.');
+    if ((await ask('Type YES to continue: ')).trim() !== 'YES') { console.log('Cancelled.'); return 1; }
+  }
+  const report = await migrateCloud(client, { apply: !!a.apply, deleteOld: !!a['delete-old'], log: (m) => console.log('  ' + m) });
+  printReport(report);
+  if (report.applied) console.log('\nNext: on every phone/browser let it sync, sign out, update the app, sign in again.');
+  return report.warnings.length ? 2 : 0;
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().then((c) => process.exit(c || 0)).catch((e) => { console.error('\nError: ' + e.message); process.exit(1); });
+}

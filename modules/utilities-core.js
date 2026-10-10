@@ -661,7 +661,7 @@ export const AUTO_SYNC_DELAY = 5000;
 export async function invalidateAllCaches() {
 const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
 try {
-const freshSettings = await sqliteStore.get('naswar_default_settings');
+const freshSettings = await sqliteStore.get('settings');
 if (freshSettings && typeof freshSettings === 'object') defaultSettings = freshSettings;
 const freshCats = await sqliteStore.get('expense_categories');
 if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllPendingIds === 'function') {
@@ -768,8 +768,7 @@ syncPaymentsTab().finally(() => { _tabSyncInProgress['payments'] = false; });
 }
 break;
 case 'rep':
-case 'rep_sales':
-case 'rep_customers':
+case 'clients':
 if (typeof syncRepTab === 'function' && !_tabSyncInProgress['rep']) {
 _tabSyncInProgress['rep'] = true;
 syncRepTab().finally(() => { _tabSyncInProgress['rep'] = false; });
@@ -790,16 +789,9 @@ syncProductionTab().finally(() => { _tabSyncInProgress['production'] = false; })
 }
 break;
 case 'inventory':
-case 'factory_history':
 if (typeof syncFactoryTab === 'function' && !_tabSyncInProgress['factory']) {
 _tabSyncInProgress['factory'] = true;
 syncFactoryTab().finally(() => { _tabSyncInProgress['factory'] = false; });
-}
-break;
-case 'calculator_history':
-if (typeof syncCalculatorTab === 'function' && !_tabSyncInProgress['calculator']) {
-_tabSyncInProgress['calculator'] = true;
-syncCalculatorTab().finally(() => { _tabSyncInProgress['calculator'] = false; });
 }
 break;
 case 'all':
@@ -978,16 +970,16 @@ if (typeof refreshRepUI === 'function') refreshRepUI();
 export async function reloadDataFromStorage() {
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const repCustomers = ensureArray(await sqliteStore.get('rep_customers'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 try {
 await loadAllData();
 } catch (error) {
@@ -1111,7 +1103,7 @@ const _ed = getEditCtx('prod');
 const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
 const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
@@ -1314,7 +1306,7 @@ if (preDeletedRecord && typeof preDeletedRecord === 'object') {
         tempResult.displayAmount = s.amount != null ? `₨${fmtNum(s.amount)}` : (s.totalValue != null ? `₨${fmtNum(s.totalValue)}` : null);
       }
       break;
-    case 'rep_sales':
+    case 'rep':
       tempResult.displayName   = s.customerName || s.name || 'Unknown Rep Customer';
       tempResult.displayDetail = [s.salesRep ? `Rep: ${s.salesRep}` : '', s.paymentType === 'COLLECTION' ? 'Collection' : s.paymentType === 'CREDIT' ? 'Credit' : s.paymentType === 'CASH' ? 'Cash' : (s.paymentType || ''), s.date || ''].filter(Boolean).join(' · ');
       tempResult.displayAmount = s.totalValue != null ? `₨${fmtNum(s.totalValue)}` : (s.quantity ? `${s.quantity} kg` : null);
@@ -1324,11 +1316,11 @@ if (preDeletedRecord && typeof preDeletedRecord === 'object') {
       tempResult.displayDetail = [s.category || '', s.date || ''].filter(Boolean).join(' · ');
       tempResult.displayAmount = s.amount != null ? `₨${fmtNum(s.amount)}` : null;
       break;
-    case 'sales_customers':
+    case 'customers':
       tempResult.displayName   = s.name || null;
       tempResult.displayDetail = s.phone ? ` ${s.phone}` : '';
       break;
-    case 'rep_customers':
+    case 'clients':
       tempResult.displayName   = s.name || null;
       tempResult.displayDetail = [s.salesRep ? `Rep: ${s.salesRep}` : '', s.phone || ''].filter(Boolean).join(' · ');
       break;
@@ -1346,7 +1338,7 @@ if (preDeletedRecord && typeof preDeletedRecord === 'object') {
         tempResult.displayAmount = s.net != null ? `${s.net} kg` : null;
       }
       break;
-    case 'factory_history':
+    case 'factory':
       tempResult.displayName   = s.store ? `Factory – ${getStoreLabel ? getStoreLabel(s.store) : s.store}` : 'Factory Production';
       tempResult.displayDetail = s.date || '';
       tempResult.displayAmount = s.units != null ? `${s.units} units` : null;
@@ -1361,7 +1353,7 @@ if (preDeletedRecord && typeof preDeletedRecord === 'object') {
       tempResult.displayDetail = s.supplierName ? `Supplier: ${s.supplierName}` : '';
       tempResult.displayAmount = s.quantity != null ? `${s.quantity} kg` : null;
       break;
-    case 'calculator_history':
+    case 'calculator':
       tempResult.displayName   = s.customerName || s.customer || s.name || 'Calculator Entry';
       tempResult.displayDetail = s.supplyStore || s.store || '';
       tempResult.displayAmount = s.totalValue != null ? `₨${fmtNum(s.totalValue)}` : null;
@@ -1444,14 +1436,14 @@ cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed
 export async function _captureRecordSnapshot(id, collectionName) {
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep_sales'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator_history'));
+const repSales = ensureArray(await sqliteStore.get('rep'));
+const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_history'));
+const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
   const result = { displayName: null, displayDetail: null, displayAmount: null, record: null };
   try {
     let record = null;
@@ -1499,7 +1491,7 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_hist
           result.displayAmount = record.amount != null ? `₨${fmtNum(record.amount)}` : (record.totalValue != null ? `₨${fmtNum(record.totalValue)}` : null);
         }
         break;
-      case 'rep_sales':
+      case 'rep':
         result.displayName   = record.customerName || record.name || 'Unknown Rep Customer';
         result.displayDetail = [
           record.salesRep ? `Rep: ${record.salesRep}` : '',
@@ -1527,7 +1519,7 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_hist
           result.displayAmount = record.net != null ? `${record.net} kg net` : null;
         }
         break;
-      case 'factory_history':
+      case 'factory':
         result.displayName   = record.store ? `Factory – ${record.store}` : 'Factory Production';
         result.displayDetail = record.date || '';
         result.displayAmount = record.units != null ? `${record.units} units` : null;
@@ -1537,7 +1529,7 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_hist
         result.displayDetail = record.date || '';
         result.displayAmount = record.quantity != null ? `${record.quantity} kg` : null;
         break;
-      case 'calculator_history':
+      case 'calculator':
         result.displayName   = record.customerName || record.customer || 'Calculator Entry';
         result.displayDetail = record.store || record.supplyStore || '';
         result.displayAmount = record.totalValue != null ? `₨${fmtNum(record.totalValue)}` : null;
@@ -1547,12 +1539,12 @@ const factoryProductionHistory = ensureArray(await sqliteStore.get('factory_hist
         result.displayDetail = record.supplierName ? `Supplier: ${record.supplierName}` : '';
         result.displayAmount = record.quantity != null ? `${record.quantity} kg` : null;
         break;
-      case 'sales_customers':
+      case 'customers':
         result.displayName   = record.name || null;
         result.displayDetail = record.phone ? ` ${record.phone}` : '';
         result.displayAmount = null;
         break;
-      case 'rep_customers':
+      case 'clients':
         result.displayName   = record.name || null;
         result.displayDetail = [record.salesRep ? `Rep: ${record.salesRep}` : '', record.phone || ''].filter(Boolean).join(' · ');
         result.displayAmount = null;
@@ -1581,7 +1573,7 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
         result.displayDetail = [s.supplyStore || s.store || '', s.paymentType || '', s.date || ''].filter(Boolean).join(' · ');
         result.displayAmount = s.totalValue != null ? `₨${fmtNum(s.totalValue)}` : null;
         break;
-      case 'rep_sales':
+      case 'rep':
         result.displayName   = s.customerName || s.name || null;
         result.displayDetail = [s.salesRep ? `Rep: ${s.salesRep}` : '', s.paymentType || '', s.date || ''].filter(Boolean).join(' · ');
         result.displayAmount = s.totalValue != null ? `₨${fmtNum(s.totalValue)}` : null;
@@ -1618,12 +1610,12 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
         result.displayDetail = s.date || '';
         result.displayAmount = s.quantity != null ? `${s.quantity} kg` : null;
         break;
-      case 'factory_history':
+      case 'factory':
         result.displayName   = s.store ? `Factory – ${s.store}` : 'Factory Production';
         result.displayDetail = s.date || '';
         result.displayAmount = s.units != null ? `${s.units} units` : null;
         break;
-      case 'calculator_history':
+      case 'calculator':
         result.displayName   = s.customerName || s.customer || s.name || 'Calculator Entry';
         result.displayDetail = s.supplyStore || s.store || '';
         result.displayAmount = s.totalValue != null ? `₨${fmtNum(s.totalValue)}` : null;
@@ -1633,12 +1625,12 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
         result.displayDetail = s.supplierName ? `Supplier: ${s.supplierName}` : '';
         result.displayAmount = s.quantity != null ? `${s.quantity} kg` : null;
         break;
-      case 'sales_customers':
+      case 'customers':
         result.displayName   = s.name || null;
         result.displayDetail = s.phone ? ` ${s.phone}` : '';
         result.displayAmount = null;
         break;
-      case 'rep_customers':
+      case 'clients':
         result.displayName   = s.name || null;
         result.displayDetail = [s.salesRep ? `Rep: ${s.salesRep}` : '', s.phone || ''].filter(Boolean).join(' · ');
         result.displayAmount = null;
@@ -3033,7 +3025,7 @@ showToast("Error generating PDF: " + error.message, "error");
 }
 export async function exportCustomerToPDF(opts = {}) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('sales_customers'));
+const salesCustomers = ensureArray(await sqliteStore.get('customers'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const titleElement = document.getElementById('manageCustomerTitle');
 if (!titleElement) { showToast("No customer selected", "warning"); return; }

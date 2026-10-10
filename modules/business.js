@@ -3,9 +3,7 @@ import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSetting
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
 import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';
-import { migrateLegacyKeysInDb } from './data-key-migration.js';
-import { RECORD_KEYS, LEGACY_SQLITE_KEYS } from './data-keys.js';
-import { migrateStoreKeys, normaliseStoreCatalog, remapStoreKeysDeep, remapSettingsStoreKeys, remapUiStateStoreKeys } from './store-keys.js';
+import { RECORD_KEYS } from './data-keys.js';
 export let appMode;
 window.appMode = appMode;
 export function _set_appMode(v) { appMode = v; window.appMode = v; }
@@ -694,7 +692,7 @@ export const sqliteStore = (() => {
   const _SETTINGS_KEYS = new Set([
     'factory_default_formulas', 'factory_additional_costs',
     'factory_cost_adjustment_factor', 'factory_formula_store', 'factory_formula_slots',
-    'factory_unit_tracking', 'naswar_default_settings',
+    'factory_unit_tracking', 'settings',
     'expense_categories', 'sales_reps_list', 'user_roles_list',
     'offline_operation_queue', 'offline_dead_letter_queue',
     'ui_state', 'app_theme', 'firestore_stats', 'session_start',
@@ -1152,18 +1150,6 @@ export const sqliteStore = (() => {
     db.run(`CREATE INDEX IF NOT EXISTS idx_outbox_col
             ON ndapp_outbox (uid, collection)`);
   }
-  // One-time rename of the local rows to the canonical data keys (mfg_pro_pkr -> production, ...).
-  function _runDataKeyMigration() {
-    try {
-      const r = migrateLegacyKeysInDb(_sqlDB, LEGACY_SQLITE_KEYS);
-      if (!r.skipped) {
-        const n = Object.values(r.renamed).reduce((a, b) => a + b, 0);
-        if (n > 0) { console.info('[SQLite] data keys migrated to canonical names:', r.renamed); _schedulePersist(PERSIST_URGENT_MS); }
-      }
-    } catch (e) {
-      console.error('[SQLite] data key migration failed (left untouched, will retry):', _safeErr(e));
-    }
-  }
   function _fullKey(key) {
     if (!_prefix || _DEVICE_GLOBAL.has(key)) return key;
     return _prefix + key;
@@ -1285,17 +1271,6 @@ export const sqliteStore = (() => {
       await _flushPersist();
     }
   }
-  // Anything that reaches the database passes through here, whatever its source (the UI, a cloud
-  // snapshot, a restored backup, a device that has not updated yet): legacy STORE_A/B/C keys are
-  // turned into the name-derived store keys before they are stored.
-  function _normaliseStoreKeysOnWrite(key, value) {
-    if (value === null || typeof value !== 'object') return value;
-    if (key === 'app_stores') return normaliseStoreCatalog(value);
-    if (_rowType(key) === 'collection') remapStoreKeysDeep(value);
-    else if (key === 'naswar_default_settings') remapSettingsStoreKeys(value);
-    else if (key === 'ui_state') remapUiStateStoreKeys(value);
-    return value;
-  }
   return {
     DECRYPT_FAILED: Symbol('DECRYPT_FAILED'),
     setUserPrefix(uid) {
@@ -1312,21 +1287,6 @@ export const sqliteStore = (() => {
             setTimeout(() => DeltaSync.loadAllPendingIds().catch(() => {}), 100);
           }
         }
-      }
-    },
-    // One-time rewrite of STORE_A/B/C -> name-derived store keys for the signed-in user.
-    // Needs the encryption key, so it is a no-op (retried on the next load) until it is ready.
-    async migrateStoreKeys() {
-      await this.init();
-      if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
-      if (!SQLiteCrypto.isReady()) return { deferred: true };
-      try {
-        const report = await migrateStoreKeys(this, RECORD_KEYS);
-        if (!report.alreadyDone && typeof window !== 'undefined' && typeof window._invalidateStoresCache === 'function') window._invalidateStoresCache();
-        return report;
-      } catch (e) {
-        console.warn('[SQLite] store key migration failed (will retry):', _safeErr(e));
-        return { error: true };
       }
     },
     clearUserPrefix() {
@@ -1361,7 +1321,6 @@ export const sqliteStore = (() => {
               window.notifyBlocking('Local data could not be fully verified. If something looks missing, use Sync to restore from the cloud.', 'warning');
             }
           }
-          _runDataKeyMigration();
           if (!existing) await _dualPersist();
           if (navigator.onLine) {
             setTimeout(() => _drainOutbox().catch(() => {}), 2000);
@@ -1418,7 +1377,6 @@ export const sqliteStore = (() => {
       await this.init();
       if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
       const _rt = _rowType(key);
-      value = _normaliseStoreKeysOnWrite(key, value);
       if (_rt === 'collection') {
         if (Array.isArray(value)) {
           value = value.map(r => (typeof r === 'object' && r !== null) ? ensureRecordIntegrity(r) : r);
@@ -1447,8 +1405,7 @@ export const sqliteStore = (() => {
       await this.init();
       if (!SQLiteCrypto.isReady()) await SQLiteCrypto.restoreSessionKeyFromStorage().catch(() => {});
       const validated = entries.map(([key, value]) => {
-        value = _normaliseStoreKeysOnWrite(key, value);
-        if (_rowType(key) === 'collection') {
+          if (_rowType(key) === 'collection') {
           if (Array.isArray(value)) {
             value = value.map(r => (typeof r === 'object' && r !== null) ? ensureRecordIntegrity(r) : r);
           } else if (typeof value === 'object' && value !== null) {
@@ -1630,7 +1587,6 @@ export const sqliteStore = (() => {
       _sqlDB = new _SQL.Database(bytes);
       _bootstrapSchema(_sqlDB);
       if (!_integrityCheck(_sqlDB)) throw new Error('[SQLite] importDB: integrity check failed');
-      _runDataKeyMigration();
       await _dualPersist();
     },
     async offlineStatus() {
@@ -1736,16 +1692,15 @@ return [];
 return [];
 }
 export async function loadAllData() {
-await sqliteStore.migrateStoreKeys();
 if (typeof loadUIState === 'function') await loadUIState();
 const configKeys = [
-'naswar_default_settings', 'appMode', 'repProfile', 'expense_categories',
+'settings', 'appMode', 'repProfile', 'expense_categories',
 'sales_reps_list', 'assignedManager', 'assignedUserTabs',
 'appMode_timestamp', 'repProfile_timestamp'
 ];
 const batchResults = await sqliteStore.getBatch(configKeys);
 const _notFailed = v => v !== null && v !== undefined && v !== sqliteStore.DECRYPT_FAILED;
-const loadedDefaultSettings = batchResults.get('naswar_default_settings');
+const loadedDefaultSettings = batchResults.get('settings');
 if (loadedDefaultSettings && typeof loadedDefaultSettings === 'object') {
 _set_defaultSettings(loadedDefaultSettings);
 }
@@ -1775,7 +1730,7 @@ window._userRoleAllowedTabs = loadedAssignedUserTabs;
 }
 const CRITICAL_KEYS = [
 'production', 'sales', 'transactions', 'entities',
-'calculator_history', 'expenses'
+'calculator', 'expenses'
 ];
 const criticalResults = await sqliteStore.getBatch(CRITICAL_KEYS);
 const failedKeys = CRITICAL_KEYS.filter(k => criticalResults.get(k) === sqliteStore.DECRYPT_FAILED);
@@ -2653,11 +2608,11 @@ const dataTypes = [
 'expenses',
 'production',
 'sales',
-'rep_sales',
-'calculator_history',
+'rep',
+'calculator',
 'transactions',
 'entities',
-'factory_history',
+'factory',
 'returns'
 ];
 let totalCleaned = 0;
