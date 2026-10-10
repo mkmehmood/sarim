@@ -807,6 +807,14 @@ const _notInInventory = settings.filter(it => !factoryInventoryData.find(i => St
 if (_notInInventory.length) {
 throw new Error(`Cannot produce: ${_notInInventory.map(m => '"' + m.name + '"').join(', ')} ${_notInInventory.length === 1 ? 'is' : 'are'} not in Raw Material Inventory. Add ${_notInInventory.length === 1 ? 'it' : 'them'} with the Add Raw Material button first.`);
 }
+const _shortages = [];
+for (const it of settings) {
+const inv0 = factoryInventoryData.find(i => String(i.id) === String(it.id)) || (it.name && factoryInventoryData.find(i => i.name && i.name.trim().toLowerCase() === it.name.trim().toLowerCase()));
+const need = it.quantity * units;
+if (inv0 && inv0.quantity + 1e-6 < need) _shortages.push({ name: inv0.name, have: inv0.quantity, need });
+}
+if (_shortages.length === 1) throw new Error(`Insufficient "${_shortages[0].name}" in inventory! Available: ${fmtNum(_shortages[0].have)} kg, Required: ${fmtNum(_shortages[0].need)} kg. Shortage: ${fmtNum(_shortages[0].need - _shortages[0].have)} kg`);
+if (_shortages.length > 1) throw new Error(`Insufficient inventory for ${_shortages.length} materials:\n${_shortages.map(s => ` \u2022 ${s.name}: ${fmtNum(s.have)} kg available, ${fmtNum(s.need)} kg required (short ${fmtNum(s.need - s.have)} kg)`).join('\n')}`);
 for (const item of settings) {
 const materialUsed = item.quantity * units;
 let inventoryItem = factoryInventoryData.find(i => String(i.id) === String(item.id));

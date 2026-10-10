@@ -248,6 +248,7 @@ export function splitFigures(message) {
 export function alertTitle(message, tone) {
   const m = String(message || '');
   if (/cash in hand/i.test(m)) return 'Low cash in hand';
+  if (/formula units/i.test(m)) return 'Low formula units';
   if (/insufficient|not enough|not in raw material|short by|shortage/i.test(m) && /inventory|material|stock|units|kg/i.test(m)) return tone === 'error' ? 'Low inventory' : 'Inventory warning';
   if (/credit/i.test(m)) return tone === 'error' ? 'Credit error' : 'Credit warning';
   if (/cannot delete|cannot be deleted|cannot change|cannot be edited/i.test(m)) return 'Action not allowed';
