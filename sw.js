@@ -53,13 +53,14 @@ const OSM_TILE_ORIGIN = 'https://tile.openstreetmap.org';
 const OFFLINE_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 async function precacheOne(cache, url, opts) {
   try {
-    const req = typeof url === 'string' ? new Request(url, opts || {}) : url;
+    const fresh = Object.assign({}, opts || {}, { cache: 'reload' });
+    const req = typeof url === 'string' ? new Request(url, fresh) : url;
     let res;
     try {
-      res = await fetch(req, opts || {});
+      res = await fetch(req, fresh);
       if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch (e) {
-      res = await fetch(req, Object.assign({}, opts || {}, { cache: 'reload' }));
+      res = await fetch(req, fresh);
       if (!res.ok) throw new Error('HTTP ' + res.status);
     }
     await cache.put(req, res);
@@ -78,7 +79,7 @@ self.addEventListener('install', (event) => {
             if (failed.length) {
               console.warn('[SW] Some app-shell assets failed to precache:', failed);
             }
-            const criticalFailed = failed.some((r) => r.url.endsWith('/') || r.url.endsWith('index.html'));
+            const criticalFailed = failed.some((r) => r.url === './' || /\.(?:js|css|html)$/.test(r.url) && r.url.indexOf('/vendor/') === -1);
             if (criticalFailed) {
               throw new Error('Failed to precache app shell: ' + JSON.stringify(failed));
             }
@@ -92,7 +93,6 @@ self.addEventListener('install', (event) => {
           )
         )
       )
-      .then(() => self.skipWaiting())
   );
 });
 self.addEventListener('activate', (event) => {
@@ -330,6 +330,18 @@ function revalidateInBackground(cache, request, opts) {
     .then(function (res) { if (res && res.ok) cache.put(request, res); })
     .catch(function () {});
 }
+function versionedCacheResponse(event, timeoutMs) {
+  event.respondWith(
+    caches.open(CACHE_NAME).then(function (cache) {
+      return cache.match(event.request).then(function (cached) {
+        if (cached) return cached;
+        return fetchWithTimeout(event.request, timeoutMs || NETWORK_TIMEOUT_MS)
+          .then(function (res) { if (res.ok) cache.put(event.request, res.clone()).catch(function () {}); return res; })
+          .catch(function () { return new Response('', { status: 503 }); });
+      });
+    })
+  );
+}
 function cacheFirstResponse(event, opts, timeoutMs) {
   event.respondWith(
     caches.open(CACHE_NAME).then(function (cache) {
@@ -349,6 +361,7 @@ self.addEventListener('fetch', function (event) {
   var url    = new URL(event.request.url);
   var method = event.request.method;
   if (method !== 'GET') return;
+  if (url.origin === self.location.origin && (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1')) return;
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
   if (url.origin === 'https://accounts.google.com') return;
   if (url.origin === 'https://cdnjs.cloudflare.com' &&
@@ -377,10 +390,7 @@ self.addEventListener('fetch', function (event) {
         return cache.match(new URL('./index.html', self.location.href).href)
           .then(function (cached) { return cached || cache.match(event.request); })
           .then(function (cached) {
-            if (cached) {
-              revalidateInBackground(cache, event.request);
-              return cached;
-            }
+            if (cached) return cached;
             return fetchWithTimeout(event.request, NAVIGATE_TIMEOUT_MS)
               .then(function (res) { if (res.ok) cache.put(event.request, res.clone()); return res; })
               .catch(function () {
@@ -457,7 +467,7 @@ self.addEventListener('fetch', function (event) {
     url.pathname.endsWith('.html') || url.pathname.endsWith('.ico')
   );
   if (isLocal) {
-    cacheFirstResponse(event, undefined, LOCAL_TIMEOUT_MS);
+    versionedCacheResponse(event, LOCAL_TIMEOUT_MS);
     return;
   }
   var isCachFirstOrigin = CACHE_FIRST_ORIGINS.some(function (o) { return url.origin === o; });

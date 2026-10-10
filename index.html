@@ -446,6 +446,8 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
         window.location.reload();
       });
       setInterval(function() { reg.update(); }, 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', function() { if (!document.hidden) reg.update().catch(function() {}); });
+      window.addEventListener('online', function() { reg.update().catch(function() {}); });
     }).catch(function(e) {
       var msg = (e && e.message) || String(e) || '';
       if (msg.indexOf('redirect') !== -1 || msg.indexOf('disallowed') !== -1) {

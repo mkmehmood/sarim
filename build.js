@@ -6,6 +6,7 @@ import {
 } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { computeBuildKey, replaceOrThrow } from './build-key.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT  = __dirname;
 const DIST  = join(ROOT, 'dist');
@@ -55,18 +56,9 @@ for (const f of ['manifest.json', '192.png', '512.png', 'sql-wasm.js', 'sql-wasm
   copyFileSync(join(ROOT, f), join(DIST, f));
 }
 let html = read(join(ROOT, 'index.html'));
-html = html.replace(
-  '<link rel="modulepreload" href="modules/main.js">',
-  `<link rel="modulepreload" href="${mainOut}">`,
-);
-html = html.replace(
-  '<link rel="stylesheet" href="app.css">',
-  `<link rel="stylesheet" href="${cssOut}">`,
-);
-html = html.replace(
-  '<script type="module" src="modules/main.js"></script>',
-  `<script type="module" src="${mainOut}"></script>`,
-);
+html = replaceOrThrow(html, '<link rel="modulepreload" href="modules/main.js">', `<link rel="modulepreload" href="${mainOut}">`, 'modulepreload');
+html = replaceOrThrow(html, '<link rel="stylesheet" href="app.css">', `<link rel="stylesheet" href="${cssOut}">`, 'stylesheet');
+html = replaceOrThrow(html, '<script type="module" src="modules/main.js"></script>', `<script type="module" src="${mainOut}"></script>`, 'main script');
 write(join(DIST, 'index.html'), html);
 mkdirSync(join(DIST, 'fonts'), { recursive: true });
 const FONT_FILES = [['@fontsource-variable/playfair-display', 'playfair-display-latin-wght-normal.woff2'], ['@fontsource-variable/playfair-display', 'playfair-display-latin-wght-italic.woff2'], ['@fontsource-variable/plus-jakarta-sans', 'plus-jakarta-sans-latin-wght-normal.woff2'], ['@fontsource-variable/manrope', 'manrope-latin-wght-normal.woff2'], ['@fontsource-variable/jetbrains-mono', 'jetbrains-mono-latin-wght-normal.woff2'], ['@fontsource-variable/cinzel', 'cinzel-latin-wght-normal.woff2'], ['@fontsource/noto-nastaliq-urdu', 'noto-nastaliq-urdu-arabic-400-normal.woff2'], ['@fontsource/noto-nastaliq-urdu', 'noto-nastaliq-urdu-arabic-700-normal.woff2']];
@@ -99,7 +91,13 @@ const ASSETS_TO_CACHE_BLOCK =
   ${FONT_FILES.map(f => `'./fonts/${f[1]}'`).join(',\n  ')}
 ];`;
 let sw = read(join(ROOT, 'sw.js'));
-sw = sw.replace(/const BUILD_HASH = '[^']+';/, `const BUILD_HASH = 'sarim-${coreHash}-${new Date().toISOString().slice(0,10).replace(/-/g,'')}';`);
+const keyEntries = [];
+for (const m of ASSETS_TO_CACHE_BLOCK.matchAll(/'\.\/([^']+)'/g)) {
+  try { keyEntries.push([m[1], readFileSync(join(DIST, m[1]))]); } catch (_) { keyEntries.push([m[1], '']); }
+}
+const buildKey = computeBuildKey(keyEntries);
+if (!/const BUILD_HASH = '[^']+';/.test(sw) || !/const ASSETS_TO_CACHE = \[[\s\S]*?\];/.test(sw)) throw new Error('sw.js markers (BUILD_HASH / ASSETS_TO_CACHE) not found.');
+sw = sw.replace(/const BUILD_HASH = '[^']+';/, `const BUILD_HASH = 'sarim-${buildKey}';`);
 sw = sw.replace(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/, ASSETS_TO_CACHE_BLOCK);
 write(join(DIST, 'sw.js'), sw);
 const kb = f => (readFileSync(join(DIST, f)).length / 1024).toFixed(1);
@@ -109,5 +107,5 @@ for (const c of allChunks) {
   console.log(`  ${c.padEnd(30)} ${kb(c)} KB  ${tag}`);
 }
 console.log(`  ${cssOut.padEnd(30)} ${kb(cssOut)} KB  (styles)`);
-console.log(`\n  SW cache key: sarim-${coreHash}`);
+console.log(`\n  SW cache key: sarim-${buildKey}`);
 console.log(`  Output:       dist/\n`);
