@@ -1575,6 +1575,14 @@ export function getStoreLabel(storeCode) {
     default: return storeCode || '';
   }
 }
+window.getStoreLabel = getStoreLabel;
+const _STORE_BADGE_CLASSES = ['store-a', 'store-b', 'store-c', 'store-d', 'store-e'];
+export function getStoreBadgeClass(storeCode) {
+  const list = _storesCache || _DEFAULT_STORES;
+  const idx = list.findIndex(s => s.key === storeCode);
+  return idx >= 0 ? (_STORE_BADGE_CLASSES[idx] || 'store-c') : 'store-c';
+}
+window.getStoreBadgeClass = getStoreBadgeClass;
 export async function getStoreLabelAsync(storeCode) {
   const stores = await getAppStores();
   const f = stores.find(s => s.key === storeCode);
@@ -3436,9 +3444,8 @@ filteredProduction.forEach(item => {
 const isSelected = item.date === selectedDate;
 const highlightClass = isSelected ? 'highlight-card' : '';
 const dateDisplay = isSelected ? `${formatDisplayDateTime(item.date, item.time)} (Selected)` : formatDisplayDateTime(item.date, item.time);
-const storeLabel = item.store === 'STORE_A' ? 'ZUBAIR' : item.store === 'STORE_B' ? 'MAHMOOD' : 'ASAAN';
-const _storeIdx = _appStoresProd.findIndex(s => s.key === item.store);
-const storeBadgeClass = _storeIdx >= 0 ? (_badgeClasses[_storeIdx] || 'store-a') : (item.store === 'STORE_A' ? 'store-a' : item.store === 'STORE_B' ? 'store-b' : 'store-c');
+const storeLabel = getStoreLabel(item.store) || 'Unknown store';
+const storeBadgeClass = getStoreBadgeClass(item.store);
 let paymentBadge = '';
 let mergedBadge = '';
 if (item.isMerged) {
@@ -3462,6 +3469,7 @@ ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeC
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
+<div class="supply-tag ${storeBadgeClass}">Store: ${esc(storeLabel)}</div>
 <p style="color:${isOutSide ? 'var(--danger)' : 'var(--accent-emerald)'};font-size:0.75rem;font-style:italic;">${isOutSide ? `Stock Transfer Out &rarr; ${esc(peerLabel)}` : `Stock Transfer In &larr; ${esc(peerLabel)}`}</p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
 ${item.transferNote ? `<p><span>Note:</span> <span style="color:var(--text-muted);">${esc(item.transferNote)}</span></p>` : ''}
@@ -3476,6 +3484,7 @@ ${item.isMerged ? '' : paymentBadge}
 ${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>` : ''}
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
+<div class="supply-tag ${storeBadgeClass}">${item.isReturn ? 'Returned to' : 'Produced at'}: ${esc(storeLabel)}</div>
 ${item.isReturn ? `
 <p style="color:var(--accent-emerald);font-size:0.75rem;font-style:italic;">${item.isMerged ? 'Merged returns by' : 'Returned by'} ${esc(item.returnedBy || 'Representative')}</p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(safeValue(item.net))} kg</span></p>
@@ -6299,6 +6308,7 @@ const histContainer = document.getElementById('custHistoryList');
 if (totalItems === 0) {
 histContainer.replaceChildren(Object.assign(document.createElement('p'), {textContent:'No sales found.',style:'text-align:center;color:var(--text-muted);width:100%;font-size:0.85rem'}));
 } else {
+if (typeof getAppStores === 'function') await getAppStores();
 const fragment = document.createDocumentFragment();
 displayData.forEach(async item => {
 const effDate = item.date;
@@ -6313,10 +6323,11 @@ const badgeClass = creditReceived ? 'received' : (paymentType ? paymentType.toLo
 const badgeText = creditReceived ? 'RECEIVED' : paymentType;
 const isOldDebtItem = item.transactionType === 'OLD_DEBT';
 const isAdminCollItem = !((item.salesRep && item.salesRep !== 'NONE')) && paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
-const supplyTagClass = (item.isRepTransfer || (item.isTransfer && item.transferFrom)) ? 'store-c' : item.supplyStore === 'STORE_A' ? 'store-a' :
-item.supplyStore === 'STORE_B' ? 'store-b' : 'store-c';
-const supplyTagText = (item.isRepTransfer || (item.isTransfer && item.transferFrom)) ? 'TRANSFER' : item.supplyStore === 'STORE_A' ? 'ZUBAIR' :
-item.supplyStore === 'STORE_B' ? 'MAHMOOD' : 'ASAAN';
+const _isXfer = !!(item.isRepTransfer || (item.isTransfer && item.transferFrom));
+const supplyTagClass = _isXfer ? 'store-c' : getStoreBadgeClass(item.supplyStore);
+const supplyTagText = _isXfer ? 'Stock transfer' : (getStoreLabel(item.supplyStore) || 'Unknown store');
+const _unitRate = safeValue(item.quantity) > 0 ? safeValue(item.totalValue) / safeValue(item.quantity) : 0;
+const _partialIn = (paymentType === 'CREDIT' && !creditReceived) ? safeValue(item.partialPaymentReceived) : 0;
 let repBadge = '';
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') {
 repBadge = `<span class="sales-rep-badge"> ${esc(item.salesRep.split(' ')[0])}</span>`;
@@ -6387,7 +6398,10 @@ ${supplyDateLine}
 <div class="supply-tag ${supplyTagClass}">Supply: ${supplyTagText}</div>
 <hr>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(item.quantity))} kg</span></p>
+${_unitRate > 0 ? `<p><span>Unit Price:</span> <span class="rev-val">${fmtAmt(_unitRate)} / kg</span></p>` : ''}
 <p><span>Total Value:</span> <span class="rev-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
+${_partialIn > 0 ? `<p><span>Received So Far:</span> <span class="profit-val">${fmtAmt(_partialIn)}</span></p>
+<p><span>Balance Due:</span> <span class="cost-val">${fmtAmt(Math.max(0, safeValue(item.totalValue) - _partialIn))}</span></p>` : ''}
 <p><span>Net Profit:</span> <span class="profit-val">${fmtAmt(safeValue(item.profit))}</span></p>
 ${creditSection}
 ${deleteBtnHtml}

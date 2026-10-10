@@ -57,8 +57,13 @@ const BULLET_RE = /^[\u2022\u00B7\u25CF*\-\u2013]\s+(.+)$/;
 const NOTE_RE = /^(warning|note|caution|important):\s+(.+)$/i;
 const FACT_RE = /^([A-Za-z0-9][A-Za-z0-9 ()/&'.\u2019-]{0,32}):\s+(.{1,70})$/;
 const FIGURE_PRIORITY = [/^new total$/i, /^total( value| sold)?$/i, /^amount$/i, /^required/i, /^overpayment$/i, /^collecting$/i, /^this credit sale$/i, /^credit sales?$/i, /^net profit$/i];
+export function humanizeKeys(text) {
+  const s = String(text == null ? '' : text);
+  if (typeof window.getStoreLabel !== 'function') return s;
+  return s.replace(/\bSTORE_[A-Z0-9_]+\b/g, (k) => window.getStoreLabel(k) || k);
+}
 export function parseMessage(message) {
-  const lines = String(message == null ? '' : message).replace(/\r/g, '').split('\n').map((l) => l.replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, ''));
+  const lines = humanizeKeys(message).replace(/\r/g, '').split('\n').map((l) => l.replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, ''));
   const blocks = [];
   let facts = null;
   let points = null;
@@ -126,7 +131,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     const buttons = actions.map((a, i) => `<button type="button" class="dlg-btn dlg-btn--${a.variant === 'solid' ? 'solid' : 'ghost'}" data-act="${i}"${i === dismissIndex ? ' data-dlg-cancel' : ''}>${escapeHtml(a.label)}</button>`).join('');
     const glyph = icon || pickIcon(tone, title, '');
     const figureHtml = figure ? `<div class="dlg-figure"><span class="dlg-figure-label">${escapeHtml(figure.k)}</span><strong class="dlg-figure-value">${escapeHtml(figure.v)}</strong></div>` : '';
-    overlay.innerHTML = `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><div class="dlg-chip"><span class="dlg-chip-icon" aria-hidden="true">${glyph}</span><span>${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span></div><div class="dlg-card"><div class="dlg-top"><span class="dlg-glyph" aria-hidden="true">${glyph}</span><span class="dlg-caption">${escapeHtml(caption || CAPTIONS[tone] || '')}</span></div><h2 class="dlg-title" id="${id}-t">${escapeHtml(String(title).trim())}</h2><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot${figure ? ' has-figure' : ''}">${figureHtml}<div class="dlg-actions">${buttons}</div></footer></div></div>`;
+    overlay.innerHTML = `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><div class="dlg-chip"><span class="dlg-chip-icon" aria-hidden="true">${glyph}</span><span>${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span></div><div class="dlg-card"><div class="dlg-top"><span class="dlg-glyph" aria-hidden="true">${glyph}</span><span class="dlg-caption">${escapeHtml(caption || CAPTIONS[tone] || '')}</span></div><h2 class="dlg-title" id="${id}-t">${escapeHtml(humanizeKeys(String(title)).trim())}</h2><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot${figure ? ' has-figure' : ''}">${figureHtml}<div class="dlg-actions">${buttons}</div></footer></div></div>`;
     const dialog = overlay.firstElementChild;
     let settled = false;
     const finish = (value, immediate) => {

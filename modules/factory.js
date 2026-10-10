@@ -941,6 +941,7 @@ if (factoryProductionHistory.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No recent activity' }));
 return;
 }
+await getAppStores();
 const _fhFrag = document.createDocumentFragment();
 const recent = [...factoryProductionHistory].sort((a, b) => {
 const timeA = a.timestamp || new Date(a.date + ' ' + a.time).getTime();
@@ -1008,8 +1009,9 @@ div.innerHTML = `
 ${entry.managedBy ? `<span class="managed-by-badge">${esc(entry.managedBy)}</span>` : ''}
 ${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}
 </div>
-<div style="display:flex;gap:6px;align-items:center;">
+<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
 ${_mergedBadgeHtml(entry)}
+${entry.store ? `<span class="supply-tag ${window.getStoreBadgeClass ? window.getStoreBadgeClass(entry.store) : 'store-c'}" style="margin-top:0;">Store: ${esc(getStoreLabel(entry.store) || entry.store)}</span>` : ''}
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
 </div>

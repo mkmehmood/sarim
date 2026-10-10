@@ -1594,10 +1594,10 @@ card.innerHTML = `
 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(transaction.date, transaction.time || null)}${creatorBadge}${mergedBadge}${settledBadge}</span>
 </div>
-<div class="customer-name">${esc(entityName)}</div>
+<div class="customer-name">${esc(entityName)} <span class="entity-type-badge">${esc(entityType)}</span></div>
 <p><span>Description:</span> <span>${esc(transaction.description || 'No description')}</span></p>
 <hr>
-<p><span>Amount:</span> <span class="${transaction.type === 'IN' ? 'profit-val' : 'cost-val'}">${fmtAmt(safeValue(transaction.amount))}</span></p>
+<p><span>${transaction.type === 'IN' ? 'Amount Received:' : 'Amount Paid:'}</span> <span class="${transaction.type === 'IN' ? 'profit-val' : 'cost-val'}">${fmtAmt(safeValue(transaction.amount))}</span></p>
 ${deleteButton}
 `;
 _phFrag.appendChild(card);
