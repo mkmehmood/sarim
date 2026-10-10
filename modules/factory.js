@@ -249,14 +249,15 @@ export async function unlinkSupplierConfirmation(material) {
 const paymentTransactions = ensureArray(await sqliteStore.get('payment_transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('payment_entities'));
 const linkedTransactions = paymentTransactions.filter(t => t.materialId === material.id && t.entityId === material.supplierId && t.isPayable === true);
-let confirmMsg = ` Unlink ${material.supplierName} from ${material.name}?\n\n`;
-confirmMsg += `This will:\n Remove supplier association\n Reset payment status to 'pending'\n`;
+let confirmMsg = `Unlink ${material.supplierName} from "${material.name}"?`;
+confirmMsg += `\nCurrent Stock: ${fmtNum(material.quantity || 0)} kg`;
+if (material.totalPayable) confirmMsg += `\nOutstanding Payable: ${fmtAmt(material.totalPayable || 0)}`;
 if (linkedTransactions.length > 0) {
-const totalReversed = linkedTransactions.reduce((sum, t) => sum + t.amount, 0);
-confirmMsg += ` Reverse ${linkedTransactions.length} payment transaction(s) totaling ${fmtAmt(safeNumber(totalReversed, 0))}\n`;
-}
-confirmMsg += `\nThe material will be ready to link with a different supplier.\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: 'Unlink', danger: true })) {
+const totalReversed = linkedTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+confirmMsg += `\n\n\u21A9 ${linkedTransactions.length} payment transaction${linkedTransactions.length !== 1 ? 's' : ''} totaling ${fmtAmt(safeNumber(totalReversed, 0))} will be reversed and the payable reset to pending.`;
+} else confirmMsg += `\n\n\u21A9 The payable status will be reset to pending.`;
+confirmMsg += `\n\nThe material will be available to link with a different supplier.\n\nThis cannot be undone.`;
+if (await showGlassConfirm(confirmMsg, { title: `Unlink ${material.supplierName}`, confirmText: 'Unlink', danger: true })) {
 await unlinkSupplierFromMaterial(material, true);
 closeFactoryInventoryModal();
 setTimeout(() => editFactoryInventoryItem(material.id), 100);
@@ -350,7 +351,7 @@ if (_inv.length > 0) {
 const _tx = _inv[_inv.length - 1];
 const _plan = planPayableAdjustment(_tx.amount, _delta);
 if (_plan.change !== 0) {
-const _go = await showGlassConfirm(`You changed the stock value of ${savedMaterial.name} by ${fmtAmt(_delta)}.\n\nWhat you owe ${savedMaterial.supplierName || 'the supplier'} for it is ${fmtAmt(_tx.amount)}. Update it to ${fmtAmt(_plan.next)}?`, { title: 'Update supplier payable?', confirmText: 'Update payable', cancelText: 'Keep as is' });
+const _go = await showGlassConfirm(`The stock value changed. Update what you owe the supplier?\nMaterial: ${savedMaterial.name}\nSupplier: ${savedMaterial.supplierName || 'Not set'}\nStock Value Change: ${fmtAmt(_delta)}\nCurrently Owed: ${fmtAmt(_tx.amount)}\nNew Amount Owed: ${fmtAmt(_plan.next)}`, { title: 'Update Supplier Payable?', confirmText: 'Update Payable', cancelText: 'Keep As Is' });
 if (_go) {
 _tx.amount = _plan.next; _tx.updatedAt = getTimestamp();
 ensureRecordIntegrity(_tx, true);
@@ -517,7 +518,7 @@ confirmMsg += `\nCurrent Stock: ${fmtNum(material.quantity || 0)} kg`;
 if (material.totalPayable) confirmMsg += `\nOutstanding Payable: ${fmtAmt(material.totalPayable || 0)}`;
 if (linkedTransactions.length > 0) confirmMsg += `\n\n↩ ${linkedTransactions.length} payment transaction${linkedTransactions.length !== 1 ? 's' : ''} totaling ${fmtAmt(_us2Total)} will be reversed and the material reverted to "Pending Payable" status.`;
 confirmMsg += `\n\nThe material will be available to link with a different supplier.\n\nThis cannot be undone.`;
-if (await showGlassConfirm(confirmMsg, { title: `Unlink ${esc(material.supplierName)}`, confirmText: 'Unlink', danger: true })) {
+if (await showGlassConfirm(confirmMsg, { title: `Unlink ${material.supplierName}`, confirmText: 'Unlink', danger: true })) {
 await unlinkSupplierFromMaterial(material, true);
 }
 }
@@ -728,7 +729,7 @@ if (typeof calculateFactoryProduction === 'function') await calculateFactoryProd
 beginEditMode('factory', rec, { buttonId: 'btn-save-factory-production', watchIds: ['factoryProductionUnits'], label: 'Update Batch', anchorId: 'factoryProductionUnits', cancelFn: _resetFactoryForm });
 }
 registerEditHandler('factory', startEditFactoryEntry);
-export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', late: true, fields: [['factoryProductionUnits', 'Units']], editKinds: ['factory'] }); }
+export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', late: true, fields: [], editKinds: ['factory'] }); }
 async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
 if (!currentFactoryEntryStore) {
@@ -830,7 +831,16 @@ throw new Error(`Insufficient "${inventoryItem.name}" in inventory! Available: $
 }
 }
 }
-if (!(await window.gcCommit({}))) throw new Error('__GC_CANCEL__');
+const _gcStore = getStoreLabel(currentFactoryEntryStore) || currentFactoryEntryStore;
+const _gcLow = materialsUsed.map(m => { const inv = factoryInventoryData.find(i => String(i.id) === String(m.id)); return inv && inv.quantity + 1e-6 < m.quantity ? `${m.name} (${fmtNum(inv.quantity)} kg left)` : null; }).filter(Boolean);
+const _gcExtra = {
+lead: _ed ? 'Update this factory production batch?' : 'Save this factory production batch?',
+lines: [`Store: ${_gcStore}`, `Date: ${localDateStr()}`, `Units Produced: ${fmtNum(units)}`, `Total Cost: ${fmtAmt(totalCost)}`, `Cost Per Unit: ${fmtAmt(units > 0 ? totalCost / units : 0)}`],
+notes: [`\u21A9 Raw materials deducted from inventory:`].concat(materialsUsed.map(m => ` \u2022 ${m.name}: ${fmtNum(m.quantity)} kg used`)),
+confirmText: _ed ? 'Update Production' : 'Save Production'
+};
+if (_gcLow.length) _gcExtra.warning = `Low stock after this batch: ${_gcLow.join(', ')}. You cannot repeat a batch of this size.`;
+if (!(await window.gcCommit(_gcExtra))) throw new Error('__GC_CANCEL__');
 let factProdId = _ed ? _ed.id : generateUUID('fprod');
 if (!validateUUID(factProdId)) factProdId = generateUUID('fprod');
 const factProdCreatedAt = getTimestamp();
@@ -1015,6 +1025,7 @@ ${entry.store ? `<span class="supply-tag ${window.getStoreBadgeClass ? window.ge
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
 </div>
+<div class="factory-summary-row"><span class="factory-summary-label">Store</span><span class="qty-val">${esc(getStoreLabel(entry.store) || 'Not recorded')}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Units Produced</span><span class="qty-val">${entry.units}</span></div>
 <div class="factory-summary-row"><span class="factory-summary-label">Material Cost</span><span class="cost-val">${await formatCurrency(entry.materialsCost || 0)}</span></div>
 ${totalAdditionalCost > 0 ? `<div class="factory-summary-row"><span class="factory-summary-label">Additional Cost</span><span class="cost-val">${await formatCurrency(totalAdditionalCost)}</span></div>` : ''}

@@ -3487,10 +3487,12 @@ ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(
 <div class="supply-tag ${storeBadgeClass}">${item.isReturn ? 'Returned to' : 'Produced at'}: ${esc(storeLabel)}</div>
 ${item.isReturn ? `
 <p style="color:var(--accent-emerald);font-size:0.75rem;font-style:italic;">${item.isMerged ? 'Merged returns by' : 'Returned by'} ${esc(item.returnedBy || 'Representative')}</p>
+<p><span>Returned To:</span> <span class="qty-val">${esc(storeLabel)}</span></p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(safeValue(item.net))} kg</span></p>
 ${returnsByStoreHtml}
 ${item.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`}
 ` : `
+<p><span>Store:</span> <span class="qty-val">${esc(storeLabel)}</span></p>
 ${item.grossWt ? `<p><span>Gross Weight:</span> <span class="qty-val">${fmtNum(safeValue(item.grossWt))} kg</span></p>` : ''}
 ${item.contWt ? `<p><span>Container:</span> <span style="color:var(--text-muted);">${fmtNum(safeValue(item.contWt))} kg</span></p>` : ''}
 <p><span>Net Weight:</span> <span class="qty-val">${fmtNum(safeValue(item.net))} kg</span></p>
