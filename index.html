@@ -337,24 +337,6 @@ html[data-bio="1"] .splash-author { display: none; }
 html[data-bio="1"] .splash-brand { display: none; }
 }
 }
-#splash-screen .splash-unlock {
-  position: absolute;
-  left: 50%;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 36px);
-  transform: translateX(-50%);
-  min-height: 46px;
-  padding: 0 26px;
-  border: 1px solid var(--sp-track);
-  border-radius: 999px;
-  background: var(--sp-soft);
-  color: var(--sp-strong);
-  font: 700 0.9rem var(--sp-ui);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-#splash-screen .splash-unlock.is-visible { opacity: 1; pointer-events: auto; }
 #splash-screen.splash-locked {
   animation: none !important;
   opacity: 1 !important;

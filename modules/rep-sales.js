@@ -74,15 +74,6 @@ if (!splash) { resolved(); return; }
 window.__appLocked = true;
 window.__lockResolved = true;
 splash.classList.add('splash-locked');
-let unlockBtn = splash.querySelector('.splash-unlock');
-if (!unlockBtn) {
-unlockBtn = document.createElement('button');
-unlockBtn.type = 'button';
-unlockBtn.className = 'splash-unlock';
-unlockBtn.textContent = 'Tap to unlock';
-splash.appendChild(unlockBtn);
-}
-const showUnlockBtn = (on) => unlockBtn.classList.toggle('is-visible', !!on);
 const isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
 const whenSettled = () => new Promise(resolve => {
 const started = Date.now();
@@ -94,24 +85,18 @@ setTimeout(tick, 60);
 tick();
 });
 let busy = false;
-let cancelled = false;
 let failures = 0;
-let lastClosedAt = 0;
 let retryTimer = null;
 const scheduleRetry = (delay) => {
 if (retryTimer) clearTimeout(retryTimer);
-retryTimer = setTimeout(() => { retryTimer = null; unlock(false); }, delay);
+retryTimer = setTimeout(() => { retryTimer = null; unlock(); }, delay);
 };
-const unlock = async (manual) => {
+const unlock = async () => {
 if (busy || !window.__appLocked) return;
 busy = true;
-showUnlockBtn(false);
 try {
-if (!manual) await whenSettled();
-if (!window.__appLocked) return;
 await BiometricAuth.authenticate();
 window.__appLocked = false;
-cancelled = false;
 failures = 0;
 if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
 splash.classList.remove('splash-locked');
@@ -122,27 +107,22 @@ setTimeout(() => { splash.style.display = 'none'; }, 620);
 } catch (e) {
 const errName = e && e.name ? e.name : '';
 failures++;
-cancelled = errName === 'NotAllowedError';
-if (!cancelled && failures === 1) showToast((e && e.message) ? e.message : 'Authentication failed', 'error', 4000);
-if (!cancelled && failures < 3) scheduleRetry(2000);
-else showUnlockBtn(true);
+if (errName !== 'NotAllowedError' && failures === 1) {
+window.notifyBlocking((e && e.message) ? e.message : 'Authentication failed', 'error');
+}
+if (failures < 5) scheduleRetry(errName === 'NotAllowedError' ? 1200 : 2000);
 } finally {
 busy = false;
-lastClosedAt = Date.now();
 }
 };
-window.triggerUnlock = () => { cancelled = false; failures = 0; return unlock(true); };
-unlockBtn.onclick = () => window.triggerUnlock();
+window.triggerUnlock = unlock;
 if (!splash.__unlockBound) {
 splash.__unlockBound = true;
 document.addEventListener('visibilitychange', () => {
-if (document.visibilityState !== 'visible' || !window.__appLocked || busy) return;
-if (Date.now() - lastClosedAt < 1500) return;
-if (cancelled) { showUnlockBtn(true); return; }
-scheduleRetry(400);
+if (document.visibilityState === 'visible' && window.__appLocked) { failures = 0; scheduleRetry(250); }
 });
 }
-unlock(false);
+whenSettled().then(unlock);
 }
 function _resetRepForm() {
 ['rep-cust-name', 'rep-quantity', 'rep-amount-collected', 'rep-new-cust-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
