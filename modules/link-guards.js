@@ -111,7 +111,7 @@ export async function getPendingAllocationCount(repName) {
   return sales.filter(s => s && !s.deletedAt && s.customerName === repName && s.currentRepProfile === 'admin' &&
     s.paymentType === 'CREDIT' && !s.creditReceived && s.transactionType !== 'OLD_DEBT' && !settled.has(s.id)).length;
 }
-const _ID_MAP_KEY = 'recovered_id_map';
+const _ID_MAP_KEY = 'recovered';
 async function _loadIdMap() {
   const m = await sqliteStore.get(_ID_MAP_KEY, {});
   return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
@@ -368,13 +368,13 @@ export async function deletePaymentTxWithLinks(tx, opts = {}) {
   return { tx, expense };
 }
 export async function recordCustomerRename(kind, from, to) {
-  const map = (await sqliteStore.get('customer_rename_map')) || {};
-  await sqliteStore.set('customer_rename_map', recordRename(map, kind, from, to));
+  const map = (await sqliteStore.get('renames')) || {};
+  await sqliteStore.set('renames', recordRename(map, kind, from, to));
 }
 export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
   if (collectionName === 'entities' || collectionName === 'transactions' || collectionName === 'inventory') {
-    const emap = (await sqliteStore.get('customer_rename_map')) || {};
+    const emap = (await sqliteStore.get('renames')) || {};
     if (collectionName === 'entities' && cleanRecord.name) cleanRecord.name = resolveRename(emap, 'entity', cleanRecord.name);
     if ((collectionName === 'transactions')) {
       if (cleanRecord.entityName) cleanRecord.entityName = resolveRename(emap, 'entity', cleanRecord.entityName);
@@ -386,7 +386,7 @@ export async function applyRenameOnRecovery(collectionName, cleanRecord) {
   const kind = (collectionName === 'sales' || collectionName === 'customers') ? 'sales'
     : (collectionName === 'rep' || collectionName === 'clients') ? ('rep|' + (cleanRecord.salesRep || '')) : null;
   if (!kind) return cleanRecord;
-  const map = (await sqliteStore.get('customer_rename_map')) || {};
+  const map = (await sqliteStore.get('renames')) || {};
   if (cleanRecord.customerName) cleanRecord.customerName = resolveRename(map, kind, cleanRecord.customerName);
   if ((collectionName === 'customers' || collectionName === 'clients') && cleanRecord.name) {
     cleanRecord.name = resolveRename(map, kind, cleanRecord.name);
@@ -493,8 +493,8 @@ export async function auditLegacyPartialPayments(opts = {}) {
   if (typeof window !== 'undefined') window._partialAudit = report;
   if (all.length && !opts.silent) {
     const today = new Date().toISOString().slice(0, 10);
-    if ((await sqliteStore.get('partial_audit_last')) !== today) {
-      await sqliteStore.set('partial_audit_last', today);
+    if ((await sqliteStore.get('audit')) !== today) {
+      await sqliteStore.set('audit', today);
       const names = [...new Set(all.map(c => c.customerName).filter(Boolean))].slice(0, 3).join(', ');
       if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
         window.window.notifyBlocking(`${all.length} old partly-paid sale${all.length !== 1 ? 's' : ''} (${names}) are counted twice: customer debt is understated by ${report.debtUnderstatedBy} and cash overstated by ${report.cashOverstatedBy}. Details: window._partialAudit`, 'warning');
@@ -572,8 +572,8 @@ export async function getPaymentDeleteBlockReason(tx) {
 }
 export async function cascadeEntityRename(entityId, oldName, newName) {
   if (!entityId || !newName || oldName === newName) return { tx: 0, materials: 0 };
-  const map = (await sqliteStore.get('customer_rename_map')) || {};
-  await sqliteStore.set('customer_rename_map', recordRename(map, 'entity', oldName, newName));
+  const map = (await sqliteStore.get('renames')) || {};
+  await sqliteStore.set('renames', recordRename(map, 'entity', oldName, newName));
   const txs = ensureArray(await sqliteStore.get('transactions'));
   const mats = ensureArray(await sqliteStore.get('inventory'));
   const plan = planEntityRename(entityId, newName, txs, mats);

@@ -92,7 +92,7 @@ try {
   const stats      = await DeltaSync.getSyncStats();
   const uuidStats  = (typeof UUIDSyncRegistry !== 'undefined') ? UUIDSyncRegistry.stats() : {};
   const myDeviceShard = uuidStats._myDeviceShard ? uuidStats._myDeviceShard.toUpperCase() : '—';
-  const _savedFsStats = await sqliteStore.get('firestore_stats', null);
+  const _savedFsStats = await sqliteStore.get('dbstats', null);
   const firestoreStats = (_savedFsStats && typeof _savedFsStats.reads === 'number')
     ? _savedFsStats
     : { reads: 0, writes: 0, lastReset: Date.now() };
@@ -126,11 +126,11 @@ try {
   const CONFIG_DOCS = [
     { path:'settings/config',              doc:settingsDoc,          desc:'App settings, FY counter, repProfile, reps (init)',
       sqlite:[['settings','settings'],['profile','repProfile'],['reps','reps (init)']],
-      fsFields:['settings','settings_timestamp','repProfile','repProfile_timestamp','reps','reps_timestamp','last_synced'],
+      fsFields:['settings','settings_timestamp','repProfile','repProfile_timestamp','reps','reps_timestamp','synced'],
       listener:'_handleSettingsSnapshot' },
     { path:'settings/team',                doc:teamDoc,              desc:'Sales reps list & user roles',
       sqlite:[['reps','reps'],['roles','roles']],
-      fsFields:['reps','roles','updated_at'],
+      fsFields:['reps','roles','updated'],
       listener:'_handleTeamSnapshot' },
     { path:'settings/yearCloseSignal',     doc:yearCloseSignalDoc,   desc:'Cross-device year-close / restore broadcast signal',
       sqlite:[['_lastHandledYearCloseSignal','triggeredAt']],
@@ -340,7 +340,7 @@ try {
   const LISTENERS = [
     { name:'users/{uid}',                      type:'doc',  path:'userRef.onSnapshot',                              purpose:'Force-logout, account suspension, lastWrite ping for pull trigger', fires:'Any write to the user root doc' },
     { name:'settings/config',                  type:'doc',  path:'_handleSettingsSnapshot',                         purpose:'settings, repProfile, reps (init copy)', fires:'Timestamp guard on settings_timestamp, repProfile_timestamp, reps_timestamp' },
-    { name:'settings/team',                    type:'doc',  path:'_handleTeamSnapshot',                             purpose:'reps, roles', fires:'updated_at timestamp change' },
+    { name:'settings/team',                    type:'doc',  path:'_handleTeamSnapshot',                             purpose:'reps, roles', fires:'updated timestamp change' },
     { name:'settings/yearCloseSignal',         type:'doc',  path:'_handleYearCloseSignal',                          purpose:'Wipe SQLite + full cloud rebuild on other devices after year-close or restore', fires:'triggeredAt > _lastHandledYearCloseSignal AND triggeredBy ≠ this device' },
     { name:'formulas/config',           type:'doc',  path:'_handleFactorySettingsSnapshot',                  purpose:'defaults, costs, adjustment, tracking', fires:'Individual per-field timestamp guards' },
     { name:'stores/list',                 type:'doc',  path:'appStoresUnsub',                                  purpose:'stores — store list including each store\'s per-store sale price', fires:'stores_timestamp change' },

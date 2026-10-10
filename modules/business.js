@@ -648,6 +648,18 @@ export const SQLITE_SCHEMA_VERSION = 2;
 export const PERSIST_URGENT_MS   = 300;
 export const PERSIST_NORMAL_MS   = 3000;
 export const PERSIST_LAZY_MS     = 8000;
+// New local key -> the name it had before data version 5 (see sqliteStore.get).
+const LEGACY_LOCAL_KEYS = Object.freeze({
+  reps_timestamp: 'sales_reps_list_timestamp', team_timestamp: 'team_list_timestamp', renames: 'customer_rename_map',
+  recovered: 'recovered_id_map', synced: 'last_synced', meta: 'sync_meta', deltastats: 'delta_sync_stats',
+  dbstats: 'firestore_stats', dbready: 'firestore_initialized', dbinit: 'firestore_init_timestamp', ui: 'ui_state',
+  user: 'user_state', audit: 'partial_audit_last',
+  categories: 'expense_categories', stores: 'app_stores', defaults: 'factory_default_formulas', costs: 'factory_additional_costs',
+  adjustment: 'factory_cost_adjustment_factor', tracking: 'factory_unit_tracking', formulas: 'factory_formula_store',
+  slots: 'factory_formula_slots', deleted: 'deletion_ids', erased: 'erased_deletion_ids', photostamps: 'photos_timestamps',
+  photodirty: 'photos_dirty_keys', reps: 'sales_reps_list', roles: 'user_roles_list', profile: 'current_rep_profile',
+  closing: 'pending_year_close', restoring: 'pending_restore',
+});
 export const sqliteStore = (() => {
   let _sqlDB           = null;
   let _SQL             = null;
@@ -676,8 +688,8 @@ export const sqliteStore = (() => {
     'repProfile', 'repProfile_timestamp',
     'assignedManager', 'assignedUserTabs',
     'device_name', 'theme', 'theme',
-    'last_synced', 'firestore_initialized', 'firestore_init_timestamp',
-    'ui_state', 'firestore_stats', 'session_start',
+    'synced', 'dbready', 'dbinit',
+    'ui', 'dbstats', 'session_start',
     'bio_enabled', 'bio_cred_id',
     'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
@@ -695,7 +707,7 @@ export const sqliteStore = (() => {
     'tracking', 'settings',
     'categories', 'reps', 'roles',
     'offline_operation_queue', 'offline_dead_letter_queue',
-    'ui_state', 'theme', 'firestore_stats', 'session_start',
+    'ui', 'theme', 'dbstats', 'session_start',
     'stores', 'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
@@ -703,15 +715,15 @@ export const sqliteStore = (() => {
     if (_DEVICE_GLOBAL.has(key))                                  return 'device';
     if (_IDB_KEY_TO_COLLECTION[key])                              return 'collection';
     if (_SETTINGS_KEYS.has(key))                                  return 'settings';
-    if (key.startsWith('lastSync_'))                              return 'sync_meta';
-    if (key.startsWith('lastLocalMod_'))                          return 'sync_meta';
-    if (key.startsWith('uploadedIds_'))                           return 'sync_meta';
-    if (key.startsWith('factory_') && key.endsWith('_timestamp')) return 'sync_meta';
-    if (key.endsWith('_timestamp'))                               return 'sync_meta';
-    if (key === 'last_synced' || key === 'delta_sync_stats'
-      || key === 'firestore_initialized' || key === 'firestore_init_timestamp'
-      || key === 'closing' || key === 'team_list_timestamp'
-      || key === 'user_state')                                    return 'sync_meta';
+    if (key.startsWith('lastSync_'))                              return 'meta';
+    if (key.startsWith('lastLocalMod_'))                          return 'meta';
+    if (key.startsWith('uploadedIds_'))                           return 'meta';
+    if (key.startsWith('factory_') && key.endsWith('_timestamp')) return 'meta';
+    if (key.endsWith('_timestamp'))                               return 'meta';
+    if (key === 'synced' || key === 'deltastats'
+      || key === 'dbready' || key === 'dbinit'
+      || key === 'closing' || key === 'team_timestamp'
+      || key === 'user')                                    return 'meta';
     return 'config';
   }
   function _persistUrgencyFor(key) {
@@ -1361,7 +1373,20 @@ export const sqliteStore = (() => {
     async get(key, defaultValue = null) {
       await this.init();
       const row = _rawGet(_fullKey(key));
-      if (!row) return defaultValue;
+      if (!row) {
+        // Read-through for keys renamed in data version 5: an older device keeps its value under the
+        // old name until it is read once, then it moves to the new name (nothing is lost or reset).
+        const legacyKey = LEGACY_LOCAL_KEYS[key];
+        if (legacyKey) {
+          const MISSING = {};
+          const legacy = await this.get(legacyKey, MISSING);
+          if (legacy !== MISSING) {
+            try { await this.set(key, legacy); await this.remove(legacyKey); } catch (_) {}
+            return legacy;
+          }
+        }
+        return defaultValue;
+      }
       try {
         if (row.encrypted) {
           const val = await _decrypt(key, row.value);
@@ -2050,7 +2075,7 @@ const dupSnap = await userRef.collection('devices')
 .where('fingerprint.stableHash', '==', fp.stableHash)
 .get();
 const deleteOps = dupSnap.docs
-.filter(doc => doc.id !== deviceId && doc.id !== 'default_device')
+.filter(doc => doc.id !== deviceId && doc.id !== 'device')
 .map(doc => doc.ref.delete());
 if (deleteOps.length > 0) {
 await Promise.all(deleteOps);

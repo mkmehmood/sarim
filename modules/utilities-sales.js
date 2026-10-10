@@ -1916,7 +1916,7 @@ export const firebaseConfig = {
 };
 export async function loadFirestoreStats() {
 try {
-const saved = await sqliteStore.get('firestore_stats', null);
+const saved = await sqliteStore.get('dbstats', null);
 if (saved && typeof saved === 'object') {
 firestoreStats = saved;
 if (!firestoreStats.lastReset) firestoreStats.lastReset = Date.now();
@@ -1929,7 +1929,7 @@ firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 }
 }
 export function saveFirestoreStats() {
-sqliteStore.set('firestore_stats', firestoreStats).catch(() => {});
+sqliteStore.set('dbstats', firestoreStats).catch(() => {});
 }
 export let firestoreStats = {
 reads: 0,
@@ -2254,11 +2254,11 @@ async updateSyncStats(collection) {
   }
   stats[collection].syncCount++;
   stats[collection].lastSync = new Date().toISOString();
-  await sqliteStore.set('delta_sync_stats', stats);
+  await sqliteStore.set('deltastats', stats);
 },
 async getSyncStats() {
   try {
-    const stats = await sqliteStore.get('delta_sync_stats');
+    const stats = await sqliteStore.get('deltastats');
     return (stats && typeof stats === 'object') ? stats : {};
   } catch (e) {
     return {};
@@ -2271,7 +2271,7 @@ async recordOperation(collection, reads = 0, writes = 0) {
   }
   stats[collection].totalReads += reads;
   stats[collection].totalWrites += writes;
-  await sqliteStore.set('delta_sync_stats', stats);
+  await sqliteStore.set('deltastats', stats);
 }
 };
 export async function initializeSyncStatsIfNeeded() {
@@ -2280,7 +2280,7 @@ const hasStats = Object.keys(stats).length > 0;
 if (!hasStats) {
 let lastSyncTime = new Date().toISOString();
 try {
-const lastSynced = await sqliteStore.get('last_synced');
+const lastSynced = await sqliteStore.get('synced');
 if (lastSynced) {
 lastSyncTime = lastSynced;
 }
@@ -2301,7 +2301,7 @@ totalReads: 0,
 totalWrites: 0
 };
 }
-await sqliteStore.set('delta_sync_stats', stats);
+await sqliteStore.set('deltastats', stats);
 return true;
 }
 return false;
@@ -4335,7 +4335,7 @@ try {
       adjustment_timestamp:await sqliteStore.get('adjustment_timestamp') || currentTimestamp,
       tracking:                   ensureFactorySettings(await sqliteStore.get('tracking'), { standard: { produced:0,consumed:0,available:0,unitCostHistory:[] }, asaan: { produced:0,consumed:0,available:0,unitCostHistory:[] } }),
       tracking_timestamp:         await sqliteStore.get('tracking_timestamp') || currentTimestamp,
-      last_synced:                     new Date().toISOString()
+      synced:                     new Date().toISOString()
     };
     currentBatch.set(
       userRef.collection('formulas').doc('config'),
@@ -4369,7 +4369,7 @@ try {
     for (const _dn of _allDeltaNames) {
       await DeltaSync.setLastSyncTimestamp(_dn);
     }
-    await sqliteStore.set('firestore_initialized', true);
+    await sqliteStore.set('dbready', true);
     cloudSyncSuccess = true;
     const message = totalToUpload > 0
       ? ` Successfully restored & uploaded ${totalToUpload} new/updated records + factory settings to cloud!`

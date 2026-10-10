@@ -1016,7 +1016,7 @@ export let mfgBarChart = null, mfgPieChart = null, salesPerfChart = null, salesC
 export let custSalesChart = null, custPaymentChart = null;
 export let storeComparisonChart = null;
 export let indPerformanceChart = null;
-export const _UI_STATE_KEY = 'ui_state';
+export const _UI_STATE_KEY = 'ui';
 export const _UI_DEFAULTS = {
   currentMfgMode: 'week',
   currentCompMode: 'all',

@@ -215,7 +215,7 @@ describe('version 5: support collections and documents', () => {
     assert.equal((await migrateCloud(c, { apply: true })).writes, 0);
   });
   it('the paths the tool writes are exactly the ones the app uses', () => {
-    assert.deepEqual([...new Set(SUPPORT_DOCS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.appStores, FIRESTORE_SUPPORT_PATHS.factorySettings, FIRESTORE_SUPPORT_PATHS.expenseCategories]);
+    assert.deepEqual([...new Set(SUPPORT_DOCS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.appStores, FIRESTORE_SUPPORT_PATHS.factorySettings, FIRESTORE_SUPPORT_PATHS.expenseCategories, FIRESTORE_SUPPORT_PATHS.accounts, FIRESTORE_SUPPORT_PATHS.device]);
     assert.deepEqual([...new Set(SUPPORT_COLLECTIONS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.activityLog, SUPPORT_STORES.photos.collection]);
   });
   it('converts a version-3 backup: renames the support fields and re-stamps it as version 5', () => {
@@ -340,7 +340,9 @@ describe('version 5: single-word names', () => {
     'expense_categories/categories': { categories: ['Fuel'], categories_timestamp: 3 },
     'activity_log/a1': { action: 'x' },
     'settings/team': { sales_reps: ['Ali'], user_roles: { Ali: 'rep' }, updated_at: 1 },
-    'settings/config': { sales_reps: ['Ali'], sales_reps_timestamp: 7, settings: {} },
+    'settings/config': { sales_reps: ['Ali'], sales_reps_timestamp: 7, last_synced: 55, settings: {} },
+    'settings/accounts_index': { accounts: [{ email: 'a@b.c' }] },
+    'devices/default_device': { deviceId: 'default_device', name: 'Phone' },
   });
   it('moves version-4 documents to the single-word names and renames their fields', async () => {
     const c = memClient(seed5());
@@ -355,7 +357,10 @@ describe('version 5: single-word names', () => {
     const t = c.docs.get('settings/team');
     assert.deepEqual([t.reps, t.roles, 'sales_reps' in t, 'user_roles' in t], [['Ali'], { Ali: 'rep' }, false, false]);
     const sc = c.docs.get('settings/config');
-    assert.deepEqual([sc.reps, sc.reps_timestamp, 'sales_reps' in sc], [['Ali'], 7, false]);
+    assert.deepEqual([sc.reps, sc.reps_timestamp, 'sales_reps' in sc, sc.synced, 'last_synced' in sc], [['Ali'], 7, false, 55, false]);
+    assert.equal(t.updated, 1);
+    assert.deepEqual(c.docs.get('settings/accounts').accounts, [{ email: 'a@b.c' }]);
+    assert.deepEqual(c.docs.get('devices/device'), { deviceId: 'device', name: 'Phone' });
   });
   it('keeps the old documents until --delete-old, and a second run changes nothing', async () => {
     const c = memClient(seed5());

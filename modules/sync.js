@@ -300,7 +300,7 @@ return results;
 }
 export async function resetDeltaSync() {
 await DeltaSync.clearAllTimestamps();
-await sqliteStore.remove('delta_sync_stats');
+await sqliteStore.remove('deltastats');
 if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
 showToast('Delta sync reset - next sync will download all data', 'info');
 }
@@ -602,8 +602,8 @@ await this.createContactCollections();
 await this.createTeamSettingsDocument();
 await this.createDeletionsCollection();
 await this.createSyncUpdatesCollection();
-await sqliteStore.set('firestore_initialized', true);
-await sqliteStore.set('firestore_init_timestamp', Date.now());
+await sqliteStore.set('dbready', true);
+await sqliteStore.set('dbinit', Date.now());
 if (!silent) showToast('Cloud database ready with all collections!', 'success');
 return {
 success: true,
@@ -640,9 +640,9 @@ throw error;
 }
 async createDevicesCollection() {
 try {
-const deviceRef = this.userRef.collection('devices').doc('default_device');
+const deviceRef = this.userRef.collection('devices').doc('device');
 await deviceRef.set({
-deviceId: 'default_device',
+deviceId: 'device',
 deviceName: 'Default Device',
 deviceType: 'desktop',
 browser: navigator.userAgent || 'Unknown',
@@ -691,7 +691,7 @@ try {
 const activityRef = this.userRef.collection('activity').doc('initial');
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-deviceId: 'default_device',
+deviceId: 'device',
 activityType: 'account_initialized',
 details: {
 message: 'Firestore database initialized with complete structure'
@@ -844,7 +844,7 @@ theme: 'dark',
 biometricEnabled: false,
 lastSync: null,
 initialized_at: this.timestamp,
-last_synced: this.timestamp,
+synced: this.timestamp,
 version: '2.0'
 });
 const factorySettingsRef = this.userRef.collection('formulas').doc('config');
@@ -860,7 +860,7 @@ standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 },
 tracking_timestamp: Date.now(),
-last_synced: this.timestamp
+synced: this.timestamp
 });
 const expenseCategoriesRef = this.userRef.collection('categories').doc('list');
 await expenseCategoriesRef.set({
@@ -869,7 +869,7 @@ categories: [
 { id: 'IN', name: 'Payment IN', color: '#10b981' },
 { id: 'OUT', name: 'Payment OUT', color: '#ef4444' }
 ],
-last_synced: this.timestamp
+synced: this.timestamp
 });
 this.results.success.push('settings');
 this.results.success.push('formulas');
@@ -906,8 +906,8 @@ const teamRef = this.userRef.collection('settings').doc('team');
 await teamRef.set({
 reps: [],
 roles: [],
-updated_at: 0,
-last_synced: this.timestamp,
+updated: 0,
+synced: this.timestamp,
 initialized: true
 });
 this.results.success.push('settings/team');
@@ -934,7 +934,7 @@ try {
 const syncUpdateRef = this.userRef.collection('updates').doc('initial');
 await syncUpdateRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-deviceId: 'default_device',
+deviceId: 'device',
 collections: ['all'],
 type: 'initialization',
 message: 'Database initialized with complete structure'
@@ -1638,7 +1638,7 @@ export async function subscribeToRealtime() {
         const timestampChecks = [
           { cloud: cloudSettings.settings_timestamp, local: await sqliteStore.get('settings_timestamp') },
           { cloud: cloudSettings.repProfile_timestamp,              local: await sqliteStore.get('repProfile_timestamp') },
-          { cloud: cloudSettings.reps_timestamp,             local: await sqliteStore.get('sales_reps_list_timestamp') },
+          { cloud: cloudSettings.reps_timestamp,             local: await sqliteStore.get('reps_timestamp') },
         ];
         for (const check of timestampChecks) {
           if ((check.cloud || 0) > (check.local || 0)) { hasUpdates = true; break; }
@@ -1683,15 +1683,15 @@ export async function subscribeToRealtime() {
             ]);
           }
         }
-        if (cloudSettings.last_synced) await sqliteStore.set('last_synced', cloudSettings.last_synced);
+        if (cloudSettings.synced) await sqliteStore.set('synced', cloudSettings.synced);
         if (Array.isArray(cloudSettings.reps) && cloudSettings.reps.length > 0) {
           const ct = cloudSettings.reps_timestamp || 0;
-          const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
+          const lt = (await sqliteStore.get('reps_timestamp')) || 0;
           if (ct > lt) {
             _set_salesRepsList(cloudSettings.reps);
             await sqliteStore.setBatch([
               ['reps', salesRepsList],
-              ['sales_reps_list_timestamp', ct || Date.now()],
+              ['reps_timestamp', ct || Date.now()],
             ]);
           }
         }
@@ -1789,7 +1789,7 @@ export async function subscribeToRealtime() {
         trackFirestoreRead(1);
         const cloud = doc.data();
         if (!cloud || !Array.isArray(cloud.categories)) return;
-        const cloudTs = cloud.categories_timestamp || cloud.updated_at || 0;
+        const cloudTs = cloud.categories_timestamp || cloud.updated || 0;
         const localTs = (await sqliteStore.get('categories_timestamp')) || 0;
         if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
         const local = await sqliteStore.get('categories') || [];
@@ -1993,8 +1993,8 @@ export async function subscribeToRealtime() {
         if (!doc.metadata.fromCache) trackFirestoreRead(1);
         const teamData = doc.data();
         if (!teamData || typeof teamData !== 'object') return;
-        const cloudTs = teamData.updated_at || 0;
-        const localTs = (await sqliteStore.get('team_list_timestamp')) || 0;
+        const cloudTs = teamData.updated || 0;
+        const localTs = (await sqliteStore.get('team_timestamp')) || 0;
         if (cloudTs <= localTs) { recordSuccessfulConnection(); return; }
         let changed = false;
         if (Array.isArray(teamData.reps) && teamData.reps.length > 0) {
@@ -2009,7 +2009,7 @@ export async function subscribeToRealtime() {
           await sqliteStore.set('roles', userRolesList);
           if (JSON.stringify(userRolesList) !== prev2) changed = true;
         }
-        await sqliteStore.set('team_list_timestamp', cloudTs);
+        await sqliteStore.set('team_timestamp', cloudTs);
         if (changed) {
           if (typeof renderAllRepUI === 'function') renderAllRepUI();
           if (typeof renderUserRoleList === 'function') {
@@ -2426,7 +2426,7 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
   });
 }
 export async function _detectUserType(userRef) {
-  const hasInitialized = await sqliteStore.get('firestore_initialized');
+  const hasInitialized = await sqliteStore.get('dbready');
   const sqliteArrays = await Promise.all([
     sqliteStore.get('production', []), sqliteStore.get('sales', []), sqliteStore.get('rep', []),
     sqliteStore.get('calculator', []), sqliteStore.get('transactions', []), sqliteStore.get('entities', []),
@@ -2793,7 +2793,7 @@ export async function _mergeAndPersist(cloudData) {
   _mark('returns', data.returns);         _mark('expenses', data.expenses);
   await sqliteStore.setBatch([
   ...Object.entries(_merged).map(([k, v]) => [k, v]),
-  ['last_synced', new Date().toISOString()],
+  ['synced', new Date().toISOString()],
   ]);
   try { notifyAdminOfRemoteTransactions(_localBatch, _merged); } catch (_) {}
   const _colMap = {
@@ -2872,12 +2872,12 @@ export async function _syncSettings(cloudData) {
     }
     if (sd && Array.isArray(sd.reps) && sd.reps.length > 0) {
       const ct = sd.reps_timestamp || 0;
-      const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
+      const lt = (await sqliteStore.get('reps_timestamp')) || 0;
       if (ct >= lt) {
         _set_salesRepsList(sd.reps);
         await sqliteStore.setBatch([
           ['reps', salesRepsList],
-          ['sales_reps_list_timestamp', ct || Date.now()],
+          ['reps_timestamp', ct || Date.now()],
         ]);
       }
     }
@@ -3249,7 +3249,7 @@ export async function _doOneClickSync(silent = false) {
     const userType = await _detectUserType(userRef);
     if (userType === 'new') {
       await initializeFirestoreStructure(true);
-      await sqliteStore.set('firestore_initialized', true);
+      await sqliteStore.set('dbready', true);
       if (!silent) showToast('Your account is ready!', 'success');
       return;
     }
@@ -3265,8 +3265,8 @@ export async function _doOneClickSync(silent = false) {
     }
     await _syncSettings(cloudData);
     if (userType === 'existing') {
-      await sqliteStore.set('firestore_initialized', true);
-      await sqliteStore.set('user_state', { type: 'existing', hasRealData: true, lastChecked: Date.now(), initialized: true, restoredItems: totalCloudChanges });
+      await sqliteStore.set('dbready', true);
+      await sqliteStore.set('user', { type: 'existing', hasRealData: true, lastChecked: Date.now(), initialized: true, restoredItems: totalCloudChanges });
       const totalItemsToWrite = await _uploadChanges(userRef);
       if (typeof refreshAllDisplays === 'function') await refreshAllDisplays().catch(() => {});
       if (!silent) {
@@ -3366,7 +3366,7 @@ export async function _doPushDataToCloud(silent = false) {
       await sqliteStore.set('deletions', deletionRecordsLocal);
     }
     const now = new Date().toISOString();
-    await sqliteStore.set('last_synced', now);
+    await sqliteStore.set('synced', now);
     if (!silent) {
       const message = operationCount === 0
         ? ' Already up to date — nothing to upload'
@@ -3420,7 +3420,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     await _mergeAndPersist(cloudData);
     if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(false);
     await _syncSettings(cloudData);
-    await sqliteStore.set('firestore_initialized', true);
+    await sqliteStore.set('dbready', true);
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
       if (fsData && typeof fsData === 'object') {
@@ -3480,7 +3480,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
 export async function showSyncHealthPanel() {
   try {
     const results = await verifyDeltaSyncSystem();
-    const lastSync = (await sqliteStore.get('last_synced', null)) || 'Unknown';
+    const lastSync = (await sqliteStore.get('synced', null)) || 'Unknown';
     const pending = results.issues.length;
     const ok = results.valid.length;
     const existing = document.getElementById('sync-health-panel');
@@ -4109,7 +4109,7 @@ return snap.exists && snap.data().role === 'admin';
 }
 export function _accountsIndexRef() {
 return firebaseDB.collection('users').doc(currentUser.uid)
-  .collection('settings').doc('accounts_index');
+  .collection('settings').doc('accounts');
 }
 export async function _readAccountsIndex() {
 const snap = await _accountsIndexRef().get();

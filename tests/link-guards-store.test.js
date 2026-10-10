@@ -48,7 +48,7 @@ describe('recovered ids: every link follows, only changed rows sync', () => {
     assert.equal(tx[1].transferPeerEntityId, 'E_new');
     assert.equal(tx[2].entityId, 'other');
     assert.equal((await get('inventory'))[0].supplierId, 'E_new');
-    assert.equal((await get('recovered_id_map')).E_old, 'E_new');
+    assert.equal((await get('recovered')).E_old, 'E_new');
     const s = saves.find(x => x.key === 'transactions');
     assert.deepEqual(s.ids.sort(), ['t1', 't2']);
   });
@@ -78,7 +78,7 @@ describe('payments need their entity', () => {
     assert.equal(await G.getRecoverLinkBlockReason('transactions', snap, { entityInSet: (id) => id === 'E' }), null);
     seed({ entities: [{ id: 'E' }] });
     assert.equal(await G.getRecoverLinkBlockReason('transactions', snap), null);
-    seed({ entities: [{ id: 'E_new' }], recovered_id_map: { E: 'E_new' } });
+    seed({ entities: [{ id: 'E_new' }], recovered: { E: 'E_new' } });
     assert.equal(await G.getRecoverLinkBlockReason('transactions', snap), null);
   });
 
@@ -161,7 +161,7 @@ describe('entity rename reaches every stored copy', () => {
     assert.equal(tx[1].entityName, 'F');
     assert.equal(tx[2].transferPeerEntityName, 'New');
     assert.deepEqual(saves.find(s => s.key === 'transactions').ids.sort(), ['t1', 't3']);
-    assert.equal((await get('customer_rename_map'))['entity:old'], 'New');
+    assert.equal((await get('renames'))['entity:old'], 'New');
   });
 
   it('an expense-only entity also renames its expense records; an ordinary one does not', async () => {

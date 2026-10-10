@@ -5537,7 +5537,7 @@ adjustment: merged.adjustment,
 adjustment_timestamp: Date.now(),
 tracking: merged.tracking,
 tracking_timestamp: Date.now(),
-last_synced: now
+synced: now
 }, { merge: true });
 operationCount++;
 if (Array.isArray(merged.stores) && merged.stores.length > 0) {
@@ -5551,7 +5551,7 @@ const expenseCategoriesRef = userRef.collection('categories').doc('list');
 const currentBatch = getCurrentBatch();
 currentBatch.set(expenseCategoriesRef, {
 categories: merged.categories,
-last_synced: now
+synced: now
 }, { merge: true });
 operationCount++;
 }
@@ -5581,7 +5581,7 @@ appMode: merged.appMode || 'admin',
 appMode_timestamp: Date.now(),
 repProfile: merged.repProfile || {},
 repProfile_timestamp: Date.now(),
-last_synced: now
+synced: now
 }, { merge: true });
 operationCount++;
 if (operationCount > 0) {
@@ -6626,8 +6626,8 @@ type: 'set_as_array',
 defaultValue: [],
 description: 'Tombstone IDs – prevents deleted records from re-appearing on sync'
 },
-last_synced: {
-localKey: 'last_synced',
+synced: {
+localKey: 'synced',
 localVariable: null,
 type: 'string_iso_date',
 defaultValue: null,
@@ -6861,8 +6861,8 @@ const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const teamDoc = await userRef.collection('settings').doc('team').get();
 if (teamDoc.exists) {
 const teamData = teamDoc.data();
-const cloudTs = teamData.updated_at || 0;
-const localTs = (await sqliteStore.get('team_list_timestamp')) || 0;
+const cloudTs = teamData.updated || 0;
+const localTs = (await sqliteStore.get('team_timestamp')) || 0;
 if (cloudTs >= localTs) {
 if (Array.isArray(teamData.reps) && teamData.reps.length > 0) {
 _set_salesRepsList(teamData.reps);
@@ -6872,7 +6872,7 @@ if (Array.isArray(teamData.roles)) {
 _set_userRolesList(teamData.roles);
 await sqliteStore.set('roles', userRolesList);
 }
-if (cloudTs > localTs) await sqliteStore.set('team_list_timestamp', cloudTs);
+if (cloudTs > localTs) await sqliteStore.set('team_timestamp', cloudTs);
 }
 }
 } catch(e) { console.warn('Could not fetch team list from Firestore on startup:', _safeErr(e)); }
@@ -6889,9 +6889,9 @@ const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 await userRef.collection('settings').doc('team').set({
 reps: salesRepsList,
 roles: userRolesList,
-updated_at: nowMs
+updated: nowMs
 }, { merge: true });
-await sqliteStore.set('team_list_timestamp', nowMs);
+await sqliteStore.set('team_timestamp', nowMs);
 } catch(e) {
 console.warn('Could not sync sales reps to Firestore', _safeErr(e));
 showToast('Saved locally — cloud sync will retry when online.', 'warning', 3500);
@@ -6913,9 +6913,9 @@ const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 await userRef.collection('settings').doc('team').set({
 reps: salesRepsList,
 roles: userRolesList,
-updated_at: nowMs
+updated: nowMs
 }, { merge: true });
-await sqliteStore.set('team_list_timestamp', nowMs);
+await sqliteStore.set('team_timestamp', nowMs);
 } catch(e) {
 console.warn('Could not sync user roles to Firestore', _safeErr(e));
 showToast('Saved locally — cloud sync will retry when online.', 'warning', 3500);
@@ -7419,7 +7419,7 @@ const seenIds = new Set();
 const uniqueDocs = devicesSnap.docs.filter(doc => {
 const data = doc.data();
 const id = data.deviceId;
-if (!id || id === 'default_device' || doc.id === 'default_device') return false;
+if (!id || id === 'device' || doc.id === 'device') return false;
 if (id === currentDeviceId || doc.id === currentDeviceId) return false;
 if (seenIds.has(id) || seenIds.has(doc.id)) return false;
 seenIds.add(id);

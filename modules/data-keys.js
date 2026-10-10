@@ -87,6 +87,7 @@ export const SUPPORT_STORES = Object.freeze({
 export const FIRESTORE_SUPPORT_PATHS = Object.freeze({
   appStores: 'stores/list', factorySettings: 'formulas/config',
   expenseCategories: 'categories/list', activityLog: 'activity',
+  accounts: 'settings/accounts', device: 'devices/device',
 });
 export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'profile', tsKey: 'repProfile_timestamp' });
 export const SQLITE_TO_FIRESTORE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, s.collection])));

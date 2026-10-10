@@ -79,6 +79,8 @@
 //        app_stores/stores -> stores/list         factory_settings/config -> formulas/config
 //        expense_categories/categories -> categories/list
 //        activity_log -> activity                 personPhotos -> photos
+//        settings/accounts_index -> settings/accounts   devices/default_device -> devices/device
+//        fields: sales_reps -> reps, user_roles -> roles, last_synced -> synced, updated_at -> updated
 //      (version 5 names; versions 1-4 names are all still understood)
 //    * fixes mismatches: store values written as a name ("Zubair"), "store-a" spellings,
 //      and reports any record that still points at a store that does not exist
@@ -124,12 +126,13 @@ export const SUPPORT_DOCS = [
   ['appStores/stores', 'stores/list'], ['app_stores/stores', 'stores/list'],
   ['factorySettings/config', 'formulas/config'], ['factory_settings/config', 'formulas/config'],
   ['expenseCategories/categories', 'categories/list'], ['expense_categories/categories', 'categories/list'],
+  ['settings/accounts_index', 'settings/accounts'], ['devices/default_device', 'devices/device'],
 ];
 // version 5: field names inside those documents / settings documents (a <name>_timestamp field follows its field)
 export const DOC_FIELD_RENAMES = {
   'formulas/config': { default_formulas: 'defaults', additional_costs: 'costs', cost_adjustment_factor: 'adjustment', unit_tracking: 'tracking', formula_store: 'formulas', formula_slots: 'slots' },
-  'settings/config': { sales_reps: 'reps' },
-  'settings/team': { sales_reps: 'reps', user_roles: 'roles' },
+  'settings/config': { sales_reps: 'reps', last_synced: 'synced' },
+  'settings/team': { sales_reps: 'reps', user_roles: 'roles', updated_at: 'updated' },
 };
 export function renameDocFields(data, renames) {
   const out = {}; let n = 0;
@@ -173,6 +176,8 @@ export const BACKUP_FIELD_RENAMES = {
   factoryCostAdjustmentFactor: 'adjustment', factory_cost_adjustment_factor: 'adjustment',
   factoryUnitTracking: 'tracking', factory_unit_tracking: 'tracking',
   sales_reps_list: 'reps', user_roles_list: 'roles', current_rep_profile: 'profile',
+  sales_reps_list_timestamp: 'reps_timestamp', team_list_timestamp: 'team_timestamp', customer_rename_map: 'renames',
+  last_synced: 'synced',
 };
 const RECORD_FIELDS = ['production', 'sales', 'calculator', 'rep', 'clients', 'customers', 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns'];
 
@@ -441,6 +446,7 @@ export async function migrateCloud(client, opts = {}) {
     report.support.push(r);
     if (!old0) continue;
     const old = { ...old0, data: renameDocFields(old0.data, DOC_FIELD_RENAMES[newPath] || {}).data };
+    if (old.data.deviceId === 'default_device') old.data.deviceId = 'device';
     const cur = await client.get(newPath);
     if (!cur) { ops.push({ op: 'set', path: newPath, data: old.data }); r.written++; }
     else {
