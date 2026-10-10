@@ -312,7 +312,7 @@ if (isNative) {
     if (nativeSplashHidden) return;
     nativeSplashHidden = true;
     if (!SplashScreen) { markNativeSplashGone(); return; }
-    SplashScreen.hide({ fadeOutDuration: 120 }).catch(() => {}).then(() => setTimeout(markNativeSplashGone, 160));
+    SplashScreen.hide({ fadeOutDuration: 220 }).catch(() => {}).then(() => setTimeout(markNativeSplashGone, 260));
   };
   if (window.__splashPainted) hideNativeSplash();
   else window.addEventListener('sarim:splash-painted', hideNativeSplash, { once: true });

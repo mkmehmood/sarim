@@ -56,7 +56,7 @@
 <meta name="description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits.">
 <meta property="og:title" content="Gull and Zubair Naswar Dealers">
 <meta property="og:description" content="Offline-first PWA for business management, production tracking, sales, inventory, and credits."><script>
-(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#ffffff":"#000000");try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();
+(function(){var d=document.documentElement,t="dark";try{var h=localStorage.getItem("sarim_theme_hint");if(h==="light"||h==="dark")t=h}catch(e){}d.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",t==="light"?"#EEF1F4":"#0F172A");window.__restoreThemeColor=function(){var q=document.querySelector('meta[name="theme-color"]');if(q)q.setAttribute("content",d.getAttribute("data-theme")==="light"?"#ffffff":"#000000")};try{if(localStorage.getItem("sarim_bio_hint")==="1")d.setAttribute("data-bio","1")}catch(e){}window.__setBioHint=function(on){try{if(on){d.setAttribute("data-bio","1");localStorage.setItem("sarim_bio_hint","1")}else{d.removeAttribute("data-bio");localStorage.removeItem("sarim_bio_hint")}}catch(e){}};try{new MutationObserver(function(){var v=d.getAttribute("data-theme");if(v==="light"||v==="dark"){try{localStorage.setItem("sarim_theme_hint",v)}catch(e){}}}).observe(d,{attributes:true,attributeFilter:["data-theme"]})}catch(e){}})();
 </script><link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/cinzel-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/playfair-display-latin-wght-italic.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/plus-jakarta-sans-latin-wght-normal.woff2">
@@ -85,14 +85,23 @@ html[data-theme="light"]{background:#EEF1F4}
 --sp-g2: rgba(8, 145, 178, 0.14);
 --sp-dot: #F59E0B;
 position: fixed;
+top: 0;
+right: 0;
+bottom: 0;
+left: 0;
 inset: 0;
 overflow: hidden;
+overscroll-behavior: none;
+-webkit-user-select: none;
+user-select: none;
+-webkit-text-size-adjust: 100%;
+text-size-adjust: 100%;
 z-index: 10200;
 display: flex;
 flex-direction: column;
 align-items: center;
 justify-content: center;
-padding: calc(env(safe-area-inset-top, 0px) + 24px) 24px 72px;
+padding: calc(env(safe-area-inset-top, 0px) + 24px) max(24px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 72px) max(24px, env(safe-area-inset-left, 0px));
 color: var(--sp-text);
 font-family: var(--sp-ui);
 background: var(--sp-bg);
@@ -114,10 +123,10 @@ transition: opacity 0.55s ease;
 .splash-glow {
 position: absolute;
 left: 50%;
-top: 120px;
-width: 520px;
-height: 520px;
-margin-left: -260px;
+top: 50%;
+width: min(520px, 130vw);
+height: min(520px, 130vw);
+transform: translate(-50%, -64%);
 border-radius: 50%;
 pointer-events: none;
 filter: blur(30px);
@@ -125,7 +134,7 @@ background: radial-gradient(circle at 50% 42%, var(--sp-g1) 0%, var(--sp-g2) 38%
 }
 .splash-dial {
 position: relative;
-width: min(352px, 92vw);
+width: min(352px, 92vw, 54vh);
 aspect-ratio: 300 / 160;
 flex: none;
 }
@@ -163,7 +172,7 @@ color: var(--sp-ink);
 margin-top: 4px;
 font-family: var(--sp-brand);
 font-weight: 600;
-font-size: 3.1rem;
+font-size: clamp(2.2rem, 6.2vh, 3.1rem);
 line-height: 1.05;
 letter-spacing: 0.02em;
 color: var(--sp-strong);
@@ -184,7 +193,7 @@ text-transform: uppercase;
 color: var(--sp-muted);
 }
 .splash-brand {
-margin-top: 46px;
+margin-top: clamp(16px, 5.4vh, 46px);
 text-align: center;
 position: relative;
 }
@@ -211,7 +220,7 @@ position: relative;
 flex: none;
 width: 150px;
 height: 1px;
-margin: 24px 0 22px;
+margin: clamp(12px, 2.8vh, 24px) 0 clamp(10px, 2.5vh, 22px);
 background: linear-gradient(to right, transparent, var(--sp-track), transparent);
 }
 .splash-rule::after {
@@ -228,11 +237,11 @@ box-shadow: 0 0 0 5px var(--sp-soft);
 }
 .splash-quote {
 position: relative;
-max-width: 320px;
+max-width: min(320px, 86vw);
 font-family: var(--sp-display);
 font-style: italic;
 font-weight: 500;
-font-size: 1.14rem;
+font-size: clamp(0.95rem, 2.5vh, 1.14rem);
 line-height: 1.55;
 text-align: center;
 text-wrap: balance;
@@ -271,11 +280,33 @@ background: var(--sp-ink);
 box-shadow: 0 0 0 4px var(--sp-soft);
 animation: splashBlink 1.4s ease-in-out infinite !important;
 }
+@media (min-width: 900px) and (min-height: 760px) {
+#splash-screen .splash-dial { width: min(420px, 40vh); }
+#splash-screen .splash-clock { font-size: 3.7rem; }
+#splash-screen .splash-brand b { font-size: 1.75rem; }
+#splash-screen .splash-quote { max-width: 460px; font-size: 1.3rem; }
+}
+@media (max-height: 640px) {
+#splash-screen .splash-rule,
+#splash-screen .splash-quote,
+#splash-screen .splash-author { display: none; }
+}
+@media (max-height: 560px) {
+#splash-screen .splash-foot { display: none; }
+}
+@media (max-height: 440px) {
+#splash-screen .splash-brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+#splash-screen { transition: opacity 0.2s ease; }
+#splash-screen .splash-foot i { animation: none !important; }
+}
 @keyframes splashBlink {
 0%, 100% { opacity: 1; }
 50% { opacity: 0.35; }
 }
 #splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
+@media (max-width: 700px) {
 html[data-bio="1"] #splash-screen {
 --sp-sheet: clamp(300px, 44vh, 420px);
 justify-content: center;
@@ -284,7 +315,7 @@ padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px var(--sp-sheet);
 @supports (height: 100dvh) {
 html[data-bio="1"] #splash-screen { --sp-sheet: clamp(300px, 44dvh, 420px); }
 }
-html[data-bio="1"] .splash-glow { top: 40px; width: 420px; height: 420px; margin-left: -210px; }
+html[data-bio="1"] .splash-glow { top: 40px; width: min(420px, 110vw); height: min(420px, 110vw); transform: translateX(-50%); }
 html[data-bio="1"] .splash-dial { width: min(250px, 66vw); }
 html[data-bio="1"] .splash-clock { font-size: 2.35rem; margin-top: 2px; }
 html[data-bio="1"] .splash-clock small { font-size: 0.75rem; }
@@ -304,6 +335,7 @@ html[data-bio="1"] .splash-author { display: none; }
 }
 @media (max-height: 560px) {
 html[data-bio="1"] .splash-brand { display: none; }
+}
 }
 #splash-screen .splash-unlock {
   position: absolute;
@@ -783,6 +815,7 @@ if(!window.__splashBooted&&!window.__splashForce)return;
 if(document.documentElement.hasAttribute("data-bio")&&!window.__lockResolved&&!window.__splashForce2)return;
 hidden=true;
 el.classList.add("splash-out");
+if(window.__restoreThemeColor)window.__restoreThemeColor();
 setTimeout(function(){if(!window.__appLocked)el.style.display="none"},FADE+30);
 }
 window.__splashTryHide=tryHide;

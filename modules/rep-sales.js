@@ -117,6 +117,7 @@ if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
 splash.classList.remove('splash-locked');
 splash.classList.add('splash-out');
 splash.style.pointerEvents = 'none';
+if (window.__restoreThemeColor) window.__restoreThemeColor();
 setTimeout(() => { splash.style.display = 'none'; }, 620);
 } catch (e) {
 const errName = e && e.name ? e.name : '';
