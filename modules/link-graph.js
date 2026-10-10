@@ -467,7 +467,7 @@ export function planCalcRestore(entry, ctx) {
   const e = entry || {};
   const c = ctx || {};
   const sales = Array.isArray(c.sales) ? c.sales : [];
-  const repSales = Array.isArray(c.repSales) ? c.repSales : [];
+  const rep = Array.isArray(c.rep) ? c.rep : [];
   const history = Array.isArray(c.history) ? c.history : [];
   const claimed = new Set();
   const claimedRep = new Set();
@@ -495,7 +495,7 @@ export function planCalcRestore(entry, ctx) {
   const repIds = Array.isArray(e.linkedRepSalesIds) ? e.linkedRepSalesIds : [];
   let repBad = 0;
   repIds.forEach(id => {
-    const sale = repSales.find(x => x && String(x.id) === String(id) && !x.deletedAt);
+    const sale = rep.find(x => x && String(x.id) === String(id) && !x.deletedAt);
     if (!sale || sale.usedInCalcId || claimedRep.has(String(id))) repBad++;
   });
   if (repBad) problems.push(`${repBad} of the ${repIds.length} rep sale${repIds.length !== 1 ? 's' : ''} it used ${repBad !== 1 ? 'are' : 'is'} deleted or already used by another record`);

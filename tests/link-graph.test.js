@@ -466,7 +466,7 @@ describe('marking a partly-paid sale as paid', () => {
 describe('calculator record restore preconditions', () => {
   const sale = (id, extra = {}) => ({ id, paymentType: 'CREDIT', creditReceived: false, ...extra });
   const entry = { id: 'c1', linkedSalesIds: ['s1', 's2'], linkedRepSalesIds: ['r1'], returned: 5, returnStore: 'A', expired: 2 };
-  const ctx = (over = {}) => ({ sales: [sale('s1'), sale('s2')], repSales: [{ id: 'r1' }], history: [], storeKeys: ['A'], ...over });
+  const ctx = (over = {}) => ({ sales: [sale('s1'), sale('s2')], rep: [{ id: 'r1' }], history: [], storeKeys: ['A'], ...over });
   it('allows restore when everything is exactly as the delete left it', () => {
     assert.equal(planCalcRestore(entry, ctx()).block, null);
   });
@@ -478,8 +478,8 @@ describe('calculator record restore preconditions', () => {
     assert.match(gone.block, /1 deleted/);
   });
   it('blocks when a rep sale was used by another record or removed', () => {
-    assert.match(planCalcRestore(entry, ctx({ repSales: [{ id: 'r1', usedInCalcId: 'x' }] })).block, /rep sale/);
-    assert.match(planCalcRestore(entry, ctx({ repSales: [] })).block, /rep sale/);
+    assert.match(planCalcRestore(entry, ctx({ rep: [{ id: 'r1', usedInCalcId: 'x' }] })).block, /rep sale/);
+    assert.match(planCalcRestore(entry, ctx({ rep: [] })).block, /rep sale/);
   });
   it('blocks when the return store is gone or a transfer cannot be re-created', () => {
     assert.match(planCalcRestore(entry, ctx({ storeKeys: ['B'] })).block, /store it returned stock to/);

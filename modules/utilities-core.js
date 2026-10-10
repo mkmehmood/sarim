@@ -975,18 +975,18 @@ if (typeof refreshRepUI === 'function') refreshRepUI();
 });
 };
 export async function reloadDataFromStorage() {
-const db = ensureArray(await sqliteStore.get('production'));
-const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
-const salesCustomers = ensureArray(await sqliteStore.get('customers'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const stockReturns = ensureArray(await sqliteStore.get('returns'));
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
+const production = ensureArray(await sqliteStore.get('production'));
+const sales = ensureArray(await sqliteStore.get('sales'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
+const customers = ensureArray(await sqliteStore.get('customers'));
+const calculator = ensureArray(await sqliteStore.get('calculator'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const returns = ensureArray(await sqliteStore.get('returns'));
+const expenses = ensureArray(await sqliteStore.get('expenses'));
+const inventory = ensureArray(await sqliteStore.get('inventory'));
+const factory = ensureArray(await sqliteStore.get('factory'));
 try {
 await loadAllData();
 } catch (error) {
@@ -1107,10 +1107,10 @@ export function updatePaymentStatusVisibility() {
 export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', late: true, fields: [['storeSelector', 'Store'], ['sys-date', 'Date'], ['gross-wt', 'Gross Weight'], ['cont-wt', 'Container'], ['net-wt', 'Net Weight'], ['formula-units', 'Units']], editKinds: ['prod'] }); }
 async function _recordEntryImpl() {
 const _ed = getEditCtx('prod');
-const db = ensureArray(await sqliteStore.get('production'));
-const stockReturns = ensureArray(await sqliteStore.get('returns'));
-const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('customers'));
+const production = ensureArray(await sqliteStore.get('production'));
+const returns = ensureArray(await sqliteStore.get('returns'));
+const sales = ensureArray(await sqliteStore.get('sales'));
+const customers = ensureArray(await sqliteStore.get('customers'));
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
@@ -1144,9 +1144,9 @@ return;
 if (_ed) {
 const o = _ed.original;
 const sameBucket = o.store === store && o.date === inputDate;
-const prodOld = db.filter(p => p && !p.isReturn && p.id !== o.id && p.date === o.date && p.store === o.store).reduce((a, p) => a + (p.net || 0), 0) + (sameBucket ? net : 0);
-const retOld = stockReturns.filter(r => r && r.date === o.date && r.store === o.store).reduce((a, r) => a + (r.quantity || 0), 0);
-const soldOld = customerSales.filter(s => s && (s.supplyDate || s.date) === o.date && s.supplyStore === o.store).reduce((a, s) => a + (s.quantity || 0), 0);
+const prodOld = production.filter(p => p && !p.isReturn && p.id !== o.id && p.date === o.date && p.store === o.store).reduce((a, p) => a + (p.net || 0), 0) + (sameBucket ? net : 0);
+const retOld = returns.filter(r => r && r.date === o.date && r.store === o.store).reduce((a, r) => a + (r.quantity || 0), 0);
+const soldOld = sales.filter(s => s && (s.supplyDate || s.date) === o.date && s.supplyStore === o.store).reduce((a, s) => a + (s.quantity || 0), 0);
 if (prodOld + retOld - soldOld < -1e-6) {
 window.notifyBlocking(` Cannot reduce this entry: ${fmtNum(soldOld - prodOld - retOld)} kg already sold from ${o.date}. Reduce or delete those sales first.`, 'warning');
 return;
@@ -1228,15 +1228,15 @@ newEntry.paymentStatus = o.paymentStatus || newEntry.paymentStatus;
 if (o.managedBy) newEntry.managedBy = o.managedBy;
 }
 newEntry = ensureRecordIntegrity(newEntry, !!_ed);
-const _edIdx = _ed ? db.findIndex(r => r && r.id === _ed.id) : -1;
+const _edIdx = _ed ? production.findIndex(r => r && r.id === _ed.id) : -1;
 try {
-if (_ed) replaceRecord(db, newEntry); else db.push(newEntry);
-await unifiedSave('production', db, newEntry);
+if (_ed) replaceRecord(production, newEntry); else production.push(newEntry);
+await unifiedSave('production', production, newEntry);
 await persistProdPhotos(prodId, _ed ? (_ed.original.photoKeys || []) : []);
 notifyDataChange('production');
 emitSyncUpdate({ production: null});
 } catch (error) {
-if (_ed && _edIdx >= 0) db[_edIdx] = _ed.original; else db.pop();
+if (_ed && _edIdx >= 0) production[_edIdx] = _ed.original; else production.pop();
 window.notifyBlocking(" Failed to save production entry. Please try again.", 'error');
 return;
 }
@@ -1441,30 +1441,30 @@ uploadDeletionToCloud(deletionRecord).catch(e => console.warn('[registerDeletion
 cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed:', _safeErr(e)));
 }
 export async function _captureRecordSnapshot(id, collectionName) {
-const db = ensureArray(await sqliteStore.get('production'));
-const customerSales = ensureArray(await sqliteStore.get('sales'));
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const salesHistory = ensureArray(await sqliteStore.get('calculator'));
-const stockReturns = ensureArray(await sqliteStore.get('returns'));
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
+const production = ensureArray(await sqliteStore.get('production'));
+const sales = ensureArray(await sqliteStore.get('sales'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const calculator = ensureArray(await sqliteStore.get('calculator'));
+const returns = ensureArray(await sqliteStore.get('returns'));
+const expenses = ensureArray(await sqliteStore.get('expenses'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const inventory = ensureArray(await sqliteStore.get('inventory'));
+const factory = ensureArray(await sqliteStore.get('factory'));
   const result = { displayName: null, displayDetail: null, displayAmount: null, record: null };
   try {
     let record = null;
     const searches = [
-      [customerSales,            r => r.id === id],
-      [paymentTransactions,      r => r.id === id],
-      [repSales,                 r => r.id === id],
-      [expenseRecords,           r => r.id === id],
-      [db,                       r => r.id === id],
-      [factoryProductionHistory, r => r.id === id],
-      [stockReturns,             r => r.id === id],
-      [salesHistory,             r => r.id === id],
-      [paymentEntities,          r => r.id === id],
-      [factoryInventoryData,     r => r.id === id],
+      [sales,            r => r.id === id],
+      [transactions,      r => r.id === id],
+      [rep,                 r => r.id === id],
+      [expenses,           r => r.id === id],
+      [production,                       r => r.id === id],
+      [factory, r => r.id === id],
+      [returns,             r => r.id === id],
+      [calculator,             r => r.id === id],
+      [entities,          r => r.id === id],
+      [inventory,     r => r.id === id],
     ];
     for (const [arr, pred] of searches) {
       if (Array.isArray(arr)) { record = arr.find(pred); if (record) break; }
@@ -1856,11 +1856,11 @@ export async function _togglePreclosePanel(btn, panelId, recordId, storeKey, typ
   btn.classList.add('active');
 }
 export async function openEntityDetailsOverlay(id) {
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const expenses = ensureArray(await sqliteStore.get('expenses'));
 currentEntityId = id; window.currentEntityId = currentEntityId;
-const entity = paymentEntities.find(e => String(e.id) === String(id));
+const entity = entities.find(e => String(e.id) === String(id));
 if (!entity) return;
 await renderEntityOverlayContent(entity);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('entity-details-screen');
@@ -1877,9 +1877,9 @@ editEntityBasicInfo(id);
 }
 export async function renderEntityOverlayContent(entity) {
 await _ensureSupplierInvoices();
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const expenses = ensureArray(await sqliteStore.get('expenses'));
 const _manageET = document.getElementById('manageEntityTitle');
 if (_manageET) {
 const phone = entity.phone || '';
@@ -1897,7 +1897,7 @@ if (_freshInv && Array.isArray(_freshInv) && _freshInv.length > 0) {
 } catch (_e) {}
 const balances = await calculateEntityBalances();
 const balance = balances[entity.id] || 0;
-const entityTransactions = paymentTransactions.filter(t => t.entityId === entity.id && !t.isExpense);
+const entityTransactions = transactions.filter(t => t.entityId === entity.id && !t.isExpense);
 const totalIn = entityTransactions.filter(t => t.type === 'IN').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const totalOut = entityTransactions.filter(t => t.type === 'OUT').reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const statsEl = document.getElementById('manageEntityStats');
@@ -1920,13 +1920,13 @@ if (!list) {
 return;
 }
 const _entityFrag = document.createDocumentFragment();
-let transactions = paymentTransactions.filter(t => t.entityId === entity.id);
+let entityTxns = transactions.filter(t => t.entityId === entity.id);
 const rangeSelect = document.getElementById('entityPdfRange');
 const range = rangeSelect ? rangeSelect.value : 'all';
 if (range !== 'all') {
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-transactions = transactions.filter(t => {
+entityTxns = entityTxns.filter(t => {
 if (!t.date) return false;
 const transDate = new Date(t.date);
 switch(range) {
@@ -1949,12 +1949,12 @@ return true;
 }
 });
 }
-transactions.sort((a,b) => b.timestamp - a.timestamp);
-if (transactions.length === 0) {
+entityTxns.sort((a,b) => b.timestamp - a.timestamp);
+if (entityTxns.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), {className:'u-empty-state-sm',textContent:'No transaction history'}));
 return;
 }
-transactions.forEach(t => {
+entityTxns.forEach(t => {
 const isOut = t.type === 'OUT';
 const colorClass = isOut ? 'cost-val' : 'profit-val';
 const badgeColor = t.isTransfer ? 'var(--accent)' : (isOut ? 'var(--danger)' : 'var(--accent-emerald)');
@@ -2231,23 +2231,23 @@ const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransac
 return res.changed || tx.type === 'IN';
 }
 export async function deleteEntityTransaction(id) {
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const inventory = ensureArray(await sqliteStore.get('inventory'));
 if (!id || !validateUUID(id)) {
 window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
-const _dt = paymentTransactions.find(t => t.id === id);
+const _dt = transactions.find(t => t.id === id);
 if (!_dt) {
-const _ent0 = paymentEntities.find(e => String(e.id) === String(currentEntityId));
+const _ent0 = entities.find(e => String(e.id) === String(currentEntityId));
 if (_ent0) renderEntityOverlayContent(_ent0);
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 return;
 }
 if (_dt.isTransfer === true) {
 if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dt.transferPairId);
-const _ent0b = paymentEntities.find(e => String(e.id) === String(currentEntityId));
+const _ent0b = entities.find(e => String(e.id) === String(currentEntityId));
 if (_ent0b) renderEntityOverlayContent(_ent0b);
 return;
 }
@@ -2255,7 +2255,7 @@ if (_dt.isMerged) {
 window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
-const _dtEntity = paymentEntities.find(e => String(e.id) === String(_dt.entityId));
+const _dtEntity = entities.find(e => String(e.id) === String(_dt.entityId));
 const _dtEntityName = _dtEntity ? _dtEntity.name : 'Unknown';
 const _dtTypeLabel = _dt.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';
 const _dtAmount = fmtNum(parseFloat(_dt.amount) || 0);
@@ -2270,14 +2270,14 @@ if (_dt.isPayable && _dt.type === 'OUT') {
 _dtMsg += `\n\n↩ Supplier payable status will be restored — material will revert to pending payment.`;
 }
 if (_dt.isPayable && _dt.type === 'IN') {
-const _dtImpact = _describeSupplierLinkImpact(_dt, paymentTransactions, factoryInventoryData);
+const _dtImpact = _describeSupplierLinkImpact(_dt, transactions, inventory);
 _dtMsg += `\n\n↩ Credit purchase record removed — supplier will be unlinked from ${_dtImpact.materialNames.length ? _dtImpact.materialNames.join(', ') : 'the material'}.`;
 if (_dtImpact.paymentCount > 0) _dtMsg += `\n↩ ${_dtImpact.paymentCount} supplier payment${_dtImpact.paymentCount !== 1 ? 's' : ''} (${fmtAmt(_dtImpact.paymentTotal)}) for it will also be reversed.`;
 }
 _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
-await _restorePayableFromDeletedTransaction(_dt, paymentTransactions, factoryInventoryData);
+await _restorePayableFromDeletedTransaction(_dt, transactions, inventory);
 await deletePaymentTxWithLinks(_dt);
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
@@ -2290,24 +2290,24 @@ window.notifyBlocking('Failed to delete transaction. Please try again.', 'error'
 }
 }
 export async function deleteCurrentEntity() {
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const inventory = ensureArray(await sqliteStore.get('inventory'));
 if (!currentEntityId) return;
 if (!validateUUID(String(currentEntityId))) {
 window.notifyBlocking('Invalid entity ID', 'error');
 return;
 }
-const _entityToDel = paymentEntities.find(e => String(e.id) === String(currentEntityId));
+const _entityToDel = entities.find(e => String(e.id) === String(currentEntityId));
 if (!_entityToDel) {
 window.notifyBlocking('Entity not found', 'error');
 return;
 }
 const _entityName = _entityToDel.name || 'this entity';
-const _entityTxs = paymentTransactions.filter(t => String(t.entityId) === String(currentEntityId));
+const _entityTxs = transactions.filter(t => String(t.entityId) === String(currentEntityId));
 const _totalIn = _entityTxs.filter(t => t.type === 'IN' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const _totalOut = _entityTxs.filter(t => t.type === 'OUT' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
-const _linkedMaterials = factoryInventoryData.filter(m => String(m.supplierId) === String(currentEntityId));
+const _linkedMaterials = inventory.filter(m => String(m.supplierId) === String(currentEntityId));
 let msg = `Permanently delete "${_entityName}"?`;
 if (_entityTxs.length > 0) {
 msg += `\n\n\u26a0 This entity has ${_entityTxs.length} transaction${_entityTxs.length !== 1 ? 's' : ''} on record`;
@@ -2321,11 +2321,11 @@ msg += `\n\n\u21a9 ${_linkedMaterials.length} linked material${_linkedMaterials.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: `Delete Entity Permanently`, confirmText: "Delete", danger: true }))) return;
 try {
-await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), paymentTransactions, factoryInventoryData);
+await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), transactions, inventory);
 for (const mat of _linkedMaterials) {
 if (!mat.supplierId) continue;
 _clearMaterialSupplier(mat);
-await unifiedSave('inventory', factoryInventoryData, mat);
+await unifiedSave('inventory', inventory, mat);
 }
 const txsToDelete = _entityTxs.slice();
 const _transferTxs = txsToDelete.filter(t => t.isTransfer === true);
@@ -2376,11 +2376,11 @@ window.notifyBlocking('Failed to delete entity. Please try again.', 'error');
 }
 }
 export async function exportEntityData() {
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
+const entities = ensureArray(await sqliteStore.get('entities'));
 let csvContent = "data:text/csv;charset=utf-8,";
 csvContent += "Entity Name,Type,Phone,Net Balance (),Status\n";
 const balances = await calculateEntityBalances();
-paymentEntities.forEach(e => {
+entities.forEach(e => {
 const bal = balances[e.id] || 0;
 let status = "Settled";
 if(bal > 0) status = "Payable (You Owe)";
@@ -2634,15 +2634,15 @@ export async function promptStatementShare(kind) {
 }
 window.promptStatementShare = promptStatementShare;
 export async function exportEntityToPDF(opts = {}) {
-const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
-const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
+const inventory = ensureArray(await sqliteStore.get('inventory'));
+const entities = ensureArray(await sqliteStore.get('entities'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
+const expenses = ensureArray(await sqliteStore.get('expenses'));
 if (!currentEntityId) {
 showToast("No entity selected", "warning");
 return;
 }
-const entity = paymentEntities.find(e => String(e.id) === String(currentEntityId));
+const entity = entities.find(e => String(e.id) === String(currentEntityId));
 if (!entity) {
 showToast("Entity not found", "error");
 return;
@@ -2658,7 +2658,7 @@ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/
 await new Promise(r => setTimeout(r, 200));
 }
 if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Failed to load PDF library. Please refresh and try again.");
-const allEntityTxns = paymentTransactions.filter(t => String(t.entityId) === String(entity.id) && !t.isExpense);
+const allEntityTxns = transactions.filter(t => String(t.entityId) === String(entity.id) && !t.isExpense);
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 let periodCutoff = null;
@@ -2673,14 +2673,14 @@ if (range !== 'all') {
 const priorTxns = periodCutoff
   ? allEntityTxns.filter(t => { if (!t.date) return false; return new Date(t.date) < periodCutoff; })
   : [];
-let transactions = periodCutoff
+let periodTxns = periodCutoff
   ? allEntityTxns.filter(t => { if (!t.date) return false; return new Date(t.date) >= periodCutoff; })
   : allEntityTxns;
 const openingBalance = priorTxns.reduce((bal, t) => {
   const amt = parseFloat(t.amount) || 0;
   return t.type === 'OUT' ? bal - amt : bal + amt;
 }, 0);
-transactions.sort((a, b) => {
+periodTxns.sort((a, b) => {
 const da = toSafeDate(a.date);
 const db = toSafeDate(b.date);
 return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
@@ -2688,10 +2688,10 @@ return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
 const isPayee = entity.type === 'payee';
 const isPayor = entity.type === 'payor';
 const headerColor = isPayee ? [230, 100, 20] : [0, 122, 200];
-const isSupplier = typeof factoryInventoryData !== 'undefined' &&
-factoryInventoryData.some(m => String(m.supplierId) === String(entity.id));
+const isSupplier = typeof inventory !== 'undefined' &&
+inventory.some(m => String(m.supplierId) === String(entity.id));
 const supplierMaterials = isSupplier
-? factoryInventoryData.filter(m => String(m.supplierId) === String(entity.id))
+? inventory.filter(m => String(m.supplierId) === String(entity.id))
 : [];
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
@@ -2734,13 +2734,13 @@ yPos += 18;
 doc.setDrawColor(...headerColor); doc.setLineWidth(0.5);
 doc.line(14, yPos, pageW - 14, yPos);
 yPos += 5;
-if (transactions.length > 0 || priorTxns.length > 0) {
+if (periodTxns.length > 0 || priorTxns.length > 0) {
 doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.setTextColor(...headerColor);
 doc.text('PAYMENT TRANSACTIONS', 14, yPos);
 doc.setTextColor(80, 80, 80); doc.setFont(undefined, 'normal');
 yPos += 5;
-const mergedTxns  = transactions.filter(t => t.isMerged === true);
-const normalTxns  = transactions.filter(t => !t.isMerged);
+const mergedTxns  = periodTxns.filter(t => t.isMerged === true);
+const normalTxns  = periodTxns.filter(t => !t.isMerged);
 const buildTxRow = (t, runBal) => {
   const amt = parseFloat(t.amount) || 0;
   const isOut = t.type === 'OUT';
@@ -3031,9 +3031,9 @@ showToast("Error generating PDF: " + error.message, "error");
 }
 }
 export async function exportCustomerToPDF(opts = {}) {
-const customerSales = ensureArray(await sqliteStore.get('sales'));
-const salesCustomers = ensureArray(await sqliteStore.get('customers'));
-const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
+const sales = ensureArray(await sqliteStore.get('sales'));
+const customers = ensureArray(await sqliteStore.get('customers'));
+const transactions = ensureArray(await sqliteStore.get('transactions'));
 const titleElement = document.getElementById('manageCustomerTitle');
 if (!titleElement) { showToast("No customer selected", "warning"); return; }
 const titleHTML = titleElement.innerHTML;
@@ -3051,7 +3051,7 @@ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/
 await new Promise(r => setTimeout(r, 200));
 }
 if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Failed to load PDF library. Please refresh and try again.");
-const allCustTxns = customerSales.filter(s => s && s.customerName === customerName);
+const allCustTxns = sales.filter(s => s && s.customerName === customerName);
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 let custPeriodCutoff = null;
@@ -3108,7 +3108,7 @@ if (a.transactionType === 'OLD_DEBT' && b.transactionType !== 'OLD_DEBT') return
 if (a.transactionType !== 'OLD_DEBT' && b.transactionType === 'OLD_DEBT') return 1;
 return _custEffDate(a) - _custEffDate(b);
 });
-const salesContact = salesCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
+const salesContact = customers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
 const phone = salesContact?.phone || transactions.find(t => t.customerPhone)?.customerPhone || 'N/A';
 const address = salesContact?.address || transactions.find(t => t.customerAddress)?.customerAddress || 'N/A';
 const { jsPDF } = window.jspdf;

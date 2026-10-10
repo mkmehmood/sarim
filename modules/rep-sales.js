@@ -131,8 +131,8 @@ const pc = document.getElementById('rep-new-customer-phone-container'); if (pc) 
 setRepMode('sale');
 }
 export async function startEditRepSale(id) {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const rec = repSales.find(s => s && String(s.id) === String(id));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const rec = rep.find(s => s && String(s.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning'); return; }
 {
 const _blk = await getSaleBlockReason(rec.id, 'rep', { forEdit: true });
@@ -182,19 +182,19 @@ calculateRepCustomerStats(name);
 }
 window._selectRepCustomerBase = selectRepCustomer;
 export async function calculateRepCustomerStatsForDisplay(name) {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 calculateRepCustomerStats(name);
 }
 export async function calculateRepCustomerStats(name) {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if(salesRepsList.includes(name)) {
 document.getElementById('rep-customer-info-display').classList.add('hidden');
 showToast("Cannot create transaction with representative name", "warning");
 return;
 }
-const history = repSales.filter(s =>
+const history = rep.filter(s =>
 s && s.customerName && s.customerName.toLowerCase() === name.toLowerCase() &&
 s.salesRep === currentRepProfile
 );
@@ -221,7 +221,7 @@ const _repTV = document.getElementById('rep-total-value');
 if (_repTV) _repTV.innerText = '' + fmtAmt(safeNumber(remaining, 0));
 }
 export async function calculateRepSalePreview() {
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
 const salePrice = await getSalePriceForStore(getDefaultStoreKey());
@@ -233,16 +233,16 @@ export function saveRepTransaction(...a) { return confirmGuard('saveRepTransacti
 async function _saveRepTransactionRaw() {
 const _ed = getEditCtx('repsale');
 let _gcWarn = null;
-const repSales = ensureArray(await sqliteStore.get('rep'));
-let repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+let clients = ensureArray(await sqliteStore.get('clients'));
 const submitBtn = document.querySelector('#rep-new-transaction-card .btn-main');
 if (submitBtn) {
 if (submitBtn.disabled) return;
 submitBtn.disabled = true;
 }
 async function restoreBtn() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if (submitBtn) submitBtn.disabled = false;
 }
 try {
@@ -330,7 +330,7 @@ return;
 }
 let _repOutstanding = 0;
 try {
-const _repHistory = repSales.filter(s =>
+const _repHistory = rep.filter(s =>
 s && !(_ed && s.id === _ed.id) && s.customerName && s.customerName.toLowerCase() === name.toLowerCase() &&
 s.salesRep === currentRepProfile
 );
@@ -380,14 +380,14 @@ window.notifyBlocking('This payment is linked to a credit sale. Delete it and re
 let _repAlloc = null;
 if (transactionRecord.paymentType === 'COLLECTION' && !(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
 try {
-_repAlloc = await applyCollectionToSales({ kind: 'rep', arr: repSales, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
+_repAlloc = await applyCollectionToSales({ kind: 'rep', arr: rep, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
 } catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning'); restoreBtn(); return; }
 }
 const _linkIssue = _ed ? await getSaleEditLinkIssue('rep', _ed.original, transactionRecord) : null;
 if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); window.notifyBlocking(_linkIssue, 'warning'); restoreBtn(); return; }
 if (transactionRecord.paymentType === 'CREDIT' && !_gcWarn) {
 let _rcOwed = 0;
-for (const h of repSales) {
+for (const h of rep) {
 if (h && !(_ed && h.id === _ed.id) && h.customerName && h.customerName.toLowerCase() === String(transactionRecord.customerName || '').toLowerCase() && h.salesRep === currentRepProfile) _rcOwed = round2(_rcOwed + debtDelta(h, parseFloat(h.totalValue) || 0));
 }
 _rcOwed = Math.max(0, _rcOwed);
@@ -406,13 +406,13 @@ transactionRecord.gps = o.gps || transactionRecord.gps;
 transactionRecord.salesRep = o.salesRep;
 if (o.partialPaymentReceived) transactionRecord.partialPaymentReceived = o.partialPaymentReceived;
 ensureRecordIntegrity(transactionRecord, true);
-replaceRecord(repSales, transactionRecord);
+replaceRecord(rep, transactionRecord);
 } else {
-repSales.push(transactionRecord);
+rep.push(transactionRecord);
 }
 try {
-if (_repAlloc && _repAlloc.changedIds.length) await unifiedSave('rep', repSales, null, _repAlloc.changedIds);
-await unifiedSave('rep', repSales, transactionRecord);
+if (_repAlloc && _repAlloc.changedIds.length) await unifiedSave('rep', rep, null, _repAlloc.changedIds);
+await unifiedSave('rep', rep, transactionRecord);
 } catch (_saveErr) { if (_repAlloc) _repAlloc.undo(); throw _saveErr; }
 void _gpsBgPromise.then(async coords => {
   if (!coords) return;
@@ -431,12 +431,12 @@ try {
 const _rcName = transactionRecord.customerName;
 const _rcPhone = transactionRecord.customerPhone || '';
 if (_rcName && _rcName.trim()) {
-const existsInRepRegistry = Array.isArray(repCustomers) && repCustomers.some(c => c && c.name && c.name.toLowerCase() === _rcName.toLowerCase() && (c.salesRep === currentRepProfile || !c.salesRep));
+const existsInRepRegistry = Array.isArray(clients) && clients.some(c => c && c.name && c.name.toLowerCase() === _rcName.toLowerCase() && (c.salesRep === currentRepProfile || !c.salesRep));
 if (!existsInRepRegistry) {
 const _rcContact = { id: generateUUID('rep_cust'), name: _rcName, phone: _rcPhone, address: '', oldDebit: 0, salesRep: currentRepProfile, createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
-if (!Array.isArray(repCustomers)) repCustomers = [];
-repCustomers.push(_rcContact);
-await unifiedSave('clients', repCustomers, _rcContact);
+if (!Array.isArray(clients)) clients = [];
+clients.push(_rcContact);
+await unifiedSave('clients', clients, _rcContact);
 }
 }
 } catch (_rcErr) { console.warn('Auto-register rep customer failed:', _safeErr(_rcErr)); }
@@ -485,22 +485,22 @@ export function deg2rad(deg) {
 return deg * (Math.PI / 180);
 }
 export async function autoUpdateCustomerLocation(customerName, currentGps) {
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
-const repSales = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
 if (!currentGps || !currentGps.lat || !currentGps.lng) return;
 const _lcAutoName = customerName.toLowerCase();
-const contactIndex = repCustomers.findIndex(c => {
+const contactIndex = clients.findIndex(c => {
 if (!c || !c.name) return false;
 if (c.name.toLowerCase() !== _lcAutoName) return false;
 if (c.salesRep) return c.salesRep === currentRepProfile;
-return repSales.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcAutoName);
+return rep.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcAutoName);
 });
 if (contactIndex === -1) return;
-const contact = repCustomers[contactIndex];
+const contact = clients[contactIndex];
 if (contact.locationConfirmed) return;
 const isManualAddress = contact.address && contact.address.length > 5 && !contact.address.startsWith('GPS:');
 if (isManualAddress) return;
-const pastTransactions = repSales.filter(sale =>
+const pastTransactions = rep.filter(sale =>
 sale &&
 sale.customerName &&
 sale.customerName.toLowerCase() === customerName.toLowerCase() &&
@@ -526,11 +526,11 @@ if (clusterCount < 3) return;
 const avgLat = ((clusterLat + currentGps.lat) / (clusterCount + 1));
 const avgLng = ((clusterLng + currentGps.lng) / (clusterCount + 1));
 const coordsString = `GPS: ${safeNumber(avgLat, 0).toFixed(6)}, ${safeNumber(avgLng, 0).toFixed(6)}`;
-repCustomers[contactIndex].address = coordsString;
-repCustomers[contactIndex].locationConfirmed = true;
-repCustomers[contactIndex].updatedAt = getTimestamp();
-ensureRecordIntegrity(repCustomers[contactIndex], true);
-await unifiedSave('clients', repCustomers, repCustomers[contactIndex]);
+clients[contactIndex].address = coordsString;
+clients[contactIndex].locationConfirmed = true;
+clients[contactIndex].updatedAt = getTimestamp();
+ensureRecordIntegrity(clients[contactIndex], true);
+await unifiedSave('clients', clients, clients[contactIndex]);
 notifyDataChange('rep');
 if (typeof showToast === 'function') {
 showToast(`Location confirmed for ${customerName} after 3 consistent visits.`, 'success');
@@ -573,7 +573,7 @@ repMap.invalidateSize();
 }, 100);
 }
 export async function updateRepLiveMap() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
+const rep = ensureArray(await sqliteStore.get('rep'));
 if (typeof L === 'undefined') return;
 const container = document.getElementById('rep-map-container');
 if (!container || container.offsetParent === null) return;
@@ -589,7 +589,7 @@ repPolyline = null;
 }
 const dateInput = document.getElementById('rep-date');
 const selectedDate = dateInput ? dateInput.value : localDateStr();
-const dailyRoute = repSales
+const dailyRoute = rep
 .filter(s => s.salesRep === currentRepProfile && s.date === selectedDate && s.gps)
 .sort((a, b) => a.timestamp - b.timestamp);
 if (dailyRoute.length === 0) {
@@ -667,8 +667,8 @@ document.getElementById(`rep-analytics-${mode}-btn`).classList.add('active');
 calculateRepAnalytics();
 }
 export async function calculateRepAnalytics() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if (appMode !== 'admin') return;
 const adminDateInput = document.getElementById('admin-rep-date');
 const selectedDate = (adminDateInput && adminDateInput.value) || localDateStr();
@@ -694,7 +694,7 @@ endDate = new Date('2100-12-31');
 let collections = 0;
 let cashSales = 0;
 let creditSales = 0;
-repSales.forEach(sale => {
+rep.forEach(sale => {
 if (sale.salesRep !== currentRepProfile) return;
 const saleDate = new Date(sale.date);
 if (saleDate >= startDate && saleDate <= endDate) {
@@ -726,8 +726,8 @@ if (creditSalesEl) creditSalesEl.textContent = `${fmtAmt(creditSales)}`;
 export async function renderRepCustomerTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rrctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
-const repSales = ensureArray(await sqliteStore.get('rep')).filter(_rrctAlive);
-const repCustomers = ensureArray(await sqliteStore.get('clients')).filter(_rrctAlive);
+const rep = ensureArray(await sqliteStore.get('rep')).filter(_rrctAlive);
+const clients = ensureArray(await sqliteStore.get('clients')).filter(_rrctAlive);
 const tbody = document.getElementById('rep-customers-table-body');
 if (!tbody) {
 return;
@@ -736,8 +736,8 @@ try {
 const freshRepCustomersList = await sqliteStore.get('clients', []);
 if (Array.isArray(freshRepCustomersList) && freshRepCustomersList.length > 0) {
 const repRegMap = new Map(freshRepCustomersList.map(c => [c.id, c]));
-if (Array.isArray(repCustomers)) {
-repCustomers.forEach(c => { if (c && c.id && !repRegMap.has(c.id)) repRegMap.set(c.id, c); });
+if (Array.isArray(clients)) {
+clients.forEach(c => { if (c && c.id && !repRegMap.has(c.id)) repRegMap.set(c.id, c); });
 }
 const mergedRepCustomers = Array.from(repRegMap.values());
 }
@@ -746,12 +746,12 @@ console.warn('Rep registry refresh failed, using in-memory:', _safeErr(repRegErr
 }
 const filterInput = document.getElementById('rep-filter');
 const filter = filterInput ? filterInput.value.toLowerCase() : '';
-let activeRepSales = repSales;
+let activeRepSales = rep;
 try {
 const freshRepSales2 = await sqliteStore.get('rep', []);
 if (Array.isArray(freshRepSales2) && freshRepSales2.length > 0) {
 const recordMap2 = new Map(freshRepSales2.filter(s => s && s.id).map(s => [s.id, s]));
-repSales.forEach(s => { if (s && s.id && !recordMap2.has(s.id)) recordMap2.set(s.id, s); });
+rep.forEach(s => { if (s && s.id && !recordMap2.has(s.id)) recordMap2.set(s.id, s); });
 activeRepSales = Array.from(recordMap2.values());
 }
 } catch (_e) {  }
@@ -765,14 +765,14 @@ custMap[s.customerName].count++;
 custMap[s.customerName].debt = round2(custMap[s.customerName].debt + debtDelta(s, s.totalValue));
 });
 const sortedCustomers = Object.keys(custMap).sort();
-if (Array.isArray(repCustomers)) {
+if (Array.isArray(clients)) {
 const custMapNames = new Set(Object.keys(custMap).map(n => n.toLowerCase()));
 const repSalesNamesForProfile = new Set(
-(Array.isArray(repSales) ? repSales : [])
+(Array.isArray(rep) ? rep : [])
 .filter(s => s && s.salesRep === currentRepProfile && s.customerName)
 .map(s => s.customerName.toLowerCase())
 );
-repCustomers.forEach(rc => {
+clients.forEach(rc => {
 if (!rc || !rc.name || !rc.name.trim()) return;
 if (rc.salesRep && rc.salesRep !== currentRepProfile) return;
 if (!rc.salesRep && !repSalesNamesForProfile.has(rc.name.toLowerCase())) return;
@@ -802,13 +802,13 @@ tbody.innerHTML = `<tr><td class="u-empty-state-md" colspan="5" >No customers ma
 } else {
 function buildRepCustomerRow(name) {
 const customerData = custMap[name];
-const customerTransactions = repSales.filter(s =>
+const customerTransactions = rep.filter(s =>
 s.customerName === name &&
 s.salesRep === currentRepProfile
 );
 const latestTransaction = customerTransactions.sort((a, b) => b.timestamp - a.timestamp)[0];
 const displayDate = latestTransaction?.date ? formatDisplayDate(latestTransaction.date) : '-';
-const repContact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && (c.salesRep === currentRepProfile || !c.salesRep));
+const repContact = clients.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && (c.salesRep === currentRepProfile || !c.salesRep));
 const phone = repContact?.phone || latestTransaction?.customerPhone || '-';
 const tr = document.createElement('tr');
 tr.style.borderBottom = '1px solid var(--glass-border)';
@@ -849,7 +849,7 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-custom
 await renderRepCustomerTransactions(customerName);
 }
 export async function closeRepCustomerManagement() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
+const rep = ensureArray(await sqliteStore.get('rep'));
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('rep-customer-management-screen');
 _set_currentManagingRepCustomer(null);
 setTimeout(async () => {
@@ -857,7 +857,7 @@ try {
 const freshRepSales = await sqliteStore.get('rep', []);
 if (Array.isArray(freshRepSales)) {
 const m = new Map(freshRepSales.map(s => [s.id, s]));
-if (Array.isArray(repSales)) repSales.forEach(s => { if (!m.has(s.id)) m.set(s.id, s); });
+if (Array.isArray(rep)) rep.forEach(s => { if (!m.has(s.id)) m.set(s.id, s); });
 const _freshRepSales = Array.from(m.values());
 await sqliteStore.set('rep', _freshRepSales);
 }
@@ -869,11 +869,11 @@ if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 }, 100);
 }
 export async function deleteCurrentRepCustomer() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if (!currentManagingRepCustomer) return;
 const name = currentManagingRepCustomer;
-const txs = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+const txs = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'rep', { ignoreChildren: true });
 if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning'); return; }
@@ -892,21 +892,21 @@ if (!(await showGlassConfirm(msg, { title: 'Delete Rep Customer', confirmText: '
 try {
 const _lcDelName = name.toLowerCase();
 const _repCustGroup = newGroupId('repcust');
-const contactIdx = repCustomers.findIndex(c => {
+const contactIdx = clients.findIndex(c => {
 if (!c || !c.name) return false;
 if (c.name.toLowerCase() !== _lcDelName) return false;
 if (c.salesRep) return c.salesRep === currentRepProfile;
-return repSales.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcDelName);
+return rep.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcDelName);
 });
 if (contactIdx !== -1) {
-const contactRecord = stampGroup(repCustomers[contactIdx], _repCustGroup);
+const contactRecord = stampGroup(clients[contactIdx], _repCustGroup);
 const contactId = contactRecord.id;
-const filteredContacts = repCustomers.filter((_, i) => i !== contactIdx);
+const filteredContacts = clients.filter((_, i) => i !== contactIdx);
 await unifiedDelete('clients', filteredContacts, contactId, { strict: true }, contactRecord);
-repCustomers.splice(contactIdx, 1);
+clients.splice(contactIdx, 1);
 }
 const repTxsToDelete = txs.slice();
-let prunedRepSales = repSales.slice();
+let prunedRepSales = rep.slice();
 for (const tx of repTxsToDelete) {
 prunedRepSales = prunedRepSales.filter(s => s.id !== tx.id);
 await unifiedDelete('rep', prunedRepSales, tx.id, { strict: true }, stampGroup(tx, _repCustGroup));
@@ -934,8 +934,8 @@ window.notifyBlocking('Failed to delete rep customer. Please try again.', 'error
 }
 }
 export async function renderRepCustomerTransactions(name) {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 const list = document.getElementById('repCustomerManagementHistoryList');
 if (!list) return;
 let transactions = [];
@@ -943,16 +943,16 @@ try {
 const dbSales = await sqliteStore.get('rep', []);
 if (Array.isArray(dbSales)) {
 const recordMap = new Map(dbSales.filter(s => s && s.id).map(s => [s.id, s]));
-if (Array.isArray(repSales)) repSales.forEach(s => { if (s && s.id && !recordMap.has(s.id)) recordMap.set(s.id, s); });
+if (Array.isArray(rep)) rep.forEach(s => { if (s && s.id && !recordMap.has(s.id)) recordMap.set(s.id, s); });
 const mergedTx = Array.from(recordMap.values());
 transactions = mergedTx.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 } else {
-transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+transactions = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 }
 } catch (e) {
 console.error('Rep sales operation failed.', _safeErr(e));
 showToast('Rep sales operation failed.', 'error');
-transactions = repSales.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+transactions = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 }
 const _repDelta = (t) => debtDelta(t, t.totalValue);
 const _runBal = new Map();
@@ -977,7 +977,7 @@ if (range === 'year') { const y = new Date(today); y.setFullYear(y.getFullYear()
 return true;
 });
 }
-const repContacts = repCustomers;
+const repContacts = clients;
 const contact = repContacts.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && c.salesRep === currentRepProfile)
   || repContacts.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
 const phone = contact?.phone || transactions.find(t => t && t.customerPhone)?.customerPhone || '';
@@ -1127,8 +1127,8 @@ nameInput.oninput = null;
 if (nameLabel) nameLabel.textContent = 'Customer Name';
 if (nameHint) nameHint.textContent = 'Editing the name will update all records for this customer';
 }
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
 if (!customerName) {
@@ -1140,10 +1140,10 @@ await loadPersonPhotoIntoEditor('rep-cust', _repPhotoKey);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-customer-edit-screen');
 return;
 }
-const contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && c.salesRep === currentRepProfile)
-  || repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && !c.salesRep);
-const saleRecord = repSales.find(s => s.customerName === customerName && s.salesRep === currentRepProfile && s.customerPhone);
-const existingOldDebtTx = repSales.find(s =>
+const contact = clients.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && c.salesRep === currentRepProfile)
+  || clients.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase() && !c.salesRep);
+const saleRecord = rep.find(s => s.customerName === customerName && s.salesRep === currentRepProfile && s.customerPhone);
+const existingOldDebtTx = rep.find(s =>
 s.customerName && s.customerName.toLowerCase() === customerName.toLowerCase() &&
 s.transactionType === 'OLD_DEBT' &&
 s.salesRep === currentRepProfile
@@ -1161,8 +1161,8 @@ if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('rep-cust
 }
 export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['rep-edit-cust-name', 'Name'], ['rep-edit-cust-phone', 'Phone'], ['rep-edit-cust-address', 'Address'], ['rep-edit-cust-old-debit', 'Old Debit']], isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
 async function _saveRepCustomerDetailsRaw() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 const nameInput = document.getElementById('rep-edit-cust-name');
 const name = nameInput.value.trim();
 const originalName = nameInput.dataset.originalName || name;
@@ -1177,14 +1177,14 @@ const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
 const freshRepContacts = await sqliteStore.get('clients', []);
 if (Array.isArray(freshRepContacts)) {
 const m = new Map(freshRepContacts.map(c => [c.id, c]));
-if (Array.isArray(repCustomers)) repCustomers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
+if (Array.isArray(clients)) clients.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
 const mergedRepC = Array.from(m.values());
 await sqliteStore.set('clients', mergedRepC);
 }
-let contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase() && c.salesRep === currentRepProfile);
-if (!contact) contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && c.salesRep === currentRepProfile);
-if (!contact) contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase() && !c.salesRep);
-if (!contact) contact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && !c.salesRep);
+let contact = clients.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase() && c.salesRep === currentRepProfile);
+if (!contact) contact = clients.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && c.salesRep === currentRepProfile);
+if (!contact) contact = clients.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase() && !c.salesRep);
+if (!contact) contact = clients.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase() && !c.salesRep);
 const previousOldDebit = contact?.oldDebit || 0;
 if (contact) {
 if (!validateUUID(String(contact.id || ''))) { contact.id = generateUUID('rep_cust'); }
@@ -1194,14 +1194,14 @@ ensureRecordIntegrity(contact, true);
 } else {
 contact = { id: generateUUID('rep_cust'), name, phone, address, oldDebit, salesRep: currentRepProfile,
 createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
-repCustomers.push(contact);
+clients.push(contact);
 }
-await unifiedSave('clients', repCustomers, contact);
+await unifiedSave('clients', clients, contact);
 let salesArray = await sqliteStore.get('rep', []);
 if (!Array.isArray(salesArray)) salesArray = [];
-if (Array.isArray(repSales) && repSales.length > 0) {
+if (Array.isArray(rep) && rep.length > 0) {
 const mSales = new Map(salesArray.map(s => [s.id, s]));
-repSales.forEach(s => { if (s && s.id && !mSales.has(s.id)) mSales.set(s.id, s); });
+rep.forEach(s => { if (s && s.id && !mSales.has(s.id)) mSales.set(s.id, s); });
 salesArray = Array.from(mSales.values());
 }
 const renamedRecords = [];
@@ -1246,7 +1246,7 @@ if (deletedOldDebtId) { window._repOldDebtRecordForDeletion = _repOldDebtRecordF
 }
 let phoneUpdated = false;
 salesArray.forEach(s => { if (s && s.customerName === name && s.customerPhone !== phone) { s.customerPhone = phone; phoneUpdated = true; } });
-repSales.length = 0; repSales.push(...salesArray);
+rep.length = 0; rep.push(...salesArray);
 if (nameChanged || oldDebtModified || phoneUpdated) {
 if (deletedOldDebtId) {
 const _deletedRecord = window._repOldDebtRecordForDeletion || null;
@@ -1391,8 +1391,8 @@ setTimeout(() => { if (!settled && best) finish(best); }, GPS_MAX_WAIT_MS);
 });
 }
 export async function exportRepCustomerToPDF(opts = {}) {
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if (!currentManagingRepCustomer) { showToast('No rep customer selected', 'warning'); return; }
 const customerName = currentManagingRepCustomer.trim();
 if (!customerName) { showToast('No rep customer selected', 'warning'); return; }
@@ -1407,7 +1407,7 @@ await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/
 await new Promise(r => setTimeout(r, 200));
 }
 if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Failed to load PDF library. Please refresh and try again.');
-const allRepCustTxns = repSales.filter(s => s.customerName === customerName && s.salesRep === currentRepProfile);
+const allRepCustTxns = rep.filter(s => s.customerName === customerName && s.salesRep === currentRepProfile);
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 let repPeriodCutoff = null;
@@ -1464,7 +1464,7 @@ if (a.transactionType === 'OLD_DEBT' && b.transactionType !== 'OLD_DEBT') return
 if (a.transactionType !== 'OLD_DEBT' && b.transactionType === 'OLD_DEBT') return 1;
 return _repEffDate(a) - _repEffDate(b);
 });
-const repContact = repCustomers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
+const repContact = clients.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
 const phone = repContact?.phone || transactions.find(t => t.customerPhone)?.customerPhone || 'N/A';
 const address = repContact?.address || 'N/A';
 const { jsPDF } = window.jspdf;
@@ -1682,14 +1682,14 @@ showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
 export async function renderRepHistory() {
-const repSales = ensureArray(await sqliteStore.get('rep'));
+const rep = ensureArray(await sqliteStore.get('rep'));
 const list = document.getElementById('repHistoryList');
 if (!list) return;
 const dateInput = document.getElementById('rep-date');
 const selectedDate = dateInput && dateInput.value ? dateInput.value : localDateStr();
 const isToday = selectedDate === localDateStr();
 const headerText = isToday ? "Today's Activity" : `Activity for ${selectedDate}`;
-const activityData = repSales
+const activityData = rep
 .filter(s =>
 s.salesRep === currentRepProfile &&
 s.date === selectedDate &&
@@ -1766,8 +1766,8 @@ list.innerHTML = tableHTML;
 }
 export async function refreshRepUI(force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
-const repSales = ensureArray(await sqliteStore.get('rep'));
-const repCustomers = ensureArray(await sqliteStore.get('clients'));
+const rep = ensureArray(await sqliteStore.get('rep'));
+const clients = ensureArray(await sqliteStore.get('clients'));
 if (sqliteStore && sqliteStore.getBatch) {
 try {
 const repKeys = ['rep', 'clients'];

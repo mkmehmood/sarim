@@ -114,6 +114,13 @@ describe('one single-word name per dataset', () => {
     const body = payments.slice(at, at + 300);
     assert.ok(body.includes('RECORD_STORES.map(s => [s.backup, s.label])'), 'report must read RECORD_STORES');
   });
+  it('the in-memory variable of every dataset is its key (sales, rep, clients, ...), so SQLite, Firestore and code agree', () => {
+    for (const s of RECORD_STORES) assert.equal(s.jsVar, s.key, s.key);
+    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'prod-photos.js', 'data-keys.js'];
+    const oldVars = /\b(customerSales|salesHistory|repSales|repCustomers|salesCustomers|paymentTransactions|paymentEntities|factoryInventoryData|factoryProductionHistory|expenseRecords|stockReturns|pendingFirestoreYearClose|pendingFirestoreRestore|_set_pendingFirestore\w+)\b/;
+    for (const f of files) assert.ok(!oldVars.test(read(f)), `${f} still uses an old variable name`);
+    assert.ok(!oldVars.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')), 'index.html still uses an old variable name');
+  });
   it('every backup writer stamps dataKeyVersion', () => {
     assert.ok(fnBody(sales, 'unifiedBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
     assert.ok(fnBody(payments, 'triggerLocalBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));

@@ -11,25 +11,25 @@
 // (convert it first with tools/migrate-cloud.mjs --convert-backup).
 export const DATA_KEY_VERSION = 5;
 // One row per dataset. Everything that names a dataset reads it from here, so the names cannot drift:
-//   key      local SQLite key = Firestore collection = backup field = delta-sync name
-//   jsVar    the in-memory JS variable the app holds the records in
+//   key      local SQLite key = Firestore collection = backup field = delta-sync name = the in-memory JS
+//            variable the app holds the records in (jsVar is the same word, kept as a named field for readers)
 //   label    the name shown to the person (sync tab, data viewer, dialogs)
 //   tab      the app tab the dataset belongs to (a TABS key)
 //   desc     one-line description for the data viewer
-const rec = (key, jsVar, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar, label, tab, desc });
+const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar: key, label, tab, desc });
 export const RECORD_STORES = Object.freeze([
-  rec('production',   'db',                        'Production',           'production', 'Factory production batches'),
-  rec('sales',        'customerSales',             'Customer Sales',       'sales',      'Direct customer sales'),
-  rec('calculator',   'salesHistory',              'Calculator History',   'calculator', 'Daily calculator / ledger entries'),
-  rec('rep',          'repSales',                  'Rep Sales',            'rep',        'Rep sales to customers'),
-  rec('clients',      'repCustomers',              'Rep Customers',        'rep',        'Rep customer contact registry'),
-  rec('customers',    'salesCustomers',            'Sales Customers',      'sales',      'Sales tab customer contacts'),
-  rec('transactions', 'paymentTransactions',       'Payment Transactions', 'payments',   'Cash & entity payment transactions'),
-  rec('entities',     'paymentEntities',           'Payment Entities',     'payments',   'Payment entity accounts'),
-  rec('inventory',    'factoryInventoryData',      'Factory Inventory',    'factory',    'Raw material inventory'),
-  rec('factory',      'factoryProductionHistory',  'Factory History',      'factory',    'Factory batch production history'),
-  rec('expenses',     'expenseRecords',            'Expenses',             'payments',   'Expense entries'),
-  rec('returns',      'stockReturns',              'Stock Returns',        'production', 'Stock return records'),
+  rec('production',   'Production',           'production', 'Factory production batches'),
+  rec('sales',        'Customer Sales',       'sales',      'Direct customer sales'),
+  rec('calculator',   'Calculator History',   'calculator', 'Daily calculator / ledger entries'),
+  rec('rep',          'Rep Sales',            'rep',        'Rep sales to customers'),
+  rec('clients',      'Rep Customers',        'rep',        'Rep customer contact registry'),
+  rec('customers',    'Sales Customers',      'sales',      'Sales tab customer contacts'),
+  rec('transactions', 'Payment Transactions', 'payments',   'Cash & entity payment transactions'),
+  rec('entities',     'Payment Entities',     'payments',   'Payment entity accounts'),
+  rec('inventory',    'Factory Inventory',    'factory',    'Raw material inventory'),
+  rec('factory',      'Factory History',      'factory',    'Factory batch production history'),
+  rec('expenses',     'Expenses',             'payments',   'Expense entries'),
+  rec('returns',      'Stock Returns',        'production', 'Stock return records'),
 ].map(Object.freeze));
 // App tabs. `id` is the tab key used by showTab()/sidebarNav() and the nav button (snav-<id>);
 // `syncFn` is the refresh function the sync tab calls; `inProgressKey` is the re-entrancy guard name.

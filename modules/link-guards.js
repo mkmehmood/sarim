@@ -473,7 +473,7 @@ export async function loadCalcRestoreContext(entry) {
   } catch (_) { }
   return {
     sales: ensureArray(await sqliteStore.get('sales')),
-    repSales: ensureArray(await sqliteStore.get('rep')),
+    rep: ensureArray(await sqliteStore.get('rep')),
     history: ensureArray(await sqliteStore.get('calculator')),
     storeKeys,
     transferSnapshot: tt && tt.snapshot ? tt.snapshot : null,

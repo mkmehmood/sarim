@@ -262,12 +262,12 @@ export async function shareProdPhotos(ids) {
   const wanted = (ids && ids.length ? ids : Array.from(_selected));
   if (!wanted.length) { _toast('Select at least one entry with photos.', 'warning'); return; }
   _toast('Preparing photos…', 'info', 1500);
-  const db = ensureArray(await sqliteStore.get('production'));
+  const production = ensureArray(await sqliteStore.get('production'));
   const photos = await _photoStore();
   const files = [];
   const textLines = [];
   for (const id of wanted) {
-    const rec = db.find(r => r && r.id === id);
+    const rec = production.find(r => r && r.id === id);
     if (!rec) continue;
     const keys = (rec.photoKeys || []).filter(k => photos[k]);
     if (!keys.length) continue;

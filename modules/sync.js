@@ -1,7 +1,7 @@
 import { APP_CONFIG } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
 import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateUUID } from './business.js';
-import { _set_pendingFirestoreRestore, _set_pendingFirestoreYearClose, closeYearInProgress, pendingFirestoreRestore, pendingFirestoreYearClose } from './admin-data.js';
+import { _set_restoring, _set_closing, closeYearInProgress, restoring, closing } from './admin-data.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
@@ -1421,12 +1421,12 @@ export async function subscribeToRealtime() {
   if (!firebaseDB || !currentUser) return;
   if (window._firestoreNetworkDisabled) return;
   try {
-    if (!pendingFirestoreYearClose) {
+    if (!closing) {
       const storedFlag = await sqliteStore.get('closing');
-      if (storedFlag === true) _set_pendingFirestoreYearClose(true);
+      if (storedFlag === true) _set_closing(true);
     }
   } catch (_flagErr) {  }
-  if (pendingFirestoreYearClose && !closeYearInProgress) {
+  if (closing && !closeYearInProgress) {
     try {
       const userRef = firebaseDB.collection('users').doc(currentUser.uid);
       const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
@@ -1454,7 +1454,7 @@ export async function subscribeToRealtime() {
         if (!result.ok) { allOk = false; }
       }
       if (allOk) {
-        _set_pendingFirestoreYearClose(false);
+        _set_closing(false);
         await sqliteStore.set('closing', false);
         try {
           const _fySettings = await sqliteStore.get('settings', {});
@@ -1470,7 +1470,7 @@ export async function subscribeToRealtime() {
           }, { merge: true });
           if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp('settings');
         } catch (_metaRetryErr) {
-          console.warn('pendingFirestoreYearClose: metadata push failed:', _safeErr(_metaRetryErr));
+          console.warn('closing: metadata push failed:', _safeErr(_metaRetryErr));
         }
         try {
           const _retryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
@@ -1482,19 +1482,19 @@ export async function subscribeToRealtime() {
             _retryBroadcast: true,
           });
         } catch (_reBroadcastErr) {
-          console.warn('pendingFirestoreYearClose: re-broadcast signal failed:', _safeErr(_reBroadcastErr));
+          console.warn('closing: re-broadcast signal failed:', _safeErr(_reBroadcastErr));
         }
         showToast('Cloud sync for year-close completed successfully', 'success', 4000);
       }
-    } catch (e) { console.warn('pendingFirestoreYearClose retry failed:', _safeErr(e)); }
+    } catch (e) { console.warn('closing retry failed:', _safeErr(e)); }
   }
-  if (!pendingFirestoreRestore) {
+  if (!restoring) {
     try {
       const _storedRestoreFlag = await sqliteStore.get('restoring');
-      if (_storedRestoreFlag === true) _set_pendingFirestoreRestore(true);
+      if (_storedRestoreFlag === true) _set_restoring(true);
     } catch (_rfErr) {}
   }
-  if (pendingFirestoreRestore) {
+  if (restoring) {
     try {
       showToast('Retrying restore cloud sync...', 'info', 3000);
       const _restoreUserRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -1548,12 +1548,12 @@ export async function subscribeToRealtime() {
           }
           if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp(colName);
         } catch (_rColErr) {
-          console.warn(`pendingFirestoreRestore: retry failed for ${colName}:`, _safeErr(_rColErr));
+          console.warn(`restoring: retry failed for ${colName}:`, _safeErr(_rColErr));
           _restoreAllOk = false;
         }
       }
       if (_restoreAllOk) {
-        _set_pendingFirestoreRestore(false);
+        _set_restoring(false);
         await sqliteStore.set('restoring', false);
         try {
           const _rRetryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
@@ -1564,11 +1564,11 @@ export async function subscribeToRealtime() {
             _retryBroadcast: true,
           });
         } catch (_rSigErr) {
-          console.warn('pendingFirestoreRestore: re-broadcast signal failed:', _safeErr(_rSigErr));
+          console.warn('restoring: re-broadcast signal failed:', _safeErr(_rSigErr));
         }
         showToast('Cloud sync for year-close restore completed successfully', 'success', 4000);
       }
-    } catch (_rErr) { console.warn('pendingFirestoreRestore retry failed:', _safeErr(_rErr)); }
+    } catch (_rErr) { console.warn('restoring retry failed:', _safeErr(_rErr)); }
   }
   updateSignalUI('connecting');
   realtimeRefs.forEach(unsub => {
