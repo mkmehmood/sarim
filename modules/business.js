@@ -1,4 +1,4 @@
-import { LEGACY_LOCAL_KEYS } from './local-aliases.js';
+import { legacyLocalNames } from './local-aliases.js';
 import { APP_CONFIG } from './constants.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSettings, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
@@ -676,7 +676,7 @@ export const sqliteStore = (() => {
     'appMode', 'appMode_timestamp',
     'repProfile', 'repProfile_timestamp',
     'assignedManager', 'assignedUserTabs',
-    'device_name', 'theme', 'theme',
+    'device_name', 'theme',
     'synced', 'dbready', 'dbinit',
     'ui', 'dbstats', 'session_start',
     'bio_enabled', 'bio_cred_id',
@@ -1366,7 +1366,7 @@ export const sqliteStore = (() => {
         // Read-through for keys renamed in data version 5: an older device keeps its value under the
         // old name until it is read once, then it moves to the new name (nothing is lost or reset).
         const MISSING = {};
-        for (const legacyKey of [].concat(LEGACY_LOCAL_KEYS[key] || [])) {
+        for (const legacyKey of legacyLocalNames(key)) {
           const legacy = await this.get(legacyKey, MISSING);
           if (legacy !== MISSING) {
             try { await this.set(key, legacy); await this.remove(legacyKey); } catch (_) {}

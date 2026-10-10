@@ -1,4 +1,5 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
+import { modernizeQueue } from './local-aliases.js';
 import { deletePaymentTxWithLinks } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
@@ -78,9 +79,15 @@ _dlKey: 'offline_dead_letter_queue',
 async init() {
 try {
 const savedQueue = await sqliteStore.get('offline_operation_queue', []);
-this.queue = Array.isArray(savedQueue) ? savedQueue : [];
+// Operations queued by an older app version still name the old collections / store codes: upgrade them
+// once so they are written to the migrated data instead of an orphaned old collection.
+const upQ = modernizeQueue(savedQueue);
+this.queue = upQ.list;
 const savedDL = await sqliteStore.get(this._dlKey, []);
-this.deadLetterQueue = Array.isArray(savedDL) ? savedDL : [];
+const upDL = modernizeQueue(savedDL);
+this.deadLetterQueue = upDL.list;
+if (upQ.changed) await this.saveQueue();
+if (upDL.changed) await this.saveDeadLetterQueue();
 if (this.deadLetterQueue.length > 0) {
 this._renderDeadLetterPanel();
 }
