@@ -183,7 +183,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   }
   if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
     const ft = snapshot.formulaStore || 'standard';
-    const tracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+    const tracking = (await sqliteStore.get('tracking')) || {};
     const used = ctx && ctx.unitsUsed ? (ctx.unitsUsed.get(ft) || 0) : 0;
     const issue = getUnitsShortIssue(snapshot.formulaName || ft, Number(snapshot.formulaUnits) + used, (tracking[ft] && tracking[ft].available) || 0);
     if (!issue && ctx && ctx.unitsUsed) ctx.unitsUsed.set(ft, used + Number(snapshot.formulaUnits));
@@ -200,7 +200,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
   if (collectionName === 'factory') {
     if (ctx && !ctx.inv) ctx.inv = JSON.parse(JSON.stringify(ensureArray(await sqliteStore.get('inventory'))));
     const inv = ctx && ctx.inv ? ctx.inv : ensureArray(await sqliteStore.get('inventory'));
-    const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+    const formulas = (await sqliteStore.get('defaults')) || {};
     const idMap = await _loadIdMap();
     const entry = { ...snapshot, materialsUsed: (snapshot.materialsUsed || []).map(m => ({ ...m, id: resolveId(m.id, idMap) })) };
     const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
@@ -247,7 +247,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
   }
   if (collectionName === 'inventory') {
     const hist = ensureArray(await sqliteStore.get('factory'));
-    const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+    const formulas = (await sqliteStore.get('defaults')) || {};
     const r = remapMaterialRefs(hist, formulas, oldId, newId);
     if (r.historyChanged.length) {
       const now = getTimestamp();
@@ -255,13 +255,13 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
       await unifiedSave('factory', hist, null, r.historyChanged.map(h => h.id));
     }
     if (r.formulasChanged) {
-      await sqliteStore.set('factory_default_formulas', formulas);
-      await sqliteStore.set('factory_default_formulas_timestamp', Date.now());
+      await sqliteStore.set('defaults', formulas);
+      await sqliteStore.set('defaults_timestamp', Date.now());
     }
   }
   if (collectionName === 'factory' && cleanRecord) {
     const inv = ensureArray(await sqliteStore.get('inventory'));
-    const formulas = (await sqliteStore.get('factory_default_formulas')) || {};
+    const formulas = (await sqliteStore.get('defaults')) || {};
     const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaType || cleanRecord.store);
     if (updates && updates.length) {
       const now = getTimestamp();
@@ -344,12 +344,12 @@ async function _dropExpensePhoto(expenseId) {
     if (photos[key] === undefined) return;
     delete photos[key];
     await sqliteStore.set('photos', photos);
-    const ts = (await sqliteStore.get('photos_timestamps')) || {};
+    const ts = (await sqliteStore.get('photostamps')) || {};
     delete ts[key];
-    await sqliteStore.set('photos_timestamps', ts);
-    const dk = (await sqliteStore.get('photos_dirty_keys')) || [];
+    await sqliteStore.set('photostamps', ts);
+    const dk = (await sqliteStore.get('photodirty')) || [];
     if (!dk.includes(key)) dk.push(key);
-    await sqliteStore.set('photos_dirty_keys', dk);
+    await sqliteStore.set('photodirty', dk);
   } catch (e) { console.warn('[deletePaymentTxWithLinks] photo cleanup failed', e); }
 }
 export async function deletePaymentTxWithLinks(tx, opts = {}) {

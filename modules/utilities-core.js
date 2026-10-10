@@ -659,11 +659,11 @@ triggerSeamlessBackup();
 export let autoSyncTimeout = null;
 export const AUTO_SYNC_DELAY = 5000;
 export async function invalidateAllCaches() {
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 try {
 const freshSettings = await sqliteStore.get('settings');
 if (freshSettings && typeof freshSettings === 'object') defaultSettings = freshSettings;
-const freshCats = await sqliteStore.get('expense_categories');
+const freshCats = await sqliteStore.get('categories');
 if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllPendingIds === 'function') {
 DeltaSync.loadAllPendingIds().catch(() => {});
 }
@@ -1104,9 +1104,9 @@ const db = ensureArray(await sqliteStore.get('production'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
 const salesCustomers = ensureArray(await sqliteStore.get('customers'));
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('prod')) {
 window.notifyBlocking('Access Denied — Production not in your assigned tabs', 'warning'); return;
 }
@@ -1277,7 +1277,7 @@ export function _dedupDeletionRecordsLocal(arr) {
 }
 export async function registerDeletion(id, collectionName = 'unknown', preDeletedRecord = null) {
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 if (!id) {
 return;
 }
@@ -1428,7 +1428,7 @@ deletionRecords.push(deletionRecord);
 }
 const _deduped = _dedupDeletionRecordsLocal(deletionRecords);
 await sqliteStore.set('deletions', _deduped);
-await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
+await sqliteStore.set('deleted', Array.from(deletedRecordIds));
 triggerAutoSync();
 uploadDeletionToCloud(deletionRecord).catch(e => console.warn('[registerDeletion] cloud upload failed:', _safeErr(e)));
 cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed:', _safeErr(e)));
@@ -1711,7 +1711,7 @@ data: null
 }
 export async function cleanupOldDeletions() {
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
 const validDeletions = deletionRecords.filter(record => record.deletedAt > threeMonthsAgo);
 if (validDeletions.length !== deletionRecords.length) {
@@ -1723,7 +1723,7 @@ for (const r of expiredRecs) {
 }
 expiredIds.forEach(id => deletedRecordIds.delete(id));
 await sqliteStore.set('deletions', validDeletions);
-await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
+await sqliteStore.set('deleted', Array.from(deletedRecordIds));
 }
 if (firebaseDB && typeof currentUser !== 'undefined' && currentUser &&
 !window._firestoreNetworkDisabled && navigator.onLine) {
@@ -2338,8 +2338,8 @@ const filteredEntities = ensureArray(await sqliteStore.get('entities')).filter(e
 await unifiedDelete('entities', filteredEntities, _entityToDel.id, { strict: true }, stampGroup(_entityToDel, _entGroup));
 try {
 const _delEntPh = (await sqliteStore.get('photos')) || {};
-const _delEntPhTs = (await sqliteStore.get('photos_timestamps')) || {};
-const _delEntDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+const _delEntPhTs = (await sqliteStore.get('photostamps')) || {};
+const _delEntDk = (await sqliteStore.get('photodirty')) || [];
 let _delEntPhChanged = false;
 const _entityPhotoKeys = [
 'entity:' + String(currentEntityId),
@@ -2355,8 +2355,8 @@ _delEntPhChanged = true;
 }
 if (_delEntPhChanged) {
 await sqliteStore.set('photos', _delEntPh);
-await sqliteStore.set('photos_timestamps', _delEntPhTs);
-await sqliteStore.set('photos_dirty_keys', _delEntDk);
+await sqliteStore.set('photostamps', _delEntPhTs);
+await sqliteStore.set('photodirty', _delEntDk);
 if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
 }
 } catch(_delEntPhErr) { console.warn('[deleteCurrentEntity] photo cleanup failed', _delEntPhErr); }
@@ -3448,7 +3448,7 @@ export async function savePersonPhoto(prefix, storageKey) {
   try {
     const stored = await sqliteStore.get('photos');
     const photos = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
-    const timestamps = (await sqliteStore.get('photos_timestamps')) || {};
+    const timestamps = (await sqliteStore.get('photostamps')) || {};
     const now = Date.now();
     if (pending) {
       const compressed = await _compressPhoto(pending, 1280, 0.75);
@@ -3459,10 +3459,10 @@ export async function savePersonPhoto(prefix, storageKey) {
       delete timestamps[storageKey];
     }
     await sqliteStore.set('photos', photos);
-    await sqliteStore.set('photos_timestamps', timestamps);
-    const _dirtyKeys = (await sqliteStore.get('photos_dirty_keys')) || [];
+    await sqliteStore.set('photostamps', timestamps);
+    const _dirtyKeys = (await sqliteStore.get('photodirty')) || [];
     if (!_dirtyKeys.includes(storageKey)) _dirtyKeys.push(storageKey);
-    await sqliteStore.set('photos_dirty_keys', _dirtyKeys);
+    await sqliteStore.set('photodirty', _dirtyKeys);
     await sqliteStore.set('photos_timestamp', now);
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   } catch(e) { console.warn('Photo save failed', e); }

@@ -93,8 +93,8 @@ function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       const sv = sanitizeForFirestore(value, depth + 1, seen);
       if (sv !== null && sv !== undefined) {
         if (typeof sv === 'object' && !Array.isArray(sv)) {
-          const isFactorySettings = ['default_formulas','additional_costs','cost_adjustment_factor',
-            'sale_prices','unit_tracking','standard','asaan'].includes(cleanKey);
+          const isFactorySettings = ['defaults','costs','adjustment',
+            'sale_prices','tracking','standard','asaan'].includes(cleanKey);
           if (Object.keys(sv).length > 0 || isFactorySettings) sanitized[cleanKey] = sv;
         } else {
           sanitized[cleanKey] = sv;

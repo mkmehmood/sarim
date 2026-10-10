@@ -110,7 +110,7 @@ describe('cloud migration', () => {
     assert.equal(c.docs.get('sales/s1').supplyStore, 'mahmood');
     assert.equal(c.docs.get('returns/x1').returnStore, 'zubair');
     assert.equal(c.docs.get('factory/f1').store, 'asaan');
-    assert.deepEqual(c.docs.get('app_stores/stores').stores.map(s => s.key), ['zubair', 'mahmood', 'asaan']);
+    assert.deepEqual(c.docs.get('stores/list').stores.map(s => s.key), ['zubair', 'mahmood', 'asaan']);
     assert.equal(r.datasets.production.upToDate, 1);
   });
   it('stamps rewritten records with a server updatedAt (but not merged ones) so delta sync sees them', async () => {
@@ -172,14 +172,14 @@ describe('cloud migration', () => {
     const c = memClient(s);
     await migrateCloud(c, { apply: true });
     assert.equal(c.docs.get('production/p1').store, 'zubair');
-    assert.ok(!c.docs.has('app_stores/stores'));
+    assert.ok(!c.docs.has('stores/list'));
   });
   it('covers every dataset the app knows, under the names the app uses', () => {
     assert.deepEqual(DATASETS.map(([, n]) => n), RECORD_KEYS);
     assert.equal(DATA_KEY_VERSION, APP_VERSION);
   });
 });
-describe('version 4: support collections and documents', () => {
+describe('version 5: support collections and documents', () => {
   const seed4 = () => ({
     'appStores/stores': { stores: [{ key: 'STORE_A', name: 'ZUBAIR' }], stores_timestamp: 5 },
     'factorySettings/config': { formula_store: [{ id: 'f' }], formula_store_timestamp: 9 },
@@ -190,11 +190,11 @@ describe('version 4: support collections and documents', () => {
   it('moves every support document and collection to its snake_case name', async () => {
     const c = memClient(seed4());
     const r = await migrateCloud(c, { apply: true });
-    assert.deepEqual(c.docs.get('app_stores/stores').stores.map(s => s.key), ['zubair']);
-    assert.equal(c.docs.get('app_stores/stores').stores_timestamp > 5, true);
-    assert.deepEqual(c.docs.get('factory_settings/config').formula_store, [{ id: 'f' }]);
-    assert.deepEqual(c.docs.get('expense_categories/categories').categories, ['Fuel']);
-    assert.equal(c.docs.get('activity_log/a1').action, 'x');
+    assert.deepEqual(c.docs.get('stores/list').stores.map(s => s.key), ['zubair']);
+    assert.equal(c.docs.get('stores/list').stores_timestamp > 5, true);
+    assert.deepEqual(c.docs.get('formulas/config').formulas, [{ id: 'f' }]);
+    assert.deepEqual(c.docs.get('categories/list').categories, ['Fuel']);
+    assert.equal(c.docs.get('activity/a1').action, 'x');
     assert.equal(c.docs.get('photos/k1').data, 'AAA');
     assert.ok(c.docs.get('photos/k1').updatedAt, 'photos get a server updatedAt for delta sync');
     assert.equal(c.docs.get('deletions/d1').collection, 'photos');
@@ -208,22 +208,22 @@ describe('version 4: support collections and documents', () => {
     assert.equal(r.supportDeleted, 5);
   });
   it('is idempotent and never overwrites a copy that already exists', async () => {
-    const s = seed4(); s['factory_settings/config'] = { formula_store: [{ id: 'newer' }], formula_store_timestamp: 99 };
+    const s = seed4(); s['formulas/config'] = { formulas: [{ id: 'newer' }], formulas_timestamp: 99 };
     const c = memClient(s);
     await migrateCloud(c, { apply: true });
-    assert.deepEqual(c.docs.get('factory_settings/config').formula_store, [{ id: 'newer' }]);
+    assert.deepEqual(c.docs.get('formulas/config').formulas, [{ id: 'newer' }]);
     assert.equal((await migrateCloud(c, { apply: true })).writes, 0);
   });
   it('the paths the tool writes are exactly the ones the app uses', () => {
-    assert.deepEqual(SUPPORT_DOCS.map(([, n]) => n), [FIRESTORE_SUPPORT_PATHS.appStores, FIRESTORE_SUPPORT_PATHS.factorySettings, FIRESTORE_SUPPORT_PATHS.expenseCategories]);
-    assert.deepEqual(SUPPORT_COLLECTIONS.map(([, n]) => n), [FIRESTORE_SUPPORT_PATHS.activityLog, SUPPORT_STORES.photos.collection]);
+    assert.deepEqual([...new Set(SUPPORT_DOCS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.appStores, FIRESTORE_SUPPORT_PATHS.factorySettings, FIRESTORE_SUPPORT_PATHS.expenseCategories]);
+    assert.deepEqual([...new Set(SUPPORT_COLLECTIONS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.activityLog, SUPPORT_STORES.photos.collection]);
   });
-  it('converts a version-3 backup: renames the support fields and re-stamps it as version 4', () => {
+  it('converts a version-3 backup: renames the support fields and re-stamps it as version 5', () => {
     const { data, changed } = convertBackup({ dataKeyVersion: 3, production: [], person_photos: { a: 1 }, person_photos_timestamps: { a: 2 }, deleted_records: ['x'], deletion_records: [{ id: 'x' }] });
     assert.ok(changed);
-    assert.deepEqual([data.photos, data.photos_timestamps, data.deletion_ids, data.deletions], [{ a: 1 }, { a: 2 }, ['x'], [{ id: 'x' }]]);
+    assert.deepEqual([data.photos, data.photostamps, data.deleted, data.deletions], [{ a: 1 }, { a: 2 }, ['x'], [{ id: 'x' }]]);
     for (const k of ['person_photos', 'person_photos_timestamps', 'deleted_records', 'deletion_records']) assert.ok(!(k in data), k);
-    assert.equal(data.dataKeyVersion, 4);
+    assert.equal(data.dataKeyVersion, DATA_KEY_VERSION);
   });
 });
 describe('backup conversion', () => {
@@ -236,7 +236,7 @@ describe('backup conversion', () => {
     assert.equal(changed, true);
     assert.deepEqual(RECORD_KEYS.map(k => Array.isArray(data[k]) ? data[k].map(x => x.id ?? x) : data[k]), [[1], [3], [2], [4], [5], [6], [7], [8], [9], [10], [12], [11]]);
     assert.equal(data.production[0].store, 'zubair'); assert.equal(data.sales[0].supplyStore, 'mahmood'); assert.equal(data.factory[0].store, 'standard');
-    assert.equal(data.app_stores[0].key, 'zubair'); assert.deepEqual(data.expense_categories, ['Fuel']);
+    assert.equal(data.stores[0].key, 'zubair'); assert.deepEqual(data.categories, ['Fuel']);
     assert.deepEqual(Object.keys(data.settings.production), ['zubair']);
     assert.equal(data.dataKeyVersion, DATA_KEY_VERSION);
     for (const old of ['mfg', 'customerSales', 'repSales', 'appStores', 'expenseCategories']) assert.ok(!(old in data), old);
@@ -330,5 +330,44 @@ describe('support documents that already exist under the new name', () => {
     assert.deepEqual(p.categories, ['Rent', 'Fuel']);
     assert.equal(p.formula_slots, undefined);
     assert.deepEqual(mergeSupportFields({ categories: ['x'], categories_timestamp: 1 }, { categories: ['x'], categories_timestamp: 1 }), {});
+  });
+});
+
+describe('version 5: single-word names', () => {
+  const seed5 = () => ({
+    'app_stores/stores': { stores: [{ key: 'zubair', name: 'ZUBAIR' }], stores_timestamp: 5 },
+    'factory_settings/config': { default_formulas: { standard: [] }, default_formulas_timestamp: 4, additional_costs: { standard: 1 }, formula_store: [{ id: 'f' }], formula_store_timestamp: 9, formula_slots: { standard: 'f' }, formula_slots_timestamp: 9, unit_tracking: { a: 1 } },
+    'expense_categories/categories': { categories: ['Fuel'], categories_timestamp: 3 },
+    'activity_log/a1': { action: 'x' },
+    'settings/team': { sales_reps: ['Ali'], user_roles: { Ali: 'rep' }, updated_at: 1 },
+    'settings/config': { sales_reps: ['Ali'], sales_reps_timestamp: 7, settings: {} },
+  });
+  it('moves version-4 documents to the single-word names and renames their fields', async () => {
+    const c = memClient(seed5());
+    await migrateCloud(c, { apply: true });
+    assert.deepEqual(c.docs.get('stores/list').stores.map(s => s.key), ['zubair']);
+    const f = c.docs.get('formulas/config');
+    assert.deepEqual([f.defaults, f.costs, f.formulas, f.slots, f.tracking], [{ standard: [] }, { standard: 1 }, [{ id: 'f' }], { standard: 'f' }, { a: 1 }]);
+    assert.deepEqual([f.defaults_timestamp, f.formulas_timestamp, f.slots_timestamp], [4, 9, 9]);
+    for (const old of ['default_formulas', 'formula_store', 'formula_slots', 'unit_tracking', 'additional_costs']) assert.ok(!(old in f), old);
+    assert.deepEqual(c.docs.get('categories/list').categories, ['Fuel']);
+    assert.equal(c.docs.get('activity/a1').action, 'x');
+    const t = c.docs.get('settings/team');
+    assert.deepEqual([t.reps, t.roles, 'sales_reps' in t, 'user_roles' in t], [['Ali'], { Ali: 'rep' }, false, false]);
+    const sc = c.docs.get('settings/config');
+    assert.deepEqual([sc.reps, sc.reps_timestamp, 'sales_reps' in sc], [['Ali'], 7, false]);
+  });
+  it('keeps the old documents until --delete-old, and a second run changes nothing', async () => {
+    const c = memClient(seed5());
+    await migrateCloud(c, { apply: true });
+    assert.ok(c.docs.has('app_stores/stores') && c.docs.has('factory_settings/config') && c.docs.has('activity_log/a1'));
+    assert.equal((await migrateCloud(c, { apply: true })).writes, 0);
+  });
+  it('converts a version-4 backup to the single-word field names without losing any value', () => {
+    const { data } = convertBackup({ dataKeyVersion: 4, expense_categories: ['A'], expense_categories_timestamp: 2, app_stores: [{ key: 'zubair', name: 'ZUBAIR' }], factory_default_formulas: { s: 1 }, factory_formula_store: [{ id: 1 }], factory_formula_slots: { standard: 1 }, factory_unit_tracking: { u: 1 }, factory_additional_costs: { c: 1 }, factory_cost_adjustment_factor: { a: 1 }, deletion_ids: ['d'], erased_deletion_ids: ['e'], photos_timestamps: { p: 1 }, photos_dirty_keys: ['p'], sales_reps_list: ['R'], user_roles_list: { R: 'x' }, current_rep_profile: 'admin' });
+    assert.deepEqual([data.categories, data.categories_timestamp, data.defaults, data.formulas, data.slots, data.tracking, data.costs, data.adjustment, data.deleted, data.erased, data.photostamps, data.photodirty, data.reps, data.roles, data.profile],
+      [['A'], 2, { s: 1 }, [{ id: 1 }], { standard: 1 }, { u: 1 }, { c: 1 }, { a: 1 }, ['d'], ['e'], { p: 1 }, ['p'], ['R'], { R: 'x' }, 'admin']);
+    assert.equal(data.stores[0].key, 'zubair');
+    assert.equal(data.dataKeyVersion, 5);
   });
 });

@@ -332,8 +332,8 @@ const customerSales = ensureArray(await sqliteStore.get('sales'));
 const repSales = ensureArray(await sqliteStore.get('rep'));
 const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const stockReturns = ensureArray(await sqliteStore.get('returns'));
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 currentCompMode = compMode; window.currentCompMode = currentCompMode;
 ['week', 'month', 'year', 'all'].forEach(m => {
 const btn = document.getElementById(`comp-${m}-btn`);
@@ -720,9 +720,9 @@ const _radBatch = await sqliteStore.getBatch([
 'production','sales','rep','calculator',
 'transactions','entities','expenses','returns',
 'inventory','factory',
-'factory_default_formulas','factory_additional_costs',
-'factory_cost_adjustment_factor',
-'factory_unit_tracking','deletion_ids',
+'defaults','costs',
+'adjustment',
+'tracking','deleted',
 ]);
 const db = ensureArray(_radBatch.get('production'));
 const customerSales = ensureArray(_radBatch.get('sales'));
@@ -734,11 +734,11 @@ const expenseRecords = ensureArray(_radBatch.get('expenses'));
 const stockReturns = ensureArray(_radBatch.get('returns'));
 const factoryInventoryData = ensureArray(_radBatch.get('inventory'));
 const factoryProductionHistory = ensureArray(_radBatch.get('factory'));
-const factoryDefaultFormulas = _radBatch.get('factory_default_formulas') || {};
-const factoryAdditionalCosts = _radBatch.get('factory_additional_costs') || {};
-const factoryCostAdjustmentFactor = _radBatch.get('factory_cost_adjustment_factor') || {};
-const factoryUnitTracking = _radBatch.get('factory_unit_tracking') || {};
-const deletedRecordIds = new Set(ensureArray(_radBatch.get('deletion_ids')));
+const factoryDefaultFormulas = _radBatch.get('defaults') || {};
+const factoryAdditionalCosts = _radBatch.get('costs') || {};
+const factoryCostAdjustmentFactor = _radBatch.get('adjustment') || {};
+const factoryUnitTracking = _radBatch.get('tracking') || {};
+const deletedRecordIds = new Set(ensureArray(_radBatch.get('deleted')));
 await Promise.all([
   (async () => {
     try { await syncFactoryProductionStats(); } catch (e) { console.error('syncFactoryProductionStats failed.', _safeErr(e)); }
@@ -1073,7 +1073,7 @@ export async function deleteSalesEntry(id) {
 const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
 const db = ensureArray(await sqliteStore.get('production'));
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 if (!id || !validateUUID(id)) {
 window.notifyBlocking('Invalid sales entry ID', 'error');
@@ -1194,7 +1194,7 @@ window.notifyBlocking("Failed to delete entry. Please try again.", 'error');
 export async function revertSpecificSalesEntries(saleIds) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
 const db = ensureArray(await sqliteStore.get('production'));
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 if (!saleIds || saleIds.length === 0) return 0;
 let revertedCount = 0;
 saleIds.forEach(saleId => {
@@ -1458,20 +1458,20 @@ export async function refreshPaymentTab(force = false) {
 await _ensureSupplierInvoices();
 const _rptBatch = await sqliteStore.getBatch([
 'production','sales','calculator',
-'inventory','factory','factory_unit_tracking',
+'inventory','factory','tracking',
 'entities','transactions','expenses',
-'deletion_ids','deletions',
+'deleted','deletions',
 ]);
 const db = ensureArray(_rptBatch.get('production'));
 const customerSales = ensureArray(_rptBatch.get('sales'));
 const salesHistory = ensureArray(_rptBatch.get('calculator'));
 const factoryInventoryData = ensureArray(_rptBatch.get('inventory'));
 const factoryProductionHistory = ensureArray(_rptBatch.get('factory'));
-const factoryUnitTracking = _rptBatch.get('factory_unit_tracking') || {};
+const factoryUnitTracking = _rptBatch.get('tracking') || {};
 const paymentEntities = ensureArray(_rptBatch.get('entities'));
 const paymentTransactions = ensureArray(_rptBatch.get('transactions'));
 const expenseRecords = ensureArray(_rptBatch.get('expenses'));
-const deletedRecordIds = new Set(ensureArray(_rptBatch.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(_rptBatch.get('deleted')));
 const deletionRecords = ensureArray(_rptBatch.get('deletions'));
 try {
 if (sqliteStore && sqliteStore.getBatch) {
@@ -1479,9 +1479,9 @@ const allKeys = [
 'expenses', 'entities', 'transactions',
 'production', 'sales', 'calculator',
 'inventory', 'factory',
-'factory_unit_tracking',
-'factory_default_formulas', 'factory_additional_costs',
-'factory_cost_adjustment_factor'
+'tracking',
+'defaults', 'costs',
+'adjustment'
 ];
 const paymentDataMap = await sqliteStore.getBatch(allKeys);
 if (paymentDataMap.get('expenses')) {
@@ -1734,11 +1734,11 @@ if (!store || typeof store.get !== 'function') {
   setTimeout(initPaymentData, 200);
   return;
 }
-const expenseCategories = ensureArray(await store.get('expense_categories'));
+const expenseCategories = ensureArray(await store.get('categories'));
 const paymentEntities = ensureArray(await store.get('entities'));
 const paymentTransactions = ensureArray(await store.get('transactions'));
 const expenseRecords = ensureArray(await store.get('expenses'));
-const deletedRecordIds = new Set(ensureArray(await store.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await store.get('deleted')));
 try {
 let localEntities = [...paymentEntities];
 let localTransactions = [...paymentTransactions];
@@ -1834,15 +1834,15 @@ if (!store || typeof store.get !== 'function') {
   return;
 }
 const expenseRecords = await store.get('expenses') || [];
-let savedCategories = await store.get('expense_categories') || [];
+let savedCategories = await store.get('categories') || [];
 const categoriesFromRecords = [...new Set(
 expenseRecords
 .filter(e => e && e.name && typeof e.name === 'string')
 .map(e => e.name)
 )];
 const expCatMerged = [...new Set([...savedCategories, ...categoriesFromRecords])];
-await store.set('expense_categories', expCatMerged);
-if (expCatMerged.length !== (Array.isArray(savedCategories) ? savedCategories.length : 0)) await store.set('expense_categories_timestamp', Date.now());
+await store.set('categories', expCatMerged);
+if (expCatMerged.length !== (Array.isArray(savedCategories) ? savedCategories.length : 0)) await store.set('categories_timestamp', Date.now());
 const expenseDateInput = document.getElementById('expenseDate');
 if (expenseDateInput) {
 expenseDateInput.value = localDateStr();
@@ -1851,7 +1851,7 @@ renderRecentExpenses();
 }, 300);
 export async function handleExpenseSearch() {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const input = document.getElementById('expenseName');
@@ -2025,7 +2025,7 @@ const o = ed.original;
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 const origCategory = o.isExpense ? 'operating' : o.type;
 if (v.category !== origCategory) {
 window.notifyBlocking('The type cannot be changed while editing. Delete and re-enter it instead.', 'warning');
@@ -2082,8 +2082,8 @@ if (e) await unifiedSave('expenses', expenseRecords, e);
 await unifiedSave('transactions', paymentTransactions, t);
 if (o.isExpense && !expenseCategories.includes(v.name)) {
 expenseCategories.push(v.name);
-await sqliteStore.set('expense_categories', expenseCategories);
-await sqliteStore.set('expense_categories_timestamp', Date.now());
+await sqliteStore.set('categories', expenseCategories);
+await sqliteStore.set('categories_timestamp', Date.now());
 }
 notifyDataChange('payments');
 notifyDataChange('expenses');
@@ -2140,7 +2140,7 @@ export function saveExpense(...a) { return confirmGuard('saveExpense', () => run
 async function _saveExpenseImpl() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
@@ -2229,12 +2229,12 @@ if (!expenseCategories.includes(name)) {
 expenseCategories.push(name);
 }
 await unifiedSave('expenses', expenseRecords, expense);
-await sqliteStore.set('expense_categories', expenseCategories);
-await sqliteStore.set('expense_categories_timestamp', Date.now());
+await sqliteStore.set('categories', expenseCategories);
+await sqliteStore.set('categories_timestamp', Date.now());
 notifyDataChange('expenses');
 emitSyncUpdate({
 expenses: null,
-expense_categories: null
+categories: null
 });
 if (window._expensePendingPhoto) {
   try {
@@ -2242,12 +2242,12 @@ if (window._expensePendingPhoto) {
     const _storedPh = (await sqliteStore.get('photos')) || {};
     _storedPh[_photoKey] = await _compressPhoto(window._expensePendingPhoto, 1280, 0.75);
     await sqliteStore.set('photos', _storedPh);
-    const _expPhTs = (await sqliteStore.get('photos_timestamps')) || {};
+    const _expPhTs = (await sqliteStore.get('photostamps')) || {};
     _expPhTs[_photoKey] = Date.now();
-    await sqliteStore.set('photos_timestamps', _expPhTs);
-    const _dk = (await sqliteStore.get('photos_dirty_keys')) || [];
+    await sqliteStore.set('photostamps', _expPhTs);
+    const _dk = (await sqliteStore.get('photodirty')) || [];
     if (!_dk.includes(_photoKey)) _dk.push(_photoKey);
-    await sqliteStore.set('photos_dirty_keys', _dk);
+    await sqliteStore.set('photodirty', _dk);
     await sqliteStore.set('photos_timestamp', Date.now());
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   } catch(_pe) { console.warn('Expense photo save failed', _pe); }
@@ -2279,12 +2279,12 @@ if (window._expensePendingPhoto) {
     const _payStoredPh = (await sqliteStore.get('photos')) || {};
     _payStoredPh[_payPhotoKey] = await _compressPhoto(window._expensePendingPhoto, 1280, 0.75);
     await sqliteStore.set('photos', _payStoredPh);
-    const _payPhTs = (await sqliteStore.get('photos_timestamps')) || {};
+    const _payPhTs = (await sqliteStore.get('photostamps')) || {};
     _payPhTs[_payPhotoKey] = Date.now();
-    await sqliteStore.set('photos_timestamps', _payPhTs);
-    const _payDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+    await sqliteStore.set('photostamps', _payPhTs);
+    const _payDk = (await sqliteStore.get('photodirty')) || [];
     if (!_payDk.includes(_payPhotoKey)) _payDk.push(_payPhotoKey);
-    await sqliteStore.set('photos_dirty_keys', _payDk);
+    await sqliteStore.set('photodirty', _payDk);
     await sqliteStore.set('photos_timestamp', Date.now());
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   } catch(_ppe) { console.warn('Expense photo save failed', _ppe); }
@@ -2483,7 +2483,7 @@ factoryInventoryData.push(...inventorySnapshot);
 try {
 await sqliteStore.setBatch([
 ['expenses', expenseRecords],
-['expense_categories', expenseCategories],
+['categories', expenseCategories],
 ['entities', paymentEntities],
 ['transactions', paymentTransactions],
 ['inventory', factoryInventoryData]
@@ -2552,10 +2552,10 @@ export function renderRecentExpenses() {
 renderExpenseTable();
 }
 export async function renderExpenseTable(page = 1) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'))
   .filter(item => item && item.id && !deletedRecordIds.has(String(item.id)));
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 const tbody = document.getElementById('expense-table-body');
 const totalEl = document.getElementById('expense-table-total');
 const totalAllEl = document.getElementById('total-expenses-all');
@@ -2663,7 +2663,7 @@ fragment.appendChild(tr);
 tbody.replaceChildren(fragment);
 }
 export async function renderUnifiedTable(page = 1) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _notDeleted = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory')).filter(_notDeleted);
 const paymentEntities = ensureArray(await sqliteStore.get('entities')).filter(_notDeleted);
@@ -3078,7 +3078,7 @@ html += `<div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 4p
 container.innerHTML = html;
 }
 export async function exportUnifiedData() {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _notDeleted = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory')).filter(_notDeleted);
 const paymentEntities = ensureArray(await sqliteStore.get('entities')).filter(_notDeleted);
@@ -3631,8 +3631,8 @@ _bulkPhotoKeysToDelete.push('expense:' + exp.id);
 }
 try {
   const _bulkPh = (await sqliteStore.get('photos')) || {};
-  const _bulkPhTs = (await sqliteStore.get('photos_timestamps')) || {};
-  const _bulkDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+  const _bulkPhTs = (await sqliteStore.get('photostamps')) || {};
+  const _bulkDk = (await sqliteStore.get('photodirty')) || [];
   let _bulkPhChanged = false;
   for (const _bKey of _bulkPhotoKeysToDelete) {
     if (_bulkPh[_bKey] !== undefined) {
@@ -3644,8 +3644,8 @@ try {
   }
   if (_bulkPhChanged) {
     await sqliteStore.set('photos', _bulkPh);
-    await sqliteStore.set('photos_timestamps', _bulkPhTs);
-    await sqliteStore.set('photos_dirty_keys', _bulkDk);
+    await sqliteStore.set('photostamps', _bulkPhTs);
+    await sqliteStore.set('photodirty', _bulkDk);
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   }
 } catch(_bulkPhErr) { console.warn('[deleteAllExpenses] photo batch cleanup failed', _bulkPhErr); }
@@ -3892,12 +3892,12 @@ try {
   if (_delPhotos[_delPhotoKey] !== undefined) {
     delete _delPhotos[_delPhotoKey];
     await sqliteStore.set('photos', _delPhotos);
-    const _delPhTs = (await sqliteStore.get('photos_timestamps')) || {};
+    const _delPhTs = (await sqliteStore.get('photostamps')) || {};
     delete _delPhTs[_delPhotoKey];
-    await sqliteStore.set('photos_timestamps', _delPhTs);
-    const _delDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+    await sqliteStore.set('photostamps', _delPhTs);
+    const _delDk = (await sqliteStore.get('photodirty')) || [];
     if (!_delDk.includes(_delPhotoKey)) _delDk.push(_delPhotoKey);
-    await sqliteStore.set('photos_dirty_keys', _delDk);
+    await sqliteStore.set('photodirty', _delDk);
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   }
 } catch(_delPhErr) { console.warn('[deleteExpense] photo cleanup failed', _delPhErr); }
@@ -3959,7 +3959,7 @@ export function closeDataMenu() {
 }
 export const _recoveredThisSession = new Set();
 export async function purgeRecoveredId(id, collectionName, cleanRecord, newId) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   const sid    = String(id);
   const newSid = newId ? String(newId) : sid;
@@ -3975,8 +3975,8 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
     await sqliteStore.set('deletions', prunedDeletionRecords);
   } catch(e) { console.warn('[RecycleBin] purge SQLite deletions failed:', _safeErr(e)); }
   try {
-    await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
-  } catch(e) { console.warn('[RecycleBin] purge SQLite deletion_ids failed:', _safeErr(e)); }
+    await sqliteStore.set('deleted', Array.from(deletedRecordIds));
+  } catch(e) { console.warn('[RecycleBin] purge SQLite deleted failed:', _safeErr(e)); }
   if (typeof OfflineQueue !== 'undefined') {
     const _isStaleDeleteOp = (item) => {
       const op = item.operation || {};
@@ -4106,13 +4106,13 @@ async function _refreshFactoryAfterRecover(collections) {
 async function _clearErasedIds(ids) {
   try {
     const gone = new Set(ids.map(String));
-    const left = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String).filter(i => !gone.has(i));
-    await sqliteStore.set('erased_deletion_ids', left);
+    const left = ensureArray(await sqliteStore.get('erased')).map(String).filter(i => !gone.has(i));
+    await sqliteStore.set('erased', left);
   } catch (e) { console.warn('[RecycleBin] clear erased ids failed', _safeErr(e)); }
 }
 export async function flushErasedTombstones() {
   try {
-    const pending = ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String);
+    const pending = ensureArray(await sqliteStore.get('erased')).map(String);
     if (!pending.length || !firebaseDB || !currentUser) return;
     if (window._firestoreNetworkDisabled || navigator.onLine === false) return;
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -4257,7 +4257,7 @@ async function recoverCalcEntry(deletedId, snap) {
   }
 }
 export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false, _opts = {}) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
@@ -4396,13 +4396,13 @@ const salesHistory = ensureArray(await sqliteStore.get('calculator'));
         const _edata = ((_etomb && _etomb._photos) || {})['entity:' + oldId] || _eph['entity:' + oldId] || null;
         if (_edata) {
           _eph['entity:' + newId] = _edata;
-          const _ets = (await sqliteStore.get('photos_timestamps')) || {};
-          const _edk = (await sqliteStore.get('photos_dirty_keys')) || [];
+          const _ets = (await sqliteStore.get('photostamps')) || {};
+          const _edk = (await sqliteStore.get('photodirty')) || [];
           _ets['entity:' + newId] = Date.now();
           if (!_edk.includes('entity:' + newId)) _edk.push('entity:' + newId);
           await sqliteStore.set('photos', _eph);
-          await sqliteStore.set('photos_timestamps', _ets);
-          await sqliteStore.set('photos_dirty_keys', _edk);
+          await sqliteStore.set('photostamps', _ets);
+          await sqliteStore.set('photodirty', _edk);
           await sqliteStore.set('photos_timestamp', Date.now());
         }
       } catch (_ephErr) { console.warn('[recoverRecord] entity photo restore failed', _ephErr); }
@@ -4410,8 +4410,8 @@ const salesHistory = ensureArray(await sqliteStore.get('calculator'));
     if (collectionName === 'expenses' || collectionName === 'transactions') {
       try {
         const _recPh = (await sqliteStore.get('photos')) || {};
-        const _recPhTs = (await sqliteStore.get('photos_timestamps')) || {};
-        const _recDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+        const _recPhTs = (await sqliteStore.get('photostamps')) || {};
+        const _recDk = (await sqliteStore.get('photodirty')) || [];
         const _tombstone = (Array.isArray(localDeletionRecords) ? localDeletionRecords : deletionRecords).find(r => r.id === deletedId || r.recordId === deletedId);
         const _stash = (_tombstone && _tombstone._photos) || {};
         const _now = Date.now();
@@ -4441,8 +4441,8 @@ const salesHistory = ensureArray(await sqliteStore.get('calculator'));
           if (linkedData && !_recPh[linkedKey]) _put(linkedKey, linkedData);
         }
         await sqliteStore.set('photos', _recPh);
-        await sqliteStore.set('photos_timestamps', _recPhTs);
-        await sqliteStore.set('photos_dirty_keys', _recDk);
+        await sqliteStore.set('photostamps', _recPhTs);
+        await sqliteStore.set('photodirty', _recDk);
         await sqliteStore.set('photos_timestamp', _now);
       } catch(_recPhErr) { console.warn('[recoverRecord] photo restore failed', _recPhErr); }
     }
@@ -4569,7 +4569,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
   container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</div>';
   try {
     let localDeletionRecords = ensureArray(await sqliteStore.get('deletions'));
-    const _erasedPending = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
+    const _erasedPending = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
     localDeletionRecords = localDeletionRecords.filter(r =>
       !_recoveredThisSession.has(r.id) && !_recoveredThisSession.has(r.recordId) &&
       !_erasedPending.has(String(r.id)) && !_erasedPending.has(String(r.recordId))
@@ -4853,7 +4853,7 @@ export async function attemptRecoverRecord(id, collectionName) {
   return _withRecycleLock(() => _attemptRecoverRecordImpl(id, collectionName));
 }
 async function _attemptRecoverRecordImpl(id, collectionName) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   const tabKey = RECYCLE_COLLECTION_TO_TAB[collectionName] || 'tab_payments';
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
@@ -4962,16 +4962,16 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
   if (!id || !collectionName) return false;
   const sid = String(id);
   try {
-    const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+    const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
     deletedRecordIds.delete(sid);
-    await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
+    await sqliteStore.set('deleted', Array.from(deletedRecordIds));
     const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
     const ownTombstone = deletionRecords.find(r => String(r.id) === sid || String(r.recordId || r.id) === sid);
     const pruned = deletionRecords.filter(r => String(r.id) !== sid && String(r.recordId || r.id) !== sid);
     await sqliteStore.set('deletions', pruned);
-    const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
+    const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
     _erasedIds.add(sid);
-    await sqliteStore.set('erased_deletion_ids', Array.from(_erasedIds));
+    await sqliteStore.set('erased', Array.from(_erasedIds));
     _recoveredThisSession.add(sid);
     const sqliteKey = getSQLiteKey(collectionName);
     if (sqliteKey) {
@@ -5046,12 +5046,12 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
         if (_hdLocalPh[_hdLocalPhKey] !== undefined) {
           delete _hdLocalPh[_hdLocalPhKey];
           await sqliteStore.set('photos', _hdLocalPh);
-          const _hdLocalTs = (await sqliteStore.get('photos_timestamps')) || {};
+          const _hdLocalTs = (await sqliteStore.get('photostamps')) || {};
           delete _hdLocalTs[_hdLocalPhKey];
-          await sqliteStore.set('photos_timestamps', _hdLocalTs);
-          const _hdDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+          await sqliteStore.set('photostamps', _hdLocalTs);
+          const _hdDk = (await sqliteStore.get('photodirty')) || [];
           const _hdDkFiltered = _hdDk.filter(k => k !== _hdLocalPhKey);
-          if (_hdDkFiltered.length !== _hdDk.length) await sqliteStore.set('photos_dirty_keys', _hdDkFiltered);
+          if (_hdDkFiltered.length !== _hdDk.length) await sqliteStore.set('photodirty', _hdDkFiltered);
         }
       } catch(_hdPhErr) { console.warn('[hardDeleteRecord] photo local cleanup failed', _hdPhErr); }
     }
@@ -5121,12 +5121,12 @@ async function _attemptHardDeleteImpl(id, collectionName) {
 window.hardDeleteRecord = hardDeleteRecord;
 window.attemptHardDeleteRecord = attemptHardDeleteRecord;
 export async function triggerLocalBackup() {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-const appStoresSnapshot = ensureArray(await sqliteStore.get('app_stores'));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
+const appStoresSnapshot = ensureArray(await sqliteStore.get('stores'));
 const db = ensureArray(await sqliteStore.get('production'));
 const customerSales = ensureArray(await sqliteStore.get('sales'));
 const repSales = ensureArray(await sqliteStore.get('rep'));
@@ -5139,7 +5139,7 @@ const stockReturns = ensureArray(await sqliteStore.get('returns'));
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 closeDataMenu();
 if (!currentUser) {
 showToast('Please sign in to create a backup.', 'error');
@@ -5156,17 +5156,17 @@ clients: await sqliteStore.get('clients', []),
 customers: await sqliteStore.get('customers', []),
 inventory: factoryInventoryData,
 factory: factoryProductionHistory,
-factory_default_formulas: factoryDefaultFormulas,
-factory_additional_costs: factoryAdditionalCosts,
-factory_cost_adjustment_factor: factoryCostAdjustmentFactor,
-factory_unit_tracking: factoryUnitTracking,
-app_stores: appStoresSnapshot,
+defaults: factoryDefaultFormulas,
+costs: factoryAdditionalCosts,
+adjustment: factoryCostAdjustmentFactor,
+tracking: factoryUnitTracking,
+stores: appStoresSnapshot,
 entities: paymentEntities,
 transactions: paymentTransactions,
 expenses: await sqliteStore.get('expenses', []),
 returns: stockReturns,
 settings: await sqliteStore.get('settings', defaultSettings),
-deletion_ids: Array.from(deletedRecordIds),
+deleted: Array.from(deletedRecordIds),
 ...(await collectAuxBackupFields(sqliteStore)),
 _meta: { dataKeyVersion: DATA_KEY_VERSION, encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 },
 backupMetadata: {
@@ -5202,10 +5202,10 @@ const paymentEntities = ensureArray(await sqliteStore.get('entities'));
 const paymentTransactions = ensureArray(await sqliteStore.get('transactions'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const file = event.target.files[0];
 event.target.value = '';
 if (!file) return;
@@ -5246,20 +5246,20 @@ entities: data.entities || [],
 transactions: data.transactions || [],
 returns: data.returns || [],
 expenses: data.expenses || [],
-factory_default_formulas: data.factory_default_formulas || { standard: [], asaan: [] },
-factory_additional_costs: data.factory_additional_costs || { standard: 0, asaan: 0 },
-factory_cost_adjustment_factor: data.factory_cost_adjustment_factor || { standard: 1, asaan: 1 },
-factory_unit_tracking: data.factory_unit_tracking || {
+defaults: data.defaults || { standard: [], asaan: [] },
+costs: data.costs || { standard: 0, asaan: 0 },
+adjustment: data.adjustment || { standard: 1, asaan: 1 },
+tracking: data.tracking || {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 },
-app_stores: data.app_stores || [],
+stores: data.stores || [],
 settings: data.settings || data.settings || {},
-deletion_ids: data.deletion_ids || [],
+deleted: data.deleted || [],
 appMode: data.appMode || 'admin',
 repProfile: data.repProfile || salesRepsList[0] || 'NORAN SHAH'
 };
-const fileTombstones = new Set(normalized.deletion_ids);
+const fileTombstones = new Set(normalized.deleted);
 const filterAlive = (arr) => {
 if (!Array.isArray(arr)) return [];
 return arr.filter(item => {
@@ -5308,10 +5308,10 @@ buildDeltaQuery(userRef.collection('clients'), 'clients'),
 buildDeltaQuery(userRef.collection('customers'), 'customers'),
 buildDeltaQuery(userRef.collection('expenses'), 'expenses'),
 userRef.collection('settings').doc('config').get(),
-userRef.collection('factory_settings').doc('config').get(),
-userRef.collection('expense_categories').doc('categories').get(),
+userRef.collection('formulas').doc('config').get(),
+userRef.collection('categories').doc('list').get(),
 userRef.collection('deletions').get(),
-userRef.collection('app_stores').doc('stores').get()
+userRef.collection('stores').doc('list').get()
 ]);
 const cloudData = {
 production: prodSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => ({ id: doc.id, ...doc.data() })),
@@ -5329,30 +5329,30 @@ expenses: expensesSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.dat
 };
 if (factorySettingsSnap && factorySettingsSnap.exists) {
 const factoryData = factorySettingsSnap.data();
-cloudData.factory_default_formulas = factoryData.default_formulas || { standard: [], asaan: [] };
-cloudData.factory_additional_costs = factoryData.additional_costs || { standard: 0, asaan: 0 };
-cloudData.factory_cost_adjustment_factor = factoryData.cost_adjustment_factor || { standard: 1, asaan: 1 };
-cloudData.factory_unit_tracking = factoryData.unit_tracking || {
+cloudData.defaults = factoryData.defaults || { standard: [], asaan: [] };
+cloudData.costs = factoryData.costs || { standard: 0, asaan: 0 };
+cloudData.adjustment = factoryData.adjustment || { standard: 1, asaan: 1 };
+cloudData.tracking = factoryData.tracking || {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 };
 } else {
-cloudData.factory_default_formulas = { standard: [], asaan: [] };
-cloudData.factory_additional_costs = { standard: 0, asaan: 0 };
-cloudData.factory_cost_adjustment_factor = { standard: 1, asaan: 1 };
-cloudData.factory_unit_tracking = {
+cloudData.defaults = { standard: [], asaan: [] };
+cloudData.costs = { standard: 0, asaan: 0 };
+cloudData.adjustment = { standard: 1, asaan: 1 };
+cloudData.tracking = {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 };
 }
-cloudData.app_stores = (appStoresSnap && appStoresSnap.exists && Array.isArray(appStoresSnap.data().stores)) ? appStoresSnap.data().stores : [];
+cloudData.stores = (appStoresSnap && appStoresSnap.exists && Array.isArray(appStoresSnap.data().stores)) ? appStoresSnap.data().stores : [];
 if (expenseCategoriesSnap && expenseCategoriesSnap.exists) {
 const categoriesData = expenseCategoriesSnap.data();
-cloudData.expense_categories = categoriesData.categories || [];
+cloudData.categories = categoriesData.categories || [];
 } else {
-cloudData.expense_categories = [];
+cloudData.categories = [];
 }
-cloudData.deletion_ids = deletionsSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => {
+cloudData.deleted = deletionsSnap.docs.filter(doc => doc.id !== '_placeholder_' && !doc.data()._placeholder).map(doc => {
 const data = doc.data();
 return data.recordId || doc.id;
 });
@@ -5416,9 +5416,9 @@ entities: mergeArrays(cloudData.entities, normalized.entities),
 transactions: mergeArrays(cloudData.transactions, normalized.transactions),
 returns: mergeArrays(cloudData.returns, normalized.returns),
 expenses: mergeArrays(cloudData.expenses, normalized.expenses),
-factory_default_formulas: (() => {
-const cloudFormulas = cloudData.factory_default_formulas;
-const fileFormulas = normalized.factory_default_formulas;
+defaults: (() => {
+const cloudFormulas = cloudData.defaults;
+const fileFormulas = normalized.defaults;
 const fileHasData = fileFormulas &&
 ((Array.isArray(fileFormulas.standard) && fileFormulas.standard.length > 0) ||
 (Array.isArray(fileFormulas.asaan) && fileFormulas.asaan.length > 0));
@@ -5429,27 +5429,27 @@ if (fileHasData) return fileFormulas;
 if (cloudHasData) return cloudFormulas;
 return { standard: [], asaan: [] };
 })(),
-factory_additional_costs: (() => {
-const cloud = cloudData.factory_additional_costs;
-const file = normalized.factory_additional_costs;
+costs: (() => {
+const cloud = cloudData.costs;
+const file = normalized.costs;
 const fileHasData = file && (parseFloat(file.standard) > 0 || parseFloat(file.asaan) > 0);
 const cloudHasData = cloud && (parseFloat(cloud.standard) > 0 || parseFloat(cloud.asaan) > 0);
 if (fileHasData) return file;
 if (cloudHasData) return cloud;
 return { standard: 0, asaan: 0 };
 })(),
-factory_cost_adjustment_factor: (() => {
-const cloud = cloudData.factory_cost_adjustment_factor;
-const file = normalized.factory_cost_adjustment_factor;
+adjustment: (() => {
+const cloud = cloudData.adjustment;
+const file = normalized.adjustment;
 const fileHasData = file && (parseFloat(file.standard) !== 1 || parseFloat(file.asaan) !== 1);
 const cloudHasData = cloud && (parseFloat(cloud.standard) !== 1 || parseFloat(cloud.asaan) !== 1);
 if (fileHasData) return file;
 if (cloudHasData) return cloud;
 return { standard: 1, asaan: 1 };
 })(),
-app_stores: (() => {
-const cloud = Array.isArray(cloudData.app_stores) ? cloudData.app_stores : [];
-const file = Array.isArray(normalized.app_stores) ? normalized.app_stores : [];
+stores: (() => {
+const cloud = Array.isArray(cloudData.stores) ? cloudData.stores : [];
+const file = Array.isArray(normalized.stores) ? normalized.stores : [];
 const map = new Map();
 cloud.forEach(s => { if (s && s.key) map.set(s.key, s); });
 file.forEach(s => {
@@ -5459,9 +5459,9 @@ file.forEach(s => {
 });
 return Array.from(map.values());
 })(),
-factory_unit_tracking: (() => {
-const cloud = cloudData.factory_unit_tracking;
-const file = normalized.factory_unit_tracking;
+tracking: (() => {
+const cloud = cloudData.tracking;
+const file = normalized.tracking;
 const hasTrackingData = (data) => {
 if (!data || typeof data !== 'object') return false;
 const std = data.standard || {};
@@ -5479,10 +5479,10 @@ asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 };
 })(),
 settings: cloudData.settings || normalized.settings,
-expense_categories: cloudData.expense_categories || normalized.expense_categories,
-deletion_ids: [...new Set([
-...(cloudData.deletion_ids || []),
-...normalized.deletion_ids
+categories: cloudData.categories || normalized.categories,
+deleted: [...new Set([
+...(cloudData.deleted || []),
+...normalized.deleted
 ])],
 appMode: cloudData.appMode || normalized.appMode,
 repProfile: cloudData.repProfile || normalized.repProfile
@@ -5527,36 +5527,36 @@ operationCount++;
 }
 }
 const batch = getCurrentBatch();
-const factorySettingsRef = userRef.collection('factory_settings').doc('config');
+const factorySettingsRef = userRef.collection('formulas').doc('config');
 batch.set(factorySettingsRef, {
-default_formulas: merged.factory_default_formulas,
-default_formulas_timestamp: Date.now(),
-additional_costs: merged.factory_additional_costs,
-additional_costs_timestamp: Date.now(),
-cost_adjustment_factor: merged.factory_cost_adjustment_factor,
-cost_adjustment_factor_timestamp: Date.now(),
-unit_tracking: merged.factory_unit_tracking,
-unit_tracking_timestamp: Date.now(),
+defaults: merged.defaults,
+defaults_timestamp: Date.now(),
+costs: merged.costs,
+costs_timestamp: Date.now(),
+adjustment: merged.adjustment,
+adjustment_timestamp: Date.now(),
+tracking: merged.tracking,
+tracking_timestamp: Date.now(),
 last_synced: now
 }, { merge: true });
 operationCount++;
-if (Array.isArray(merged.app_stores) && merged.app_stores.length > 0) {
-const appStoresRef = userRef.collection('app_stores').doc('stores');
+if (Array.isArray(merged.stores) && merged.stores.length > 0) {
+const appStoresRef = userRef.collection('stores').doc('list');
 const storesBatch = getCurrentBatch();
-storesBatch.set(appStoresRef, { stores: merged.app_stores }, { merge: true });
+storesBatch.set(appStoresRef, { stores: merged.stores }, { merge: true });
 operationCount++;
 }
-if (merged.expense_categories) {
-const expenseCategoriesRef = userRef.collection('expense_categories').doc('categories');
+if (merged.categories) {
+const expenseCategoriesRef = userRef.collection('categories').doc('list');
 const currentBatch = getCurrentBatch();
 currentBatch.set(expenseCategoriesRef, {
-categories: merged.expense_categories,
+categories: merged.categories,
 last_synced: now
 }, { merge: true });
 operationCount++;
 }
-if (merged.deletion_ids && Array.isArray(merged.deletion_ids) && merged.deletion_ids.length > 0) {
-for (const recordId of merged.deletion_ids) {
+if (merged.deleted && Array.isArray(merged.deleted) && merged.deleted.length > 0) {
+for (const recordId of merged.deleted) {
 if (recordId) {
 const deletionId = generateUUID('deletion');
 const deletionRef = userRef.collection('deletions').doc(deletionId);
@@ -5609,9 +5609,9 @@ try {
     ['entities',           merged.entities],
     ['expenses',                   merged.expenses],
   ]);
-  if (Array.isArray(merged.app_stores) && merged.app_stores.length > 0) {
-    await sqliteStore.set('app_stores', merged.app_stores);
-    await sqliteStore.set('app_stores_timestamp', Date.now());
+  if (Array.isArray(merged.stores) && merged.stores.length > 0) {
+    await sqliteStore.set('stores', merged.stores);
+    await sqliteStore.set('stores_timestamp', Date.now());
   }
 } catch(_localWbErr) { console.warn('[uploadOldDataToCloud] Local SQLite write-back error:', _safeErr(_localWbErr)); }
 const counts = {
@@ -6567,29 +6567,29 @@ fields: ['name', 'amount', 'category', 'description', 'date', 'time', 'id', 'tim
 }
 };
 export const FIRESTORE_SETTINGS_SCHEMA = {
-factory_default_formulas: {
-localKey: 'factory_default_formulas',
+defaults: {
+localKey: 'defaults',
 localVariable: 'factoryDefaultFormulas',
 type: 'object',
 defaultValue: { standard: [], asaan: [] },
 description: 'Recipe / formula definitions, Formula Store and store formula slots'
 },
-factory_additional_costs: {
-localKey: 'factory_additional_costs',
+costs: {
+localKey: 'costs',
 localVariable: 'factoryAdditionalCosts',
 type: 'object',
 defaultValue: { standard: 0, asaan: 0 },
 description: 'Overhead / extra costs per unit'
 },
-factory_cost_adjustment_factor: {
-localKey: 'factory_cost_adjustment_factor',
+adjustment: {
+localKey: 'adjustment',
 localVariable: 'factoryCostAdjustmentFactor',
 type: 'object',
 defaultValue: { standard: 1, asaan: 1 },
 description: 'Cost-price multiplier for reporting'
 },
-factory_unit_tracking: {
-localKey: 'factory_unit_tracking',
+tracking: {
+localKey: 'tracking',
 localVariable: 'factoryUnitTracking',
 type: 'object',
 defaultValue: {
@@ -6619,8 +6619,8 @@ type: 'string',
 defaultValue: 'NORAN SHAH',
 description: 'Active sales-representative profile name'
 },
-deletion_ids: {
-localKey: 'deletion_ids',
+deleted: {
+localKey: 'deleted',
 localVariable: 'deletedRecordIds',
 type: 'set_as_array',
 defaultValue: [],
@@ -6846,14 +6846,14 @@ if (window._perfMonitorInterval) { clearInterval(window._perfMonitorInterval); w
 export async function loadSalesRepsList() {
 const salesHistory = ensureArray(await sqliteStore.get('calculator'));
 const repSales = ensureArray(await sqliteStore.get('rep'));
-const stored = await sqliteStore.get('sales_reps_list', null);
+const stored = await sqliteStore.get('reps', null);
 if (Array.isArray(stored) && stored.length > 0) {
 _set_salesRepsList(stored);
 } else {
 _set_salesRepsList(['NORAN SHAH', 'NOMAN SHAH']);
-await sqliteStore.set('sales_reps_list', salesRepsList);
+await sqliteStore.set('reps', salesRepsList);
 }
-const storedUserRoles = await sqliteStore.get('user_roles_list', null);
+const storedUserRoles = await sqliteStore.get('roles', null);
 if (Array.isArray(storedUserRoles)) _set_userRolesList(storedUserRoles);
 if (firebaseDB && currentUser) {
 try {
@@ -6864,13 +6864,13 @@ const teamData = teamDoc.data();
 const cloudTs = teamData.updated_at || 0;
 const localTs = (await sqliteStore.get('team_list_timestamp')) || 0;
 if (cloudTs >= localTs) {
-if (Array.isArray(teamData.sales_reps) && teamData.sales_reps.length > 0) {
-_set_salesRepsList(teamData.sales_reps);
-await sqliteStore.set('sales_reps_list', salesRepsList);
+if (Array.isArray(teamData.reps) && teamData.reps.length > 0) {
+_set_salesRepsList(teamData.reps);
+await sqliteStore.set('reps', salesRepsList);
 }
-if (Array.isArray(teamData.user_roles)) {
-_set_userRolesList(teamData.user_roles);
-await sqliteStore.set('user_roles_list', userRolesList);
+if (Array.isArray(teamData.roles)) {
+_set_userRolesList(teamData.roles);
+await sqliteStore.set('roles', userRolesList);
 }
 if (cloudTs > localTs) await sqliteStore.set('team_list_timestamp', cloudTs);
 }
@@ -6881,14 +6881,14 @@ renderAllRepUI();
 }
 export async function saveSalesRepsList() {
 try {
-await sqliteStore.set('sales_reps_list', salesRepsList);
+await sqliteStore.set('reps', salesRepsList);
 if (firebaseDB && currentUser) {
 try {
 const nowMs = Date.now();
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 await userRef.collection('settings').doc('team').set({
-sales_reps: salesRepsList,
-user_roles: userRolesList,
+reps: salesRepsList,
+roles: userRolesList,
 updated_at: nowMs
 }, { merge: true });
 await sqliteStore.set('team_list_timestamp', nowMs);
@@ -6905,14 +6905,14 @@ showToast('Failed to save team list. Please try again.', 'error');
 }
 export async function saveUserRolesList() {
 try {
-await sqliteStore.set('user_roles_list', userRolesList);
+await sqliteStore.set('roles', userRolesList);
 if (firebaseDB && currentUser) {
 try {
 const nowMs = Date.now();
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 await userRef.collection('settings').doc('team').set({
-sales_reps: salesRepsList,
-user_roles: userRolesList,
+reps: salesRepsList,
+roles: userRolesList,
 updated_at: nowMs
 }, { merge: true });
 await sqliteStore.set('team_list_timestamp', nowMs);
@@ -7178,9 +7178,9 @@ const teamDoc = await firebaseDB.collection('users').doc(currentUser.uid)
 .collection('settings').doc('team').get();
 if (teamDoc.exists) {
 const data = teamDoc.data();
-if (Array.isArray(data.user_roles) && data.user_roles.length > 0) {
-_set_userRolesList(data.user_roles);
-await sqliteStore.set('user_roles_list', userRolesList).catch(() => {});
+if (Array.isArray(data.roles) && data.roles.length > 0) {
+_set_userRolesList(data.roles);
+await sqliteStore.set('roles', userRolesList).catch(() => {});
 }
 }
 } catch (e) {
@@ -7287,14 +7287,14 @@ const settingsKeys = [
 ['factoryAdditionalCosts', 'Additional Costs'],
 ['factoryCostAdjustmentFactor', 'Cost Adjustment Factor'],
 ['factoryUnitTracking', 'Unit Tracking'],
-['app_stores', 'Stores & Sale Prices'],
+['stores', 'Stores & Sale Prices'],
 ['settings', 'App Settings (naswar)'],
 ];
 for (const [key, label] of settingsKeys) {
 const present = data[key] !== undefined && data[key] !== null;
 reportLines.push({ type: 'row', label, value: present ? 'Present ' : 'Not present', muted: !present });
 }
-const tombstoneCount = Array.isArray(data.deletion_ids) ? data.deletion_ids.length : 0;
+const tombstoneCount = Array.isArray(data.deleted) ? data.deleted.length : 0;
 reportLines.push({ type: 'section', label: 'Deleted Records (Tombstones)' });
 reportLines.push({ type: 'row', label: 'Tombstone count', value: String(tombstoneCount) });
 const verdict = totalIssues > 0
@@ -7897,7 +7897,7 @@ _set_currentRepProfile(repName);
 batchData.push(['repProfile', repName], ['repProfile_timestamp', nowMs]);
 if (!salesRepsList.includes(repName)) {
 salesRepsList.push(repName);
-batchData.push(['sales_reps_list', salesRepsList]);
+batchData.push(['reps', salesRepsList]);
 if (typeof renderAllRepUI === 'function') renderAllRepUI();
 }
 } else if (targetMode === 'userrole') {
@@ -8059,14 +8059,14 @@ const _compressed = await _compressPhoto(window._paymentTransferPendingPhoto, 12
 _storedPh['expense:' + outTx.id] = _compressed;
 _storedPh['expense:' + inTx.id] = _compressed;
 await sqliteStore.set('photos', _storedPh);
-const _phTs = (await sqliteStore.get('photos_timestamps')) || {};
+const _phTs = (await sqliteStore.get('photostamps')) || {};
 _phTs['expense:' + outTx.id] = Date.now();
 _phTs['expense:' + inTx.id] = Date.now();
-await sqliteStore.set('photos_timestamps', _phTs);
-const _dk = (await sqliteStore.get('photos_dirty_keys')) || [];
+await sqliteStore.set('photostamps', _phTs);
+const _dk = (await sqliteStore.get('photodirty')) || [];
 if (!_dk.includes('expense:' + outTx.id)) _dk.push('expense:' + outTx.id);
 if (!_dk.includes('expense:' + inTx.id)) _dk.push('expense:' + inTx.id);
-await sqliteStore.set('photos_dirty_keys', _dk);
+await sqliteStore.set('photodirty', _dk);
 await sqliteStore.set('photos_timestamp', Date.now());
 } catch (_pe) { console.warn('Payment transfer photo save failed', _pe); }
 }
@@ -8207,8 +8207,8 @@ await unifiedDelete('transactions', working, entry.id, { strict: true }, entry);
 }
 try {
 const _trfPh = (await sqliteStore.get('photos')) || {};
-const _trfPhTs = (await sqliteStore.get('photos_timestamps')) || {};
-const _trfDk = (await sqliteStore.get('photos_dirty_keys')) || [];
+const _trfPhTs = (await sqliteStore.get('photostamps')) || {};
+const _trfDk = (await sqliteStore.get('photodirty')) || [];
 let _trfPhChanged = false;
 for (const entry of entries) {
 const _pk = 'expense:' + entry.id;
@@ -8221,8 +8221,8 @@ _trfPhChanged = true;
 }
 if (_trfPhChanged) {
 await sqliteStore.set('photos', _trfPh);
-await sqliteStore.set('photos_timestamps', _trfPhTs);
-await sqliteStore.set('photos_dirty_keys', _trfDk);
+await sqliteStore.set('photostamps', _trfPhTs);
+await sqliteStore.set('photodirty', _trfDk);
 if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
 }
 } catch (_trfPhErr) { console.warn('[deletePaymentTransfer] photo cleanup failed', _trfPhErr); }

@@ -24,7 +24,7 @@ function load(initial = {}) {
     sendDeviceNotification: async (t, b) => { notes.push([t, b]); },
     notifyDataChange: () => {}, triggerAutoSync: () => {},
     _invalidateStoresCache: () => {}, _set_currentFactoryEntryStore: () => {},
-    getAppStores: async () => { const s = data.get('app_stores'); return Array.isArray(s) && s.length ? structuredClone(s) : structuredClone(DEFAULTS); },
+    getAppStores: async () => { const s = data.get('stores'); return Array.isArray(s) && s.length ? structuredClone(s) : structuredClone(DEFAULTS); },
     window, document, getDefaultStoreKey, formulaTypeFor,
   };
   const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function');
@@ -32,12 +32,12 @@ function load(initial = {}) {
   vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, getFormulaStore, getFormulaSlots };', ctx);
   return { api: ctx.api, data, writes, notes };
 }
-const legacy = { factory_default_formulas: { standard: [{ name: 'a', quantity: 1, cost: 2 }], asaan: [{ name: 'b', quantity: 1, cost: 3 }] } };
+const legacy = { defaults: { standard: [{ name: 'a', quantity: 1, cost: 2 }], asaan: [{ name: 'b', quantity: 1, cost: 3 }] } };
 describe('commitStoresWithFormulas', () => {
   const base = () => ({
     ...legacy,
-    factory_formula_store: [{ id: 'f1', name: 'Std', ingredients: [] }, { id: 'f2', name: 'Asn', ingredients: [] }],
-    factory_formula_slots: { standard: 'f1', asaan: 'f2' },
+    formulas: [{ id: 'f1', name: 'Std', ingredients: [] }, { id: 'f2', name: 'Asn', ingredients: [] }],
+    slots: { standard: 'f1', asaan: 'f2' },
   });
   it('editing one store keeps the others on their own formulas and prices', async () => {
     const { api, data } = load(base());
@@ -47,19 +47,19 @@ describe('commitStoresWithFormulas', () => {
     stores[2] = { ...stores[2], salePrice: 610 };
     const r = await api.commitStoresWithFormulas(stores);
     assert.equal(r.ok, true, r.error);
-    const saved = data.get('app_stores');
+    const saved = data.get('stores');
     assert.deepEqual(saved.map((s) => s.salePrice), [540, 515, 610]);
     assert.deepEqual(saved.map((s) => s.formulaId), ['f1', 'f1', 'f2']);
     assert.deepEqual(saved.map((s) => s.formulaType), ['standard', 'standard', 'asaan']);
-    assert.ok(data.get('app_stores_timestamp') > 0);
+    assert.ok(data.get('stores_timestamp') > 0);
   });
   it('does not silently move other stores when a third formula is chosen', async () => {
-    const t = load({ ...base(), factory_formula_store: [...base().factory_formula_store, { id: 'f3', name: 'New', ingredients: [] }] });
+    const t = load({ ...base(), formulas: [...base().formulas, { id: 'f3', name: 'New', ingredients: [] }] });
     const stores = structuredClone(DEFAULTS);
     stores[0] = { ...stores[0], formulaId: 'f3' };
     const r = await t.api.commitStoresWithFormulas(stores);
     assert.equal(r.ok, false);
     assert.match(r.error, /Only two different formulas/);
-    assert.ok(!t.writes.includes('app_stores'));
+    assert.ok(!t.writes.includes('stores'));
   });
 });

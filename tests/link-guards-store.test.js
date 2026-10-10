@@ -57,14 +57,14 @@ describe('recovered ids: every link follows, only changed rows sync', () => {
     seed({
       transactions: [{ id: 'p', materialId: 'M_old', materialIds: ['M_old', 'z'] }],
       factory: [{ id: 'h', materialsUsed: [{ id: 'M_old', quantity: 2 }] }],
-      factory_default_formulas: { standard: [{ id: 'M_old', quantity: 1 }] },
+      defaults: { standard: [{ id: 'M_old', quantity: 1 }] },
     });
     await G.applyRecoveryLinks('inventory', 'M_old', 'M_new', { id: 'M_new' });
     const p = (await get('transactions'))[0];
     assert.equal(p.materialId, 'M_new');
     assert.deepEqual(p.materialIds, ['M_new', 'z']);
     assert.equal((await get('factory'))[0].materialsUsed[0].id, 'M_new');
-    assert.equal((await get('factory_default_formulas')).standard[0].id, 'M_new');
+    assert.equal((await get('defaults')).standard[0].id, 'M_new');
   });
 });
 
@@ -126,9 +126,9 @@ describe('factory batch restore', () => {
   const batch = { id: 'F', store: 's', units: 2, materialsUsed: [{ id: 'i1', name: 'Chora', quantity: 6 }] };
 
   it('blocked when the stock is gone, otherwise takes the materials out again', async () => {
-    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 4, cost: 10 }], factory_default_formulas: {} });
+    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 4, cost: 10 }], defaults: {} });
     assert.match(await G.getRecoverLinkBlockReason('factory', batch), /Not enough Chora/);
-    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
+    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], defaults: {} });
     assert.equal(await G.getRecoverLinkBlockReason('factory', batch), null);
     await G.applyRecoveryLinks('factory', 'F_old', 'F', batch);
     const item = (await get('inventory'))[0];
@@ -137,7 +137,7 @@ describe('factory batch restore', () => {
   });
 
   it('two batches in one recovery cannot both use the same stock', async () => {
-    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], factory_default_formulas: {} });
+    seed({ inventory: [{ id: 'i1', name: 'Chora', quantity: 10, cost: 10 }], defaults: {} });
     const ctx = { inv: null };
     assert.equal(await G.getRecoverLinkBlockReason('factory', batch, ctx), null);
     assert.match(await G.getRecoverLinkBlockReason('factory', { ...batch, id: 'F2' }, ctx), /Not enough Chora/);
@@ -259,10 +259,10 @@ describe('stock and factory units on restore', () => {
   });
 
   it('recovered production needs factory formula units', async () => {
-    seed({ factory_unit_tracking: { standard: { available: 3 } } });
+    seed({ tracking: { standard: { available: 3 } } });
     const prod = { id: 'p', formulaUnits: 5, formulaStore: 'standard' };
     assert.match(await G.getRecoverLinkBlockReason('production', prod), /only 3 are available/);
-    seed({ factory_unit_tracking: { standard: { available: 9 } } });
+    seed({ tracking: { standard: { available: 9 } } });
     assert.equal(await G.getRecoverLinkBlockReason('production', prod), null);
   });
 });

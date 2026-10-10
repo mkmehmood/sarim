@@ -3279,8 +3279,8 @@ async function deleteStore(index) {
     : Promise.resolve(window.confirm('Delete store "' + s.name + '"?')));
   if (!confirmed) return;
   stores.splice(index, 1);
-  await sqliteStore.set('app_stores', stores);
-  await sqliteStore.set('app_stores_timestamp', Date.now());
+  await sqliteStore.set('stores', stores);
+  await sqliteStore.set('stores_timestamp', Date.now());
   if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
   await renderStoreList();

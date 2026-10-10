@@ -25,8 +25,8 @@ async function _photoStore() {
 }
 async function _writePhotoKeys(setMap, deleteKeys) {
   const photos = await _photoStore();
-  const ts = (await sqliteStore.get('photos_timestamps')) || {};
-  const dirty = (await sqliteStore.get('photos_dirty_keys')) || [];
+  const ts = (await sqliteStore.get('photostamps')) || {};
+  const dirty = (await sqliteStore.get('photodirty')) || [];
   const now = Date.now();
   for (const [k, v] of Object.entries(setMap)) {
     photos[k] = v;
@@ -41,8 +41,8 @@ async function _writePhotoKeys(setMap, deleteKeys) {
     _thumbCache.delete(k);
   }
   await sqliteStore.set('photos', photos);
-  await sqliteStore.set('photos_timestamps', ts);
-  await sqliteStore.set('photos_dirty_keys', dirty);
+  await sqliteStore.set('photostamps', ts);
+  await sqliteStore.set('photodirty', dirty);
   await sqliteStore.set('photos_timestamp', now);
   if (typeof window.triggerAutoSync === 'function') { try { window.triggerAutoSync(); } catch (_) {} }
 }

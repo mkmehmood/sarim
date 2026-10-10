@@ -6,10 +6,10 @@ import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formulaTypeFor, getDefaultStoreKey } from './store-keys.js';
-const STORE_KEY = 'factory_formula_store';
-const STORE_TS_KEY = 'factory_formula_store_timestamp';
-const SLOTS_KEY = 'factory_formula_slots';
-const SLOTS_TS_KEY = 'factory_formula_slots_timestamp';
+const STORE_KEY = 'formulas';
+const STORE_TS_KEY = 'formulas_timestamp';
+const SLOTS_KEY = 'slots';
+const SLOTS_TS_KEY = 'slots_timestamp';
 const SLOT_KEYS = ['standard', 'asaan'];
 const FALLBACK = { standard: 'Standard', asaan: 'Asaan' };
 let _editingId = null;
@@ -25,10 +25,10 @@ export async function getFormulaSlots() {
   return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
 }
 export async function getSelectedFormula(storeKey) {
-  const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'app_stores', 'factory_default_formulas', 'factory_additional_costs', 'inventory']);
+  const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'stores', 'defaults', 'costs', 'inventory']);
   return resolveSelectedFormula({
-    list: ensureArray(b.get(STORE_KEY)), slots: b.get(SLOTS_KEY) || {}, stores: ensureArray(b.get('app_stores')),
-    feed: b.get('factory_default_formulas') || {}, costs: b.get('factory_additional_costs') || {}, inventory: ensureArray(b.get('inventory')),
+    list: ensureArray(b.get(STORE_KEY)), slots: b.get(SLOTS_KEY) || {}, stores: ensureArray(b.get('stores')),
+    feed: b.get('defaults') || {}, costs: b.get('costs') || {}, inventory: ensureArray(b.get('inventory')),
   }, storeKey);
 }
 export async function getFormulaSlotLabels() {
@@ -56,9 +56,9 @@ function _slotOfStore(key, typeMap) {
   return typeMap[key] || formulaTypeFor(key);
 }
 function _feedWrites(list, slots, base, now) {
-  const formulas = { standard: [], asaan: [], ...(base.get('factory_default_formulas') || {}) };
-  const costs = { standard: 0, asaan: 0, ...(base.get('factory_additional_costs') || {}) };
-  const factors = { standard: 1, asaan: 1, ...(base.get('factory_cost_adjustment_factor') || {}) };
+  const formulas = { standard: [], asaan: [], ...(base.get('defaults') || {}) };
+  const costs = { standard: 0, asaan: 0, ...(base.get('costs') || {}) };
+  const factors = { standard: 1, asaan: 1, ...(base.get('adjustment') || {}) };
   SLOT_KEYS.forEach((k) => {
     const f = list.find((x) => String(x.id) === String(slots[k]));
     if (!f) return;
@@ -66,9 +66,9 @@ function _feedWrites(list, slots, base, now) {
     costs[k] = _num(f.additionalCost, 0);
     factors[k] = _num(f.costAdjustmentFactor, 1) || 1;
   });
-  return [['factory_default_formulas', formulas], ['factory_default_formulas_timestamp', now], ['factory_additional_costs', costs], ['factory_additional_costs_timestamp', now], ['factory_cost_adjustment_factor', factors], ['factory_cost_adjustment_factor_timestamp', now]];
+  return [['defaults', formulas], ['defaults_timestamp', now], ['costs', costs], ['costs_timestamp', now], ['adjustment', factors], ['adjustment_timestamp', now]];
 }
-const _FEED_KEYS = ['factory_default_formulas', 'factory_additional_costs', 'factory_cost_adjustment_factor'];
+const _FEED_KEYS = ['defaults', 'costs', 'adjustment'];
 function _afterChange() {
   notifyDataChange('all');
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
@@ -77,7 +77,7 @@ function _afterChange() {
   refreshFormulaDependentUI();
 }
 export async function commitStoresWithFormulas(stores) {
-  const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('factory_unit_tracking')]);
+  const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('tracking')]);
   stores = stores.map((s) => {
     if (s.formulaId) return s;
     const inherited = slots[s.formulaType || 'standard'];
@@ -105,7 +105,7 @@ export async function commitStoresWithFormulas(stores) {
     return { ...s, formulaType: slot || s.formulaType || 'standard' };
   });
   const now = getTimestamp();
-  const writes = [..._feedWrites(list, next, batch, now), [SLOTS_KEY, next], [SLOTS_TS_KEY, now], ['app_stores', normalized], ['app_stores_timestamp', Date.now()]];
+  const writes = [..._feedWrites(list, next, batch, now), [SLOTS_KEY, next], [SLOTS_TS_KEY, now], ['stores', normalized], ['stores_timestamp', Date.now()]];
   await sqliteStore.setBatch(writes);
   _invalidateStoresCache();
   _afterChange();
@@ -475,7 +475,7 @@ export function syncFactoryAvailPicker(slot) {
   _renderChoice('factoryAvailToggle', _slotItems(view, view ? view.availOrder : []), slot, (k) => { if (typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(k); }, 'No formula');
 }
 export async function refreshFormulaDependentUI() {
-  const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('factory_unit_tracking')]);
+  const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('tracking')]);
   const used = new Set(stores.map((s) => s.formulaType || 'standard'));
   const typeMap = {};
   stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });

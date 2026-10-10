@@ -13,10 +13,11 @@
 //      (other stores get a key made from their name) in every record, the store list, the
 //      per-store prices and the recycle-bin entries; merges stores that exist twice
 //    * renames settings/config fields  naswar_default_settings(_timestamp) -> settings(_timestamp)
-//    * moves the support collections/documents to snake_case names (version 4)
-//        appStores/stores -> app_stores/stores   factorySettings/config -> factory_settings/config
-//        expenseCategories/categories -> expense_categories/categories
-//        activityLog -> activity_log              personPhotos -> photos
+//    * moves the support collections/documents to single-word names (version 5)
+//        app_stores/stores -> stores/list         factory_settings/config -> formulas/config
+//        expense_categories/categories -> categories/list
+//        activity_log -> activity                 personPhotos -> photos
+//      (version 5 names; versions 1-4 names are all still understood)
 //    * fixes mismatches: store values written as a name ("Zubair"), "store-a" spellings,
 //      and reports any record that still points at a store that does not exist
 //    * stamps every rewritten record with a new updatedAt so the app's delta sync picks it up
@@ -56,17 +57,32 @@ export const DATASETS = [
   ['factory_history', 'factory'], ['expenses', 'expenses'], ['returns', 'returns'],
 ];
 // version 4: support collections (whole collections) and single documents moved to snake_case
-export const SUPPORT_COLLECTIONS = [['activityLog', 'activity_log'], ['personPhotos', 'photos']];
+export const SUPPORT_COLLECTIONS = [['activityLog', 'activity'], ['activity_log', 'activity'], ['personPhotos', 'photos']];
 export const SUPPORT_DOCS = [
-  ['appStores/stores', 'app_stores/stores'],
-  ['factorySettings/config', 'factory_settings/config'],
-  ['expenseCategories/categories', 'expense_categories/categories'],
+  ['appStores/stores', 'stores/list'], ['app_stores/stores', 'stores/list'],
+  ['factorySettings/config', 'formulas/config'], ['factory_settings/config', 'formulas/config'],
+  ['expenseCategories/categories', 'categories/list'], ['expense_categories/categories', 'categories/list'],
 ];
+// version 5: field names inside those documents / settings documents (a <name>_timestamp field follows its field)
+export const DOC_FIELD_RENAMES = {
+  'formulas/config': { default_formulas: 'defaults', additional_costs: 'costs', cost_adjustment_factor: 'adjustment', unit_tracking: 'tracking', formula_store: 'formulas', formula_slots: 'slots' },
+  'settings/config': { sales_reps: 'reps' },
+  'settings/team': { sales_reps: 'reps', user_roles: 'roles' },
+};
+export function renameDocFields(data, renames) {
+  const out = {}; let n = 0;
+  for (const [k, v] of Object.entries(data || {})) {
+    const m = /^(.*?)(_timestamp)?$/.exec(k); const to = renames[m[1]];
+    if (to) { const nk = to + (m[2] || ''); if (!(nk in (data || {}))) { out[nk] = v; n++; continue; } }
+    out[k] = v;
+  }
+  return { data: out, renamed: n };
+}
 export const COLLECTION_RENAMES = Object.fromEntries([...DATASETS, ...SUPPORT_COLLECTIONS].filter(([o, n]) => o !== n));
 export const DEFAULT_STORE_MAP = { STORE_A: 'zubair', STORE_B: 'mahmood', STORE_C: 'asaan' };
 export const STORE_KEY_FIELDS = ['store', 'supplyStore', 'returnStore', 'transferPeerStore'];
 const SLOT_KEYS = ['standard', 'asaan'];
-export const DATA_KEY_VERSION = 4;
+export const DATA_KEY_VERSION = 5;
 // every historical backup field name -> current name
 export const BACKUP_FIELD_RENAMES = {
   mfg: 'production', mfg_pro_pkr: 'production', db: 'production',
@@ -80,14 +96,21 @@ export const BACKUP_FIELD_RENAMES = {
   factoryProductionHistory: 'factory', factory_production_history: 'factory', factory_history: 'factory',
   expenseRecords: 'expenses', expense_records: 'expenses',
   stockReturns: 'returns', stock_returns: 'returns',
-  expenseCategories: 'expense_categories', factoryFormulaStore: 'factory_formula_store', formula_store: 'factory_formula_store',
-  factoryFormulaSlots: 'factory_formula_slots', formula_slots: 'factory_formula_slots',
-  deleted_records: 'deletion_ids', deletion_records: 'deletions',
-  person_photos: 'photos', person_photos_timestamps: 'photos_timestamps', person_photos_dirty_keys: 'photos_dirty_keys',
+  // support data, final single-word names (version 5)
+  expenseCategories: 'categories', expense_categories: 'categories',
+  factoryFormulaStore: 'formulas', factory_formula_store: 'formulas', formula_store: 'formulas',
+  factoryFormulaSlots: 'slots', factory_formula_slots: 'slots', formula_slots: 'slots',
+  deleted_records: 'deleted', deleted_ids: 'deleted', deletion_ids: 'deleted', deletion_records: 'deletions',
+  erased_deletion_ids: 'erased',
+  person_photos: 'photos', person_photos_timestamps: 'photostamps', photos_timestamps: 'photostamps',
+  person_photos_dirty_keys: 'photodirty', photos_dirty_keys: 'photodirty',
   app_theme: 'theme',
-  naswar_default_settings: 'settings', appStores: 'app_stores',
-  factoryDefaultFormulas: 'factory_default_formulas', factoryAdditionalCosts: 'factory_additional_costs',
-  factoryCostAdjustmentFactor: 'factory_cost_adjustment_factor', factoryUnitTracking: 'factory_unit_tracking',
+  naswar_default_settings: 'settings', appStores: 'stores', app_stores: 'stores',
+  factoryDefaultFormulas: 'defaults', factory_default_formulas: 'defaults',
+  factoryAdditionalCosts: 'costs', factory_additional_costs: 'costs',
+  factoryCostAdjustmentFactor: 'adjustment', factory_cost_adjustment_factor: 'adjustment',
+  factoryUnitTracking: 'tracking', factory_unit_tracking: 'tracking',
+  sales_reps_list: 'reps', user_roles_list: 'roles', current_rep_profile: 'profile',
 };
 const RECORD_FIELDS = ['production', 'sales', 'calculator', 'rep', 'clients', 'customers', 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns'];
 
@@ -305,7 +328,9 @@ export async function migrateCloud(client, opts = {}) {
   const report = { applied: apply, catalog: { changed: false, merged: 0, map: {} }, datasets: {}, support: [], settings: 0, deletions: 0, unknown: {}, writes: 0, deleted: 0, supportDeleted: 0, warnings: [] };
   const ops = [];
   // 1. store list -> decides every store key. Read the new location first, then the old one.
-  const [catNew, catOld] = [await client.get('app_stores/stores'), await client.get('appStores/stores')];
+  const catNew = await client.get('stores/list');
+  const catOld1 = await client.get('app_stores/stores'); const catOld2 = await client.get('appStores/stores');
+  const catOld = catOld1 || catOld2;
   const catDoc = catNew || catOld;
   const catMoved = !catNew && !!catOld;
   if (catNew && catOld) {
@@ -317,10 +342,10 @@ export async function migrateCloud(client, opts = {}) {
   report.catalog = { changed: plan.changed, merged: plan.merged, map: plan.map, moved: catMoved };
   const resolve = makeResolver(plan.stores, plan.map);
   if (catDoc && catMoved) {
-    ops.push({ op: 'set', path: 'app_stores/stores', data: { ...catOld.data, stores: plan.stores, stores_timestamp: plan.changed ? (opts.now || Date.now()) : catOld.data.stores_timestamp } });
-    log(`appStores/stores -> app_stores/stores${plan.changed ? ` (stores re-keyed: ${Object.entries(plan.map).map(([x, y]) => `${x}->${y}`).join(', ')})` : ''}`);
+    ops.push({ op: 'set', path: 'stores/list', data: { ...catOld.data, stores: plan.stores, stores_timestamp: plan.changed ? (opts.now || Date.now()) : catOld.data.stores_timestamp } });
+    log(`${catOld1 ? 'app_stores' : 'appStores'}/stores -> stores/list${plan.changed ? ` (stores re-keyed: ${Object.entries(plan.map).map(([x, y]) => `${x}->${y}`).join(', ')})` : ''}`);
   } else if (catDoc && plan.changed) {
-    ops.push({ op: 'update', path: 'app_stores/stores', data: { stores: plan.stores, stores_timestamp: opts.now || Date.now() } });
+    ops.push({ op: 'update', path: 'stores/list', data: { stores: plan.stores, stores_timestamp: opts.now || Date.now() } });
     log(`store list: ${Object.entries(plan.map).map(([x, y]) => `${x}->${y}`).join(', ')}${plan.merged ? ` (${plan.merged} duplicate store(s) merged)` : ''}`);
   }
   const noteUnknown = (col, arr) => { for (const v of arr) { const k = `${col}: ${v}`; report.unknown[k] = (report.unknown[k] || 0) + 1; } };
@@ -348,11 +373,12 @@ export async function migrateCloud(client, opts = {}) {
   }
   // 2b. support documents and collections (version 4 names). Never overwrites a newer copy.
   const supportCopied = [];
-  for (const [oldPath, newPath] of SUPPORT_DOCS.filter(([o]) => o !== 'appStores/stores')) {
-    const old = await client.get(oldPath);
-    const r = { from: oldPath, to: newPath, found: old ? 1 : 0, written: 0, skippedNewer: 0 };
+  for (const [oldPath, newPath] of SUPPORT_DOCS.filter(([, n]) => n !== 'stores/list')) {
+    const old0 = await client.get(oldPath);
+    const r = { from: oldPath, to: newPath, found: old0 ? 1 : 0, written: 0, skippedNewer: 0 };
     report.support.push(r);
-    if (!old) continue;
+    if (!old0) continue;
+    const old = { ...old0, data: renameDocFields(old0.data, DOC_FIELD_RENAMES[newPath] || {}).data };
     const cur = await client.get(newPath);
     if (!cur) { ops.push({ op: 'set', path: newPath, data: old.data }); r.written++; }
     else {
@@ -365,8 +391,8 @@ export async function migrateCloud(client, opts = {}) {
     supportCopied.push({ doc: true, oldPath, newPath });
     log(`${oldPath} -> ${newPath}: ${r.written ? 'copy' : 'already there'}`);
   }
-  if (catOld) supportCopied.push({ doc: true, oldPath: 'appStores/stores', newPath: 'app_stores/stores' });
-  report.support.unshift({ from: 'appStores/stores', to: 'app_stores/stores', found: catOld ? 1 : 0, written: catMoved ? 1 : 0, skippedNewer: catOld && catNew ? 1 : 0 });
+  for (const [op, found] of [['app_stores/stores', catOld1], ['appStores/stores', catOld2]]) if (found) supportCopied.push({ doc: true, oldPath: op, newPath: 'stores/list' });
+  report.support.unshift({ from: catOld1 ? 'app_stores/stores' : 'appStores/stores', to: 'stores/list', found: catOld ? 1 : 0, written: catMoved ? 1 : 0, skippedNewer: catOld && catNew ? 1 : 0 });
   for (const [oldCol, newCol] of SUPPORT_COLLECTIONS) {
     const r = { from: oldCol, to: newCol, found: 0, written: 0, skippedNewer: 0 };
     report.support.push(r);
@@ -398,6 +424,16 @@ export async function migrateCloud(client, opts = {}) {
       ops.push({ op: 'update', path: 'settings/config', data, removeFields: remove }); report.settings = 1;
       log('settings/config: fields renamed / store prices re-keyed');
     }
+  }
+  // 3b. field renames inside settings documents (version 5): sales_reps -> reps, user_roles -> roles
+  for (const path of ['settings/config', 'settings/team']) {
+    const doc = await client.get(path);
+    if (!doc) continue;
+    const { data: renamed, renamed: n } = renameDocFields(doc.data, DOC_FIELD_RENAMES[path]);
+    if (!n) continue;
+    const olds = Object.keys(doc.data).filter(k => !(k in renamed)); const news = Object.keys(renamed).filter(k => !(k in doc.data));
+    ops.push({ op: 'update', path, data: Object.fromEntries(news.map(k => [k, renamed[k]])), removeFields: olds });
+    report.settings++; log(`${path}: ${olds.join(', ')} -> ${news.join(', ')}`);
   }
   // 4. recycle bin
   for (const d of await client.list('deletions')) {
@@ -454,9 +490,10 @@ export function convertBackup(data) {
     if (!(oldName in out) || oldName === newName) continue;
     if (out[newName] === undefined || out[newName] === null) out[newName] = out[oldName];
     delete out[oldName]; notes.push(`${oldName} -> ${newName}`);
+    if ((oldName + '_timestamp') in out) { if (out[newName + '_timestamp'] === undefined) out[newName + '_timestamp'] = out[oldName + '_timestamp']; delete out[oldName + '_timestamp']; }
   }
-  const plan = planCatalog(out.app_stores);
-  if (Array.isArray(out.app_stores)) out.app_stores = plan.stores;
+  const plan = planCatalog(out.stores);
+  if (Array.isArray(out.stores)) out.stores = plan.stores;
   const resolve = makeResolver(plan.stores, plan.map);
   let fixed = 0; const unknown = [];
   for (const k of RECORD_FIELDS) if (Array.isArray(out[k])) { const r = fixStoreFields(out[k], resolve); fixed += r.fixed; unknown.push(...r.unknown); }

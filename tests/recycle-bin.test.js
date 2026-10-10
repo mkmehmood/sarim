@@ -55,8 +55,8 @@ function purgeRecoveredId(id, collectionName, cleanRecord, newId, { sqliteStore,
       await sqliteStore.set('deletions', pruned);
     } catch(e) { console.warn('[RecycleBin] purge SQLite deletions failed:', _safeErr(e)); }
     try {
-      await sqliteStore.set('deletion_ids', Array.from(deletedRecordIds));
-    } catch(e) { console.warn('[RecycleBin] purge SQLite deletion_ids failed:', _safeErr(e)); }
+      await sqliteStore.set('deleted', Array.from(deletedRecordIds));
+    } catch(e) { console.warn('[RecycleBin] purge SQLite deleted failed:', _safeErr(e)); }
     if (typeof OfflineQueue !== 'undefined' && OfflineQueue !== null) {
       const _isStale = (item) => {
         const op = item.operation || {};

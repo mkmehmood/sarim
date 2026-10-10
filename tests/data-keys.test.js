@@ -64,12 +64,12 @@ describe('every backup writer carries every record store and every aux key', () 
   });
 });
 describe('cloud sync uses the same keys the app reads', () => {
-  it('every write of current_rep_profile also writes repProfile', () => {
+  it('every write of profile also writes repProfile', () => {
     const lines = sync.split('\n');
     lines.forEach((l, i) => {
-      if (!l.includes("'current_rep_profile'") || l.includes('sqlite:')) return;
+      if (!l.includes("'profile'") || l.includes('sqlite:')) return;
       const around = lines.slice(Math.max(0, i - 3), i + 4).join('\n');
-      assert.ok(around.includes("'repProfile'"), `sync.js line ${i + 1} writes current_rep_profile without repProfile`);
+      assert.ok(around.includes("'repProfile'"), `sync.js line ${i + 1} writes profile without repProfile`);
     });
   });
   it('settings/config upload carries its timestamp (listeners compare it)', () => {
@@ -78,9 +78,9 @@ describe('cloud sync uses the same keys the app reads', () => {
   it('expense category upload carries categories_timestamp (listeners compare it)', () => {
     assert.ok(/categories:\s*_ec \|\| \[\],\s*categories_timestamp:\s*localExpCatTs/.test(sync));
   });
-  it('local expense category edits stamp expense_categories_timestamp', () => {
-    const sets = (payments.match(/set\('expense_categories',/g) || []).length;
-    const stamps = (payments.match(/set\('expense_categories_timestamp'/g) || []).length;
+  it('local expense category edits stamp categories_timestamp', () => {
+    const sets = (payments.match(/set\('categories',/g) || []).length;
+    const stamps = (payments.match(/set\('categories_timestamp'/g) || []).length;
     assert.ok(stamps >= 3, `expected stamps next to category writes, found ${stamps} (writes: ${sets})`);
   });
 });
@@ -121,11 +121,11 @@ describe('one single-word name per dataset', () => {
 });
 describe('aux state round trip: backup -> restore into a fresh device', () => {
   const source = () => memStore({
-    expense_categories: ['Fuel', 'Tea'],
-    factory_formula_store: [{ id: 'f1', name: 'Std' }, { id: 'f2', name: 'Asaan' }],
-    factory_formula_slots: { standard: 'f1', asaan: 'f2' },
+    categories: ['Fuel', 'Tea'],
+    formulas: [{ id: 'f1', name: 'Std' }, { id: 'f2', name: 'Asaan' }],
+    slots: { standard: 'f1', asaan: 'f2' },
     photos: { a: 'data:x' },
-    photos_timestamps: { a: 5 },
+    photostamps: { a: 5 },
   });
   it('collect captures every aux key', async () => {
     const out = await collectAuxBackupFields(source());
@@ -136,33 +136,33 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
     const data = await collectAuxBackupFields(source());
     const fresh = memStore();
     const written = await applyAuxBackupFields(data, fresh, 123, 'merge');
-    assert.deepEqual(written.sort(), ['expense_categories', 'factory_formula_slots', 'factory_formula_store']);
-    assert.deepEqual(fresh._m.get('expense_categories'), ['Fuel', 'Tea']);
-    assert.equal(fresh._m.get('expense_categories_timestamp'), 123);
-    assert.equal(fresh._m.get('factory_formula_store').length, 2);
-    assert.deepEqual(fresh._m.get('factory_formula_slots'), { standard: 'f1', asaan: 'f2' });
+    assert.deepEqual(written.sort(), ['categories', 'formulas', 'slots']);
+    assert.deepEqual(fresh._m.get('categories'), ['Fuel', 'Tea']);
+    assert.equal(fresh._m.get('categories_timestamp'), 123);
+    assert.equal(fresh._m.get('formulas').length, 2);
+    assert.deepEqual(fresh._m.get('slots'), { standard: 'f1', asaan: 'f2' });
   });
   it('merge restore never drops local data', async () => {
     const data = await collectAuxBackupFields(source());
-    const dev = memStore({ expense_categories: ['Rent'], factory_formula_store: [{ id: 'f9' }], factory_formula_slots: { standard: 'f9', asaan: null } });
+    const dev = memStore({ categories: ['Rent'], formulas: [{ id: 'f9' }], slots: { standard: 'f9', asaan: null } });
     await applyAuxBackupFields(data, dev, 1, 'merge');
-    assert.deepEqual(dev._m.get('expense_categories'), ['Rent', 'Fuel', 'Tea']);
-    assert.deepEqual(dev._m.get('factory_formula_store').map(f => f.id), ['f9', 'f1', 'f2']);
-    assert.deepEqual(dev._m.get('factory_formula_slots'), { standard: 'f9', asaan: 'f2' });
+    assert.deepEqual(dev._m.get('categories'), ['Rent', 'Fuel', 'Tea']);
+    assert.deepEqual(dev._m.get('formulas').map(f => f.id), ['f9', 'f1', 'f2']);
+    assert.deepEqual(dev._m.get('slots'), { standard: 'f9', asaan: 'f2' });
   });
   it('replace restore (year-close reversal) makes the backup win', async () => {
     const data = await collectAuxBackupFields(source());
-    const dev = memStore({ expense_categories: ['Rent'], factory_formula_store: [{ id: 'f9' }], factory_formula_slots: { standard: 'f9', asaan: null } });
+    const dev = memStore({ categories: ['Rent'], formulas: [{ id: 'f9' }], slots: { standard: 'f9', asaan: null } });
     await applyAuxBackupFields(data, dev, 1, 'replace');
-    assert.deepEqual(dev._m.get('expense_categories'), ['Fuel', 'Tea']);
-    assert.deepEqual(dev._m.get('factory_formula_store').map(f => f.id), ['f1', 'f2']);
-    assert.deepEqual(dev._m.get('factory_formula_slots'), { standard: 'f1', asaan: 'f2' });
+    assert.deepEqual(dev._m.get('categories'), ['Fuel', 'Tea']);
+    assert.deepEqual(dev._m.get('formulas').map(f => f.id), ['f1', 'f2']);
+    assert.deepEqual(dev._m.get('slots'), { standard: 'f1', asaan: 'f2' });
   });
   it('old backups without these fields restore without touching local data', async () => {
-    const dev = memStore({ expense_categories: ['Rent'] });
+    const dev = memStore({ categories: ['Rent'] });
     const written = await applyAuxBackupFields({ mfg: [] }, dev, 1, 'merge');
     assert.deepEqual(written, []);
-    assert.deepEqual(dev._m.get('expense_categories'), ['Rent']);
+    assert.deepEqual(dev._m.get('categories'), ['Rent']);
   });
 });
 describe('merge helpers and cloud category resolution', () => {
@@ -224,8 +224,8 @@ describe('support data follows the same naming rule', () => {
     for (const v of Object.values(FIRESTORE_SUPPORT_PATHS)) assert.ok(/^[a-z_]+(\/[a-z_]+)?$/.test(v), v);
   });
   it('the app really uses those names', () => {
-    for (const k of ['deletions', 'deletion_ids', 'photos', 'photos_timestamps', 'photos_dirty_keys']) assert.ok(sync.includes(`'${k}'`) || sales.includes(`'${k}'`) || payments.includes(`'${k}'`), k);
-    for (const c of ['app_stores', 'factory_settings', 'expense_categories', 'activity_log']) assert.ok(sync.includes(`collection('${c}')`), c);
+    for (const k of ['deletions', 'deleted', 'photos', 'photostamps', 'photodirty']) assert.ok(sync.includes(`'${k}'`) || sales.includes(`'${k}'`) || payments.includes(`'${k}'`), k);
+    for (const c of ['stores', 'formulas', 'categories', 'activity']) assert.ok(sync.includes(`collection('${c}')`), c);
     assert.ok(sync.includes("collection('photos')"));
     assert.ok(!/sqliteStore\.\w+\(\s*'app_theme'/.test(payments + read('utilities-core.js')), 'one theme key');
   });

@@ -688,7 +688,7 @@ this.results.errors.push({ collection: 'account', error: error.message });
 }
 async createActivityLogCollection() {
 try {
-const activityRef = this.userRef.collection('activity_log').doc('initial');
+const activityRef = this.userRef.collection('activity').doc('initial');
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
 deviceId: 'default_device',
@@ -698,9 +698,9 @@ message: 'Firestore database initialized with complete structure'
 },
 userId: this.currentUser.uid
 });
-this.results.success.push('activity_log');
+this.results.success.push('activity');
 } catch (error) {
-this.results.errors.push({ collection: 'activity_log', error: error.message });
+this.results.errors.push({ collection: 'activity', error: error.message });
 }
 }
 async createProductionCollection() {
@@ -847,22 +847,22 @@ initialized_at: this.timestamp,
 last_synced: this.timestamp,
 version: '2.0'
 });
-const factorySettingsRef = this.userRef.collection('factory_settings').doc('config');
+const factorySettingsRef = this.userRef.collection('formulas').doc('config');
 await factorySettingsRef.set({
-default_formulas: { standard: [], asaan: [] },
-default_formulas_timestamp: Date.now(),
-additional_costs: { standard: 0, asaan: 0 },
-additional_costs_timestamp: Date.now(),
-cost_adjustment_factor: { standard: 1, asaan: 1 },
-cost_adjustment_factor_timestamp: Date.now(),
-unit_tracking: {
+defaults: { standard: [], asaan: [] },
+defaults_timestamp: Date.now(),
+costs: { standard: 0, asaan: 0 },
+costs_timestamp: Date.now(),
+adjustment: { standard: 1, asaan: 1 },
+adjustment_timestamp: Date.now(),
+tracking: {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 },
-unit_tracking_timestamp: Date.now(),
+tracking_timestamp: Date.now(),
 last_synced: this.timestamp
 });
-const expenseCategoriesRef = this.userRef.collection('expense_categories').doc('categories');
+const expenseCategoriesRef = this.userRef.collection('categories').doc('list');
 await expenseCategoriesRef.set({
 categories: [
 { id: 'operating', name: 'Operating Expense', color: '#3b82f6' },
@@ -872,8 +872,8 @@ categories: [
 last_synced: this.timestamp
 });
 this.results.success.push('settings');
-this.results.success.push('factory_settings');
-this.results.success.push('expense_categories');
+this.results.success.push('formulas');
+this.results.success.push('categories');
 } catch (error) {
 this.results.errors.push({ collection: 'settings', error: error.message });
 }
@@ -904,8 +904,8 @@ async createTeamSettingsDocument() {
 try {
 const teamRef = this.userRef.collection('settings').doc('team');
 await teamRef.set({
-sales_reps: [],
-user_roles: [],
+reps: [],
+roles: [],
 updated_at: 0,
 last_synced: this.timestamp,
 initialized: true
@@ -931,7 +931,7 @@ this.results.errors.push({ collection: 'deletions', error: error.message });
 }
 async createSyncUpdatesCollection() {
 try {
-const syncUpdateRef = this.userRef.collection('sync_updates').doc('initial');
+const syncUpdateRef = this.userRef.collection('updates').doc('initial');
 await syncUpdateRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
 deviceId: 'default_device',
@@ -939,9 +939,9 @@ collections: ['all'],
 type: 'initialization',
 message: 'Database initialized with complete structure'
 });
-this.results.success.push('sync_updates');
+this.results.success.push('updates');
 } catch (error) {
-this.results.errors.push({ collection: 'sync_updates', error: error.message });
+this.results.errors.push({ collection: 'updates', error: error.message });
 }
 }
 }
@@ -958,12 +958,12 @@ if (!firebaseDB || !currentUser) return false;
 try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const requiredCollections = [
-'devices', 'account', 'activity_log', 'production', 'sales',
+'devices', 'account', 'activity', 'production', 'sales',
 'rep', 'clients',
 'customers',
 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns',
-'calculator', 'settings', 'factory_settings', 'expense_categories',
-'deletions', 'sync_updates'
+'calculator', 'settings', 'formulas', 'categories',
+'deletions', 'updates'
 ];
 const checks = await Promise.all(
 requiredCollections.map(async (coll) => {
@@ -1000,7 +1000,7 @@ try {
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const batch = firebaseDB.batch();
 const collections = [
-'devices', 'account', 'activity_log',
+'devices', 'account', 'activity',
 'production', 'sales',
 'rep', 'clients',
 'customers',
@@ -1008,8 +1008,8 @@ const collections = [
 'inventory', 'factory',
 'expenses', 'returns',
 'calculator',
-'settings', 'factory_settings', 'expense_categories',
-'deletions', 'sync_updates'
+'settings', 'formulas', 'categories',
+'deletions', 'updates'
 ];
 let deleteCount = 0;
 for (const collectionName of collections) {
@@ -1180,11 +1180,11 @@ console.warn(`[Snapshot:${col.firestoreId}] doc error`, _safeErr(docErr));
 const hasChanges = addedOrModified.length > 0 || removedIds.length > 0;
 if (!hasChanges) { recordSuccessfulConnection(); return; }
 {
-const deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
+const deletedArr = ensureArray(await sqliteStore.get('deleted'));
 const deletedSet = new Set(deletedArr);
 addedOrModified.forEach(d => deletedSet.delete(d.id));
 removedIds.forEach(id => deletedSet.add(id));
-await sqliteStore.set('deletion_ids', Array.from(deletedSet));
+await sqliteStore.set('deleted', Array.from(deletedSet));
 }
 let arr = _existingArr;
 for (const docData of addedOrModified) {
@@ -1220,10 +1220,10 @@ _syncQueue.run(async () => {
       existing.push({ id: sid, recordId: sid, collection: collectionName, recordType: collectionName, deletedAt: Date.now(), syncedToCloud: true });
       await sqliteStore.set('deletions', existing);
     }
-    const deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
+    const deletedArr = ensureArray(await sqliteStore.get('deleted'));
     const set = new Set(deletedArr);
     set.add(sid);
-    await sqliteStore.set('deletion_ids', Array.from(set));
+    await sqliteStore.set('deleted', Array.from(set));
   } catch (e) {}
 });
 }
@@ -1371,7 +1371,7 @@ export async function startSyncUpdatesCleanup() {
     try {
       const syncSnapshot = await firebaseDB
         .collection('users').doc(currentUser.uid)
-        .collection('sync_updates')
+        .collection('updates')
         .orderBy('timestamp', 'desc')
         .get();
       if (syncSnapshot.docs.length > 10) {
@@ -1422,7 +1422,7 @@ export async function subscribeToRealtime() {
   if (window._firestoreNetworkDisabled) return;
   try {
     if (!pendingFirestoreYearClose) {
-      const storedFlag = await sqliteStore.get('pending_year_close');
+      const storedFlag = await sqliteStore.get('closing');
       if (storedFlag === true) _set_pendingFirestoreYearClose(true);
     }
   } catch (_flagErr) {  }
@@ -1455,7 +1455,7 @@ export async function subscribeToRealtime() {
       }
       if (allOk) {
         _set_pendingFirestoreYearClose(false);
-        await sqliteStore.set('pending_year_close', false);
+        await sqliteStore.set('closing', false);
         try {
           const _fySettings = await sqliteStore.get('settings', {});
           const _fyTs = Date.now();
@@ -1490,7 +1490,7 @@ export async function subscribeToRealtime() {
   }
   if (!pendingFirestoreRestore) {
     try {
-      const _storedRestoreFlag = await sqliteStore.get('pending_restore');
+      const _storedRestoreFlag = await sqliteStore.get('restoring');
       if (_storedRestoreFlag === true) _set_pendingFirestoreRestore(true);
     } catch (_rfErr) {}
   }
@@ -1554,7 +1554,7 @@ export async function subscribeToRealtime() {
       }
       if (_restoreAllOk) {
         _set_pendingFirestoreRestore(false);
-        await sqliteStore.set('pending_restore', false);
+        await sqliteStore.set('restoring', false);
         try {
           const _rRetryDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
           await _restoreUserRef.collection('settings').doc('yearCloseSignal').set({
@@ -1638,7 +1638,7 @@ export async function subscribeToRealtime() {
         const timestampChecks = [
           { cloud: cloudSettings.settings_timestamp, local: await sqliteStore.get('settings_timestamp') },
           { cloud: cloudSettings.repProfile_timestamp,              local: await sqliteStore.get('repProfile_timestamp') },
-          { cloud: cloudSettings.sales_reps_timestamp,             local: await sqliteStore.get('sales_reps_list_timestamp') },
+          { cloud: cloudSettings.reps_timestamp,             local: await sqliteStore.get('sales_reps_list_timestamp') },
         ];
         for (const check of timestampChecks) {
           if ((check.cloud || 0) > (check.local || 0)) { hasUpdates = true; break; }
@@ -1678,19 +1678,19 @@ export async function subscribeToRealtime() {
             _set_currentRepProfile(cloudSettings.repProfile);
             await sqliteStore.setBatch([
               ['repProfile', currentRepProfile],
-              ['current_rep_profile', currentRepProfile],
+              ['profile', currentRepProfile],
               ['repProfile_timestamp', ct],
             ]);
           }
         }
         if (cloudSettings.last_synced) await sqliteStore.set('last_synced', cloudSettings.last_synced);
-        if (Array.isArray(cloudSettings.sales_reps) && cloudSettings.sales_reps.length > 0) {
-          const ct = cloudSettings.sales_reps_timestamp || 0;
+        if (Array.isArray(cloudSettings.reps) && cloudSettings.reps.length > 0) {
+          const ct = cloudSettings.reps_timestamp || 0;
           const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
           if (ct > lt) {
-            _set_salesRepsList(cloudSettings.sales_reps);
+            _set_salesRepsList(cloudSettings.reps);
             await sqliteStore.setBatch([
-              ['sales_reps_list', salesRepsList],
+              ['reps', salesRepsList],
               ['sales_reps_list_timestamp', ct || Date.now()],
             ]);
           }
@@ -1720,12 +1720,12 @@ export async function subscribeToRealtime() {
         const cfs = doc.data();
         if (!cfs || typeof cfs !== 'object') return;
         const checks = [
-          { cloud: cfs.default_formulas_timestamp,       local: await sqliteStore.get('factory_default_formulas_timestamp') },
-          { cloud: cfs.additional_costs_timestamp,       local: await sqliteStore.get('factory_additional_costs_timestamp') },
-          { cloud: cfs.cost_adjustment_factor_timestamp, local: await sqliteStore.get('factory_cost_adjustment_factor_timestamp') },
-          { cloud: cfs.unit_tracking_timestamp,          local: await sqliteStore.get('factory_unit_tracking_timestamp') },
-          { cloud: cfs.formula_store_timestamp,          local: await sqliteStore.get('factory_formula_store_timestamp') },
-          { cloud: cfs.formula_slots_timestamp,          local: await sqliteStore.get('factory_formula_slots_timestamp') },
+          { cloud: cfs.defaults_timestamp,       local: await sqliteStore.get('defaults_timestamp') },
+          { cloud: cfs.costs_timestamp,       local: await sqliteStore.get('costs_timestamp') },
+          { cloud: cfs.adjustment_timestamp, local: await sqliteStore.get('adjustment_timestamp') },
+          { cloud: cfs.tracking_timestamp,          local: await sqliteStore.get('tracking_timestamp') },
+          { cloud: cfs.formulas_timestamp,          local: await sqliteStore.get('formulas_timestamp') },
+          { cloud: cfs.slots_timestamp,          local: await sqliteStore.get('slots_timestamp') },
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
@@ -1741,23 +1741,23 @@ export async function subscribeToRealtime() {
           return null;
         };
         const newFormulas = await _applyFactorySetting(
-          cfs.default_formulas, cfs.default_formulas_timestamp,
-          'factory_default_formulas_timestamp', 'factory_default_formulas',
+          cfs.defaults, cfs.defaults_timestamp,
+          'defaults_timestamp', 'defaults',
           o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] })
         );
         const newCosts = await _applyFactorySetting(
-          cfs.additional_costs, cfs.additional_costs_timestamp,
-          'factory_additional_costs_timestamp', 'factory_additional_costs',
+          cfs.costs, cfs.costs_timestamp,
+          'costs_timestamp', 'costs',
           o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
         );
         const newFactor = await _applyFactorySetting(
-          cfs.cost_adjustment_factor, cfs.cost_adjustment_factor_timestamp,
-          'factory_cost_adjustment_factor_timestamp', 'factory_cost_adjustment_factor',
+          cfs.adjustment, cfs.adjustment_timestamp,
+          'adjustment_timestamp', 'adjustment',
           o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 })
         );
         const newTracking = await _applyFactorySetting(
-          cfs.unit_tracking, cfs.unit_tracking_timestamp,
-          'factory_unit_tracking_timestamp', 'factory_unit_tracking',
+          cfs.tracking, cfs.tracking_timestamp,
+          'tracking_timestamp', 'tracking',
           o => ({
             standard: o.standard || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
             asaan:    o.asaan    || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
@@ -1765,14 +1765,14 @@ export async function subscribeToRealtime() {
         );
         await _applyFormulaStoreFromCloud(cfs);
         if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
-        emitSyncUpdate({ factory_settings: null});
+        emitSyncUpdate({ formulas: null});
         flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
         console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
-    const factorySettingsUnsub = userRef.collection('factory_settings').doc('config').onSnapshot(async (doc) => {
+    const factorySettingsUnsub = userRef.collection('formulas').doc('config').onSnapshot(async (doc) => {
       if (isSyncing) { _enqueueSyncLocked(_handleFactorySettingsSnapshot, doc); return; }
       await _handleFactorySettingsSnapshot(doc);
     }, _e => {
@@ -1790,14 +1790,14 @@ export async function subscribeToRealtime() {
         const cloud = doc.data();
         if (!cloud || !Array.isArray(cloud.categories)) return;
         const cloudTs = cloud.categories_timestamp || cloud.updated_at || 0;
-        const localTs = (await sqliteStore.get('expense_categories_timestamp')) || 0;
+        const localTs = (await sqliteStore.get('categories_timestamp')) || 0;
         if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
-        const local = await sqliteStore.get('expense_categories') || [];
+        const local = await sqliteStore.get('categories') || [];
         const _ecRes = resolveExpenseCategories(local, cloud.categories, localTs, cloudTs);
         if (_ecRes.changed) {
-          await sqliteStore.set('expense_categories', _ecRes.value);
-          if (_ecRes.ts) await sqliteStore.set('expense_categories_timestamp', _ecRes.ts);
-          emitSyncUpdate({ expense_categories: null});
+          await sqliteStore.set('categories', _ecRes.value);
+          if (_ecRes.ts) await sqliteStore.set('categories_timestamp', _ecRes.ts);
+          emitSyncUpdate({ categories: null});
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -1805,7 +1805,7 @@ export async function subscribeToRealtime() {
         console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
       }
     };
-    const expenseCategoriesUnsub = userRef.collection('expense_categories').doc('categories').onSnapshot(async (doc) => {
+    const expenseCategoriesUnsub = userRef.collection('categories').doc('list').onSnapshot(async (doc) => {
       if (isSyncing) { _enqueueSyncLocked(_handleExpenseCategoriesSnapshot, doc); return; }
       await _handleExpenseCategoriesSnapshot(doc);
     }, _e => {
@@ -1823,17 +1823,17 @@ export async function subscribeToRealtime() {
         const cloud = doc.data();
         if (!cloud || !Array.isArray(cloud.stores)) return;
         const cloudTs = cloud.stores_timestamp || 0;
-        const localTs = (await sqliteStore.get('app_stores_timestamp')) || 0;
+        const localTs = (await sqliteStore.get('stores_timestamp')) || 0;
         if (localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
-        const local = await sqliteStore.get('app_stores') || [];
+        const local = await sqliteStore.get('stores') || [];
         const cloudStores = _keepLocalSalePrices(cloud.stores, local);
         const cloudSorted = [...cloudStores].sort((a, b) => (a.key || '').localeCompare(b.key || ''));
         const localSorted = [...local].sort((a, b) => (a.key || '').localeCompare(b.key || ''));
         if (JSON.stringify(cloudSorted) !== JSON.stringify(localSorted)) {
-          await sqliteStore.set('app_stores', cloudStores);
-          if (cloudTs) await sqliteStore.set('app_stores_timestamp', cloudTs);
+          await sqliteStore.set('stores', cloudStores);
+          if (cloudTs) await sqliteStore.set('stores_timestamp', cloudTs);
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
-          emitSyncUpdate({ app_stores: null });
+          emitSyncUpdate({ stores: null });
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
           if (localTs) sendDeviceNotification('Stores updated', 'Another phone changed store prices or formulas. They are now updated on this phone too.', 'stores-remote').catch(() => {});
           flashLivePulse();
@@ -1843,7 +1843,7 @@ export async function subscribeToRealtime() {
         console.warn('[sync] local save error in appStores snapshot handler:', _safeErr(error));
       }
     };
-    const appStoresUnsub = userRef.collection('app_stores').doc('stores').onSnapshot(async (doc) => {
+    const appStoresUnsub = userRef.collection('stores').doc('list').onSnapshot(async (doc) => {
       if (isSyncing) { _enqueueSyncLocked(_handleAppStoresSnapshot, doc); return; }
       await _handleAppStoresSnapshot(doc);
     }, _e => {
@@ -1880,9 +1880,9 @@ export async function subscribeToRealtime() {
         if (changes.length === 0) return;
         let hasChanges = false;
         let deletionRecords = ensureArray(await sqliteStore.get('deletions'));
-        const deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
+        const deletedArr = ensureArray(await sqliteStore.get('deleted'));
         const deletedSet = new Set(deletedArr);
-        const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
+        const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
         for (const change of changes) {
           try {
             const docData = { id: change.doc.id, ...change.doc.data() };
@@ -1968,7 +1968,7 @@ export async function subscribeToRealtime() {
         if (hasChanges) {
           deletionRecords = _dedupDeletionRecords(deletionRecords);
           await sqliteStore.set('deletions', deletionRecords);
-          await sqliteStore.set('deletion_ids', Array.from(deletedSet));
+          await sqliteStore.set('deleted', Array.from(deletedSet));
           emitSyncUpdate({ deletions: null});
           flashLivePulse();
           recordSuccessfulConnection();
@@ -1997,16 +1997,16 @@ export async function subscribeToRealtime() {
         const localTs = (await sqliteStore.get('team_list_timestamp')) || 0;
         if (cloudTs <= localTs) { recordSuccessfulConnection(); return; }
         let changed = false;
-        if (Array.isArray(teamData.sales_reps) && teamData.sales_reps.length > 0) {
+        if (Array.isArray(teamData.reps) && teamData.reps.length > 0) {
           const prev = JSON.stringify(salesRepsList);
-          _set_salesRepsList(teamData.sales_reps);
-          await sqliteStore.set('sales_reps_list', salesRepsList);
+          _set_salesRepsList(teamData.reps);
+          await sqliteStore.set('reps', salesRepsList);
           if (JSON.stringify(salesRepsList) !== prev) changed = true;
         }
-        if (Array.isArray(teamData.user_roles)) {
+        if (Array.isArray(teamData.roles)) {
           const prev2 = JSON.stringify(userRolesList);
-          _set_userRolesList(teamData.user_roles);
-          await sqliteStore.set('user_roles_list', userRolesList);
+          _set_userRolesList(teamData.roles);
+          await sqliteStore.set('roles', userRolesList);
           if (JSON.stringify(userRolesList) !== prev2) changed = true;
         }
         await sqliteStore.set('team_list_timestamp', cloudTs);
@@ -2059,7 +2059,7 @@ export async function subscribeToRealtime() {
             'production', 'sales', 'calculator', 'rep',
             'clients', 'customers', 'transactions',
             'entities', 'inventory', 'factory',
-            'returns', 'expenses', 'deletion_ids', 'deletions',
+            'returns', 'expenses', 'deleted', 'deletions',
           ];
           await sqliteStore.setBatch(_wipeKeys.map(k => [k, []]));
         } catch (_wipeErr) {
@@ -2300,8 +2300,8 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       const sanitizedValue = sanitizeForFirestore(value, depth + 1, seen);
       if (sanitizedValue !== null && sanitizedValue !== undefined) {
         if (typeof sanitizedValue === 'object' && !Array.isArray(sanitizedValue)) {
-          const isFactorySettings = ['default_formulas', 'additional_costs', 'cost_adjustment_factor',
-            'unit_tracking', 'standard', 'asaan', 'formula_store', 'formula_slots'].includes(cleanKey);
+          const isFactorySettings = ['defaults', 'costs', 'adjustment',
+            'tracking', 'standard', 'asaan', 'formulas', 'slots'].includes(cleanKey);
           if (Object.keys(sanitizedValue).length > 0 || isFactorySettings) sanitized[cleanKey] = sanitizedValue;
         } else {
           sanitized[cleanKey] = sanitizedValue;
@@ -2476,9 +2476,9 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     expensesSnap, returnsSnap,
   ] = await Promise.all([
     userRef.collection('settings').doc('config').get(),
-    userRef.collection('factory_settings').doc('config').get(),
-    userRef.collection('expense_categories').doc('categories').get(),
-    userRef.collection('app_stores').doc('stores').get(),
+    userRef.collection('formulas').doc('config').get(),
+    userRef.collection('categories').doc('list').get(),
+    userRef.collection('stores').doc('list').get(),
     buildQuery(userRef.collection('production'), 'production'),
     buildQuery(userRef.collection('sales'), 'sales'),
     buildQuery(userRef.collection('calculator'), 'calculator'),
@@ -2628,26 +2628,26 @@ function _notifyEditedTransactions(key, records) {
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
 async function _applyFormulaStoreFromCloud(cloud) {
   if (!cloud || typeof cloud !== 'object') return;
-  const localList = await sqliteStore.get('factory_formula_store');
-  const localListTs = (await sqliteStore.get('factory_formula_store_timestamp')) || 0;
-  const cloudList = Array.isArray(cloud.formula_store) ? cloud.formula_store.filter(f => f && f.id) : [];
+  const localList = await sqliteStore.get('formulas');
+  const localListTs = (await sqliteStore.get('formulas_timestamp')) || 0;
+  const cloudList = Array.isArray(cloud.formulas) ? cloud.formulas.filter(f => f && f.id) : [];
   const localHas = Array.isArray(localList) && localList.length > 0;
-  if (Array.isArray(cloud.formula_store) && (cloudList.length > 0 || (cloud.formula_store_timestamp || 0) > localListTs) && (!localHas || (cloud.formula_store_timestamp || 0) > localListTs)) {
-    await sqliteStore.setBatch([['factory_formula_store', cloudList], ['factory_formula_store_timestamp', cloud.formula_store_timestamp || Date.now()]]);
+  if (Array.isArray(cloud.formulas) && (cloudList.length > 0 || (cloud.formulas_timestamp || 0) > localListTs) && (!localHas || (cloud.formulas_timestamp || 0) > localListTs)) {
+    await sqliteStore.setBatch([['formulas', cloudList], ['formulas_timestamp', cloud.formulas_timestamp || Date.now()]]);
   }
-  const localSlots = await sqliteStore.get('factory_formula_slots');
-  const localSlotsTs = (await sqliteStore.get('factory_formula_slots_timestamp')) || 0;
-  const cs = cloud.formula_slots;
+  const localSlots = await sqliteStore.get('slots');
+  const localSlotsTs = (await sqliteStore.get('slots_timestamp')) || 0;
+  const cs = cloud.slots;
   const cloudHasSlots = !!(cs && typeof cs === 'object' && (cs.standard || cs.asaan));
   const localHasSlots = !!(localSlots && (localSlots.standard || localSlots.asaan));
-  if (cloudHasSlots && (!localHasSlots || (cloud.formula_slots_timestamp || 0) > localSlotsTs)) {
-    await sqliteStore.setBatch([['factory_formula_slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['factory_formula_slots_timestamp', cloud.formula_slots_timestamp || Date.now()]]);
+  if (cloudHasSlots && (!localHasSlots || (cloud.slots_timestamp || 0) > localSlotsTs)) {
+    await sqliteStore.setBatch([['slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['slots_timestamp', cloud.slots_timestamp || Date.now()]]);
   }
 }
 export async function _mergeAndPersist(cloudData) {
   try {
     if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
-    const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased_deletion_ids')).map(String));
+    const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
     const deletionsSnap = await firebaseDB
       .collection('users').doc(currentUser.uid)
       .collection('deletions').get();
@@ -2699,7 +2699,7 @@ export async function _mergeAndPersist(cloudData) {
   const deduped = window._dedupDeletionRecords ? window._dedupDeletionRecords(safeDels) : safeDels;
   await sqliteStore.set('deletions', deduped);
   const _deletedSet = new Set(deduped.map(r => r.id));
-  await sqliteStore.set('deletion_ids', Array.from(_deletedSet));
+  await sqliteStore.set('deleted', Array.from(_deletedSet));
   trackFirestoreRead(deletionsSnap.docs.length);
   } catch (_delErr) {
   console.warn('[Sync] Failed to refresh deletions:', _safeErr(_delErr));
@@ -2711,7 +2711,7 @@ export async function _mergeAndPersist(cloudData) {
   'inventory','factory','returns','expenses',
   ];
   const _localBatch = await sqliteStore.getBatch(_localKeys);
-  const _deletedArr = ensureArray(await sqliteStore.get('deletion_ids'));
+  const _deletedArr = ensureArray(await sqliteStore.get('deleted'));
   const _notDeleted = item => !_deletedArr.includes(item.id);
   const _yearCloseCollectionKeys = [
     ['production',                'production'],
@@ -2865,18 +2865,18 @@ export async function _syncSettings(cloudData) {
         _set_currentRepProfile(sd.repProfile);
         await sqliteStore.setBatch([
           ['repProfile', currentRepProfile],
-          ['current_rep_profile', currentRepProfile],
+          ['profile', currentRepProfile],
           ['repProfile_timestamp', ct || Date.now()],
         ]);
       }
     }
-    if (sd && Array.isArray(sd.sales_reps) && sd.sales_reps.length > 0) {
-      const ct = sd.sales_reps_timestamp || 0;
+    if (sd && Array.isArray(sd.reps) && sd.reps.length > 0) {
+      const ct = sd.reps_timestamp || 0;
       const lt = (await sqliteStore.get('sales_reps_list_timestamp')) || 0;
       if (ct >= lt) {
-        _set_salesRepsList(sd.sales_reps);
+        _set_salesRepsList(sd.reps);
         await sqliteStore.setBatch([
-          ['sales_reps_list', salesRepsList],
+          ['reps', salesRepsList],
           ['sales_reps_list_timestamp', ct || Date.now()],
         ]);
       }
@@ -2891,17 +2891,17 @@ export async function _syncSettings(cloudData) {
         if (!(('standard' in obj) && ('asaan' in obj))) return;
         return transform(obj);
       };
-      const newFormulas = await _applyFs(fsData.default_formulas, 'factory_default_formulas_timestamp', 'factory_default_formulas',
+      const newFormulas = await _applyFs(fsData.defaults, 'defaults_timestamp', 'defaults',
         o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] }));
-      if (newFormulas) { await sqliteStore.setBatch([['factory_default_formulas', newFormulas], ['factory_default_formulas_timestamp', fsData.default_formulas_timestamp || ts]]); if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction(); }
-      const newCosts = await _applyFs(fsData.additional_costs, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
-      if (newCosts) { await sqliteStore.setBatch([['factory_additional_costs', newCosts], ['factory_additional_costs_timestamp', fsData.additional_costs_timestamp || ts]]); }
-      const newFactor = await _applyFs(fsData.cost_adjustment_factor, null, null, o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 }));
-      if (newFactor) { await sqliteStore.setBatch([['factory_cost_adjustment_factor', newFactor], ['factory_cost_adjustment_factor_timestamp', fsData.cost_adjustment_factor_timestamp || ts]]); }
-      if (fsData.unit_tracking && ('standard' in fsData.unit_tracking) && ('asaan' in fsData.unit_tracking)) {
+      if (newFormulas) { await sqliteStore.setBatch([['defaults', newFormulas], ['defaults_timestamp', fsData.defaults_timestamp || ts]]); if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction(); }
+      const newCosts = await _applyFs(fsData.costs, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
+      if (newCosts) { await sqliteStore.setBatch([['costs', newCosts], ['costs_timestamp', fsData.costs_timestamp || ts]]); }
+      const newFactor = await _applyFs(fsData.adjustment, null, null, o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 }));
+      if (newFactor) { await sqliteStore.setBatch([['adjustment', newFactor], ['adjustment_timestamp', fsData.adjustment_timestamp || ts]]); }
+      if (fsData.tracking && ('standard' in fsData.tracking) && ('asaan' in fsData.tracking)) {
         const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-        const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
-        await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || ts]]);
+        const newTracking = { standard: vt(fsData.tracking.standard), asaan: vt(fsData.tracking.asaan) };
+        await sqliteStore.setBatch([['tracking', newTracking], ['tracking_timestamp', fsData.tracking_timestamp || ts]]);
       }
       await _applyFormulaStoreFromCloud(fsData);
       if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
@@ -2910,12 +2910,12 @@ export async function _syncSettings(cloudData) {
   if (expCatSnap && expCatSnap.exists) {
     const ecd = expCatSnap.data();
     if (ecd && Array.isArray(ecd.categories)) {
-      const _ecLocal   = await sqliteStore.get('expense_categories');
-      const _ecLocalTs = (await sqliteStore.get('expense_categories_timestamp')) || 0;
+      const _ecLocal   = await sqliteStore.get('categories');
+      const _ecLocalTs = (await sqliteStore.get('categories_timestamp')) || 0;
       const _ecRes = resolveExpenseCategories(_ecLocal, ecd.categories, _ecLocalTs, ecd.categories_timestamp || 0);
       if (_ecRes.changed || !Array.isArray(_ecLocal)) {
-        await sqliteStore.set('expense_categories', _ecRes.value);
-        if (_ecRes.ts) await sqliteStore.set('expense_categories_timestamp', _ecRes.ts);
+        await sqliteStore.set('categories', _ecRes.value);
+        if (_ecRes.ts) await sqliteStore.set('categories_timestamp', _ecRes.ts);
       }
     }
   }
@@ -2923,10 +2923,10 @@ export async function _syncSettings(cloudData) {
     const asd = appStoresSnap.data();
     if (asd && Array.isArray(asd.stores)) {
       const cloudStoresTs = asd.stores_timestamp || 0;
-      const localStoresTs = (await sqliteStore.get('app_stores_timestamp')) || 0;
+      const localStoresTs = (await sqliteStore.get('stores_timestamp')) || 0;
       if (cloudStoresTs > localStoresTs || !localStoresTs) {
-        await sqliteStore.set('app_stores', _keepLocalSalePrices(asd.stores, await sqliteStore.get('app_stores')));
-        if (cloudStoresTs) await sqliteStore.set('app_stores_timestamp', cloudStoresTs);
+        await sqliteStore.set('stores', _keepLocalSalePrices(asd.stores, await sqliteStore.get('stores')));
+        if (cloudStoresTs) await sqliteStore.set('stores_timestamp', cloudStoresTs);
         if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
       }
     }
@@ -2934,8 +2934,8 @@ export async function _syncSettings(cloudData) {
   if (personPhotosSnap && !personPhotosSnap.empty) {
     try {
       const localPhotos = (await sqliteStore.get('photos')) || {};
-      const localPhotoTimestamps = (await sqliteStore.get('photos_timestamps')) || {};
-      const localDirtyKeys = new Set((await sqliteStore.get('photos_dirty_keys')) || []);
+      const localPhotoTimestamps = (await sqliteStore.get('photostamps')) || {};
+      const localDirtyKeys = new Set((await sqliteStore.get('photodirty')) || []);
       let photosChanged = false;
       let timestampsChanged = false;
       for (const doc of personPhotosSnap.docs) {
@@ -2964,7 +2964,7 @@ export async function _syncSettings(cloudData) {
         }
       }
       if (photosChanged) await sqliteStore.set('photos', localPhotos);
-      if (timestampsChanged) await sqliteStore.set('photos_timestamps', localPhotoTimestamps);
+      if (timestampsChanged) await sqliteStore.set('photostamps', localPhotoTimestamps);
       await DeltaSync.setLastSyncTimestamp('photos');
     } catch(_phe) { console.warn('[syncSettings] personPhotos merge error', _phe); }
   }
@@ -3040,40 +3040,40 @@ export async function _uploadChanges(userRef) {
     }
   }
   const configBatch = getOrNewBatch();
-  const localFormulaTs = await sqliteStore.get('factory_default_formulas_timestamp');
-  const localCostsTs   = await sqliteStore.get('factory_additional_costs_timestamp');
-  const localFactorTs  = await sqliteStore.get('factory_cost_adjustment_factor_timestamp');
-  const localUnitTs    = await sqliteStore.get('factory_unit_tracking_timestamp');
-  const localStoreTs   = await sqliteStore.get('factory_formula_store_timestamp');
-  const localSlotsTs   = await sqliteStore.get('factory_formula_slots_timestamp');
-  const lastFactorySync = await DeltaSync.getLastSyncTimestamp('factory_settings');
+  const localFormulaTs = await sqliteStore.get('defaults_timestamp');
+  const localCostsTs   = await sqliteStore.get('costs_timestamp');
+  const localFactorTs  = await sqliteStore.get('adjustment_timestamp');
+  const localUnitTs    = await sqliteStore.get('tracking_timestamp');
+  const localStoreTs   = await sqliteStore.get('formulas_timestamp');
+  const localSlotsTs   = await sqliteStore.get('slots_timestamp');
+  const lastFactorySync = await DeltaSync.getLastSyncTimestamp('formulas');
   const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs, localSlotsTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
     const [_fdf, _fac, _fcaf, _fut, _ffs, _ffsl] = await Promise.all([
-      sqliteStore.get('factory_default_formulas'),
-      sqliteStore.get('factory_additional_costs'),
-      sqliteStore.get('factory_cost_adjustment_factor'),
-      sqliteStore.get('factory_unit_tracking'),
-      sqliteStore.get('factory_formula_store'),
-      sqliteStore.get('factory_formula_slots'),
+      sqliteStore.get('defaults'),
+      sqliteStore.get('costs'),
+      sqliteStore.get('adjustment'),
+      sqliteStore.get('tracking'),
+      sqliteStore.get('formulas'),
+      sqliteStore.get('slots'),
     ]);
     const _nowTs = Date.now();
     const fsPayload = {
-      default_formulas:                _fdf  || { standard: [], asaan: [] },
-      default_formulas_timestamp:      localFormulaTs || _nowTs,
-      additional_costs:                _fac  || { standard: 0, asaan: 0 },
-      additional_costs_timestamp:      localCostsTs   || _nowTs,
-      cost_adjustment_factor:          _fcaf || { standard: 1, asaan: 1 },
-      cost_adjustment_factor_timestamp:localFactorTs  || _nowTs,
-      unit_tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
-      unit_tracking_timestamp:         localUnitTs    || _nowTs,
-      ...(Array.isArray(_ffs) && localStoreTs ? { formula_store: _ffs, formula_store_timestamp: localStoreTs } : {}),
-      ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { formula_slots: _ffsl, formula_slots_timestamp: localSlotsTs || _nowTs } : {}),
+      defaults:                _fdf  || { standard: [], asaan: [] },
+      defaults_timestamp:      localFormulaTs || _nowTs,
+      costs:                _fac  || { standard: 0, asaan: 0 },
+      costs_timestamp:      localCostsTs   || _nowTs,
+      adjustment:          _fcaf || { standard: 1, asaan: 1 },
+      adjustment_timestamp:localFactorTs  || _nowTs,
+      tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
+      tracking_timestamp:         localUnitTs    || _nowTs,
+      ...(Array.isArray(_ffs) && localStoreTs ? { formulas: _ffs, formulas_timestamp: localStoreTs } : {}),
+      ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { slots: _ffsl, slots_timestamp: localSlotsTs || _nowTs } : {}),
     };
-    configBatch.set(userRef.collection('factory_settings').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
+    configBatch.set(userRef.collection('formulas').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
-    collectionsUploaded.add('factory_settings');
+    collectionsUploaded.add('formulas');
   }
   const localSettingsTs = await sqliteStore.get('settings_timestamp');
   const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
@@ -3087,43 +3087,43 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('settings');
   }
-  const localExpCatTs = await sqliteStore.get('expense_categories_timestamp');
-  const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('expense_categories');
+  const localExpCatTs = await sqliteStore.get('categories_timestamp');
+  const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('categories');
   if (localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
-    const _ec = await sqliteStore.get('expense_categories');
+    const _ec = await sqliteStore.get('categories');
     configBatch.set(
-      userRef.collection('expense_categories').doc('categories'),
+      userRef.collection('categories').doc('list'),
       sanitizeForFirestore({ categories: _ec || [], categories_timestamp: localExpCatTs }),
       { merge: true }
     );
     operationCount++;
-    collectionsUploaded.add('expense_categories');
+    collectionsUploaded.add('categories');
   }
-  const localStoresTs = await sqliteStore.get('app_stores_timestamp');
-  const lastStoresSync = await DeltaSync.getLastSyncTimestamp('app_stores');
+  const localStoresTs = await sqliteStore.get('stores_timestamp');
+  const lastStoresSync = await DeltaSync.getLastSyncTimestamp('stores');
   if (localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
-    let _as = await sqliteStore.get('app_stores');
+    let _as = await sqliteStore.get('stores');
     if (!lastStoresSync) {
       try {
-        const _cloudStoresSnap = await userRef.collection('app_stores').doc('stores').get();
+        const _cloudStoresSnap = await userRef.collection('stores').doc('list').get();
         const _cd = _cloudStoresSnap && _cloudStoresSnap.exists ? _cloudStoresSnap.data() : null;
         if (_cd && Array.isArray(_cd.stores)) {
           const filled = _fillStoresFromCloud(_as || [], _cd.stores);
           if (filled.changed) {
             _as = filled.stores;
-            await sqliteStore.set('app_stores', _as);
+            await sqliteStore.set('stores', _as);
             if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           }
         }
       } catch (_fe) { console.warn('[sync] stores pre-upload cloud check failed:', _safeErr(_fe)); }
     }
     configBatch.set(
-      userRef.collection('app_stores').doc('stores'),
+      userRef.collection('stores').doc('list'),
       sanitizeForFirestore({ stores: _as || [], stores_timestamp: localStoresTs }),
       { merge: true }
     );
     operationCount++;
-    collectionsUploaded.add('app_stores');
+    collectionsUploaded.add('stores');
   }
   if (operationCount > 0) { batches.push(currentBatch); currentBatch = firebaseDB.batch(); operationCount = 0; }
   const PHOTO_DOC_MAX_CHARS = 900000;
@@ -3134,7 +3134,7 @@ export async function _uploadChanges(userRef) {
   let _uploadedPhotoKeys = [];
   let _pendingPhotoKeys = [];
   try {
-    const _dirtyPhotoKeys = (await sqliteStore.get('photos_dirty_keys')) || [];
+    const _dirtyPhotoKeys = (await sqliteStore.get('photodirty')) || [];
     if (_dirtyPhotoKeys.length > 0) {
       const _allPhotos = (await sqliteStore.get('photos')) || {};
       const _photosRef = userRef.collection('photos');
@@ -3188,13 +3188,13 @@ export async function _uploadChanges(userRef) {
   }
   if (_uploadedPhotoKeys.length > 0) {
     try {
-      const _remainingDirty = (await sqliteStore.get('photos_dirty_keys')) || [];
+      const _remainingDirty = (await sqliteStore.get('photodirty')) || [];
       const _uploadedSet = new Set(_uploadedPhotoKeys);
-      await sqliteStore.set('photos_dirty_keys', _remainingDirty.filter(k => !_uploadedSet.has(k)));
-      const _localTs = (await sqliteStore.get('photos_timestamps')) || {};
+      await sqliteStore.set('photodirty', _remainingDirty.filter(k => !_uploadedSet.has(k)));
+      const _localTs = (await sqliteStore.get('photostamps')) || {};
       const _nowMs = Date.now();
       _uploadedPhotoKeys.forEach(k => { _localTs[k] = _nowMs; });
-      await sqliteStore.set('photos_timestamps', _localTs);
+      await sqliteStore.set('photostamps', _localTs);
     } catch(_postPhErr) { console.warn('[uploadChanges] photos post-commit cleanup error', _postPhErr); }
   }
   for (const col of collectionsUploaded) {
@@ -3206,10 +3206,10 @@ export async function _uploadChanges(userRef) {
       DeltaSync.clearDirty(col);
     }
   }
-  const configItemCount = (collectionsUploaded.has('factory_settings') ? 1 : 0)
+  const configItemCount = (collectionsUploaded.has('formulas') ? 1 : 0)
     + (collectionsUploaded.has('settings') ? 1 : 0)
-    + (collectionsUploaded.has('expense_categories') ? 1 : 0)
-    + (collectionsUploaded.has('app_stores') ? 1 : 0);
+    + (collectionsUploaded.has('categories') ? 1 : 0)
+    + (collectionsUploaded.has('stores') ? 1 : 0);
   const totalUploaded = totalItemsToWrite + configItemCount;
   if (totalUploaded > 0 && typeof emitSyncUpdate === 'function') {
     const uploadedCollections = Array.from(collectionsUploaded).reduce((acc, col) => { acc[col] = null; return acc; }, {});
@@ -3424,23 +3424,23 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
       if (fsData && typeof fsData === 'object') {
-        if (fsData.unit_tracking && ('standard' in fsData.unit_tracking) && ('asaan' in fsData.unit_tracking)) {
+        if (fsData.tracking && ('standard' in fsData.tracking) && ('asaan' in fsData.tracking)) {
           const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-          const newTracking = { standard: vt(fsData.unit_tracking.standard), asaan: vt(fsData.unit_tracking.asaan) };
-          await sqliteStore.setBatch([['factory_unit_tracking', newTracking], ['factory_unit_tracking_timestamp', fsData.unit_tracking_timestamp || Date.now()]]);
+          const newTracking = { standard: vt(fsData.tracking.standard), asaan: vt(fsData.tracking.asaan) };
+          await sqliteStore.setBatch([['tracking', newTracking], ['tracking_timestamp', fsData.tracking_timestamp || Date.now()]]);
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         }
         await _applyFormulaStoreFromCloud(fsData);
       }
     }
     const _settingsBatch = await sqliteStore.getBatch([
-      'factory_default_formulas', 'factory_additional_costs',
-      'factory_cost_adjustment_factor', 'factory_unit_tracking',
+      'defaults', 'costs',
+      'adjustment', 'tracking',
     ]);
-    const _fdf  = _settingsBatch.get('factory_default_formulas');
-    const _fac  = _settingsBatch.get('factory_additional_costs');
-    const _fcaf = _settingsBatch.get('factory_cost_adjustment_factor');
-    const _fut  = _settingsBatch.get('factory_unit_tracking');
+    const _fdf  = _settingsBatch.get('defaults');
+    const _fac  = _settingsBatch.get('costs');
+    const _fcaf = _settingsBatch.get('adjustment');
+    const _fut  = _settingsBatch.get('tracking');
     const _ensureBothStores = (obj, dflt) => {
       if (!obj || typeof obj !== 'object') return dflt;
       return {
@@ -3449,14 +3449,14 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       };
     };
     await sqliteStore.setBatch([
-      ['factory_default_formulas',       _ensureBothStores(_fdf,  { standard: [], asaan: [] })],
-      ['factory_additional_costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
-      ['factory_cost_adjustment_factor', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
-      ['factory_unit_tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
+      ['defaults',       _ensureBothStores(_fdf,  { standard: [], asaan: [] })],
+      ['costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
+      ['adjustment', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
+      ['tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
       ['settings', defaultSettings],
       ['appMode', appMode],
       ['repProfile', currentRepProfile],
-      ['current_rep_profile', currentRepProfile],
+      ['profile', currentRepProfile],
     ]);
     const statsCols = ['production','sales','rep','clients','calculator',
       'transactions','entities','inventory','factory','returns','expenses','customers'];

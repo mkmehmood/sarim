@@ -31,10 +31,10 @@ const c = live ? Number(live.cost) : NaN;
 return Number.isFinite(c) && c > 0 ? c : (Number(item.cost) || 0);
 }
 export async function getCostPerUnit(storeType) {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const formula = factoryDefaultFormulas[storeType];
 const additionalCost = factoryAdditionalCosts[storeType] || 0;
 if (formula && formula.length > 0) {
@@ -59,9 +59,9 @@ return 0;
 }
 export async function calculateFactoryInventoryValue() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 let totalValue = 0;
 if (factoryInventoryData && factoryInventoryData.length > 0) {
 factoryInventoryData.forEach(item => { totalValue += (item.quantity * item.cost) || 0; });
@@ -76,9 +76,9 @@ return totalValue;
 }
 export async function updateFactoryInventoryDisplay() {
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 let rawMaterialsValue = 0;
 if (factoryInventoryData && factoryInventoryData.length > 0) {
 factoryInventoryData.forEach(item => { rawMaterialsValue += (item.quantity * item.cost) || 0; });
@@ -666,17 +666,17 @@ if (locked !== null) return locked;
 return round2(qty * (await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey())));
 }
 export async function getCostPriceForStore(store) {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 if (!store) return 0;
 const formulaType = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : formulaTypeFor(store);
 return await calculateSalesCostPerKg(formulaType);
 }
 export async function getStorePricing(store) {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 return { salePrice: await getSalePriceForStore(store), costPrice: await getCostPriceForStore(store) };
 }
 let _cfpToken = 0;
@@ -738,11 +738,11 @@ window.notifyBlocking('Please select a formula before saving.', 'warning');
 return;
 }
 const _sfpeBatch = await sqliteStore.getBatch([
-'factory_default_formulas','factory_additional_costs',
+'defaults','costs',
 'inventory','factory',
 ]);
-const factoryDefaultFormulas = _sfpeBatch.get('factory_default_formulas') || {};
-const factoryAdditionalCosts = _sfpeBatch.get('factory_additional_costs') || {};
+const factoryDefaultFormulas = _sfpeBatch.get('defaults') || {};
+const factoryAdditionalCosts = _sfpeBatch.get('costs') || {};
 const factoryInventoryData = ensureArray(_sfpeBatch.get('inventory'));
 const factoryProductionHistory = ensureArray(_sfpeBatch.get('factory'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
@@ -948,10 +948,10 @@ if (typeof window.syncFactoryAvailPicker === 'function') window.syncFactoryAvail
 await updateFactoryUnitsAvailableStats();
 }
 export async function renderFactoryHistory() {
-const _fhBatch = await sqliteStore.getBatch(['factory','factory_additional_costs','factory_default_formulas','inventory']);
+const _fhBatch = await sqliteStore.getBatch(['factory','costs','defaults','inventory']);
 const factoryProductionHistory = ensureArray(_fhBatch.get('factory'));
-const factoryAdditionalCosts = (_fhBatch.get('factory_additional_costs')) || {};
-const factoryDefaultFormulas = (_fhBatch.get('factory_default_formulas')) || {};
+const factoryAdditionalCosts = (_fhBatch.get('costs')) || {};
+const factoryDefaultFormulas = (_fhBatch.get('defaults')) || {};
 const factoryInventoryData = ensureArray(_fhBatch.get('inventory'));
 const _fhLabels = await getFormulaSlotLabels();
 const list = document.getElementById('factoryHistoryList');
@@ -1048,7 +1048,7 @@ _filterFactoryHistoryByMode(currentFactorySummaryMode || 'all');
 export async function deleteFactoryEntry(id) {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
 const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid factory entry ID', 'error'); return; }
 const entryIndex = factoryProductionHistory.findIndex(e => e.id === id);
 if (entryIndex === -1) { await refreshFactoryTab(); return; }
@@ -1122,8 +1122,8 @@ window.notifyBlocking(' Failed to delete entry. Please try again.', 'error');
 }
 }
 export async function calculateDynamicCost(storeType, formulaUnits, netWeight) {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const _dcInv = ensureArray(await sqliteStore.get('inventory'));
 let formulaStore = 'standard';
 if (storeType === 'standard' || storeType === 'asaan') {
@@ -1156,9 +1156,9 @@ unitWeight: totalWeight
 };
 }
 export async function calculateSalesCostPerKg(formulaStore) {
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 const _scInv = ensureArray(await sqliteStore.get('inventory'));
 const formula = factoryDefaultFormulas[formulaStore];
 if (!formula || formula.length === 0) return 0;
@@ -1170,7 +1170,7 @@ return adjustmentFactor > 0 ? (rawMaterialCost + additionalCost) / adjustmentFac
 }
 export async function updateFormulaInventory() {
 const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const db = ensureArray(await sqliteStore.get('production'));
 const tracking = {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
@@ -1202,8 +1202,8 @@ if (entry.formulaUnits) tracking[formulaStore].consumed += entry.formulaUnits;
 tracking.standard.available = Math.max(0, tracking.standard.produced - tracking.standard.consumed);
 tracking.asaan.available = Math.max(0, tracking.asaan.produced - tracking.asaan.consumed);
 const timestamp = Date.now();
-await sqliteStore.set('factory_unit_tracking', tracking);
-await sqliteStore.set('factory_unit_tracking_timestamp', timestamp);
+await sqliteStore.set('tracking', tracking);
+await sqliteStore.set('tracking_timestamp', timestamp);
 return tracking;
 }
 export async function syncFactoryProductionStats() {
@@ -1214,7 +1214,7 @@ updateFactorySummaryCard();
 return tracking;
 }
 export async function validateFormulaAvailability(storeType, requestedUnits) {
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 let formulaStore = 'standard';
 if (storeType === 'standard' || storeType === 'asaan') {
   formulaStore = storeType;
@@ -1227,7 +1227,7 @@ const available = factoryUnitTracking[formulaStore]?.available || 0;
 return { available, sufficient: available >= requestedUnits, deficit: Math.max(0, requestedUnits - available) };
 }
 export async function updateUnitsAvailableIndicator(preloadedTracking) {
-const factoryUnitTracking = preloadedTracking || (await sqliteStore.get('factory_unit_tracking')) || {};
+const factoryUnitTracking = preloadedTracking || (await sqliteStore.get('tracking')) || {};
 const store = document.getElementById('storeSelector').value;
 if (!store) return;
 const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : formulaTypeFor(store);
@@ -1284,7 +1284,7 @@ calculateDynamicProductionCost();
 export async function deleteProdEntry(id) {
 const customerSales = ensureArray(await sqliteStore.get('sales'));
 const db = ensureArray(await sqliteStore.get('production'));
-const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
+const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid production record ID', 'error'); return; }
 const entryToDelete = db.find(item => item.id === id);
 if (!entryToDelete) return;

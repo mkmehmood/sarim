@@ -55,7 +55,7 @@ updateCollectionPreview();
 }
 }
 export async function renderCustomersTable(page = 1) {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const customerSales = ensureArray(await sqliteStore.get('sales')).filter(_rctAlive);
 const salesCustomers = ensureArray(await sqliteStore.get('customers')).filter(_rctAlive);
@@ -959,12 +959,12 @@ const _photos = await sqliteStore.get('photos') || {};
 _photos['cust:' + name.toLowerCase()] = _oldPhoto;
 delete _photos['cust:' + originalName.toLowerCase()];
 await sqliteStore.set('photos', _photos);
-const _dk = (await sqliteStore.get('photos_dirty_keys')) || [];
+const _dk = (await sqliteStore.get('photodirty')) || [];
 const _newKey = 'cust:' + name.toLowerCase();
 const _oldKey = 'cust:' + originalName.toLowerCase();
 if (!_dk.includes(_newKey)) _dk.push(_newKey);
 if (!_dk.includes(_oldKey)) _dk.push(_oldKey);
-await sqliteStore.set('photos_dirty_keys', _dk);
+await sqliteStore.set('photodirty', _dk);
 await sqliteStore.set('photos_timestamp', Date.now());
 const _preview = document.getElementById('cust-photo-preview');
 if (_preview) _preview.dataset.pendingPhoto = undefined;

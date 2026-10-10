@@ -4,12 +4,12 @@
 //   rep         rep sales                 clients    rep customers         customers   sales customers
 //   transactions payments                 entities   payment entities      inventory   raw material / stock
 //   factory     factory production        expenses   expenses              returns     stock returns
-// Support data uses the same rule (one snake_case name, same string locally, in the cloud and in backups):
-//   deletions (recycle-bin records)  deletion_ids (their ids)  photos (+ photos_timestamps)  theme
-//   Firestore docs: app_stores/stores  factory_settings/config  expense_categories/categories  activity_log
+// Support data uses the same rule (one single word, same string locally, in the cloud and in backups):
+//   deletions (recycle-bin records)  deleted (their ids)  photos (+ photostamps)  theme
+//   Firestore docs: stores/list  formulas/config  categories/list  activity
 // Backups carry DATA_KEY_VERSION so a file written with older names is recognised and refused
 // (convert it first with tools/migrate-cloud.mjs --convert-backup).
-export const DATA_KEY_VERSION = 4;
+export const DATA_KEY_VERSION = 5;
 // One row per dataset. Everything that names a dataset reads it from here, so the names cannot drift:
 //   key      local SQLite key = Firestore collection = backup field = delta-sync name
 //   jsVar    the in-memory JS variable the app holds the records in
@@ -50,45 +50,45 @@ export const actionLabel = (action, noun = '') => `${ACTION_LABELS[action]}${nou
 export const RECORD_KEYS = Object.freeze(RECORD_STORES.map(s => s.key));
 export const AUX_STATE = Object.freeze([
   {
-    sqlite: 'expense_categories',
-    tsKey: 'expense_categories_timestamp',
-    backup: 'expense_categories',
-    firestore: { doc: 'expense_categories/categories', field: 'categories', tsField: 'categories_timestamp' },
+    sqlite: 'categories',
+    tsKey: 'categories_timestamp',
+    backup: 'categories',
+    firestore: { doc: 'categories/list', field: 'categories', tsField: 'categories_timestamp' },
     kind: 'list',
   },
   {
-    sqlite: 'factory_formula_store',
-    tsKey: 'factory_formula_store_timestamp',
-    backup: 'factory_formula_store',
-    firestore: { doc: 'factory_settings/config', field: 'formula_store', tsField: 'formula_store_timestamp' },
+    sqlite: 'formulas',
+    tsKey: 'formulas_timestamp',
+    backup: 'formulas',
+    firestore: { doc: 'formulas/config', field: 'formulas', tsField: 'formulas_timestamp' },
     kind: 'idList',
   },
   {
-    sqlite: 'factory_formula_slots',
-    tsKey: 'factory_formula_slots_timestamp',
-    backup: 'factory_formula_slots',
-    firestore: { doc: 'factory_settings/config', field: 'formula_slots', tsField: 'formula_slots_timestamp' },
+    sqlite: 'slots',
+    tsKey: 'slots_timestamp',
+    backup: 'slots',
+    firestore: { doc: 'formulas/config', field: 'slots', tsField: 'slots_timestamp' },
     kind: 'slots',
   },
 ]);
 // Settings-like backup fields: the backup field is the local key.
 export const SETTINGS_BACKUP_FIELDS = Object.freeze([
-  'settings', 'app_stores', 'factory_default_formulas', 'factory_additional_costs',
-  'factory_cost_adjustment_factor', 'factory_unit_tracking',
+  'settings', 'stores', 'defaults', 'costs',
+  'adjustment', 'tracking',
 ]);
 // Support stores that are not record lists. Same name locally (SQLite), in Firestore and in backups.
 export const SUPPORT_STORES = Object.freeze({
   tombstones:   Object.freeze({ sqlite: 'deletions', collection: 'deletions' }),
-  tombstoneIds: Object.freeze({ sqlite: 'deletion_ids' }),
-  photos:       Object.freeze({ sqlite: 'photos', collection: 'photos', timestamps: 'photos_timestamps', dirtyKeys: 'photos_dirty_keys' }),
+  tombstoneIds: Object.freeze({ sqlite: 'deleted' }),
+  photos:       Object.freeze({ sqlite: 'photos', collection: 'photos', timestamps: 'photostamps', dirtyKeys: 'photodirty' }),
   theme:        Object.freeze({ sqlite: 'theme' }),
 });
 // Firestore documents/collections that are not record lists.
 export const FIRESTORE_SUPPORT_PATHS = Object.freeze({
-  appStores: 'app_stores/stores', factorySettings: 'factory_settings/config',
-  expenseCategories: 'expense_categories/categories', activityLog: 'activity_log',
+  appStores: 'stores/list', factorySettings: 'formulas/config',
+  expenseCategories: 'categories/list', activityLog: 'activity',
 });
-export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'current_rep_profile', tsKey: 'repProfile_timestamp' });
+export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'profile', tsKey: 'repProfile_timestamp' });
 export const SQLITE_TO_FIRESTORE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, s.collection])));
 export const FIRESTORE_TO_SQLITE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite])));
 // True when a backup was written with the current names (older files must be converted first).
@@ -141,7 +141,7 @@ export async function collectAuxBackupFields(store) {
     if (s.kind === 'slots')  out[s.backup] = v && typeof v === 'object' ? v : { standard: null, asaan: null };
   }
   out.photos = (await store.get('photos')) || {};
-  out.photos_timestamps = (await store.get('photos_timestamps')) || {};
+  out.photostamps = (await store.get('photostamps')) || {};
   return out;
 }
 export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 'merge') {

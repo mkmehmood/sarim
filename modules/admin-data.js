@@ -81,13 +81,13 @@ try {
     userRef.collection('deletions').get(),
     userRef.collection('photos').get().catch(() => ({ size: 0, docs: [] })),
     userRef.collection('settings').doc('config').get(),
-    userRef.collection('factory_settings').doc('config').get(),
-    userRef.collection('expense_categories').doc('categories').get(),
+    userRef.collection('formulas').doc('config').get(),
+    userRef.collection('categories').doc('list').get(),
     userRef.collection('settings').doc('team').get(),
     userRef.collection('devices').doc(deviceId).get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('account').doc('info').get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('settings').doc('yearCloseSignal').get().catch(() => ({ exists: false, data: () => null })),
-    userRef.collection('app_stores').doc('stores').get().catch(() => ({ exists: false, data: () => null })),
+    userRef.collection('stores').doc('list').get().catch(() => ({ exists: false, data: () => null })),
   ]);
   const stats      = await DeltaSync.getSyncStats();
   const uuidStats  = (typeof UUIDSyncRegistry !== 'undefined') ? UUIDSyncRegistry.stats() : {};
@@ -99,12 +99,12 @@ try {
   const sqliteCounts = {};
   const sqliteKeys = ['production','sales','calculator','rep','clients',
     'customers','transactions','entities','inventory',
-    'factory','returns','expenses','deletions','photos','app_stores'];
+    'factory','returns','expenses','deletions','photos','stores'];
   await Promise.all(sqliteKeys.map(async k => {
     const arr = await sqliteStore.get(k, []);
     sqliteCounts[k] = Array.isArray(arr) ? arr.length : (arr && typeof arr === 'object' ? Object.keys(arr).length : 0);
   }));
-  const _dirtyPhotoKeys = (await sqliteStore.get('photos_dirty_keys')) || [];
+  const _dirtyPhotoKeys = (await sqliteStore.get('photodirty')) || [];
   sqliteCounts['_photos_dirty'] = Array.isArray(_dirtyPhotoKeys) ? _dirtyPhotoKeys.length : 0;
   const _rs = (k) => DATASET_BY_KEY[k];
   const COLLECTIONS = [
@@ -124,28 +124,28 @@ try {
     { fsName:'photos',       sqliteKey:'photos',              jsVar:'photos{}',          snap:personPhotosSnap,    tabFn:null,                 lock:false, desc:'Person/customer/entity photos (keyed object: cust:name, entity:id, rep-cust:rep:name)', isPhotoStore:true },
   ];
   const CONFIG_DOCS = [
-    { path:'settings/config',              doc:settingsDoc,          desc:'App settings, FY counter, repProfile, sales_reps (init)',
-      sqlite:[['settings','settings'],['current_rep_profile','repProfile'],['sales_reps_list','sales_reps (init)']],
-      fsFields:['settings','settings_timestamp','repProfile','repProfile_timestamp','sales_reps','sales_reps_timestamp','last_synced'],
+    { path:'settings/config',              doc:settingsDoc,          desc:'App settings, FY counter, repProfile, reps (init)',
+      sqlite:[['settings','settings'],['profile','repProfile'],['reps','reps (init)']],
+      fsFields:['settings','settings_timestamp','repProfile','repProfile_timestamp','reps','reps_timestamp','last_synced'],
       listener:'_handleSettingsSnapshot' },
     { path:'settings/team',                doc:teamDoc,              desc:'Sales reps list & user roles',
-      sqlite:[['sales_reps_list','sales_reps'],['user_roles_list','user_roles']],
-      fsFields:['sales_reps','user_roles','updated_at'],
+      sqlite:[['reps','reps'],['roles','roles']],
+      fsFields:['reps','roles','updated_at'],
       listener:'_handleTeamSnapshot' },
     { path:'settings/yearCloseSignal',     doc:yearCloseSignalDoc,   desc:'Cross-device year-close / restore broadcast signal',
       sqlite:[['_lastHandledYearCloseSignal','triggeredAt']],
       fsFields:['type','triggeredAt','triggeredBy','fyCloseCount'],
       listener:'_handleYearCloseSignal' },
-    { path:'factory_settings/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, unit tracking',
-      sqlite:[['factory_default_formulas','default_formulas'],['factory_additional_costs','additional_costs'],['factory_cost_adjustment_factor','cost_adjustment_factor'],['factory_unit_tracking','unit_tracking'],['factory_formula_store','formula_store'],['factory_formula_slots','formula_slots']],
-      fsFields:['default_formulas','additional_costs','cost_adjustment_factor','unit_tracking','formula_store','formula_slots','default_formulas_timestamp','formula_store_timestamp','formula_slots_timestamp'],
+    { path:'formulas/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, unit tracking',
+      sqlite:[['defaults','defaults'],['costs','costs'],['adjustment','adjustment'],['tracking','tracking'],['formulas','formulas'],['slots','slots']],
+      fsFields:['defaults','costs','adjustment','tracking','formulas','slots','defaults_timestamp','formulas_timestamp','slots_timestamp'],
       listener:'_handleFactorySettingsSnapshot' },
-    { path:'expense_categories/categories', doc:expenseCategoriesDoc, desc:'Expense category definitions',
-      sqlite:[['expense_categories','categories']],
+    { path:'categories/list', doc:expenseCategoriesDoc, desc:'Expense category definitions',
+      sqlite:[['categories','categories']],
       fsFields:['categories','categories_timestamp'],
       listener:'_handleExpenseCategoriesSnapshot' },
-    { path:'app_stores/stores',                 doc:appStoresDoc,         desc:'Store catalog, formulas & per-store sale prices',
-      sqlite:[['app_stores','stores'],['app_stores_timestamp','stores_timestamp']],
+    { path:'stores/list',                 doc:appStoresDoc,         desc:'Store catalog, formulas & per-store sale prices',
+      sqlite:[['stores','stores'],['stores_timestamp','stores_timestamp']],
       fsFields:['stores','stores_timestamp'],
       listener:'_handleAppStoresSnapshot' },
     { path:`devices/${deviceId}`,          doc:deviceDoc,            desc:'This device: mode, fingerprint, heartbeat, remote commands',
@@ -339,12 +339,12 @@ try {
   html += `<div id="dbv-pane-2" style="display:none">`;
   const LISTENERS = [
     { name:'users/{uid}',                      type:'doc',  path:'userRef.onSnapshot',                              purpose:'Force-logout, account suspension, lastWrite ping for pull trigger', fires:'Any write to the user root doc' },
-    { name:'settings/config',                  type:'doc',  path:'_handleSettingsSnapshot',                         purpose:'settings, repProfile, sales_reps (init copy)', fires:'Timestamp guard on settings_timestamp, repProfile_timestamp, sales_reps_timestamp' },
-    { name:'settings/team',                    type:'doc',  path:'_handleTeamSnapshot',                             purpose:'sales_reps_list, user_roles_list', fires:'updated_at timestamp change' },
+    { name:'settings/config',                  type:'doc',  path:'_handleSettingsSnapshot',                         purpose:'settings, repProfile, reps (init copy)', fires:'Timestamp guard on settings_timestamp, repProfile_timestamp, reps_timestamp' },
+    { name:'settings/team',                    type:'doc',  path:'_handleTeamSnapshot',                             purpose:'reps, roles', fires:'updated_at timestamp change' },
     { name:'settings/yearCloseSignal',         type:'doc',  path:'_handleYearCloseSignal',                          purpose:'Wipe SQLite + full cloud rebuild on other devices after year-close or restore', fires:'triggeredAt > _lastHandledYearCloseSignal AND triggeredBy ≠ this device' },
-    { name:'factory_settings/config',           type:'doc',  path:'_handleFactorySettingsSnapshot',                  purpose:'factory_default_formulas, additional_costs, cost_adjustment_factor, unit_tracking', fires:'Individual per-field timestamp guards' },
-    { name:'app_stores/stores',                 type:'doc',  path:'appStoresUnsub',                                  purpose:'app_stores — store list including each store\'s per-store sale price', fires:'app_stores_timestamp change' },
-    { name:'expense_categories/categories',     type:'doc',  path:'_handleExpenseCategoriesSnapshot',                purpose:'expense_categories', fires:'categories_timestamp change or content diff' },
+    { name:'formulas/config',           type:'doc',  path:'_handleFactorySettingsSnapshot',                  purpose:'defaults, costs, adjustment, tracking', fires:'Individual per-field timestamp guards' },
+    { name:'stores/list',                 type:'doc',  path:'appStoresUnsub',                                  purpose:'stores — store list including each store\'s per-store sale price', fires:'stores_timestamp change' },
+    { name:'categories/list',     type:'doc',  path:'_handleExpenseCategoriesSnapshot',                purpose:'categories', fires:'categories_timestamp change or content diff' },
     { name:'devices/{deviceId}',               type:'doc',  path:'_handleDeviceSnapshot',                           purpose:'Live remote mode changes (admin→rep etc.) without re-login', fires:'remoteAppliedMode flag + appMode_timestamp > local' },
     { name:'deletions',                        type:'col',  path:'_handleDeletionsSnapshot',                        purpose:'Propagate soft deletes to all devices, filter from data arrays', fires:'Any add/modify/remove on the deletions collection' },
     { name:'photos',                     type:'col',  path:'pullDataFromCloud → personPhotos delta fetch',    purpose:'Sync person/customer/entity photos (base64) from cloud; upload dirty keys on push', fires:'Delta pull on sync — not a live onSnapshot listener; uploads via dirty-key queue' },
@@ -420,14 +420,14 @@ try {
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">expenses/</span> <span style="color:var(--text-muted)">{docId}</span></div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">deletions/</span> <span style="color:var(--text-muted)">{recordId}</span> — tombstones</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">photos/</span> <span style="color:var(--text-muted)">{base64Key}</span> — photos keyed by type:id (cust:name, entity:id, rep-cust:rep:name)</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">activity_log/</span> <span style="color:var(--text-muted)">{auto}</span> — write-only audit</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">sync_updates/</span> <span style="color:var(--text-muted)">{auto}</span> — heartbeat log (cleaned hourly)</div>
+      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">activity/</span> <span style="color:var(--text-muted)">{auto}</span> — write-only audit</div>
+      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">updates/</span> <span style="color:var(--text-muted)">{auto}</span> — heartbeat log (cleaned hourly)</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">devices/</span> <span style="color:var(--text-muted)">{deviceId}</span> — fingerprint, mode, heartbeat</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">account/info</span> — email, displayName</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/config</span> — settings, repProfile</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/team</span> — sales_reps, user_roles</div>
+      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/team</span> — reps, roles</div>
       <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/yearCloseSignal</span> — cross-device broadcast</div>
-      <div style="padding-left:14px"><span style="color:#30d158">└─</span> <span style="color:var(--accent-cyan)">factory_settings/config</span> — formulas, costs, prices</div>
+      <div style="padding-left:14px"><span style="color:#30d158">└─</span> <span style="color:var(--accent-cyan)">formulas/config</span> — formulas, costs, prices</div>
     </div>
   </div>
 
@@ -1023,10 +1023,10 @@ export async function generateCloseYearSummary() {
   const stockReturns = ensureArray(await sqliteStore.get('returns'));
   const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
   const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-  const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-  const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-  const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
-const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
+  const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+  const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+  const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
+const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const S = {
   production:   { total:0, nonMerged:0, stores: new Set(), returnCount:0, sellerReturns: new Set(), sellerStoreCards: new Set(), transferCount:0 },
   sales:        { total:0, nonMerged:0, customers: new Set(), settledCount:0, creditCount:0 },
@@ -1384,12 +1384,12 @@ export async function executeCloseFinancialYear() {
   const repCustomers = ensureArray(await sqliteStore.get('clients'));
   const salesCustomers = ensureArray(await sqliteStore.get('customers'));
   const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
-  const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
-  const factoryDefaultFormulas = (await sqliteStore.get('factory_default_formulas')) || {};
-  const factoryAdditionalCosts = (await sqliteStore.get('factory_additional_costs')) || {};
-  const factoryCostAdjustmentFactor = (await sqliteStore.get('factory_cost_adjustment_factor')) || {};
-  const factoryUnitTracking = (await sqliteStore.get('factory_unit_tracking')) || {};
-  const appStoresSnapshot = ensureArray(await sqliteStore.get('app_stores'));
+  const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
+  const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
+  const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
+  const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
+  const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
+  const appStoresSnapshot = ensureArray(await sqliteStore.get('stores'));
   const db = ensureArray(await sqliteStore.get('production'));
   const customerSales = ensureArray(await sqliteStore.get('sales'));
   const repSales = ensureArray(await sqliteStore.get('rep'));
@@ -1428,17 +1428,17 @@ try {
     customers: salesCustomers,
     inventory: factoryInventoryData,
     factory: factoryProductionHistory,
-    factory_default_formulas: factoryDefaultFormulas,
-    factory_additional_costs: factoryAdditionalCosts,
-    factory_cost_adjustment_factor: factoryCostAdjustmentFactor,
-    factory_unit_tracking: factoryUnitTracking,
-    app_stores: appStoresSnapshot,
+    defaults: factoryDefaultFormulas,
+    costs: factoryAdditionalCosts,
+    adjustment: factoryCostAdjustmentFactor,
+    tracking: factoryUnitTracking,
+    stores: appStoresSnapshot,
     entities: paymentEntities,
     transactions: paymentTransactions,
     returns: stockReturns,
     expenses: expenseRecords,
     settings: _settingsSnapshot,
-    deletion_ids: Array.from(deletedRecordIds),
+    deleted: Array.from(deletedRecordIds),
     ...(await collectAuxBackupFields(sqliteStore)),
     _meta: { dataKeyVersion: DATA_KEY_VERSION,
       encryptedFor:        currentUser.email,
@@ -1568,7 +1568,7 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
   updateCloseYearProgress('Purging deleted records...', 93);
   try {
     const _tombstoneIds = Array.from(
-      new Set(ensureArray(await sqliteStore.get('deletion_ids')).map(String))
+      new Set(ensureArray(await sqliteStore.get('deleted')).map(String))
     );
     if (_tombstoneIds.length > 0 && firebaseDB && currentUser) {
       const _delUserRef = firebaseDB.collection('users').doc(currentUser.uid);
@@ -1582,7 +1582,7 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
         await _delBatch.commit().catch(e => console.warn('[yearClose] tombstone Firestore purge batch failed:', _safeErr(e)));
       }
     }
-    await sqliteStore.set('deletion_ids', []);
+    await sqliteStore.set('deleted', []);
     await sqliteStore.set('deletions', []);
     console.log('[yearClose] Hard-deleted', _tombstoneIds.length, 'tombstone record(s) from SQLite + Firestore.');
   } catch (_hardDelErr) {
@@ -1598,11 +1598,11 @@ try {
   if (hasSyncWarning) {
     fyMeta.pendingFirestoreYearClose = true;
     pendingFirestoreYearClose = true;
-    await sqliteStore.set('pending_year_close', true);
+    await sqliteStore.set('closing', true);
   } else {
     fyMeta.pendingFirestoreYearClose = false;
     pendingFirestoreYearClose = false;
-    await sqliteStore.set('pending_year_close', false);
+    await sqliteStore.set('closing', false);
   }
   const _fyMetaTs = Date.now();
   await sqliteStore.set('settings', fyMeta);
@@ -2464,7 +2464,7 @@ updateCloseYearProgress('Rep Sales Data Merged', 92);
 }
 export async function mergeExpensesData(signal, closeEpoch) {
 const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
-const expenseCategories = ensureArray(await sqliteStore.get('expense_categories'));
+const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 updateCloseYearProgress('Merging Expenses...', 94);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(expenseRecords) || expenseRecords.length === 0) {
@@ -2537,8 +2537,8 @@ try {
     .map(e => e.id);
   if (_mergedAwayIds.length > 0) {
     const _fyPh   = (await sqliteStore.get('photos')) || {};
-    const _fyPhTs = (await sqliteStore.get('photos_timestamps')) || {};
-    const _fyDk   = (await sqliteStore.get('photos_dirty_keys')) || [];
+    const _fyPhTs = (await sqliteStore.get('photostamps')) || {};
+    const _fyDk   = (await sqliteStore.get('photodirty')) || [];
     let _fyPhChanged = false;
     for (const _mergedId of _mergedAwayIds) {
       const _mergedPhKey = 'expense:' + _mergedId;
@@ -2551,8 +2551,8 @@ try {
     }
     if (_fyPhChanged) {
       await sqliteStore.set('photos', _fyPh);
-      await sqliteStore.set('photos_timestamps', _fyPhTs);
-      await sqliteStore.set('photos_dirty_keys', _fyDk);
+      await sqliteStore.set('photostamps', _fyPhTs);
+      await sqliteStore.set('photodirty', _fyDk);
       console.log('[mergeExpensesData] Queued photo deletion for', _mergedAwayIds.length, 'merged expense record(s).');
     }
   }
@@ -2748,9 +2748,9 @@ await sqliteStore.set(collection.name, data);
 }
 }
 const settingsKeys = [
-'factory_default_formulas', 'factory_additional_costs',
-'factory_cost_adjustment_factor', 'factory_formula_store', 'factory_formula_slots',
-'factory_unit_tracking', 'settings'
+'defaults', 'costs',
+'adjustment', 'formulas', 'slots',
+'tracking', 'settings'
 ];
 for (const key of settingsKeys) {
 const timestamp = await sqliteStore.get(`${key}_timestamp`);
@@ -2783,7 +2783,7 @@ export async function deduplicateAllData() {
   const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
   const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
   const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-  const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+  const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
   const _ddMsg = `Run a full deduplication scan?\n\nThis will:\n • Scan all records across every collection\n • Remove exact duplicate entries (keeping the newest version)\n • Sync cleaned data to the cloud\n\n\u26a0 This operation may take 30–60 seconds depending on data volume. Do not close the app while it runs.\n\nThis cannot be undone — but your data will only be improved, not deleted.`;
 if (!(await showGlassConfirm(_ddMsg, { title: 'Deduplicate All Data', confirmText: 'Run Cleanup', cancelText: 'Cancel', danger: true }))) {
 return;
@@ -3186,7 +3186,7 @@ export async function runUnifiedCleanup() {
   const expenseRecords = ensureArray(await sqliteStore.get('expenses'));
   const factoryInventoryData = ensureArray(await sqliteStore.get('inventory'));
   const factoryProductionHistory = ensureArray(await sqliteStore.get('factory'));
-  const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deletion_ids')));
+  const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 if (!(await showGlassConfirm(
   'Clean all duplicate records?\n\n\u2022 Scans every collection in SQLite\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }

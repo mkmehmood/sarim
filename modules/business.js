@@ -687,16 +687,16 @@ export const sqliteStore = (() => {
   const _IDB_KEY_TO_COLLECTION = {
     ...Object.fromEntries(RECORD_KEYS.map(k => [k, k])),
     'deletions': 'deletions',
-    'deletion_ids':  'deleted_ids',
+    'deleted':  'deleted',
   };
   const _SETTINGS_KEYS = new Set([
-    'factory_default_formulas', 'factory_additional_costs',
-    'factory_cost_adjustment_factor', 'factory_formula_store', 'factory_formula_slots',
-    'factory_unit_tracking', 'settings',
-    'expense_categories', 'sales_reps_list', 'user_roles_list',
+    'defaults', 'costs',
+    'adjustment', 'formulas', 'slots',
+    'tracking', 'settings',
+    'categories', 'reps', 'roles',
     'offline_operation_queue', 'offline_dead_letter_queue',
     'ui_state', 'theme', 'firestore_stats', 'session_start',
-    'app_stores', 'perm_asked_v2', 'persistent_login', 'session_active',
+    'stores', 'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
   function _rowType(key) {
@@ -710,7 +710,7 @@ export const sqliteStore = (() => {
     if (key.endsWith('_timestamp'))                               return 'sync_meta';
     if (key === 'last_synced' || key === 'delta_sync_stats'
       || key === 'firestore_initialized' || key === 'firestore_init_timestamp'
-      || key === 'pending_year_close' || key === 'team_list_timestamp'
+      || key === 'closing' || key === 'team_list_timestamp'
       || key === 'user_state')                                    return 'sync_meta';
     return 'config';
   }
@@ -1694,8 +1694,8 @@ return [];
 export async function loadAllData() {
 if (typeof loadUIState === 'function') await loadUIState();
 const configKeys = [
-'settings', 'appMode', 'repProfile', 'expense_categories',
-'sales_reps_list', 'assignedManager', 'assignedUserTabs',
+'settings', 'appMode', 'repProfile', 'categories',
+'reps', 'assignedManager', 'assignedUserTabs',
 'appMode_timestamp', 'repProfile_timestamp'
 ];
 const batchResults = await sqliteStore.getBatch(configKeys);
@@ -1712,10 +1712,10 @@ const loadedRepProfile = batchResults.get('repProfile');
 if (_notFailed(loadedRepProfile) && typeof loadedRepProfile === 'string') {
 currentRepProfile = loadedRepProfile; window.currentRepProfile = currentRepProfile;
 }
-const loadedExpenseCategories = batchResults.get('expense_categories');
+const loadedExpenseCategories = batchResults.get('categories');
 if (_notFailed(loadedExpenseCategories) && Array.isArray(loadedExpenseCategories)) {
 }
-const loadedSalesRepsList = batchResults.get('sales_reps_list');
+const loadedSalesRepsList = batchResults.get('reps');
 if (_notFailed(loadedSalesRepsList) && Array.isArray(loadedSalesRepsList) && loadedSalesRepsList.length > 0) {
 salesRepsList = loadedSalesRepsList; window.salesRepsList = salesRepsList;
 }
@@ -2227,7 +2227,7 @@ return;
 try {
 const deviceId = await getDeviceId();
 const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-const activityRef = userRef.collection('activity_log').doc();
+const activityRef = userRef.collection('activity').doc();
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
 deviceId: deviceId,
