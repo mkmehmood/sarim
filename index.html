@@ -134,7 +134,7 @@ background: radial-gradient(circle at 50% 42%, var(--sp-g1) 0%, var(--sp-g2) 38%
 }
 .splash-dial {
 position: relative;
-width: min(352px, 92vw, 54vh);
+width: min(352px, 92vw);
 aspect-ratio: 300 / 160;
 flex: none;
 }
@@ -172,7 +172,7 @@ color: var(--sp-ink);
 margin-top: 4px;
 font-family: var(--sp-brand);
 font-weight: 600;
-font-size: clamp(2.2rem, 6.2vh, 3.1rem);
+font-size: 3.1rem;
 line-height: 1.05;
 letter-spacing: 0.02em;
 color: var(--sp-strong);
@@ -193,7 +193,7 @@ text-transform: uppercase;
 color: var(--sp-muted);
 }
 .splash-brand {
-margin-top: clamp(16px, 5.4vh, 46px);
+margin-top: 46px;
 text-align: center;
 position: relative;
 }
@@ -220,7 +220,7 @@ position: relative;
 flex: none;
 width: 150px;
 height: 1px;
-margin: clamp(12px, 2.8vh, 24px) 0 clamp(10px, 2.5vh, 22px);
+margin: 24px 0 22px;
 background: linear-gradient(to right, transparent, var(--sp-track), transparent);
 }
 .splash-rule::after {
@@ -241,7 +241,7 @@ max-width: min(320px, 86vw);
 font-family: var(--sp-display);
 font-style: italic;
 font-weight: 500;
-font-size: clamp(0.95rem, 2.5vh, 1.14rem);
+font-size: 1.14rem;
 line-height: 1.55;
 text-align: center;
 text-wrap: balance;
@@ -281,10 +281,23 @@ box-shadow: 0 0 0 4px var(--sp-soft);
 animation: splashBlink 1.4s ease-in-out infinite !important;
 }
 @media (min-width: 900px) and (min-height: 760px) {
-#splash-screen .splash-dial { width: min(420px, 40vh); }
+#splash-screen .splash-dial { width: 420px; }
 #splash-screen .splash-clock { font-size: 3.7rem; }
 #splash-screen .splash-brand b { font-size: 1.75rem; }
 #splash-screen .splash-quote { max-width: 460px; font-size: 1.3rem; }
+}
+@media (max-height: 780px) {
+#splash-screen .splash-clock { font-size: 2.7rem; }
+#splash-screen .splash-brand { margin-top: 30px; }
+#splash-screen .splash-rule { margin: 18px 0 16px; }
+#splash-screen .splash-dial { width: min(320px, 86vw); }
+#splash-screen .splash-quote { font-size: 1.04rem; }
+}
+@media (max-height: 700px) {
+#splash-screen .splash-clock { font-size: 2.3rem; }
+#splash-screen .splash-brand { margin-top: 18px; }
+#splash-screen .splash-rule { margin: 12px 0; }
+#splash-screen .splash-dial { width: min(280px, 76vw); }
 }
 @media (max-height: 640px) {
 #splash-screen .splash-rule,
@@ -305,15 +318,18 @@ animation: splashBlink 1.4s ease-in-out infinite !important;
 0%, 100% { opacity: 1; }
 50% { opacity: 0.35; }
 }
-#splash-screen { transition: opacity 0.55s ease, padding 0.35s ease; }
+#splash-screen { transition: opacity 0.55s ease; }
 @media (max-width: 700px) {
 html[data-bio="1"] #splash-screen {
---sp-sheet: clamp(300px, 44vh, 420px);
+--sp-sheet: 380px;
 justify-content: center;
 padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px var(--sp-sheet);
 }
-@supports (height: 100dvh) {
-html[data-bio="1"] #splash-screen { --sp-sheet: clamp(300px, 44dvh, 420px); }
+@media (max-height: 800px) {
+html[data-bio="1"] #splash-screen { --sp-sheet: 340px; }
+}
+@media (max-height: 700px) {
+html[data-bio="1"] #splash-screen { --sp-sheet: 300px; }
 }
 html[data-bio="1"] .splash-glow { top: 40px; width: min(420px, 110vw); height: min(420px, 110vw); transform: translateX(-50%); }
 html[data-bio="1"] .splash-dial { width: min(250px, 66vw); }
@@ -801,10 +817,24 @@ if(window.__restoreThemeColor)window.__restoreThemeColor();
 setTimeout(function(){if(!window.__appLocked)el.style.display="none"},FADE+30);
 }
 window.__splashTryHide=tryHide;
+function settle(done){
+var last="",stable=0,t0=Date.now();
+function snap(){var cs=getComputedStyle(el);return window.innerWidth+"x"+window.innerHeight+"|"+cs.paddingTop+"|"+cs.paddingBottom+"|"+cs.paddingLeft+"|"+cs.paddingRight}
+function tick(){
+var cur=snap();
+if(cur===last)stable++;else{stable=0;last=cur}
+if(stable>=4||Date.now()-t0>700){done();return}
+requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+}
 function reveal(){
 if(revealed)return;
 revealed=true;
-requestAnimationFrame(function(){
+settle(function(){
+el.style.minHeight=window.innerHeight+"px";
+var w0=window.innerWidth;
+window.addEventListener("resize",function(){if(window.innerWidth!==w0){w0=window.innerWidth;el.style.minHeight=window.innerHeight+"px"}});
 el.classList.add("splash-ready");
 requestAnimationFrame(function(){
 window.__splashPainted=true;
