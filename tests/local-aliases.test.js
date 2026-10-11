@@ -1,11 +1,7 @@
-// A device that updates from the released app (main) keeps everything it stored locally: every older local key
-// is readable through its new name, and operations still waiting in the offline queue are written to the
-// migrated collections with current store keys.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { legacyLocalNames, modernizeQueuedOperation, modernizeQueue, modernizeLegacyValue, LEGACY_LOCAL_KEYS } from '../modules/local-aliases.js';
 
-// key written by the released app (main) -> key the app uses now
 const RELEASED_TO_NOW = {
   naswar_default_settings: 'settings', naswar_default_settings_timestamp: 'settings_timestamp',
   app_theme: 'theme',

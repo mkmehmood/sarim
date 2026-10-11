@@ -1,5 +1,3 @@
-// End-to-end proof that the migration loses nothing: realistic data in the OLD (main) format goes in,
-// every document and every field value must come out (only names / store codes may change).
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { migrateCloud, convertBackup, DATASETS, STORE_KEY_FIELDS, DOC_FIELD_RENAMES, BACKUP_FIELD_RENAMES } from '../tools/migrate-cloud.mjs';
@@ -21,7 +19,6 @@ function client(seed, { failAfter = Infinity } = {}) {
       }
     } };
 }
-// ---- realistic OLD data: every dataset, many records, odd values, extra fields -------------------------
 const CODES = ['STORE_A', 'STORE_B', 'STORE_C', 'STORE_D'];
 const rec = (col, i) => ({ id: `${col}-${i}`, date: '2025-03-0' + (1 + i % 9), amount: 100.5 * i, note: 'ünïcode — اردو ✓', tags: ['a', { deep: [1, 2, { x: i }] }], zero: 0, empty: '', no: null, flag: false,
   store: CODES[i % 4], supplyStore: CODES[(i + 1) % 4], nested: { returnStore: CODES[(i + 2) % 4], list: [{ transferPeerStore: CODES[i % 4], keep: 'k' + i }] },
@@ -44,7 +41,6 @@ function oldCloud() {
   for (let i = 1; i <= 4; i++) s[`deletions/d${i}`] = { id: 'd' + i, collection: ['rep_sales', 'factory_history', 'calculator_history', 'sales'][i - 1], recordType: 'rep_sales', deleted_by: 'user', tombstoned_at: 9, record: { store: 'STORE_B', keep: i } };
   return s;
 }
-// leaf paths -> values, with store-code values and known field renames normalised away
 const leaves = (x, pre = '', out = {}) => { if (Array.isArray(x)) x.forEach((v, i) => leaves(v, `${pre}[${i}]`, out)); else if (x && typeof x === 'object' && !x.__timestamp) for (const k of Object.keys(x)) leaves(x[k], pre ? `${pre}.${k}` : k, out); else out[pre] = x; return out; };
 const isStoreField = (path) => STORE_KEY_FIELDS.includes(path.split('.').pop().replace(/\[\d+\]$/, ''));
 function assertSameData(oldDoc, newDoc, label, fieldRenames = {}) {
@@ -52,7 +48,7 @@ function assertSameData(oldDoc, newDoc, label, fieldRenames = {}) {
   for (const [path, v] of Object.entries(o)) {
     const segs = path.split('.'); const top = segs[0].replace(/\[\d+\]$/, '');
     const m = /^(.*?)(_timestamp)?$/.exec(top); const renamed = fieldRenames[m[1]] ? fieldRenames[m[1]] + (m[2] || '') + path.slice(top.length) : path;
-    if (path === 'updatedAt') { assert.ok('updatedAt' in n, `${label}: updatedAt missing`); continue; } // re-stamped on purpose so other devices re-sync the record
+    if (path === 'updatedAt') { assert.ok('updatedAt' in n, `${label}: updatedAt missing`); continue; }
     assert.ok(renamed in n, `${label}: lost field ${path}`);
     if (isStoreField(path) && typeof v === 'string' && /^STORE_/.test(v)) continue;
     assert.deepEqual(n[renamed], v, `${label}: value changed at ${path}`);
@@ -80,7 +76,7 @@ describe('migration loses no data', () => {
     const bad = [];
     const walk = (n, where) => { if (Array.isArray(n)) n.forEach(x => walk(x, where)); else if (n && typeof n === 'object') for (const [k, v] of Object.entries(n)) { if (STORE_KEY_FIELDS.includes(k) && typeof v === 'string' && v && !keys.has(v) && !['standard', 'asaan'].includes(v)) bad.push(`${where} ${k}=${v}`); walk(v, where); } };
     const oldCols = new Set(DATASETS.filter(([o, n]) => o !== n).map(([o]) => o));
-    for (const [p, d] of c.docs) if (!oldCols.has(p.split('/')[0])) walk(d, p); // the kept old copies are not read by the new app
+    for (const [p, d] of c.docs) if (!oldCols.has(p.split('/')[0])) walk(d, p);
     assert.deepEqual(bad, []);
     const stores = c.docs.get('stores/list').stores;
     assert.equal(stores.find(s => s.key === 'zubair').salePrice, 10);
@@ -120,7 +116,7 @@ describe('migration loses no data', () => {
     const seed = oldCloud(); const ref = client(seed); await migrateCloud(ref, { apply: true });
     const crashy = client(seed, { failAfter: 1 });
     await assert.rejects(() => migrateCloud(crashy, { apply: true, deleteOld: true }));
-    crashy.docs.forEach(() => {}); // whatever was written stays; old data must still be complete
+    crashy.docs.forEach(() => {});
     for (const p of Object.keys(seed)) if (!p.endsWith('_placeholder_') && !p.startsWith('deletions/')) assert.ok(crashy.docs.has(p), 'crash lost ' + p);
     const again = client(seed); again.docs.clear(); for (const [p, d] of crashy.docs) again.docs.set(p, clone(d));
     await migrateCloud(again, { apply: true });

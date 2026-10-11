@@ -683,8 +683,6 @@ export const sqliteStore = (() => {
     'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
-  // Every record store is keyed by its Firestore collection name (see data-keys.js); the two
-  // bookkeeping keys keep their own collection names.
   const _IDB_KEY_TO_COLLECTION = {
     ...Object.fromEntries(RECORD_KEYS.map(k => [k, k])),
     'deletions': 'deletions',
@@ -1363,8 +1361,6 @@ export const sqliteStore = (() => {
       await this.init();
       const row = _rawGet(_fullKey(key));
       if (!row) {
-        // Read-through for keys renamed in data version 5: an older device keeps its value under the
-        // old name until it is read once, then it moves to the new name (nothing is lost or reset).
         const MISSING = {};
         for (const legacyKey of legacyLocalNames(key)) {
           const legacy = await this.get(legacyKey, MISSING);

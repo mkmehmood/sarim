@@ -2,7 +2,6 @@ import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { debtDelta, debtNeedsGross } from '../modules/finance.js';
 
-// The REAL link-guards.js runs here against an in-memory store. Only its two heavy imports are replaced.
 const data = new Map();
 const saves = [];
 const deletes = [];
@@ -18,7 +17,6 @@ mock.module('../modules/business.js', {
 });
 mock.module('../modules/sync.js', {
   namedExports: {
-    // mirrors the real contract: persist the whole array, remember which ids were meant to sync
     async unifiedSave(key, arr, rec, ids) { await sqliteStore.set(key, arr); saves.push({ key, ids: rec ? [rec.id] : ids }); return true; },
     async unifiedDelete(key, arr, id) { await sqliteStore.set(key, arr); deletes.push({ key, id }); return true; },
   },

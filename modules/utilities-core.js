@@ -79,8 +79,6 @@ _dlKey: 'offline_dead_letter_queue',
 async init() {
 try {
 const savedQueue = await sqliteStore.get('offline_operation_queue', []);
-// Operations queued by an older app version still name the old collections / store codes: upgrade them
-// once so they are written to the migrated data instead of an orphaned old collection.
 const upQ = modernizeQueue(savedQueue);
 this.queue = upQ.list;
 const savedDL = await sqliteStore.get(this._dlKey, []);
@@ -1865,7 +1863,6 @@ if (!entity) return;
 await renderEntityOverlayContent(entity);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('entity-details-screen');
 }
-// Re-draws the open entity overlay (used by the date-range select, which changes what the overlay lists).
 export async function refreshEntityOverlay() {
 if (!currentEntityId) return;
 const entities = ensureArray(await sqliteStore.get('entities'));

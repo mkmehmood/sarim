@@ -145,7 +145,6 @@ describe('cloud migration', () => {
     assert.ok(!del.docs.has('calculator_history/c1') && !del.docs.has('rep_sales/r1'));
     assert.ok(del.docs.has('calculator/c1') && del.docs.has('rep/r1'));
     assert.equal(r.deleted, 5);
-    // a copy that is somehow missing blocks the delete
     const bad = memClient(seed());
     const realCommit = bad.commit.bind(bad);
     bad.commit = async (ops) => realCommit(ops.filter(o => !(o.path || '').startsWith('calculator/')));
@@ -315,7 +314,7 @@ describe('tools/migrate.html is a self-contained copy of the migration code', ()
     const mjs = readFileSync(new URL('../tools/migrate-cloud.mjs', import.meta.url), 'utf8');
     assert.ok(!/from\s+'\.\/migrate-cloud\.mjs'/.test(html), 'must not import a sibling file (breaks on file:// and phones)');
     assert.ok(!/<script[^>]+src=/.test(html), 'no external scripts');
-    const lib = mjs.slice(0, mjs.indexOf('// ---------------------------------------------------------------- command line')).replace(/^#!.*\n/, '');
+    const lib = mjs.slice(0, mjs.indexOf('function parseArgs(argv) {')).replace(/^#!.*\n/, '');
     assert.ok(html.includes(lib.trim().slice(200, 1200)) && html.includes('export async function migrateCloud'), 'run: npm run migrate:html');
     assert.ok(!/node:(fs|readline|url)/.test(html), 'no Node-only imports');
   });

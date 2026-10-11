@@ -3313,7 +3313,6 @@ async function saveStoreFromForm() {
     s.formulaId = formulaId;
     s.salePrice = isNaN(salePriceRaw) ? (s.salePrice > 0 ? s.salePrice : 0) : salePrice;
   } else {
-    // The key is derived from the name once and never changes afterwards (renaming keeps it).
     const newKey = window.makeStoreKey(nameRaw, stores.map(function(st) { return st.key; }));
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }

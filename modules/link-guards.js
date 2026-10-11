@@ -319,7 +319,6 @@ export async function resolveSnapshotLinks(collectionName, cleanRecord) {
   if (!cleanRecord) return cleanRecord;
   resolveOwnLinks(collectionName, cleanRecord, await _loadIdMap());
   const isTx = collectionName === 'transactions';
-  // A link to something that no longer exists is worse than no link: drop it, and refresh copied names.
   if (isTx && cleanRecord.expenseId) {
     const exps = ensureArray(await sqliteStore.get('expenses'));
     if (!exps.some(e => e && !e.deletedAt && String(e.id) === String(cleanRecord.expenseId))) delete cleanRecord.expenseId;
@@ -329,7 +328,6 @@ export async function resolveSnapshotLinks(collectionName, cleanRecord) {
     const ent = ents.find(e => e && !e.deletedAt && String(e.id) === String(cleanRecord.supplierId));
     if (ent) cleanRecord.supplierName = ent.name;
     else {
-      // The supplier is gone: bring the material back as an ordinary unlinked material with nothing owed.
       delete cleanRecord.supplierId; delete cleanRecord.supplierName; delete cleanRecord.totalPayable; delete cleanRecord.paidDate;
       cleanRecord.paymentStatus = 'pending';
     }

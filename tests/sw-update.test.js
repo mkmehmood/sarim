@@ -46,7 +46,6 @@ function makeSw({ host = 'app.test', failing = [], preCaches = {} } = {}) {
   return { dispatch, stores, fetchLog, skipped: () => skipped };
 }
 
-
 describe('service worker install', () => {
   it('fetches every file fresh (bypassing the browser HTTP cache) and does not skip waiting', async () => {
     const sw = makeSw();

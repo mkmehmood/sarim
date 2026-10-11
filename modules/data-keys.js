@@ -1,21 +1,4 @@
-// ONE name per dataset, used everywhere: the local database key, the Firestore collection, the
-// backup/restore field and the delta-sync name.
-//   production  production entries        sales      customer sales        calculator  calculator history
-//   rep         rep sales                 clients    rep customers         customers   sales customers
-//   transactions payments                 entities   payment entities      inventory   raw material / stock
-//   factory     factory production        expenses   expenses              returns     stock returns
-// Support data uses the same rule (one single word, same string locally, in the cloud and in backups):
-//   deletions (recycle-bin records)  deleted (their ids)  photos (+ photostamps)  theme
-//   Firestore docs: stores/list  formulas/config  categories/list  activity
-// Backups carry DATA_KEY_VERSION so a file written with older names is recognised and refused
-// (convert it first with tools/migrate-cloud.mjs --convert-backup).
 export const DATA_KEY_VERSION = 5;
-// One row per dataset. Everything that names a dataset reads it from here, so the names cannot drift:
-//   key      local SQLite key = Firestore collection = backup field = delta-sync name = the in-memory JS
-//            variable the app holds the records in (jsVar is the same word, kept as a named field for readers)
-//   label    the name shown to the person (sync tab, data viewer, dialogs)
-//   tab      the app tab the dataset belongs to (a TABS key)
-//   desc     one-line description for the data viewer
 const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar: key, label, tab, desc });
 export const RECORD_STORES = Object.freeze([
   rec('production',   'Production',           'production', 'Factory production batches'),
@@ -31,8 +14,6 @@ export const RECORD_STORES = Object.freeze([
   rec('expenses',     'Expenses',             'payments',   'Expense entries'),
   rec('returns',      'Stock Returns',        'production', 'Stock return records'),
 ].map(Object.freeze));
-// App tabs. `id` is the tab key used by showTab()/sidebarNav() and the nav button (snav-<id>);
-// `syncFn` is the refresh function the sync tab calls; `inProgressKey` is the re-entrancy guard name.
 export const TABS = Object.freeze([
   { name: 'production', id: 'prod',     syncFn: 'syncProductionTab' },
   { name: 'sales',      id: 'sales',    syncFn: 'syncSalesTab' },
@@ -43,8 +24,6 @@ export const TABS = Object.freeze([
 ].map(Object.freeze));
 export const TAB_BY_NAME = Object.freeze(Object.fromEntries(TABS.map(t => [t.name, t])));
 export const DATASET_BY_KEY = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.key, s])));
-// Standard button wording: Save <Noun> (create), Update <Noun> (edit), Delete <Noun> (soft delete to the
-// recycle bin), Restore <Noun> (bring back from the recycle bin), Delete Forever (purge).
 export const ACTION_LABELS = Object.freeze({ save: 'Save', update: 'Update', delete: 'Delete', restore: 'Restore', purge: 'Delete Forever' });
 export const actionLabel = (action, noun = '') => `${ACTION_LABELS[action]}${noun ? ' ' + noun : ''}`;
 export const RECORD_KEYS = Object.freeze(RECORD_STORES.map(s => s.key));
@@ -71,19 +50,16 @@ export const AUX_STATE = Object.freeze([
     kind: 'slots',
   },
 ]);
-// Settings-like backup fields: the backup field is the local key.
 export const SETTINGS_BACKUP_FIELDS = Object.freeze([
   'settings', 'stores', 'defaults', 'costs',
   'adjustment', 'tracking',
 ]);
-// Support stores that are not record lists. Same name locally (SQLite), in Firestore and in backups.
 export const SUPPORT_STORES = Object.freeze({
   tombstones:   Object.freeze({ sqlite: 'deletions', collection: 'deletions' }),
   tombstoneIds: Object.freeze({ sqlite: 'deleted' }),
   photos:       Object.freeze({ sqlite: 'photos', collection: 'photos', timestamps: 'photostamps', dirtyKeys: 'photodirty' }),
   theme:        Object.freeze({ sqlite: 'theme' }),
 });
-// Firestore documents/collections that are not record lists.
 export const FIRESTORE_SUPPORT_PATHS = Object.freeze({
   appStores: 'stores/list', factorySettings: 'formulas/config',
   expenseCategories: 'categories/list', activityLog: 'activity',
@@ -92,7 +68,6 @@ export const FIRESTORE_SUPPORT_PATHS = Object.freeze({
 export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'profile', tsKey: 'repProfile_timestamp' });
 export const SQLITE_TO_FIRESTORE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, s.collection])));
 export const FIRESTORE_TO_SQLITE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite])));
-// True when a backup was written with the current names (older files must be converted first).
 export function isCurrentBackup(data) {
   return !!data && typeof data === 'object'
     && Number(data.dataKeyVersion || (data._meta && data._meta.dataKeyVersion) || 0) >= DATA_KEY_VERSION;

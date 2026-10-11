@@ -373,7 +373,6 @@ export function findParentTombstones(tomb, allTombs, live) {
   const col = _tcol(tomb);
   const liveIds = (live && live.ids) || new Set();
   const out = [];
-  // An expense and its payment transaction are ONE logical entry: bringing back either brings back the other.
   if (col === 'expenses') {
     all.forEach(t => { if (t && ['transactions'].includes(_tcol(t)) && t.snapshot && t.snapshot.expenseId && String(t.snapshot.expenseId) === _tid(tomb)) out.push(t); });
   }
@@ -663,10 +662,6 @@ return dir * (r || String(a.name || '').localeCompare(String(b.name || '')));
 });
 }
 
-// A partial payment recovered together with its parent credit sale must NOT be added to the parent again when the
-// parent's own snapshot already contains it: that is the case when both were deleted in one action (same deletion
-// group, or - for old records without a group - within moments of each other). A payment deleted on its own earlier
-// was taken OFF the parent at that time, so it has to be added back.
 export function shouldSkipReattach(childTomb, parentTomb) {
   if (!childTomb || !parentTomb) return false;
   const cs = childTomb.snapshot || {}, ps = parentTomb.snapshot || {};
@@ -676,8 +671,6 @@ export function shouldSkipReattach(childTomb, parentTomb) {
   return ct > 0 && pt > 0 && Math.abs(ct - pt) <= 3000;
 }
 
-// Which partial payments in a recovery set must skip the re-attach (their parent comes back in the same set with
-// the amount already in it). Returns a Set of the payments' tombstone ids.
 export function planSkipReattach(members) {
   const list = (Array.isArray(members) ? members : []).filter(Boolean);
   const byId = new Map(list.map(t => [String(t.recordId || t.id), t]));
@@ -692,7 +685,6 @@ export function planSkipReattach(members) {
   return skip;
 }
 
-// Renaming an expense-only entity also renames the operating-expense records that carry its name.
 export function planExpenseNameRename(entity, oldName, newName, expenses) {
   if (!entity || !entity.isExpenseEntity || !oldName || oldName === newName) return [];
   const o = String(oldName).trim().toLowerCase();

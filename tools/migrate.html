@@ -61,66 +61,17 @@
   </section>
 </main>
 <script type="module">
-// =====================================================================================
-//  migrate-cloud.mjs  -  one-time data migration for the new naming. Standalone: needs
-//  only Node 18+ (no npm packages) and is NOT part of the app.
-//
-//  It signs in with your account (email + password) and fixes your data in Firestore:
-//    * moves the collections to their single-word names
-//        calculator_history -> calculator     rep_sales      -> rep
-//        rep_customers      -> clients        sales_customers-> customers
-//        factory_history    -> factory        (production, sales, transactions, entities,
-//                                              inventory, expenses, returns keep their name)
-//    * replaces the store codes STORE_A / STORE_B / STORE_C with zubair / mahmood / asaan
-//      (other stores get a key made from their name) in every record, the store list, the
-//      per-store prices and the recycle-bin entries; merges stores that exist twice
-//    * renames settings/config fields  naswar_default_settings(_timestamp) -> settings(_timestamp)
-//    * moves the support collections/documents to single-word names (version 5)
-//        app_stores/stores -> stores/list         factory_settings/config -> formulas/config
-//        expense_categories/categories -> categories/list
-//        activity_log -> activity                 personPhotos -> photos
-//        settings/accounts_index -> settings/accounts   devices/default_device -> devices/device
-//        fields: sales_reps -> reps, user_roles -> roles, last_synced -> synced, updated_at -> updated
-//      (version 5 names; versions 1-4 names are all still understood)
-//    * fixes mismatches: store values written as a name ("Zubair"), "store-a" spellings,
-//      and reports any record that still points at a store that does not exist
-//    * stamps every rewritten record with a new updatedAt so the app's delta sync picks it up
-//
-//  USAGE
-//    Or open tools/migrate.html (npm run dev, then /tools/migrate.html): same code, in the browser.
-//
-//    node tools/migrate-cloud.mjs --email you@example.com              dry run (writes nothing)
-//    node tools/migrate-cloud.mjs --email you@example.com --apply      do it
-//    node tools/migrate-cloud.mjs --email you@example.com --apply --delete-old
-//                                  also delete the old collections once the copy is verified
-//    node tools/migrate-cloud.mjs --email you@example.com --convert-backup Backup.gznd
-//                                  convert an old encrypted backup (or .json) -> Backup.migrated.gznd
-//    node tools/migrate-cloud.mjs --convert-backup old.json --uid <uid>   offline, plain JSON only
-//
-//  The password is asked for (hidden); or set MIGRATE_PASSWORD. Nothing is written without --apply.
-//  Old collections are kept unless you pass --delete-old, so the run can be repeated safely
-//  (it is idempotent: a second run changes nothing).
-//
-//  AFTER A SUCCESSFUL --apply, on every phone/browser: let it sync, sign out (this clears the
-//  local copy), update the app, sign in again. The new app then downloads the migrated data.
-// =====================================================================================
-// Runs unchanged in Node (command line) and in the browser (tools/migrate.html): the Node-only
-// modules are loaded lazily, only by the command-line code below.
-
-// ---------------------------------------------------------------- the rules (all legacy knowledge lives here)
 export const FIREBASE = {
   apiKey: 'AIzaSyDYjGQILtrcG2nfKACSfsVtfIPZOAgbr_s',
   projectId: 'calculator-fabd3',
   referer: 'https://calculator-fabd3.firebaseapp.com/',
 };
-// [old Firestore collection, new collection]
 export const DATASETS = [
   ['production', 'production'], ['sales', 'sales'], ['calculator_history', 'calculator'],
   ['rep_sales', 'rep'], ['rep_customers', 'clients'], ['sales_customers', 'customers'],
   ['transactions', 'transactions'], ['entities', 'entities'], ['inventory', 'inventory'],
   ['factory_history', 'factory'], ['expenses', 'expenses'], ['returns', 'returns'],
 ];
-// version 4: support collections (whole collections) and single documents moved to snake_case
 export const SUPPORT_COLLECTIONS = [['activityLog', 'activity'], ['activity_log', 'activity'], ['personPhotos', 'photos']];
 export const SUPPORT_DOCS = [
   ['appStores/stores', 'stores/list'], ['app_stores/stores', 'stores/list'],
@@ -128,7 +79,6 @@ export const SUPPORT_DOCS = [
   ['expenseCategories/categories', 'categories/list'], ['expense_categories/categories', 'categories/list'],
   ['settings/accounts_index', 'settings/accounts'], ['devices/default_device', 'devices/device'],
 ];
-// version 5: field names inside those documents / settings documents (a <name>_timestamp field follows its field)
 export const DOC_FIELD_RENAMES = {
   'formulas/config': { default_formulas: 'defaults', additional_costs: 'costs', cost_adjustment_factor: 'adjustment', unit_tracking: 'tracking', formula_store: 'formulas', formula_slots: 'slots' },
   'settings/config': { sales_reps: 'reps', last_synced: 'synced' },
@@ -147,10 +97,8 @@ export const COLLECTION_RENAMES = Object.fromEntries([...DATASETS, ...SUPPORT_CO
 export const DEFAULT_STORE_MAP = { STORE_A: 'zubair', STORE_B: 'mahmood', STORE_C: 'asaan' };
 export const STORE_KEY_FIELDS = ['store', 'supplyStore', 'returnStore', 'transferPeerStore'];
 const SLOT_KEYS = ['standard', 'asaan'];
-// Values of a store field that are not stores: the app writes 'N/A' as supplyStore on opening-balance (old debt) entries.
 const NOT_A_STORE = ['N/A'];
 export const DATA_KEY_VERSION = 5;
-// every historical backup field name -> current name
 export const BACKUP_FIELD_RENAMES = {
   mfg: 'production', mfg_pro_pkr: 'production', db: 'production',
   customerSales: 'sales', customer_sales: 'sales',
@@ -163,7 +111,6 @@ export const BACKUP_FIELD_RENAMES = {
   factoryProductionHistory: 'factory', factory_production_history: 'factory', factory_history: 'factory',
   expenseRecords: 'expenses', expense_records: 'expenses',
   stockReturns: 'returns', stock_returns: 'returns',
-  // support data, final single-word names (version 5)
   expenseCategories: 'categories', expense_categories: 'categories',
   factoryFormulaStore: 'formulas', factory_formula_store: 'formulas', formula_store: 'formulas',
   factoryFormulaSlots: 'slots', factory_formula_slots: 'slots', formula_slots: 'slots',
@@ -183,7 +130,6 @@ export const BACKUP_FIELD_RENAMES = {
 };
 const RECORD_FIELDS = ['production', 'sales', 'calculator', 'rep', 'clients', 'customers', 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns'];
 
-// ---------------------------------------------------------------- store keys
 export function slugify(name) {
   const s = String(name == null ? '' : name).normalize('NFKC').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '');
   return s || 'store';
@@ -196,8 +142,6 @@ export function makeKey(name, taken) {
   return key;
 }
 const isLegacy = (k) => typeof k === 'string' && /^STORE_[A-Z]$/.test(k);
-// STORE_A catalog -> name-derived keys. Built-ins always get zubair/mahmood/asaan; a store that
-// already exists under its new key is merged with its old twin instead of being listed twice.
 export function planCatalog(stores) {
   const list = Array.isArray(stores) ? stores.filter(s => s && typeof s === 'object') : [];
   const twins = new Map(list.filter(s => !isLegacy(s.key)).map(s => [s.key, { ...s }]));
@@ -229,7 +173,6 @@ export function planCatalog(stores) {
   for (const s of out) delete s.legacyKey;
   return { stores: out, map, changed: changed || list.some(s => 'legacyKey' in s), merged };
 }
-// Maps any way a store may have been written to a current key (or returns null when it cannot).
 export function makeResolver(catalogStores, legacyMap) {
   const stores = Array.isArray(catalogStores) && catalogStores.length ? catalogStores
     : [{ key: 'zubair', name: 'ZUBAIR' }, { key: 'mahmood', name: 'MAHMOOD' }, { key: 'asaan', name: 'ASAAN' }];
@@ -246,8 +189,6 @@ export function makeResolver(catalogStores, legacyMap) {
     return byName.get(slugify(v)) || null;
   };
 }
-// Rewrites store fields in place (records can nest). `resolve` returns the current key or null.
-// Slot values ("standard"/"asaan" in factory entries) are left alone. Returns { fixed, unknown[] }.
 export function fixStoreFields(node, resolve, acc = { fixed: 0, unknown: [] }, depth = 0) {
   if (!node || typeof node !== 'object' || depth > 5) return acc;
   if (Array.isArray(node)) { node.forEach(x => fixStoreFields(x, resolve, acc, depth + 1)); return acc; }
@@ -272,7 +213,6 @@ export function fixSettingsStores(settings, resolve) {
   return n;
 }
 
-// ---------------------------------------------------------------- Firestore REST codec
 export function decodeValue(v) {
   if (v == null) return null;
   if ('nullValue' in v) return null;
@@ -303,7 +243,6 @@ export function encodeValue(x) {
 }
 export function encodeFields(o) { const f = {}; for (const [k, v] of Object.entries(o || {})) f[k] = encodeValue(v); return f; }
 
-// ---------------------------------------------------------------- Firestore REST client (the "adapter")
 export function createRestClient({ idToken, uid, projectId = FIREBASE.projectId, fetchImpl = fetch, refresh = null }) {
   const root = `projects/${projectId}/databases/(default)/documents`;
   const base = `https://firestore.googleapis.com/v1/${root}`;
@@ -332,7 +271,6 @@ export function createRestClient({ idToken, uid, projectId = FIREBASE.projectId,
       try { const d = await call(url(userPath(path))); return { id: idOf(d.name), data: decodeFields(d.fields) }; }
       catch (e) { if (/ 404:/.test(e.message)) return null; throw e; }
     },
-    // ops: { op:'set'|'update'|'delete', path, data, removeFields, serverTime:[fields] }
     async commit(ops) {
       for (let i = 0; i < ops.length; i += 200) {
         const writes = ops.slice(i, i + 200).map(o => {
@@ -368,7 +306,6 @@ export async function signIn({ email, password, apiKey = FIREBASE.apiKey, refere
   return { idToken: body.idToken, uid: body.localId, refresh };
 }
 
-// ---------------------------------------------------------------- the cloud migration
 const ms = (d) => {
   const t = d && (d.updatedAt || d.timestamp || d.createdAt);
   if (!t) return 0;
@@ -376,13 +313,10 @@ const ms = (d) => {
   if (t.__timestamp) return Date.parse(t.__timestamp) || 0;
   return Date.parse(t) || 0;
 };
-// The new copy must carry every field of the old one (updatedAt is re-stamped on purpose, store codes are rewritten on
-// purpose). Used before an old collection is deleted: ids alone are not enough, an empty document must not pass.
 export function lacksFields(oldData, newData, { compareValues = true } = {}) {
   const o = oldData || {}; const n = newData || {};
   return Object.keys(o).filter(k => k !== 'updatedAt' && (!(k in n) || (compareValues && JSON.stringify(o[k]) !== JSON.stringify(n[k]))));
 }
-// Fields of an old support document that the new one is missing or has older (<field>_timestamp).
 export function mergeSupportFields(oldData, curData) {
   const patch = {}; const o = oldData || {}; const c = curData || {};
   for (const k of Object.keys(o)) {
@@ -396,13 +330,11 @@ export function mergeSupportFields(oldData, curData) {
   }
   return patch;
 }
-// opts: { apply, deleteOld, now, log }
 export async function migrateCloud(client, opts = {}) {
   const log = opts.log || (() => {});
   const apply = !!opts.apply;
   const report = { applied: apply, catalog: { changed: false, merged: 0, map: {} }, datasets: {}, support: [], settings: 0, deletions: 0, unknown: {}, writes: 0, deleted: 0, supportDeleted: 0, warnings: [] };
   const ops = [];
-  // 1. store list -> decides every store key. Read the new location first, then the old one.
   const catNew = await client.get('stores/list');
   const catOld1 = await client.get('app_stores/stores'); const catOld2 = await client.get('appStores/stores');
   const catOld = catOld1 || catOld2;
@@ -424,7 +356,6 @@ export async function migrateCloud(client, opts = {}) {
     log(`store list: ${Object.entries(plan.map).map(([x, y]) => `${x}->${y}`).join(', ')}${plan.merged ? ` (${plan.merged} duplicate store(s) merged)` : ''}`);
   }
   const noteUnknown = (col, arr) => { for (const v of arr) { const k = `${col}: ${v}`; report.unknown[k] = (report.unknown[k] || 0) + 1; } };
-  // 2. datasets
   const copiedAll = [];
   for (const [oldCol, newCol] of DATASETS) {
     const r = report.datasets[newCol] = { from: oldCol, found: 0, written: 0, storeFixes: 0, skippedNewer: 0, upToDate: 0 };
@@ -447,7 +378,6 @@ export async function migrateCloud(client, opts = {}) {
     if (renamed) copiedAll.push([oldCol, newCol, oldDocs, newerIds]);
     log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer, ${r.storeFixes} store field(s) fixed`);
   }
-  // 2b. support documents and collections (version 4 names). Never overwrites a newer copy.
   const supportCopied = [];
   for (const [oldPath, newPath] of SUPPORT_DOCS.filter(([, n]) => n !== 'stores/list')) {
     const old0 = await client.get(oldPath);
@@ -459,8 +389,6 @@ export async function migrateCloud(client, opts = {}) {
     const cur = await client.get(newPath);
     if (!cur) { ops.push({ op: 'set', path: newPath, data: old.data }); r.written++; }
     else {
-      // The new document already exists (e.g. the new app created it): never drop the old data.
-      // Copy every field the new one lacks, and any field whose old timestamp is newer.
       const patch = mergeSupportFields(old.data, cur.data);
       if (Object.keys(patch).length) { ops.push({ op: 'update', path: newPath, data: patch }); r.written++; }
       else r.skippedNewer++;
@@ -486,7 +414,6 @@ export async function migrateCloud(client, opts = {}) {
     supportCopied.push({ doc: false, oldCol, newCol, oldDocs, newerIds });
     log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer`);
   }
-  // 3. settings/config
   const sDoc = await client.get('settings/config');
   if (sDoc) {
     const d = sDoc.data; const data = {}; const remove = [];
@@ -503,7 +430,6 @@ export async function migrateCloud(client, opts = {}) {
       log('settings/config: fields renamed / store prices re-keyed');
     }
   }
-  // 3b. field renames inside settings documents (version 5): sales_reps -> reps, user_roles -> roles
   for (const path of ['settings/config', 'settings/team']) {
     const doc = await client.get(path);
     if (!doc) continue;
@@ -513,7 +439,6 @@ export async function migrateCloud(client, opts = {}) {
     ops.push({ op: 'update', path, data: Object.fromEntries(news.map(k => [k, renamed[k]])), removeFields: olds });
     report.settings++; log(`${path}: ${olds.join(', ')} -> ${news.join(', ')}`);
   }
-  // 4. recycle bin
   for (const d of await client.list('deletions')) {
     if (d.id === '_placeholder_') continue;
     const rec = JSON.parse(JSON.stringify(d.data)); let changed = false;
@@ -523,9 +448,7 @@ export async function migrateCloud(client, opts = {}) {
   }
   if (report.deletions) log(`deletions: ${report.deletions} recycle-bin entr${report.deletions === 1 ? 'y' : 'ies'} updated`);
   report.writes = ops.length; report.verified = [];
-  // 5. write
   if (apply && ops.length) { await client.commit(ops); log(`committed ${ops.length} write(s)`); }
-  // 5b. read everything back: every old document must now exist, with all its fields, under the new name
   if (apply) {
     const checks = [...copiedAll.map(([oldCol, newCol, oldDocs, newerIds]) => ({ oldCol, newCol, oldDocs, newerIds, values: false })),
       ...supportCopied.filter(c => !c.doc).map(c => ({ oldCol: c.oldCol, newCol: c.newCol, oldDocs: c.oldDocs, newerIds: c.newerIds, values: true }))];
@@ -541,7 +464,6 @@ export async function migrateCloud(client, opts = {}) {
     }
     report.checks = checks;
   }
-  // 6. optionally remove the old collections, only after verifying every doc exists under the new name
   if (apply && opts.deleteOld) {
     for (const [oldCol, newCol, oldDocs] of copiedAll) {
       const chk = (report.checks || []).find(c => c.oldCol === oldCol && c.newCol === newCol);
@@ -567,8 +489,6 @@ export async function migrateCloud(client, opts = {}) {
   return report;
 }
 
-// ---------------------------------------------------------------- backup conversion
-// Works on the decrypted backup object. Backups before the key rename name "sales" the calculator history.
 export function convertBackup(data) {
   if (!data || typeof data !== 'object') throw new Error('not a backup');
   const out = { ...data };
@@ -596,7 +516,6 @@ export function convertBackup(data) {
   notes.push(`${fixed} store field(s) fixed`);
   return { data: out, changed: true, notes, unknown };
 }
-// same container format as the app's CryptoEngine (AES-256-GCM, PBKDF2 bound to email + password + uid)
 const MAGIC_V2 = Uint8Array.from('GZND_ENC_V2', c => c.charCodeAt(0));
 const MAGIC_V4 = Uint8Array.from('GZND_ENC_V4', c => c.charCodeAt(0));
 async function deriveKey(email, password, uid, salt, v4) {
