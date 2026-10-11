@@ -6730,11 +6730,12 @@ body.offline-active .system-controls { top: var(--sys-top) !important; }
 .auth-field { position: relative; }
 
 .auth-field input {
-  width: 100%; box-sizing: border-box; padding: 22px 46px 8px 46px; height: 58px; border-radius: 16px; border: 1.5px solid #dbe2ea; background: #f8fafc;
-  color: #0f172a; font-family: var(--font-ui); font-size: 1rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  width: 100%; box-sizing: border-box; padding: 22px 46px 8px 46px; height: 58px; border-radius: 14px; border: 0; background: #f1f5f9;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14); color: #0f172a; font-family: var(--font-ui); font-size: 0.95rem; outline: none;
+  transition: box-shadow 0.15s, background 0.15s;
 }
 
-.auth-field input:focus { border-color: #10B981; background: #fff; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15); }
+.auth-field input:focus { background: #fff; box-shadow: inset 0 0 0 1.5px #10B981; }
 
 .auth-field label {
   position: absolute; left: 46px; top: 19px; font-size: 0.95rem; color: #94a3b8; pointer-events: none; transform-origin: left top;
@@ -6789,11 +6790,11 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .auth-screen .auth-logo img { width: 100%; height: auto; max-height: none; border: 0; border-radius: 0; object-fit: contain; display: block; background: #fff; }
 
 .auth-screen .auth-field input {
-  background: #f8fafc !important; border: 1.5px solid #dbe2ea !important; border-radius: 16px !important; padding: 22px 46px 8px 46px !important;
-  height: 58px !important; color: #0f172a !important; font-size: 1rem !important; font-weight: 500 !important; width: 100% !important; box-sizing: border-box !important;
+  background: #f1f5f9 !important; border: 0 !important; border-radius: 14px !important; padding: 22px 46px 8px 46px !important; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14) !important;
+  height: 58px !important; color: #0f172a !important; font-size: 0.95rem !important; font-weight: 500 !important; width: 100% !important; box-sizing: border-box !important;
 }
 
-.auth-screen .auth-field input:focus { border-color: #10B981 !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15) !important; }
+.auth-screen .auth-field input:focus { background: #fff !important; box-shadow: inset 0 0 0 1.5px #10B981 !important; }
 
 .auth-screen .auth-field label {
   text-transform: none !important; letter-spacing: 0 !important; margin: 0 !important; font-size: 0.95rem !important; font-weight: 500 !important; color: #94a3b8 !important;
