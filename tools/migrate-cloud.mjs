@@ -254,11 +254,17 @@ export function lacksFields(oldData, newData, { compareValues = true } = {}) {
   const o = oldData || {}; const n = newData || {};
   return Object.keys(o).filter(k => k !== 'updatedAt' && (!(k in n) || (compareValues && JSON.stringify(o[k]) !== JSON.stringify(n[k]))));
 }
+function isBlank(v) {
+  if (v === undefined || v === null) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === 'object') return Object.values(v).every(isBlank);
+  return false;
+}
 export function mergeSupportFields(oldData, curData) {
   const patch = {}; const o = oldData || {}; const c = curData || {};
   for (const k of Object.keys(o)) {
     if (k.endsWith('_timestamp')) continue;
-    const empty = c[k] === undefined || c[k] === null || (Array.isArray(c[k]) && !c[k].length && Array.isArray(o[k]) && o[k].length);
+    const empty = c[k] === undefined || c[k] === null || (isBlank(c[k]) && !isBlank(o[k]));
     const newer = (Number(o[k + '_timestamp']) || 0) > (Number(c[k + '_timestamp']) || 0) && !empty && JSON.stringify(o[k]) !== JSON.stringify(c[k]);
     if (empty || newer) {
       patch[k] = o[k];

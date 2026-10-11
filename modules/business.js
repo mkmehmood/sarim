@@ -1475,9 +1475,14 @@ export const sqliteStore = (() => {
       const results = new Map();
       if (keys.length === 0) return results;
       await SQLiteCrypto.restoreSessionKeyFromStorage();
+      const MISSING = {};
       for (const key of keys) {
         const row = _rawGet(_fullKey(key));
-        if (!row) { results.set(key, null); continue; }
+        if (!row) {
+          const legacy = legacyLocalNames(key).length ? await this.get(key, MISSING) : MISSING;
+          results.set(key, legacy === MISSING ? null : legacy);
+          continue;
+        }
         try {
           if (row.encrypted) {
             const val = await _decrypt(key, row.value);
