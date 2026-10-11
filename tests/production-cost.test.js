@@ -27,13 +27,13 @@ function build(data, selected) {
   return new Function('sqliteStore', 'ensureArray', 'getSelectedFormula', 'getStoreFormulaType', 'formulaTypeFor', 'getFormulaSlotLabels', body)(sqliteStore, ensureArray, getSelectedFormula, getStoreFormulaType, formulaTypeFor, getFormulaSlotLabels);
 }
 const data = {
-  defaults: { standard: [{ id: 'a', name: 'Tobacco', quantity: 10, cost: 100 }, { id: 'b', name: 'Lime', quantity: 2, cost: 50 }], asaan: [] },
-  costs: { standard: 30, asaan: 0 },
   inventory: [{ id: 'a', name: 'Tobacco', cost: 120 }, { id: 'b', name: 'Lime', cost: 0 }],
 };
 
+const stdFormula = { type: 'standard', name: 'Standard', additionalCost: 30, ingredients: [{ id: 'a', name: 'Tobacco', quantity: 10, cost: 100 }, { id: 'b', name: 'Lime', quantity: 2, cost: 50 }] };
+
 describe('production tab cost price', () => {
-  const { calculateDynamicCost } = build(data);
+  const { calculateDynamicCost } = build(data, stdFormula);
   it('unit cost and total formula cost show before any weight is entered', async () => {
     const c = await calculateDynamicCost('zubair', 2, 0);
     assert.equal(c.costPerUnit, 10 * 120 + 2 * 50 + 30);
@@ -53,7 +53,7 @@ describe('production tab cost price', () => {
   });
   it('zero formula units or no formula costs nothing and never divides by zero', async () => {
     assert.equal((await calculateDynamicCost('zubair', 0, 10)).dynamicCostPerKg, 0);
-    const none = await calculateDynamicCost('asaan', 1, 10);
+    const none = await build(data, null).calculateDynamicCost('asaan', 1, 10);
     assert.deepEqual([none.costPerUnit, none.totalFormulaCost, none.dynamicCostPerKg, none.formulaMaterials], [0, 0, 0, []]);
     for (const n of [-5, NaN]) assert.ok(Number.isFinite((await calculateDynamicCost('zubair', 1, n)).dynamicCostPerKg));
   });
@@ -67,8 +67,8 @@ describe('production tab cost price', () => {
 
 describe('production cost when the formula lives only in the formula store', () => {
   const selected = { type: 'standard', name: 'STANDARD', additionalCost: 750, ingredients: [{ id: 'g', name: 'Guar', quantity: 0.22, cost: 680 }, { id: 't', name: 'Tobacco', quantity: 0.48, cost: 416.67 }] };
-  const { calculateDynamicCost } = build({ defaults: { standard: [], asaan: [] }, costs: { standard: 0, asaan: 0 }, inventory: [] }, selected);
-  it('is not zero when the feed keys are empty', async () => {
+  const { calculateDynamicCost } = build({ inventory: [] }, selected);
+  it('is not zero when the formula only exists in the formula store', async () => {
     const c = await calculateDynamicCost('zubair', 4, 50.5);
     const unit = 0.22 * 680 + 0.48 * 416.67 + 750;
     assert.ok(c.costPerUnit > 0);
