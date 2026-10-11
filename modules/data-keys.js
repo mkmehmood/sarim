@@ -73,7 +73,7 @@ export const FIRESTORE_SUPPORT_PATHS = Object.freeze({
   accounts: 'settings/accounts', device: 'devices/device',
 });
 
-export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'profile', tsKey: 'repProfile_timestamp' });
+export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', tsKey: 'repProfile_timestamp' });
 export const SQLITE_TO_FIRESTORE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, s.collection])));
 export const FIRESTORE_TO_SQLITE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite])));
 
