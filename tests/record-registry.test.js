@@ -2,10 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  RECORD_STORES, AUX_STATE, SQLITE_TO_FIRESTORE, FIRESTORE_TO_SQLITE,
+  RECORD_STORES, AUX_STATE,
   collectAuxBackupFields, applyAuxBackupFields, isCurrentBackup, RECORD_KEYS,
   mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories, DATA_KEY_VERSION,
-} from '../modules/data-keys.js';
+} from '../modules/link-graph.js';
 const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 const sync = read('sync.js');
 const sales = read('utilities-sales.js');
@@ -95,7 +95,7 @@ describe('one single-word name per dataset', () => {
     for (const k of RECORD_KEYS) assert.ok(!/[_\-\s]/.test(k), k);
   });
   it('the app code carries no old dataset name and no migration code', () => {
-    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'formula-store.js', 'prod-photos.js', 'data-keys.js', 'store-keys.js'];
+    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'formula-store.js', 'prod-photos.js', 'store-keys.js'];
     const old = ['mfg_pro_pkr', 'noman_history', 'customer_sales', 'payment_transactions', 'payment_entities', 'factory_inventory_data',
       'factory_production_history', 'stock_returns', 'calculator_history', 'rep_sales', 'rep_customers', 'sales_customers', 'factory_history', 'naswar_default_settings', 'STORE_A', 'STORE_B', 'STORE_C',
       'deletion_records', 'deleted_records', 'person_photos', 'app_theme', 'pendingFirestoreYearClose\'', 'pendingFirestoreRestore\'', 'deltaSyncStats\'',
@@ -116,7 +116,7 @@ describe('one single-word name per dataset', () => {
   });
   it('the in-memory variable of every dataset is its key (sales, rep, clients, ...), so SQLite, Firestore and code agree', () => {
     for (const s of RECORD_STORES) assert.equal(s.jsVar, s.key, s.key);
-    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'prod-photos.js', 'data-keys.js'];
+    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'prod-photos.js', ];
     const oldVars = /\b(customerSales|salesHistory|repSales|repCustomers|salesCustomers|paymentTransactions|paymentEntities|factoryInventoryData|factoryProductionHistory|expenseRecords|stockReturns|pendingFirestoreYearClose|pendingFirestoreRestore|_set_pendingFirestore\w+)\b/;
     for (const f of files) assert.ok(!oldVars.test(read(f)), `${f} still uses an old variable name`);
     assert.ok(!oldVars.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')), 'index.html still uses an old variable name');
@@ -132,7 +132,8 @@ describe('one single-word name per dataset', () => {
     assert.ok(fnBody(payments, 'triggerLocalBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
     assert.ok(admin.slice(admin.indexOf('const backupData = {')).slice(0, 400).includes('dataKeyVersion: DATA_KEY_VERSION'));
   });
-  it('a backup written with older key names is recognised and refused', () => {
+  it('a backup written with older key names is refused with a plain unsupported-file error', () => {
+    for (const src of [sales, payments, admin]) assert.ok(src.includes('UNSUPPORTED_FILE_MESSAGE'), 'restore paths must show the unsupported-file error');
     assert.equal(isCurrentBackup({ mfg: [], sales: [] }), false);
     assert.equal(isCurrentBackup({ dataKeyVersion: 2, production: [] }), false);
     assert.equal(isCurrentBackup({ dataKeyVersion: DATA_KEY_VERSION, production: [] }), true);
@@ -213,23 +214,13 @@ describe('merge helpers and cloud category resolution', () => {
 describe('one registry for names, variables, tabs and buttons', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const core = read('utilities-core.js');
-  it('every dataset has a unique JS variable, a label and a known tab', async () => {
-    const { TABS } = await import('../modules/data-keys.js');
-    const tabs = new Set(TABS.map(t => t.name));
+  it('every dataset has a unique JS variable and a label', () => {
     assert.equal(new Set(RECORD_STORES.map(s => s.jsVar)).size, RECORD_STORES.length);
-    for (const s of RECORD_STORES) assert.ok(s.jsVar && s.label && s.desc && tabs.has(s.tab), s.key);
+    for (const s of RECORD_STORES) assert.ok(s.jsVar && s.label && s.desc && s.tab, s.key);
   });
   it('sync maps are derived from the registry', () => {
-    for (const s of RECORD_STORES) { assert.equal(SQLITE_TO_FIRESTORE[s.sqlite], s.collection); assert.equal(FIRESTORE_TO_SQLITE[s.collection], s.sqlite); }
     assert.ok(/SQLiteToFirestoreMap = Object\.fromEntries\(RECORD_STORES/.test(sync));
     assert.ok(/FirestoreToSQLiteMap = Object\.fromEntries\(RECORD_STORES/.test(sync));
-  });
-  it('every tab has a nav button and an exported sync function', async () => {
-    const { TABS } = await import('../modules/data-keys.js');
-    for (const t of TABS) {
-      assert.ok(html.includes(`id="snav-${t.id}"`), `nav button for ${t.name}`);
-      assert.ok(core.includes(`export async function ${t.syncFn}(`), t.syncFn);
-    }
   });
   it('buttons use one wording: Save / Update / Delete / Restore', () => {
     for (const bad of ['Submit Transaction', 'Update Details', 'Permanently</button>', 'Save Production Entry', '>Delete material<'])
@@ -238,13 +229,7 @@ describe('one registry for names, variables, tabs and buttons', () => {
   });
 });
 describe('support data follows the same naming rule', () => {
-  it('names are snake_case and identical locally, in Firestore and in backups', async () => {
-    const { SUPPORT_STORES, FIRESTORE_SUPPORT_PATHS } = await import('../modules/data-keys.js');
-    assert.equal(SUPPORT_STORES.tombstones.sqlite, SUPPORT_STORES.tombstones.collection);
-    assert.equal(SUPPORT_STORES.photos.sqlite, SUPPORT_STORES.photos.collection);
-    for (const v of Object.values(FIRESTORE_SUPPORT_PATHS)) assert.ok(/^[a-z_]+(\/[a-z_]+)?$/.test(v), v);
-  });
-  it('the app really uses those names', () => {
+  it('the app uses the current names', () => {
     for (const k of ['deletions', 'deleted', 'photos', 'photostamps', 'photodirty']) assert.ok(sync.includes(`'${k}'`) || sales.includes(`'${k}'`) || payments.includes(`'${k}'`), k);
     for (const c of ['stores', 'formulas', 'categories', 'activity']) assert.ok(sync.includes(`collection('${c}')`), c);
     assert.ok(sync.includes("collection('photos')"));

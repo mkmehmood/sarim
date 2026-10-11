@@ -5,7 +5,7 @@ import { DeltaSync, UUIDSyncRegistry, trackFirestoreWrite, verifyAccountPassword
 import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, RECORD_STORES, DATASET_BY_KEY } from './data-keys.js';
+import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, UNSUPPORTED_FILE_MESSAGE, RECORD_STORES, DATASET_BY_KEY } from './link-graph.js';
 import { getDefaultStoreKey, storeLabelFor } from './store-keys.js';
 
 export async function updateDeltaSyncStatsDisplay() {
@@ -1272,7 +1272,7 @@ export async function restoreFromBackup(backupTimestamp) {
     if (!backup) {
       throw new Error('Backup not found: ' + backupTimestamp);
     }
-    if (!isCurrentBackup(backup)) throw new Error(OLD_BACKUP_MESSAGE);
+    if (!isCurrentBackup(backup)) throw new Error(UNSUPPORTED_FILE_MESSAGE);
     await sqliteStore.set('production', backup.production);
     await sqliteStore.set('sales', backup.sales);
     await sqliteStore.set('calculator', backup.calculator);

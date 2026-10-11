@@ -4,7 +4,7 @@ import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSetting
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
 import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';
-import { RECORD_KEYS } from './data-keys.js';
+import { RECORD_KEYS } from './link-graph.js';
 export let appMode;
 window.appMode = appMode;
 export function _set_appMode(v) { appMode = v; window.appMode = v; }

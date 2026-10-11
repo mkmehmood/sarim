@@ -758,3 +758,137 @@ export function planExpenseNameRename(entity, oldName, newName, expenses) {
   const o = String(oldName).trim().toLowerCase();
   return (Array.isArray(expenses) ? expenses : []).filter(e => e && !e.deletedAt && e.name && String(e.name).trim().toLowerCase() === o).map(e => e.id);
 }
+
+export const DATA_KEY_VERSION = 5;
+const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar: key, label, tab, desc });
+
+export const RECORD_STORES = Object.freeze([
+  rec('production',   'Production',           'production', 'Factory production batches'),
+  rec('sales',        'Customer Sales',       'sales',      'Direct customer sales'),
+  rec('calculator',   'Calculator History',   'calculator', 'Daily calculator / ledger entries'),
+  rec('rep',          'Rep Sales',            'rep',        'Rep sales to customers'),
+  rec('clients',      'Rep Customers',        'rep',        'Rep customer contact registry'),
+  rec('customers',    'Sales Customers',      'sales',      'Sales tab customer contacts'),
+  rec('transactions', 'Payment Transactions', 'payments',   'Cash & entity payment transactions'),
+  rec('entities',     'Payment Entities',     'payments',   'Payment entity accounts'),
+  rec('inventory',    'Factory Inventory',    'factory',    'Raw material inventory'),
+  rec('factory',      'Factory History',      'factory',    'Factory batch production history'),
+  rec('expenses',     'Expenses',             'payments',   'Expense entries'),
+  rec('returns',      'Stock Returns',        'production', 'Stock return records'),
+].map(Object.freeze));
+
+export const DATASET_BY_KEY = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.key, s])));
+export const RECORD_KEYS = Object.freeze(RECORD_STORES.map(s => s.key));
+
+export const AUX_STATE = Object.freeze([
+  {
+    sqlite: 'categories',
+    tsKey: 'categories_timestamp',
+    backup: 'categories',
+    firestore: { doc: 'categories/list', field: 'categories', tsField: 'categories_timestamp' },
+    kind: 'list',
+  },
+  {
+    sqlite: 'formulas',
+    tsKey: 'formulas_timestamp',
+    backup: 'formulas',
+    firestore: { doc: 'formulas/config', field: 'formulas', tsField: 'formulas_timestamp' },
+    kind: 'idList',
+  },
+  {
+    sqlite: 'slots',
+    tsKey: 'slots_timestamp',
+    backup: 'slots',
+    firestore: { doc: 'formulas/config', field: 'slots', tsField: 'slots_timestamp' },
+    kind: 'slots',
+  },
+]);
+
+export function isCurrentBackup(data) {
+  return !!data && typeof data === 'object'
+    && Number(data.dataKeyVersion || (data._meta && data._meta.dataKeyVersion) || 0) >= DATA_KEY_VERSION;
+}
+
+export const UNSUPPORTED_FILE_MESSAGE = 'Unsupported file';
+
+export function mergeStringLists(local, incoming) {
+  const out = [];
+  const seen = new Set();
+  for (const v of [...(Array.isArray(local) ? local : []), ...(Array.isArray(incoming) ? incoming : [])]) {
+    if (typeof v !== 'string') continue;
+    const t = v.trim();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+export function mergeById(local, incoming) {
+  const out = Array.isArray(local) ? local.filter(r => r && r.id) : [];
+  const ids = new Set(out.map(r => String(r.id)));
+  for (const r of Array.isArray(incoming) ? incoming : []) {
+    if (r && r.id && !ids.has(String(r.id))) { ids.add(String(r.id)); out.push(r); }
+  }
+  return out;
+}
+
+export function mergeSlots(local, incoming) {
+  const l = local && typeof local === 'object' ? local : {};
+  const i = incoming && typeof incoming === 'object' ? incoming : {};
+  return { standard: l.standard || i.standard || null, asaan: l.asaan || i.asaan || null };
+}
+
+export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0) {
+  const l = Array.isArray(local) ? local : [];
+  const c = Array.isArray(cloud) ? cloud : [];
+  if (cloudTs && cloudTs > (localTs || 0)) return { value: mergeStringLists(c, []), ts: cloudTs, changed: true };
+  if (!cloudTs) {
+    const union = mergeStringLists(l, c);
+    return { value: union, ts: localTs || 0, changed: union.length !== l.length };
+  }
+  return { value: l, ts: localTs, changed: false };
+}
+
+export async function collectAuxBackupFields(store) {
+  const out = {};
+  for (const s of AUX_STATE) {
+    const v = await store.get(s.sqlite);
+    if (s.kind === 'list')   out[s.backup] = Array.isArray(v) ? v : [];
+    if (s.kind === 'idList') out[s.backup] = Array.isArray(v) ? v : [];
+    if (s.kind === 'slots')  out[s.backup] = v && typeof v === 'object' ? v : { standard: null, asaan: null };
+  }
+  out.photos = (await store.get('photos')) || {};
+  out.photostamps = (await store.get('photostamps')) || {};
+  return out;
+}
+
+export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 'merge') {
+  const written = [];
+  if (!data || typeof data !== 'object') return written;
+  for (const s of AUX_STATE) {
+    const incoming = data[s.backup];
+    if (incoming === undefined || incoming === null) continue;
+    const local = await store.get(s.sqlite);
+    let next;
+    if (s.kind === 'list') {
+      if (!Array.isArray(incoming)) continue;
+      next = mode === 'replace' ? mergeStringLists(incoming, []) : mergeStringLists(local, incoming);
+      if (JSON.stringify(next) === JSON.stringify(Array.isArray(local) ? local : [])) continue;
+    } else if (s.kind === 'idList') {
+      if (!Array.isArray(incoming)) continue;
+      next = mode === 'replace' ? incoming.filter(r => r && r.id) : mergeById(local, incoming);
+      if (JSON.stringify(next) === JSON.stringify(Array.isArray(local) ? local : [])) continue;
+    } else {
+      if (typeof incoming !== 'object' || !(incoming.standard || incoming.asaan)) continue;
+      next = mode === 'replace'
+        ? { standard: incoming.standard || null, asaan: incoming.asaan || null }
+        : mergeSlots(local, incoming);
+      if (JSON.stringify(next) === JSON.stringify(local || null)) continue;
+    }
+    await store.set(s.sqlite, next);
+    await store.set(s.tsKey, ts);
+    written.push(s.sqlite);
+  }
+  return written;
+}

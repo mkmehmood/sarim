@@ -7,7 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { resolveExpenseCategories, RECORD_STORES } from './data-keys.js';
+import { resolveExpenseCategories, RECORD_STORES } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {

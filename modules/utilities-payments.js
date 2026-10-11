@@ -11,7 +11,7 @@ import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculate
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
-import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, RECORD_STORES } from './data-keys.js';
+import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, UNSUPPORTED_FILE_MESSAGE, RECORD_STORES } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formulaTypeFor } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -5362,7 +5362,7 @@ showToast('Reading backup file...', 'info');
 try {
 const text = await _readFileAsText(file);
 const data = JSON.parse(text);
-if (!isCurrentBackup(data)) { window.notifyBlocking(OLD_BACKUP_MESSAGE, 'error'); return; }
+if (!isCurrentBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', UNSUPPORTED_FILE_MESSAGE); return; }
 if (!data.production && !data.sales && !data.rep && !data.clients) {
 window.notifyBlocking('This file does not look like a valid backup.', 'error');
 return;

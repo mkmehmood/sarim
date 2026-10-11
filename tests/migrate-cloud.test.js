@@ -6,7 +6,7 @@ import {
   planCatalog, makeResolver, fixStoreFields, fixSettingsStores, migrateCloud, convertBackup, decodeValue, encodeValue, decodeFields, encodeFields,
   encryptBackup, decryptBackup, createRestClient, signIn, DATASETS, DATA_KEY_VERSION, SUPPORT_DOCS, SUPPORT_COLLECTIONS,
 } from '../tools/migrate-cloud.mjs';
-import { RECORD_KEYS, DATA_KEY_VERSION as APP_VERSION, FIRESTORE_SUPPORT_PATHS, SUPPORT_STORES } from '../modules/data-keys.js';
+import { RECORD_KEYS, DATA_KEY_VERSION as APP_VERSION } from '../modules/link-graph.js';
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
 function memClient(seed) {
@@ -214,8 +214,8 @@ describe('version 5: support collections and documents', () => {
     assert.equal((await migrateCloud(c, { apply: true })).writes, 0);
   });
   it('the paths the tool writes are exactly the ones the app uses', () => {
-    assert.deepEqual([...new Set(SUPPORT_DOCS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.appStores, FIRESTORE_SUPPORT_PATHS.factorySettings, FIRESTORE_SUPPORT_PATHS.expenseCategories, FIRESTORE_SUPPORT_PATHS.accounts, FIRESTORE_SUPPORT_PATHS.device]);
-    assert.deepEqual([...new Set(SUPPORT_COLLECTIONS.map(([, n]) => n))], [FIRESTORE_SUPPORT_PATHS.activityLog, SUPPORT_STORES.photos.collection]);
+    assert.deepEqual([...new Set(SUPPORT_DOCS.map(([, n]) => n))], ['stores/list', 'formulas/config', 'categories/list', 'settings/accounts', 'devices/device']);
+    assert.deepEqual([...new Set(SUPPORT_COLLECTIONS.map(([, n]) => n))], ['activity', 'photos']);
   });
   it('converts a version-3 backup: renames the support fields and re-stamps it as version 5', () => {
     const { data, changed } = convertBackup({ dataKeyVersion: 3, production: [], person_photos: { a: 1 }, person_photos_timestamps: { a: 2 }, deleted_records: ['x'], deletion_records: [{ id: 'x' }] });
@@ -248,7 +248,7 @@ describe('backup conversion', () => {
     assert.equal(convertBackup({ dataKeyVersion: DATA_KEY_VERSION, sales: [1] }).changed, false);
   });
   it('the converted file passes the app\'s own version check', async () => {
-    const { isCurrentBackup } = await import('../modules/data-keys.js');
+    const { isCurrentBackup } = await import('../modules/link-graph.js');
     assert.equal(isCurrentBackup(convertBackup({ mfg: [] }).data), true);
   });
 });
