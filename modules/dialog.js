@@ -6,7 +6,9 @@ export const dialogIcons = {
   warning: SVG('<path d="M10.3 3.9 2.4 17.6a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/>'),
   error: SVG('<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>'),
   success: SVG('<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.4 2.4 4.6-5"/>'),
-  chevron: SVG('<path d="m9 6 6 6-6 6"/>')
+  chevron: SVG('<path d="m9 6 6 6-6 6"/>'),
+  lock: SVG('<rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><path d="M12 15v2"/>'),
+  eye: SVG('<path d="M2.5 12C5.5 7.5 8.8 5.5 12 5.5S18.5 7.5 21.5 12c-3 4.5-6.3 6.5-9.5 6.5S5.5 16.5 2.5 12Z"/><circle cx="12" cy="12" r="3"/><path class="dlg-eye-slash" d="M4 4l16 16"/>')
 };
 
 const EYEBROWS = { primary: 'Confirm', danger: 'Permanent', warning: 'Warning', error: 'Error', success: 'Success' };
@@ -148,6 +150,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     overlay.innerHTML = `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><div class="dlg-chip"><span class="dlg-chip-icon" aria-hidden="true">${glyph}</span><span>${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span></div><div class="dlg-card"><div class="dlg-top"><span class="dlg-glyph" aria-hidden="true">${glyph}</span><span class="dlg-caption">${escapeHtml(caption || CAPTIONS[tone] || '')}</span></div><h2 class="dlg-title" id="${id}-t">${escapeHtml(humanizeKeys(String(title)).trim())}</h2><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot${figure ? ' has-figure' : ''}">${figureHtml}<div class="dlg-actions">${buttons}</div></footer></div></div>`;
     const dialog = overlay.firstElementChild;
     let settled = false;
+    let guarding = false;
     const finish = (value, immediate) => {
       if (settled) return;
       settled = true;
@@ -186,7 +189,19 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     };
     overlay.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]');
-      if (btn && !btn.dataset.opt) { finish(actions[Number(btn.dataset.act)].value); return; }
+      if (btn && !btn.dataset.opt) {
+        const act = actions[Number(btn.dataset.act)];
+        if (typeof act.guard !== 'function') { finish(act.value); return; }
+        if (guarding) return;
+        guarding = true;
+        btn.disabled = true;
+        Promise.resolve(act.guard(overlay)).then((res) => {
+          guarding = false;
+          btn.disabled = false;
+          if (res && res.ok) finish(res.value);
+        }).catch(() => { guarding = false; btn.disabled = false; });
+        return;
+      }
       const opt = e.target.closest('[data-opt]');
       if (opt && onBodyClick) { finish(onBodyClick(Number(opt.dataset.opt))); return; }
       if (e.target === overlay && dismissOnBackdrop) finish(dismissValue);
@@ -237,6 +252,62 @@ export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Co
   });
 }
 
+export function showPasswordConfirm({ title = 'Confirm Password', message = '', email = '', confirmText = 'Confirm', cancelText = 'Cancel', inputId = '_dlg_pwd_input', verify = null } = {}) {
+  const errId = `${inputId}_err`;
+  const account = email ? `<p class="dlg-account">Account: <strong>${escapeHtml(email)}</strong></p>` : '';
+  const body = `${formatMessage(message)}${account}<div class="dlg-field"><input type="password" id="${inputId}" class="dlg-input" placeholder="Your account password" autocomplete="current-password" autocapitalize="none" spellcheck="false"><button type="button" class="dlg-eye" id="${inputId}_eye" aria-label="Show password">${dialogIcons.eye}</button></div><div class="dlg-error" id="${errId}" role="alert" aria-live="polite"></div>`;
+  const guard = async (overlay) => {
+    const input = overlay.querySelector(`#${inputId}`);
+    const err = overlay.querySelector(`#${errId}`);
+    const okBtn = overlay.querySelector('.dlg-btn--solid');
+    const pwd = input ? input.value : '';
+    if (!pwd) { err.textContent = 'Please enter your password.'; if (input) input.focus(); return { ok: false }; }
+    err.textContent = '';
+    const label = okBtn.textContent;
+    okBtn.textContent = 'Verifying\u2026';
+    let valid = false;
+    try { valid = typeof verify === 'function' ? !!(await verify(pwd)) : true; } catch (_) { valid = false; }
+    okBtn.textContent = label;
+    if (!valid) {
+      err.textContent = 'Incorrect password. Please try again.';
+      if (input) { input.value = ''; input.focus(); }
+      return { ok: false };
+    }
+    return { ok: true, value: pwd };
+  };
+  const result = openDialog({
+    tone: 'primary',
+    title,
+    caption: 'Account password required',
+    icon: dialogIcons.lock,
+    body,
+    actions: [{ label: cancelText, variant: 'ghost', value: null }, { label: confirmText, variant: 'solid', value: null, guard }],
+    dismissIndex: 0,
+    dismissOnBackdrop: false,
+    focusIndex: -1
+  });
+  const input = document.getElementById(inputId);
+  const eye = document.getElementById(`${inputId}_eye`);
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const okBtn = input.closest('.dlg-overlay').querySelector('.dlg-btn--solid');
+      if (okBtn && !okBtn.disabled) okBtn.click();
+    });
+    setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (_) {} }, 80);
+  }
+  if (eye && input) {
+    eye.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      eye.classList.toggle('on', show);
+      eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  }
+  return result;
+}
+
 const ALERT_TITLES = { success: 'Success', warning: 'Warning', error: 'Something went wrong' };
 
 export function showGlassAlert(message, { title = null, tone = 'warning', buttonText = 'OK', icon = null } = {}) {
@@ -283,5 +354,6 @@ export function notifyBlocking(message, tone = 'warning', title = null) {
 window.showGlassConfirm = showGlassConfirm;
 window.showGlassAlert = showGlassAlert;
 window.showChoiceDialog = showChoiceDialog;
+window.showPasswordConfirm = showPasswordConfirm;
 window.notifyBlocking = notifyBlocking;
 window.isDialogOpen = isDialogOpen;

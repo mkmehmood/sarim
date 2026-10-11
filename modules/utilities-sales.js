@@ -10,7 +10,7 @@ import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDa
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
-import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
+import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, collectAuxBackupFields, applyAuxBackupFields } from './data-keys.js';
 import { confirmGuard } from './confirm-guard.js';
@@ -3851,61 +3851,7 @@ export async function verifyAccountPassword(password) {
 
 export async function promptVerifiedBackupPassword({ title = 'Confirm Password', subtitle = 'Enter your account password to encrypt this backup file.', inputId = '_bkp_pwd_modal_input' } = {}) {
   if (!currentUser) return null;
-  return new Promise((resolve) => {
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:10300;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);';
-    modal.innerHTML = `
-    <div class="liquid-card" style="max-width:370px;width:92%;padding:28px 24px;text-align:center;">
-      <div style="font-size:1.6rem;margin-bottom:8px;"></div>
-      <h3 style="margin:0 0 6px;color:var(--text-main);font-size:1rem;font-weight:800;font-family:var(--font-display);">${esc(title)}</h3>
-      <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;line-height:1.5;">${esc(subtitle)}</p>
-      <p style="font-size:0.72rem;color:var(--accent);margin-bottom:14px;">Account: <strong>${esc(currentUser.email)}</strong></p>
-      <div style="position:relative;margin-bottom:8px;">
-        <input type="password" id="${inputId}" placeholder="Your account password" autocomplete="current-password"
-          style="width:100%;padding:11px 40px 11px 12px;background:var(--input-bg);border:1.5px solid var(--glass-border);border-radius:10px;box-sizing:border-box;color:var(--text-main);font-size:0.9rem;outline:none;transition:border-color 0.2s;"
-          onfocus="this.style.borderColor='rgba(52,217,116,0.5)'" onblur="this.style.borderColor='var(--glass-border)'">
-        <button type="button" tabindex="-1"
-          onclick="(function(btn){const inp=document.getElementById('${inputId}');inp.type=inp.type==='password'?'text':'password';btn.querySelector('svg').style.opacity=inp.type==='text'?'1':'0.45';})(this)"
-          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:2px;color:var(--text-muted);line-height:0;">
-          <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="transition:opacity 0.2s;"><path d="M2.5 18C6.5 10.8 12 7.8 18 7.8S29.5 10.8 33.5 18C29.5 25.2 24 28.2 18 28.2S6.5 25.2 2.5 18Z" fill="var(--accent)" fill-opacity="0.1" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="18" r="5.8" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" fill="var(--accent)"/></svg>
-        </button>
-      </div>
-      <div id="${inputId}_err" style="font-size:0.74rem;color:var(--danger);min-height:18px;margin-bottom:10px;text-align:left;padding-left:2px;"></div>
-      <div style="display:flex;gap:10px;">
-        <button id="${inputId}_ok" style="flex:1;padding:11px;background:var(--accent);border:none;border-radius:10px;color:#003d2e;font-weight:700;cursor:pointer;font-size:0.88rem;transition:opacity 0.2s;">Encrypt &amp; Download</button>
-        <button id="${inputId}_cancel" style="flex:1;padding:11px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;color:var(--text-main);cursor:pointer;font-size:0.88rem;">Cancel</button>
-      </div>
-    </div>`;
-    document.body.appendChild(modal);
-    const inp = document.getElementById(inputId);
-    const errEl = document.getElementById(inputId + '_err');
-    const okBtn = document.getElementById(inputId + '_ok');
-    setTimeout(() => { if (inp) inp.focus(); }, 100);
-    if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') okBtn.click(); });
-    okBtn.onclick = async () => {
-      const pwd = inp ? inp.value : '';
-      if (!pwd) { errEl.textContent = 'Please enter your password.'; return; }
-      okBtn.disabled = true;
-      okBtn.style.opacity = '0.6';
-      okBtn.textContent = 'Verifying…';
-      errEl.textContent = '';
-      const valid = await verifyAccountPassword(pwd);
-      if (valid) {
-        document.body.removeChild(modal);
-        resolve(pwd);
-      } else {
-        okBtn.disabled = false;
-        okBtn.style.opacity = '1';
-        okBtn.textContent = 'Encrypt & Download';
-        errEl.textContent = ' Incorrect password — please try again.';
-        if (inp) { inp.value = ''; inp.focus(); }
-      }
-    };
-    document.getElementById(inputId + '_cancel').onclick = () => {
-      document.body.removeChild(modal);
-      resolve(null);
-    };
-  });
+  return showPasswordConfirm({ title, message: subtitle, email: currentUser.email, confirmText: 'Encrypt & Download', cancelText: 'Cancel', inputId, verify: verifyAccountPassword });
 }
 
 export async function unifiedBackup() {

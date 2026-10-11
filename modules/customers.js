@@ -9,9 +9,9 @@ import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUnivers
 import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, updateUnitsAvailableIndicator } from './factory.js';
 import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
-import { showGlassConfirm, showGlassAlert, showChoiceDialog, notifyBlocking } from './dialog.js';
+import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
-export { showGlassConfirm, showGlassAlert, showChoiceDialog, notifyBlocking };
+export { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking };
 
 export function selectCustomer(name) {
 const input = document.getElementById('cust-name');
