@@ -34,7 +34,7 @@ function memStore(init = {}) {
 }
 describe('registry matches the maps the cloud sync really uses', () => {
   it('registry has no duplicate keys', () => {
-    for (const field of ['sqlite', 'collection', 'backup']) {
+    for (const field of ['sqlite', 'collection']) {
       const vals = RECORD_STORES.map(s => s[field]);
       assert.equal(new Set(vals).size, vals.length, `duplicate ${field}`);
     }
@@ -49,7 +49,7 @@ describe('every backup writer carries every record store and every aux key', () 
   for (const [name, body] of Object.entries(writers)) {
     it(`${name} writes all record stores`, () => {
       for (const s of RECORD_STORES) {
-        assert.ok(new RegExp(`\\b${s.backup}\\s*:`).test(body), `${name} is missing backup field "${s.backup}" (${s.sqlite})`);
+        assert.ok(new RegExp(`\\b${s.key}\\s*:`).test(body), `${name} is missing backup field "${s.key}"`);
       }
     });
     it(`${name} writes expense categories, formula store/slots and photos via the shared collector`, () => {
@@ -88,8 +88,8 @@ describe('one single-word name per dataset', () => {
   it('the datasets are named exactly like this', () => {
     assert.deepEqual(RECORD_KEYS, ['production', 'sales', 'calculator', 'rep', 'clients', 'customers', 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns']);
   });
-  it('local key, Firestore collection and backup field are the same string', () => {
-    for (const s of RECORD_STORES) assert.ok(s.sqlite === s.collection && s.collection === s.backup && s.backup === s.key, s.key);
+  it('local key, Firestore collection and backup field are all the one key', () => {
+    for (const s of RECORD_STORES) assert.ok(s.sqlite === s.collection && s.collection === s.key && !('backup' in s), s.key);
   });
   it('no dataset name has two words', () => {
     for (const k of RECORD_KEYS) assert.ok(!/[_\-\s]/.test(k), k);
@@ -108,11 +108,14 @@ describe('one single-word name per dataset', () => {
       assert.ok(!/migrateStoreKeys|migrateLegacy|normaliseBackupFields|upgradeSettingsDoc/.test(code), `${f} still has migration code`);
     }
   });
-  it('the backup integrity report lists the datasets from the one table, not from old field names', () => {
-    const at = payments.indexOf("label: 'Collection Summary'");
-    assert.ok(at > 0, 'report section found');
-    const body = payments.slice(at, at + 300);
-    assert.ok(body.includes('RECORD_STORES.map(s => [s.backup, s.label])'), 'report must read RECORD_STORES');
+  it('plain JSON backup support is gone: only encrypted .gznd files restore', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    assert.ok(/id="restoreInput"[^>]*accept="\.gznd"/.test(html), 'file picker must accept .gznd only');
+    for (const [name, src] of [['utilities-sales.js', sales], ['utilities-payments.js', payments], ['business.js', read('business.js')]]) {
+      assert.ok(!/analyzeBackupFile|uploadOldDataToCloud|_readFileAsText|backupMetadata|backup_upload/.test(src), `${name} still has JSON backup code`);
+      assert.ok(!/JSON\.parse\(text\)/.test(src), `${name} still parses a plain JSON file`);
+    }
+    assert.ok(!/\.backup\b/.test(read('link-graph.js')), 'link-graph.js still has a separate backup key');
   });
   it('the in-memory variable of every dataset is its key (sales, rep, clients, ...), so SQLite, Firestore and code agree', () => {
     for (const s of RECORD_STORES) assert.equal(s.jsVar, s.key, s.key);
@@ -134,7 +137,7 @@ describe('one single-word name per dataset', () => {
     assert.equal(isSupportedBackup([]), false);
     assert.equal(isSupportedBackup({ production: [] }), true);
     assert.equal(isSupportedBackup({ sales: [], production: [{ id: 1 }] }), true);
-    for (const src of [sales, payments, admin]) {
+    for (const src of [sales, admin]) {
       assert.ok(src.includes('isSupportedBackup('), 'restore paths must check the file');
       assert.ok(src.includes('Unsupported file'), 'restore paths must show the unsupported-file error');
     }
@@ -150,7 +153,7 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
   });
   it('collect captures every aux key', async () => {
     const out = await collectAuxBackupFields(source());
-    for (const s of AUX_STATE) assert.ok(s.backup in out, s.backup);
+    for (const s of AUX_STATE) assert.ok(s.sqlite in out, s.sqlite);
     assert.deepEqual(out.photos, { a: 'data:x' });
   });
   it('merge restore fills an empty device and stamps timestamps', async () => {

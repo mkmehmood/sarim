@@ -4,7 +4,7 @@ import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _readFileAsText, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { _set_restoring, _set_closing, restoring, closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
@@ -4058,21 +4058,7 @@ await _doRestoreMerge(data);
 window.notifyBlocking('Restore error: ' + err.message, 'error');
 }
 } else {
-try {
-const text = await _readFileAsText(file);
-const data = JSON.parse(text);
-if (!isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
-if (data.clients || data.customers || data.sales || data.rep || data.production) {
-const _rfbMsg = `Restore data from this backup file?\n\nHow it works:\n \u2022 Records are merged, not overwritten \u2014 your current data stays\n \u2022 Duplicates are automatically removed\n \u2022 Only new (non-duplicate) records are uploaded to cloud\n \u2022 Other devices are not affected until their next sync\n\nIf the backup contains older versions of records you have edited since, the newer version is always kept.`;
-if (await showGlassConfirm(_rfbMsg, { title: "Restore From Backup File", confirmText: "Restore & Merge", cancelText: "Cancel" })) {
-await _doRestoreMerge(data);
-}
-} else {
-window.notifyBlocking("Invalid backup file structure", 'error');
-}
-} catch (err) {
-window.notifyBlocking("Error reading file: " + err.message, 'error');
-}
+window.notifyBlocking('Only encrypted .gznd backup files can be restored.', 'error', 'Unsupported file');
 }
 }
 

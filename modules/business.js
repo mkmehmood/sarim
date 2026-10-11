@@ -89,16 +89,6 @@ export function _readFileAsArrayBuffer(file) {
   });
 }
 
-export function _readFileAsText(file) {
-  if (typeof file.text === 'function') return file.text();
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload  = () => resolve(fr.result);
-    fr.onerror = () => reject(fr.error || new Error('FileReader failed'));
-    fr.readAsText(file);
-  });
-}
-
 if (window.trustedTypes && window.trustedTypes.createPolicy) {
   window._gndHTMLPolicy = window.trustedTypes.createPolicy('gnd-html-policy', {
     createHTML: (s) => s
@@ -2738,7 +2728,6 @@ export function balanceAfterHtml(text, tone = 'neutral', label = 'Balance after'
 window.balanceAfterHtml = balanceAfterHtml;
 window._triggerFileDownload = _triggerFileDownload;
 window._readFileAsArrayBuffer = _readFileAsArrayBuffer;
-window._readFileAsText = _readFileAsText;
 window.CryptoEngine = CryptoEngine;
 window._OPFSStore = _OPFSStore;
 window.OfflineAuth = OfflineAuth;

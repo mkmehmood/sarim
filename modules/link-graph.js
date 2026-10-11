@@ -759,7 +759,7 @@ export function planExpenseNameRename(entity, oldName, newName, expenses) {
   return (Array.isArray(expenses) ? expenses : []).filter(e => e && !e.deletedAt && e.name && String(e.name).trim().toLowerCase() === o).map(e => e.id);
 }
 
-const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar: key, label, tab, desc });
+const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, jsVar: key, label, tab, desc });
 
 export const RECORD_STORES = Object.freeze([
   rec('production',   'Production',           'production', 'Factory production batches'),
@@ -783,21 +783,18 @@ export const AUX_STATE = Object.freeze([
   {
     sqlite: 'categories',
     tsKey: 'categories_timestamp',
-    backup: 'categories',
     firestore: { doc: 'categories/list', field: 'categories', tsField: 'categories_timestamp' },
     kind: 'list',
   },
   {
     sqlite: 'formulas',
     tsKey: 'formulas_timestamp',
-    backup: 'formulas',
     firestore: { doc: 'formulas/config', field: 'formulas', tsField: 'formulas_timestamp' },
     kind: 'idList',
   },
   {
     sqlite: 'slots',
     tsKey: 'slots_timestamp',
-    backup: 'slots',
     firestore: { doc: 'formulas/config', field: 'slots', tsField: 'slots_timestamp' },
     kind: 'slots',
   },
@@ -850,9 +847,9 @@ export async function collectAuxBackupFields(store) {
   const out = {};
   for (const s of AUX_STATE) {
     const v = await store.get(s.sqlite);
-    if (s.kind === 'list')   out[s.backup] = Array.isArray(v) ? v : [];
-    if (s.kind === 'idList') out[s.backup] = Array.isArray(v) ? v : [];
-    if (s.kind === 'slots')  out[s.backup] = v && typeof v === 'object' ? v : { standard: null, asaan: null };
+    if (s.kind === 'list')   out[s.sqlite] = Array.isArray(v) ? v : [];
+    if (s.kind === 'idList') out[s.sqlite] = Array.isArray(v) ? v : [];
+    if (s.kind === 'slots')  out[s.sqlite] = v && typeof v === 'object' ? v : { standard: null, asaan: null };
   }
   out.photos = (await store.get('photos')) || {};
   out.photostamps = (await store.get('photostamps')) || {};
@@ -863,7 +860,7 @@ export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 
   const written = [];
   if (!data || typeof data !== 'object') return written;
   for (const s of AUX_STATE) {
-    const incoming = data[s.backup];
+    const incoming = data[s.sqlite];
     if (incoming === undefined || incoming === null) continue;
     const local = await store.get(s.sqlite);
     let next;
