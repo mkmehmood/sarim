@@ -17,13 +17,16 @@ const _el = (id) => document.getElementById(id);
 const _num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 const _fmt = (v) => (typeof window.fmtNum === 'function' ? window.fmtNum(v) : String(v));
 const _money = (v) => (typeof window.formatCurrency === 'function' ? window.formatCurrency(v) : _fmt(v));
+
 export async function getFormulaStore() {
   return ensureArray(await sqliteStore.get(STORE_KEY)).filter((f) => f && f.id);
 }
+
 export async function getFormulaSlots() {
   const v = await sqliteStore.get(SLOTS_KEY);
   return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
 }
+
 export async function getSelectedFormula(storeKey) {
   const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'stores', 'defaults', 'costs', 'inventory']);
   return resolveSelectedFormula({
@@ -31,6 +34,7 @@ export async function getSelectedFormula(storeKey) {
     feed: b.get('defaults') || {}, costs: b.get('costs') || {}, inventory: ensureArray(b.get('inventory')),
   }, storeKey);
 }
+
 export async function getFormulaSlotLabels() {
   const [list, slots] = await Promise.all([getFormulaStore(), getFormulaSlots()]);
   const out = {};
@@ -41,6 +45,7 @@ export async function getFormulaSlotLabels() {
   if (out.standard === out.asaan) out.asaan = out.asaan + ' (2)';
   return out;
 }
+
 export async function getStoreFormulaNames() {
   const [stores, list, slots] = await Promise.all([getAppStores(), getFormulaStore(), getFormulaSlots()]);
   const out = {};
@@ -51,10 +56,12 @@ export async function getStoreFormulaNames() {
   });
   return out;
 }
+
 function _slotOfStore(key, typeMap) {
   if (key === 'standard' || key === 'asaan') return key;
   return typeMap[key] || formulaTypeFor(key);
 }
+
 function _feedWrites(list, slots, base, now) {
   const formulas = { standard: [], asaan: [], ...(base.get('defaults') || {}) };
   const costs = { standard: 0, asaan: 0, ...(base.get('costs') || {}) };
@@ -68,7 +75,9 @@ function _feedWrites(list, slots, base, now) {
   });
   return [['defaults', formulas], ['defaults_timestamp', now], ['costs', costs], ['costs_timestamp', now], ['adjustment', factors], ['adjustment_timestamp', now]];
 }
+
 const _FEED_KEYS = ['defaults', 'costs', 'adjustment'];
+
 function _afterChange() {
   notifyDataChange('all');
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
@@ -76,6 +85,7 @@ function _afterChange() {
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
   refreshFormulaDependentUI();
 }
+
 export async function commitStoresWithFormulas(stores) {
   const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('tracking')]);
   stores = stores.map((s) => {
@@ -111,11 +121,13 @@ export async function commitStoresWithFormulas(stores) {
   _afterChange();
   return { ok: true, stores: normalized };
 }
+
 async function _saveFormulaStore(list, extraWrites) {
   const now = getTimestamp();
   await sqliteStore.setBatch([[STORE_KEY, list], [STORE_TS_KEY, now], ...(extraWrites || [])]);
   _afterChange();
 }
+
 function _totals(ingredients, additionalCost, factor) {
   let raw = 0;
   let weight = 0;
@@ -124,15 +136,18 @@ function _totals(ingredients, additionalCost, factor) {
   const perKg = factor > 0 ? perUnit / factor : perUnit;
   return { raw, weight, perUnit, perKg };
 }
+
 function _liveCost(ing, inventory) {
   let live = inventory.find((i) => String(i.id) === String(ing.id));
   if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
   const c = live ? Number(live.cost) : NaN;
   return Number.isFinite(c) && c > 0 ? c : _num(ing.cost, 0);
 }
+
 function _row(label, value, extra) {
   return `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;${extra || ''}"><span>${label}</span><span>${value}</span></div>`;
 }
+
 function _card(f, inventory, usedBy) {
   const ings = ensureArray(f.ingredients).map((i) => ({ ...i, cost: _liveCost(i, inventory) }));
   const addl = _num(f.additionalCost, 0);
@@ -149,6 +164,7 @@ function _card(f, inventory, usedBy) {
   html += `<div class="formula-store-edit-hint">${usedBy.length ? 'Used by ' + esc(usedBy.join(', ')) + ' · ' : ''}Tap to edit</div>`;
   return `<div class="formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;
 }
+
 export async function renderFormulaStoreList() {
   const box = _el('formulaStoreList');
   if (!box) return;
@@ -160,9 +176,11 @@ export async function renderFormulaStoreList() {
   const inventory = ensureArray(await sqliteStore.get('inventory'));
   box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId || slotsNow[s.formulaType || 'standard']) === String(f.id)).map((s) => s.name))).join('');
 }
+
 export async function openFormulaStore() {
   await renderFormulaStoreList();
 }
+
 function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory) {
   let currentCost = costVal !== null ? costVal : 0;
   const currentId = selectedId ? String(selectedId) : '';
@@ -286,6 +304,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   container.appendChild(div);
   return div;
 }
+
 async function _fillEditor(entry) {
   const inventory = ensureArray(await sqliteStore.get('inventory'));
   const container = _el('fsEditContainer');
@@ -305,6 +324,7 @@ async function _fillEditor(entry) {
   _el('fs-cost-factor').value = _num(entry.costAdjustmentFactor, 1);
   updateFormulaStoreSummary();
 }
+
 function _collectEditor() {
   const container = _el('fsEditContainer');
   const ingredients = [];
@@ -326,6 +346,7 @@ function _collectEditor() {
     costAdjustmentFactor: _num(_el('fs-cost-factor').value, 1) || 1
   };
 }
+
 export function updateFormulaStoreSummary() {
   const c = _collectEditor();
   const t = _totals(c.ingredients, c.additionalCost, c.costAdjustmentFactor);
@@ -335,12 +356,14 @@ export function updateFormulaStoreSummary() {
   set('fsSummaryPerUnit', _fmt(t.perUnit));
   set('fsSummaryPerKg', _fmt(t.perKg));
 }
+
 function _bindEditor() {
   const container = _el('fsEditContainer');
   if (!container || container.dataset.bound === '1') return;
   container.dataset.bound = '1';
   container.addEventListener('formularowchange', () => setTimeout(updateFormulaStoreSummary, 0));
 }
+
 export async function openFormulaStoreEditor(id) {
   _editingId = id || null;
   const list = await getFormulaStore();
@@ -354,6 +377,7 @@ export async function openFormulaStoreEditor(id) {
   if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen('formula-store-edit-screen');
   await _fillEditor(entry || { name: '', ingredients: [], additionalCost: 0, costAdjustmentFactor: 1 });
 }
+
 export async function addFormulaIngredientRow() {
   const container = _el('fsEditContainer');
   if (!container) return;
@@ -365,7 +389,9 @@ export async function addFormulaIngredientRow() {
   if (inp) setTimeout(() => inp.focus(), 200);
   updateFormulaStoreSummary();
 }
+
 export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', late: true, isUpdate: () => !!_editingId }); }
+
 async function _saveFormulaStoreEntryRaw() {
   const c = _collectEditor();
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning'); return false; }
@@ -387,6 +413,7 @@ if (!(await window.gcCommit({}))) return false;
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   return true;
 }
+
 export async function deleteFormulaStoreEntry() {
   if (!_editingId) return;
   const [slots, stores] = await Promise.all([getFormulaSlots(), getAppStores()]);
@@ -406,6 +433,7 @@ export async function deleteFormulaStoreEntry() {
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   showToast('Formula deleted', 'success');
 }
+
 function _renderChoice(hostId, items, active, onPick, emptyText) {
   const host = _el(hostId);
   if (!host) return;
@@ -432,6 +460,7 @@ function _renderChoice(hostId, items, active, onPick, emptyText) {
   });
   host.appendChild(group);
 }
+
 export async function setStoreFormulaSelection(id) {
   const list = await getFormulaStore();
   const f = list.find((x) => String(x.id) === String(id));
@@ -441,6 +470,7 @@ export async function setStoreFormulaSelection(id) {
   const sp = btn ? btn.querySelector('span') : null;
   if (sp) sp.textContent = f ? (f.name || 'Untitled') : 'Select formula';
 }
+
 export async function openStoreFormulaPicker(btn) {
   const old = document.getElementById('_pop_storeFormula');
   const wasOpen = !!old && old.style.display !== 'none';
@@ -459,21 +489,25 @@ export async function openStoreFormulaPicker(btn) {
     pop.style.overflowY = 'auto';
   }
 }
+
 function _slotItems(view, order) {
   return view ? order.map((k) => ({ value: k, label: view.labels[k] })) : [];
 }
+
 export function syncFactoryFormulaPicker(slot) {
   const view = window._formulaSlotView;
   const input = _el('factory-formula-value');
   if (input) input.value = slot;
   _renderChoice('factoryFormulaToggle', _slotItems(view, view ? view.entryOrder : []), slot, (k) => { if (typeof window.selectFactoryFormula === 'function') window.selectFactoryFormula(k); }, 'No formula');
 }
+
 export function syncFactoryAvailPicker(slot) {
   const view = window._formulaSlotView;
   const input = _el('factory-avail-value');
   if (input) input.value = slot;
   _renderChoice('factoryAvailToggle', _slotItems(view, view ? view.availOrder : []), slot, (k) => { if (typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(k); }, 'No formula');
 }
+
 export async function refreshFormulaDependentUI() {
   const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('tracking')]);
   const used = new Set(stores.map((s) => s.formulaType || 'standard'));
@@ -502,8 +536,10 @@ export async function refreshFormulaDependentUI() {
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
   if (typeof window.renderFactoryHistory === 'function') window.renderFactoryHistory();
 }
+
 export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
+
 Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });

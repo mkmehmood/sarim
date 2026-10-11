@@ -9,6 +9,7 @@ import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory
 import { showGlassConfirm, showToast } from './customers.js';
 import { resolveExpenseCategories, RECORD_STORES } from './data-keys.js';
 import { confirmGuard } from './confirm-guard.js';
+
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await sqliteStore.set(key, data);
 const collectionEntry = SQLiteToFirestoreMap[key];
@@ -24,14 +25,18 @@ if (collectionEntry) {
 }
 return result;
 }
+
 export const SQLiteToFirestoreMap = Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, { collection: s.collection, varName: s.jsVar }]));
 export const FirestoreToSQLiteMap = Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite]));
+
 export function getFirestoreCollection(sqliteKey) {
 return SQLiteToFirestoreMap[sqliteKey]?.collection || sqliteKey;
 }
+
 export function getSQLiteKey(firestoreCollection) {
 return FirestoreToSQLiteMap[firestoreCollection] || firestoreCollection;
 }
+
 export async function saveRecordToFirestore(sqliteKey, record, silent = true) {
 if (!firebaseDB || !currentUser) {
 return false;
@@ -105,6 +110,7 @@ showToast('Failed to sync to cloud — will retry when online', 'warning');
 return false;
 }
 }
+
 export async function deleteRecordFromFirestore(sqliteKey, recordId, silent = true) {
 if (!firebaseDB || !currentUser) {
 return false;
@@ -160,6 +166,7 @@ showToast('Failed to delete from cloud — will retry when online', 'warning');
 return false;
 }
 }
+
 export async function unifiedSave(sqliteKey, dataArray, specificRecord = null, linkedIds = null) {
 let _newTx = { created: [], edited: [] };
 if (_LOCAL_TX_KEYS.has(sqliteKey)) {
@@ -218,11 +225,13 @@ if (_newTx.edited.length) _notifyEditedTransactions(sqliteKey, _newTx.edited);
 triggerAutoSync();
 return true;
 }
+
 const _DELETE_LABELS = {
   rep: 'Sale', sales: 'Sale', transactions: 'Payment', expenses: 'Expense',
   production: 'Production entry', entities: 'Entity', customers: 'Customer', clients: 'Customer',
   inventory: 'Raw material', factory: 'Factory entry', returns: 'Return', calculator: 'Calculation'
 };
+
 function _notifyDeletion(key, r) {
   try {
     const label = _DELETE_LABELS[key] || 'Record';
@@ -237,6 +246,7 @@ function _notifyDeletion(key, r) {
     sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
   } catch (_) {}
 }
+
 export async function unifiedDelete(sqliteKey, dataArray, deletedRecordId, opts = {}, preDeletedRecord = null) {
 if (opts.strict !== true) {
   console.warn(`[RecycleBin] BLOCKED unifiedDelete on "${sqliteKey}" id=${deletedRecordId} — strict flag missing. Pass { strict: true } to confirm intentional deletion.`);
@@ -265,6 +275,7 @@ _syncQueue.run(async () => {
 triggerAutoSync();
 return true;
 }
+
 export async function verifyDeltaSyncSystem() {
 const collections = [
 'production', 'sales', 'calculator', 'rep', 'clients',
@@ -298,18 +309,21 @@ results.issues.push(status);
 }
 return results;
 }
+
 export async function resetDeltaSync() {
 await DeltaSync.clearAllTimestamps();
 await sqliteStore.remove('deltastats');
 if (typeof UUIDSyncRegistry !== 'undefined') await UUIDSyncRegistry.clearAll().catch(() => {});
 showToast('Delta sync reset - next sync will download all data', 'info');
 }
+
 window.verifyDeltaSyncSystem = verifyDeltaSyncSystem;
 window.resetDeltaSync = resetDeltaSync;
 window.getFirestoreCollection = getFirestoreCollection;
 window.getSQLiteKey = getSQLiteKey;
 window.saveRecordToFirestore = saveRecordToFirestore;
 window.deleteRecordFromFirestore = deleteRecordFromFirestore;
+
 export async function initializeFirebaseSystem() {
 if (typeof firebase === 'undefined') {
 if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('loading');
@@ -568,6 +582,7 @@ if (typeof _setCloudConnectionState === 'function') _setCloudConnectionState('er
 setTimeout(initializeFirebaseSystem, APP_CONFIG.FIREBASE_INIT_RETRY_DELAY);
 }
 }
+
 export class FirestoreDatabaseInitializer {
 constructor(firebaseDB, currentUser) {
 this.firebaseDB = firebaseDB;
@@ -945,6 +960,7 @@ this.results.errors.push({ collection: 'updates', error: error.message });
 }
 }
 }
+
 export async function initializeCompleteFirestoreDatabase(silent = false) {
 if (!firebaseDB || !currentUser) {
 if (!silent) showToast('Please log in first', 'warning');
@@ -953,6 +969,7 @@ return { success: false, error: 'Not logged in' };
 const initializer = new FirestoreDatabaseInitializer(firebaseDB, currentUser);
 return await initializer.initialize(silent);
 }
+
 export async function isCompleteDatabaseInitialized() {
 if (!firebaseDB || !currentUser) return false;
 try {
@@ -980,6 +997,7 @@ return true;
 return false;
 }
 }
+
 export async function safeInitializeCompleteDatabase(silent = false) {
 const isInitialized = await isCompleteDatabaseInitialized();
 if (isInitialized) {
@@ -991,9 +1009,11 @@ message: 'Database was already initialized with complete structure'
 }
 return await initializeCompleteFirestoreDatabase(silent);
 }
+
 export async function initializeFirestoreStructure(silent = false) {
 return await initializeCompleteFirestoreDatabase(silent);
 }
+
 export async function cleanupPlaceholders() {
 if (!firebaseDB || !currentUser) return false;
 try {
@@ -1028,6 +1048,7 @@ return true;
 return false;
 }
 }
+
 export function retryFirebaseInit(attempts = 0, maxAttempts = APP_CONFIG.FIREBASE_INIT_RETRY_MAX) {
 initializeFirebaseSystem();
 if (firebaseDB) {
@@ -1043,6 +1064,7 @@ showToast(' Cloud sync unavailable. App will work offline.', 'warning');
 }
 }
 }
+
 export const _syncQueue = (() => {
   let _chain = Promise.resolve();
   return {
@@ -1054,7 +1076,9 @@ export const _syncQueue = (() => {
     }
   };
 })();
+
 window._syncQueue = _syncQueue;
+
 export const SYNC_COLLECTIONS = [
   {
     firestoreId:  'production',
@@ -1129,12 +1153,15 @@ export const SYNC_COLLECTIONS = [
     lockOnClose:  true,
   },
 ];
+
 export async function _getColData(sqliteKey) {
 return ensureArray(await sqliteStore.get(sqliteKey));
 }
+
 export async function _setColData(sqliteKey, value) {
 await sqliteStore.set(sqliteKey, value);
 }
+
 export function _makeSnapshotHandler(col) {
 return async function handleSnapshot(snapshot) {
 try {
@@ -1210,6 +1237,7 @@ console.warn(`[Snapshot:${col.firestoreId}] local save error`, _safeErr(err));
 }
 };
 }
+
 export function _ensureLocalTombstone(recordId, collectionName) {
 const sid = String(recordId);
 _syncQueue.run(async () => {
@@ -1227,6 +1255,7 @@ _syncQueue.run(async () => {
   } catch (e) {}
 });
 }
+
 export function _updateArray(array, docData, collectionName) {
   if (docData._placeholder || docData.id === '_placeholder_') return array;
   if (!docData.id) {
@@ -1302,6 +1331,7 @@ export function _updateArray(array, docData, collectionName) {
   }
   return array;
 }
+
 export let realtimeRefs = [];
 export let socketReconnectTimer = null;
 export let pendingSocketUpdate = false;
@@ -1316,6 +1346,7 @@ export let listenerReconnectTimer = null;
 export let lastSuccessfulConnection = Date.now();
 export let isReconnecting = false;
 export let _syncLockPendingQueue = [];
+
 export function _enqueueSyncLocked(handlerFn, snapshot) {
   const existing = _syncLockPendingQueue.findIndex(e => e.handlerFn === handlerFn);
   if (existing !== -1) {
@@ -1324,6 +1355,7 @@ export function _enqueueSyncLocked(handlerFn, snapshot) {
     _syncLockPendingQueue.push({ handlerFn, snapshot });
   }
 }
+
 export async function _flushSyncLockQueue() {
   if (_syncLockPendingQueue.length === 0) return;
   const queued = _syncLockPendingQueue.splice(0);
@@ -1332,6 +1364,7 @@ export async function _flushSyncLockQueue() {
     catch (err) { console.warn('[SyncLock] Error replaying buffered snapshot', _safeErr(err)); }
   }
 }
+
 export function updateSignalUI(status) {
   if (typeof _setCloudConnectionState !== 'function') return;
   if (status === 'online') {
@@ -1342,12 +1375,14 @@ export function updateSignalUI(status) {
     _setCloudConnectionState('error');
   }
 }
+
 export function flashLivePulse() {
   const dot = document.getElementById('network-status-dot');
   if (!dot) return;
   dot.classList.add('net-dot-flash');
   setTimeout(() => { dot.classList.remove('net-dot-flash'); }, 300);
 }
+
 export async function emitSyncUpdate(payload) {
 if (!firebaseDB || !currentUser) return;
 flashLivePulse();
@@ -1364,6 +1399,7 @@ lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: c
 } catch (_pe) {}
 }
 }
+
 export async function startSyncUpdatesCleanup() {
   if (!firebaseDB || !currentUser) return;
   const runCleanup = async () => {
@@ -1387,6 +1423,7 @@ export async function startSyncUpdatesCleanup() {
   if (window._syncUpdatesCleanupInterval) clearInterval(window._syncUpdatesCleanupInterval);
   window._syncUpdatesCleanupInterval = setInterval(runCleanup, 60 * 60 * 1000);
 }
+
 export function scheduleListenerReconnect() {
   if (isReconnecting) return;
   if (listenerReconnectTimer) clearTimeout(listenerReconnectTimer);
@@ -1409,14 +1446,17 @@ export function scheduleListenerReconnect() {
     }
   }, delay);
 }
+
 export function recordSuccessfulConnection() {
   lastSuccessfulConnection = Date.now();
   listenerRetryAttempts = 0;
   isReconnecting = false;
 }
+
 export function isConnectionStale() {
   return (Date.now() - lastSuccessfulConnection) > 5 * 60 * 1000;
 }
+
 export async function subscribeToRealtime() {
   if (!firebaseDB || !currentUser) return;
   if (window._firestoreNetworkDisabled) return;
@@ -2149,6 +2189,7 @@ export async function subscribeToRealtime() {
     scheduleListenerReconnect();
   }
 }
+
 export async function executeSmartPull() {
   await pullDataFromCloud(true);
   if (pendingSocketUpdate) {
@@ -2158,10 +2199,12 @@ export async function executeSmartPull() {
     showToast(' Live update received', 'success', 2000);
   }
 }
+
 export function scheduleSocketReconnect() {
   if (socketReconnectTimer) clearTimeout(socketReconnectTimer);
   socketReconnectTimer = setTimeout(() => { subscribeToRealtime().catch(e => console.warn('subscribeToRealtime socket retry failed:', _safeErr(e))); }, 5000);
 }
+
 export async function initFirebase() {
   if (window._firebaseListenersRegistered) return;
   window._firebaseListenersRegistered = true;
@@ -2179,6 +2222,7 @@ export async function initFirebase() {
     window.addEventListener('online',  window._fbOnlineHandler);
   } catch (e) { console.warn('Failed to pull data from cloud.', _safeErr(e)); }
 }
+
 export function _toMs(v) {
   if (!v) return 0;
   if (typeof v === 'number') return v;
@@ -2186,6 +2230,7 @@ export function _toMs(v) {
   if (typeof v === 'object' && v.seconds) return v.seconds * 1000 + Math.round((v.nanoseconds || 0) / 1e6);
   return new Date(v).getTime() || 0;
 }
+
 export function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
   if (!Array.isArray(localArray)) localArray = [];
   if (!Array.isArray(cloudArray)) cloudArray = [];
@@ -2217,6 +2262,7 @@ export function mergeDatasets(localArray, cloudArray, deletedSet = new Set()) {
   });
   return Array.from(mergedMap.values());
 }
+
 function _keepLocalSalePrices(cloudStores, localStores) {
   const local = Array.isArray(localStores) ? localStores : [];
   return cloudStores.map((c) => {
@@ -2229,6 +2275,7 @@ function _keepLocalSalePrices(cloudStores, localStores) {
     return out;
   });
 }
+
 function _fillStoresFromCloud(localStores, cloudStores) {
   const cloud = Array.isArray(cloudStores) ? cloudStores.filter((c) => c && c.key) : [];
   const local = Array.isArray(localStores) ? localStores : [];
@@ -2247,6 +2294,7 @@ function _fillStoresFromCloud(localStores, cloudStores) {
   });
   return { stores: out, changed };
 }
+
 export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   if (depth > 20) return null;
   if (obj === null || obj === undefined) return null;
@@ -2313,6 +2361,7 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
   } catch (e) { return {}; }
   return sanitized;
 }
+
 export async function _commitMergedBatch(userRef, collectionName, mergedRecords, deleteFilter) {
   const OPS_PER_BATCH = 400;
   let batchesTotal = 0, batchesFailed = 0, firstError = null;
@@ -2352,6 +2401,7 @@ export async function _commitMergedBatch(userRef, collectionName, mergedRecords,
   }
   return { ok: batchesFailed === 0, batchesTotal, batchesFailed, error: firstError || null };
 }
+
 export function mergeArrays(localArray, cloudArray, collectionName) {
   const merged = [...localArray];
   const idxMap = new Map();
@@ -2425,6 +2475,7 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
     return item;
   });
 }
+
 export async function _detectUserType(userRef) {
   const hasInitialized = await sqliteStore.get('dbready');
   const sqliteArrays = await Promise.all([
@@ -2451,6 +2502,7 @@ export async function _detectUserType(userRef) {
     return hasInitialized ? 'returning' : 'new';
   }
 }
+
 export async function _downloadDeltas(userRef, userType, forceDownload = false) {
   const FRESH_THRESHOLD_MS = 8 * 1000;
   const buildQuery = async (collection, collectionName) => {
@@ -2533,8 +2585,10 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     },
   };
 }
+
 const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
 const _REMOTE_TX_KEYS = ['rep', 'sales', 'transactions', 'expenses'];
+
 function _describeRemoteTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const created = Number(r.createdAt || r.timestamp || 0);
@@ -2553,10 +2607,12 @@ function _describeRemoteTx(key, r) {
   }
   return { title: 'New expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
 }
+
 function _pushTxNotification(item) {
   showToast(item.body, 'info', 4500);
   sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {});
 }
+
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   if (appMode !== 'admin') return;
   const items = [];
@@ -2571,7 +2627,9 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
   items.slice(0, 5).forEach(_pushTxNotification);
   if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
 }
+
 const _LOCAL_TX_KEYS = new Set(['rep', 'sales', 'transactions', 'expenses', 'production']);
+
 function _describeLocalTx(key, r) {
   if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
   const who = r.customerName || 'customer';
@@ -2588,10 +2646,13 @@ function _describeLocalTx(key, r) {
   if (r.isReturn) return { title: 'Stock return', body: `${kg} kg returned` };
   return { title: 'Production', body: `${kg} kg produced` };
 }
+
 const _EDIT_FIELDS = ['totalValue', 'amount', 'quantity', 'net', 'customerName', 'entityName', 'name', 'description', 'date', 'type', 'paymentType', 'price'];
+
 function _txChanged(before, after) {
   return _EDIT_FIELDS.some(f => String(before && before[f] == null ? '' : before[f]) !== String(after && after[f] == null ? '' : after[f]));
 }
+
 async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds) {
   let candidates = [];
   if (specificRecord && specificRecord.id) candidates = [specificRecord];
@@ -2607,6 +2668,7 @@ async function _collectNewTransactions(key, dataArray, specificRecord, linkedIds
   });
   return { created, edited };
 }
+
 function _notifyLocalTransactions(key, records) {
   const items = [];
   records.forEach(r => {
@@ -2616,6 +2678,7 @@ function _notifyLocalTransactions(key, records) {
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
+
 function _notifyEditedTransactions(key, records) {
   const items = [];
   records.forEach(r => {
@@ -2625,7 +2688,9 @@ function _notifyEditedTransactions(key, records) {
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
+
 window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
+
 async function _applyFormulaStoreFromCloud(cloud) {
   if (!cloud || typeof cloud !== 'object') return;
   const localList = await sqliteStore.get('formulas');
@@ -2644,6 +2709,7 @@ async function _applyFormulaStoreFromCloud(cloud) {
     await sqliteStore.setBatch([['slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['slots_timestamp', cloud.slots_timestamp || Date.now()]]);
   }
 }
+
 export async function _mergeAndPersist(cloudData) {
   try {
     if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
@@ -2812,6 +2878,7 @@ export async function _mergeAndPersist(cloudData) {
   }
   await DeltaSync.setLastSyncTimestamp('deletions');
 }
+
 export async function _syncSettings(cloudData) {
   const { settings: settingsSnap, factorySettings: factorySettingsSnap, expenseCategories: expCatSnap, appStores: appStoresSnap, personPhotosSnap } = cloudData;
   if (settingsSnap && settingsSnap.exists) {
@@ -2969,6 +3036,7 @@ export async function _syncSettings(cloudData) {
     } catch(_phe) { console.warn('[syncSettings] photos merge error', _phe); }
   }
 }
+
 export async function _uploadChanges(userRef) {
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
   const _keys = [
@@ -3217,9 +3285,11 @@ export async function _uploadChanges(userRef) {
   }
   return totalUploaded;
 }
+
 export function performOneClickSync(silent = false) {
   return _syncQueue.run(() => _doOneClickSync(silent));
 }
+
 export async function _doOneClickSync(silent = false) {
   if (!firebaseDB) {
     if (!silent) { showToast('⌛ Connecting to cloud…', 'info', 3000); initializeFirebaseSystem(); }
@@ -3308,9 +3378,11 @@ export async function _doOneClickSync(silent = false) {
     _flushSyncLockQueue().catch(err => console.warn('[SyncLock] Flush error', _safeErr(err)));
   }
 }
+
 export function pushDataToCloud(silent = false) {
   return _syncQueue.run(() => _doPushDataToCloud(silent));
 }
+
 export async function _doPushDataToCloud(silent = false) {
   if (!firebaseDB || !currentUser) {
     if (!silent) showToast('Please sign in to sync data', 'warning');
@@ -3385,9 +3457,11 @@ export async function _doPushDataToCloud(silent = false) {
     _flushSyncLockQueue().catch(() => {});
   }
 }
+
 export function pullDataFromCloud(silent = false, forceDownload = false) {
   return _syncQueue.run(() => _doPullDataFromCloud(silent, forceDownload));
 }
+
 export async function _doPullDataFromCloud(silent = false, forceDownload = false) {
   if (!firebaseDB || !currentUser) {
     if (!silent) showToast('Please sign in to sync data', 'warning');
@@ -3477,6 +3551,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     _flushSyncLockQueue().catch(() => {});
   }
 }
+
 export async function showSyncHealthPanel() {
   try {
     const results = await verifyDeltaSyncSystem();
@@ -3519,9 +3594,11 @@ export async function showSyncHealthPanel() {
     document.body.appendChild(panel);
   } catch (e) { console.warn('[SyncHealth]', _safeErr(e)); }
 }
+
 window.showSyncHealthPanel = showSyncHealthPanel;
 export let seamlessBackupTimer = null;
 export const SEAMLESS_DELAY_MS = 5000;
+
 export async function triggerSeamlessBackup() {
 if (seamlessBackupTimer) {
 clearTimeout(seamlessBackupTimer);
@@ -3534,13 +3611,16 @@ await pushDataToCloud(true);
 } catch (e) { console.warn('[Backup] Seamless backup error:', _safeErr(e)); }
 }, SEAMLESS_DELAY_MS);
 }
+
 export function stopDatabaseHeartbeat() {
 if (window.deviceHeartbeatInterval) {
 clearInterval(window.deviceHeartbeatInterval);
 window.deviceHeartbeatInterval = null;
 }
 }
+
 export const AUTO_BACKUP_INTERVAL = 900000;
+
 export async function scheduleAutoBackup() {
 clearAutoBackup();
 if (!currentUser) return;
@@ -3554,12 +3634,14 @@ await performOneClickSync(true);
 } catch (e) { console.warn('[AutoBackup]', _safeErr(e)); }
 }, AUTO_BACKUP_INTERVAL);
 }
+
 export function clearAutoBackup() {
 if (autoSaveTimer) {
 clearInterval(autoSaveTimer);
 autoSaveTimer = null;
 }
 }
+
 export async function wakeUpDatabaseAndSync() {
   showToast('Connecting to cloud...', 'info');
   if (!firebaseDB || !currentUser) {
@@ -3572,6 +3654,7 @@ export async function wakeUpDatabaseAndSync() {
   }
   await pullDataFromCloud(false);
 }
+
 export async function triggerCloudAction(action) {
 if (!firebaseDB) {
 window.notifyBlocking("Cloud system not initialized. Check internet.", 'error');
@@ -3599,6 +3682,7 @@ await pullDataFromCloud(false);
 }
 }
 }
+
 export async function createAuthOverlay() {
 const existing = document.getElementById('auth-overlay');
 if (existing) existing.remove();
@@ -3670,12 +3754,14 @@ try {
   }
 } catch (_e) {}
 }
+
 export function showAuthOverlay() {
 const existing = document.getElementById('auth-overlay');
 if (existing) existing.remove();
 createAuthOverlay();
 document.body.style.overflow = 'hidden';
 }
+
 export function hideAuthOverlay() {
 const overlay = document.getElementById('auth-overlay');
 if (overlay) {
@@ -3686,6 +3772,7 @@ setTimeout(() => {
 }
 document.body.style.overflow = '';
 }
+
 export const LoginRateLimiter = (() => {
 const KEY_ATTEMPTS = '_gznd_login_attempts';
 const KEY_LOCKOUT  = '_gznd_login_lockout';
@@ -3727,7 +3814,9 @@ try { sessionStorage.removeItem(KEY_ATTEMPTS); sessionStorage.removeItem(KEY_LOC
 },
 };
 })();
+
 export const GOOGLE_CLIENT_ID = window._GOOGLE_CLIENT_ID || '';
+
 export async function _checkUserApproved(uid, email) {
 if (!navigator.onLine) return { denied: false };
 try {
@@ -3751,6 +3840,7 @@ return { denied: true, reason: 'Access denied. You do not have permission to use
 return { denied: false };
 }
 }
+
 export async function _applyGoogleUser(user) {
 const check = await _checkUserApproved(user.uid, user.email);
 if (check.denied) {
@@ -3797,9 +3887,11 @@ if (typeof refreshAllDisplays === 'function') refreshAllDisplays().catch(() => {
 if (typeof performOneClickSync === 'function') performOneClickSync();
 }, 300);
 }
+
 export async function _checkGoogleRedirectResult() {}
 export let _pendingLinkEmail    = null;
 export let _pendingLinkPassword = null;
+
 export async function _linkPasswordAfterGoogleSignIn(user) {
 if (!_pendingLinkEmail || !_pendingLinkPassword) return;
 if (_pendingLinkEmail.toLowerCase() !== (user.email || '').toLowerCase()) {
@@ -3826,6 +3918,7 @@ console.warn('Password link failed (non-critical):', _safeErr(e));
 }
 }
 }
+
 export async function _onGoogleCredential(response) {
 const messageDiv = document.getElementById('auth-message');
 if (!response || !response.credential) {
@@ -3876,8 +3969,10 @@ const btn = document.getElementById('auth-google-btn');
 if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
 }
 }
+
 window._onGoogleCredential = _onGoogleCredential;
 export let _gsiInitialized = false;
+
 export function _initGSIInOverlay() {
 if (_gsiInitialized) return;
 if (!document.getElementById('gsi-btn-container')) return;
@@ -3896,6 +3991,7 @@ itp_support:           true,
 });
 _gsiInitialized = true;
 }
+
 export function _handleGoogleBtnClick() {
 const btn = document.getElementById('auth-google-btn');
 const msg = document.getElementById('auth-message');
@@ -3927,7 +4023,9 @@ google.accounts.id.prompt(notification => {
 }
 doPrompt();
 }
+
 window._handleGoogleBtnClick = _handleGoogleBtnClick;
+
 export async function handleSignIn(e) {
 if(e) e.preventDefault();
 const emailInput = document.getElementById('auth-email');
@@ -4100,6 +4198,7 @@ messageDiv.textContent = errorMessage;
 messageDiv.style.color = 'var(--danger)';
 }
 }
+
 export async function _isAdminUser() {
 if (!currentUser || !firebaseDB) return false;
 try {
@@ -4107,20 +4206,25 @@ const snap = await firebaseDB.collection('users').doc(currentUser.uid).get();
 return snap.exists && snap.data().role === 'admin';
 } catch(_) { return false; }
 }
+
 export function _accountsIndexRef() {
 return firebaseDB.collection('users').doc(currentUser.uid)
   .collection('settings').doc('accounts');
 }
+
 export async function _readAccountsIndex() {
 const snap = await _accountsIndexRef().get();
 if (!snap.exists) return [];
 const data = snap.data() || {};
 return Array.isArray(data.accounts) ? data.accounts : [];
 }
+
 export async function _writeAccountsIndex(accounts) {
 await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: false });
 }
+
 export let _newAccountRole = 'user';
+
 export function setNewAccountRole(role) {
 _newAccountRole = role;
 const userBtn  = document.getElementById('acct-role-user');
@@ -4128,7 +4232,9 @@ const adminBtn = document.getElementById('acct-role-admin');
 if (userBtn)  userBtn.classList.toggle('active',  role === 'user');
 if (adminBtn) adminBtn.classList.toggle('active', role === 'admin');
 }
+
 export function adminAddAccount(...a) { return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), { label: 'Account', late: true, fields: [['acct-new-email', 'Email']], verb: 'Add' }); }
+
 async function _adminAddAccountRaw() {
 const emailEl = document.getElementById('acct-new-email');
 const passEl  = document.getElementById('acct-new-password');
@@ -4177,6 +4283,7 @@ console.error('adminAddAccount error:', _safeErr(err));
 if (btn) { btn.disabled = false; btn.textContent = 'Add Account'; }
 }
 }
+
 export async function loadAccountsList() {
 const listEl = document.getElementById('manage-accounts-list');
 if (!listEl) return;
@@ -4225,6 +4332,7 @@ listEl.innerHTML = '<div style="color:var(--danger);font-size:0.8rem;text-align:
 console.error('loadAccountsList:', _safeErr(err));
 }
 }
+
 export async function adminToggleApproval(uid, email, currentlyApproved) {
 const confirmed = await showGlassConfirm(
 (currentlyApproved ? 'Suspend' : 'Reinstate') + ' the account for ' + email + '?' +
@@ -4250,6 +4358,7 @@ window.notifyBlocking('Failed to update account.', 'error');
 console.error('adminToggleApproval:', _safeErr(err));
 }
 }
+
 export async function adminRemoveAccount(uid, email) {
 if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning'); return; }
 const confirmed = await showGlassConfirm(
@@ -4269,6 +4378,7 @@ window.notifyBlocking('Failed to remove account.', 'error');
 console.error('adminRemoveAccount:', _safeErr(err));
 }
 }
+
 export async function signOut() {
 try {
 let _savedAppMode = null;
@@ -4397,6 +4507,7 @@ showAuthOverlay();
 showToast(' Error signing out', 'danger');
 }
 }
+
 export function updateSyncButton() {
 const syncBtn = document.getElementById('sync-btn');
 if (!syncBtn) return;
@@ -4421,6 +4532,7 @@ syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, #2563eb 0
 syncBtn.style.color = '#fff';
 }
 }
+
 window.saveWithTracking = saveWithTracking;
 window.SQLiteToFirestoreMap = SQLiteToFirestoreMap;
 window.FirestoreToSQLiteMap = FirestoreToSQLiteMap;

@@ -52,6 +52,7 @@ export function _set_currentOverviewMode(v) { currentOverviewMode = v; window.cu
 export let currentCustomerChartMode = 'week';
 window.currentCustomerChartMode = currentCustomerChartMode;
 export function _set_currentCustomerChartMode(v) { currentCustomerChartMode = v; window.currentCustomerChartMode = v; }
+
 (window.__uiSyncers = window.__uiSyncers || []).push(() => {
   try { const v = window.currentMfgMode; if (v !== undefined) currentMfgMode = v; } catch (_) {}
   try { const v = window.currentCustomerChartMode; if (v !== undefined) currentCustomerChartMode = v; } catch (_) {}
@@ -66,6 +67,7 @@ export function _set_currentCustomerChartMode(v) { currentCustomerChartMode = v;
   try { const v = window.custTransactionMode; if (v !== undefined) custTransactionMode = v; } catch (_) {}
   try { const v = window.currentFactoryDate; if (v !== undefined) currentFactoryDate = v; } catch (_) {}
 });
+
 export function setCashTrackerMode(mode) {
 currentCashTrackerMode = mode; window.currentCashTrackerMode = currentCashTrackerMode;
 document.querySelectorAll('#tab-payments .toggle-group .toggle-opt').forEach(opt => {
@@ -79,6 +81,7 @@ event.target.classList.add('active');
 calculateCashTracker();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 }
+
 export async function calculateCashTracker() {
 const calculator = ensureArray(await sqliteStore.get('calculator'));
 const expenses = ensureArray(await sqliteStore.get('expenses'));
@@ -257,6 +260,7 @@ const elCreditTotal = document.getElementById('credit-total');
 if (elCreditTotal) elCreditTotal.textContent = `${fmtAmt(safeValue(totalCredits))}`;
 return finalTotals;
 }
+
 export function updateEconomicDashboardWithNetValues(totals, totalCredits) {
 const operatingCashFlow = totals.productionValue - totals.totalSoldValue + totals.salesTabCash + totals.calculatorCash;
 const operatingCashElement = document.getElementById('operatingCashFlow');
@@ -278,6 +282,7 @@ if (productionValueElement) {
 productionValueElement.textContent = `${fmtAmt(safeValue(totals.productionValue))}`;
 }
 }
+
 export async function openEntityTransactions(entityId) {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -345,6 +350,7 @@ document.documentElement.style.overflow = 'hidden';
 document.getElementById('entityTransactionsOverlay').style.display = 'flex';
 });
 }
+
 export function closeEntityTransactions() {
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
@@ -352,7 +358,9 @@ document.documentElement.style.overflow = '';
 document.getElementById('entityTransactionsOverlay').style.display = 'none';
 });
 }
+
 export function savePaymentTransaction(...a) { return runExclusive('savePaymentTransaction', () => _savePaymentTransactionImpl(...a)); }
+
 async function _savePaymentTransactionImpl() {
 let message = '';
 const inventory = ensureArray(await sqliteStore.get('inventory'));
@@ -542,6 +550,7 @@ return;
 }
 showToast(message, 'success');
 }
+
 export async function deletePaymentTransaction(id) {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
@@ -605,6 +614,7 @@ window.notifyBlocking(" Failed to delete transaction. Please try again.", 'error
 }
 }
 }
+
 export async function filterPaymentHistory() {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
@@ -620,6 +630,7 @@ card.style.display = 'none';
 }
 });
 }
+
 export async function getAvailableCashInHand() {
 const _gacBatch = await sqliteStore.getBatch([
 'calculator','production','sales','transactions','expenses',
@@ -674,6 +685,7 @@ if (!entry.isMerged) _gacExp += (parseFloat(entry.additionalCost) || 0);
 });
 return _gacProdVal + _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _gacExp;
 }
+
 export async function calculateNetCash() {
 const _cncBatch = await sqliteStore.getBatch([
 'calculator','tracking','transactions','entities',
@@ -979,6 +991,7 @@ return indicators;
 return null;
 }
 }
+
 export function updateEconomicDashboard(indicators) {
 const _econMode = typeof currentCashTrackerMode !== 'undefined' ? currentCashTrackerMode : 'all';
 const netCashValueElement = document.getElementById('netCashValue');
@@ -1050,12 +1063,15 @@ const cashRatio = indicators.liquidityRatios?.cashRatio;
 cashRatioElement.textContent = (cashRatio === null || cashRatio === undefined) ? 'N/A' : safeNumber(parseFloat(cashRatio), 0).toFixed(2);
 }
 }
+
 let _saleSaveInFlight = false;
+
 export async function saveCustomerSale() {
 if (_saleSaveInFlight) return;
 _saleSaveInFlight = true;
 try { return await _saveCustomerSaleImpl(); } finally { _saleSaveInFlight = false; }
 }
+
 async function _saveCustomerSaleImpl() {
 const _ed = getEditCtx('sale');
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -1259,6 +1275,7 @@ window.notifyBlocking('Sale rollback failed: ' + (_safeErr(rollbackError).messag
 window.notifyBlocking(' Failed to save sale. Please try again.', 'error');
 }
 }
+
 function _resetSaleForm() {
 const n = document.getElementById('cust-name'); if (n) n.value = '';
 const q = document.getElementById('cust-quantity'); if (q) q.value = '';
@@ -1267,6 +1284,7 @@ const ph = document.getElementById('new-cust-phone'); if (ph) ph.value = '';
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.add('hidden');
 setSaleMode('sale');
 }
+
 export async function startEditSale(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rec = sales.find(s => s && String(s.id) === String(id));
@@ -1296,6 +1314,7 @@ set('new-cust-phone', rec.customerPhone);
 calculateCustomerSale();
 beginEditMode('sale', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Sale', watchIds: ['cust-name','cust-quantity','cust-date','sales-rep-value','supply-store-value','new-cust-phone'], anchorId: 'cust-name', cancelFn: _resetSaleForm });
 }
+
 export async function startEditCollection(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rec = sales.find(s => s && String(s.id) === String(id));
@@ -1313,14 +1332,17 @@ set('new-cust-phone', rec.customerPhone);
 updateCollectionPreview();
 beginEditMode('collection', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Collection', watchIds: ['cust-name','cust-amount-collected','cust-date','new-cust-phone'], anchorId: 'cust-amount-collected', cancelFn: _resetSaleForm });
 }
+
 registerEditHandler('sale', startEditSale);
 registerEditHandler('collection', startEditCollection);
+
 function _resetProdForm() {
 ['gross-wt', 'cont-wt', 'net-wt'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 resetProdPhotos();
 const fu = document.getElementById('formula-units'); if (fu) fu.value = '1';
 if (typeof window.calculateDynamicProductionCost === 'function') window.calculateDynamicProductionCost();
 }
+
 export async function startEditProd(id) {
 const production = ensureArray(await sqliteStore.get('production'));
 const rec = production.find(r => r && String(r.id) === String(id));
@@ -1342,7 +1364,9 @@ if (rec.grossWt && typeof window.calcNet === 'function') window.calcNet();
 if (typeof window.calculateDynamicProductionCost === 'function') await window.calculateDynamicProductionCost();
 beginEditMode('prod', rec, { buttonId: 'btn-save-production', watchIds: ['sys-date','storeSelector','formula-units','gross-wt','cont-wt','net-wt'], label: 'Update Production', anchorId: 'sys-date', cancelFn: _resetProdForm });
 }
+
 registerEditHandler('prod', startEditProd);
+
 export function setSaleMode(mode) {
 custTransactionMode = mode; window.custTransactionMode = custTransactionMode;
 const isSale = mode === 'sale';
@@ -1371,6 +1395,7 @@ updateCollectionPreview();
 calculateCustomerSale();
 }
 }
+
 export function updateCollectionPreview() {
 if (custTransactionMode !== 'collection') return;
 const creditEl = document.getElementById('customer-current-credit');
@@ -1388,6 +1413,7 @@ balEl.textContent = fmtAmt(remaining);
 balEl.style.color = remaining === 0 ? 'var(--accent-emerald)' : 'var(--warning)';
 }
 }
+
 export async function saveCustomerCollection() {
 const _ed = getEditCtx('collection');
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -1530,7 +1556,9 @@ window.notifyBlocking('Failed to save collection. Please try again.', 'error');
 restoreBtn();
 }
 }
+
 export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [['supply-store-value', 'Store'], ['cust-quantity', 'Quantity'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
+
 async function _saveCustomerTransactionRaw() {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -1541,10 +1569,12 @@ await saveCustomerCollection();
 await saveCustomerSale();
 }
 }
+
 export const _DEFAULT_STORES = defaultStores();
 export let _storesCache = null;
 export let _storesCacheTs = 0;
 export const _STORES_CACHE_TTL = 3000;
+
 export async function getAppStores() {
   const now = Date.now();
   if (_storesCache && (now - _storesCacheTs) < _STORES_CACHE_TTL) return _storesCache;
@@ -1558,29 +1588,38 @@ export async function getAppStores() {
   _storesCacheTs = now;
   return _storesCache;
 }
+
 export function _invalidateStoresCache() { _storesCache = null; _storesCacheTs = 0; }
 window._invalidateStoresCache = _invalidateStoresCache;
 window.getAppStores = getAppStores;
+
 export function getStoreLabel(storeCode) {
   return storeLabelFor(storeCode, _storesCache || _DEFAULT_STORES);
 }
+
 window.getStoreLabel = getStoreLabel;
 window.makeStoreKey = makeStoreKey;
 window.isBuiltinStoreKey = (k) => DEFAULT_STORE_KEYS.includes(k);
+
 export function getStoreBadgeClass(storeCode) {
   return storeBadgeClass(storeCode, _storesCache || _DEFAULT_STORES);
 }
+
 window.getStoreBadgeClass = getStoreBadgeClass;
+
 export async function getStoreLabelAsync(storeCode) {
   const stores = await getAppStores();
   return storeLabelFor(storeCode, stores);
 }
+
 export async function getStoreFormulaType(storeCode) {
   const stores = await getAppStores();
   const f = stores.find(s => s.key === storeCode);
   return f ? (f.formulaType || 'standard') : 'standard';
 }
+
 window.getStoreFormulaType = getStoreFormulaType;
+
 export async function rebuildStoreUI() {
   const stores = await getAppStores();
   const supplyGroup = document.getElementById('supply-store-toggles');
@@ -1621,7 +1660,9 @@ export async function rebuildStoreUI() {
   }
   if (typeof window.refreshFormulaDependentUI === 'function') await window.refreshFormulaDependentUI();
 }
+
 window.rebuildStoreUI = rebuildStoreUI;
+
 export async function getAvailableStoresForDate(date) {
 const production = ensureArray(await sqliteStore.get('production'));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -1633,6 +1674,7 @@ stores.add(getStoreLabel(production.store));
 });
 return Array.from(stores).join(', ') || 'None';
 }
+
 export async function calculateSalesCost(store, quantity) {
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
@@ -1655,6 +1697,7 @@ totalCost: totalCost,
 totalValue: totalValue
 };
 }
+
 export async function calculateCustomerSale() {
 const production = ensureArray(await sqliteStore.get('production'));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -1715,6 +1758,7 @@ inventoryWarning.style.background = 'rgba(5, 150, 105, 0.1)';
 }
 }
 }
+
 export function selectSalesRep(btn, value) {
 document.querySelectorAll('#sales-rep-toggle-group .toggle-opt').forEach(b => b.classList.remove('active'));
 btn.classList.add('active');
@@ -1722,6 +1766,7 @@ document.getElementById('sales-rep-value').value = value;
 autoFillCustomerName();
 calculateCustomerSale();
 }
+
 export function selectSupplyStore(btn, value) {
 const grp = document.getElementById('supply-store-toggles');
 if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
@@ -1730,6 +1775,7 @@ const hid = document.getElementById('supply-store-value');
 if (hid) hid.value = value;
 calculateCustomerSale();
 }
+
 export function selectPaymentType(btn, value) {
 if (!btn) return;
 document.querySelectorAll('#btn-payment-cash, #btn-payment-credit').forEach(b => b.classList.remove('active'));
@@ -1737,12 +1783,14 @@ btn.classList.add('active');
 document.getElementById('payment-type-value').value = value;
 calculateCustomerSale();
 }
+
 export function selectRepPaymentType(btn, value) {
 document.querySelectorAll('#btn-rep-pay-credit, #btn-rep-pay-cash').forEach(b => b.classList.remove('active'));
 btn.classList.add('active');
 document.getElementById('rep-payment-value').value = value;
 calculateRepSalePreview();
 }
+
 export function autoFillCustomerName() {
 const salesRepValue = document.getElementById('sales-rep-value').value;
 const nameInput = document.getElementById('cust-name');
@@ -1771,6 +1819,7 @@ infoDisplay.classList.add('hidden');
 }
 }
 }
+
 export function createInventoryWarningElement() {
 const warningDiv = document.createElement('div');
 warningDiv.id = 'inventory-warning';
@@ -1784,6 +1833,7 @@ const calculateButton = salesSection.querySelector('.btn-main');
 salesSection.insertBefore(warningDiv, calculateButton);
 return warningDiv;
 }
+
 export async function deleteCustomerSale(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -1859,6 +1909,7 @@ window.notifyBlocking(" Failed to delete sale. Please try again.", 'error');
 }
 }
 }
+
 export async function calculateSales() {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const production = ensureArray(await sqliteStore.get('production'));
@@ -1905,6 +1956,7 @@ if (paidEl) paidEl.textContent = fmtAmt(safeValue(commissionPaid));
 if (payableEl) payableEl.textContent = fmtAmt(safeValue(commissionPayable));
 if (payableBox) payableBox.className = commissionPayable > 0.01 ? 'result-box discrepancy-alert' : 'result-box discrepancy-ok';
 }
+
 export const firebaseConfig = {
   apiKey: "AIzaSyDYjGQILtrcG2nfKACSfsVtfIPZOAgbr_s",
   authDomain: "calculator-fabd3.firebaseapp.com",
@@ -1914,6 +1966,7 @@ export const firebaseConfig = {
   messagingSenderId: "124313576124",
   appId: "1:124313576124:web:fb721bb61bc19b51db26b9"
 };
+
 export async function loadFirestoreStats() {
 try {
 const saved = await sqliteStore.get('dbstats', null);
@@ -1928,15 +1981,18 @@ firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 }
 }
+
 export function saveFirestoreStats() {
 sqliteStore.set('dbstats', firestoreStats).catch(() => {});
 }
+
 export let firestoreStats = {
 reads: 0,
 writes: 0,
 history: [],
 lastReset: Date.now()
 };
+
 export function checkAndAutoResetFirestoreStats() {
 const now = Date.now();
 const hoursSinceReset = (now - firestoreStats.lastReset) / (1000 * 60 * 60);
@@ -1948,11 +2004,13 @@ firestoreStats.lastReset = now;
 saveFirestoreStats();
 }
 }
+
 export const FIRESTORE_THRESHOLDS = {
   reads:  { warn: 40000, critical: 48000 },
   writes: { warn: 16000, critical: 19000 },
   _alerted: { reads_warn: false, reads_critical: false, writes_warn: false, writes_critical: false }
 };
+
 export function _checkFirestoreCostThresholds() {
   const r = firestoreStats.reads;
   const w = firestoreStats.writes;
@@ -1971,6 +2029,7 @@ export function _checkFirestoreCostThresholds() {
     showToast('\u26A0\uFE0F Firestore writes at ' + w.toLocaleString() + ' today \u2014 80\u202f% of 20\u202f000/day free tier used', 'warning', 6000);
   }
 }
+
 export function buildFirestoreCostEstimate(estimatedReads, estimatedWrites) {
   const totalR = firestoreStats.reads  + estimatedReads;
   const totalW = firestoreStats.writes + estimatedWrites;
@@ -1984,23 +2043,28 @@ export function buildFirestoreCostEstimate(estimatedReads, estimatedWrites) {
   }
   return lines.join('\n');
 }
+
 export function trackFirestoreRead(count = 1) {
 checkAndAutoResetFirestoreStats();
 firestoreStats.reads += count;
 saveFirestoreStats();
 _checkFirestoreCostThresholds();
 }
+
 export function trackFirestoreWrite(count = 1) {
 checkAndAutoResetFirestoreStats();
 firestoreStats.writes += count;
 saveFirestoreStats();
 _checkFirestoreCostThresholds();
 }
+
 export function resetFirestoreStats() {
 firestoreStats = { reads: 0, writes: 0, history: [], lastReset: Date.now() };
 saveFirestoreStats();
 }
+
 export const originalOpenDataMenu = window.openDataMenu;
+
 window.openDataMenu = function() {
 if (typeof updateSyncButton === 'function') updateSyncButton();
 if (typeof performOneClickSync === 'function') {
@@ -2009,6 +2073,7 @@ performOneClickSync().catch(function(e){console.error('[openDataMenu] sync error
 originalOpenDataMenu();
 }
 };
+
 export const DeltaSync = {
 _cache: {},
 _cacheGet(key) {
@@ -2274,6 +2339,7 @@ async recordOperation(collection, reads = 0, writes = 0) {
   await sqliteStore.set('deltastats', stats);
 }
 };
+
 export async function initializeSyncStatsIfNeeded() {
 const stats = await DeltaSync.getSyncStats();
 const hasStats = Object.keys(stats).length > 0;
@@ -2306,6 +2372,7 @@ return true;
 }
 return false;
 }
+
 export const UUIDSyncRegistry = (() => {
   const MAX_IDS_PER_COL = 10000;
   const ALL_COLLECTIONS = [
@@ -2440,8 +2507,10 @@ export const UUIDSyncRegistry = (() => {
     shardOf: _shardOf,
   };
 })();
+
 window.UUIDSyncRegistry = UUIDSyncRegistry;
 updateSyncButton();
+
 export function addSignOutButton() {
 removeSignOutButton();
 const systemControls = document.querySelector('.system-controls');
@@ -2452,10 +2521,12 @@ const signOutBtn = document.createElement('button');
 }
 }
 }
+
 export function removeSignOutButton() {
 const btn = document.getElementById('cloud-signout-btn');
 if (btn) btn.remove();
 }
+
 export function handleReturnQtyInput() {
 const retQty = parseFloat(document.getElementById('returnedQuantity').value) || 0;
 const section = document.getElementById('returnStoreSection');
@@ -2467,6 +2538,7 @@ section.classList.add('hidden');
 }
 if (typeof calculateSales === 'function') calculateSales();
 }
+
 export function handleExpiredQtyInput() {
 const expQty = parseFloat(document.getElementById('expiredQuantity').value) || 0;
 const section = document.getElementById('expiredSection');
@@ -2477,6 +2549,7 @@ section.classList.add('hidden');
 }
 if (typeof calculateSales === 'function') calculateSales();
 }
+
 export function handleTripleTap(el, targetTab) {
 const now = Date.now();
 const TAP_WINDOW = 600;
@@ -2488,6 +2561,7 @@ el._tapTimes = [];
 showTab(targetTab);
 }
 }
+
 export async function processRepTransfer(targetRep, quantity, date, seller) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -2522,13 +2596,16 @@ notifyDataChange('sales');
 emitSyncUpdate({ sales: null });
 return { saleId: id };
 }
+
 let _calcSaveInFlight = false;
 export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale', late: true, fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']] }); }
+
 async function _saveTransactionRaw() {
 if (_calcSaveInFlight) return;
 _calcSaveInFlight = true;
 try { return await _saveTransactionImpl(); } finally { _calcSaveInFlight = false; }
 }
+
 async function _saveTransactionImpl() {
 const calculator = ensureArray(await sqliteStore.get('calculator'));
 const production = ensureArray(await sqliteStore.get('production'));
@@ -2741,6 +2818,7 @@ window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error
 }
 }
 }
+
 export async function exportCustomerData(type) {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -2942,6 +3020,7 @@ showToast(`Exported ${customerMap.size} customers successfully!`, "success");
 showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
+
 export async function markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, onlyIds, settledAt) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 if (!seller || seller === 'COMBINED') return [];
@@ -2976,6 +3055,7 @@ notifyDataChange('sales');
 }
 return linkedIds;
 }
+
 export async function markSalesEntriesAsReceived(seller, quantityToMark) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const production = ensureArray(await sqliteStore.get('production'));
@@ -3014,6 +3094,7 @@ refreshCustomerSales(1, false);
 }
 return linkedIds;
 }
+
 export async function markRepSalesEntriesAsUsed(seller, date, calcId, fromDate) {
 const rep = ensureArray(await sqliteStore.get('rep'));
   if (!seller || seller === 'COMBINED' || !date || !calcId) return [];
@@ -3036,6 +3117,7 @@ const rep = ensureArray(await sqliteStore.get('rep'));
   }
   return linkedRepIds;
 }
+
 export async function revertRepSalesEntries(repSaleIds) {
 const rep = ensureArray(await sqliteStore.get('rep'));
   if (!repSaleIds || repSaleIds.length === 0) return 0;
@@ -3056,6 +3138,7 @@ const rep = ensureArray(await sqliteStore.get('rep'));
   }
   return revertedCount;
 }
+
 export async function updateCompositionChart() {
 const _sdEl = document.getElementById('sellerSelect');
 if (_sdEl && _sdEl.value === 'COMBINED') {
@@ -3063,6 +3146,7 @@ const comp = await calculateComparisonData();
 updateSalesCharts(comp);
 }
 }
+
 export async function setIndChartMode(mode) {
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -3075,6 +3159,7 @@ document.getElementById('ind-year-btn').className = `toggle-opt ${mode === 'year
 document.getElementById('ind-all-btn').className = `toggle-opt ${mode === 'all' ? 'active' : ''}`;
 await updateIndChart();
 }
+
 export async function setIndChartMetric(metric) {
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -3083,6 +3168,7 @@ const rep = ensureArray(await sqliteStore.get('rep'));
 currentIndMetric = metric; window.currentIndMetric = currentIndMetric;
 await updateIndChart();
 }
+
 export async function updateIndChart() {
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -3206,6 +3292,7 @@ ticks: { color: colors.text, maxRotation: 45 }
 }
 }));
 }
+
 export function setStoreComparisonMetric(metric, event) {
 if (event) {
 event.preventDefault();
@@ -3219,6 +3306,7 @@ event.target.classList.add('active');
 }
 updateStoreComparisonChart(currentOverviewMode);
 }
+
 export async function updateStoreComparisonChart(mode = 'day') {
 const production = ensureArray(await sqliteStore.get('production'));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -3323,6 +3411,7 @@ ticks: { color: colors.text }
 }
 }));
 }
+
 export async function refreshUI(page = 1, force = false) {
 const _ruiBatch = await sqliteStore.getBatch([
 'production','returns','sales','customers',
@@ -3523,6 +3612,7 @@ if (typeof updateUnitsAvailableIndicator === 'function') updateUnitsAvailableInd
 updateUnitsAvailableIndicator();
 }
 }
+
 export function filterProductionHistory() {
 const searchTerm = document.getElementById('production-search').value.toLowerCase();
 const allCards = document.querySelectorAll('#prodHistoryList .card');
@@ -3535,6 +3625,7 @@ card.style.display = 'none';
 }
 });
 }
+
 export function filterCalculatorHistory() {
 const searchTerm = document.getElementById('calculator-search').value.toLowerCase();
 const allCards = document.querySelectorAll('#historyList .card');
@@ -3549,6 +3640,7 @@ card.style.display = 'none';
 }
 });
 }
+
 export function filterCustomerTransactions() {
 const searchTerm = document.getElementById('customer-search').value.toLowerCase();
 const allCards = document.querySelectorAll('#custHistoryList .card');
@@ -3561,6 +3653,7 @@ card.style.display = 'none';
 }
 });
 }
+
 export async function renderEntityTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _retAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -3633,6 +3726,7 @@ const payEl = document.getElementById('total-payables');
 if(recEl) recEl.innerText = `${fmtAmt(totalReceivables)}`;
 if(payEl) payEl.innerText = `${fmtAmt(totalPayables)}`;
 }
+
 export async function filterEntityList() {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const searchTerm = document.getElementById('entity-list-search')?.value.toLowerCase() || '';
@@ -3659,6 +3753,7 @@ card.style.display = 'none';
 });
 }
 }
+
 export async function viewEntityTransactions(entityId) {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -3689,6 +3784,7 @@ message += `Net Balance: ${fmtAmt(netBalance)}\n`;
 }
 showToast(message, 'info', 5000);
 }
+
 export async function syncSuppliersToEntities() {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const inventory = ensureArray(await sqliteStore.get('inventory'));
@@ -3731,6 +3827,7 @@ if (fixedMaterials.length > 0) {
 await unifiedSave('inventory', inventory, null, fixedMaterials.map(i => i.id));
 }
 }
+
 export async function verifyAccountPassword(password) {
   if (!currentUser || !password) return false;
   const email = currentUser.email;
@@ -3751,6 +3848,7 @@ export async function verifyAccountPassword(password) {
     return false;
   }
 }
+
 export async function promptVerifiedBackupPassword({ title = 'Confirm Password', subtitle = 'Enter your account password to encrypt this backup file.', inputId = '_bkp_pwd_modal_input' } = {}) {
   if (!currentUser) return null;
   return new Promise((resolve) => {
@@ -3809,6 +3907,7 @@ export async function promptVerifiedBackupPassword({ title = 'Confirm Password',
     };
   });
 }
+
 export async function unifiedBackup() {
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -3879,6 +3978,7 @@ console.error('Encryption failed:', _safeErr(encErr));
 window.notifyBlocking('Encryption failed: ' + encErr.message, 'error');
 }
 }
+
 export async function unifiedRestore(event) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rep = ensureArray(await sqliteStore.get('rep'));
@@ -4030,6 +4130,7 @@ window.notifyBlocking("Error reading file: " + err.message, 'error');
 }
 }
 }
+
 export async function _doRestoreMerge(data) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rep = ensureArray(await sqliteStore.get('rep'));
@@ -4416,6 +4517,7 @@ if (data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos
 window.showGlassAlert(`Restore complete${syncMessage}! ${statsMessage}`, { tone: 'success', title: 'Restore Complete' });
 if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Backup restored', 'Your data was restored from the backup file. Open the app to check your records.', 'backup-restored').catch(() => {});
 }
+
 export async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rep = ensureArray(await sqliteStore.get('rep'));
@@ -4740,6 +4842,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
   const totalRecords = Object.values(replaceData).reduce((s, a) => s + a.length, 0);
   window.showGlassAlert(` Financial year close reversed! ${totalRecords} pre-close records restored.`, { tone: 'success', title: 'Year Close Reversed' });
 }
+
 export async function showTab(tab) {
 currentActiveTab = tab; window.currentActiveTab = currentActiveTab;
 requestAnimationFrame(() => {
@@ -4821,6 +4924,7 @@ console.warn('[showTab] tab load error:', _safeErr(e));
 }
 }, 50);
 }
+
 export function handleRepTabUI() {
 const adminControls = document.getElementById('admin-rep-controls');
 const adminAnalytics = document.getElementById('admin-rep-analytics');
@@ -4867,6 +4971,7 @@ renderRepCustomerTable();
 }
 }
 }
+
 (function() {
 const scrollableElements = new WeakSet();
 window.smoothScrollTo = function(target, options = {}) {
@@ -4915,12 +5020,14 @@ window.getScrollY = function() {
 return lastScrollY;
 };
 })();
+
 export function enableGPUAcceleration(element) {
 if (!element) return;
 element.style.transform = 'translateZ(0)';
 element.style.willChange = 'transform';
 element.style.backfaceVisibility = 'hidden';
 }
+
 export const DOMBatch = {
 reads: [],
 writes: [],
@@ -4950,6 +5057,7 @@ write();
 this.scheduled = false;
 }
 };
+
 export const lazyLoadObserver = new IntersectionObserver((entries) => {
 entries.forEach(entry => {
 if (entry.isIntersecting) {
@@ -4965,11 +5073,13 @@ root: null,
 rootMargin: '50px',
 threshold: 0.1
 });
+
 export function observeLazyLoad(element) {
 if (element) {
 lazyLoadObserver.observe(element);
 }
 }
+
 export function animateElement(element, keyframes, options = {}) {
 if (!element) return Promise.resolve();
 const defaultOptions = {
@@ -4980,6 +5090,7 @@ fill: 'forwards'
 const animation = element.animate(keyframes, { ...defaultOptions, ...options });
 return animation.finished;
 }
+
 export function fadeIn(element, duration = 150) {
 if (!element) return Promise.resolve();
 element.style.opacity = '0';
@@ -4989,6 +5100,7 @@ return animateElement(element, [
 { opacity: 1 }
 ], { duration });
 }
+
 export function fadeOut(element, duration = 100) {
 if (!element) return Promise.resolve();
 return animateElement(element, [
@@ -4998,6 +5110,7 @@ return animateElement(element, [
 element.style.display = 'none';
 });
 }
+
 export function slideIn(element, direction = 'up', duration = 200) {
 if (!element) return Promise.resolve();
 const transforms = {
@@ -5009,8 +5122,10 @@ right: [{ transform: 'translateX(-20px)', opacity: 0 }, { transform: 'translateX
 element.style.display = '';
 return animateElement(element, transforms[direction] || transforms.up, { duration });
 }
+
 export let frameCount = 0;
 export let lastTime = performance.now();
+
 export function measureFPS() {
 frameCount++;
 const currentTime = performance.now();
@@ -5021,6 +5136,7 @@ lastTime = currentTime;
 }
 requestAnimationFrame(measureFPS);
 }
+
 export async function handleAdminRepDateChange(val) {
 const production = ensureArray(await sqliteStore.get('production'));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -5038,6 +5154,7 @@ if (typeof calculateRepAnalytics === 'function') {
 calculateRepAnalytics();
 }
 }
+
 export function setMfgChartMode(mode) {
 currentMfgMode = mode; window.currentMfgMode = currentMfgMode;
 document.getElementById('mfg-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
@@ -5046,6 +5163,7 @@ document.getElementById('mfg-year-btn').className = `toggle-opt ${mode === 'year
 document.getElementById('mfg-all-btn').className = `toggle-opt ${mode === 'all' ? 'active' : ''}`;
 updateMfgCharts();
 }
+
 export async function updateMfgCharts() {
 const production = ensureArray(await sqliteStore.get('production'));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -5203,6 +5321,7 @@ font: { size: 13, weight: 'bold' }
 }
 }));
 }
+
 export async function getWeightPerUnit(storeType) {
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
@@ -5214,14 +5333,17 @@ totalWeight += item.quantity;
 });
 return totalWeight;
 }
+
 function _recordUnitWeight(item, fallbackWeight) {
 if (item && Array.isArray(item.formulaMaterials)) return item.formulaMaterials.reduce((sum, m) => sum + (parseFloat(m.quantity) || 0), 0);
 return fallbackWeight;
 }
+
 function _prodSlot(entry, storeFormulaMap) {
 const ft = entry.formulaStore || storeFormulaMap[entry.store] || formulaTypeFor(entry.store);
 return ft === 'asaan' ? 'asaan' : 'standard';
 }
+
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
 const factory = ensureArray(await sqliteStore.get('factory'));
 const production = ensureArray(await sqliteStore.get('production'));
@@ -5243,6 +5365,7 @@ return Math.max(0, prevPrevAvailable + prevProduced - prevUsed);
 }
 return 0;
 }
+
 export async function updateFactoryUnitsAvailableStats() {
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const factory = ensureArray(await sqliteStore.get('factory'));
@@ -5303,6 +5426,7 @@ _setFac('factoryS2MatVal', await formatCurrency(asaanMaterialsValue));
 _setFac('factoryS2Profit', await formatCurrency(asaanTotalProfit));
 _setFac('factoryS2ProfitUnit', await formatCurrency(asaanProfitPerKg) + '/kg');
 }
+
 export async function updateFactorySummaryCard() {
 const factory = ensureArray(await sqliteStore.get('factory'));
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
@@ -5453,6 +5577,7 @@ _setSum('factorySumMatVal', await formatCurrency(totalMatValue));
 _setSum('factorySumProfit', await formatCurrency(totalProfit));
 _setSum('factorySumProfitUnit', await formatCurrency(avgProfitPerKg) + '/kg');
 }
+
 export async function getInitialAvailableForRange(storeType, mode, endDate) {
 const production = ensureArray(await sqliteStore.get('production'));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -5469,6 +5594,7 @@ startDate = new Date(end.getFullYear(), 0, 1);
 }
 return getPreviousDayAvailableUnits(storeType, startDate);
 }
+
 export async function refreshFactoryTab() {
 const _rftBatch = await sqliteStore.getBatch([
 'inventory','factory',
@@ -5555,6 +5681,7 @@ renderFactoryHistory();
 await renderFactoryInventory();
 calculateFactoryProduction();
 }
+
 export async function updateAllTabsWithFactoryCosts() {
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
@@ -5573,6 +5700,7 @@ updateFactoryUnitsAvailableStats();
 updateFactorySummaryCard();
 refreshUI();
 }
+
 export function initFactoryTab() {
 const factoryDateInput = document.getElementById('factory-date');
 if (!factoryDateInput.value) {
@@ -5588,6 +5716,7 @@ else opt.classList.remove('active');
 if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
 refreshFactoryTab();
 }
+
 export function setProductionView(view, event) {
 currentProductionView = view; window.currentProductionView = currentProductionView;
 document.querySelectorAll('.production-toggle-btn').forEach(btn => btn.classList.remove('active'));
@@ -5616,6 +5745,7 @@ updateAllStoresOverview(currentOverviewMode);
 }
 refreshUI();
 }
+
 export async function updateAllStoresOverview(mode = 'day') {
 const calculator = ensureArray(await sqliteStore.get('calculator'));
 const production = ensureArray(await sqliteStore.get('production'));
@@ -5881,6 +6011,7 @@ _asgFrag.appendChild(combinedCard);
 allStoresGrid.replaceChildren(_asgFrag);
 updateStoreComparisonChart(mode);
 }
+
 export function setCustomerChartMode(mode) {
 currentCustomerChartMode = mode; window.currentCustomerChartMode = currentCustomerChartMode;
 document.getElementById('cust-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
@@ -5889,6 +6020,7 @@ document.getElementById('cust-year-btn').className = `toggle-opt ${mode === 'yea
 document.getElementById('cust-all-btn').className = `toggle-opt ${mode === 'all' ? 'active' : ''}`;
 updateCustomerCharts();
 }
+
 export async function updateCustomerCharts() {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -6124,6 +6256,7 @@ font: { size: 13, weight: 'bold' }
 }
 }));
 }
+
 export async function refreshCustomerSales(page = 1, force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rcsAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -6393,6 +6526,7 @@ _filterHistoryByPeriod('#custHistoryList', _custDate, currentSalesSummaryMode ||
 renderCustomersTable();
 updateCustomerCharts();
 }
+
 export async function computeStoreStockSnapshot(store, date, excludeIds = null) {
 const production = ensureArray(await sqliteStore.get('production')).filter(x => !(excludeIds && excludeIds.includes(x.id)));
 const returns = ensureArray(await sqliteStore.get('returns'));
@@ -6413,7 +6547,9 @@ if (effDate === date && s.supplyStore === store) soldQty += s.quantity || 0;
 const available = producedQty + returnedQty - soldQty;
 return { production: producedQty, returns: returnedQty, sales: soldQty, available };
 }
+
 window.computeStoreStockSnapshot = computeStoreStockSnapshot;
+
 export async function prepareStockTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
 showToast('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 3000);
@@ -6448,7 +6584,9 @@ const noteInput = document.getElementById('stock-transfer-note'); if (noteInput)
 await updateStockTransferAvailability();
 await renderStockTransferHistory();
 }
+
 window.prepareStockTransferScreen = prepareStockTransferScreen;
+
 export async function updateStockTransferAvailability() {
 const fromStore = (document.getElementById('stock-transfer-from-value') || {}).value;
 const date = (document.getElementById('stock-transfer-date') || {}).value;
@@ -6459,8 +6597,10 @@ const snap = await computeStoreStockSnapshot(fromStore, date);
 el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${getStoreLabel(fromStore)} on ${date}`;
 el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
 }
+
 window.updateStockTransferAvailability = updateStockTransferAvailability;
 export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer', () => runExclusive('saveStockTransfer', () => _saveStockTransferImpl(...a)), { label: 'Stock Transfer', late: true, fields: [['stock-transfer-from-value', 'From'], ['stock-transfer-to-value', 'To'], ['stock-transfer-qty', 'Quantity'], ['stock-transfer-date', 'Date'], ['stock-transfer-note', 'Note']], editKinds: ['stocktransfer'] }); }
+
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
@@ -6547,11 +6687,14 @@ if (typeof refreshUI === 'function') { try { await refreshUI(); } catch (_) {} }
 if (typeof syncFactoryProductionStats === 'function') { try { await syncFactoryProductionStats(); } catch (_) {} }
 triggerAutoSync();
 }
+
 window.saveStockTransfer = saveStockTransfer;
+
 function _resetStockTransferForm() {
 const q = document.getElementById('stock-transfer-qty'); if (q) q.value = '';
 const n = document.getElementById('stock-transfer-note'); if (n) n.value = '';
 }
+
 export async function startEditStockTransfer(pairId) {
 const production = ensureArray(await sqliteStore.get('production'));
 const records = production.filter(r => r && r.isTransfer === true && r.transferPairId === pairId);
@@ -6574,7 +6717,9 @@ set('stock-transfer-note', out.transferNote || '');
 beginEditMode('stocktransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-stock-transfer', watchIds: ['stock-transfer-from-value','stock-transfer-to-value','stock-transfer-date','stock-transfer-qty','stock-transfer-note'], label: 'Update Transfer', anchorId: 'stock-transfer-qty', cancelFn: _resetStockTransferForm });
 await updateStockTransferAvailability();
 }
+
 registerEditHandler('stocktransfer', startEditStockTransfer, { keepScreens: ['stock-transfer-screen'] });
+
 export async function renderStockTransferHistory() {
 const list = document.getElementById('stockTransferHistoryList');
 if (!list) return;
@@ -6603,7 +6748,9 @@ fragment.appendChild(div);
 });
 list.replaceChildren(fragment);
 }
+
 window.renderStockTransferHistory = renderStockTransferHistory;
+
 export async function deleteStockTransfer(pairId) {
 const production = ensureArray(await sqliteStore.get('production'));
 const entries = production.filter(item => item.transferPairId === pairId);
@@ -6640,6 +6787,7 @@ showToast('Stock transfer removed', 'success');
 window.notifyBlocking('Failed to remove transfer. Please try again.', 'error');
 }
 }
+
 window.deleteStockTransfer = deleteStockTransfer;
 window.setCashTrackerMode = setCashTrackerMode;
 window.calculateCashTracker = calculateCashTracker;

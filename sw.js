@@ -1,5 +1,6 @@
 const BUILD_HASH = 'V.09.10.2026-r12';
 const CACHE_NAME = 'app-' + BUILD_HASH;
+
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -39,8 +40,10 @@ const ASSETS_TO_CACHE = [
   './vendor/leaflet/images/marker-icon.png',
   './vendor/leaflet/images/marker-shadow.png'
 ];
+
 const CDN_ASSETS_TO_PRECACHE = [
 ];
+
 const CACHE_FIRST_ORIGINS = [
   'https://www.gstatic.com',
   'https://unpkg.com',
@@ -48,9 +51,11 @@ const CACHE_FIRST_ORIGINS = [
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
 ];
+
 const NOMINATIM_ORIGIN = 'https://nominatim.openstreetmap.org';
 const OSM_TILE_ORIGIN = 'https://tile.openstreetmap.org';
 const OFFLINE_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
 async function precacheOne(cache, url, opts) {
   try {
     const fresh = Object.assign({}, opts || {}, { cache: 'reload' });
@@ -69,6 +74,7 @@ async function precacheOne(cache, url, opts) {
     return { url: typeof url === 'string' ? url : url.url, ok: false, error: (e && e.message) || String(e) };
   }
 }
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -95,6 +101,7 @@ self.addEventListener('install', (event) => {
       )
   );
 });
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -102,13 +109,16 @@ self.addEventListener('activate', (event) => {
       .then(() => clients.claim())
   );
 });
+
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
+
 const FIREBASE_PROJECT = 'calculator-fabd3';
 const FIRESTORE_BASE   = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 const SW_TOKEN_FILE    = 'sw_sync_token.json';
 const SQLITE_DB_FILE   = 'naswar_dealers.sqlite';
+
 async function opfsRead(filename) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -116,6 +126,7 @@ async function opfsRead(filename) {
     return await (await fh.getFile()).text();
   } catch { return null; }
 }
+
 async function opfsWrite(filename, text) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -125,6 +136,7 @@ async function opfsWrite(filename, text) {
     await wr.close();
   } catch (e) { console.warn('[SW-BgSync] opfsWrite failed:', e); }
 }
+
 async function getSWAuthToken() {
   const raw = await opfsRead(SW_TOKEN_FILE);
   if (!raw) return null;
@@ -134,6 +146,7 @@ async function getSWAuthToken() {
     return rec;
   } catch { return null; }
 }
+
 function toFirestoreValue(val) {
   if (val === null || val === undefined) return { nullValue: null };
   if (typeof val === 'boolean')          return { booleanValue: val };
@@ -143,6 +156,7 @@ function toFirestoreValue(val) {
   if (typeof val === 'object')           return { mapValue: { fields: toFirestoreFields(val) } };
   return { stringValue: String(val) };
 }
+
 function toFirestoreFields(obj) {
   const fields = {};
   for (const [k, v] of Object.entries(obj)) {
@@ -150,6 +164,7 @@ function toFirestoreFields(obj) {
   }
   return fields;
 }
+
 async function executeViaREST(operation, uid, token) {
   const { collection, docId, data, action } = operation;
   const docPath = `users/${uid}/${collection}/${docId}`;
@@ -186,6 +201,7 @@ async function executeViaREST(operation, uid, token) {
   }
   throw new Error(`Unknown action: ${action}`);
 }
+
 async function readQueueFromOPFS(uid) {
   try {
     const root = await navigator.storage.getDirectory();
@@ -197,6 +213,7 @@ async function readQueueFromOPFS(uid) {
     return null;
   }
 }
+
 function parseQueueFromSQLite(bytes, uid) {
   try {
     const dv       = new DataView(bytes.buffer);
@@ -237,6 +254,7 @@ function parseQueueFromSQLite(bytes, uid) {
     return null;
   }
 }
+
 function readVarint(bytes, offset) {
   let result = 0, shift = 0, i = 0;
   while (offset + i < bytes.length) {
@@ -247,6 +265,7 @@ function readVarint(bytes, offset) {
   }
   return [result, i];
 }
+
 function extractRowStrings(bytes, start) {
   try {
     const [headerLen] = readVarint(bytes, start);
@@ -279,6 +298,7 @@ function extractRowStrings(bytes, start) {
     return strings;
   } catch { return null; }
 }
+
 async function doBackgroundSync() {
   const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
   if (clients.length > 0) {
@@ -310,13 +330,16 @@ async function doBackgroundSync() {
     console.log(`[SW-BgSync] Completed: ${successIds.length}/${queue.length} operations synced.`);
   }
 }
+
 self.addEventListener('sync', (event) => {
   if (event.tag === 'offline-queue-sync') event.waitUntil(doBackgroundSync());
 });
+
 const NETWORK_TIMEOUT_MS  = 4000;
 const NAVIGATE_TIMEOUT_MS = 3000;
 const LOCAL_TIMEOUT_MS    = 30000;
 const API_TIMEOUT_MS      = 8000;
+
 function fetchWithTimeout(request, timeout, opts) {
   return new Promise(function (resolve, reject) {
     var timer = setTimeout(function () { reject(new Error('SW timeout after ' + timeout + 'ms')); }, timeout);
@@ -325,11 +348,13 @@ function fetchWithTimeout(request, timeout, opts) {
       .catch(function (err) { clearTimeout(timer); reject(err); });
   });
 }
+
 function revalidateInBackground(cache, request, opts) {
   fetchWithTimeout(request, NETWORK_TIMEOUT_MS, opts)
     .then(function (res) { if (res && res.ok) cache.put(request, res); })
     .catch(function () {});
 }
+
 function versionedCacheResponse(event, timeoutMs) {
   event.respondWith(
     caches.open(CACHE_NAME).then(function (cache) {
@@ -342,6 +367,7 @@ function versionedCacheResponse(event, timeoutMs) {
     })
   );
 }
+
 function cacheFirstResponse(event, opts, timeoutMs) {
   event.respondWith(
     caches.open(CACHE_NAME).then(function (cache) {
@@ -357,6 +383,7 @@ function cacheFirstResponse(event, opts, timeoutMs) {
     })
   );
 }
+
 self.addEventListener('fetch', function (event) {
   var url    = new URL(event.request.url);
   var method = event.request.method;
@@ -477,6 +504,7 @@ self.addEventListener('fetch', function (event) {
   }
   cacheFirstResponse(event);
 });
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {

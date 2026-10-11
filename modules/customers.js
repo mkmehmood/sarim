@@ -12,6 +12,7 @@ import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
 export { showGlassConfirm, showGlassAlert, showChoiceDialog, notifyBlocking };
+
 export function selectCustomer(name) {
 const input = document.getElementById('cust-name');
 const resultsDiv = document.getElementById('customer-search-results');
@@ -25,7 +26,9 @@ if(typeof calculateCustomerStatsForDisplay === 'function') {
 calculateCustomerStatsForDisplay(name);
 }
 }
+
 window._selectCustomerBase = selectCustomer;
+
 export async function calculateCustomerStatsForDisplay(name) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rep = ensureArray(await sqliteStore.get('rep'));
@@ -54,6 +57,7 @@ if (typeof custTransactionMode !== 'undefined' && custTransactionMode === 'colle
 updateCollectionPreview();
 }
 }
+
 export async function renderCustomersTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -181,8 +185,10 @@ _setCustH('customer-count', `${totalItems || 0} active`);
 _setCustH('customers-total-credit', `${fmtAmt(totalOutstanding)}`);
 _setCustH('customers-total-quantity', fmtNum(safeNumber(totalGlobalQty, 0)) + ' kg');
 }
+
 export let currentManagingCustomer = null;
 export let currentManagingRepCustomer = null;
+
 export async function openCustomerManagement(customerName) {
 currentManagingCustomer = customerName;
 const _setMCT = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -190,6 +196,7 @@ _setMCT('manageCustomerTitle', customerName);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-management-screen');
 await renderCustomerTransactions(customerName);
 }
+
 export function closeCustomerManagement() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-management-screen');
 currentManagingCustomer = null;
@@ -204,6 +211,7 @@ console.warn('closeCustomerManagement SQLite error', _safeErr(e));
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 }, 100);
 }
+
 export async function deleteCurrentCustomer() {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -252,6 +260,7 @@ showToast(`Customer "${name}" and all records deleted.`, 'success');
 window.notifyBlocking('Failed to delete customer. Please try again.', 'error');
 }
 }
+
 export async function renderCustomerTransactions(name) {
 const customers = ensureArray(await sqliteStore.get('customers'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -457,6 +466,7 @@ _custFrag.appendChild(item);
 }
 list.replaceChildren(_custFrag);
 }
+
 export async function toggleSingleTransactionStatus(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const record = sales.find(s => s.id === id);
@@ -486,6 +496,7 @@ await sqliteStore.set('sales', sales).catch(() => {});
 showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
+
 export async function toggleRepTransactionStatus(id) {
 const rep = ensureArray(await sqliteStore.get('rep'));
 const record = rep.find(s => s.id === id);
@@ -515,6 +526,7 @@ await sqliteStore.set('rep', rep).catch(() => {});
 showToast('Failed to update transaction status. Please try again.', 'error');
 }
 }
+
 export async function deleteTransactionFromOverlay(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -596,6 +608,7 @@ showToast(` Transaction deleted successfully.`, 'success');
 window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
 }
 }
+
 export async function deleteRepTransactionFromOverlay(id) {
 const rep = ensureArray(await sqliteStore.get('rep'));
 if (!id || !validateUUID(id)) {
@@ -671,18 +684,21 @@ showToast(` Transaction deleted successfully.`, 'success');
 window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
 }
 }
+
 export function filterCustomerManagementHistory() {
 const term = document.getElementById('cust-trans-search').value.toLowerCase();
 document.querySelectorAll('#customerManagementHistoryList .cust-history-item').forEach(item => {
 item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
 });
 }
+
 export function filterRepCustomerManagementHistory() {
 const term = document.getElementById('rep-cust-trans-search').value.toLowerCase();
 document.querySelectorAll('#repCustomerManagementHistoryList .cust-history-item').forEach(item => {
 item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
 });
 }
+
 export function refreshAllCalculations() {
 calculateCashTracker();
 calculateNetCash();
@@ -690,16 +706,20 @@ calculatePaymentSummaries();
 refreshEntityBalances();
 updateUnitsAvailableIndicator();
 }
+
 export const toastContainer = document.createElement('div');
 toastContainer.className = 'toast-container';
 document.body.appendChild(toastContainer);
+
 export function _ensureToastOnTop() {
   if (document.body.lastElementChild !== toastContainer) {
     document.body.appendChild(toastContainer);
   }
 }
+
 export const _toastQueue = [];
 export let _toastActive = false;
+
 export function _playNextToast() {
 if (_toastActive || _toastQueue.length === 0) return;
 _toastActive = true;
@@ -752,6 +772,7 @@ _playNextToast();
 setTimeout(dismiss, duration);
 toast.addEventListener('click', dismiss, { once: true });
 }
+
 export function showToast(message, type = 'info', duration = 3000) {
 const typeMap = { danger: 'error', warn: 'warning', ok: 'success' };
 type = typeMap[type] || (['success','warning','error','info'].includes(type) ? type : 'info');
@@ -759,15 +780,19 @@ _toastQueue.push({ message, type, duration });
 _playNextToast();
 if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type);
 }
+
 window.showToast = showToast;
+
 if (typeof window._onShowGlassConfirmReady === 'function') {
 window._onShowGlassConfirmReady();
 }
+
 export async function filterCustomers() {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
 renderCustomersTable();
 }
+
 export async function openCustomerEditModal(customerName) {
 customerName = customerName || '';
 const isAddMode = !customerName;
@@ -827,10 +852,13 @@ editPriceInput.value = (contact?.customSalePrice > 0) ? contact.customSalePrice 
 await loadPersonPhotoIntoEditor('cust', 'cust:' + customerName.toLowerCase());
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-edit-screen');
 }
+
 export function closeCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-edit-screen');
 }
+
 export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['edit-cust-name', 'Name'], ['edit-cust-phone', 'Phone'], ['edit-cust-address', 'Address'], ['edit-cust-old-debit', 'Old Debit'], ['edit-cust-custom-price', 'Custom Price']], isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
+
 async function _saveCustomerDetailsRaw() {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -989,6 +1017,7 @@ triggerAutoSync();
 window.notifyBlocking('Failed to save customer details. Please try again.', 'error');
 }
 }
+
 export async function fetchDeviceLocation() {
 const statusDiv = document.getElementById('location-status');
 const addressInput = document.getElementById('edit-cust-address');
@@ -1094,6 +1123,7 @@ gpsOptions
 setTimeout(() => { if (!settled && best) finish(best); }, GPS_MAX_WAIT_MS);
 });
 }
+
 window.selectCustomer = selectCustomer;
 window.calculateCustomerStatsForDisplay = calculateCustomerStatsForDisplay;
 window.renderCustomersTable = renderCustomersTable;

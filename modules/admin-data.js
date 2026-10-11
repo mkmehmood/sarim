@@ -7,6 +7,7 @@ import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePrice
 import { showGlassConfirm, showToast } from './customers.js';
 import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, OLD_BACKUP_MESSAGE, RECORD_STORES, DATASET_BY_KEY } from './data-keys.js';
 import { getDefaultStoreKey, storeLabelFor } from './store-keys.js';
+
 export async function updateDeltaSyncStatsDisplay() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -42,6 +43,7 @@ export async function updateDeltaSyncStatsDisplay() {
     }
   }
 }
+
 export async function showDeltaSyncDetails() {
 if (!firebaseDB || !currentUser) {
   showToast('Please log in to view database structure', 'warning', 3000);
@@ -461,15 +463,18 @@ try {
   </div>`;
 }
 }
+
 if (typeof closeYearInProgress === 'undefined') var closeYearInProgress = false;
 if (typeof closeYearAbortController === 'undefined') var closeYearAbortController = null;
 if (typeof _fyVerifiedPassword === 'undefined') var _fyVerifiedPassword = null;
 if (typeof closing === 'undefined') var closing = false;
 if (typeof restoring === 'undefined') var restoring = false;
 if (typeof _hasMergeCommitFailure === 'undefined') var _hasMergeCommitFailure = false;
+
 export function _storeCodeToLabel(c) {
   return storeLabelFor(c);
 }
+
 export async function showCloseFinancialYearDialog() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -894,6 +899,7 @@ setTimeout(() => {
   if (inp) inp.focus();
 }, 80);
 }
+
 export function validateCloseYearInput(value) {
 const confirmBtn = document.getElementById('close-year-confirm-btn');
 const errEl = document.getElementById('close-year-pwd-error');
@@ -913,6 +919,7 @@ if (value.trim().length > 0) {
 }
 if (errEl) errEl.style.display = 'none';
 }
+
 export async function verifyAndExecuteCloseYear() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -954,6 +961,7 @@ if (!valid) {
 _fyVerifiedPassword = pwd;
 executeCloseFinancialYear();
 }
+
 export function closeCloseYearDialog() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('close-financial-year-screen');
 const _cyScreen = document.getElementById('close-financial-year-screen');
@@ -965,6 +973,7 @@ closeYearAbortController = null;
 }
 closeYearInProgress = false;
 }
+
 export function updateCloseYearProgress(stage, percent) {
 const stageEl = document.getElementById('close-year-stage');
 const progressBar = document.getElementById('close-year-progress-bar');
@@ -1013,6 +1022,7 @@ if (procSubtitle && procSubtitle.textContent.includes('will be compacted')) {
   procSubtitle.style.color = 'var(--warning)';
 }
 }
+
 export async function generateCloseYearSummary() {
   const entities = ensureArray(await sqliteStore.get('entities'));
   const production = ensureArray(await sqliteStore.get('production'));
@@ -1220,6 +1230,7 @@ const rowsHtml = rows;
 const html = '<div style="display:grid;gap:4px;">' + rows + '</div>';
 return { html, rowsHtml, summary: S };
 }
+
 export async function createMergeBackup() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -1254,6 +1265,7 @@ export async function createMergeBackup() {
     throw new Error('Cannot proceed without backup: ' + e.message);
   }
 }
+
 export async function restoreFromBackup(backupTimestamp) {
   try {
     const backup = await sqliteStore.get('close_year_backup_' + backupTimestamp);
@@ -1324,6 +1336,7 @@ export async function restoreFromBackup(backupTimestamp) {
     throw e;
   }
 }
+
 export async function verifyMergeConsistency(snap) {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -1378,6 +1391,7 @@ export async function verifyMergeConsistency(snap) {
     timestamp: Date.now()
   };
 }
+
 export async function executeCloseFinancialYear() {
   let fyMeta = null;
   _hasMergeCommitFailure = false;
@@ -1740,6 +1754,7 @@ closeYearInProgress = false;
 closeYearAbortController = null;
 }
 }
+
 export function _markRowSyncWarning(rowId, commitResult) {
   _hasMergeCommitFailure = true;
   try {
@@ -1763,6 +1778,7 @@ export function _markRowSyncWarning(rowId, commitResult) {
     rowEl.style.borderLeftColor = 'var(--warning)';
   } catch (e) {   }
 }
+
 export function _buildMergedBase(id, mergeEpoch, nowISODate, nowTime, extra = {}) {
 return {
   id,
@@ -1777,6 +1793,7 @@ return {
   ...extra
 };
 }
+
 export async function mergeProductionData(signal, closeEpoch) {
   const production = ensureArray(await sqliteStore.get('production'));
 updateCloseYearProgress('Merging Production Data...', 10);
@@ -1911,6 +1928,7 @@ await sqliteStore.set('production', mergedDb);
 emitSyncUpdate({ production: null});
 updateCloseYearProgress('Production Data Merged', 20);
 }
+
 export async function mergeSalesData(signal, closeEpoch) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -2057,6 +2075,7 @@ await sqliteStore.set('sales', mergedSales);
 emitSyncUpdate({ sales: null});
 updateCloseYearProgress('Sales Data Merged', 40);
 }
+
 export async function mergeCalculatorData(signal, closeEpoch) {
 const calculator = ensureArray(await sqliteStore.get('calculator'));
 updateCloseYearProgress('Merging Calculator Data...', 50);
@@ -2161,6 +2180,7 @@ await sqliteStore.set('calculator', mergedHistory);
 emitSyncUpdate({ calculator: null});
 updateCloseYearProgress('Calculator Data Merged', 60);
 }
+
 export async function mergePaymentData(signal, closeEpoch) {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
@@ -2241,6 +2261,7 @@ await sqliteStore.set('transactions', mergedPayTx);
 emitSyncUpdate({ transactions: null});
 updateCloseYearProgress('Payment Data Merged', 80);
 }
+
 export async function mergeFactoryData(signal, closeEpoch) {
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 const factory = ensureArray(await sqliteStore.get('factory'));
@@ -2314,6 +2335,7 @@ await sqliteStore.set('factory', mergedFph);
 emitSyncUpdate({ factory: null});
 updateCloseYearProgress('Factory Data Merged', 90);
 }
+
 export async function mergeRepSalesData(signal, closeEpoch) {
 const rep = ensureArray(await sqliteStore.get('rep'));
 const clients = ensureArray(await sqliteStore.get('clients'));
@@ -2462,6 +2484,7 @@ await sqliteStore.set('rep', mergedRepSales);
 emitSyncUpdate({ rep: null});
 updateCloseYearProgress('Rep Sales Data Merged', 92);
 }
+
 export async function mergeExpensesData(signal, closeEpoch) {
 const expenses = ensureArray(await sqliteStore.get('expenses'));
 const expenseCategories = ensureArray(await sqliteStore.get('categories'));
@@ -2560,6 +2583,7 @@ try {
 emitSyncUpdate({ expenses: null});
 updateCloseYearProgress('Expenses Merged', 97);
 }
+
 export async function mergeStockReturnsData(signal, closeEpoch) {
 const returns = ensureArray(await sqliteStore.get('returns'));
 updateCloseYearProgress('Merging Stock Returns...', 98);
@@ -2638,6 +2662,7 @@ await sqliteStore.set('returns', mergedReturns);
 emitSyncUpdate({ returns: null});
 updateCloseYearProgress('Stock Returns Merged', 100);
 }
+
 export async function verifyTimestampConsistency() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -2770,6 +2795,7 @@ showToast('Timestamp consistency check passed — all records healthy.', 'succes
 }
 return report;
 }
+
 export async function deduplicateAllData() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -2899,6 +2925,7 @@ showToast(' No duplicates found! Data is clean.', 'success');
 }
 return results;
 }
+
 export function dbvShowTab(i) {
   [0,1,2,3].forEach(j => {
     const p = document.getElementById('dbv-pane-'+j);
@@ -2910,10 +2937,12 @@ export function dbvShowTab(i) {
     }
   });
 }
+
 window.dbvShowTab = dbvShowTab;
 window.showDeltaSyncDetails = showDeltaSyncDetails;
 window.verifyTimestampConsistency = verifyTimestampConsistency;
 window.deduplicateAllData = deduplicateAllData;
+
 export async function verifyCompleteTimestampConsistency() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -3153,6 +3182,7 @@ showToast('Full system verification passed — all data is consistent.', 'succes
 }
 return report;
 }
+
 export function extractTimestampValue(record) {
 if (!record) return 0;
 let ts = record.updatedAt || record.timestamp || record.createdAt || 0;
@@ -3172,7 +3202,9 @@ if (!isNaN(time)) return time;
 }
 return 0;
 }
+
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
+
 export async function runUnifiedCleanup() {
   const production = ensureArray(await sqliteStore.get('production'));
   const sales = ensureArray(await sqliteStore.get('sales'));
@@ -3284,6 +3316,7 @@ try {
   window.notifyBlocking('\u26a0 Cleanup failed: ' + err.message, 'error');
 }
 }
+
 window.runUnifiedCleanup = runUnifiedCleanup;
 window._showDeltaSyncDetails = showDeltaSyncDetails;
 window._runUnifiedCleanup = runUnifiedCleanup;

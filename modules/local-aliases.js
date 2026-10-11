@@ -38,11 +38,13 @@ export const LEGACY_COLLECTIONS = Object.freeze({
   calculator_history: 'calculator', rep_sales: 'rep', rep_customers: 'clients', sales_customers: 'customers',
   factory_history: 'factory', personPhotos: 'photos', activityLog: 'activity', activity_log: 'activity',
 });
+
 export const LEGACY_DOCS = Object.freeze({
   'appStores/stores': 'stores/list', 'app_stores/stores': 'stores/list',
   'factorySettings/config': 'formulas/config', 'factory_settings/config': 'formulas/config',
   'expenseCategories/categories': 'categories/list', 'expense_categories/categories': 'categories/list',
 });
+
 export const LEGACY_STORE_CODES = Object.freeze({ STORE_A: 'zubair', STORE_B: 'mahmood', STORE_C: 'asaan' });
 const STORE_FIELDS = ['store', 'supplyStore', 'returnStore', 'transferPeerStore'];
 
@@ -76,6 +78,7 @@ export function modernizeQueuedOperation(item) {
   if (!changed) return item;
   return wrapped ? { ...item, operation: next } : next;
 }
+
 export function modernizeQueue(list) {
   if (!Array.isArray(list)) return { list: [], changed: false };
   let changed = false;

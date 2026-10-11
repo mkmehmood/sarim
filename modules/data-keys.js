@@ -1,5 +1,6 @@
 export const DATA_KEY_VERSION = 5;
 const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar: key, label, tab, desc });
+
 export const RECORD_STORES = Object.freeze([
   rec('production',   'Production',           'production', 'Factory production batches'),
   rec('sales',        'Customer Sales',       'sales',      'Direct customer sales'),
@@ -14,6 +15,7 @@ export const RECORD_STORES = Object.freeze([
   rec('expenses',     'Expenses',             'payments',   'Expense entries'),
   rec('returns',      'Stock Returns',        'production', 'Stock return records'),
 ].map(Object.freeze));
+
 export const TABS = Object.freeze([
   { name: 'production', id: 'prod',     syncFn: 'syncProductionTab' },
   { name: 'sales',      id: 'sales',    syncFn: 'syncSalesTab' },
@@ -22,11 +24,13 @@ export const TABS = Object.freeze([
   { name: 'payments',   id: 'payments', syncFn: 'syncPaymentsTab' },
   { name: 'rep',        id: 'rep',      syncFn: 'syncRepTab' },
 ].map(Object.freeze));
+
 export const TAB_BY_NAME = Object.freeze(Object.fromEntries(TABS.map(t => [t.name, t])));
 export const DATASET_BY_KEY = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.key, s])));
 export const ACTION_LABELS = Object.freeze({ save: 'Save', update: 'Update', delete: 'Delete', restore: 'Restore', purge: 'Delete Forever' });
 export const actionLabel = (action, noun = '') => `${ACTION_LABELS[action]}${noun ? ' ' + noun : ''}`;
 export const RECORD_KEYS = Object.freeze(RECORD_STORES.map(s => s.key));
+
 export const AUX_STATE = Object.freeze([
   {
     sqlite: 'categories',
@@ -50,29 +54,36 @@ export const AUX_STATE = Object.freeze([
     kind: 'slots',
   },
 ]);
+
 export const SETTINGS_BACKUP_FIELDS = Object.freeze([
   'settings', 'stores', 'defaults', 'costs',
   'adjustment', 'tracking',
 ]);
+
 export const SUPPORT_STORES = Object.freeze({
   tombstones:   Object.freeze({ sqlite: 'deletions', collection: 'deletions' }),
   tombstoneIds: Object.freeze({ sqlite: 'deleted' }),
   photos:       Object.freeze({ sqlite: 'photos', collection: 'photos', timestamps: 'photostamps', dirtyKeys: 'photodirty' }),
   theme:        Object.freeze({ sqlite: 'theme' }),
 });
+
 export const FIRESTORE_SUPPORT_PATHS = Object.freeze({
   appStores: 'stores/list', factorySettings: 'formulas/config',
   expenseCategories: 'categories/list', activityLog: 'activity',
   accounts: 'settings/accounts', device: 'devices/device',
 });
+
 export const REP_PROFILE_KEYS = Object.freeze({ primary: 'repProfile', legacyMirror: 'profile', tsKey: 'repProfile_timestamp' });
 export const SQLITE_TO_FIRESTORE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.sqlite, s.collection])));
 export const FIRESTORE_TO_SQLITE = Object.freeze(Object.fromEntries(RECORD_STORES.map(s => [s.collection, s.sqlite])));
+
 export function isCurrentBackup(data) {
   return !!data && typeof data === 'object'
     && Number(data.dataKeyVersion || (data._meta && data._meta.dataKeyVersion) || 0) >= DATA_KEY_VERSION;
 }
+
 export const OLD_BACKUP_MESSAGE = 'This backup was made with older key names. Convert it first: node tools/migrate-cloud.mjs --convert-backup <file>';
+
 export function mergeStringLists(local, incoming) {
   const out = [];
   const seen = new Set();
@@ -85,6 +96,7 @@ export function mergeStringLists(local, incoming) {
   }
   return out;
 }
+
 export function mergeById(local, incoming) {
   const out = Array.isArray(local) ? local.filter(r => r && r.id) : [];
   const ids = new Set(out.map(r => String(r.id)));
@@ -93,11 +105,13 @@ export function mergeById(local, incoming) {
   }
   return out;
 }
+
 export function mergeSlots(local, incoming) {
   const l = local && typeof local === 'object' ? local : {};
   const i = incoming && typeof incoming === 'object' ? incoming : {};
   return { standard: l.standard || i.standard || null, asaan: l.asaan || i.asaan || null };
 }
+
 export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0) {
   const l = Array.isArray(local) ? local : [];
   const c = Array.isArray(cloud) ? cloud : [];
@@ -108,6 +122,7 @@ export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0)
   }
   return { value: l, ts: localTs, changed: false };
 }
+
 export async function collectAuxBackupFields(store) {
   const out = {};
   for (const s of AUX_STATE) {
@@ -120,6 +135,7 @@ export async function collectAuxBackupFields(store) {
   out.photostamps = (await store.get('photostamps')) || {};
   return out;
 }
+
 export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 'merge') {
   const written = [];
   if (!data || typeof data !== 'object') return written;

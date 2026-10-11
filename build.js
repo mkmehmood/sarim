@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+
 import {
   readFileSync, writeFileSync, copyFileSync,
   mkdirSync, rmSync, readdirSync,
 } from 'node:fs';
+
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeBuildKey, replaceOrThrow } from './build-key.js';
@@ -12,18 +14,22 @@ const ROOT  = __dirname;
 const DIST  = join(ROOT, 'dist');
 const IS_WIN = process.platform === 'win32';
 const ESBUILD_BIN = join(ROOT, 'node_modules/.bin', IS_WIN ? 'esbuild.cmd' : 'esbuild');
+
 function run(args) {
   const quoted = IS_WIN ? args.map(a => (/[\s&|^<>()]/.test(a) ? `"${a}"` : a)) : args;
   execFileSync(ESBUILD_BIN, quoted, { stdio: ['ignore', 'inherit', 'inherit'], shell: IS_WIN });
 }
+
 function contentHash(filePath) {
   return createHash('sha256').update(readFileSync(filePath)).digest('hex').slice(0, 8);
 }
+
 function write(filePath, content) { writeFileSync(filePath, content, 'utf8'); }
 function read(filePath) { return readFileSync(filePath, 'utf8'); }
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(DIST, { recursive: true });
 const metafile = join(DIST, 'meta.json');
+
 run([
   join(ROOT, 'modules/main.js'),
   '--bundle', '--splitting', '--format=esm',
@@ -31,9 +37,11 @@ run([
   `--outdir=${DIST}`, '--entry-names=[name]-[hash]',
   `--metafile=${metafile}`,
 ]);
+
 const meta = JSON.parse(read(metafile));
 let mainOut = null, factoryOut = null, repOut = null;
 const allChunks = [];
+
 for (const [outPath, info] of Object.entries(meta.outputs)) {
   const name = basename(outPath);
   allChunks.push(name);
@@ -41,9 +49,11 @@ for (const [outPath, info] of Object.entries(meta.outputs)) {
   else if (info.entryPoint === 'modules/factory.js') factoryOut = name;
   else if (info.entryPoint === 'modules/rep-sales.js') repOut = name;
 }
+
 if (!mainOut || !factoryOut || !repOut) {
   throw new Error(`Could not identify all entry chunks in esbuild metafile. Found: ${allChunks.join(', ')}`);
 }
+
 rmSync(metafile);
 const coreHash = contentHash(join(DIST, mainOut));
 const cssMinTmp = join(DIST, '_app_min.css');
@@ -52,9 +62,11 @@ const cssHash = contentHash(cssMinTmp);
 const cssOut  = `app.${cssHash}.css`;
 copyFileSync(cssMinTmp, join(DIST, cssOut));
 rmSync(cssMinTmp);
+
 for (const f of ['manifest.json', '192.png', '512.png', 'sql-wasm.js', 'sql-wasm.wasm', 'sql.js', 'brand-logo.jpg']) {
   copyFileSync(join(ROOT, f), join(DIST, f));
 }
+
 let html = read(join(ROOT, 'index.html'));
 html = replaceOrThrow(html, '<link rel="modulepreload" href="modules/main.js">', `<link rel="modulepreload" href="${mainOut}">`, 'modulepreload');
 html = replaceOrThrow(html, '<link rel="stylesheet" href="app.css">', `<link rel="stylesheet" href="${cssOut}">`, 'stylesheet');
@@ -73,6 +85,7 @@ for (const f of ['leaflet.js', 'leaflet.css']) copyFileSync(join(ROOT, 'node_mod
 const LEAFLET_IMAGES = readdirSync(join(ROOT, 'node_modules/leaflet/dist/images'));
 for (const f of LEAFLET_IMAGES) copyFileSync(join(ROOT, 'node_modules/leaflet/dist/images', f), join(DIST, 'vendor/leaflet/images', f));
 const VENDOR_ASSETS = ['vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js', 'vendor/firebase/firebase-app-compat.js', 'vendor/firebase/firebase-firestore-compat.js', 'vendor/firebase/firebase-auth-compat.js', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', ...LEAFLET_IMAGES.map(f => `vendor/leaflet/images/${f}`)];
+
 const ASSETS_TO_CACHE_BLOCK =
 `const ASSETS_TO_CACHE = [
   './',
@@ -90,11 +103,14 @@ const ASSETS_TO_CACHE_BLOCK =
   ${VENDOR_ASSETS.map(v => `'./${v}'`).join(',\n  ')},
   ${FONT_FILES.map(f => `'./fonts/${f[1]}'`).join(',\n  ')}
 ];`;
+
 let sw = read(join(ROOT, 'sw.js'));
 const keyEntries = [];
+
 for (const m of ASSETS_TO_CACHE_BLOCK.matchAll(/'\.\/([^']+)'/g)) {
   try { keyEntries.push([m[1], readFileSync(join(DIST, m[1]))]); } catch (_) { keyEntries.push([m[1], '']); }
 }
+
 const buildKey = computeBuildKey(keyEntries);
 if (!/const BUILD_HASH = '[^']+';/.test(sw) || !/const ASSETS_TO_CACHE = \[[\s\S]*?\];/.test(sw)) throw new Error('sw.js markers (BUILD_HASH / ASSETS_TO_CACHE) not found.');
 sw = sw.replace(/const BUILD_HASH = '[^']+';/, `const BUILD_HASH = 'sarim-${buildKey}';`);
@@ -102,10 +118,12 @@ sw = sw.replace(/const ASSETS_TO_CACHE = \[[\s\S]*?\];/, ASSETS_TO_CACHE_BLOCK);
 write(join(DIST, 'sw.js'), sw);
 const kb = f => (readFileSync(join(DIST, f)).length / 1024).toFixed(1);
 console.log('\nBuild complete:\n');
+
 for (const c of allChunks) {
   const tag = c === mainOut ? '(entry + core)' : c === factoryOut ? '(lazy — factory tab)' : c === repOut ? '(lazy — rep tab)' : '(shared chunk)';
   console.log(`  ${c.padEnd(30)} ${kb(c)} KB  ${tag}`);
 }
+
 console.log(`  ${cssOut.padEnd(30)} ${kb(cssOut)} KB  (styles)`);
 console.log(`\n  SW cache key: sarim-${buildKey}`);
 console.log(`  Output:       dist/\n`);

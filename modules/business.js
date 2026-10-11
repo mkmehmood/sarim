@@ -35,6 +35,7 @@ export function _set_userRolesList(v) { userRolesList = v; window.userRolesList 
 export let deriveDeviceShard;
 window.deriveDeviceShard = deriveDeviceShard;
 export function _set_deriveDeviceShard(v) { deriveDeviceShard = v; window.deriveDeviceShard = v; }
+
 export function _safeErr(err) {
   if (err === null || err === undefined) return new Error('Unknown error (null)');
   if (err instanceof Error) return err;
@@ -44,6 +45,7 @@ export function _safeErr(err) {
   }
   return new Error(String(err));
 }
+
 export function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -53,7 +55,9 @@ export function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
 export const esc = escapeHtml;
+
 export function _triggerFileDownload(blob, filename) {
   if (typeof window.navigator.msSaveBlob === 'function') {
     window.navigator.msSaveBlob(blob, filename);
@@ -73,6 +77,7 @@ export function _triggerFileDownload(blob, filename) {
     }, 300);
   }, 0);
 }
+
 export function _readFileAsArrayBuffer(file) {
   if (typeof file.arrayBuffer === 'function') {
     return file.arrayBuffer();
@@ -84,6 +89,7 @@ export function _readFileAsArrayBuffer(file) {
     fr.readAsArrayBuffer(file);
   });
 }
+
 export function _readFileAsText(file) {
   if (typeof file.text === 'function') return file.text();
   return new Promise((resolve, reject) => {
@@ -93,6 +99,7 @@ export function _readFileAsText(file) {
     fr.readAsText(file);
   });
 }
+
 if (window.trustedTypes && window.trustedTypes.createPolicy) {
   window._gndHTMLPolicy = window.trustedTypes.createPolicy('gnd-html-policy', {
     createHTML: (s) => s
@@ -103,6 +110,7 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
 } else {
   window.setHTML = (el, html) => { el.innerHTML = html; };
 }
+
 export const CryptoEngine = (() => {
 const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);
 const MAGIC_V4 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x34]);
@@ -210,6 +218,7 @@ return {
   }
 };
 })();
+
 export const _OPFSStore = (() => {
   const _SUPPORTED = typeof navigator !== 'undefined' &&
                      !!navigator.storage &&
@@ -248,6 +257,7 @@ export const _OPFSStore = (() => {
   }
   return { read, write, remove };
 })();
+
 export const OfflineAuth = {
   _FILE: 'gznd_auth.json',
   _LS:   '_gznd_auth_data',
@@ -279,6 +289,7 @@ export const OfflineAuth = {
     return true;
   }
 };
+
 export async function _checkFirebaseSessionExists() {
 try {
 const sessionFlag = sessionStorage.getItem('_gznd_session_active');
@@ -303,6 +314,7 @@ return false;
 return false;
 }
 }
+
 export const SQLiteCrypto = (() => {
   let _sessionKey = null;
   let _keyEmail = null;
@@ -610,33 +622,42 @@ export const SQLiteCrypto = (() => {
     }
   };
 })();
+
 SQLiteCrypto.preWarm();
 export const USE_IDB_ONLY = true;
+
 export function safeNumber(value, defaultValue = 0) {
 const num = Number(value);
 return (isNaN(num) || !isFinite(num)) ? defaultValue : num;
 }
+
 export function safeToFixed(value, decimals = 2) {
 return safeNumber(value, 0).toFixed(decimals);
 }
+
 import { fmtNum, round2, debtNeedsGross, debtDelta, lockedUnitPrice, lockedSaleValue, localDateStr } from './finance.js';
 export { fmtNum, round2, debtNeedsGross, debtDelta, lockedUnitPrice, lockedSaleValue, localDateStr };
 window.localDateStr = localDateStr;
 window.fmtNum = fmtNum;
 window.debtDelta = debtDelta;
+
 export function formatIndianCurrency(value) {
   return fmtNum(value, 2);
 }
+
 export function fmtAmt(value) {
 return formatIndianCurrency(value);
 }
+
 export function safeString(value, defaultValue = '') {
 if (value === null || value === undefined) return defaultValue;
 return String(value);
 }
+
 export function safeReplace(value, searchValue, replaceValue) {
 return safeString(value).replace(searchValue, replaceValue);
 }
+
 export const SQLITE_DB_NAME      = 'naswar_dealers.sqlite';
 export const SQLITE_JS_LOCAL      = './sql-wasm.js';
 export const SQLITE_WASM_LOCAL    = './sql-wasm.wasm';
@@ -649,6 +670,7 @@ export const SQLITE_SCHEMA_VERSION = 2;
 export const PERSIST_URGENT_MS   = 300;
 export const PERSIST_NORMAL_MS   = 3000;
 export const PERSIST_LAZY_MS     = 8000;
+
 export const sqliteStore = (() => {
   let _sqlDB           = null;
   let _SQL             = null;
@@ -1682,9 +1704,11 @@ export const sqliteStore = (() => {
     },
   };
 })();
+
 (function() {
   try { sqliteStore.init().catch(function() {}); } catch (_) {}
 })();
+
 export function ensureArray(value) {
 if (Array.isArray(value)) {
 return value;
@@ -1701,6 +1725,7 @@ return [];
 }
 return [];
 }
+
 export async function loadAllData() {
 if (typeof loadUIState === 'function') await loadUIState();
 const configKeys = [
@@ -1760,17 +1785,20 @@ if (typeof DeltaSync !== 'undefined' && typeof DeltaSync.loadAllUploadedIds === 
 DeltaSync.loadAllUploadedIds().catch(() => {});
 }
 }
+
 export const DEVICE_ID_COOKIE = 'gz_did';
 export const INSTALL_TOKEN_COOKIE = 'gz_itk';
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 3650;
 export const _CACHE_DEVICE_KEY = 'gz_device_anchor';
 export const _CACHE_STORE_NAME = 'gz-device-anchor-v1';
+
 export function _readCookie(name) {
 try {
 const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
 return match ? decodeURIComponent(match[1]) : null;
 } catch (e) { return null; }
 }
+
 export function _writeCookie(name, value) {
 try {
 document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Strict`;
@@ -1778,6 +1806,7 @@ document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${COOKIE_MAX_AG
 console.warn('_writeCookie failed:', _safeErr(e));
 }
 }
+
 export function _generateUUID() {
   const buf = new Uint8Array(16);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -1798,6 +1827,7 @@ export function _generateUUID() {
   const core = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
   return 'dev-' + core;
 }
+
 export async function _readCacheAnchor() {
 try {
 if (!('caches' in window)) return null;
@@ -1808,6 +1838,7 @@ const text = await resp.text();
 return text || null;
 } catch (e) { return null; }
 }
+
 export async function _writeCacheAnchor(value) {
 try {
 if (!('caches' in window)) return;
@@ -1815,12 +1846,15 @@ const cache = await caches.open(_CACHE_STORE_NAME);
 await cache.put(_CACHE_DEVICE_KEY, new Response(value));
 } catch (e) {  }
 }
+
 export function _readSession(key) {
 try { return sessionStorage.getItem(key) || null; } catch (e) { return null; }
 }
+
 export function _writeSession(key, value) {
 try { sessionStorage.setItem(key, value); } catch (e) {  }
 }
+
 export function _extractDeviceFirstLoginTime(deviceId) {
   if (!deviceId || typeof deviceId !== 'string') return null;
   const match = deviceId.match(/_(\d{13})$/);
@@ -1829,7 +1863,9 @@ export function _extractDeviceFirstLoginTime(deviceId) {
   if (!isFinite(ms) || ms < 1577836800000 || ms > 4102358400000) return null;
   return new Date(ms);
 }
+
 window._extractDeviceFirstLoginTime = _extractDeviceFirstLoginTime;
+
 export async function _persistDeviceId(deviceId) {
 _writeCookie(DEVICE_ID_COOKIE, deviceId);
 try { localStorage.setItem('persistent_device_id', deviceId); } catch (e) {  }
@@ -1837,6 +1873,7 @@ _writeSession('gz_did_session', deviceId);
 try { await sqliteStore.set('device_id', deviceId); } catch (e) {  }
 await _writeCacheAnchor(deviceId);
 }
+
 export async function _clearDeviceIdStorage() {
   try {
     document.cookie = `${DEVICE_ID_COOKIE}=; max-age=0; path=/; SameSite=Strict`;
@@ -1859,7 +1896,9 @@ export async function _clearDeviceIdStorage() {
   _cachedDeviceShard = null;
   _deviceIdOwnerUid = null;
 }
+
 window._clearDeviceIdStorage = _clearDeviceIdStorage;
+
 export async function _recoverDeviceIdByFingerprint() {
 if (!firebaseDB || !currentUser) return null;
 try {
@@ -1879,6 +1918,7 @@ console.warn('Fingerprint-based device ID recovery failed:', _safeErr(e));
 }
 return null;
 }
+
 export async function _recoverDeviceIdByToken() {
 if (!firebaseDB || !currentUser) return null;
 try {
@@ -1900,6 +1940,7 @@ console.warn('Token-based device ID recovery failed:', _safeErr(e));
 }
 return null;
 }
+
 export async function getDeviceId() {
 let _loginTs = 0;
 try { _loginTs = parseInt(sessionStorage.getItem('_gznd_login_ts') || '0', 10) || 0; } catch(_) {}
@@ -1943,6 +1984,7 @@ if (!existingToken) {
 }
 return deviceId;
 }
+
 export async function refreshDeviceIdAnchors() {
 try {
 if (firebaseDB && currentUser) {
@@ -1954,6 +1996,7 @@ const deviceId = await getDeviceId();
 await _persistDeviceId(deviceId);
 } catch (e) {  }
 }
+
 export async function getDeviceFingerprint() {
 const ua = navigator.userAgent;
 let os = 'Unknown OS';
@@ -2031,6 +2074,7 @@ readableName,
 fullUserAgent: ua
 };
 }
+
 export async function getDeviceName() {
 let deviceName = await sqliteStore.get('device_name');
 if (!deviceName) {
@@ -2040,6 +2084,7 @@ await sqliteStore.set('device_name', deviceName);
 }
 return deviceName;
 }
+
 export async function registerDevice() {
 if (!firebaseDB) {
 return;
@@ -2191,6 +2236,7 @@ browser: browser
 console.error('Device registration failed.', _safeErr(error));
 }
 }
+
 export function startDeviceHeartbeat(deviceRef) {
 if (window.deviceHeartbeatInterval) {
 clearInterval(window.deviceHeartbeatInterval);
@@ -2218,6 +2264,7 @@ console.warn('Heartbeat update failed.', _safeErr(error));
 }
 }, APP_CONFIG.HEARTBEAT_INTERVAL_MS);
 }
+
 export async function logDeviceActivity(activityType, details = {}) {
 if (!firebaseDB || !currentUser) return;
 const LOGGABLE_EVENTS = new Set([
@@ -2249,7 +2296,9 @@ userId: currentUser.uid
 console.warn('Firebase operation failed.', _safeErr(error));
 }
 }
+
 window.logDeviceActivity = logDeviceActivity;
+
 export async function initializeDeviceListeners() {
 try {
 setTimeout(() => {
@@ -2264,6 +2313,7 @@ setTimeout(() => {
   cleanupOldDeletions().catch(e => console.warn('[initializeDeviceListeners] cleanup failed:', _safeErr(e)));
 }, 5000);
 }
+
 window.initializeDeviceListeners = initializeDeviceListeners;
 currentUser = null; window.currentUser = currentUser;
 firebaseDB = null; window.firebaseDB = firebaseDB;
@@ -2275,6 +2325,7 @@ currentRepProfile = 'admin'; window.currentRepProfile = currentRepProfile;
 salesRepsList = ['NORAN SHAH', 'NOMAN SHAH']; window.salesRepsList = salesRepsList;
 userRolesList = []; window.userRolesList = userRolesList;
 export const _VALID_APP_MODES = new Set(['admin','rep','production','factory','userrole']);
+
 export const _MODE_CODES = {
   'admin':      '0',
   'rep':        '1',
@@ -2282,15 +2333,19 @@ export const _MODE_CODES = {
   'factory':    '3',
   'userrole':   '4',
 };
+
 export const _MODE_LABELS = { '0':'admin', '1':'rep', '2':'production', '3':'factory', '4':'userrole' };
+
 export const _UUID_V5_NS = new Uint8Array([
   0x6b,0xa7,0xb8,0x10, 0x9d,0xad, 0x11,0xd1,
   0x80,0xb4, 0x00,0xc0,0x4f,0xd4,0x30,0xc8,
 ]);
+
 export let _cachedDeviceShard = null;
 export let _uuidLastMs = 0;
 export let _uuidSeq    = 0;
 export let _deviceIdOwnerUid = null;
+
 export function _deriveDeviceShard(did) {
   if (!did || typeof did !== 'string') return '0000';
   let h = 0x811c9dc5;
@@ -2300,6 +2355,7 @@ export function _deriveDeviceShard(did) {
   }
   return (h & 0xffff).toString(16).padStart(4, '0');
 }
+
 export function _randomBytes(n) {
   const buf = new Uint8Array(n);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -2316,6 +2372,7 @@ export function _randomBytes(n) {
   }
   return buf;
 }
+
 export function _nextSeq(nowMs) {
   if (nowMs > _uuidLastMs) {
     _uuidLastMs = nowMs;
@@ -2329,12 +2386,15 @@ export function _nextSeq(nowMs) {
   }
   return { ts: _uuidLastMs, seq: _uuidSeq };
 }
+
 export function _encodeModeTag() {
   const mode = (typeof appMode !== 'undefined' ? appMode : 'admin') || 'admin';
   return _MODE_CODES[mode] || '0';
 }
+
 export let _uuidV5Cache   = null;
 export let _uuidV5Pending = false;
+
 export async function _refreshV5Cache() {
   if (_uuidV5Pending) return;
   _uuidV5Pending = true;
@@ -2356,6 +2416,7 @@ export async function _refreshV5Cache() {
     _uuidV5Pending = false;
   }
 }
+
 export function _buildUUIDv3Base() {
   if (_uuidV5Cache !== null) {
     const cached = _uuidV5Cache;
@@ -2378,6 +2439,7 @@ export function _buildUUIDv3Base() {
   _refreshV5Cache();
   return b;
 }
+
 export async function initUUIDSalts() {
   _cachedDeviceShard = null;
   try {
@@ -2392,8 +2454,10 @@ export async function initUUIDSalts() {
   _refreshV5Cache();
   return _cachedDeviceShard;
 }
+
 export async function initDeviceShard() { return initUUIDSalts(); }
 window.initDeviceShard = initDeviceShard;
+
 export function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverride = null) {
   const MAX_RETRIES = 3;
   const nowMs = tsMs != null ? tsMs : Date.now();
@@ -2423,12 +2487,14 @@ export function generateUUID(prefix = '', retryCount = 0, tsMs = null, modeOverr
   }
   return finalUUID;
 }
+
 export function validateUUID(uuid) {
   if (!uuid || typeof uuid !== 'string') return false;
   const standardRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const prefixedRegex = /^[a-z0-9][a-z0-9_-]*-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(_\d+)?$/i;
   return standardRegex.test(uuid) || prefixedRegex.test(uuid);
 }
+
 export function extractUUIDMeta(uuid) {
   if (!validateUUID(uuid)) return null;
   const allParts = uuid.split('-');
@@ -2460,6 +2526,7 @@ export function extractUUIDMeta(uuid) {
   }
   return null;
 }
+
 window.generateUUID       = generateUUID;
 window.validateUUID       = validateUUID;
 window.extractUUIDMeta    = extractUUIDMeta;
@@ -2467,6 +2534,7 @@ window.initUUIDSalts      = initUUIDSalts;
 deriveDeviceShard = _deriveDeviceShard; window.deriveDeviceShard = deriveDeviceShard;
 window._creatorBadgeHtml  = _creatorBadgeHtml;
 window._mergedBadgeHtml   = _mergedBadgeHtml;
+
 export function compareRecordVersions(a, b) {
   if (!a && !b) return 0;
   if (!a) return -1;
@@ -2504,10 +2572,13 @@ export function compareRecordVersions(a, b) {
   };
   return _fieldMs(a) - _fieldMs(b);
 }
+
 window.compareRecordVersions = compareRecordVersions;
+
 export function getTimestamp() {
 return Date.now();
 }
+
 export function validateTimestamp(timestamp, allowFuture = false) {
 if (!timestamp || typeof timestamp !== 'number') return false;
 if (timestamp < 946684800000 || timestamp > 4102444800000) return false;
@@ -2520,6 +2591,7 @@ return false;
 }
 return true;
 }
+
 export function _mergedBadgeHtml(record, opts = {}) {
 if (!record || !record.isMerged) return '';
 if (opts.inline) {
@@ -2527,12 +2599,14 @@ if (opts.inline) {
 }
 return `<span class="merged-badge">MERGED</span>`;
 }
+
 export function _creatorBadgeHtml(record) {
 if (!record || !record.createdBy) return '';
 const name = String(record.createdBy).trim();
 if (!name) return '';
 return `<span class="creator-badge" title="Created by ${esc(name)}">${esc(name)}</span>`;
 }
+
 export function compareTimestamps(timestamp1, timestamp2) {
 if (!validateTimestamp(timestamp1) || !validateTimestamp(timestamp2)) {
 return 0;
@@ -2541,6 +2615,7 @@ if (timestamp1 < timestamp2) return -1;
 if (timestamp1 > timestamp2) return 1;
 return 0;
 }
+
 export function resolveConflict(local, remote) {
 if (!local) return remote;
 if (!remote) return local;
@@ -2548,6 +2623,7 @@ const localTime = getRecordTimestamp(local);
 const remoteTime = getRecordTimestamp(remote);
 return localTime >= remoteTime ? local : remote;
 }
+
 export function getRecordTimestamp(record) {
 if (!record) return 0;
 if (record.timestamp && typeof record.timestamp === 'number') {
@@ -2567,6 +2643,7 @@ return new Date(record.date).getTime();
 }
 return 0;
 }
+
 export function ensureRecordIntegrity(record, isEdit = false, isMigration = false) {
 if (!record) return record;
 const isTrackingObject = record.produced !== undefined ||
@@ -2612,6 +2689,7 @@ record.updatedAt = record.createdAt;
 }
 return record;
 }
+
 export async function cleanupOldTombstones() {
 const ninetyDaysAgo = Date.now() - APP_CONFIG.TOMBSTONE_EXPIRY_MS;
 const dataTypes = [
@@ -2654,17 +2732,21 @@ if (totalCleaned > 0) {
 }
 return totalCleaned;
 }
+
 export function scheduleAutomaticCleanup() {
 setTimeout(() => cleanupOldTombstones(), 5000);
 if (window._tombstoneCleanupInterval) clearInterval(window._tombstoneCleanupInterval);
 window._tombstoneCleanupInterval = setInterval(() => cleanupOldTombstones(), APP_CONFIG.TOMBSTONE_CLEANUP_INTERVAL_MS);
 }
+
 window._safeErr = _safeErr;
 window.escapeHtml = escapeHtml;
 window.esc = esc;
+
 export function balanceAfterHtml(text, tone = 'neutral', label = 'Balance after') {
   return `<div class="txn-balance-after txn-balance-${tone}"><span>${esc(label)}</span><b>${esc(text)}</b></div>`;
 }
+
 window.balanceAfterHtml = balanceAfterHtml;
 window._triggerFileDownload = _triggerFileDownload;
 window._readFileAsArrayBuffer = _readFileAsArrayBuffer;

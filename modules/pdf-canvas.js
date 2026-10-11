@@ -1,14 +1,17 @@
 const CP1252 = { 0x80: '\u20AC', 0x82: '\u201A', 0x83: '\u0192', 0x84: '\u201E', 0x85: '\u2026', 0x86: '\u2020', 0x87: '\u2021', 0x88: '\u02C6', 0x89: '\u2030', 0x8A: '\u0160', 0x8B: '\u2039', 0x8C: '\u0152', 0x8E: '\u017D', 0x91: '\u2018', 0x92: '\u2019', 0x93: '\u201C', 0x94: '\u201D', 0x95: '\u2022', 0x96: '\u2013', 0x97: '\u2014', 0x98: '\u02DC', 0x99: '\u2122', 0x9A: '\u0161', 0x9B: '\u203A', 0x9C: '\u0153', 0x9E: '\u017E', 0x9F: '\u0178' };
+
 const FONT_TABLE = {
   F1: ['helvetica', ''], F2: ['helvetica', 'bold'], F3: ['helvetica', 'italic'], F4: ['helvetica', 'bold italic'],
   F5: ['courier', ''], F6: ['courier', 'bold'], F7: ['courier', 'italic'], F8: ['courier', 'bold italic'],
   F9: ['times', ''], F10: ['times', 'bold'], F11: ['times', 'italic'], F12: ['times', 'bold italic']
 };
+
 const FAMILY = {
   helvetica: 'Helvetica, Arial, "Liberation Sans", "Noto Sans", Roboto, sans-serif',
   courier: '"Courier New", Courier, "Liberation Mono", monospace',
   times: '"Times New Roman", Times, "Liberation Serif", serif'
 };
+
 function decodeString(raw) {
   let out = '';
   for (let i = 0; i < raw.length; i++) {
@@ -39,6 +42,7 @@ function decodeString(raw) {
   }
   return out.replace(/[\u0080-\u009f]/g, c => CP1252[c.charCodeAt(0)] || c);
 }
+
 function tokenize(src) {
   const toks = [];
   const n = src.length;
@@ -79,6 +83,7 @@ function tokenize(src) {
   }
   return toks;
 }
+
 function mul(m, n) {
   return [
     m[0] * n[0] + m[1] * n[2], m[0] * n[1] + m[1] * n[3],
@@ -86,12 +91,15 @@ function mul(m, n) {
     m[4] * n[0] + m[5] * n[2] + n[4], m[4] * n[1] + m[5] * n[3] + n[5]
   ];
 }
+
 const rgb = (r, g, b) => `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
 function cmyk(c, m, y, k) { return rgb((1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k)); }
+
 async function loadImage(src) {
   if (typeof window === 'undefined' || typeof Image === 'undefined') return null;
   return new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 }
+
 export async function renderJsPdfToCanvases(doc, opts = {}) {
   const scale = opts.scale || 3;
   const createCanvas = opts.createCanvas || ((w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; });
@@ -250,6 +258,7 @@ export async function renderJsPdfToCanvases(doc, opts = {}) {
   }
   return canvases;
 }
+
 export function installJsPdfImageLog(jsPDFClass) {
   try {
     const api = jsPDFClass && jsPDFClass.API;

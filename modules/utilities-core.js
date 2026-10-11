@@ -30,6 +30,7 @@ export function _set_openPhotoLightbox(v) { openPhotoLightbox = v; window.openPh
 export let closePhotoLightbox;
 window.closePhotoLightbox = closePhotoLightbox;
 export function _set_closePhotoLightbox(v) { closePhotoLightbox = v; window.closePhotoLightbox = v; }
+
 export async function toggleDarkMode() {
 const html = document.documentElement;
 const themeToggle = document.getElementById('themeToggle');
@@ -57,6 +58,7 @@ if (salesCompChart) salesCompChart.update();
 if (indPerformanceChart) indPerformanceChart.update();
 showToast(newTheme === 'dark' ? ' Dark mode enabled' : 'Light mode enabled', 'info', 2000);
 }
+
 export const syncState = {
 lastUpdate: {
 production: 0,
@@ -69,6 +71,7 @@ entities: 0
 isRefreshing: false,
 pendingUpdates: new Set()
 };
+
 export const OfflineQueue = {
 queue: [],
 deadLetterQueue: [],
@@ -403,7 +406,9 @@ finalError: item.finalError
 };
 }
 };
+
 if (typeof window._firestoreNetworkDisabled === 'undefined') window._firestoreNetworkDisabled = false;
+
 export function updateOfflineBanner() {
 const banner = document.getElementById('offline-banner');
 const badge = document.getElementById('offline-queue-badge');
@@ -498,15 +503,18 @@ if (typeof OfflineQueue !== 'undefined') {
 OfflineQueue._renderDeadLetterPanel();
 }
 }
+
 export function _setCloudConnectionState(state) {
 window._cloudConnectionState = state;
 updateOfflineBanner();
 }
+
 export function _setSlowConnectionState(isSlow, detail) {
 window._isSlowConnection = isSlow;
 window._slowConnectionDetail = detail || null;
 updateOfflineBanner();
 }
+
 (function patchOfflineQueueAdd() {
 const _origAdd = OfflineQueue.add.bind(OfflineQueue);
 OfflineQueue.add = async function(operation) {
@@ -526,6 +534,7 @@ showToast(' Offline changes synced', 'success', 3000);
 return result;
 };
 })();
+
 if ('serviceWorker' in navigator) {
 navigator.serviceWorker.addEventListener('message', (event) => {
 if (event.data && event.data.type === 'PROCESS_QUEUE') {
@@ -535,6 +544,7 @@ OfflineQueue.processQueue().catch(() => {});
 }
 });
 }
+
 window.addEventListener('online', async () => {
 updateOfflineBanner();
 if (typeof firebaseDB !== 'undefined' && firebaseDB) {
@@ -568,6 +578,7 @@ if (typeof updateOfflineBanner === 'function') updateOfflineBanner();
 }, 2000);
 showToast(' Back online — syncing…', 'success', 3000);
 });
+
 window.addEventListener('offline', async () => {
 updateOfflineBanner();
 if (typeof firebaseDB !== 'undefined' && firebaseDB) {
@@ -583,6 +594,7 @@ _set_isSyncing(false);
 }
 showToast('Offline — changes will be saved locally', 'warning', 4000);
 });
+
 (function initConnectionMonitor() {
   const SLOW_RTT_MS      = 500;
   const SLOW_DOWNLINK    = 0.5;
@@ -640,6 +652,7 @@ showToast('Offline — changes will be saved locally', 'warning', 4000);
     setTimeout(startMonitor, 1500);
   }
 })();
+
 setInterval(async () => {
 if (!navigator.onLine) return;
 if (typeof firebaseDB === 'undefined' || !firebaseDB) return;
@@ -651,6 +664,7 @@ if (typeof updateOfflineBanner === 'function') updateOfflineBanner();
 if (typeof triggerAutoSync === 'function') triggerAutoSync();
 } catch(e) {  }
 }, APP_CONFIG.OFFLINE_MAX_BACKOFF_MS);
+
 export function notifyDataChange(dataType) {
 syncState.lastUpdate[dataType] = Date.now();
 syncState.pendingUpdates.add(dataType);
@@ -661,8 +675,10 @@ if (typeof triggerSeamlessBackup === 'function') {
 triggerSeamlessBackup();
 }
 }
+
 export let autoSyncTimeout = null;
 export const AUTO_SYNC_DELAY = 5000;
+
 export async function invalidateAllCaches() {
 const expenseCategories = ensureArray(await sqliteStore.get('categories'));
 try {
@@ -676,6 +692,7 @@ DeltaSync.loadAllPendingIds().catch(() => {});
 console.error('Failed to invalidate caches.', _safeErr(e));
 }
 }
+
 export async function triggerAutoSync() {
 let user = null;
 try {
@@ -716,11 +733,14 @@ showToast('Sync failed: ' + _errMsg, 'error');
 }
 }, AUTO_SYNC_DELAY);
 }
+
 export async function updateSettingTimestamp(settingName) {
 const timestamp = getTimestamp();
 await sqliteStore.set(`${settingName}_timestamp`, timestamp);
 }
+
 export const _tabSyncInProgress = {};
+
 export function processSync() {
 if (syncState.isRefreshing || syncState.pendingUpdates.size === 0) return;
 syncState.isRefreshing = true;
@@ -827,9 +847,11 @@ requestAnimationFrame(() => processSync());
 }
 }
 }
+
 export function getCurrentActiveTab() {
 return currentActiveTab || 'prod';
 }
+
 export function syncCoreDisplays() {
 try {
 if (typeof updateUnitsAvailableIndicator === 'function') {
@@ -846,6 +868,7 @@ console.error('Calculation failed.', _safeErr(error));
 showToast('Dashboard calculation failed: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 }
+
 export async function syncCalculatorTab() {
 try {
 if (typeof loadSalesData === 'function') await loadSalesData(currentCompMode);
@@ -856,6 +879,7 @@ showToast('Failed to load sales data: ' + (_safeErr(error).message || 'please tr
 if (typeof loadSalesData === 'function') setTimeout(() => loadSalesData(currentCompMode), 500);
 }
 }
+
 export async function syncFactoryTab() {
 try {
 if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductionStats();
@@ -870,6 +894,7 @@ showToast('Factory tab failed to render: ' + (_safeErr(error).message || 'please
 if (typeof updateFactoryUnitsAvailableStats === 'function') setTimeout(updateFactoryUnitsAvailableStats, 500);
 }
 }
+
 export async function syncPaymentsTab() {
 try {
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
@@ -880,6 +905,7 @@ showToast('Payments tab failed to load: ' + (_safeErr(error).message || 'please 
 if (typeof refreshPaymentTab === 'function') setTimeout(refreshPaymentTab, 500);
 }
 }
+
 export async function syncProductionTab() {
 try {
 if (typeof refreshUI === 'function') refreshUI();
@@ -891,6 +917,7 @@ showToast('Production tab failed to refresh: ' + (_safeErr(error).message || 'pl
 if (typeof refreshUI === 'function') setTimeout(refreshUI, 500);
 }
 }
+
 export async function syncSalesTab() {
 try {
 if (typeof calculateCustomerSale === 'function') calculateCustomerSale();
@@ -901,6 +928,7 @@ showToast('Sales tab failed to refresh: ' + (_safeErr(error).message || 'please 
 if (typeof refreshCustomerSales === 'function') setTimeout(refreshCustomerSales, 500);
 }
 }
+
 export async function syncRepTab() {
 try {
 if (typeof renderRepCustomerTable === 'function') await renderRepCustomerTable();
@@ -911,8 +939,10 @@ showToast('Rep tab failed to refresh: ' + (_safeErr(error).message || 'please re
 if (typeof renderRepCustomerTable === 'function') setTimeout(renderRepCustomerTable, 500);
 }
 }
+
 export function stopPeriodicSync() {
 }
+
 export const RefreshDebouncer = {
 timers: {
 production: null,
@@ -947,31 +977,37 @@ this.timers[tab] = null;
 callback();
 }
 };
+
 window.debouncedRefreshUI = function() {
 RefreshDebouncer.debounce('production', () => {
 if (typeof refreshUI === 'function') refreshUI();
 });
 };
+
 window.debouncedRefreshCustomerSales = function() {
 RefreshDebouncer.debounce('sales', () => {
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 });
 };
+
 window.debouncedRefreshFactoryTab = function() {
 RefreshDebouncer.debounce('factory', () => {
 if (typeof refreshFactoryTab === 'function') refreshFactoryTab();
 });
 };
+
 window.debouncedRefreshPaymentTab = function() {
 RefreshDebouncer.debounce('payments', () => {
 if (typeof refreshPaymentTab === 'function') refreshPaymentTab();
 });
 };
+
 window.debouncedRefreshRepUI = function() {
 RefreshDebouncer.debounce('rep', () => {
 if (typeof refreshRepUI === 'function') refreshRepUI();
 });
 };
+
 export async function reloadDataFromStorage() {
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -992,20 +1028,25 @@ console.error('Failed to load app data.', _safeErr(error));
 showToast('Failed to load app data: ' + (_safeErr(error).message || 'please reload the app'), 'error');
 }
 }
+
 window.forceSync = async function() {
 await reloadDataFromStorage();
 syncState.pendingUpdates.add('all');
 processSync();
 };
+
 setTimeout(() => { try { triggerAutoSync(); } catch (_) {} }, 1000);
+
 window._notifyOnTabChange = function(tab) {
 setTimeout(() => {
 if (typeof notifyDataChange === 'function') notifyDataChange(tab);
 }, 150);
 };
+
 window.addEventListener('beforeunload', function() {
 if (typeof stopPeriodicSync === 'function') stopPeriodicSync();
 });
+
 export let defaultSettings = {
 production: {
 ...Object.fromEntries(DEFAULT_STORE_KEYS.map(k => [k, { cost: 0, sale: 0 }]))
@@ -1017,11 +1058,13 @@ return calc;
 },
 sales: { cost: 0, sale: 0 }
 };
+
 export let mfgBarChart = null, mfgPieChart = null, salesPerfChart = null, salesCompChart = null;
 export let custSalesChart = null, custPaymentChart = null;
 export let storeComparisonChart = null;
 export let indPerformanceChart = null;
 export const _UI_STATE_KEY = 'ui';
+
 export const _UI_DEFAULTS = {
   currentMfgMode: 'week',
   currentCompMode: 'all',
@@ -1049,16 +1092,20 @@ export const _UI_DEFAULTS = {
   selectedEntityId: null,
   currentFactoryDate: localDateStr(),
 };
+
 export let _uiState = { ..._UI_DEFAULTS };
+
 export function getUI(key) {
   return _uiState[key] !== undefined ? _uiState[key] : _UI_DEFAULTS[key];
 }
+
 export function setUI(key, val) {
   _uiState[key] = val;
   if (typeof sqliteStore !== 'undefined') {
     sqliteStore.set(_UI_STATE_KEY, _uiState).catch(() => {});
   }
 }
+
 export async function loadUIState() {
   if (typeof sqliteStore === 'undefined') return;
   try {
@@ -1069,6 +1116,7 @@ export async function loadUIState() {
     (window.__uiSyncers || []).forEach(fn => { try { fn(); } catch (_) {} });
   } catch (_) {}
 }
+
 Object.defineProperties(window, {
   currentMfgMode:               { get: () => getUI('currentMfgMode'),               set: v => setUI('currentMfgMode', v),               configurable: true },
   currentCompMode:              { get: () => getUI('currentCompMode'),              set: v => setUI('currentCompMode', v),              configurable: true },
@@ -1096,13 +1144,18 @@ Object.defineProperties(window, {
   selectedEntityId:             { get: () => getUI('selectedEntityId'),             set: v => setUI('selectedEntityId', v),             configurable: true },
   currentFactoryDate:           { get: () => getUI('currentFactoryDate'),           set: v => setUI('currentFactoryDate', v),           configurable: true },
 });
+
 export const splashQuotes = (typeof window !== 'undefined' && window.__splashQuotes) || [];
+
 export function initSplashScreen() {
 if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 }
+
 export function updatePaymentStatusVisibility() {
 }
+
 export function recordEntry(...a) { return confirmGuard('recordEntry', () => runExclusive('recordEntry', () => _recordEntryImpl(...a)), { label: 'Production Entry', late: true, fields: [['storeSelector', 'Store'], ['sys-date', 'Date'], ['gross-wt', 'Gross Weight'], ['cont-wt', 'Container'], ['net-wt', 'Net Weight'], ['formula-units', 'Units']], editKinds: ['prod'] }); }
+
 async function _recordEntryImpl() {
 const _ed = getEditCtx('prod');
 const production = ensureArray(await sqliteStore.get('production'));
@@ -1259,10 +1312,12 @@ if (totalFormulaCostDisplay) totalFormulaCostDisplay.innerText = '0';
 if (dynamicCostPerKg) dynamicCostPerKg.innerText = '0/kg';
 if (_ed) endEditMode();
 await refreshUI();
+if (typeof window.calculateDynamicProductionCost === 'function') await window.calculateDynamicProductionCost();
 calculateNetCash();
 calculateCashTracker();
 showToast(_ed ? "Production record updated!" : "Production record saved successfully!", "success");
 }
+
 export function _dedupDeletionRecordsLocal(arr) {
   if (!Array.isArray(arr)) return [];
   const seen = new Map();
@@ -1280,6 +1335,7 @@ export function _dedupDeletionRecordsLocal(arr) {
   });
   return Array.from(seen.values());
 }
+
 export async function registerDeletion(id, collectionName = 'unknown', preDeletedRecord = null) {
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
@@ -1438,6 +1494,7 @@ triggerAutoSync();
 uploadDeletionToCloud(deletionRecord).catch(e => console.warn('[registerDeletion] cloud upload failed:', _safeErr(e)));
 cleanupOldDeletions().catch(e => console.warn('[registerDeletion] cleanup failed:', _safeErr(e)));
 }
+
 export async function _captureRecordSnapshot(id, collectionName) {
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -1567,6 +1624,7 @@ const factory = ensureArray(await sqliteStore.get('factory'));
   } catch(e) {   }
   return result;
 }
+
 _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
   const result = { displayName: null, displayDetail: null, displayAmount: null };
   if (!snapshotObj) return result;
@@ -1653,6 +1711,7 @@ _captureRecordSnapshot._fromObj = function(snapshotObj, collectionName) {
   } catch(e) {   }
   return result;
 };
+
 export async function uploadDeletionToCloud(deletionRecord) {
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
 if (!firebaseDB || typeof currentUser === 'undefined' || !currentUser) {
@@ -1714,6 +1773,7 @@ data: null
 }
 }
 }
+
 export async function cleanupOldDeletions() {
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
@@ -1749,6 +1809,7 @@ console.warn('[cleanupOldDeletions] cloud cleanup failed, will retry when online
 }
 }
 }
+
 export async function _buildPreclosePanel(record, type, panelId) {
   const ms  = record.mergedSummary || {};
   const dr  = ms.dateRange || {};
@@ -1827,6 +1888,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
     ${html}
   </div>`;
 }
+
 export async function _togglePreclosePanel(btn, panelId, recordId, storeKey, type) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
@@ -1853,6 +1915,7 @@ export async function _togglePreclosePanel(btn, panelId, recordId, storeKey, typ
   panel.classList.add('open');
   btn.classList.add('active');
 }
+
 export async function openEntityDetailsOverlay(id) {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -1863,22 +1926,26 @@ if (!entity) return;
 await renderEntityOverlayContent(entity);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('entity-details-screen');
 }
+
 export async function refreshEntityOverlay() {
 if (!currentEntityId) return;
 const entities = ensureArray(await sqliteStore.get('entities'));
 const entity = entities.find(e => String(e.id) === String(currentEntityId));
 if (entity) await renderEntityOverlayContent(entity);
 }
+
 export function closeEntityDetailsOverlay() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('entity-details-screen');
 currentEntityId = null; window.currentEntityId = currentEntityId;
 refreshPaymentTab();
 }
+
 export function openEditEntityFromDetails() {
 const id = currentEntityId;
 if (!id) return;
 editEntityBasicInfo(id);
 }
+
 export async function renderEntityOverlayContent(entity) {
 await _ensureSupplierInvoices();
 const entities = ensureArray(await sqliteStore.get('entities'));
@@ -2006,6 +2073,7 @@ if (_photoRefId) {
 });
 list.replaceChildren(_entityFrag);
 }
+
 export function filterEntityManagementHistory() {
 const term = document.getElementById('entity-trans-search').value.toLowerCase();
 const items = document.querySelectorAll('#entityManagementHistoryList .cust-history-item');
@@ -2015,6 +2083,7 @@ if (!text.includes(term)) { item.style.display = 'none'; return; }
 item.style.display = item.style.flexDirection === 'column' ? 'flex' : 'flex';
 });
 }
+
 export async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
   const photoKey = expenseId ? 'expense:' + expenseId : null;
   if (photoKey) {
@@ -2026,13 +2095,16 @@ export async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
   }
   showToast('No photo attached to this transaction', 'warning', 2000);
 }
+
 const _supplierMatOriginal = (m) => parseFloat((m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : (m.quantity || 0) * (m.cost || 0)) || 0).toFixed(2));
+
 const _txMaterialIds = (t) => {
 const ids = new Set();
 if (t && t.materialId) ids.add(String(t.materialId));
 if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
 return ids;
 };
+
 const _clearMaterialSupplier = (m) => {
 delete m.supplierId;
 delete m.supplierName;
@@ -2044,6 +2116,7 @@ m.paymentStatus = 'pending';
 m.updatedAt = getTimestamp();
 ensureRecordIntegrity(m, true);
 };
+
 export async function _recomputeSupplierPayables(supplierIds, inventory, transactions, excludeIds, extraMaterialIds, skipMaterialIds) {
 const saved = [];
 for (const sid of supplierIds) {
@@ -2067,6 +2140,7 @@ saved.push(m);
 }
 return saved;
 }
+
 export function _describeSupplierLinkImpact(tx, transactions, inventory) {
 const out = { materialNames: [], paymentCount: 0, paymentTotal: 0 };
 const seen = new Set();
@@ -2085,6 +2159,7 @@ out.paymentTotal += parseFloat(t.amount) || 0;
 });
 return out;
 }
+
 export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory) {
 const result = { unlinked: [], recomputed: [], removedTxs: [], changed: false };
 const txs = (Array.isArray(deletedTxs) ? deletedTxs : [deletedTxs]).filter(t => t && (t.isPayable || t.materialId));
@@ -2131,6 +2206,7 @@ result.recomputed = await _recomputeSupplierPayables([...supplierIds], inventory
 result.changed = result.unlinked.length > 0 || result.recomputed.length > 0 || result.removedTxs.length > 0;
 return result;
 }
+
 export async function _reconcileSupplierLinkAfterRecovery(tx) {
 if (!tx || !tx.isPayable) return false;
 const inventory = ensureArray(await sqliteStore.get('inventory'));
@@ -2157,7 +2233,9 @@ changed = true;
 const saved = await _recomputeSupplierPayables([String(tx.entityId)], inventory, transactions, new Set(), _txMaterialIds(tx));
 return changed || saved.length > 0;
 }
+
 let _ensuringSupplierInvoices = false;
+
 export async function _ensureSupplierInvoices() {
 if (_ensuringSupplierInvoices) return 0;
 _ensuringSupplierInvoices = true;
@@ -2210,6 +2288,7 @@ _ensuringSupplierInvoices = false;
 }
 return created;
 }
+
 export async function _refreshSupplierLinkViews() {
 try { notifyDataChange('all'); } catch (_) {}
 try { if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductionStats(); } catch (_) {}
@@ -2229,11 +2308,13 @@ if (ent) await renderEntityOverlayContent(ent);
 }
 } catch (_) {}
 }
+
 export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory) {
 if (!tx || !tx.isPayable) return false;
 const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory);
 return res.changed || tx.type === 'IN';
 }
+
 export async function deleteEntityTransaction(id) {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -2293,6 +2374,7 @@ window.notifyBlocking('Failed to delete transaction. Please try again.', 'error'
 }
 }
 }
+
 export async function deleteCurrentEntity() {
 const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -2379,6 +2461,7 @@ showToast(`"${_entityName}" and all its transactions deleted.`, 'success');
 window.notifyBlocking('Failed to delete entity. Please try again.', 'error');
 }
 }
+
 export async function exportEntityData() {
 const entities = ensureArray(await sqliteStore.get('entities'));
 let csvContent = "data:text/csv;charset=utf-8,";
@@ -2401,6 +2484,7 @@ link.click();
 document.body.removeChild(link);
 showToast("Entity list exported", "success");
 }
+
 export function _pdfMergedPeriodLabel(record) {
   const ms = record.mergedSummary;
   const dr = ms && ms.dateRange;
@@ -2423,10 +2507,12 @@ export function _pdfMergedPeriodLabel(record) {
   }
   return 'Prev. Year';
 }
+
 export function _pdfMergedCountLabel(record) {
   const cnt = record.mergedRecordCount || (record.mergedSummary && record.mergedSummary.recordCount);
   return cnt ? `${cnt} txn${cnt !== 1 ? 's' : ''} merged` : 'year-end merge';
 }
+
 export function _pdfDrawMergedSectionHeader(doc, yPos, pageW, label) {
   const purpleLight = [245, 235, 255];
   const purpleDark  = [126, 34, 206];
@@ -2444,9 +2530,11 @@ export function _pdfDrawMergedSectionHeader(doc, yPos, pageW, label) {
   doc.setTextColor(80, 80, 80);
   return yPos + 16;
 }
+
 export const PDF_MERGED_HDR_COLOR  = [126, 34, 206];
 export const PDF_MERGED_ROW_COLOR  = [245, 235, 255];
 export const PDF_MERGED_TEXT_COLOR = [126, 34, 206];
+
 export async function _exportDocAsImageAndOpenWhatsApp(doc, phone, filenameBase) {
   const canvases = await renderJsPdfToCanvases(doc, { scale: 3 });
   if (!canvases.length) throw new Error('Nothing to export.');
@@ -2489,6 +2577,7 @@ export async function _exportDocAsImageAndOpenWhatsApp(doc, phone, filenameBase)
     showToast('Statement saved as image (no phone number on record)', 'success');
   }
 }
+
 export function _captureAutoTables(doc) {
   const captured = [];
   const orig = doc.autoTable.bind(doc);
@@ -2498,11 +2587,13 @@ export function _captureAutoTables(doc) {
   };
   return captured;
 }
+
 function _stmtCellText(c) {
   if (c == null) return '';
   if (typeof c === 'object') c = c.content != null ? c.content : '';
   return String(c).replace(/\s*\n\s*/g, ' ').trim();
 }
+
 const _URDU_HEADS = {
   'date': 'تاریخ', 'invoice date': 'تاریخ',
   'description': 'تفصیل', 'details': 'تفصیل', 'year period / summary': 'تفصیل', 'material': 'مال',
@@ -2513,14 +2604,17 @@ const _URDU_HEADS = {
   'outstanding': 'بقایا', 'settled': 'ادا شدہ',
   'invoice amt': 'انوائس رقم', 'paid so far': 'اب تک ادا', 'remaining': 'باقی', 'status': 'حالت'
 };
+
 const _URDU_RANGES = {
   'All Time': 'تمام وقت', 'Today': 'آج', 'This Week': 'اس ہفتے', 'This Month': 'اس مہینے', 'This Year': 'اس سال'
 };
+
 const _URDU_TITLES = {
   'Account Statement': 'اکاؤنٹ اسٹیٹمنٹ',
   'Customer Account Statement': 'کسٹمر اکاؤنٹ اسٹیٹمنٹ',
   'Rep Customer Account Statement': 'ریپ کسٹمر اکاؤنٹ اسٹیٹمنٹ'
 };
+
 const _URDU_VALUE_RULES = [
   [/^[\u21a9\u2714]\s*(Credit Purchase|Supplier Pmt)\s*/i, ''],
   [/Opening Balance\s*\(All activity before this period\)/i, 'ابتدائی بیلنس (اس مدت سے پہلے کا)'],
@@ -2540,26 +2634,31 @@ const _URDU_VALUE_RULES = [
   [/\bkg\b/gi, 'کلو'],
   [/^Prior$/, 'پچھلا']
 ];
+
 function _urduValue(v) {
   let out = String(v == null ? '' : v);
   _URDU_VALUE_RULES.forEach(([re, rep]) => { out = out.replace(re, rep); });
   return out.replace(/\s+/g, ' ').trim();
 }
+
 const _RLM = '\u200F';
 const _LRI = '\u2066';
 const _PDI = '\u2069';
 const _HAS_URDU = /[\u0600-\u06FF]/;
 const _AMOUNT_ONLY = /^(Rs\.?\s*)?[\d,]+(\.\d+)?$/i;
+
 function _ltr(v) {
   const t = String(v == null ? '' : v);
   return t ? _LRI + t + _PDI : t;
 }
+
 function _bidiValue(v) {
   const t = String(v == null ? '' : v);
   if (!t) return t;
   if (_AMOUNT_ONLY.test(t) || !_HAS_URDU.test(t)) return _ltr(t);
   return t;
 }
+
 export function _buildStatementText({ title, name, phone, rangeName, tables }) {
   const lines = [];
   const add = (t) => lines.push(t === '' ? '' : _RLM + t);
@@ -2606,6 +2705,7 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
   }
   return lines.join('\n');
 }
+
 export async function _shareStatementText(text, phone) {
   if (navigator.share) {
     try {
@@ -2622,9 +2722,11 @@ export async function _shareStatementText(text, phone) {
   window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`, '_blank');
   showToast(hasPhone ? 'Opening WhatsApp with the statement message\u2026' : 'Opening WhatsApp \u2014 choose a contact to send to', 'success');
 }
+
 const _SHARE_ICON_IMAGE = '<svg viewBox="0 0 36 36" fill="none" width="18" height="18"><rect x="4" y="5" width="28" height="26" rx="4.5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12.5" cy="13" r="2.8" fill="currentColor"/><path d="M4.8 27L13 18.5L20 25L25 20L31.2 26.5V27.8A3.2 3.2 0 0 1 28 31H8A3.2 3.2 0 0 1 4.8 27.8Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
 const _SHARE_ICON_TEXT = '<svg viewBox="0 0 36 36" fill="none" width="18" height="18"><path d="M5 9A4 4 0 0 1 9 5H27A4 4 0 0 1 31 9V21A4 4 0 0 1 27 25H16L9 32V25A4 4 0 0 1 5 21Z" fill="currentColor" fill-opacity="0.14" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11 12H25M11 18H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
 const _SHARE_ICON_HEAD = '<svg viewBox="0 0 36 36" fill="none"><path d="M10.5 16L25 9.5M10.5 20L25 26.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="27.5" cy="8" r="4.5" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="18" r="4.5" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.7"/><circle cx="27.5" cy="28" r="4.5" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.7"/></svg>';
+
 export async function promptStatementShare(kind) {
   const choice = await showChoiceDialog('Choose how you want to share this statement.', [
     { label: 'PDF / Image', value: 'image', icon: _SHARE_ICON_IMAGE },
@@ -2636,7 +2738,9 @@ export async function promptStatementShare(kind) {
   if (kind === 'customer') return exportCustomerToPDF(opts);
   if (kind === 'rep' && typeof window.exportRepCustomerToPDF === 'function') return window.exportRepCustomerToPDF(opts);
 }
+
 window.promptStatementShare = promptStatementShare;
+
 export async function exportEntityToPDF(opts = {}) {
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 const entities = ensureArray(await sqliteStore.get('entities'));
@@ -3034,6 +3138,7 @@ if (_textMode) {
 showToast("Error generating PDF: " + error.message, "error");
 }
 }
+
 export async function exportCustomerToPDF(opts = {}) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
@@ -3388,15 +3493,18 @@ if (_textMode) {
 showToast("Error generating PDF: " + error.message, "error");
 }
 }
+
 export const SCRIPT_INTEGRITY = {
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js':
     'sha256-mMzxeqEMILsTAXYmGPzJtqs6Tn8mtgcdZNC0EVTfOHU=',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js':
     'sha256-iQWUsO+u9rPj2uc1m13fZG9V4W2wef4jIt5gMh2dRac='
 };
+
 export const _scriptLoadPromises = {};
 export let _photoCaptureTarget = null;
 export let _photoCaptureStream = null;
+
 export function _photoIds(prefix) {
   return {
     preview: prefix + '-photo-preview',
@@ -3406,6 +3514,7 @@ export function _photoIds(prefix) {
     fileInput: prefix + '-photo-file',
   };
 }
+
 export function handlePersonPhotoFile(event, prefix) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
@@ -3414,6 +3523,7 @@ export function handlePersonPhotoFile(event, prefix) {
   reader.readAsDataURL(file);
   event.target.value = '';
 }
+
 export function applyPersonPhoto(prefix, dataUrl) {
   const ids = _photoIds(prefix);
   const ph = document.getElementById(ids.placeholder);
@@ -3425,6 +3535,7 @@ export function applyPersonPhoto(prefix, dataUrl) {
   const preview = document.getElementById(ids.preview);
   if (preview) preview.dataset.pendingPhoto = dataUrl;
 }
+
 export function clearPersonPhoto(prefix) {
   const ids = _photoIds(prefix);
   const ph = document.getElementById(ids.placeholder);
@@ -3436,6 +3547,7 @@ export function clearPersonPhoto(prefix) {
   const preview = document.getElementById(ids.preview);
   if (preview) { preview.dataset.pendingPhoto = ''; preview.dataset.existingPhotoKey = ''; }
 }
+
 export async function loadPersonPhotoIntoEditor(prefix, storageKey) {
   const ids = _photoIds(prefix);
   const preview = document.getElementById(ids.preview);
@@ -3449,6 +3561,7 @@ export async function loadPersonPhotoIntoEditor(prefix, storageKey) {
     if (dataUrl) applyPersonPhoto(prefix, dataUrl);
   } catch(e) {}
 }
+
 export async function savePersonPhoto(prefix, storageKey) {
   if (!storageKey) return;
   const ids = _photoIds(prefix);
@@ -3478,6 +3591,7 @@ export async function savePersonPhoto(prefix, storageKey) {
     if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
   } catch(e) { console.warn('Photo save failed', e); }
 }
+
 export async function getPersonPhoto(storageKey) {
   if (!storageKey) return null;
   try {
@@ -3486,7 +3600,9 @@ export async function getPersonPhoto(storageKey) {
     return photos[storageKey] || null;
   } catch(e) { return null; }
 }
+
 export const PHOTO_MAX_CHARS = 700000;
+
 export async function _compressPhoto(dataUrl, maxDim, quality) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -3517,12 +3633,14 @@ export async function _compressPhoto(dataUrl, maxDim, quality) {
     img.src = dataUrl;
   });
 }
+
 let _camFacing = 'environment';
 let _camZoom = 1;
 let _camCaps = { min: 1, max: 4, hw: false };
 let _camRaf = 0;
 let _camPinch = null;
 const _camPointers = new Map();
+
 function _camEls() {
   return {
     modal: document.getElementById('photo-capture-modal'),
@@ -3536,6 +3654,7 @@ function _camEls() {
     flip: document.getElementById('cam-flip-btn')
   };
 }
+
 function _camLayout() {
   const { video, view, stage } = _camEls();
   if (!video || !view || !stage) return;
@@ -3548,6 +3667,7 @@ function _camLayout() {
   view.style.width = Math.floor(w) + 'px';
   view.style.height = Math.floor(h) + 'px';
 }
+
 function _camRenderPills() {
   const { pills } = _camEls();
   if (!pills) return;
@@ -3555,6 +3675,7 @@ function _camRenderPills() {
   const opts = [1, 2, 3, 5, 8].filter(z => z >= _camCaps.min && z <= max + 0.001);
   pills.innerHTML = opts.map(z => `<button type="button" class="cam-pill${Math.abs(_camZoom - z) < 0.06 ? ' on' : ''}" onclick="setCameraZoom(${z})">${z}×</button>`).join('');
 }
+
 function _camApplyZoom(z) {
   const { video, badge, range } = _camEls();
   _camZoom = Math.min(_camCaps.max, Math.max(_camCaps.min, z));
@@ -3577,11 +3698,14 @@ function _camApplyZoom(z) {
   }
   _camRenderPills();
 }
+
 export function setCameraZoom(z) { _camApplyZoom(Number(z) || 1); }
+
 export function stepCameraZoom(dir) {
   const step = _camCaps.max > 6 ? 0.5 : 0.25;
   _camApplyZoom(_camZoom + dir * step * 2);
 }
+
 function _camInstallGestures() {
   const { view } = _camEls();
   if (!view || view._camBound) return;
@@ -3609,6 +3733,7 @@ function _camInstallGestures() {
   view.addEventListener('wheel', (e) => { e.preventDefault(); _camApplyZoom(_camZoom * (e.deltaY < 0 ? 1.08 : 0.93)); }, { passive: false });
   window.addEventListener('resize', _camLayout);
 }
+
 async function _camStart() {
   const { video, torch, flip } = _camEls();
   _camStopStream();
@@ -3635,6 +3760,7 @@ async function _camStart() {
   if (video.readyState >= 1) ready(); else video.addEventListener('loadedmetadata', ready, { once: true });
   setTimeout(_camLayout, 250);
 }
+
 function _camStopStream() {
   if (_photoCaptureStream) {
     try {
@@ -3645,6 +3771,7 @@ function _camStopStream() {
     _photoCaptureStream = null;
   }
 }
+
 export async function openPhotoCapture(prefix) {
   _photoCaptureTarget = prefix;
   const { modal, video, torch } = _camEls();
@@ -3662,6 +3789,7 @@ export async function openPhotoCapture(prefix) {
     showToast('Camera not available. Check the camera permission for this app.', 'warning');
   }
 }
+
 export async function flipCamera() {
   _camFacing = _camFacing === 'environment' ? 'user' : 'environment';
   window._torchOn = false;
@@ -3669,6 +3797,7 @@ export async function flipCamera() {
   if (torch) torch.classList.remove('on');
   try { await _camStart(); } catch (_) { _camFacing = _camFacing === 'environment' ? 'user' : 'environment'; showToast('Could not switch camera', 'warning'); try { await _camStart(); } catch (__) {} }
 }
+
 export function closePhotoCapture() {
   const { modal, video } = _camEls();
   if (modal) modal.style.display = 'none';
@@ -3679,6 +3808,7 @@ export function closePhotoCapture() {
   window._torchOn = false;
   _photoCaptureTarget = null;
 }
+
 export async function toggleTorch() {
   if (!_photoCaptureStream) return;
   const track = _photoCaptureStream.getVideoTracks()[0];
@@ -3693,6 +3823,7 @@ export async function toggleTorch() {
     window._torchOn = false;
   }
 }
+
 export function capturePhotoFromCamera() {
   const { video } = _camEls();
   const canvas = document.getElementById('photo-capture-canvas');
@@ -3724,10 +3855,12 @@ export function capturePhotoFromCamera() {
     }
   }, 120);
 }
+
 export function openCameraGallery() {
   const input = document.getElementById('cam-gallery-input');
   if (input) input.click();
 }
+
 function _readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -3736,6 +3869,7 @@ function _readFileAsDataUrl(file) {
     r.readAsDataURL(file);
   });
 }
+
 export async function handleCameraGalleryFiles(event) {
   const files = Array.from((event.target.files || [])).filter(f => !f.type || f.type.startsWith('image/'));
   event.target.value = '';
@@ -3761,10 +3895,13 @@ export async function handleCameraGalleryFiles(event) {
     showToast('Could not load the selected photo', 'warning');
   }
 }
+
 window._expensePendingPhoto = null;
+
 export function openExpensePhotoCapture() {
   openPhotoCapture('expense');
 }
+
 export function handleExpensePhotoFile(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
@@ -3773,6 +3910,7 @@ export function handleExpensePhotoFile(event) {
   reader.readAsDataURL(file);
   event.target.value = '';
 }
+
 export function _applyExpensePendingPhoto(dataUrl) {
   window._expensePendingPhoto = dataUrl;
   const dot = document.getElementById('expense-photo-dot');
@@ -3783,6 +3921,7 @@ export function _applyExpensePendingPhoto(dataUrl) {
     btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
   }
 }
+
 export function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
@@ -3791,6 +3930,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   }
   return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
 }
+
 (function() {
   let _lbScale = 1, _lbMinScale = 1, _lbMaxScale = 6;
   let _lbTransX = 0, _lbTransY = 0;
@@ -3969,6 +4109,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
     }
   }
 })();
+
 export function previewPhotoClick(prefix) {
   const img = document.getElementById(prefix + '-photo-img');
   if (img && img.style.display !== 'none' && img.src && img.src !== window.location.href) {
@@ -3977,6 +4118,7 @@ export function previewPhotoClick(prefix) {
     document.getElementById(prefix + '-photo-file').click();
   }
 }
+
 export function loadScript(url, integrity) {
   if (/\/jspdf\/2\.5\.1\/jspdf\.umd\.min\.js$/.test(url)) { url = 'vendor/jspdf.umd.min.js'; integrity = null; }
   else if (/\/jspdf-autotable\/3\.5\.31\/jspdf\.plugin\.autotable\.min\.js$/.test(url)) { url = 'vendor/jspdf.plugin.autotable.min.js'; integrity = null; }
@@ -4019,6 +4161,7 @@ export function loadScript(url, integrity) {
   });
   return _scriptLoadPromises[url];
 }
+
 export const SarimChart = (() => {
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -4218,6 +4361,7 @@ export const SarimChart = (() => {
   }
   return SarimChart;
 })();
+
 window.toggleDarkMode = toggleDarkMode;
 window.syncState = syncState;
 window.OfflineQueue = OfflineQueue;

@@ -1,6 +1,7 @@
 window._GOOGLE_CLIENT_ID = '124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com';
 export let BRAND_LOGO_JPEG_BASE64 = '';
 let _brandLogoPromise = null;
+
 export function loadBrandLogo() {
   if (_brandLogoPromise) return _brandLogoPromise;
   _brandLogoPromise = fetch('brand-logo.jpg')
@@ -15,8 +16,10 @@ export function loadBrandLogo() {
     .catch(() => { _brandLogoPromise = null; });
   return _brandLogoPromise;
 }
+
 if (typeof window !== 'undefined' && typeof fetch === 'function') setTimeout(() => loadBrandLogo(), 3000);
 export var entityListViewType;
+
 export const APP_CONFIG = Object.freeze({
   CACHE_VERSION: 'V.29.09.2026',
   PBKDF2_ITERATIONS: 210000,
@@ -35,6 +38,7 @@ export const APP_CONFIG = Object.freeze({
   VISIBILITY_SYNC_COOLDOWN_MS: 5 * 60 * 1000,
   MIN_LISTENER_RECONNECT_MS:   30 * 1000,
 });
+
 window.BRAND_LOGO_JPEG_BASE64 = BRAND_LOGO_JPEG_BASE64;
 window.entityListViewType = entityListViewType;
 window.APP_CONFIG = APP_CONFIG;

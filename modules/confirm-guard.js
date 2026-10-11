@@ -1,5 +1,6 @@
 import { getEditCtx } from './edit-mode.js';
 const _pending = new Set();
+
 function readDetails(fields) {
   const out = [];
   (fields || []).forEach(([id, label]) => {
@@ -17,6 +18,7 @@ function readDetails(fields) {
   });
   return out;
 }
+
 export async function confirmGuard(key, run, opts = {}) {
   if (_pending.has(key)) return;
   const ctx = getEditCtx();
@@ -67,10 +69,12 @@ export async function confirmGuard(key, run, opts = {}) {
   if (!ok) return;
   return run();
 }
+
 export function gcCommit(extra) {
   const l = window._gcLate;
   if (!l) return Promise.resolve(true);
   window._gcLate = null;
   return l.ask(extra || {});
 }
+
 window.gcCommit = gcCommit;
