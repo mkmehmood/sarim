@@ -1177,14 +1177,24 @@ if (storeType === 'standard' || storeType === 'asaan') {
 } else {
   formulaStore = formulaTypeFor(storeType);
 }
-const formula = factoryDefaultFormulas[formulaStore];
+let formula = factoryDefaultFormulas[formulaStore];
+let additionalCost = factoryAdditionalCosts[formulaStore] || 0;
+let formulaName = '';
+if (typeof getSelectedFormula === 'function') {
+  const sel = await getSelectedFormula(storeType).catch(() => null);
+  if (sel && Array.isArray(sel.ingredients) && sel.ingredients.length > 0) {
+    formula = sel.ingredients;
+    additionalCost = Number(sel.additionalCost) || 0;
+    formulaStore = sel.type || formulaStore;
+    formulaName = sel.name || '';
+  }
+}
 if (!formula || formula.length === 0) {
 return { costPerUnit: 0, totalFormulaCost: 0, dynamicCostPerKg: 0, formulaStore, formulaName: '', formulaMaterials: [], rawMaterialCost: 0 };
 }
 let totalMaterialCost = 0;
 let totalWeight = 0;
 formula.forEach(item => { totalMaterialCost += (resolveLiveCost(item, _dcInv) * item.quantity); totalWeight += item.quantity; });
-const additionalCost = factoryAdditionalCosts[formulaStore] || 0;
 const costPerUnit = totalMaterialCost + additionalCost;
 return {
 costPerUnit,
@@ -1193,7 +1203,7 @@ additionalCost,
 totalFormulaCost: costPerUnit * formulaUnits,
 dynamicCostPerKg: (formulaUnits > 0 && netWeight > 0) ? (costPerUnit * formulaUnits) / netWeight : 0,
 formulaStore,
-formulaName: (await getFormulaSlotLabels())[formulaStore] || 'Formula',
+formulaName: formulaName || (await getFormulaSlotLabels())[formulaStore] || 'Formula',
 formulaMaterials: formula.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, cost: resolveLiveCost(item, _dcInv) })),
 rawMaterialCost: totalMaterialCost,
 unitWeight: totalWeight
@@ -1205,11 +1215,15 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 const _scInv = ensureArray(await sqliteStore.get('inventory'));
-const formula = factoryDefaultFormulas[formulaStore];
+let formula = factoryDefaultFormulas[formulaStore];
+let additionalCost = factoryAdditionalCosts[formulaStore] || 0;
+if (typeof getSelectedFormula === 'function') {
+  const sel = await getSelectedFormula(formulaStore).catch(() => null);
+  if (sel && Array.isArray(sel.ingredients) && sel.ingredients.length > 0) { formula = sel.ingredients; additionalCost = Number(sel.additionalCost) || 0; }
+}
 if (!formula || formula.length === 0) return 0;
 let rawMaterialCost = 0;
 formula.forEach(item => { rawMaterialCost += (resolveLiveCost(item, _scInv) * item.quantity); });
-const additionalCost = factoryAdditionalCosts[formulaStore] || 0;
 const adjustmentFactor = factoryCostAdjustmentFactor[formulaStore] || 1;
 return adjustmentFactor > 0 ? (rawMaterialCost + additionalCost) / adjustmentFactor : rawMaterialCost + additionalCost;
 }

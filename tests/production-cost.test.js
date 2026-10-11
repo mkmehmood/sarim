@@ -16,14 +16,15 @@ function grab(name) {
 }
 const resolveLive = src.slice(src.indexOf('export function resolveLiveCost('), src.indexOf('export async function getCostPerUnit(')).replace('export ', '');
 
-function build(data) {
+function build(data, selected) {
   const sqliteStore = { get: async (k) => data[k] };
+  const getSelectedFormula = async () => selected || null;
   const ensureArray = (v) => Array.isArray(v) ? v : [];
   const getStoreFormulaType = async (s) => ({ zubair: 'standard', mahmood: 'standard', asaan: 'asaan' })[s] || 'standard';
   const formulaTypeFor = (s) => (s === 'asaan' ? 'asaan' : 'standard');
   const getFormulaSlotLabels = async () => ({ standard: 'Standard', asaan: 'Asaan' });
   const body = `${resolveLive}\n${grab('calculateDynamicCost')}\nreturn { calculateDynamicCost, resolveLiveCost };`;
-  return new Function('sqliteStore', 'ensureArray', 'getStoreFormulaType', 'formulaTypeFor', 'getFormulaSlotLabels', body)(sqliteStore, ensureArray, getStoreFormulaType, formulaTypeFor, getFormulaSlotLabels);
+  return new Function('sqliteStore', 'ensureArray', 'getSelectedFormula', 'getStoreFormulaType', 'formulaTypeFor', 'getFormulaSlotLabels', body)(sqliteStore, ensureArray, getSelectedFormula, getStoreFormulaType, formulaTypeFor, getFormulaSlotLabels);
 }
 const data = {
   defaults: { standard: [{ id: 'a', name: 'Tobacco', quantity: 10, cost: 100 }, { id: 'b', name: 'Lime', quantity: 2, cost: 50 }], asaan: [] },
@@ -61,5 +62,18 @@ describe('production tab cost price', () => {
     assert.ok(shown.includes("net > 0 ? salePrice - costData.dynamicCostPerKg : 0"));
     const core = readFileSync(new URL('../modules/utilities-core.js', import.meta.url), 'utf8');
     assert.ok(core.includes("await window.calculateDynamicProductionCost();\ncalculateNetCash();"));
+  });
+});
+
+describe('production cost when the formula lives only in the formula store', () => {
+  const selected = { type: 'standard', name: 'STANDARD', additionalCost: 750, ingredients: [{ id: 'g', name: 'Guar', quantity: 0.22, cost: 680 }, { id: 't', name: 'Tobacco', quantity: 0.48, cost: 416.67 }] };
+  const { calculateDynamicCost } = build({ defaults: { standard: [], asaan: [] }, costs: { standard: 0, asaan: 0 }, inventory: [] }, selected);
+  it('is not zero when the feed keys are empty', async () => {
+    const c = await calculateDynamicCost('zubair', 4, 50.5);
+    const unit = 0.22 * 680 + 0.48 * 416.67 + 750;
+    assert.ok(c.costPerUnit > 0);
+    assert.equal(c.costPerUnit, unit);
+    assert.equal(c.dynamicCostPerKg, (unit * 4) / 50.5);
+    assert.equal(c.formulaName, 'STANDARD');
   });
 });
