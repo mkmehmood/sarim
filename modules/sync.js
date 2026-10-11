@@ -1718,7 +1718,6 @@ export async function subscribeToRealtime() {
             _set_currentRepProfile(cloudSettings.repProfile);
             await sqliteStore.setBatch([
               ['repProfile', currentRepProfile],
-              ['profile', currentRepProfile],
               ['repProfile_timestamp', ct],
             ]);
           }
@@ -2932,7 +2931,6 @@ export async function _syncSettings(cloudData) {
         _set_currentRepProfile(sd.repProfile);
         await sqliteStore.setBatch([
           ['repProfile', currentRepProfile],
-          ['profile', currentRepProfile],
           ['repProfile_timestamp', ct || Date.now()],
         ]);
       }
@@ -3530,7 +3528,6 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       ['settings', defaultSettings],
       ['appMode', appMode],
       ['repProfile', currentRepProfile],
-      ['profile', currentRepProfile],
     ]);
     const statsCols = ['production','sales','rep','clients','calculator',
       'transactions','entities','inventory','factory','returns','expenses','customers'];

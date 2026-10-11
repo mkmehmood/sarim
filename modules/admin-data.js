@@ -127,7 +127,7 @@ try {
   ];
   const CONFIG_DOCS = [
     { path:'settings/config',              doc:settingsDoc,          desc:'App settings, FY counter, repProfile, reps (init)',
-      sqlite:[['settings','settings'],['profile','repProfile'],['reps','reps (init)']],
+      sqlite:[['settings','settings'],['repProfile','repProfile'],['reps','reps (init)']],
       fsFields:['settings','settings_timestamp','repProfile','repProfile_timestamp','reps','reps_timestamp','synced'],
       listener:'_handleSettingsSnapshot' },
     { path:'settings/team',                doc:teamDoc,              desc:'Sales reps list & user roles',

@@ -1,4 +1,3 @@
-import { legacyLocalNames, modernizeLegacyValue } from './local-aliases.js';
 import { APP_CONFIG } from './constants.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSettings, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
@@ -1382,18 +1381,7 @@ export const sqliteStore = (() => {
     async get(key, defaultValue = null) {
       await this.init();
       const row = _rawGet(_fullKey(key));
-      if (!row) {
-        const MISSING = {};
-        for (const legacyKey of legacyLocalNames(key)) {
-          const legacy = await this.get(legacyKey, MISSING);
-          if (legacy !== MISSING) {
-            const value = modernizeLegacyValue(key, legacy);
-            try { await this.set(key, value); await this.remove(legacyKey); } catch (_) {}
-            return value;
-          }
-        }
-        return defaultValue;
-      }
+      if (!row) return defaultValue;
       try {
         if (row.encrypted) {
           const val = await _decrypt(key, row.value);
@@ -1475,14 +1463,9 @@ export const sqliteStore = (() => {
       const results = new Map();
       if (keys.length === 0) return results;
       await SQLiteCrypto.restoreSessionKeyFromStorage();
-      const MISSING = {};
       for (const key of keys) {
         const row = _rawGet(_fullKey(key));
-        if (!row) {
-          const legacy = legacyLocalNames(key).length ? await this.get(key, MISSING) : MISSING;
-          results.set(key, legacy === MISSING ? null : legacy);
-          continue;
-        }
+        if (!row) { results.set(key, null); continue; }
         try {
           if (row.encrypted) {
             const val = await _decrypt(key, row.value);
