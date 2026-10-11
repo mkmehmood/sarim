@@ -85,6 +85,8 @@ export const COLLECTION_RENAMES = Object.fromEntries([...DATASETS, ...SUPPORT_CO
 export const DEFAULT_STORE_MAP = { STORE_A: 'zubair', STORE_B: 'mahmood', STORE_C: 'asaan' };
 export const STORE_KEY_FIELDS = ['store', 'supplyStore', 'returnStore', 'transferPeerStore'];
 const SLOT_KEYS = ['standard', 'asaan'];
+// Values of a store field that are not stores: the app writes 'N/A' as supplyStore on opening-balance (old debt) entries.
+const NOT_A_STORE = ['N/A'];
 export const DATA_KEY_VERSION = 5;
 // every historical backup field name -> current name
 export const BACKUP_FIELD_RENAMES = {
@@ -190,7 +192,7 @@ export function fixStoreFields(node, resolve, acc = { fixed: 0, unknown: [] }, d
   for (const k of Object.keys(node)) {
     const v = node[k];
     if (typeof v === 'string') {
-      if (!STORE_KEY_FIELDS.includes(k) || v === '' || SLOT_KEYS.includes(v)) continue;
+      if (!STORE_KEY_FIELDS.includes(k) || v === '' || SLOT_KEYS.includes(v) || NOT_A_STORE.includes(v)) continue;
       const r = resolve(v);
       if (r && r !== v) { node[k] = r; acc.fixed++; }
       else if (!r) acc.unknown.push(v);
@@ -312,6 +314,12 @@ const ms = (d) => {
   if (t.__timestamp) return Date.parse(t.__timestamp) || 0;
   return Date.parse(t) || 0;
 };
+// The new copy must carry every field of the old one (updatedAt is re-stamped on purpose, store codes are rewritten on
+// purpose). Used before an old collection is deleted: ids alone are not enough, an empty document must not pass.
+export function lacksFields(oldData, newData, { compareValues = true } = {}) {
+  const o = oldData || {}; const n = newData || {};
+  return Object.keys(o).filter(k => k !== 'updatedAt' && (!(k in n) || (compareValues && JSON.stringify(o[k]) !== JSON.stringify(n[k]))));
+}
 // Fields of an old support document that the new one is missing or has older (<field>_timestamp).
 export function mergeSupportFields(oldData, curData) {
   const patch = {}; const o = oldData || {}; const c = curData || {};
@@ -358,6 +366,7 @@ export async function migrateCloud(client, opts = {}) {
   const copiedAll = [];
   for (const [oldCol, newCol] of DATASETS) {
     const r = report.datasets[newCol] = { from: oldCol, found: 0, written: 0, storeFixes: 0, skippedNewer: 0, upToDate: 0 };
+    const newerIds = new Set();
     const oldDocs = await client.list(oldCol);
     r.found = oldDocs.length;
     if (!oldDocs.length) continue;
@@ -369,11 +378,11 @@ export async function migrateCloud(client, opts = {}) {
       const fx = fixStoreFields(rec, resolve);
       r.storeFixes += fx.fixed; noteUnknown(newCol, fx.unknown);
       if (!renamed && fx.fixed === 0) { r.upToDate++; continue; }
-      if (renamed && existing.has(d.id) && ms(existing.get(d.id)) >= ms(rec)) { r.skippedNewer++; continue; }
+      if (renamed && existing.has(d.id) && ms(existing.get(d.id)) >= ms(rec)) { r.skippedNewer++; newerIds.add(d.id); continue; }
       ops.push({ op: 'set', path: `${newCol}/${d.id}`, data: rec, serverTime: rec.isMerged ? [] : ['updatedAt'] });
       r.written++;
     }
-    if (renamed) copiedAll.push([oldCol, newCol, oldDocs]);
+    if (renamed) copiedAll.push([oldCol, newCol, oldDocs, newerIds]);
     log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer, ${r.storeFixes} store field(s) fixed`);
   }
   // 2b. support documents and collections (version 4 names). Never overwrites a newer copy.
@@ -406,12 +415,13 @@ export async function migrateCloud(client, opts = {}) {
     r.found = oldDocs.length;
     if (!oldDocs.length) continue;
     const existing = new Map((await client.list(newCol)).map(d => [d.id, d.data]));
+    const newerIds = new Set();
     for (const d of oldDocs) {
-      if (existing.has(d.id) && ms(existing.get(d.id)) >= ms(d.data)) { r.skippedNewer++; continue; }
+      if (existing.has(d.id) && ms(existing.get(d.id)) >= ms(d.data)) { r.skippedNewer++; newerIds.add(d.id); continue; }
       ops.push({ op: 'set', path: `${newCol}/${d.id}`, data: d.data, serverTime: newCol === 'photos' ? ['updatedAt'] : [] });
       r.written++;
     }
-    supportCopied.push({ doc: false, oldCol, newCol, oldDocs });
+    supportCopied.push({ doc: false, oldCol, newCol, oldDocs, newerIds });
     log(`${oldCol} -> ${newCol}: ${r.found} found, ${r.written} to write, ${r.skippedNewer} already newer`);
   }
   // 3. settings/config
@@ -450,15 +460,30 @@ export async function migrateCloud(client, opts = {}) {
     if (changed) { ops.push({ op: 'set', path: `deletions/${d.id}`, data: rec }); report.deletions++; }
   }
   if (report.deletions) log(`deletions: ${report.deletions} recycle-bin entr${report.deletions === 1 ? 'y' : 'ies'} updated`);
-  report.writes = ops.length;
+  report.writes = ops.length; report.verified = [];
   // 5. write
   if (apply && ops.length) { await client.commit(ops); log(`committed ${ops.length} write(s)`); }
+  // 5b. read everything back: every old document must now exist, with all its fields, under the new name
+  if (apply) {
+    const checks = [...copiedAll.map(([oldCol, newCol, oldDocs, newerIds]) => ({ oldCol, newCol, oldDocs, newerIds, values: false })),
+      ...supportCopied.filter(c => !c.doc).map(c => ({ oldCol: c.oldCol, newCol: c.newCol, oldDocs: c.oldDocs, newerIds: c.newerIds, values: true }))];
+    for (const c of checks) {
+      const have = new Map((await client.list(c.newCol)).map(d => [d.id, d.data]));
+      const olds = c.oldDocs.filter(d => d.id !== '_placeholder_');
+      const missing = olds.filter(d => !have.has(d.id));
+      const incomplete = olds.filter(d => have.has(d.id) && !c.newerIds.has(d.id) && lacksFields(d.data, have.get(d.id), { compareValues: c.values }).length);
+      c.bad = new Set([...missing, ...incomplete].map(d => d.id));
+      report.verified.push({ from: c.oldCol, to: c.newCol, expected: olds.length, present: olds.length - missing.length, incomplete: incomplete.length, inNewCollection: have.size });
+      log(`verified ${c.newCol}: ${olds.length - missing.length} of ${olds.length} documents present${incomplete.length ? `, ${incomplete.length} INCOMPLETE` : ''} (${have.size} now in ${c.newCol})`);
+      if (missing.length || incomplete.length) report.warnings.push(`${c.oldCol} -> ${c.newCol}: ${missing.length} missing, ${incomplete.length} incomplete after the copy`);
+    }
+    report.checks = checks;
+  }
   // 6. optionally remove the old collections, only after verifying every doc exists under the new name
   if (apply && opts.deleteOld) {
     for (const [oldCol, newCol, oldDocs] of copiedAll) {
-      const have = new Set((await client.list(newCol)).map(d => d.id));
-      const missing = oldDocs.filter(d => d.id !== '_placeholder_' && !have.has(d.id));
-      if (missing.length) { report.warnings.push(`${oldCol}: ${missing.length} document(s) are not in ${newCol}; old collection kept`); continue; }
+      const chk = (report.checks || []).find(c => c.oldCol === oldCol && c.newCol === newCol);
+      if (chk && chk.bad.size) { report.warnings.push(`${oldCol}: ${chk.bad.size} document(s) are missing or incomplete in ${newCol}; old collection kept`); continue; }
       await client.commit(oldDocs.map(d => ({ op: 'delete', path: `${oldCol}/${d.id}` })));
       report.deleted += oldDocs.length; log(`deleted old collection ${oldCol} (${oldDocs.length} docs)`);
     }
@@ -469,14 +494,14 @@ export async function migrateCloud(client, opts = {}) {
         if (!(await client.get(c.newPath))) { report.warnings.push(`${c.oldPath}: not copied to ${c.newPath}; old document kept`); continue; }
         await client.commit([{ op: 'delete', path: c.oldPath }]); report.supportDeleted++; log(`deleted old document ${c.oldPath}`);
       } else {
-        const have = new Set((await client.list(c.newCol)).map(d => d.id));
-        const missing = c.oldDocs.filter(d => !have.has(d.id));
-        if (missing.length) { report.warnings.push(`${c.oldCol}: ${missing.length} document(s) are not in ${c.newCol}; old collection kept`); continue; }
+        const chk = (report.checks || []).find(x => x.oldCol === c.oldCol && x.newCol === c.newCol);
+        if (chk && chk.bad.size) { report.warnings.push(`${c.oldCol}: ${chk.bad.size} document(s) are missing or incomplete in ${c.newCol}; old collection kept`); continue; }
         await client.commit(c.oldDocs.map(d => ({ op: 'delete', path: `${c.oldCol}/${d.id}` })));
         report.supportDeleted += c.oldDocs.length; log(`deleted old collection ${c.oldCol} (${c.oldDocs.length} docs)`);
       }
     }
   }
+  delete report.checks;
   return report;
 }
 
@@ -574,6 +599,7 @@ function printReport(r) {
   for (const [n, d] of Object.entries(r.datasets)) if (d.found) console.log(`${d.from.padEnd(20)} -> ${n.padEnd(13)} found ${String(d.found).padStart(5)}  write ${String(d.written).padStart(5)}  store fixes ${d.storeFixes}`);
   for (const x of r.support) if (x.found) console.log(`${x.from.padEnd(30)} -> ${x.to.padEnd(30)} found ${String(x.found).padStart(5)}  write ${String(x.written).padStart(5)}`);
   console.log(`settings doc: ${r.settings ? 'updated' : 'ok'};  recycle-bin entries updated: ${r.deletions}`);
+  if (r.verified && r.verified.length) { console.log('\nread back from Firestore after the copy:'); for (const v of r.verified) console.log(`  ${v.to.padEnd(14)} ${v.present}/${v.expected} documents present${v.incomplete ? `, ${v.incomplete} INCOMPLETE` : ''}  (${v.inNewCollection} in the new collection)`); }
   const unk = Object.entries(r.unknown);
   if (unk.length) { console.log('\nMISMATCH - records pointing at a store that does not exist (left untouched, please review):'); for (const [k, n] of unk) console.log(`  ${k}  x${n}`); }
   for (const w of r.warnings) console.log('WARNING: ' + w);

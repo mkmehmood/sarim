@@ -142,6 +142,36 @@ describe('migration loses no data', () => {
     assert.deepEqual(f.formulas, [{ id: 'newer' }]);
     assert.deepEqual([f.defaults.standard[0].id, f.costs.standard, f.slots.standard], ['f1', 3, 'f1']);
   });
+  it("'N/A' (opening-debt entries have no supply store) is not reported as a missing store and is left as it is", async () => {
+    const seed = oldCloud();
+    for (let i = 1; i <= 3; i++) seed[`sales/old-debt-${i}`] = { id: `old-debt-${i}`, supplyStore: 'N/A', transactionType: 'OLD_DEBT', store: 'STORE_A', amount: i };
+    const c = client(seed); const r = await migrateCloud(c, { apply: true });
+    assert.deepEqual(r.unknown, {});
+    assert.equal(c.docs.get('sales/old-debt-2').supplyStore, 'N/A');
+    assert.equal(c.docs.get('sales/old-debt-2').store, 'zubair');
+  });
+  it('after a run every photo is read back from the new collection and reported', async () => {
+    const seed = oldCloud(); const c = client(seed);
+    const r = await migrateCloud(c, { apply: true, deleteOld: true });
+    const ph = r.verified.find(v => v.to === 'photos');
+    assert.deepEqual([ph.expected, ph.present, ph.incomplete], [5, 5, 0]);
+    assert.equal(ph.inNewCollection, 5);
+    for (let i = 1; i <= 5; i++) assert.equal(c.docs.get(`photos/p${i}`).data, 'AAA' + i);
+    assert.equal([...c.docs.keys()].filter(k => k.startsWith('personPhotos/')).length, 0);
+  });
+  it('--delete-old keeps the old photos when the new copy is empty or incomplete', async () => {
+    const seed = oldCloud(); const c = client(seed);
+    const real = c.commit;
+    c.commit = (ops) => real(ops.map(o => (o.op === 'set' && o.path.startsWith('photos/')) ? { ...o, data: { ...o.data, data: undefined } } : o));
+    const r = await migrateCloud(c, { apply: true, deleteOld: true });
+    assert.ok(r.warnings.some(w => /personPhotos -> photos: 0 missing, 5 incomplete/.test(w)), r.warnings.join(' | '));
+    for (let i = 1; i <= 5; i++) assert.equal(c.docs.get(`personPhotos/p${i}`).data, 'AAA' + i, 'old photo must survive');
+    const m = client(seed); const real2 = m.commit;
+    m.commit = (ops) => real2(ops.filter(o => !(o.path.startsWith('photos/'))));
+    const r2 = await migrateCloud(m, { apply: true, deleteOld: true });
+    assert.ok(r2.warnings.some(w => /personPhotos -> photos: 5 missing/.test(w)));
+    for (let i = 1; i <= 5; i++) assert.ok(m.docs.has(`personPhotos/p${i}`), 'old photo must survive when nothing was copied');
+  });
   it('an old backup converts with every record and setting intact', () => {
     const b = { dataKeyVersion: 3, mfg_pro_pkr: [rec('p', 1), rec('p', 2)], customer_sales: [rec('s', 1)], noman_history: [rec('c', 1)], rep_sales: [rec('r', 1)], rep_customers: [rec('rc', 1)], sales_customers: [rec('sc', 1)],
       payment_transactions: [rec('t', 1)], payment_entities: [rec('e', 1)], factory_inventory_data: [rec('i', 1)], factory_production_history: [rec('f', 1)], expenses: [rec('x', 1)], stock_returns: [rec('sr', 1)],

@@ -80,6 +80,7 @@ function summary(r) {
   for (const [n, d] of Object.entries(r.datasets)) if (d.found) log(`${d.from} -> ${n}: found ${d.found}, write ${d.written}, store fixes ${d.storeFixes}`);
   (r.support || []).forEach(x => { if (x.found) log(`${x.from} -> ${x.to}: found ${x.found}, write ${x.written}`); });
   log(`settings doc: ${r.settings ? 'updated' : 'ok'};  recycle-bin entries updated: ${r.deletions}`);
+  if (r.verified && r.verified.length) { log('\nread back from Firestore after the copy:'); r.verified.forEach(v => log(`  ${v.to}: ${v.present}/${v.expected} documents present${v.incomplete ? `, ${v.incomplete} INCOMPLETE` : ''} (${v.inNewCollection} in the new collection)`)); }
   const unk = Object.entries(r.unknown);
   if (unk.length) { log('\nMISMATCH - records pointing at a store that does not exist (left untouched, please review):'); unk.forEach(([k, n]) => log(`  ${k}  x${n}`)); }
   r.warnings.forEach(w => log('WARNING: ' + w));
