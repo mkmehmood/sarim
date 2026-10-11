@@ -1,4 +1,4 @@
-import { legacyLocalNames } from './local-aliases.js';
+import { legacyLocalNames, modernizeLegacyValue } from './local-aliases.js';
 import { APP_CONFIG } from './constants.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSettings, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
@@ -1369,8 +1369,9 @@ export const sqliteStore = (() => {
         for (const legacyKey of legacyLocalNames(key)) {
           const legacy = await this.get(legacyKey, MISSING);
           if (legacy !== MISSING) {
-            try { await this.set(key, legacy); await this.remove(legacyKey); } catch (_) {}
-            return legacy;
+            const value = modernizeLegacyValue(key, legacy);
+            try { await this.set(key, value); await this.remove(legacyKey); } catch (_) {}
+            return value;
           }
         }
         return defaultValue;

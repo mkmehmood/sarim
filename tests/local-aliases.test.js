@@ -3,7 +3,7 @@
 // migrated collections with current store keys.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { legacyLocalNames, modernizeQueuedOperation, modernizeQueue, LEGACY_LOCAL_KEYS } from '../modules/local-aliases.js';
+import { legacyLocalNames, modernizeQueuedOperation, modernizeQueue, modernizeLegacyValue, LEGACY_LOCAL_KEYS } from '../modules/local-aliases.js';
 
 // key written by the released app (main) -> key the app uses now
 const RELEASED_TO_NOW = {
@@ -17,7 +17,7 @@ const RELEASED_TO_NOW = {
   factory_unit_tracking: 'tracking', factory_unit_tracking_timestamp: 'tracking_timestamp',
   factory_formula_store: 'formulas', factory_formula_store_timestamp: 'formulas_timestamp',
   factory_formula_slots: 'slots', factory_formula_slots_timestamp: 'slots_timestamp',
-  deleted_records: 'deleted', erased_deletion_ids: 'erased',
+  deleted_records: 'deleted', deletion_records: 'deletions', erased_deletion_ids: 'erased',
   person_photos: 'photos', person_photos_timestamp: 'photos_timestamp',
   person_photos_timestamps: 'photostamps', person_photos_dirty_keys: 'photodirty',
   sales_reps_list: 'reps', sales_reps_list_timestamp: 'reps_timestamp',
@@ -85,5 +85,22 @@ describe('offline queue written by the released app', () => {
     const out = modernizeQueuedOperation(item({ action: 'set', collection: 'sales', docId: 's', data: { store: 'STORE_D' } }));
     assert.equal(out.operation.data.store, 'STORE_D');
     assert.equal(out.operation.collection, 'sales');
+  });
+});
+
+describe('recycle-bin entries read through the old name', () => {
+  it('keep every field, with store codes and collection names brought to the current names', () => {
+    const old = [{ id: 'd1', collection: 'rep_sales', recordType: 'calculator_history', deleted_by: 'user', record: { store: 'STORE_B', supplyStore: 'N/A', keep: 1, nested: [{ returnStore: 'STORE_C' }] } }, { id: 'd2', collection: 'sales', record: { store: 'zubair' } }];
+    const snapshot = JSON.stringify(old);
+    const out = modernizeLegacyValue('deletions', old);
+    assert.equal(JSON.stringify(old), snapshot, 'input not mutated');
+    assert.deepEqual([out[0].collection, out[0].recordType, out[0].deleted_by], ['rep', 'calculator', 'user']);
+    assert.deepEqual([out[0].record.store, out[0].record.supplyStore, out[0].record.keep, out[0].record.nested[0].returnStore], ['mahmood', 'N/A', 1, 'asaan']);
+    assert.deepEqual(out[1], old[1]);
+  });
+  it('leaves every other key untouched', () => {
+    const v = [{ collection: 'rep_sales', store: 'STORE_A' }];
+    assert.equal(modernizeLegacyValue('deleted', v), v);
+    assert.equal(modernizeLegacyValue('deletions', 'not a list'), 'not a list');
   });
 });

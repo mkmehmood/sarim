@@ -15,6 +15,8 @@ export const LEGACY_LOCAL_KEYS = Object.freeze({
   slots: 'factory_formula_slots',
   // recycle-bin ids: "deleted_records" is what the released app stored; "deletion_ids" is an intermediate name
   deleted: ['deleted_records', 'deletion_ids'], erased: 'erased_deletion_ids',
+  // recycle-bin entries (each holds a copy of the deleted record): converted by modernizeLegacyValue() on the way in
+  deletions: 'deletion_records',
   // person photos: the released app used the person_photos* names; photos_* are intermediate names
   photos: 'person_photos', photos_timestamp: 'person_photos_timestamp',
   photostamps: ['person_photos_timestamps', 'photos_timestamps'], photodirty: ['person_photos_dirty_keys', 'photos_dirty_keys'],
@@ -31,6 +33,19 @@ export function legacyLocalNames(key) {
   const m = /^(.+)_timestamp$/.exec(String(key));
   if (m && LEGACY_LOCAL_KEYS[m[1]]) return [].concat(LEGACY_LOCAL_KEYS[m[1]]).map(n => `${n}_timestamp`);
   return [];
+}
+
+// A value read through an old local name may itself hold old names (the recycle bin keeps whole records):
+// bring it to the current names before it is stored under the new key. Other keys pass through unchanged.
+export function modernizeLegacyValue(key, value) {
+  if (key !== 'deletions' || !Array.isArray(value)) return value;
+  return value.map(t => {
+    if (!t || typeof t !== 'object') return t;
+    const c = JSON.parse(JSON.stringify(t));
+    fixStoreCodes(c);
+    for (const f of ['collection', 'recordType']) if (typeof c[f] === 'string' && LEGACY_COLLECTIONS[c[f]]) c[f] = LEGACY_COLLECTIONS[c[f]];
+    return c;
+  });
 }
 
 // ---- offline queue: operations queued by an older app version name old collections and old store codes ----
