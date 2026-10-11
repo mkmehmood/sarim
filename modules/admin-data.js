@@ -5,7 +5,7 @@ import { DeltaSync, UUIDSyncRegistry, trackFirestoreWrite, verifyAccountPassword
 import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, UNSUPPORTED_FILE_MESSAGE, RECORD_STORES, DATASET_BY_KEY } from './link-graph.js';
+import { collectAuxBackupFields, isSupportedBackup, RECORD_STORES, DATASET_BY_KEY } from './link-graph.js';
 import { getDefaultStoreKey, storeLabelFor } from './store-keys.js';
 
 export async function updateDeltaSyncStatsDisplay() {
@@ -1243,7 +1243,6 @@ export async function createMergeBackup() {
   const clients = ensureArray(await sqliteStore.get('clients'));
   const customers = ensureArray(await sqliteStore.get('customers'));
   const backup = {
-    dataKeyVersion: DATA_KEY_VERSION,
     production: [...production],
     sales: [...sales],
     calculator: [...calculator],
@@ -1272,7 +1271,7 @@ export async function restoreFromBackup(backupTimestamp) {
     if (!backup) {
       throw new Error('Backup not found: ' + backupTimestamp);
     }
-    if (!isCurrentBackup(backup)) throw new Error(UNSUPPORTED_FILE_MESSAGE);
+    if (!isSupportedBackup(backup)) throw new Error('Unsupported file');
     await sqliteStore.set('production', backup.production);
     await sqliteStore.set('sales', backup.sales);
     await sqliteStore.set('calculator', backup.calculator);
@@ -1433,7 +1432,6 @@ try {
   updateCloseYearProgress('Preparing encrypted local backup...', 10);
   const _settingsSnapshot = await sqliteStore.get('settings', defaultSettings);
   const backupData = {
-    dataKeyVersion: DATA_KEY_VERSION,
     production: production,
     calculator: await sqliteStore.get('calculator', []),
     sales: await sqliteStore.get('sales', []),
@@ -1454,7 +1452,7 @@ try {
     settings: _settingsSnapshot,
     deleted: Array.from(deletedRecordIds),
     ...(await collectAuxBackupFields(sqliteStore)),
-    _meta: { dataKeyVersion: DATA_KEY_VERSION,
+    _meta: {
       encryptedFor:        currentUser.email,
       createdAt:           Date.now(),
       version:             2,

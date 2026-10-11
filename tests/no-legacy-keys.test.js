@@ -23,7 +23,7 @@ describe('app runs on current keys only', () => {
     it(`${f} has no old key names or legacy read-through`, () => {
       const src = readFileSync(new URL(f, root), 'utf8');
       for (const n of OLD_NAMES) assert.ok(!new RegExp(`['"\`]${n}['"\`]`).test(src), `${f} still references old key ${n}`);
-      assert.ok(!/legacyLocalNames|modernizeLegacy|modernizeQueue|LEGACY_LOCAL_KEYS/.test(src), `${f} still has a legacy fallback`);
+      assert.ok(!/legacyLocalNames|modernizeLegacy|modernizeQueue|LEGACY_LOCAL_KEYS|data-keys|dataKeyVersion|DATA_KEY_VERSION|isCurrentBackup/.test(src), `${f} still has a legacy fallback`);
     });
   }
 });

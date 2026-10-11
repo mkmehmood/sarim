@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   RECORD_STORES, AUX_STATE,
-  collectAuxBackupFields, applyAuxBackupFields, isCurrentBackup, RECORD_KEYS,
-  mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories, DATA_KEY_VERSION,
+  collectAuxBackupFields, applyAuxBackupFields, isSupportedBackup, RECORD_KEYS,
+  mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories,
 } from '../modules/link-graph.js';
 const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 const sync = read('sync.js');
@@ -127,18 +127,17 @@ describe('one single-word name per dataset', () => {
     assert.ok(tag.includes('onchange="refreshEntityOverlay()"'), 'select must call refreshEntityOverlay');
     assert.ok(read('utilities-core.js').includes('window.refreshEntityOverlay = refreshEntityOverlay;'), 'handler must be on window');
   });
-  it('every backup writer stamps dataKeyVersion', () => {
-    assert.ok(fnBody(sales, 'unifiedBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
-    assert.ok(fnBody(payments, 'triggerLocalBackup').includes('dataKeyVersion: DATA_KEY_VERSION'));
-    assert.ok(admin.slice(admin.indexOf('const backupData = {')).slice(0, 400).includes('dataKeyVersion: DATA_KEY_VERSION'));
-  });
-  it('a backup written with older key names is refused with a plain unsupported-file error', () => {
-    for (const src of [sales, payments, admin]) assert.ok(src.includes('UNSUPPORTED_FILE_MESSAGE'), 'restore paths must show the unsupported-file error');
-    assert.equal(isCurrentBackup({ mfg: [], sales: [] }), false);
-    assert.equal(isCurrentBackup({ dataKeyVersion: 2, production: [] }), false);
-    assert.equal(isCurrentBackup({ dataKeyVersion: DATA_KEY_VERSION, production: [] }), true);
-    assert.equal(isCurrentBackup({ _meta: { dataKeyVersion: DATA_KEY_VERSION } }), true);
-    for (const src of [sales, payments, admin]) assert.ok(src.includes('isCurrentBackup('), 'restore paths must check the version');
+  it('a backup with unknown or old key names is refused with a plain unsupported-file error', () => {
+    assert.equal(isSupportedBackup({ mfg: [], customer_sales: [] }), false);
+    assert.equal(isSupportedBackup({ production: 'x' }), false);
+    assert.equal(isSupportedBackup(null), false);
+    assert.equal(isSupportedBackup([]), false);
+    assert.equal(isSupportedBackup({ production: [] }), true);
+    assert.equal(isSupportedBackup({ sales: [], production: [{ id: 1 }] }), true);
+    for (const src of [sales, payments, admin]) {
+      assert.ok(src.includes('isSupportedBackup('), 'restore paths must check the file');
+      assert.ok(src.includes('Unsupported file'), 'restore paths must show the unsupported-file error');
+    }
   });
 });
 describe('aux state round trip: backup -> restore into a fresh device', () => {

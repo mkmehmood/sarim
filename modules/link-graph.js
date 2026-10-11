@@ -759,7 +759,6 @@ export function planExpenseNameRename(entity, oldName, newName, expenses) {
   return (Array.isArray(expenses) ? expenses : []).filter(e => e && !e.deletedAt && e.name && String(e.name).trim().toLowerCase() === o).map(e => e.id);
 }
 
-export const DATA_KEY_VERSION = 5;
 const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, backup: key, jsVar: key, label, tab, desc });
 
 export const RECORD_STORES = Object.freeze([
@@ -804,12 +803,9 @@ export const AUX_STATE = Object.freeze([
   },
 ]);
 
-export function isCurrentBackup(data) {
-  return !!data && typeof data === 'object'
-    && Number(data.dataKeyVersion || (data._meta && data._meta.dataKeyVersion) || 0) >= DATA_KEY_VERSION;
+export function isSupportedBackup(data) {
+  return !!data && typeof data === 'object' && !Array.isArray(data) && RECORD_KEYS.some(k => Array.isArray(data[k]));
 }
-
-export const UNSUPPORTED_FILE_MESSAGE = 'Unsupported file';
 
 export function mergeStringLists(local, incoming) {
   const out = [];

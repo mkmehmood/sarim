@@ -12,7 +12,7 @@ import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalance
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
-import { DATA_KEY_VERSION, isCurrentBackup, UNSUPPORTED_FILE_MESSAGE, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
+import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formulaTypeFor, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -3884,7 +3884,6 @@ return;
 }
 }
 const data = {
-dataKeyVersion: DATA_KEY_VERSION,
 production: production,
 calculator: await sqliteStore.get('calculator', []),
 sales: await sqliteStore.get('sales', []),
@@ -3905,7 +3904,7 @@ settings: await sqliteStore.get('settings', defaultSettings),
 stores: await sqliteStore.get('stores') || [],
 deleted: Array.from(deletedRecordIds),
 ...(await collectAuxBackupFields(sqliteStore)),
-_meta: { dataKeyVersion: DATA_KEY_VERSION, encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 }
+_meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 }
 };
 const encEmail = currentUser.email;
 const encPassword = await promptVerifiedBackupPassword({ inputId: 'enc_bkp_pwd' });
@@ -3998,7 +3997,7 @@ window.notifyBlocking('Decryption failed: ' + decErr.message, 'error');
 return;
 }
 showToast('Decryption successful.', 'success', 2000);
-if (data && !isCurrentBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', UNSUPPORTED_FILE_MESSAGE); return; }
+if (data && !isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
 if (data && data._meta && data._meta.isYearCloseBackup) {
 const snap = data._meta.fyCloseSnapshot || {};
 const closedDate = snap.lastYearClosedDate ? new Date(snap.lastYearClosedDate).toLocaleDateString() : 'unknown date';
@@ -4062,7 +4061,7 @@ window.notifyBlocking('Restore error: ' + err.message, 'error');
 try {
 const text = await _readFileAsText(file);
 const data = JSON.parse(text);
-if (!isCurrentBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', UNSUPPORTED_FILE_MESSAGE); return; }
+if (!isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
 if (data.clients || data.customers || data.sales || data.rep || data.production) {
 const _rfbMsg = `Restore data from this backup file?\n\nHow it works:\n \u2022 Records are merged, not overwritten \u2014 your current data stays\n \u2022 Duplicates are automatically removed\n \u2022 Only new (non-duplicate) records are uploaded to cloud\n \u2022 Other devices are not affected until their next sync\n\nIf the backup contains older versions of records you have edited since, the newer version is always kept.`;
 if (await showGlassConfirm(_rfbMsg, { title: "Restore From Backup File", confirmText: "Restore & Merge", cancelText: "Cancel" })) {
@@ -4093,7 +4092,7 @@ const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 showToast('Analyzing backup file...', 'info', 5000);
-if (!isCurrentBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', UNSUPPORTED_FILE_MESSAGE); return; }
+if (!isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
 const getTimestampValue = (record) => {
 if (!record) return 0;
 let ts = record.updatedAt || record.timestamp || record.createdAt || 0;
@@ -4482,7 +4481,7 @@ let factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 let factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 let factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-  if (!isCurrentBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', UNSUPPORTED_FILE_MESSAGE); return; }
+  if (!isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
   showToast('↩ Reversing financial year close — replacing data...', 'info', 5000);
   const _backupIds = new Set([
     ...ensureArray(data.production),

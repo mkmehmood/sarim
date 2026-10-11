@@ -11,7 +11,7 @@ import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculate
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
-import { collectAuxBackupFields, DATA_KEY_VERSION, isCurrentBackup, UNSUPPORTED_FILE_MESSAGE, RECORD_STORES } from './link-graph.js';
+import { collectAuxBackupFields, isSupportedBackup, RECORD_STORES } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formulaTypeFor } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
@@ -5284,7 +5284,6 @@ showAuthOverlay();
 return;
 }
 const data = {
-dataKeyVersion: DATA_KEY_VERSION,
 production: production,
 calculator: await sqliteStore.get('calculator', []),
 sales: await sqliteStore.get('sales', []),
@@ -5305,7 +5304,7 @@ returns: returns,
 settings: await sqliteStore.get('settings', defaultSettings),
 deleted: Array.from(deletedRecordIds),
 ...(await collectAuxBackupFields(sqliteStore)),
-_meta: { dataKeyVersion: DATA_KEY_VERSION, encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 },
+_meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 },
 backupMetadata: {
 version: '3.0',
 timestamp: Date.now(),
@@ -5362,7 +5361,7 @@ showToast('Reading backup file...', 'info');
 try {
 const text = await _readFileAsText(file);
 const data = JSON.parse(text);
-if (!isCurrentBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', UNSUPPORTED_FILE_MESSAGE); return; }
+if (!isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
 if (!data.production && !data.sales && !data.rep && !data.clients) {
 window.notifyBlocking('This file does not look like a valid backup.', 'error');
 return;
