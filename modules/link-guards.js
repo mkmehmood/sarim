@@ -8,6 +8,7 @@ import {
   planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
+  getTransferPairRestoreIssue,
 } from './link-graph.js';
 
 async function _calcHistory() {
@@ -225,6 +226,12 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return null;
   }
   if (collectionName === 'transactions') {
+    if (snapshot.isTransfer === true && snapshot.transferPairId) {
+      const _liveTxs = ensureArray(await sqliteStore.get('transactions'));
+      const _tombs = ensureArray(await sqliteStore.get('deletions'));
+      const _pairIssue = getTransferPairRestoreIssue(snapshot, _liveTxs, _tombs);
+      if (_pairIssue) return _pairIssue;
+    }
     if (!(ctx && ctx.entityInSet && ctx.entityInSet(snapshot.entityId))) {
       const idMap = await _loadIdMap();
       const ents = ensureArray(await sqliteStore.get('entities'));

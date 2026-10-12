@@ -2452,6 +2452,7 @@ String(t.entityId) === String(entity.id) &&
 parseFloat(t.supplierCreditAmount || 0) > 0
 )
 .sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
+let supplierCreditApplied = false;
 for (const ct of openCredits) {
 if (remaining <= 0) break;
 const open = parseFloat(ct.supplierCreditAmount);
@@ -2464,9 +2465,10 @@ remaining = 0;
 }
 ct.updatedAt = getTimestamp();
 ensureRecordIntegrity(ct, true);
+supplierCreditApplied = true;
 await unifiedSave('transactions', transactions, ct);
 }
-if (!transaction.isPayable) {
+if (supplierCreditApplied && !transaction.isPayable) {
 transaction.isPayable = true;
 }
 }

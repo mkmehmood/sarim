@@ -560,6 +560,11 @@ window.notifyBlocking('Invalid transaction ID', 'error');
 return;
 }
 const _dpTx = transactions.find(t => t.id === id);
+if (!_dpTx) {
+if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
+if (typeof calculateNetCash === 'function') calculateNetCash();
+return;
+}
 if (_dpTx && _dpTx.isMerged) {
 window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;

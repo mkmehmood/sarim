@@ -1,5 +1,5 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
-import { deletePaymentTxWithLinks } from './link-guards.js';
+import { deletePaymentTxWithLinks, getPaymentDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
@@ -2335,6 +2335,8 @@ if (_dt.isMerged) {
 window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
 return;
 }
+const _dtCashBlock = await getPaymentDeleteBlockReason(_dt);
+if (_dtCashBlock) { window.notifyBlocking(_dtCashBlock, 'warning'); return; }
 const _dtEntity = entities.find(e => String(e.id) === String(_dt.entityId));
 const _dtEntityName = _dtEntity ? _dtEntity.name : 'Unknown';
 const _dtTypeLabel = _dt.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';

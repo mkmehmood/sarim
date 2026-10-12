@@ -4,7 +4,7 @@ import {
   resolveId, remapReferences, resolveOwnLinks, planChildDetach, planChildReattach, applyPatch,
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
-  getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
+  getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments, getTransferPairRestoreIssue,
   resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 describe('recovered-id remapping', () => {
@@ -568,5 +568,26 @@ describe('renaming an entity updates every copy of its name', () => {
     assert.equal(txs[2].entityName, 'Else');
     assert.equal(mats[0].supplierName, 'New');
     assert.equal(mats[1].supplierName, 'Z');
+  });
+});
+
+describe('transfer pair restore guard', () => {
+  const half = { id: 'a', isTransfer: true, transferPairId: 'pair-1' };
+  it('blocks restoring one side when the other side is permanently gone', () => {
+    const msg = getTransferPairRestoreIssue(half, [], []);
+    assert.ok(msg && /permanently deleted/.test(msg));
+  });
+  it('allows restore when the other side is still live', () => {
+    assert.equal(getTransferPairRestoreIssue(half, [{ id: 'b', transferPairId: 'pair-1' }], []), null);
+  });
+  it('ignores the record itself and deleted live rows', () => {
+    assert.ok(getTransferPairRestoreIssue(half, [{ id: 'a', transferPairId: 'pair-1' }, { id: 'b', transferPairId: 'pair-1', deletedAt: 1 }], []));
+  });
+  it('allows restore when the other side is also in the recycle bin (recovered together)', () => {
+    assert.equal(getTransferPairRestoreIssue(half, [], [{ recordId: 'b', snapshot: { transferPairId: 'pair-1' } }]), null);
+  });
+  it('ignores non-transfer records', () => {
+    assert.equal(getTransferPairRestoreIssue({ id: 'x' }, [], []), null);
+    assert.equal(getTransferPairRestoreIssue(null, [], []), null);
   });
 });

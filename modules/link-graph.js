@@ -505,6 +505,17 @@ export function planGroupRecovery(members, blocked, requestedId) {
   return { restore, skipped, requestedSkipped };
 }
 
+export function getTransferPairRestoreIssue(snapshot, liveTxs, tombstones) {
+  if (!snapshot || snapshot.isTransfer !== true || !snapshot.transferPairId) return null;
+  const pid = snapshot.transferPairId;
+  const selfId = String(snapshot.id || '');
+  const live = (Array.isArray(liveTxs) ? liveTxs : []).some(t => t && !t.deletedAt && t.transferPairId === pid && String(t.id) !== selfId);
+  if (live) return null;
+  const tombed = (Array.isArray(tombstones) ? tombstones : []).some(t => t && t.snapshot && t.snapshot.transferPairId === pid && String(t.recordId || t.id) !== selfId);
+  if (tombed) return null;
+  return 'The other side of this transfer was permanently deleted. Restoring only one side would unbalance your cash, so this record cannot be recovered.';
+}
+
 export function getPartialPaidIssue(childTotal) {
   const c = _n(childTotal);
   return c > 0
