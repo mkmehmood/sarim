@@ -1,3 +1,4 @@
+import { describeForDevice } from './dialog.js';
 const _plugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
 const _isNative = () => !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
 let _nativeGranted = null;
@@ -34,14 +35,15 @@ async function _showWeb(title, body, tag) {
   try { new Notification(title, options); } catch (_) {}
 }
 
-async function _showNative(title, body) {
+async function _showNative(title, body, tone) {
   const { LocalNotifications } = _plugins();
   if (!LocalNotifications) return;
   if (!(await _ensureNativePermission(LocalNotifications))) return;
   _seq = (_seq + 1) % 2147483000;
-  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
+  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: _SUMMARY[tone] || '', schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
 }
 
+const _SUMMARY = { success: 'All done', warning: 'Needs your attention', error: 'The action could not be completed' };
 const _recent = new Map();
 let _lastExplicitAt = 0;
 let _pendingMirrors = [];
@@ -67,7 +69,7 @@ export async function sendDeviceNotification(title, body, tag, opts) {
     _pendingMirrors = [];
   }
   if (_isDuplicate(title, text, tag)) return;
-  if (_isNative()) await _showNative(title, text);
+  if (_isNative()) await _showNative(title, text, opts && opts.tone);
   else await _showWeb(title, text, tag || 'app-toast');
 }
 
@@ -145,8 +147,25 @@ function _explainToast(text, type) {
     if (m) { try { const out = fn(m, text); if (out) return { title: out[0], body: out[1] }; } catch (_) {} }
   }
   const f = _FALLBACK[type] || _FALLBACK.warning;
-  const body = /[.!?]$/.test(text) ? text : text + '.';
-  return { title: f.title, body: body + f.hint };
+  const d = describeForDevice(text, { tone: type });
+  const body = /[.!?]$/.test(d.body) ? d.body : d.body + '.';
+  return { title: d.title, body: body + f.hint };
+}
+function _passesGate(text, type) {
+  if (Date.now() - _bootAt < _STARTUP_QUIET_MS) return false;
+  if (!text || text.length < 6) return false;
+  if (type !== 'error' && _NOISE_RE.test(text)) return false;
+  if (type === 'error' && /^\s*(please|enter|select)|\b(is|are) required\b|not logged in/i.test(text)) return false;
+  const now = Date.now();
+  _burst = _burst.filter(ts => now - ts < _BURST_WINDOW_MS);
+  if (_burst.length >= _BURST_MAX) return false;
+  _burst.push(now);
+  return true;
+}
+function _hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
 }
 
 function _cleanToastText(message) {
@@ -158,24 +177,28 @@ function _cleanToastText(message) {
 export function notifyFromToast(message, type) {
   try {
     if (type !== 'success' && type !== 'warning' && type !== 'error') return;
-    if (Date.now() - _bootAt < _STARTUP_QUIET_MS) return;
     const text = _cleanToastText(message);
-    if (!text || text.length < 6) return;
-    if (type !== 'error' && _NOISE_RE.test(text)) return;
-    if (type === 'error' && /^\s*(please|enter|select)|\b(is|are) required\b|not logged in/i.test(text)) return;
-    const now = Date.now();
-    _burst = _burst.filter(ts => now - ts < _BURST_WINDOW_MS);
-    if (_burst.length >= _BURST_MAX) return;
-    _burst.push(now);
+    if (!_passesGate(text, type)) return;
     const note = _explainToast(text, type);
     const timer = setTimeout(() => {
       _pendingMirrors = _pendingMirrors.filter((t) => t !== timer);
       if (type !== 'error' && Date.now() - _lastExplicitAt < 6000) return;
-      sendDeviceNotification(note.title, note.body, 'toast-' + type, { fromToast: true }).catch(() => {});
+      sendDeviceNotification(note.title, note.body, 'toast-' + type, { fromToast: true, tone: type }).catch(() => {});
     }, 1200);
     _pendingMirrors.push(timer);
   } catch (_) {}
 }
 
+export function notifyFromDialog(message, tone, title) {
+  try {
+    const t = tone === 'success' || tone === 'error' ? tone : 'warning';
+    const plain = String(message == null ? '' : message).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!_passesGate(plain, t)) return;
+    const note = describeForDevice(message, { tone: t, title });
+    if (!note.body) return;
+    sendDeviceNotification(note.title, note.body, 'dialog-' + t + '-' + _hash(note.title + note.body), { tone: t }).catch(() => {});
+  } catch (_) {}
+}
 window.notifyFromToast = notifyFromToast;
+window.notifyFromDialog = notifyFromDialog;
 primeNotificationPermission();

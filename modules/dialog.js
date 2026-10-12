@@ -312,6 +312,7 @@ const ALERT_TITLES = { success: 'Success', warning: 'Warning', error: 'Something
 
 export function showGlassAlert(message, { title = null, tone = 'warning', buttonText = 'OK', icon = null } = {}) {
   const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
+  if (typeof window.notifyFromDialog === 'function') window.notifyFromDialog(message, t, title);
   return showGlassConfirm(message, { title: title || ALERT_TITLES[t], confirmText: buttonText, tone: t, icon, alertOnly: true });
 }
 
@@ -349,6 +350,26 @@ export function alertTitle(message, tone) {
 
 export function notifyBlocking(message, tone = 'warning', title = null) {
   return showGlassAlert(splitFigures(message), { tone, title: title || alertTitle(message, tone) });
+}
+const DEVICE_BODY_MAX = 420;
+export function describeForDevice(message, { tone = 'warning', title = null } = {}) {
+  const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
+  const parsed = parseMessage(splitFigures(message));
+  const lines = [];
+  const figureLine = parsed.figure ? `${parsed.figure.k}: ${parsed.figure.v}` : '';
+  let figureDone = !figureLine;
+  parsed.blocks.forEach((blk) => {
+    if (blk.type === 'facts') blk.items.forEach((f) => lines.push(`${f.k}: ${f.v}`));
+    else if (blk.type === 'points') blk.items.forEach((x) => lines.push(`\u2022 ${x}`));
+    else if (blk.type === 'callout') lines.push(`${blk.label}: ${blk.text}`);
+    else lines.push(blk.text);
+    if (!figureDone && (blk.type === 'p' || blk.type === 'subhead')) { lines.push(figureLine); figureDone = true; }
+  });
+  if (!figureDone) lines.unshift(figureLine);
+  if (t !== 'success' && CAPTIONS[t]) lines.unshift(CAPTIONS[t]);
+  let body = lines.join('\n');
+  if (body.length > DEVICE_BODY_MAX) body = `${body.slice(0, DEVICE_BODY_MAX - 1).trimEnd()}\u2026`;
+  return { tone: t, title: humanizeKeys(String(title || alertTitle(message, t) || ALERT_TITLES[t])).trim(), body };
 }
 
 window.showGlassConfirm = showGlassConfirm;
