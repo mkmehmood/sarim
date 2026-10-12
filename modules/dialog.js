@@ -25,6 +25,11 @@ let lockState = null;
 export function isDialogOpen() {
   return !!document.querySelector('.dlg-overlay');
 }
+const FLOW_MS = 8000;
+let flowUntil = 0;
+export function isDialogFlowActive() {
+  return isDialogOpen() || Date.now() < flowUntil;
+}
 
 function lockPage() {
   if (lockState) return;
@@ -154,6 +159,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     const finish = (value, immediate) => {
       if (settled) return;
       settled = true;
+      flowUntil = Date.now() + FLOW_MS;
       document.removeEventListener('keydown', onKey, true);
       active = null;
       overlay.querySelectorAll('button').forEach((b) => { b.disabled = true; });
@@ -231,9 +237,10 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
   });
 }
 
-export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Confirm', cancelText = 'Cancel', danger = false, icon = null, tone = null, alertOnly = false } = {}) {
-  const resolvedTone = pickTone(title, message, danger, tone);
-  const svg = (icon && String(icon).indexOf('<') !== -1) ? icon : pickIcon(resolvedTone, title, confirmText);
+export function showGlassConfirm(message, { title = null, confirmText = 'Confirm', cancelText = 'Cancel', danger = false, icon = null, tone = null, alertOnly = false } = {}) {
+  const shownTitle = deriveTitle(message, tone || (danger ? 'danger' : 'primary'), title, confirmText);
+  const resolvedTone = pickTone(shownTitle, message, danger, tone);
+  const svg = (icon && String(icon).indexOf('<') !== -1) ? icon : pickIcon(resolvedTone, shownTitle, confirmText);
   const actions = alertOnly
     ? [{ label: confirmText, variant: 'solid', value: true }]
     : [{ label: cancelText, variant: 'ghost', value: false }, { label: confirmText, variant: 'solid', value: true }];
@@ -241,7 +248,7 @@ export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Co
   const parsed = parseMessage(message);
   return openDialog({
     tone: resolvedTone,
-    title,
+    title: shownTitle,
     icon: svg,
     body: renderBlocks(parsed.blocks),
     figure: parsed.figure,
@@ -249,6 +256,9 @@ export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Co
     dismissIndex: 0,
     dismissOnBackdrop: !safeFirst,
     focusIndex: safeFirst ? 0 : actions.length - 1
+  }).then((value) => {
+    announce(message, resolvedTone, shownTitle, alertOnly ? '' : (value === true ? `Confirmed: ${confirmText}` : `Chosen: ${cancelText}`));
+    return value;
   });
 }
 
@@ -285,6 +295,9 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
     dismissIndex: 0,
     dismissOnBackdrop: false,
     focusIndex: -1
+  }).then((value) => {
+    announce(`${message}${email ? `\nAccount: ${email}` : ''}`, 'primary', title, value ? `Confirmed: ${confirmText}` : `Chosen: ${cancelText}`);
+    return value;
   });
   const input = document.getElementById(inputId);
   const eye = document.getElementById(`${inputId}_eye`);
@@ -308,26 +321,29 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
   return result;
 }
 
-const ALERT_TITLES = { success: 'Success', warning: 'Warning', error: 'Something went wrong' };
 
 export function showGlassAlert(message, { title = null, tone = 'warning', buttonText = 'OK', icon = null } = {}) {
   const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
-  if (typeof window.notifyFromDialog === 'function') window.notifyFromDialog(message, t, title);
-  return showGlassConfirm(message, { title: title || ALERT_TITLES[t], confirmText: buttonText, tone: t, icon, alertOnly: true });
+  return showGlassConfirm(message, { title, confirmText: buttonText, tone: t, icon, alertOnly: true });
 }
 
-export function showChoiceDialog(message, choices, { title = 'Choose', cancelText = 'Cancel', icon = null } = {}) {
+export function showChoiceDialog(message, choices, { title = null, cancelText = 'Cancel', icon = null } = {}) {
   const list = Array.isArray(choices) ? choices : [];
+  const shownTitle = deriveTitle(message, 'primary', title, '');
   const options = list.map((c, i) => `<li><button type="button" class="dlg-option" data-opt="${i}" data-act="${i + 1}">${c.icon ? `<span class="dlg-option-icon" aria-hidden="true">${c.icon}</span>` : ''}<span class="dlg-option-label">${escapeHtml(c.label)}</span><span class="dlg-option-go" aria-hidden="true">${dialogIcons.chevron}</span></button></li>`).join('');
   return openDialog({
     tone: 'primary',
-    title,
+    title: shownTitle,
     icon: icon && String(icon).indexOf('<') !== -1 ? icon : dialogIcons.question,
     body: `${formatMessage(message)}<ul class="dlg-options">${options}</ul>`,
     actions: [{ label: cancelText, variant: 'ghost', value: null }],
     dismissIndex: 0,
     focusIndex: -1,
     onBodyClick: (i) => (list[i] ? list[i].value : null)
+  }).then((value) => {
+    const picked = value == null ? null : list.find((c) => c.value === value);
+    announce(message, 'primary', shownTitle, `Chosen: ${picked ? picked.label : cancelText}`);
+    return value;
   });
 }
 
@@ -345,15 +361,32 @@ export function alertTitle(message, tone) {
   if (/credit/i.test(m)) return tone === 'error' ? 'Credit error' : 'Credit warning';
   if (/cannot delete|cannot be deleted|cannot change|cannot be edited/i.test(m)) return 'Action not allowed';
   if (/payment/i.test(m)) return tone === 'error' ? 'Payment error' : 'Payment warning';
+  const failed = m.match(/^\s*failed to ([a-z ]{3,40}?)[.:!,]/i);
+  if (failed) return `Could not ${failed[1].trim().toLowerCase()}`;
+  if (/^\s*access denied/i.test(m)) return 'Access denied';
+  if (/not logged in|please sign in/i.test(m)) return 'Sign-in required';
+  if (/incorrect password|wrong password/i.test(m)) return 'Incorrect password';
+  if (/\b(is|are) required\b|^\s*(please )?(enter|select|choose|add)\b/i.test(m)) return 'Missing information';
+  if (/\binvalid\b/i.test(m)) return 'Invalid entry';
+  if (/not found/i.test(m)) return 'Not found';
   return null;
 }
 
 export function notifyBlocking(message, tone = 'warning', title = null) {
   return showGlassAlert(splitFigures(message), { tone, title: title || alertTitle(message, tone) });
 }
-const DEVICE_BODY_MAX = 420;
-export function describeForDevice(message, { tone = 'warning', title = null } = {}) {
-  const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
+const TONE_LINES = { warning: CAPTIONS.warning, danger: CAPTIONS.danger, error: CAPTIONS.error };
+const clip = (text, max) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}\u2026` : text);
+function deriveTitle(message, tone, title, label) {
+  const given = humanizeKeys(String(title == null ? '' : title)).trim();
+  if (given) return given;
+  const known = alertTitle(message, tone);
+  if (known) return known;
+  const first = humanizeKeys(String(message == null ? '' : message)).split('\n').map((l) => l.replace(LEADING_GLYPHS, '').trim()).find(Boolean) || '';
+  return clip(first.split(/[.:!?\u2014]/)[0].trim() || String(label || '').trim(), 48);
+}
+export function describeForDevice(message, { tone = 'warning', title = null, action = '' } = {}) {
+  const t = EYEBROWS[tone] ? tone : 'warning';
   const parsed = parseMessage(splitFigures(message));
   const lines = [];
   const figureLine = parsed.figure ? `${parsed.figure.k}: ${parsed.figure.v}` : '';
@@ -366,15 +399,18 @@ export function describeForDevice(message, { tone = 'warning', title = null } = 
     if (!figureDone && (blk.type === 'p' || blk.type === 'subhead')) { lines.push(figureLine); figureDone = true; }
   });
   if (!figureDone) lines.unshift(figureLine);
-  if (t !== 'success' && CAPTIONS[t]) lines.unshift(CAPTIONS[t]);
-  let body = lines.join('\n');
-  if (body.length > DEVICE_BODY_MAX) body = `${body.slice(0, DEVICE_BODY_MAX - 1).trimEnd()}\u2026`;
-  return { tone: t, title: humanizeKeys(String(title || alertTitle(message, t) || ALERT_TITLES[t])).trim(), body };
+  if (TONE_LINES[t]) lines.unshift(TONE_LINES[t]);
+  if (action) lines.unshift(action);
+  return { tone: t, title: deriveTitle(message, t, title, ''), body: lines.join('\n') };
 }
-
+function announce(message, tone, title, action) {
+  if (typeof window.notifyFromDialog !== 'function') return;
+  try { window.notifyFromDialog(describeForDevice(message, { tone, title, action })); } catch (_) {}
+}
 window.showGlassConfirm = showGlassConfirm;
 window.showGlassAlert = showGlassAlert;
 window.showChoiceDialog = showChoiceDialog;
 window.showPasswordConfirm = showPasswordConfirm;
 window.notifyBlocking = notifyBlocking;
 window.isDialogOpen = isDialogOpen;
+window.isDialogFlowActive = isDialogFlowActive;

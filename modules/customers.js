@@ -776,6 +776,7 @@ toast.addEventListener('click', dismiss, { once: true });
 export function showToast(message, type = 'info', duration = 3000) {
 const typeMap = { danger: 'error', warn: 'warning', ok: 'success' };
 type = typeMap[type] || (['success','warning','error','info'].includes(type) ? type : 'info');
+if (type !== 'error' && typeof window.isDialogFlowActive === 'function' && window.isDialogFlowActive()) return;
 _toastQueue.push({ message, type, duration });
 _playNextToast();
 if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type);

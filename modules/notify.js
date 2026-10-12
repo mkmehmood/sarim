@@ -1,10 +1,10 @@
-import { describeForDevice } from './dialog.js';
 const _plugins = () => (window.Capacitor && window.Capacitor.Plugins) || {};
 const _isNative = () => !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
 let _nativeGranted = null;
 let _lastKey = '';
 let _lastAt = 0;
 let _seq = Date.now() % 1000000000;
+let _dialogSeq = 0;
 
 async function _ensureNativePermission(LocalNotifications) {
   if (_nativeGranted !== null) return _nativeGranted;
@@ -68,7 +68,7 @@ export async function sendDeviceNotification(title, body, tag, opts) {
     _pendingMirrors.forEach(clearTimeout);
     _pendingMirrors = [];
   }
-  if (_isDuplicate(title, text, tag)) return;
+  if (!(opts && opts.dialog) && _isDuplicate(title, text, tag)) return;
   if (_isNative()) await _showNative(title, text, opts && opts.tone);
   else await _showWeb(title, text, tag || 'app-toast');
 }
@@ -107,11 +107,6 @@ const _NOISE_RE = new RegExp([
   'deleted successfully|all records deleted|permanently deleted|recovered|restore complete|^(transferred|transfer updated)\\b'
 ].join('|'), 'i');
 
-const _FALLBACK = {
-  success: { title: 'All done', hint: '' },
-  warning: { title: 'Please check this', hint: ' Open the app to take a look.' },
-  error: { title: 'Something did not work', hint: ' Open the app and try again.' }
-};
 
 const _EXPLAIN = [
   [/failed to save (production|data locally|data)/i, () => ['Could not save your data', 'The latest entry was NOT saved on this phone. Open the app, check the entry and save it again.']],
@@ -146,10 +141,7 @@ function _explainToast(text, type) {
     const m = re.exec(text);
     if (m) { try { const out = fn(m, text); if (out) return { title: out[0], body: out[1] }; } catch (_) {} }
   }
-  const f = _FALLBACK[type] || _FALLBACK.warning;
-  const d = describeForDevice(text, { tone: type });
-  const body = /[.!?]$/.test(d.body) ? d.body : d.body + '.';
-  return { title: d.title, body: body + f.hint };
+  return null;
 }
 function _passesGate(text, type) {
   if (Date.now() - _bootAt < _STARTUP_QUIET_MS) return false;
@@ -162,11 +154,6 @@ function _passesGate(text, type) {
   _burst.push(now);
   return true;
 }
-function _hash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return (h >>> 0).toString(36);
-}
 
 function _cleanToastText(message) {
   let t = String(message == null ? '' : message).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -178,8 +165,8 @@ export function notifyFromToast(message, type) {
   try {
     if (type !== 'success' && type !== 'warning' && type !== 'error') return;
     const text = _cleanToastText(message);
-    if (!_passesGate(text, type)) return;
     const note = _explainToast(text, type);
+    if (!note || !_passesGate(text, type)) return;
     const timer = setTimeout(() => {
       _pendingMirrors = _pendingMirrors.filter((t) => t !== timer);
       if (type !== 'error' && Date.now() - _lastExplicitAt < 6000) return;
@@ -189,14 +176,10 @@ export function notifyFromToast(message, type) {
   } catch (_) {}
 }
 
-export function notifyFromDialog(message, tone, title) {
+export function notifyFromDialog(note) {
   try {
-    const t = tone === 'success' || tone === 'error' ? tone : 'warning';
-    const plain = String(message == null ? '' : message).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    if (!_passesGate(plain, t)) return;
-    const note = describeForDevice(message, { tone: t, title });
-    if (!note.body) return;
-    sendDeviceNotification(note.title, note.body, 'dialog-' + t + '-' + _hash(note.title + note.body), { tone: t }).catch(() => {});
+    if (!note || !note.title || !note.body) return;
+    sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
   } catch (_) {}
 }
 window.notifyFromToast = notifyFromToast;
