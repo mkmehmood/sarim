@@ -5,7 +5,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, getTransferPairIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
 } from './link-graph.js';
@@ -225,16 +225,35 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return null;
   }
   if (collectionName === 'transactions') {
-    if (!(ctx && ctx.entityInSet && ctx.entityInSet(snapshot.entityId))) {
-      const idMap = await _loadIdMap();
-      const ents = ensureArray(await sqliteStore.get('entities'));
-      const liveEnt = (id) => id && ents.some(e => e && !e.deletedAt && String(e.id) === String(resolveId(id, idMap)));
-      if (snapshot.entityId && !liveEnt(snapshot.entityId)) {
-        return `The ${snapshot.entityName ? `"${snapshot.entityName}"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
+    const inSet = (id) => !!(id && ctx && typeof ctx.entityInSet === 'function' && ctx.entityInSet(String(id)));
+    const idMap = await _loadIdMap();
+    const ents = ensureArray(await sqliteStore.get('entities'));
+    const liveEnt = (id) => {
+      if (!id) return false;
+      if (inSet(id)) return true;
+      const mapped = String(resolveId(id, idMap));
+      const raw = String(id);
+      return ents.some(e => e && !e.deletedAt && (String(e.id) === mapped || String(e.id) === raw));
+    };
+    if (snapshot.isTransfer === true && snapshot.transferPairId) {
+      const selfId = String(snapshot.id || '');
+      const pid = String(snapshot.transferPairId);
+      const pairLive = ensureArray(await sqliteStore.get('transactions'))
+        .some(t => t && !t.deletedAt && String(t.id) !== selfId && t.isTransfer === true && String(t.transferPairId || '') === pid);
+      const pairInSet = !!(ctx && typeof ctx.pairInSet === 'function' && ctx.pairInSet(pid, selfId));
+      let pairInBin = false;
+      if (!pairLive && !pairInSet) {
+        pairInBin = ensureArray(await sqliteStore.get('deletions'))
+          .some(t => t && t.snapshot && String(t.snapshot.transferPairId || '') === pid && String(t.recordId || t.id) !== selfId);
       }
-      if (snapshot.isTransfer && snapshot.transferPeerEntityId && !liveEnt(snapshot.transferPeerEntityId)) {
-        return `The ${snapshot.transferPeerEntityName ? `"${snapshot.transferPeerEntityName}"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
-      }
+      const pairIssue = getTransferPairIssue(snapshot, { pairLive, pairInSet, pairInBin });
+      if (pairIssue) return pairIssue;
+    }
+    if (snapshot.entityId && !liveEnt(snapshot.entityId)) {
+      return `The ${snapshot.entityName ? `"${snapshot.entityName}"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
+    }
+    if (snapshot.isTransfer && snapshot.transferPeerEntityId && !liveEnt(snapshot.transferPeerEntityId)) {
+      return `The ${snapshot.transferPeerEntityName ? `"${snapshot.transferPeerEntityName}"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
     }
     const need = getRestoreCashNeed(snapshot);
     if (need > 0 && typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
@@ -599,9 +618,13 @@ export async function applyCollectionToSales(opts) {
 }
 
 export async function getPaymentDeleteBlockReason(tx) {
-  const drop = getDeleteCashDrop(tx);
+  return getBulkPaymentDeleteBlockReason(tx, 'Deleting this payment');
+}
+
+export async function getBulkPaymentDeleteBlockReason(txs, what = 'Deleting these payments') {
+  const drop = planBulkCashDrop(txs);
   if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
-  return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
+  return getCashShortIssue(drop, await window.getAvailableCashInHand(), what);
 }
 
 export async function cascadeEntityRename(entityId, oldName, newName) {

@@ -1,5 +1,5 @@
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentDeleteBlockReason } from './link-guards.js';
-import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash } from './link-graph.js';
+import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -379,7 +379,16 @@ const entityId = (entityInput.getAttribute('data-entity-id') || entityInput.valu
 const date = dateEl.value;
 const amount = parseFloat(amountEl.value) || 0;
 const description = descriptionEl.value.trim();
-const type = window._expenseCategory || 'operating';
+let type = window._expenseCategory;
+if (type !== 'IN' && type !== 'OUT') {
+const _inRadio = document.getElementById('payment-type-in');
+const _outRadio = document.getElementById('payment-type-out');
+type = (_inRadio && _inRadio.checked) ? 'IN' : (_outRadio && _outRadio.checked) ? 'OUT' : null;
+}
+if (type !== 'IN' && type !== 'OUT') {
+showToast("Please choose whether this payment is IN or OUT", 'warning');
+return;
+}
 if (!entityId) {
 showToast("Please select an entity", 'warning');
 return;
@@ -597,8 +606,9 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 return;
 }
-await _restorePayableFromDeletedTransaction(transaction, transactions, inventory);
-await deletePaymentTxWithLinks(transaction);
+const _dpGroup = newGroupId('pay');
+await _restorePayableFromDeletedTransaction(transaction, transactions, inventory, { groupId: _dpGroup });
+await deletePaymentTxWithLinks(transaction, { groupId: _dpGroup });
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");

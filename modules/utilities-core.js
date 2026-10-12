@@ -1,5 +1,5 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
-import { deletePaymentTxWithLinks } from './link-guards.js';
+import { deletePaymentTxWithLinks, getBulkPaymentDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
@@ -2155,7 +2155,7 @@ out.paymentTotal += parseFloat(t.amount) || 0;
 return out;
 }
 
-export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory) {
+export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory, opts = {}) {
 const result = { unlinked: [], recomputed: [], removedTxs: [], changed: false };
 const txs = (Array.isArray(deletedTxs) ? deletedTxs : [deletedTxs]).filter(t => t && (t.isPayable || t.materialId));
 if (txs.length === 0) return result;
@@ -2187,7 +2187,7 @@ if (!exclusive) continue;
 const idx = transactions.findIndex(t => String(t.id) === String(lt.id));
 if (idx === -1) continue;
 transactions.splice(idx, 1);
-await unifiedDelete('transactions', transactions, lt.id, { strict: true }, lt);
+await unifiedDelete('transactions', transactions, lt.id, { strict: true }, opts.groupId ? stampGroup(lt, opts.groupId) : lt);
 result.removedTxs.push(lt);
 }
 _clearMaterialSupplier(mat);
@@ -2304,9 +2304,9 @@ if (ent) await renderEntityOverlayContent(ent);
 } catch (_) {}
 }
 
-export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory) {
+export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory, opts = {}) {
 if (!tx || !tx.isPayable) return false;
-const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory);
+const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory, opts);
 return res.changed || tx.type === 'IN';
 }
 
@@ -2337,6 +2337,8 @@ return;
 }
 const _dtEntity = entities.find(e => String(e.id) === String(_dt.entityId));
 const _dtEntityName = _dtEntity ? _dtEntity.name : 'Unknown';
+const _dtCashBlock = await getBulkPaymentDeleteBlockReason(_dt, 'Deleting this payment');
+if (_dtCashBlock) { window.notifyBlocking(_dtCashBlock, 'warning'); return; }
 const _dtTypeLabel = _dt.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';
 const _dtAmount = fmtNum(parseFloat(_dt.amount) || 0);
 const _dtDate = _dt.date || 'Unknown date';
@@ -2357,8 +2359,9 @@ if (_dtImpact.paymentCount > 0) _dtMsg += `\n↩ ${_dtImpact.paymentCount} suppl
 _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
-await _restorePayableFromDeletedTransaction(_dt, transactions, inventory);
-await deletePaymentTxWithLinks(_dt);
+const _dtGroup = newGroupId('pay');
+await _restorePayableFromDeletedTransaction(_dt, transactions, inventory, { groupId: _dtGroup });
+await deletePaymentTxWithLinks(_dt, { groupId: _dtGroup });
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 const _dtEntityRefreshed = ensureArray(await sqliteStore.get('entities')).find(e => String(e.id) === String(_dt.entityId));
@@ -2389,6 +2392,8 @@ const _entityTxs = transactions.filter(t => String(t.entityId) === String(curren
 const _totalIn = _entityTxs.filter(t => t.type === 'IN' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const _totalOut = _entityTxs.filter(t => t.type === 'OUT' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const _linkedMaterials = inventory.filter(m => String(m.supplierId) === String(currentEntityId));
+const _entCashBlock = await getBulkPaymentDeleteBlockReason(_entityTxs.filter(t => t.isTransfer !== true), `Deleting "${_entityName}"`);
+if (_entCashBlock) { window.notifyBlocking(_entCashBlock, 'warning'); return; }
 let msg = `Permanently delete "${_entityName}"?`;
 if (_entityTxs.length > 0) {
 msg += `\n\n\u26a0 This entity has ${_entityTxs.length} transaction${_entityTxs.length !== 1 ? 's' : ''} on record`;
@@ -2402,7 +2407,8 @@ msg += `\n\n\u21a9 ${_linkedMaterials.length} linked material${_linkedMaterials.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: `Delete Entity Permanently`, confirmText: "Delete", danger: true }))) return;
 try {
-await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), transactions, inventory);
+const _entGroup = newGroupId('ent');
+await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), transactions, inventory, { groupId: _entGroup });
 for (const mat of _linkedMaterials) {
 if (!mat.supplierId) continue;
 _clearMaterialSupplier(mat);
@@ -2415,9 +2421,8 @@ const _processedPairIds = new Set();
 for (const tx of _transferTxs) {
 if (_processedPairIds.has(tx.transferPairId)) continue;
 _processedPairIds.add(tx.transferPairId);
-if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(tx.transferPairId, true);
+if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(tx.transferPairId, true, { groupId: _entGroup });
 }
-const _entGroup = newGroupId('ent');
 const _entTxIds = new Set(_normalTxs.map(t => String(t.id)));
 for (const tx of _normalTxs) {
 await deletePaymentTxWithLinks(tx, { groupId: _entGroup, excludeIds: _entTxIds });

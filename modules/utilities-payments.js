@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getBulkPaymentDeleteBlockReason } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
@@ -3946,6 +3946,8 @@ if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 return;
 }
 const linkedTransactions = transactions.filter(t => t.expenseId === expenseId);
+const _deCashBlock = await getBulkPaymentDeleteBlockReason(linkedTransactions, 'Deleting this record');
+if (_deCashBlock) { window.notifyBlocking(_deCashBlock, 'warning'); return; }
 const categoryLabel = expense.category === 'operating' ? 'Operating Expense'
 : expense.category === 'IN' ? 'Payment IN'
 : expense.category === 'OUT' ? 'Payment OUT'
@@ -3968,7 +3970,7 @@ if (!(await showGlassConfirm(confirmMsg, { title: `Delete ${categoryLabel}`, con
 try {
 const txToDelete = transactions.filter(t => t.expenseId === expenseId);
 const _expGroup = newGroupId('exp');
-await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), transactions, inventory);
+await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), transactions, inventory, { groupId: _expGroup });
 if (txToDelete.length > 0) {
 let _expRemaining = transactions.slice();
 for (const trans of txToDelete) {
@@ -4169,7 +4171,8 @@ async function _withRecycleLock(fn) {
 async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
   const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null,
-    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)) };
+    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)),
+    pairInSet: (pairId, selfId) => !!pairId && members.some(m => (m.collection || m.recordType) === 'transactions' && m.snapshot && String(m.snapshot.transferPairId || '') === String(pairId) && String(m.recordId || m.id) !== String(selfId)) };
   const blocked = new Map();
   for (const m of orderForRestore(members)) {
     const snap = m && m.snapshot;
@@ -7833,7 +7836,7 @@ list.replaceChildren(fragment);
 
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 
-export async function deletePaymentTransfer(pairId, skipConfirm = false) {
+export async function deletePaymentTransfer(pairId, skipConfirm = false, opts = {}) {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entries = transactions.filter(t => t.transferPairId === pairId);
 if (entries.length === 0) return;
@@ -7850,7 +7853,7 @@ try {
 let working = transactions.slice();
 for (const entry of entries) {
 working = working.filter(t => t.id !== entry.id);
-await unifiedDelete('transactions', working, entry.id, { strict: true }, entry);
+await unifiedDelete('transactions', working, entry.id, { strict: true }, opts.groupId ? stampGroup(entry, opts.groupId) : entry);
 }
 try {
 const _trfPh = (await sqliteStore.get('photos')) || {};

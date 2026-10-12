@@ -693,6 +693,16 @@ export function getCashShortIssue(need, available, what) {
   return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
 }
 
+export function planBulkCashDrop(txs) {
+  return _r2((Array.isArray(txs) ? txs : [txs]).reduce((t, x) => t + getDeleteCashDrop(x), 0));
+}
+
+export function getTransferPairIssue(snap, state = {}) {
+  if (!snap || snap.isTransfer !== true || !snap.transferPairId) return null;
+  if (state.pairLive || state.pairInSet || state.pairInBin) return null;
+  return 'The other side of this transfer was permanently deleted. This half cannot be recovered on its own — delete it forever instead.';
+}
+
 export function planEntityRename(entityId, newName, txs, materials) {
   const id = String(entityId);
   const tx = [], mat = [];
