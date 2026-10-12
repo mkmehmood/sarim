@@ -1,5 +1,5 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
-import { deletePaymentTxWithLinks, getPaymentDeleteBlockReason } from './link-guards.js';
+import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
@@ -2362,18 +2362,14 @@ if (_ent0) renderEntityOverlayContent(_ent0);
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 return;
 }
-if (_dt.isTransfer === true) {
-if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dt.transferPairId);
+const _dtGuard = await getPaymentTxDeleteBlockReason(_dt, { allTxs: transactions });
+if (_dtGuard.plan && _dtGuard.plan.kind === 'transfer') {
+if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dtGuard.plan.pairId);
 const _ent0b = entities.find(e => String(e.id) === String(currentEntityId));
 if (_ent0b) renderEntityOverlayContent(_ent0b);
 return;
 }
-if (_dt.isMerged) {
-window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
-return;
-}
-const _dtCashBlock = await getPaymentDeleteBlockReason(_dt);
-if (_dtCashBlock) { window.notifyBlocking(_dtCashBlock, 'warning'); return; }
+if (_dtGuard.block) { window.notifyBlocking(_dtGuard.block, 'warning'); return; }
 const _dtEntity = entities.find(e => String(e.id) === String(_dt.entityId));
 const _dtEntityName = _dtEntity ? _dtEntity.name : 'Unknown';
 const _dtTypeLabel = _dt.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';
@@ -2425,6 +2421,8 @@ window.notifyBlocking('Entity not found', 'error');
 return;
 }
 const _entityName = _entityToDel.name || 'this entity';
+const _entDelBlock = await getEntityDeleteBlockReason(currentEntityId, { allTxs: transactions, name: `"${_entityName}"` });
+if (_entDelBlock) { window.notifyBlocking(_entDelBlock, 'warning'); return; }
 const _entityTxs = transactions.filter(t => String(t.entityId) === String(currentEntityId));
 const _totalIn = _entityTxs.filter(t => t.type === 'IN' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const _totalOut = _entityTxs.filter(t => t.type === 'OUT' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);

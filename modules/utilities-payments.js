@@ -1,7 +1,7 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getEntityDeleteBlockReason, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption } from './link-graph.js';
+import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -3687,6 +3687,10 @@ if (toDelete.length === 0) {
 closeExpenseDetailsOverlay();
 return;
 }
+for (const exp of toDelete) {
+const _daeBlk = await getExpenseLinkedTxBlockReason(exp.id, { allTxs: transactions });
+if (_daeBlk) { window.notifyBlocking(_daeBlk, 'warning'); return; }
+}
 const _daeTotal = toDelete.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
 const _daeDateRange = toDelete.length > 1 ? ` (${toDelete[toDelete.length-1].date} – ${toDelete[0].date})` : (toDelete[0]?.date ? ` on ${toDelete[0].date}` : '');
 const _daeTxCount = transactions.filter(t => toDelete.some(e => e.id === t.expenseId)).length;
@@ -3923,6 +3927,8 @@ const expense = expenses.find(e => e.id === expenseId);
 if (!expense) {
 const orphans = transactions.filter(t => t.expenseId === expenseId);
 if (orphans.length > 0) {
+const _orphBlock = await getExpenseLinkedTxBlockReason(expenseId, { allTxs: transactions });
+if (_orphBlock) { window.notifyBlocking(_orphBlock, 'warning'); return; }
 const _orphGroup = newGroupId('exp');
 await _reconcileSupplierLinksForDeletedTransactions(orphans.filter(t => t.isPayable === true), transactions, inventory, { groupId: _orphGroup });
 const orphansCopy = orphans.filter(tx => transactions.some(t => t.id === tx.id));
@@ -3939,6 +3945,8 @@ if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 return;
 }
 const linkedTransactions = transactions.filter(t => t.expenseId === expenseId);
+const _expLinkBlock = await getExpenseLinkedTxBlockReason(expenseId, { allTxs: transactions });
+if (_expLinkBlock) { window.notifyBlocking(_expLinkBlock, 'warning'); return; }
 const categoryLabel = expense.category === 'operating' ? 'Operating Expense'
 : expense.category === 'IN' ? 'Payment IN'
 : expense.category === 'OUT' ? 'Payment OUT'
@@ -7675,6 +7683,8 @@ if (_ed) {
 if (_oOut) { stampEdit(outTx, _oOut); outTx.time = _oOut.time; }
 if (_oIn) { stampEdit(inTx, _oIn); inTx.time = _oIn.time; }
 }
+const _trfLinkIssue = getTxLinkIssue(outTx, { entities }) || getTxLinkIssue(inTx, { entities });
+if (_trfLinkIssue) { window.notifyBlocking(_trfLinkIssue, 'warning'); return; }
 outTx = ensureRecordIntegrity(outTx, !!_ed);
 inTx = ensureRecordIntegrity(inTx, !!_ed);
 if (_ed) { replaceRecord(transactions, outTx); replaceRecord(transactions, inTx); } else { transactions.push(outTx, inTx); }

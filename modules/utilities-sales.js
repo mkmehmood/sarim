@@ -1,5 +1,5 @@
-import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentDeleteBlockReason } from './link-guards.js';
-import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId } from './link-graph.js';
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason } from './link-guards.js';
+import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -509,6 +509,8 @@ timestamp: payCreatedAt,
 syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null
 };
+const _payLinkIssue = getTxLinkIssue(payment, { entities, expenses, inventory });
+if (_payLinkIssue) { const _le = new Error(_payLinkIssue); _le._linkIssue = true; throw _le; }
 payment = ensureRecordIntegrity(payment, false);
 transactions.push(payment);
 _payRecord = payment;
@@ -544,7 +546,7 @@ const live = inventory.find(m => m && m.id === mid);
 if (orig && live) { Object.keys(live).forEach(k => delete live[k]); Object.assign(live, orig); await unifiedSave('inventory', inventory, live); }
 }
 } catch (rbErr) { console.error('[savePaymentTransaction] rollback failed', rbErr); }
-showToast('Failed to save payment transaction. Nothing was changed.', 'error');
+showToast(error && error._linkIssue ? error.message : 'Failed to save payment transaction. Nothing was changed.', 'error');
 return;
 }
 }
@@ -565,16 +567,12 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 return;
 }
-if (_dpTx && _dpTx.isMerged) {
-window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
+const _dpGuard = await getPaymentTxDeleteBlockReason(_dpTx, { allTxs: transactions });
+if (_dpGuard.plan && _dpGuard.plan.kind === 'transfer') {
+if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dpGuard.plan.pairId);
 return;
 }
-if (_dpTx && _dpTx.isTransfer === true) {
-if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dpTx.transferPairId);
-return;
-}
-const _dpCashBlock = await getPaymentDeleteBlockReason(_dpTx);
-if (_dpCashBlock) { window.notifyBlocking(_dpCashBlock, 'warning'); return; }
+if (_dpGuard.block) { window.notifyBlocking(_dpGuard.block, 'warning'); return; }
 const _dpEntity = _dpTx ? entities.find(e => String(e.id) === String(_dpTx.entityId)) : null;
 const _dpEntityName = _dpEntity ? _dpEntity.name : 'Unknown Entity';
 const _dpTypeLabel = _dpTx?.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';

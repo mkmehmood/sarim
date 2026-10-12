@@ -766,6 +766,93 @@ export function getCashShortIssue(need, available, what) {
   return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
 }
 
+// ===== Intelligent save/delete planners for payment transactions =====
+// These pure functions are the single source of truth for "what does saving or
+// deleting this transaction mean" so every entry point (payment tab, entity
+// overlay, expense cascade, entity delete) classifies and blocks consistently.
+
+export function planTransferPairDelete(entries) {
+  const list = (Array.isArray(entries) ? entries : []).filter(Boolean);
+  if (!list.length) return { pairs: [], orphans: [], amount: 0, fromName: '?', toName: '?', block: 'Transfer not found — it may have already been removed.' };
+  const outSide = list.find(t => t.type === 'OUT') || null;
+  const inSide = list.find(t => t.type === 'IN') || null;
+  const pairs = [outSide, inSide].filter(Boolean);
+  const orphans = list.filter(t => t !== outSide && t !== inSide);
+  return {
+    pairs,
+    orphans,
+    complete: !!(outSide && inSide) && orphans.length === 0,
+    amount: _n((outSide && outSide.amount) || (inSide && inSide.amount)),
+    fromName: outSide ? outSide.entityName : (inSide && inSide.transferPeerEntityName) || '?',
+    toName: inSide ? inSide.entityName : (outSide && outSide.transferPeerEntityName) || '?',
+    block: null
+  };
+}
+
+export function planPaymentTxDeletion(tx, allTxs, expenses, opts = {}) {
+  if (!tx || !tx.id) return { kind: 'missing', block: 'Transaction not found — it may have already been removed.' };
+  if (tx.isMerged) return { kind: 'merged', block: 'Merged opening balance records cannot be deleted' };
+  if (tx.isTransfer === true) {
+    const pairId = tx.transferPairId;
+    const entries = (Array.isArray(allTxs) ? allTxs : []).filter(t => t && t.transferPairId === pairId);
+    return { kind: 'transfer', pairId, pair: planTransferPairDelete(entries), cashDrop: 0, cascadeExpense: null, block: null };
+  }
+  const kind = tx.isPayable ? 'payable' : (tx.expenseId ? 'expense' : 'plain');
+  return {
+    kind,
+    cashDrop: getDeleteCashDrop(tx),
+    cascadeExpense: planExpenseCascade(tx, allTxs, expenses, opts.excludeIds),
+    block: null
+  };
+}
+
+export function planEntityTxDeletion(txs) {
+  const merged = [], normal = [], pairMap = new Map();
+  for (const t of (Array.isArray(txs) ? txs : [])) {
+    if (!t) continue;
+    if (t.isMerged) { merged.push(t); continue; }
+    if (t.isTransfer === true && t.transferPairId) {
+      if (!pairMap.has(t.transferPairId)) pairMap.set(t.transferPairId, []);
+      pairMap.get(t.transferPairId).push(t);
+      continue;
+    }
+    normal.push(t);
+  }
+  const transferPairs = [...pairMap.entries()].map(([pairId, entries]) => ({ pairId, ...planTransferPairDelete(entries) }));
+  const cashDrop = normal.reduce((sum, t) => sum + getDeleteCashDrop(t), 0);
+  return { merged, normal, transferPairs, cashDrop };
+}
+
+export function getBatchCashIssue(txs, available, what) {
+  const need = (Array.isArray(txs) ? txs : []).reduce((sum, t) => sum + getDeleteCashDrop(t), 0);
+  return getCashShortIssue(need, available, what);
+}
+
+export function getTxLinkIssue(tx, ctx = {}) {
+  if (!tx || !tx.id) return 'Missing transaction record.';
+  const entities = Array.isArray(ctx.entities) ? ctx.entities : null;
+  const expenses = Array.isArray(ctx.expenses) ? ctx.expenses : null;
+  const inventory = Array.isArray(ctx.inventory) ? ctx.inventory : null;
+  const liveEnt = (id) => !entities || (id && entities.some(e => e && !e.deletedAt && String(e.id) === String(id)));
+  if (tx.isTransfer === true) {
+    if (!tx.transferPairId) return 'Transfer is missing its pair id — save it again as a proper transfer.';
+    if (!tx.transferPeerEntityId) return 'Transfer is missing the entity on the other side.';
+    if (String(tx.entityId) === String(tx.transferPeerEntityId)) return 'A transfer cannot have the same entity on both sides.';
+    if (!liveEnt(tx.entityId)) return `The ${tx.entityName ? `"${tx.entityName}"` : 'entity'} on this transfer no longer exists.`;
+    if (!liveEnt(tx.transferPeerEntityId)) return `The ${tx.transferPeerEntityName ? `"${tx.transferPeerEntityName}"` : 'other entity'} on this transfer no longer exists.`;
+    return null;
+  }
+  if (tx.entityId && !liveEnt(tx.entityId)) return `The ${tx.entityName ? `"${tx.entityName}"` : 'entity'} this payment belongs to no longer exists.`;
+  if (tx.expenseId && expenses && !expenses.some(e => e && !e.deletedAt && String(e.id) === String(tx.expenseId))) {
+    return 'The expense this payment is linked to no longer exists.';
+  }
+  if (tx.isPayable && inventory && Array.isArray(tx.materialIds) && tx.materialIds.length) {
+    const missing = tx.materialIds.filter(mid => !inventory.some(m => m && !m.deletedAt && String(m.id) === String(mid)));
+    if (missing.length === tx.materialIds.length) return 'None of the materials this supplier payment settles exist anymore.';
+  }
+  return null;
+}
+
 export function planEntityRename(entityId, newName, txs, materials) {
   const id = String(entityId);
   const tx = [], mat = [];

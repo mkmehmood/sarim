@@ -9,6 +9,7 @@ import {
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
   getTransferPairRestoreIssue, getSupplierCreditReconsumeIssue,
+  planPaymentTxDeletion, planEntityTxDeletion, getBatchCashIssue,
 } from './link-graph.js';
 
 async function _calcHistory() {
@@ -615,6 +616,62 @@ export async function getPaymentDeleteBlockReason(tx) {
   const drop = getDeleteCashDrop(tx);
   if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
+}
+
+// Unified single-transaction delete guard: merged records and transfer pairs are
+// classified by the pure planner, cash safety is checked against live balances.
+// Returns { block } — when plan.kind === 'transfer' the caller should delegate to
+// deletePaymentTransfer instead of deleting directly.
+export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
+  if (!tx) return { block: null, plan: null };
+  const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
+  const expenses = opts.expenses || ensureArray(await sqliteStore.get('expenses'));
+  const plan = planPaymentTxDeletion(tx, allTxs, expenses, opts);
+  if (plan.block) return { block: plan.block, plan };
+  if (plan.kind === 'transfer') return { block: null, plan };
+  const drop = plan.cashDrop;
+  if (drop > 0 && typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
+    const issue = getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
+    if (issue) return { block: issue, plan };
+  }
+  return { block: null, plan };
+}
+
+// Entity delete guard: blocks when merged opening balances would be destroyed or
+// when removing the entity's IN payments would drive cash in hand negative.
+export async function getEntityDeleteBlockReason(entityId, opts = {}) {
+  if (!entityId) return null;
+  const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
+  const entityTxs = allTxs.filter(t => t && String(t.entityId) === String(entityId));
+  const plan = planEntityTxDeletion(entityTxs);
+  if (plan.merged.length) {
+    return `This entity has ${plan.merged.length} merged opening balance record${plan.merged.length !== 1 ? 's' : ''} which cannot be deleted. Unmerge or settle the opening balance first.`;
+  }
+  if (plan.cashDrop > 0 && typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
+    const name = opts.name || 'this entity';
+    const issue = getBatchCashIssue(plan.normal, await window.getAvailableCashInHand(), `Deleting ${name} and its payment history`);
+    if (issue) return issue;
+  }
+  return null;
+}
+
+// Expense delete guard: a linked payment that is a merged opening balance blocks
+// deletion; IN-type linked payments are checked against available cash.
+export async function getExpenseLinkedTxBlockReason(expenseId, opts = {}) {
+  if (!expenseId) return null;
+  const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
+  const linked = allTxs.filter(t => t && String(t.expenseId) === String(expenseId));
+  if (!linked.length) return null;
+  const merged = linked.filter(t => t.isMerged);
+  if (merged.length) {
+    return `${merged.length} payment record${merged.length !== 1 ? 's' : ''} linked to this expense ${merged.length !== 1 ? 'are' : 'is a'} merged opening balance${merged.length !== 1 ? 's' : ''} and cannot be deleted.`;
+  }
+  const cashTxs = linked.filter(t => t.isTransfer !== true);
+  if (typeof window !== 'undefined' && typeof window.getAvailableCashInHand === 'function') {
+    const issue = getBatchCashIssue(cashTxs, await window.getAvailableCashInHand(), 'Deleting this expense and reversing its linked payments');
+    if (issue) return issue;
+  }
+  return null;
 }
 
 export async function cascadeEntityRename(entityId, oldName, newName) {
