@@ -1,7 +1,7 @@
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
+import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
@@ -2444,32 +2444,21 @@ await unifiedSave('inventory', inventory, mat);
 }
 }
 if (remaining > 0) {
-const openCredits = transactions
-.filter(t =>
-t.isPayable === true &&
-t.type === 'IN' &&
-String(t.entityId) === String(entity.id) &&
-parseFloat(t.supplierCreditAmount || 0) > 0
-)
-.sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
-let supplierCreditApplied = false;
-for (const ct of openCredits) {
-if (remaining <= 0) break;
-const open = parseFloat(ct.supplierCreditAmount);
-if (remaining >= open) {
-remaining -= open;
-ct.supplierCreditAmount = 0;
-} else {
-ct.supplierCreditAmount = parseFloat((open - remaining).toFixed(2));
-remaining = 0;
-}
+const _creditPlan = planSupplierCreditConsumption(transactions, entity.id, remaining);
+if (_creditPlan.consumptions.length) {
+remaining = _creditPlan.remaining;
+const _consumedById = new Map(_creditPlan.consumptions.map(c => [String(c.id), c.amount]));
+const _consumedIds = [];
+for (const ct of transactions) {
+if (!ct || !_consumedById.has(String(ct.id))) continue;
+ct.supplierCreditAmount = parseFloat(Math.max(0, (parseFloat(ct.supplierCreditAmount) || 0) - _consumedById.get(String(ct.id))).toFixed(2));
 ct.updatedAt = getTimestamp();
 ensureRecordIntegrity(ct, true);
-supplierCreditApplied = true;
-await unifiedSave('transactions', transactions, ct);
+_consumedIds.push(ct.id);
 }
-if (supplierCreditApplied && !transaction.isPayable) {
-transaction.isPayable = true;
+transaction.consumedCredits = _creditPlan.consumptions;
+if (!transaction.isPayable) transaction.isPayable = true;
+await unifiedSave('transactions', transactions, null, _consumedIds);
 }
 }
 }
@@ -3934,10 +3923,12 @@ const expense = expenses.find(e => e.id === expenseId);
 if (!expense) {
 const orphans = transactions.filter(t => t.expenseId === expenseId);
 if (orphans.length > 0) {
-const orphansCopy = orphans.slice();
+const _orphGroup = newGroupId('exp');
+await _reconcileSupplierLinksForDeletedTransactions(orphans.filter(t => t.isPayable === true), transactions, inventory, { groupId: _orphGroup });
+const orphansCopy = orphans.filter(tx => transactions.some(t => t.id === tx.id));
 for (const tx of orphansCopy) {
 const _ptFilteredDelExp = transactions.filter(t => t.id !== tx.id);
-await unifiedDelete('transactions', _ptFilteredDelExp, tx.id, { strict: true }, tx);
+await unifiedDelete('transactions', _ptFilteredDelExp, tx.id, { strict: true }, stampGroup(tx, _orphGroup));
 }
 }
 renderRecentExpenses();
@@ -3970,7 +3961,7 @@ if (!(await showGlassConfirm(confirmMsg, { title: `Delete ${categoryLabel}`, con
 try {
 const txToDelete = transactions.filter(t => t.expenseId === expenseId);
 const _expGroup = newGroupId('exp');
-await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), transactions, inventory);
+await _reconcileSupplierLinksForDeletedTransactions(txToDelete.filter(t => t.isPayable === true), transactions, inventory, { groupId: _expGroup });
 if (txToDelete.length > 0) {
 let _expRemaining = transactions.slice();
 for (const trans of txToDelete) {

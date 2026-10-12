@@ -1,6 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks, getPaymentDeleteBlockReason } from './link-guards.js';
-import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive } from './link-graph.js';
+import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-photos.js';
@@ -2155,13 +2155,31 @@ out.paymentTotal += parseFloat(t.amount) || 0;
 return out;
 }
 
-export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory) {
-const result = { unlinked: [], recomputed: [], removedTxs: [], changed: false };
+export async function _reconcileSupplierLinksForDeletedTransactions(deletedTxs, allTransactions, allInventory, opts = {}) {
+const result = { unlinked: [], recomputed: [], removedTxs: [], restoredCredits: [], changed: false };
 const txs = (Array.isArray(deletedTxs) ? deletedTxs : [deletedTxs]).filter(t => t && (t.isPayable || t.materialId));
 if (txs.length === 0) return result;
 const inventory = allInventory || ensureArray(await sqliteStore.get('inventory'));
 const transactions = allTransactions || ensureArray(await sqliteStore.get('transactions'));
 const deletingIds = new Set(txs.map(t => String(t.id)));
+const groupId = opts.groupId || null;
+const restoredCreditIds = [];
+for (const t of txs) {
+if (t.type !== 'OUT') continue;
+for (const r of planSupplierCreditRestore(t, transactions)) {
+if (deletingIds.has(String(r.id))) continue;
+const ct = transactions.find(x => x && !x.deletedAt && String(x.id) === String(r.id));
+if (!ct) continue;
+ct.supplierCreditAmount = parseFloat(((parseFloat(ct.supplierCreditAmount) || 0) + r.amount).toFixed(2));
+ct.updatedAt = getTimestamp();
+ensureRecordIntegrity(ct, true);
+if (!restoredCreditIds.includes(String(ct.id))) restoredCreditIds.push(String(ct.id));
+}
+}
+if (restoredCreditIds.length) {
+await unifiedSave('transactions', transactions, null, restoredCreditIds);
+result.restoredCredits = restoredCreditIds;
+}
 const supplierIds = new Set();
 const extraMaterialIds = new Set();
 const unlinkIds = new Set();
@@ -2187,7 +2205,7 @@ if (!exclusive) continue;
 const idx = transactions.findIndex(t => String(t.id) === String(lt.id));
 if (idx === -1) continue;
 transactions.splice(idx, 1);
-await unifiedDelete('transactions', transactions, lt.id, { strict: true }, lt);
+await unifiedDelete('transactions', transactions, lt.id, { strict: true }, groupId ? stampGroup(lt, groupId) : lt);
 result.removedTxs.push(lt);
 }
 _clearMaterialSupplier(mat);
@@ -2198,7 +2216,7 @@ supplierIds.add(oldSupplier);
 const removedIds = new Set(result.removedTxs.map(t => String(t.id)));
 const exclude = new Set([...deletingIds, ...removedIds]);
 result.recomputed = await _recomputeSupplierPayables([...supplierIds], inventory, transactions, exclude, extraMaterialIds, new Set(result.unlinked.map(m => String(m.id))));
-result.changed = result.unlinked.length > 0 || result.recomputed.length > 0 || result.removedTxs.length > 0;
+result.changed = result.unlinked.length > 0 || result.recomputed.length > 0 || result.removedTxs.length > 0 || result.restoredCredits.length > 0;
 return result;
 }
 
@@ -2222,6 +2240,25 @@ mat.totalPayable = _supplierMatOriginal(mat);
 mat.updatedAt = getTimestamp();
 ensureRecordIntegrity(mat, true);
 await unifiedSave('inventory', inventory, mat);
+changed = true;
+}
+}
+if (tx.type === 'OUT' && Array.isArray(tx.consumedCredits) && tx.consumedCredits.length) {
+const creditChanged = [];
+for (const c of tx.consumedCredits) {
+if (!c || c.id == null) continue;
+const ct = transactions.find(t => t && !t.deletedAt && String(t.id) === String(c.id));
+if (!ct) continue;
+const avail = parseFloat(ct.supplierCreditAmount) || 0;
+const take = Math.min(avail, parseFloat(c.amount) || 0);
+if (!(take > 0)) continue;
+ct.supplierCreditAmount = parseFloat((avail - take).toFixed(2));
+ct.updatedAt = getTimestamp();
+ensureRecordIntegrity(ct, true);
+if (!creditChanged.includes(String(ct.id))) creditChanged.push(String(ct.id));
+}
+if (creditChanged.length) {
+await unifiedSave('transactions', transactions, null, creditChanged);
 changed = true;
 }
 }
@@ -2304,9 +2341,9 @@ if (ent) await renderEntityOverlayContent(ent);
 } catch (_) {}
 }
 
-export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory) {
+export async function _restorePayableFromDeletedTransaction(tx, allTransactions, allInventory, opts = {}) {
 if (!tx || !tx.isPayable) return false;
-const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory);
+const res = await _reconcileSupplierLinksForDeletedTransactions([tx], allTransactions, allInventory, opts);
 return res.changed || tx.type === 'IN';
 }
 
@@ -2359,8 +2396,9 @@ if (_dtImpact.paymentCount > 0) _dtMsg += `\n↩ ${_dtImpact.paymentCount} suppl
 _dtMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_dtMsg, { title: `Delete ${_dt.type === 'IN' ? 'Payment IN' : 'Payment OUT'}`, confirmText: "Delete", danger: true })) {
 try {
-await _restorePayableFromDeletedTransaction(_dt, transactions, inventory);
-await deletePaymentTxWithLinks(_dt);
+const _dtGroupId = (_dt.isPayable || _dt.expenseId) ? newGroupId('pay') : null;
+await _restorePayableFromDeletedTransaction(_dt, transactions, inventory, { groupId: _dtGroupId });
+await deletePaymentTxWithLinks(_dt, { groupId: _dtGroupId });
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 const _dtEntityRefreshed = ensureArray(await sqliteStore.get('entities')).find(e => String(e.id) === String(_dt.entityId));

@@ -5,7 +5,7 @@ export const REF_FIELDS = {
   sales:       { scalar: ['relatedSaleId'], array: [] },
   rep:            { scalar: ['relatedSaleId', 'usedInCalcId'], array: [] },
   calculator:        { scalar: ['transferSaleId', 'returnEntryId', 'returnLogId'], array: ['linkedSalesIds', 'linkedRepSalesIds'] },
-  transactions: { scalar: ['expenseId', 'entityId', 'transferPeerEntityId', 'materialId'], array: ['materialIds'] },
+  transactions: { scalar: ['expenseId', 'entityId', 'transferPeerEntityId', 'materialId'], array: ['materialIds'], objectArray: ['consumedCredits'] },
   inventory: { scalar: ['supplierId'], array: [] },
 };
 
@@ -45,7 +45,7 @@ export function remapReferences(stores, oldId, newId) {
   for (const key of Object.keys(REF_FIELDS)) {
     const arr = stores[key];
     if (!Array.isArray(arr)) continue;
-    const { scalar, array } = REF_FIELDS[key];
+    const { scalar, array, objectArray = [] } = REF_FIELDS[key];
     for (const rec of arr) {
       if (!rec || typeof rec !== 'object') continue;
       let hit = false;
@@ -54,6 +54,12 @@ export function remapReferences(stores, oldId, newId) {
         if (!Array.isArray(rec[f])) continue;
         const idx = rec[f].findIndex(x => String(x) === o);
         if (idx !== -1) { rec[f] = rec[f].map(x => String(x) === o ? nw : x); hit = true; }
+      }
+      for (const f of objectArray) {
+        if (!Array.isArray(rec[f])) continue;
+        for (const entry of rec[f]) {
+          if (entry && entry.id != null && String(entry.id) === o) { entry.id = nw; hit = true; }
+        }
       }
       if (hit) (changed[key] = changed[key] || []).push(rec);
     }
@@ -67,6 +73,10 @@ export function resolveOwnLinks(collectionName, snapshot, idMap) {
   if (!spec || !snapshot) return snapshot;
   for (const f of spec.scalar) if (snapshot[f]) snapshot[f] = resolveId(snapshot[f], idMap);
   for (const f of spec.array) if (Array.isArray(snapshot[f])) snapshot[f] = snapshot[f].map(x => resolveId(x, idMap));
+  for (const f of spec.objectArray || []) {
+    if (!Array.isArray(snapshot[f])) continue;
+    snapshot[f].forEach(entry => { if (entry && entry.id != null) entry.id = resolveId(entry.id, idMap); });
+  }
   return snapshot;
 }
 
@@ -339,6 +349,58 @@ export function allocatePayments(mats, payments, originalOf) {
 export function planPayableAdjustment(currentInvoiced, delta) {
   const next = Math.max(0, _r2(_n(currentInvoiced) + _n(delta)));
   return { next, change: _r2(next - _n(currentInvoiced)) };
+}
+
+export function planSupplierCreditConsumption(txs, entityId, amount) {
+  let remaining = _r2(Math.max(0, _n(amount)));
+  const consumptions = [];
+  if (!(remaining > 0) || entityId == null) return { consumptions, remaining };
+  const sid = String(entityId);
+  const open = (Array.isArray(txs) ? txs : [])
+    .filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'IN' && String(t.entityId) === sid && _n(t.supplierCreditAmount) > 0)
+    .sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
+  for (const ct of open) {
+    if (remaining <= 0) break;
+    const take = Math.min(_n(ct.supplierCreditAmount), remaining);
+    consumptions.push({ id: ct.id, amount: _r2(take) });
+    remaining = _r2(Math.max(0, remaining - take));
+  }
+  return { consumptions, remaining };
+}
+
+export function planSupplierCreditRestore(tx, liveTxs) {
+  const restores = [];
+  const list = Array.isArray(tx && tx.consumedCredits) ? tx.consumedCredits : [];
+  if (!list.length) return restores;
+  const txs = Array.isArray(liveTxs) ? liveTxs : [];
+  for (const c of list) {
+    if (!c || c.id == null) continue;
+    const ct = txs.find(t => t && !t.deletedAt && String(t.id) === String(c.id));
+    if (!ct) continue;
+    const give = _n(c.amount);
+    if (give <= 0) continue;
+    const cap = Math.max(0, _r2(_n(ct.amount) - _n(ct.supplierCreditAmount)));
+    const back = Math.min(give, cap);
+    if (back > 0) restores.push({ id: ct.id, amount: _r2(back) });
+  }
+  return restores;
+}
+
+export function getSupplierCreditReconsumeIssue(snapshot, liveTxs, resolve) {
+  const list = Array.isArray(snapshot && snapshot.consumedCredits) ? snapshot.consumedCredits : [];
+  if (!list.length) return null;
+  const txs = Array.isArray(liveTxs) ? liveTxs : [];
+  const res = typeof resolve === 'function' ? resolve : (x) => x;
+  let short = 0;
+  for (const c of list) {
+    if (!c || c.id == null) continue;
+    const ct = txs.find(t => t && !t.deletedAt && String(t.id) === String(res(c.id)));
+    if (!ct) continue;
+    if (_n(ct.supplierCreditAmount) + 0.01 < _n(c.amount)) short++;
+  }
+  return short > 0
+    ? 'The supplier credit this payment used has since been consumed by another payment, so recovering it would count that money twice. Delete the newer payment first.'
+    : null;
 }
 
 const _SLOTS = ['standard', 'asaan'];

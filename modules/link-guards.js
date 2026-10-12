@@ -8,7 +8,7 @@ import {
   planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
-  getTransferPairRestoreIssue,
+  getTransferPairRestoreIssue, getSupplierCreditReconsumeIssue,
 } from './link-graph.js';
 
 async function _calcHistory() {
@@ -231,6 +231,12 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
       const _tombs = ensureArray(await sqliteStore.get('deletions'));
       const _pairIssue = getTransferPairRestoreIssue(snapshot, _liveTxs, _tombs);
       if (_pairIssue) return _pairIssue;
+    }
+    if (snapshot.isPayable === true && snapshot.type === 'OUT' && Array.isArray(snapshot.consumedCredits) && snapshot.consumedCredits.length) {
+      const _creditIdMap = await _loadIdMap();
+      const _liveForCredit = ensureArray(await sqliteStore.get('transactions'));
+      const _creditIssue = getSupplierCreditReconsumeIssue(snapshot, _liveForCredit, (x) => resolveId(x, _creditIdMap));
+      if (_creditIssue) return _creditIssue;
     }
     if (!(ctx && ctx.entityInSet && ctx.entityInSet(snapshot.entityId))) {
       const idMap = await _loadIdMap();
