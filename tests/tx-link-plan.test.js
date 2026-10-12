@@ -121,6 +121,12 @@ describe('getTxLinkIssue', () => {
   it('rejects a payment whose entity is gone', () => {
     assert.match(getTxLinkIssue(tx({ entityId: 'gone' }), { entities }), /no longer exists/);
   });
+  it('rejects a transaction whose type is not IN or OUT', () => {
+    assert.match(getTxLinkIssue(tx({ type: 'operating' }), { entities }), /IN or OUT/);
+    assert.match(getTxLinkIssue(tx({ type: undefined }), { entities }), /IN or OUT/);
+    assert.equal(getTxLinkIssue(tx({ type: 'IN' }), { entities }), null);
+    assert.equal(getTxLinkIssue(tx({ type: 'OUT' }), { entities }), null);
+  });
   it('rejects a payment linked to a deleted expense', () => {
     assert.match(getTxLinkIssue(tx({ expenseId: 'nope' }), { entities, expenses }), /expense.*no longer exists/);
   });

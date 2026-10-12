@@ -2006,7 +2006,7 @@ document.getElementById('btn-category-in').style.opacity = '1';
 document.getElementById('btn-category-in').style.pointerEvents = 'auto';
 document.getElementById('btn-category-out').style.opacity = '1';
 document.getElementById('btn-category-out').style.pointerEvents = 'auto';
-if (!window._expenseCategory === 'operating') {
+if (window._expenseCategory !== 'IN' && window._expenseCategory !== 'OUT') {
 selectExpenseCategory('OUT', document.getElementById('btn-category-out'));
 }
 } else if (type === 'expense') {
@@ -2470,6 +2470,8 @@ transaction.isPayable = true;
 transaction.supplierCreditAmount = amount;
 }
 }
+const _seLinkIssue = getTxLinkIssue(transaction, { entities, expenses, inventory });
+if (_seLinkIssue) throw new Error(_seLinkIssue);
 transaction = ensureRecordIntegrity(transaction, false);
 transactions.push(transaction);
 await unifiedSave('entities', entities, entity);

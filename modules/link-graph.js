@@ -830,6 +830,7 @@ export function getBatchCashIssue(txs, available, what) {
 
 export function getTxLinkIssue(tx, ctx = {}) {
   if (!tx || !tx.id) return 'Missing transaction record.';
+  if (tx.type !== 'IN' && tx.type !== 'OUT') return 'Transaction type must be IN or OUT — save it again as a proper payment.';
   const entities = Array.isArray(ctx.entities) ? ctx.entities : null;
   const expenses = Array.isArray(ctx.expenses) ? ctx.expenses : null;
   const inventory = Array.isArray(ctx.inventory) ? ctx.inventory : null;
