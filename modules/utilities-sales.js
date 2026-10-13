@@ -1433,39 +1433,10 @@ const expEl = _el('rep-return-expired');
 const qtyEl = _el('rep-return-qty');
 if (expEl) expEl.value = '';
 if (qtyEl) qtyEl.value = '';
-renderRepReturnStores().catch(() => {});
 updateRepReturnPreview();
 } else {
 calculateCustomerSale();
 }
-}
-
-export async function renderRepReturnStores() {
-const grp = document.getElementById('rep-return-store-toggles');
-const hid = document.getElementById('rep-return-store-value');
-if (!grp || !hid) return;
-let stores = [];
-try { stores = ensureArray(await getAppStores()).filter(st => st && st.key); } catch (_) { stores = []; }
-const cur = hid.value;
-const keep = stores.some(st => st.key === cur) ? cur : (stores[0] ? stores[0].key : '');
-hid.value = keep;
-grp.innerHTML = '';
-stores.forEach(st => {
-const b = document.createElement('button');
-b.type = 'button';
-b.className = 'toggle-opt' + (st.key === keep ? ' active' : '');
-b.textContent = st.name || st.key;
-b.onclick = () => selectRepReturnStore(b, st.key);
-grp.appendChild(b);
-});
-}
-
-export function selectRepReturnStore(btn, value) {
-const grp = document.getElementById('rep-return-store-toggles');
-if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
-if (btn) btn.classList.add('active');
-const hid = document.getElementById('rep-return-store-value');
-if (hid) hid.value = value;
 }
 
 export function updateRepReturnPreview() {
@@ -1474,9 +1445,7 @@ const exp = parseFloat((document.getElementById('rep-return-expired') || {}).val
 const ret = parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0;
 const balEl = document.getElementById('cust-coll-balance');
 const collRes = document.getElementById('cust-coll-result');
-const storeField = document.getElementById('rep-return-store-field');
 if (collRes) collRes.style.display = '';
-if (storeField) storeField.style.display = ret > 0 ? '' : 'none';
 if (balEl) {
 balEl.textContent = `${fmtNum(round2(exp + ret))} kg`;
 balEl.style.color = (exp + ret) > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)';
@@ -1491,12 +1460,10 @@ const date = (document.getElementById('cust-date') || {}).value;
 const rep = _repSelectedValue();
 const expired = round2(parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0);
 const returned = round2(parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0);
-const store = ((document.getElementById('rep-return-store-value') || {}).value || '').trim();
 if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
 if (!rep) { window.notifyBlocking('Please select a sales representative.', 'warning'); return; }
 if (expired < 0 || returned < 0) { window.notifyBlocking('Quantities cannot be negative.', 'warning'); return; }
 if (expired <= 0 && returned <= 0) { window.notifyBlocking('Enter an expired and/or returned quantity.', 'warning'); return; }
-if (returned > 0 && !store) { window.notifyBlocking('Please select the store the returned stock goes back to.', 'warning'); return; }
 const btn = document.getElementById('btn-save-cust-transaction');
 if (btn) { if (btn.disabled) return; btn.disabled = true; }
 try {
@@ -1527,14 +1494,13 @@ let rec = {
 id: recordId, timestamp: ts, createdAt: ts, updatedAt: ts,
 date, time: timeString,
 customerName: rep, customerPhone: '',
-quantity: 0, supplyStore: returned > 0 ? store : null,
+quantity: 0, supplyStore: null,
 paymentType: 'REP_RETURN',
 salesRep: rep, currentRepProfile: 'admin',
 totalCost: 0, totalValue: 0, profit: 0,
 creditReceived: true,
 isRepReturn: true,
 expiredQty: expired, returnedQty: returned,
-returnStore: returned > 0 ? store : null,
 gps: gpsCoords,
 syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
@@ -1812,7 +1778,6 @@ export async function rebuildStoreUI() {
     if (hidden && stores.length) hidden.value = stores[0].key;
   }
   if (typeof renderReturnTargets === 'function') await renderReturnTargets();
-  if (typeof renderRepReturnStores === 'function') await renderRepReturnStores();
   const storeHidden = document.getElementById('storeSelector');
   const storeTglGrp = document.getElementById('storeSelectorToggleGroup');
   if (storeTglGrp && storeHidden) {
@@ -6625,8 +6590,7 @@ ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 <hr>
 <p><span>Expired / Damage:</span> <span class="qty-val">${fmtNum(_rrExp)} kg</span></p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(_rrRet)} kg</span></p>
-${_rrRet > 0 && item.returnStore ? `<div class="supply-tag ${getStoreBadgeClass(item.returnStore)}">Return to: ${esc(getStoreLabel(item.returnStore))}</div>` : ''}
-<p class="u-fs-sm u-text-muted">${_rrDone ? 'Applied to CHORA / production via Calculator.' : 'Pending: goes to CHORA / production when the Calculator is reconciled.'}</p>
+<p class="u-fs-sm u-text-muted">${_rrDone ? 'Applied to CHORA / production via Calculator.' : 'Pending: pick the return store in the Calculator; expired goes to CHORA and returned to production on reconciliation.'}</p>
 ${deleteBtnHtml}
 `;
 } else if (isAdminCollItem) {
@@ -6948,8 +6912,6 @@ window.setSaleMode = setSaleMode;
 window.updateCollectionPreview = updateCollectionPreview;
 window.updateRepReturnPreview = updateRepReturnPreview;
 window.saveRepReturn = saveRepReturn;
-window.selectRepReturnStore = selectRepReturnStore;
-window.renderRepReturnStores = renderRepReturnStores;
 window.saveCustomerCollection = saveCustomerCollection;
 window.saveCustomerTransaction = saveCustomerTransaction;
 window._DEFAULT_STORES = _DEFAULT_STORES;

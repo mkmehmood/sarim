@@ -2249,12 +2249,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <div class="field"><label>Expired / Damage Qty (kg)</label><input type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
 <div class="field"><label>Returned Qty (kg)</label><input type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
 </div>
-<div class="field u-mb-15" id="rep-return-store-field">
-<label>Return Stock To</label>
-<div class="toggle-group" id="rep-return-store-toggles"></div>
-<input type="hidden" id="rep-return-store-value" value="">
-</div>
-<div class="u-field-hint" id="rep-return-hint">* Saved as pending. Expired goes to CHORA and returned goes back to production only after the Calculator reconciliation.</div>
+<div class="u-field-hint" id="rep-return-hint">* Saved as pending against the rep. In the Calculator tab these fill Expired / Damage Qty and Returned Qty; you pick the return store there. Expired goes to CHORA and returned goes to production only after reconciliation.</div>
 </div>
 <div id="cust-coll-inputs" class="hidden">
 <div class="field">

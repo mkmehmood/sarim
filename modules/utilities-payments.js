@@ -240,19 +240,10 @@ retEl.dataset.repReturnAuto = '1';
 expEl.dataset.repReturnAuto = '1';
 styleAutoFilledField(retEl);
 styleAutoFilledField(expEl);
-const stores = Array.from(new Set(pending.filter(r => (Number(r.returnedQty) || 0) > 0 && r.returnStore).map(r => r.returnStore)));
-if (totalRet > 0) {
-  if (stores.length === 1) {
-    const btn = document.getElementById('ret-store-' + String(stores[0]).toLowerCase());
-    selectReturnStore(stores[0], btn || null);
-  } else {
-    window._returnStore = null;
-  }
-}
 if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
 if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
 if (hint) {
-  const storeNote = totalRet > 0 ? (stores.length === 1 ? ` Returned stock goes to ${getStoreLabel(stores[0])}.` : ' Returns were logged for different stores: choose the store below.') : '';
+  const storeNote = totalRet > 0 ? ' Select the store the returned stock goes back to below.' : '';
   hint.textContent = `Auto-filled from ${pending.length} rep return${pending.length === 1 ? '' : 's'} logged in Sales (expired ${fmtNum(totalExp)} kg, returned ${fmtNum(totalRet)} kg).${storeNote}`;
   hint.classList.remove('hidden');
 }

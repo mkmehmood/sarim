@@ -424,7 +424,7 @@ itemContent = `
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     <div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(_rrExp)} kg \u2192 CHORA</div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Returned: ${fmtNum(_rrRet)} kg${_rrRet > 0 && t.returnStore ? ` \u2192 ${esc(getStoreLabel(t.returnStore))}` : ''}</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">Returned: ${fmtNum(_rrRet)} kg</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation' : 'Waiting for Calculator reconciliation'}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
