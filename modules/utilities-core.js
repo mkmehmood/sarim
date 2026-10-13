@@ -45,7 +45,7 @@ await sqliteStore.set('theme', 'light');
 }
 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 if (metaThemeColor) {
-metaThemeColor.setAttribute('content', newTheme === 'light' ? '#E3E8EF' : '#2A2E35');
+metaThemeColor.setAttribute('content', newTheme === 'light' ? '#E8E4EB' : '#2E2B33');
 }
 if (mfgBarChart) mfgBarChart.update();
 if (mfgPieChart) mfgPieChart.update();
