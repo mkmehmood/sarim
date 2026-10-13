@@ -2244,6 +2244,12 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <div class="field"><label>Quantity (kg)</label><input type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
 </div>
+<div id="cust-return-inputs" class="hidden">
+<div class="grid-inputs">
+<div class="field"><label>Expired / Damage Qty (kg)</label><input type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Returned Qty (kg)</label><input type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+</div>
+</div>
 <div id="cust-coll-inputs" class="hidden">
 <div class="grid-inputs">
 <div class="field">
