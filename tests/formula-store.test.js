@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { DEFAULT_STORES, getDefaultStoreKey, formulaTypeFor } from '../modules/store-keys.js';
+import { DEFAULT_STORES, getDefaultStoreKey, formulaTypeFor, unitPoolKey } from '../modules/store-keys.js';
 const src = readFileSync(new URL('../modules/formula-store.js', import.meta.url), 'utf8');
 const DEFAULTS = DEFAULT_STORES.map(x => ({ ...x }));
 function load(initial = {}) {
@@ -25,7 +25,7 @@ function load(initial = {}) {
     notifyDataChange: () => {}, triggerAutoSync: () => {},
     _invalidateStoresCache: () => {}, _set_currentFactoryEntryStore: () => {},
     getAppStores: async () => { const s = data.get('stores'); return Array.isArray(s) && s.length ? structuredClone(s) : structuredClone(DEFAULTS); },
-    window, document, getDefaultStoreKey, formulaTypeFor,
+    window, document, getDefaultStoreKey, formulaTypeFor, unitPoolKey,
   };
   const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function');
   const ctx = vm.createContext({ ...stubs, console, structuredClone, Promise, Number, String, Array, Math, Date, JSON });

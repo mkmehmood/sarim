@@ -5,7 +5,7 @@ import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor, getDefaultStoreKey } from './store-keys.js';
+import { formulaTypeFor, getDefaultStoreKey, unitPoolKey } from './store-keys.js';
 const STORE_KEY = 'formulas';
 const STORE_TS_KEY = 'formulas_timestamp';
 const SLOTS_KEY = 'slots';
@@ -509,9 +509,11 @@ export function syncFactoryAvailPicker(slot) {
 
 export async function refreshFormulaDependentUI() {
   const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('tracking')]);
-  const used = new Set(stores.map((s) => s.formulaType || 'standard'));
+  // Resolve each store's slot from the formula it actually has selected (same
+  // rule the unit pools use). A stale formulaType must not surface an empty slot.
   const typeMap = {};
-  stores.forEach((s) => { typeMap[s.key] = s.formulaType || 'standard'; });
+  stores.forEach((s) => { typeMap[s.key] = unitPoolKey(s.formulaType, s.formulaId, slots); });
+  const used = new Set(Object.values(typeMap));
   const entryOrder = SLOT_KEYS.filter((k) => !!slots[k] && used.has(k));
   const availOrder = SLOT_KEYS.filter((k) => !!slots[k] && (used.has(k) || _num(tracking && tracking[k] && tracking[k].available, 0) > 0));
   if (!entryOrder.length) entryOrder.push(SLOT_KEYS[0]);
@@ -522,7 +524,7 @@ export async function refreshFormulaDependentUI() {
   window._formulaSlotView = { labels: shown, entryOrder, availOrder };
   let activeSlot = _slotOfStore(window.currentFactoryEntryStore || getDefaultStoreKey(), typeMap);
   if (!entryOrder.includes(activeSlot)) activeSlot = entryOrder[0];
-  const rep = stores.find((s) => (s.formulaType || 'standard') === activeSlot);
+  const rep = stores.find((s) => typeMap[s.key] === activeSlot);
   if (rep && typeMap[window.currentFactoryEntryStore] !== activeSlot) _set_currentFactoryEntryStore(rep.key);
   syncFactoryFormulaPicker(activeSlot);
   const availInput = _el('factory-avail-value');

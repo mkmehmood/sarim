@@ -11,6 +11,11 @@ describe('unitPoolKey', () => {
   it('a store whose own formula equals the standard slot uses the standard pool', () => {
     assert.equal(unitPoolKey('asaan', 'f1', { standard: 'f1', asaan: 'f2' }), 'standard');
   });
+  it('stale asaan formulaType with the Standard formula selected resolves to the standard pool (New Entry picker)', () => {
+    const slots = { standard: 'f1', asaan: 'f-orphan' };
+    const asaanStore = { key: 'asaan', formulaType: 'asaan', formulaId: 'f1' };
+    assert.equal(unitPoolKey(asaanStore.formulaType, asaanStore.formulaId, slots), 'standard');
+  });
   it('different formulas keep separate pools', () => {
     const slots = { standard: 'f1', asaan: 'f2' };
     assert.equal(unitPoolKey('asaan', null, slots), 'asaan');
