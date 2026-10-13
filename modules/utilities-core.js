@@ -2439,7 +2439,8 @@ msg += `\n\n\u21a9 ${_linkedMaterials.length} linked material${_linkedMaterials.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: `Delete Entity Permanently`, confirmText: "Delete", danger: true }))) return;
 try {
-await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), transactions, inventory);
+const _entGroup = newGroupId('ent');
+await _reconcileSupplierLinksForDeletedTransactions(_entityTxs.filter(t => t.isPayable === true), transactions, inventory, { groupId: _entGroup });
 for (const mat of _linkedMaterials) {
 if (!mat.supplierId) continue;
 _clearMaterialSupplier(mat);
@@ -2452,9 +2453,8 @@ const _processedPairIds = new Set();
 for (const tx of _transferTxs) {
 if (_processedPairIds.has(tx.transferPairId)) continue;
 _processedPairIds.add(tx.transferPairId);
-if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(tx.transferPairId, true);
+if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(tx.transferPairId, true, { groupId: _entGroup });
 }
-const _entGroup = newGroupId('ent');
 const _entTxIds = new Set(_normalTxs.map(t => String(t.id)));
 for (const tx of _normalTxs) {
 await deletePaymentTxWithLinks(tx, { groupId: _entGroup, excludeIds: _entTxIds });

@@ -567,8 +567,9 @@ export function planGroupRecovery(members, blocked, requestedId) {
   return { restore, skipped, requestedSkipped };
 }
 
-export function getTransferPairRestoreIssue(snapshot, liveTxs, tombstones) {
+export function getTransferPairRestoreIssue(snapshot, liveTxs, tombstones, opts = {}) {
   if (!snapshot || snapshot.isTransfer !== true || !snapshot.transferPairId) return null;
+  if (opts && opts.pairInSet) return null;
   const pid = snapshot.transferPairId;
   const selfId = String(snapshot.id || '');
   const live = (Array.isArray(liveTxs) ? liveTxs : []).some(t => t && !t.deletedAt && t.transferPairId === pid && String(t.id) !== selfId);
@@ -852,6 +853,10 @@ export function getTxLinkIssue(tx, ctx = {}) {
     if (missing.length === tx.materialIds.length) return 'None of the materials this supplier payment settles exist anymore.';
   }
   return null;
+}
+
+export function planBulkCashDrop(txs) {
+  return _r2((Array.isArray(txs) ? txs : [txs]).reduce((t, x) => t + getDeleteCashDrop(x), 0));
 }
 
 export function planEntityRename(entityId, newName, txs, materials) {

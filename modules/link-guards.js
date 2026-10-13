@@ -5,7 +5,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
   getTransferPairRestoreIssue, getSupplierCreditReconsumeIssue,
@@ -237,7 +237,8 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     if (snapshot.isTransfer === true && snapshot.transferPairId) {
       const _liveTxs = ensureArray(await sqliteStore.get('transactions'));
       const _tombs = ensureArray(await sqliteStore.get('deletions'));
-      const _pairIssue = getTransferPairRestoreIssue(snapshot, _liveTxs, _tombs);
+      const _pairInSet = !!(ctx && typeof ctx.pairInSet === 'function' && ctx.pairInSet(String(snapshot.transferPairId), String(snapshot.id || '')));
+      const _pairIssue = getTransferPairRestoreIssue(snapshot, _liveTxs, _tombs, { pairInSet: _pairInSet });
       if (_pairIssue) return _pairIssue;
     }
     if (snapshot.isPayable === true && snapshot.type === 'OUT' && Array.isArray(snapshot.consumedCredits) && snapshot.consumedCredits.length) {
@@ -246,15 +247,20 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
       const _creditIssue = getSupplierCreditReconsumeIssue(snapshot, _liveForCredit, (x) => resolveId(x, _creditIdMap));
       if (_creditIssue) return _creditIssue;
     }
-    if (!(ctx && ctx.entityInSet && ctx.entityInSet(snapshot.entityId))) {
+    {
+      const inSet = (id) => !!(id && ctx && typeof ctx.entityInSet === 'function' && ctx.entityInSet(String(id)));
       const idMap = await _loadIdMap();
       const ents = ensureArray(await sqliteStore.get('entities'));
-      const liveEnt = (id) => id && ents.some(e => e && !e.deletedAt && String(e.id) === String(resolveId(id, idMap)));
+      const liveEnt = (id) => {
+        if (!id) return false;
+        if (inSet(id)) return true;
+        return ents.some(e => e && !e.deletedAt && String(e.id) === String(resolveId(id, idMap)));
+      };
       if (snapshot.entityId && !liveEnt(snapshot.entityId)) {
-        return `The ${snapshot.entityName ? `"${snapshot.entityName}"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
+        return `The ${snapshot.entityName ? `\"${snapshot.entityName}\"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
       }
       if (snapshot.isTransfer && snapshot.transferPeerEntityId && !liveEnt(snapshot.transferPeerEntityId)) {
-        return `The ${snapshot.transferPeerEntityName ? `"${snapshot.transferPeerEntityName}"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
+        return `The ${snapshot.transferPeerEntityName ? `\"${snapshot.transferPeerEntityName}\"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
       }
     }
     const need = getRestoreCashNeed(snapshot);
@@ -635,6 +641,12 @@ export async function getPaymentDeleteBlockReason(tx) {
 // classified by the pure planner, cash safety is checked against live balances.
 // Returns { block } — when plan.kind === 'transfer' the caller should delegate to
 // deletePaymentTransfer instead of deleting directly.
+export async function getBulkPaymentDeleteBlockReason(txs, what = 'Deleting these payments') {
+  const drop = planBulkCashDrop(txs);
+  if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
+  return getCashShortIssue(drop, await window.getAvailableCashInHand(), what);
+}
+
 export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
   if (!tx) return { block: null, plan: null };
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));

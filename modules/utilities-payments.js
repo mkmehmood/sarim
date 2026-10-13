@@ -4222,7 +4222,8 @@ async function _withRecycleLock(fn) {
 async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
   const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null,
-    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)) };
+    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)) ,
+    pairInSet: (pairId, selfId) => !!pairId && members.some(m => (m.collection || m.recordType) === 'transactions' && m.snapshot && String(m.snapshot.transferPairId || '') === String(pairId) && String(m.recordId || m.id) !== String(selfId)) };
   const blocked = new Map();
   for (const m of orderForRestore(members)) {
     const snap = m && m.snapshot;
@@ -7875,7 +7876,7 @@ list.replaceChildren(fragment);
 
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 
-export async function deletePaymentTransfer(pairId, skipConfirm = false) {
+export async function deletePaymentTransfer(pairId, skipConfirm = false, opts = {}) {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entries = transactions.filter(t => t.transferPairId === pairId);
 if (entries.length === 0) return;
@@ -7892,7 +7893,7 @@ try {
 let working = transactions.slice();
 for (const entry of entries) {
 working = working.filter(t => t.id !== entry.id);
-await unifiedDelete('transactions', working, entry.id, { strict: true }, entry);
+await unifiedDelete('transactions', working, entry.id, { strict: true }, opts.groupId ? stampGroup(entry, opts.groupId) : entry);
 }
 try {
 const _trfPh = (await sqliteStore.get('photos')) || {};

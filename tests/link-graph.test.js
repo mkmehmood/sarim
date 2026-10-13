@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments, getTransferPairRestoreIssue,
-  resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 describe('recovered-id remapping', () => {
   it('follows chains oldId -> newId -> newer', () => {
@@ -589,5 +589,27 @@ describe('transfer pair restore guard', () => {
   it('ignores non-transfer records', () => {
     assert.equal(getTransferPairRestoreIssue({ id: 'x' }, [], []), null);
     assert.equal(getTransferPairRestoreIssue(null, [], []), null);
+  });
+});
+describe('bulk delete cash drop', () => {
+  it('sums the cash removed by a whole delete batch, skipping transfers and payable invoices', () => {
+    const txs = [
+      { id: 'a', type: 'IN', amount: 300 },
+      { id: 'b', type: 'IN', amount: 200 },
+      { id: 'c', type: 'IN', amount: 900, isTransfer: true },
+      { id: 'd', type: 'IN', amount: 900, isPayable: true },
+      { id: 'e', type: 'OUT', amount: 900 },
+      { id: 'f', type: 'IN', amount: 900, isMerged: true },
+    ];
+    assert.equal(planBulkCashDrop(txs), 500);
+    assert.equal(planBulkCashDrop([]), 0);
+    assert.equal(planBulkCashDrop(txs[0]), 300);
+  });
+});
+describe('transfer pair restore: same recovery set', () => {
+  it('allows a half whose pair comes back in the same set, still blocks a truly orphaned half', () => {
+    const half = { id: 'T1', isTransfer: true, transferPairId: 'P' };
+    assert.equal(getTransferPairRestoreIssue(half, [], [], { pairInSet: true }), null);
+    assert.match(getTransferPairRestoreIssue(half, [], [], {}), /other side of this transfer was permanently deleted/);
   });
 });
