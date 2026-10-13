@@ -367,11 +367,14 @@ if (historyTxns.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), {className:'u-empty-state-sm',textContent:'No history found'}));
 return;
 }
+const _rrUsed = new Set();
+ensureArray(await sqliteStore.get('calculator')).forEach(h => { if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => _rrUsed.add(i)); });
 const _custFrag = document.createDocumentFragment();
 for (const t of historyTxns) {
 const isCredit = t.paymentType === 'CREDIT';
 const isPartialPayment = t.paymentType === 'PARTIAL_PAYMENT';
 const isCollection = t.paymentType === 'COLLECTION';
+const isRepReturn = t.isRepReturn === true;
 const item = document.createElement('div');
 item.className = `cust-history-item${t.isSettled ? ' is-settled-record' : ''}`;
 let statusClass = t.creditReceived ? 'paid' : 'pending';
@@ -394,6 +397,10 @@ btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
 statusClass = 'partial';
 }
 toggleBtnHtml = `<span class="status-toggle-btn ${statusClass}" style="pointer-events:none;cursor:default;">${btnText}</span>`;
+} else if (isRepReturn) {
+toggleBtnHtml = _rrUsed.has(t.id)
+? `<span class="status-toggle-btn paid" style="pointer-events:none;cursor:default;">RECONCILED</span>`
+: `<span class="status-toggle-btn pending" style="pointer-events:none;cursor:default;">PENDING RETURN</span>`;
 } else if (isPartialPayment) {
 toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
@@ -401,7 +408,7 @@ toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
 } else {
 toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
 }
-const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
+const editBtnHtml = (t.isMerged || t.isRepReturn || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
 const deleteBtnHtml = t.isMerged ? '' : `${editBtnHtml}<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteTransactionFromOverlay('${esc(t.id)}')">⌫</button>`;
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;
@@ -410,7 +417,21 @@ const kebabBtn = t.isMerged
   : '';
 const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
 let itemContent = '';
-if (isPartialPayment || isCollection) {
+if (isRepReturn) {
+const _rrExp = Number(t.expiredQty) || 0, _rrRet = Number(t.returnedQty) || 0;
+itemContent = `
+<div class="txn-card-row">
+  <div class="cust-history-info">
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    <div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(_rrExp)} kg \u2192 CHORA</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">Returned: ${fmtNum(_rrRet)} kg${_rrRet > 0 && t.returnStore ? ` \u2192 ${esc(getStoreLabel(t.returnStore))}` : ''}</div>
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation' : 'Waiting for Calculator reconciliation'}</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+    ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
+  </div>
+</div>${panelPlaceholder}`;
+} else if (isPartialPayment || isCollection) {
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
@@ -565,6 +586,13 @@ _txMsg = `Delete this bulk collection payment from ${_txCust || 'customer'}?`;
 if (_txDate) _txMsg += `\nDate: ${_txDate}`;
 _txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
 _txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+} else if (_txItem?.isRepReturn) {
+_txTitle = 'Delete Rep Return';
+_txMsg = `Delete this return logged for ${_txCust || 'the rep'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+_txMsg += `\nExpired / Damage: ${fmtNum(_txItem.expiredQty || 0)} kg`;
+_txMsg += `\nReturned: ${fmtNum(_txItem.returnedQty || 0)} kg`;
+_txMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator. No stock has moved yet.`;
 } else if (_txItem?.paymentType === 'PARTIAL_PAYMENT') {
 _txTitle = 'Delete Partial Payment';
 _txMsg = `Delete this partial payment from ${_txCust || 'customer'}?`;

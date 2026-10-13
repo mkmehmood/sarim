@@ -8,7 +8,7 @@ import { _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, 
 import { _set_restoring, _set_closing, restoring, closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
-import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
+import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getPendingRepDeliveries, getPendingRepReturns, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
@@ -1301,6 +1301,7 @@ setSaleMode('sale');
 export async function startEditSale(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rec = sales.find(s => s && String(s.id) === String(id));
+if (rec && rec.isRepReturn) { showToast('A rep return cannot be edited. Delete it and enter it again.', 'warning'); return; }
 if (!rec || rec.isMerged || rec.isRepTransfer) { showToast('This entry cannot be edited.', 'warning'); return; }
 {
 const _blk = await getSaleBlockReason(rec.id, 'customer', { forEdit: true });
@@ -1319,6 +1320,7 @@ const repBtn = repBtns.find(b => (b.getAttribute('onclick') || '').includes(`'${
 if (repBtn) { repBtns.forEach(b => b.classList.remove('active')); repBtn.classList.add('active'); }
 set('sales-rep-value', rec.salesRep || 'NONE');
 set('cust-name', rec.customerName || '');
+_syncRepReturnLabel();
 set('cust-quantity', rec.quantity);
 if (rec.customerPhone) {
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.remove('hidden');
@@ -1333,6 +1335,7 @@ const sales = ensureArray(await sqliteStore.get('sales'));
 const rec = sales.find(s => s && String(s.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('sales');
+{ const _fr = document.querySelector('#sales-rep-toggle-group .toggle-opt'); if (_fr && _repSelectedValue()) selectSalesRep(_fr, 'NONE'); }
 setSaleMode('collection');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
 set('cust-date', editDateValue(rec, ['supplyDate','date','createdAt','timestamp']));
@@ -1380,32 +1383,189 @@ beginEditMode('prod', rec, { buttonId: 'btn-save-production', watchIds: ['sys-da
 
 registerEditHandler('prod', startEditProd);
 
+function _repSelectedValue() {
+const el = document.getElementById('sales-rep-value');
+const v = el ? el.value : 'NONE';
+return (v && v !== 'NONE') ? v : '';
+}
+
+function _syncRepReturnLabel() {
+const btnColl = document.getElementById('btn-cust-mode-coll');
+if (btnColl) btnColl.textContent = _repSelectedValue() ? 'Return' : 'Collection';
+}
+
 export function setSaleMode(mode) {
+const _hasRep = !!_repSelectedValue();
+if (mode === 'collection' && _hasRep) mode = 'return';
+else if (mode === 'return' && !_hasRep) mode = 'collection';
 custTransactionMode = mode; window.custTransactionMode = custTransactionMode;
 const isSale = mode === 'sale';
+const isReturn = mode === 'return';
+const isColl = mode === 'collection';
 const _el = id => document.getElementById(id);
 const btnSale = _el('btn-cust-mode-sale');
 const btnColl = _el('btn-cust-mode-coll');
 if (btnSale) btnSale.className = `toggle-opt${isSale ? ' active' : ''}`;
 if (btnColl) btnColl.className = `toggle-opt${!isSale ? ' active' : ''}`;
+_syncRepReturnLabel();
 const saleIn  = _el('cust-sale-inputs');
 const collIn  = _el('cust-coll-inputs');
+const retIn   = _el('cust-return-inputs');
 const supPay  = _el('cust-sale-supply-payment');
 const collRes = _el('cust-coll-result');
 if (saleIn)  isSale ? saleIn.classList.remove('hidden')  : saleIn.classList.add('hidden');
-if (collIn)  isSale ? collIn.classList.add('hidden')     : collIn.classList.remove('hidden');
+if (collIn)  isColl ? collIn.classList.remove('hidden')  : collIn.classList.add('hidden');
+if (retIn)   isReturn ? retIn.classList.remove('hidden') : retIn.classList.add('hidden');
 if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
 if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
+const collLbl = _el('cust-coll-result-label');
+if (collLbl) collLbl.textContent = isReturn ? 'Total Back From Rep:' : 'Balance After Collection:';
 const qtyRow = _el('customer-qty-row');
 if (qtyRow) { qtyRow.style.display = isSale ? '' : 'none'; }
 const btn = _el('btn-save-cust-transaction');
-if (btn) btn.textContent = isSale ? 'Save Transaction' : 'Save Collection';
-if (!isSale) {
+if (btn) btn.textContent = isSale ? 'Save Transaction' : (isReturn ? 'Save Return' : 'Save Collection');
+if (isColl) {
 const amtEl = _el('cust-amount-collected');
 if (amtEl) amtEl.value = '';
 updateCollectionPreview();
+} else if (isReturn) {
+const expEl = _el('rep-return-expired');
+const qtyEl = _el('rep-return-qty');
+if (expEl) expEl.value = '';
+if (qtyEl) qtyEl.value = '';
+renderRepReturnStores().catch(() => {});
+updateRepReturnPreview();
 } else {
 calculateCustomerSale();
+}
+}
+
+export async function renderRepReturnStores() {
+const grp = document.getElementById('rep-return-store-toggles');
+const hid = document.getElementById('rep-return-store-value');
+if (!grp || !hid) return;
+let stores = [];
+try { stores = ensureArray(await getAppStores()).filter(st => st && st.key); } catch (_) { stores = []; }
+const cur = hid.value;
+const keep = stores.some(st => st.key === cur) ? cur : (stores[0] ? stores[0].key : '');
+hid.value = keep;
+grp.innerHTML = '';
+stores.forEach(st => {
+const b = document.createElement('button');
+b.type = 'button';
+b.className = 'toggle-opt' + (st.key === keep ? ' active' : '');
+b.textContent = st.name || st.key;
+b.onclick = () => selectRepReturnStore(b, st.key);
+grp.appendChild(b);
+});
+}
+
+export function selectRepReturnStore(btn, value) {
+const grp = document.getElementById('rep-return-store-toggles');
+if (grp) grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
+if (btn) btn.classList.add('active');
+const hid = document.getElementById('rep-return-store-value');
+if (hid) hid.value = value;
+}
+
+export function updateRepReturnPreview() {
+if (custTransactionMode !== 'return') return;
+const exp = parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0;
+const ret = parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0;
+const balEl = document.getElementById('cust-coll-balance');
+const collRes = document.getElementById('cust-coll-result');
+const storeField = document.getElementById('rep-return-store-field');
+if (collRes) collRes.style.display = '';
+if (storeField) storeField.style.display = ret > 0 ? '' : 'none';
+if (balEl) {
+balEl.textContent = `${fmtNum(round2(exp + ret))} kg`;
+balEl.style.color = (exp + ret) > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)';
+}
+}
+
+export async function saveRepReturn() {
+if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
+window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
+}
+const date = (document.getElementById('cust-date') || {}).value;
+const rep = _repSelectedValue();
+const expired = round2(parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0);
+const returned = round2(parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0);
+const store = ((document.getElementById('rep-return-store-value') || {}).value || '').trim();
+if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
+if (!rep) { window.notifyBlocking('Please select a sales representative.', 'warning'); return; }
+if (expired < 0 || returned < 0) { window.notifyBlocking('Quantities cannot be negative.', 'warning'); return; }
+if (expired <= 0 && returned <= 0) { window.notifyBlocking('Enter an expired and/or returned quantity.', 'warning'); return; }
+if (returned > 0 && !store) { window.notifyBlocking('Please select the store the returned stock goes back to.', 'warning'); return; }
+const btn = document.getElementById('btn-save-cust-transaction');
+if (btn) { if (btn.disabled) return; btn.disabled = true; }
+try {
+const sales = ensureArray(await sqliteStore.get('sales'));
+let pendingDelivered = 0;
+try {
+const pend = await getPendingRepDeliveries(rep);
+pendingDelivered = pend.reduce((t, x) => t + (Number(x.quantity) || 0), 0);
+} catch (_) { pendingDelivered = -1; }
+const alreadyBack = (await getPendingRepReturns(rep)).reduce((t, x) => t + (Number(x.expiredQty) || 0) + (Number(x.returnedQty) || 0), 0);
+if (pendingDelivered >= 0 && round2(alreadyBack + expired + returned) > round2(pendingDelivered) + 0.0001) {
+window.notifyBlocking(`${rep} only has ${fmtNum(pendingDelivered)} kg awaiting reconciliation, and ${fmtNum(alreadyBack)} kg of that already has a pending return. Cannot add ${fmtNum(round2(expired + returned))} kg more.`, 'warning');
+return;
+}
+if (!(await window.gcCommit({ notes: ['Stock moves to CHORA / production only after the Calculator is reconciled.'] }))) return;
+let gpsCoords = null;
+try {
+gpsCoords = await Promise.race([getPosition(), new Promise(resolve => setTimeout(() => resolve(null), 10000))]);
+} catch (e) {}
+const now = new Date();
+const h12 = now.getHours() % 12 || 12;
+const p2 = n => String(n).padStart(2, '0');
+const timeString = `${p2(h12)}:${p2(now.getMinutes())}:${p2(now.getSeconds())} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+let recordId = generateUUID('sale');
+if (!validateUUID(recordId)) recordId = generateUUID('sale');
+const ts = getTimestamp();
+let rec = {
+id: recordId, timestamp: ts, createdAt: ts, updatedAt: ts,
+date, time: timeString,
+customerName: rep, customerPhone: '',
+quantity: 0, supplyStore: returned > 0 ? store : null,
+paymentType: 'REP_RETURN',
+salesRep: rep, currentRepProfile: 'admin',
+totalCost: 0, totalValue: 0, profit: 0,
+creditReceived: true,
+isRepReturn: true,
+expiredQty: expired, returnedQty: returned,
+returnStore: returned > 0 ? store : null,
+gps: gpsCoords,
+syncedAt: new Date().toISOString(),
+createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
+};
+rec = ensureRecordIntegrity(rec, false);
+const snapshot = [...sales];
+try {
+sales.push(rec);
+await unifiedSave('sales', sales, rec);
+notifyDataChange('sales');
+triggerAutoSync();
+emitSyncUpdate({ sales: null });
+const savedRep = rep;
+const _e1 = document.getElementById('rep-return-expired'); if (_e1) _e1.value = '';
+const _e2 = document.getElementById('rep-return-qty'); if (_e2) _e2.value = '';
+const _nameEl = document.getElementById('cust-name'); if (_nameEl) _nameEl.value = '';
+const _firstRepBtn = document.querySelector('#sales-rep-toggle-group .toggle-opt');
+if (_firstRepBtn) selectSalesRep(_firstRepBtn, 'NONE');
+setSaleMode('sale');
+if (typeof renderCustomersTable === 'function') renderCustomersTable();
+if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
+if (typeof loadSalesData === 'function') { try { await loadSalesData(currentCompMode); } catch (_) {} }
+showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned. It will reach CHORA / production when the Calculator is reconciled.`, 'success');
+} catch (error) {
+sales.length = 0;
+sales.push(...snapshot);
+try { await unifiedSave('sales', sales); } catch (_) {}
+window.notifyBlocking('Failed to save return. Please try again.', 'error');
+}
+} finally {
+if (btn) btn.disabled = false;
 }
 }
 
@@ -1570,7 +1730,7 @@ restoreBtn();
 }
 }
 
-export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [['supply-store-value', 'Store'], ['cust-quantity', 'Quantity'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
+export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [[() => (custTransactionMode === 'sale' ? ((document.getElementById('supply-store-value') || {}).value || '') : ''), 'Store'], [() => (custTransactionMode === 'sale' ? ((document.getElementById('cust-quantity') || {}).value || '') : ''), 'Quantity'], [() => (custTransactionMode === 'return' ? _repSelectedValue() : ''), 'Rep'], [() => (custTransactionMode === 'return' ? ((document.getElementById('rep-return-expired') || {}).value || '') : ''), 'Expired (kg)'], [() => (custTransactionMode === 'return' ? ((document.getElementById('rep-return-qty') || {}).value || '') : ''), 'Returned (kg)'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
 
 async function _saveCustomerTransactionRaw() {
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -1578,6 +1738,8 @@ const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
 if (custTransactionMode === 'collection') {
 await saveCustomerCollection();
+} else if (custTransactionMode === 'return') {
+await saveRepReturn();
 } else {
 await saveCustomerSale();
 }
@@ -1650,6 +1812,7 @@ export async function rebuildStoreUI() {
     if (hidden && stores.length) hidden.value = stores[0].key;
   }
   if (typeof renderReturnTargets === 'function') await renderReturnTargets();
+  if (typeof renderRepReturnStores === 'function') await renderRepReturnStores();
   const storeHidden = document.getElementById('storeSelector');
   const storeTglGrp = document.getElementById('storeSelectorToggleGroup');
   if (storeTglGrp && storeHidden) {
@@ -1717,7 +1880,7 @@ const returns = ensureArray(await sqliteStore.get('returns'));
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-if (typeof custTransactionMode !== 'undefined' && custTransactionMode === 'collection') return;
+if (typeof custTransactionMode !== 'undefined' && (custTransactionMode === 'collection' || custTransactionMode === 'return')) return;
 const quantity = parseFloat(document.getElementById('cust-quantity').value) || 0;
 const date = document.getElementById('cust-date').value;
 const store = document.getElementById('supply-store-value').value;
@@ -1774,9 +1937,13 @@ inventoryWarning.style.background = 'rgba(5, 150, 105, 0.1)';
 
 export function selectSalesRep(btn, value) {
 document.querySelectorAll('#sales-rep-toggle-group .toggle-opt').forEach(b => b.classList.remove('active'));
-btn.classList.add('active');
+if (btn) btn.classList.add('active');
 document.getElementById('sales-rep-value').value = value;
 autoFillCustomerName();
+const _hasRep = !!(value && value !== 'NONE');
+if (_hasRep && custTransactionMode === 'collection') setSaleMode('return');
+else if (!_hasRep && custTransactionMode === 'return') setSaleMode('collection');
+else _syncRepReturnLabel();
 calculateCustomerSale();
 }
 
@@ -1874,14 +2041,19 @@ if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
 const recordDate = recordToDelete.date || 'Unknown date';
 const _dcStoreLabel = recordToDelete.supplyStore && !recordToDelete.isRepTransfer ? getStoreLabel(recordToDelete.supplyStore) : '';
 const _dcIsCollection = recordToDelete.paymentType === 'COLLECTION' && recordToDelete.currentRepProfile === 'admin';
+const _dcIsRepReturn = recordToDelete.isRepReturn === true;
 const _dcIsCredit = recordToDelete.paymentType === 'CREDIT';
 const _dcIsPaid = _dcIsCredit && recordToDelete.creditReceived;
 const _dcPartialPaid = recordToDelete.partialPaymentReceived || 0;
-const _dcPayLabel = _dcIsCollection ? 'Collection' : (_dcIsCredit ? 'Credit Sale' : 'Cash Sale');
+const _dcPayLabel = _dcIsRepReturn ? 'Rep Return' : (_dcIsCollection ? 'Collection' : (_dcIsCredit ? 'Credit Sale' : 'Cash Sale'));
 let _dcMsg = `Permanently delete this ${_dcPayLabel}?`;
 _dcMsg += `\nCustomer: ${recordToDelete.customerName || 'Unknown'}`;
 _dcMsg += `\nDate: ${recordDate}`;
-if (_dcIsCollection) {
+if (_dcIsRepReturn) {
+_dcMsg += `\nExpired / Damage: ${fmtNum(recordToDelete.expiredQty || 0)} kg`;
+_dcMsg += `\nReturned: ${fmtNum(recordToDelete.returnedQty || 0)} kg`;
+_dcMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator. No stock has moved yet.`;
+} else if (_dcIsCollection) {
 _dcMsg += `\nAmount: ${fmtAmt(collectionCollected(recordToDelete))}`;
 _dcMsg += `\n\n Deleting this collection will restore the credit balance to this customer${(recordToDelete.allocations||[]).length ? ' and mark the sales it paid as unpaid again' : ''}.`;
 } else {
@@ -1913,7 +2085,9 @@ await renderCustomerTransactions(currentManagingCustomer);
 notifyDataChange('sales');
 triggerAutoSync();
 emitSyncUpdate({ sales: null});
-const _delToast = _dcIsCollection
+const _delToast = _dcIsRepReturn
+? ` Rep return for ${recordToDelete.customerName || 'rep'} deleted.`
+: _dcIsCollection
 ? ` Collection of ${fmtAmt(collectionCollected(recordToDelete))} deleted.`
 : ` Sale deleted! ${recordToDelete.quantity} kg restored to ${recordDate} inventory.`;
 showToast(_delToast, "success");
@@ -2767,6 +2941,7 @@ statusText: statusText,
 statusClass: statusClass,
 linkedSalesIds: [],
 linkedRepSalesIds: [],
+linkedRepReturnIds: [],
 syncedAt: new Date().toISOString()
 };
 entry = ensureRecordIntegrity(entry, false);
@@ -2780,6 +2955,7 @@ linkedIds = await markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds,
 entry.linkedSalesIds = linkedIds;
 linkedRepIds = await markRepSalesEntriesAsUsed(seller, date, calcId, _cycSel.from);
 entry.linkedRepSalesIds = linkedRepIds;
+entry.linkedRepReturnIds = (await getPendingRepReturns(seller, _cycSel.to || date)).map(r => r.id);
 } catch (e) {
 await _rollbackCalc();
 window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error');
@@ -2809,6 +2985,10 @@ document.getElementById('commissionPerUnit').value = '';
 document.getElementById('commissionPaid').value = '';
 window._returnStore = null;
 window._returnRep = null;
+{ const _rr = document.getElementById('returnedQuantity'), _ee = document.getElementById('expiredQuantity'), _hh = document.getElementById('repReturnAutoHint');
+if (_rr) { delete _rr.dataset.repReturnAuto; _rr.style.cssText = ''; }
+if (_ee) { delete _ee.dataset.repReturnAuto; _ee.style.cssText = ''; }
+if (_hh) { _hh.classList.add('hidden'); _hh.textContent = ''; } }
 document.getElementById('returnStoreSection').classList.add('hidden');
 document.getElementById('expiredSection').classList.add('hidden');
 window._calcFromManual = false;
@@ -6367,6 +6547,8 @@ if (totalItems === 0) {
 histContainer.replaceChildren(Object.assign(document.createElement('p'), {textContent:'No sales found.',style:'text-align:center;color:var(--text-muted);width:100%;font-size:0.85rem'}));
 } else {
 const fragment = document.createDocumentFragment();
+const _rrUsedIds = new Set();
+ensureArray(await sqliteStore.get('calculator')).forEach(h => { if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => _rrUsedIds.add(i)); });
 displayData.forEach(async item => {
 const effDate = item.date;
 const isSelected = effDate === selectedDate;
@@ -6428,6 +6610,23 @@ ${supplyDateLine}
 <hr>
 <p><span>Previous Balance:</span> <span class="rev-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
 <p class="u-fs-sm u-text-muted" >${esc(item.notes || 'Brought forward from previous records')}</p>
+${deleteBtnHtml}
+`;
+} else if (item.isRepReturn) {
+const _rrDone = _rrUsedIds.has(item.id);
+const _rrExp = safeValue(item.expiredQty), _rrRet = safeValue(item.returnedQty);
+card.innerHTML = `
+<div class="payment-badge ${_rrDone ? 'received' : 'collection'}">${_rrDone ? 'RECONCILED' : 'REP RETURN'}</div>
+<div class="customer-name" style="margin-top:12px;">${esc(item.customerName)} ${repBadge}</div>
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:5px;margin-bottom:2px;">
+<span class="u-fs-sm2 u-text-muted">${dateDisplay}</span>
+${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
+</div>
+<hr>
+<p><span>Expired / Damage:</span> <span class="qty-val">${fmtNum(_rrExp)} kg</span></p>
+<p><span>Returned:</span> <span class="qty-val">${fmtNum(_rrRet)} kg</span></p>
+${_rrRet > 0 && item.returnStore ? `<div class="supply-tag ${getStoreBadgeClass(item.returnStore)}">Return to: ${esc(getStoreLabel(item.returnStore))}</div>` : ''}
+<p class="u-fs-sm u-text-muted">${_rrDone ? 'Applied to CHORA / production via Calculator.' : 'Pending: goes to CHORA / production when the Calculator is reconciled.'}</p>
 ${deleteBtnHtml}
 `;
 } else if (isAdminCollItem) {
@@ -6747,6 +6946,10 @@ window.updateEconomicDashboard = updateEconomicDashboard;
 window.saveCustomerSale = saveCustomerSale;
 window.setSaleMode = setSaleMode;
 window.updateCollectionPreview = updateCollectionPreview;
+window.updateRepReturnPreview = updateRepReturnPreview;
+window.saveRepReturn = saveRepReturn;
+window.selectRepReturnStore = selectRepReturnStore;
+window.renderRepReturnStores = renderRepReturnStores;
 window.saveCustomerCollection = saveCustomerCollection;
 window.saveCustomerTransaction = saveCustomerTransaction;
 window._DEFAULT_STORES = _DEFAULT_STORES;

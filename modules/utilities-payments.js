@@ -4,10 +4,10 @@ import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
+import { round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _ensureSupplierInvoices, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
-import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable,  revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { handleReturnQtyInput, handleExpiredQtyInput, DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable,  revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
@@ -196,6 +196,68 @@ return sales.filter(sale =>
 );
 }
 
+export async function getPendingRepReturns(seller, toDate) {
+if (!seller || seller === 'COMBINED') return [];
+const calculator = ensureArray(await sqliteStore.get('calculator'));
+const sales = ensureArray(await sqliteStore.get('sales'));
+const used = new Set();
+calculator.forEach(entry => {
+  if (entry && Array.isArray(entry.linkedRepReturnIds)) entry.linkedRepReturnIds.forEach(id => used.add(id));
+});
+return sales.filter(r =>
+  r && r.isRepReturn === true && !r.deletedAt &&
+  r.currentRepProfile === 'admin' &&
+  r.customerName === seller &&
+  !used.has(r.id) &&
+  (!toDate || !r.date || r.date <= toDate)
+);
+}
+
+export async function applyRepReturnsToCalculator(seller, toDate) {
+const retEl = document.getElementById('returnedQuantity');
+const expEl = document.getElementById('expiredQuantity');
+const hint = document.getElementById('repReturnAutoHint');
+if (!retEl || !expEl || !seller || seller === 'COMBINED') return;
+const pending = await getPendingRepReturns(seller, toDate);
+const totalExp = round2(pending.reduce((t, r) => t + (Number(r.expiredQty) || 0), 0));
+const totalRet = round2(pending.reduce((t, r) => t + (Number(r.returnedQty) || 0), 0));
+const wasAuto = retEl.dataset.repReturnAuto === '1' || expEl.dataset.repReturnAuto === '1';
+if (pending.length === 0) {
+  if (wasAuto) {
+    retEl.value = ''; expEl.value = '';
+    delete retEl.dataset.repReturnAuto; delete expEl.dataset.repReturnAuto;
+    retEl.style.cssText = ''; expEl.style.cssText = '';
+    window._returnStore = null;
+    if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
+    if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
+  }
+  if (hint) { hint.classList.add('hidden'); hint.textContent = ''; }
+  return;
+}
+retEl.value = totalRet > 0 ? totalRet.toFixed(2) : '';
+expEl.value = totalExp > 0 ? totalExp.toFixed(2) : '';
+retEl.dataset.repReturnAuto = '1';
+expEl.dataset.repReturnAuto = '1';
+styleAutoFilledField(retEl);
+styleAutoFilledField(expEl);
+const stores = Array.from(new Set(pending.filter(r => (Number(r.returnedQty) || 0) > 0 && r.returnStore).map(r => r.returnStore)));
+if (totalRet > 0) {
+  if (stores.length === 1) {
+    const btn = document.getElementById('ret-store-' + String(stores[0]).toLowerCase());
+    selectReturnStore(stores[0], btn || null);
+  } else {
+    window._returnStore = null;
+  }
+}
+if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
+if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
+if (hint) {
+  const storeNote = totalRet > 0 ? (stores.length === 1 ? ` Returned stock goes to ${getStoreLabel(stores[0])}.` : ' Returns were logged for different stores: choose the store below.') : '';
+  hint.textContent = `Auto-filled from ${pending.length} rep return${pending.length === 1 ? '' : 's'} logged in Sales (expired ${fmtNum(totalExp)} kg, returned ${fmtNum(totalRet)} kg).${storeNote}`;
+  hint.classList.remove('hidden');
+}
+}
+
 export function getCalcDateRange(pending) {
 const toEl = document.getElementById('sale-date');
 const fromEl = document.getElementById('sale-date-from');
@@ -332,6 +394,7 @@ if(recoveredField) {
 recoveredField.value = safeNumber(recoveredCash, 0).toFixed(2);
 styleAutoFilledField(recoveredField);
 }
+await applyRepReturnsToCalculator(seller, sel.to);
 calculateSales();
 if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
@@ -7894,6 +7957,8 @@ window.calculateComparisonData = calculateComparisonData;
 window.createReportHTML = createReportHTML;
 window._calcSaleDay = _calcSaleDay;
 window.getPendingRepDeliveries = getPendingRepDeliveries;
+window.getPendingRepReturns = getPendingRepReturns;
+window.applyRepReturnsToCalculator = applyRepReturnsToCalculator;
 window.getCalcDateRange = getCalcDateRange;
 window.getCalcCycleSelection = getCalcCycleSelection;
 window.calculateTotalSoldForRepresentative = calculateTotalSoldForRepresentative;

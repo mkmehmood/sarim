@@ -3323,6 +3323,10 @@ const buildSaleRow = async (t, runBal) => {
     typeLabel = 'CREDIT\n(PAID)';
     detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 ${fmtAmt(await getSalePrice(t))}`;
     displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
+  } else if (pt === 'REP_RETURN') {
+    typeLabel = 'REP RETURN';
+    detailLabel = `Expired ${fmtAmt(t.expiredQty||0)} kg | Returned ${fmtAmt(t.returnedQty||0)} kg`;
+    displayDate = formatDisplayDate(t.date);
   } else if (pt === 'COLLECTION') {
     credit = parseFloat(t.totalValue) || 0;
     typeLabel = 'COLLECTION';

@@ -25,6 +25,8 @@ export async function findCalcLinkForSale(saleId) {
   const hist = await _calcHistory();
   const settled = hist.find(h => Array.isArray(h.linkedSalesIds) && h.linkedSalesIds.includes(saleId));
   if (settled) return { entry: settled, via: 'settled' };
+  const retLinked = hist.find(h => Array.isArray(h.linkedRepReturnIds) && h.linkedRepReturnIds.includes(saleId));
+  if (retLinked) return { entry: retLinked, via: 'settled' };
   const transfer = hist.find(h => h.transferSaleId === saleId);
   if (transfer) return { entry: transfer, via: 'transfer' };
   return null;

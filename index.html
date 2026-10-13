@@ -2232,17 +2232,29 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <datalist id="customer-list"></datalist>
 </div>
 </div>
-<div id="cust-sale-inputs">
-<div class="field u-mb-15" >
+<div class="field u-mb-15" id="cust-rep-field">
 <label>Sales Representative (For Calculator Link)</label>
 <div class="toggle-group" id="sales-rep-toggle-group">
 <button class="toggle-opt active" onclick="selectSalesRep(this,'NONE')">Direct</button>
 </div>
 <input type="hidden" id="sales-rep-value" value="NONE">
 </div>
+<div id="cust-sale-inputs">
 <div class="grid-inputs">
 <div class="field"><label>Quantity (kg)</label><input type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
+</div>
+<div id="cust-return-inputs" class="hidden">
+<div class="grid-inputs">
+<div class="field"><label>Expired / Damage Qty (kg)</label><input type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Returned Qty (kg)</label><input type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+</div>
+<div class="field u-mb-15" id="rep-return-store-field">
+<label>Return Stock To</label>
+<div class="toggle-group" id="rep-return-store-toggles"></div>
+<input type="hidden" id="rep-return-store-value" value="">
+</div>
+<div class="u-field-hint" id="rep-return-hint">* Saved as pending. Expired goes to CHORA and returned goes back to production only after the Calculator reconciliation.</div>
 </div>
 <div id="cust-coll-inputs" class="hidden">
 <div class="field">
@@ -2409,6 +2421,7 @@ No records found
 <div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
 <div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
+<div id="repReturnAutoHint" class="hidden u-field-hint" style="grid-column: 1 / -1;"></div>
 <div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
 <label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group" style="margin-top: 8px;">
