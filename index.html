@@ -86,10 +86,6 @@ html[data-theme="light"]{background:#EEF1F4}
 --sp-g2: rgba(8, 145, 178, 0.14);
 --sp-dot: #F59E0B;
 position: fixed;
-top: 0;
-right: 0;
-bottom: 0;
-left: 0;
 inset: 0;
 overflow: hidden;
 overscroll-behavior: none;
@@ -106,7 +102,6 @@ padding: calc(env(safe-area-inset-top, 0px) + 24px) max(24px, env(safe-area-inse
 color: var(--sp-text);
 font-family: var(--sp-ui);
 background: var(--sp-bg);
-transition: opacity 0.55s ease;
 }
 
 #splash-screen > * { visibility: hidden; }
@@ -159,8 +154,6 @@ stroke: var(--sp-ink);
 stroke-width: 3;
 stroke-linecap: round;
 }
-
-.splash-dot-in { transform-box: fill-box; transform-origin: center; }
 .splash-tick { stroke: var(--sp-track); stroke-linecap: round; }
 .splash-dial-label { font-size: 7.5px; font-weight: 700; letter-spacing: 1.5px; fill: var(--sp-muted); font-family: var(--sp-ui); text-anchor: middle; }
 
@@ -673,8 +666,6 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   flex-shrink: 0; min-height: 52px;
 }
 
-.screen-back-btn { display: none !important; }
-
 .screen-title {
   font-size: 0.9rem; font-weight: 800; color: var(--text-main);
   margin: 0; text-transform: uppercase; letter-spacing: 0.04em;
@@ -726,35 +717,6 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   text-transform: uppercase; letter-spacing: 0.1em;
   padding: 16px 4px 6px; margin: 0;
 }
-
-.screen-theme-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px; background: var(--glass);
-  border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
-  margin-bottom: 4px;
-}
-
-.theme-toggle-switch {
-  position: relative; width: 48px; height: 26px;
-}
-
-.theme-toggle-switch input { opacity: 0; width: 0; height: 0; }
-
-.theme-toggle-track {
-  position: absolute; inset: 0; background: var(--toggle-bg);
-  border-radius: var(--radius-full); cursor: pointer;
-  transition: background 0.2s;
-}
-
-.theme-toggle-track::before {
-  content: ''; position: absolute;
-  width: 20px; height: 20px; left: 3px; bottom: 3px;
-  background: var(--toggle-knob); border-radius: 50%;
-  transition: transform 0.2s;
-}
-
-input:checked + .theme-toggle-track { background: var(--accent); }
-input:checked + .theme-toggle-track::before { transform: translateX(22px); }
 #calcRangeInputs { position:absolute; left:0; right:0; top:0; height:36px; opacity:0; pointer-events:none; }
 #calcRangeInputs .cdp-wrap { position:absolute; left:0; top:0; width:100%; }
 </style></head>
