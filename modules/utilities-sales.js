@@ -327,16 +327,16 @@ const amountClass = transaction.type === 'IN' ? 'profit-val' : 'cost-val';
 const safeAmount = parseFloat(transaction.amount) || 0;
 const etCreatorBadge = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(transaction) : '';
 transactionCard.innerHTML = `
-<span class="transaction-badge ${badgeClass}" style="position: absolute; top: 10px; right: 10px;">${badgeText}</span>
-<div style="margin-bottom: 8px;">
+<span class="transaction-badge ${badgeClass} u-ea94052">${badgeText}</span>
+<div class="u-16949d4">
 <span class="u-fs-sm2 u-text-muted">${transaction.date ? formatDisplayDateTime(transaction.date, transaction.time || null) : 'N/A'}</span>
 </div>
-<div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px;">
+<div class="u-b1b556c">
 ${esc(transaction.description || 'No description')}${etCreatorBadge}
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+<div class="u-20c1821" style="display: flex">
 <span class="u-fs-sm2 u-text-muted" >Amount:</span>
-<span class="${amountClass}" style="font-size: 1.1rem; font-weight: 800;">${fmtAmt(safeAmount)}</span>
+<span class="${amountClass} u-8ba9017">${fmtAmt(safeAmount)}</span>
 </div>
 ${balanceAfterHtml(fmtAmt(_entRun.get(transaction) || 0), (_entRun.get(transaction) || 0) < 0 ? 'out' : 'in')}
 `;
@@ -3542,7 +3542,7 @@ if (item.date) div.setAttribute('data-date', item.date);
 let returnsByStoreHtml = '';
 if (item.isMerged && item.isReturn && item.returnsByStore && Object.keys(item.returnsByStore).length > 1) {
   returnsByStoreHtml = Object.entries(item.returnsByStore).map(([s,q]) =>
-    `<p><span style="color:var(--text-muted);">${esc(typeof getStoreLabel === 'function' ? getStoreLabel(s) : s)}:</span> <span class="qty-val">${fmtNum(safeValue(q))} kg</span></p>`
+    `<p><span class="u-d59bb54">${esc(typeof getStoreLabel === 'function' ? getStoreLabel(s) : s)}:</span> <span class="qty-val">${fmtNum(safeValue(q))} kg</span></p>`
   ).join('');
 }
 if (item.isTransfer) {
@@ -3550,7 +3550,7 @@ const isOutSide = item.transferDirection === 'out';
 const peerLabel = getStoreLabel(item.transferPeerStore) || item.transferPeerStore;
 div.innerHTML = `
 ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeClass}">${esc(storeLabel)}</span>` : ''}
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
+<div class="u-edba70e" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -3563,7 +3563,7 @@ ${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action
 div.innerHTML = `
 ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeClass}">${esc(storeLabel)}</span>` : ''}
 ${item.isMerged ? '' : paymentBadge}
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
+<div class="u-edba70e" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>` : ''}
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
@@ -3704,7 +3704,7 @@ tbody.innerHTML = `<tr><td class="u-text-center u-text-danger" colspan="3" >Inva
 return;
 }
 if (totalItems === 0) {
-tbody.replaceChildren(Object.assign(document.createElement('tr'), {innerHTML:'<td colspan="3" style="text-align:center;padding:15px;color:var(--text-muted)">No entities found</td>'}));
+tbody.replaceChildren(Object.assign(document.createElement('tr'), {innerHTML:'<td colspan="3" class="u-d4a176e">No entities found</td>'}));
 } else {
 const fragment = document.createDocumentFragment();
 matchedEntities.forEach(entity => {
@@ -3721,9 +3721,9 @@ balanceHtml = `<span class="u-text-muted" >Settled</span>`;
 const tr = document.createElement('tr');
 tr.style.cursor = 'pointer';
 tr.innerHTML = `
-<td style="text-align:left;" onclick="openEntityDetailsOverlay('${esc(entity.id)}')">
+<td class="u-99ff2f6" onclick="openEntityDetailsOverlay('${esc(entity.id)}')">
 <div class="u-fw-700">${esc(safeName)}</div>
-<div style="font-size:0.62rem;color:var(--accent);margin-top:3px;cursor:pointer;" onclick="event.stopPropagation(); editEntityBasicInfo('${esc(entity.id)}')"> Edit info</div>
+<div class="u-cffbbf2" onclick="event.stopPropagation(); editEntityBasicInfo('${esc(entity.id)}')"> Edit info</div>
 </td>
 <td style="text-align:right; cursor:pointer;" onclick="openEntityDetailsOverlay('${esc(entity.id)}')">${balanceHtml}</td>
 <td style="text-align:right; font-size:0.75rem;">${phoneActionHTML(entity.phone)}</td>
@@ -3962,16 +3962,15 @@ decPassword = await new Promise((resolve) => {
 const modal = document.createElement('div');
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:10300;';
 modal.innerHTML = `
-<div class="liquid-card" style="max-width:360px;width:90%;padding:30px;text-align:center;">
-<h3 style="margin:0 0 8px 0;color:var(--text-main);">Enter Password to Decrypt</h3>
-<p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;">This backup is encrypted with your account credentials.</p>
-<p style="font-size:0.72rem;color:var(--accent);margin-bottom:16px;">Account: <strong>${esc(currentUser.email)}</strong></p>
-<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password"
-style="width:100%;padding:12px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;box-sizing:border-box;color:var(--text-main);font-size:0.9rem;margin-bottom:14px;">
-<div id="dec-pwd-error" style="font-size:0.75rem;color:var(--danger);min-height:18px;margin-bottom:10px;"></div>
-<div style="display:flex;gap:10px;">
-<button id="dec-pwd-ok" style="flex:1;padding:11px;background:var(--accent);border:none;border-radius:10px;color:#003d2e;font-weight:700;cursor:pointer;">Decrypt & Restore</button>
-<button id="dec-pwd-cancel" style="flex:1;padding:11px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;color:var(--text-main);cursor:pointer;">Cancel</button>
+<div class="liquid-card u-33cbc37">
+<h3 class="u-454fb31">Enter Password to Decrypt</h3>
+<p class="u-97b6268">This backup is encrypted with your account credentials.</p>
+<p class="u-ed7ce38">Account: <strong>${esc(currentUser.email)}</strong></p>
+<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+<div id="dec-pwd-error" class="u-19cb4ec"></div>
+<div class="u-1e68903" style="display: flex">
+<button id="dec-pwd-ok" class="u-bc38067" style="background: var(--accent); border: none">Decrypt & Restore</button>
+<button id="dec-pwd-cancel" class="u-4a0b42c" style="background: var(--input-bg); border: 1px solid var(--glass-border)">Cancel</button>
 </div>
 </div>`;
 document.body.appendChild(modal);
@@ -5483,25 +5482,24 @@ if (_rawBreakdownEl) {
   if (_rawEntries.length > 0) {
     const _bId = 'perf-sum-raw-breakdown';
     const _rowsHtml = _rawEntries.map(([name, data]) => `
-<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--glass-border);">
+<div class="u-e665e23" style="display: flex">
 <span style="font-size:0.72rem;color:var(--text-main);font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
-<span style="display:flex;gap:10px;align-items:center;">
+<span class="u-ae6a320" style="display: flex">
 <span style="font-size:0.7rem;color:var(--text-muted);">${fmtNum(safeNumber(data.qty,0))} kg</span>
 <span class="cost-val" style="font-size:0.72rem;min-width:60px;text-align:right;">${fmtAmt(data.cost)}</span>
 </span>
 </div>`).join('');
     _rawBreakdownEl.innerHTML = `
-<div style="margin-top:8px;">
-<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)"
-style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
-<span style="font-size:0.68rem;color:var(--accent);">&#x25b6;</span>
-<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Materials Breakdown</span>
+<div class="u-0d69e4b">
+<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<span class="u-5056b09">&#x25b6;</span>
+<span class="u-e2e3ece">Materials Breakdown</span>
 </button>
-<div id="${_bId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
-<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</span>
-<span style="display:flex;gap:10px;">
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Qty Used</span>
+<div id="${_bId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea" style="display: flex">
+<span class="u-2b7c172">Material</span>
+<span class="u-1e68903" style="display: flex">
+<span class="u-2b7c172">Qty Used</span>
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Cost</span>
 </span>
 </div>
@@ -5829,27 +5827,26 @@ totalCombined.formulaUnits += storeData.formulaUnits;
 totalCombined.formulaCost += storeData.formulaCost;
 let returnsHtml = '';
 if (storeData.returns > 0) {
-returnsHtml = `<p><span>Returns Recvd:</span> <span style="color:#10b981; font-weight:800;">${fmtNum(safeValue(storeData.returns))} kg</span></p>`;
+returnsHtml = `<p><span>Returns Recvd:</span> <span class="u-3ddfed0">${fmtNum(safeValue(storeData.returns))} kg</span></p>`;
 }
 let soldBreakdownHtml = '';
 const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] - a[1]);
 if (soldBreakdownEntries.length > 0) {
 const soldBreakdownId = `sold-breakdown-${store}-${index}`;
 const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
-<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--glass-border);">
+<div class="u-dd56633" style="display: flex">
 <span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
 <span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 soldBreakdownHtml = `
-<div style="margin-top:4px;">
-<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)"
-style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
-<span style="font-size:0.68rem;color:var(--accent);">▶</span>
-<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Sold Breakdown</span>
+<div class="u-6b1f0d9">
+<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<span class="u-5056b09">▶</span>
+<span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${soldBreakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
-<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Customer</span>
+<div id="${soldBreakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea" style="display: flex">
+<span class="u-2b7c172">Customer</span>
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
 </div>
 ${soldRowsHtml}
@@ -5861,14 +5858,14 @@ card.className = `overview-card liquid-card`;
 card.innerHTML = `
 <span class="store-badge ${storeColors[index]}">${esc(storeNames[index])}</span>
 <h4>${esc(storeNames[index])} (${mode === 'all' ? 'All Times' : _cap(mode)})</h4>
-<p><span>Produced:</span> <span class="qty-val" style="color:var(--text-main);">${fmtNum(safeValue(storeData.production))} kg</span></p>
+<p><span>Produced:</span> <span class="qty-val u-786051d">${fmtNum(safeValue(storeData.production))} kg</span></p>
 ${returnsHtml}
 <p><span>Sold (Sales Tab):</span> <span class="cost-val">${fmtNum(safeValue(soldQty))} kg</span></p>
 ${soldBreakdownHtml}
-<div style="border-top:1px dashed var(--glass-border); margin:4px 0; padding-top:4px;">
-<p><span>Remaining:</span> <span class="profit-val" style="font-size:1.1rem;">${fmtNum(safeValue(remainingQty))} kg</span></p>
+<div class="u-9cc1f8f">
+<p><span>Remaining:</span> <span class="profit-val u-7463f71">${fmtNum(safeValue(remainingQty))} kg</span></p>
 </div>
-<div style="background:rgba(37,99,235,0.03); padding:5px; border-radius:6px; margin:5px 0;">
+<div class="u-1f16247" style="background: rgba(37,99,235,0.03)">
 <p><span>Formula Units:</span> <span class="qty-val u-fw-700" >${fmtNum(safeValue(storeData.formulaUnits))}</span></p>
 <p><span>Formula Cost:</span> <span class="cost-val u-fw-700" >${fmtAmt(safeValue(storeData.formulaCost))}</span></p>
 </div>
@@ -5908,20 +5905,19 @@ const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) 
 if (combinedSoldEntries.length > 0) {
 const combinedSoldBreakdownId = `sold-breakdown-combined`;
 const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
-<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--glass-border);">
+<div class="u-dd56633" style="display: flex">
 <span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
 <span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 combinedSoldBreakdownHtml = `
-<div style="margin-top:4px;">
-<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)"
-style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
-<span style="font-size:0.68rem;color:var(--accent);">▶</span>
-<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Sold Breakdown</span>
+<div class="u-6b1f0d9">
+<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<span class="u-5056b09">▶</span>
+<span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${combinedSoldBreakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
-<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Customer</span>
+<div id="${combinedSoldBreakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea" style="display: flex">
+<span class="u-2b7c172">Customer</span>
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
 </div>
 ${combinedSoldRowsHtml}
@@ -5931,17 +5927,17 @@ ${combinedSoldRowsHtml}
 const combinedCard = document.createElement('div');
 combinedCard.className = `overview-card liquid-card highlight-card`;
 combinedCard.innerHTML = `
-<h4 style="color: var(--accent);">Total Combined</h4>
+<h4 class="u-b68d496">Total Combined</h4>
 <p><span>Fresh Production:</span> <span class="qty-val">${fmtNum(safeValue(totalCombined.production))} kg</span></p>
 ${totalCombined.returns > 0 ? `<p><span>Total Returns:</span> <span style="color:#10b981; font-weight:800;">${fmtNum(safeValue(totalCombined.returns))} kg</span></p>` : ''}
 <p><span>Total Sold:</span> <span class="cost-val">${fmtNum(safeValue(totalCombined.sold))} kg</span></p>
 ${combinedSoldBreakdownHtml}
-<div style="border-top:1px dashed var(--glass-border); margin:4px 0; padding-top:4px;">
-<p><span>Total Remaining:</span> <span class="profit-val" style="font-size:1.1rem;">${fmtNum(safeValue(combinedRemaining))} kg</span></p>
+<div class="u-9cc1f8f">
+<p><span>Total Remaining:</span> <span class="profit-val u-7463f71">${fmtNum(safeValue(combinedRemaining))} kg</span></p>
 </div>
 <p><span>Total Formula Units:</span> <span class="qty-val">${fmtNum(safeValue(totalCombined.formulaUnits))}</span></p>
 <p><span>Total Formula Cost:</span> <span class="cost-val">${fmtAmt(safeValue(totalCombined.formulaCost))}</span></p>
-<hr style="margin:8px 0;">
+<hr class="u-c7b5913">
 <p><span>Total Value:</span> <span class="rev-val">${fmtAmt(safeValue(totalCombined.value))}</span></p>
 <p><span>Total Cost:</span> <span class="cost-val">${fmtAmt(safeValue(totalCombined.cost))}</span></p>
 <p><span>Net Profit:</span> <span class="profit-val">${fmtAmt(safeValue(totalCombined.profit))}</span></p>
@@ -6399,7 +6395,7 @@ let creditSection = '';
 if (!isOldDebtItem) {
 if (paymentType === 'CREDIT' && !creditReceived) {
 creditSection = `
-<div class="credit-checkbox-container" style="cursor:default;pointer-events:none;opacity:0.7;">
+<div class="credit-checkbox-container u-b34d4f2" style="pointer-events: none">
 <input type="checkbox" class="credit-checkbox" disabled>
 <label class="credit-checkbox-label">Mark as Received</label>
 </div>
@@ -6410,15 +6406,15 @@ creditSection = `<div class="received-indicator">Credit Received </div>`;
 }
 const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="settled-badge"> Settled</div>` : actionRowHtml('sale', item.id, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`);
 const supplyDateLine = (item.supplyDate && item.supplyDate !== item.date)
-? `<p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${esc(formatDisplayDate(item.supplyDate))}</p>`
+? `<p class="u-33bd72e">Supply Date: ${esc(formatDisplayDate(item.supplyDate))}</p>`
 : '';
 if (isOldDebtItem) {
 card.innerHTML = `
 <div class="payment-badge credit">CREDIT</div>
-<div class="customer-name" style="margin-top: 12px;">${esc(item.customerName)}
+<div class="customer-name u-4bb9003">${esc(item.customerName)}
 <span class="old-debt-badge">OLD DEBT</span>${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
-<h4 style="margin-top: 5px; font-size: 0.75rem; font-weight:400; color: var(--text-muted);" class="u-fs-sm2 u-text-muted">${dateDisplay}</h4>
+<h4 class="u-fs-sm2 u-text-muted u-cff0795">${dateDisplay}</h4>
 ${supplyDateLine}
 <hr>
 <p><span>Previous Balance:</span> <span class="rev-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
@@ -6428,8 +6424,8 @@ ${deleteBtnHtml}
 } else if (isAdminCollItem) {
 card.innerHTML = `
 <div class="payment-badge collection">COLLECTION</div>
-<div class="customer-name" style="margin-top:12px;">${esc(item.customerName)} ${mergedBadge}</div>
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:5px;margin-bottom:2px;">
+<div class="customer-name u-4bb9003">${esc(item.customerName)} ${mergedBadge}</div>
+<div class="u-50337d2" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}</span>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -6441,8 +6437,8 @@ ${deleteBtnHtml}
 } else {
 card.innerHTML = `
 <div class="payment-badge ${badgeClass}">${esc(badgeText)}</div>
-<div class="customer-name" style="margin-top: 12px;">${esc(item.customerName)} ${repBadge} ${mergedBadge}</div>
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:5px;margin-bottom:2px;">
+<div class="customer-name u-4bb9003">${esc(item.customerName)} ${repBadge} ${mergedBadge}</div>
+<div class="u-50337d2" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}</span>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -6674,11 +6670,11 @@ transfers.forEach(item => {
 const div = document.createElement('div');
 div.className = 'card liquid-card';
 div.innerHTML = `
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
+<div class="u-edba70e" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(item.date, item.time)}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
-<p><span style="color:var(--accent);">${escapeHtml(getStoreLabel(item.store))}</span> <span style="color:var(--text-muted);"> &rarr; </span> <span style="color:var(--accent-emerald);">${escapeHtml(getStoreLabel(item.transferPeerStore))}</span></p>
+<p><span class="u-b68d496">${escapeHtml(getStoreLabel(item.store))}</span> <span class="u-d59bb54"> &rarr; </span> <span class="u-3b9712c">${escapeHtml(getStoreLabel(item.transferPeerStore))}</span></p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
 ${item.transferNote ? `<p><span>Note:</span> <span style="color:var(--text-muted);">${escapeHtml(item.transferNote)}</span></p>` : ''}
 ${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)}

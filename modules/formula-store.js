@@ -153,10 +153,10 @@ function _card(f, inventory, usedBy) {
   const addl = _num(f.additionalCost, 0);
   const factor = _num(f.costAdjustmentFactor, 1) || 1;
   const t = _totals(ings, addl, factor);
-  let html = `<h4 style="margin:0 0 6px 0;font-size:0.9rem;">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
+  let html = `<h4 class="u-c2d830a">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
   html += ings.length ? ings.map((i) => _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_num(i.cost, 0) * _num(i.quantity, 0)))).join('') : '<div class="u-text-muted">No ingredients.</div>';
   if (addl > 0) html += _row(`Additional Cost (${addl} per unit)`, _money(addl), 'color:var(--danger);');
-  html += '<div style="border-top:1px dashed var(--glass-border);margin:8px 0 6px 0;"></div>';
+  html += '<div class="u-0bee203"></div>';
   html += _row('Unit Weight', _fmt(t.weight) + ' kg');
   html += _row('Raw Material Cost per Unit', _money(t.raw));
   html += _row('Total Cost per Unit', _money(t.perUnit), 'font-weight:700;');
@@ -170,7 +170,7 @@ export async function renderFormulaStoreList() {
   if (!box) return;
   const [list, stores, slotsNow] = await Promise.all([getFormulaStore(), getAppStores(), getFormulaSlots()]);
   if (!list.length) {
-    box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap the + button to add one.</div>';
+    box.innerHTML = '<div class="u-search-empty u-83094ef">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
   const inventory = ensureArray(await sqliteStore.get('inventory'));
@@ -223,11 +223,11 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;
     const typed = (query || '').trim();
     const exact = typed && inventory.some((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
-    const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom" data-custom="1" data-name="${esc(typed)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.78rem;font-weight:700;color:var(--accent);">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
+    const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom u-d7ba50a" data-custom="1" data-name="${esc(typed)}">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
     if (!filtered.length) {
       dropdown.innerHTML = (customOpt || '<div class="u-search-empty">No materials found</div>');
     } else {
-      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);background:var(--input-bg);">${esc(i.name)}</div>`).join('') + customOpt;
+      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="background: var(--input-bg)">${esc(i.name)}</div>`).join('') + customOpt;
     }
     dropdown.classList.remove('hidden');
     dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {

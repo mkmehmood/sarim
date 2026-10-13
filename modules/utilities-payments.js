@@ -157,15 +157,15 @@ ${safeValue(data.shared) > 0 ? `<p><span>Shared (Deduction):</span> <span class=
 <p><span>Net Debt:</span> <span class="${balClass}">${fmtAmt(balance)}</span></p>
 <hr>
 ${safeValue(data.fieldExp) > 0 ? `<p><span>Field Expenses:</span> <span class="cost-val">${fmtAmt(safeValue(data.fieldExp))}</span></p>` : ''}
-<p><span>Expected Cash:</span> <span class="qty-val" style="color:var(--text-main);">${fmtAmt(expected)}</span></p>
-<p><span>Received Cash:</span> <span class="qty-val" style="font-weight:800; color:var(--text-main);">${fmtNum(safeNumber(received, 0))}</span></p>
+<p><span>Expected Cash:</span> <span class="qty-val u-786051d">${fmtAmt(expected)}</span></p>
+<p><span>Received Cash:</span> <span class="qty-val u-198c640">${fmtNum(safeNumber(received, 0))}</span></p>
 <p><span>Discrepancy:</span> <span class="${discClass}">${discText}</span></p>
 ${safeValue(data.commissionPaid) > 0 ? `<hr>
 <p><span>Commission Paid:</span> <span class="profit-val">${fmtAmt(safeValue(data.commissionPaid))}</span></p>` : ''}
 `;
 if (isHistory) {
 html += `
-<div style="padding: 8px; border-radius: 6px; text-align: center; margin-top: 8px; font-size: 10px;" class="${displayStatusClass}">${displayStatusText}</div>`;
+<div class="${displayStatusClass} u-0948237">${displayStatusText}</div>`;
 if (!isMerged) {
 html += `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteSalesEntry('${id}')">Delete</button>`;
 }
@@ -1639,7 +1639,7 @@ card.className = `card liquid-card${isSettled ? ' is-settled-record' : ''}`;
 if (transaction.date) card.setAttribute('data-date', transaction.date);
 card.innerHTML = `
 <span class="transaction-badge ${badgeClass}">${badgeText}</span>
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:4px;">
+<div class="u-edba70e" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(transaction.date, transaction.time || null)}${creatorBadge}${mergedBadge}${settledBadge}</span>
 </div>
 <div class="customer-name">${esc(entityName)}</div>
@@ -1926,22 +1926,14 @@ if (entity.isExpenseEntity === true) return false;
 return entity.name.toLowerCase().includes(query);
 });
 let html = '';
-html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> EXPENSES</div>`;
+html += `<div class="u-423ed18" style="background: var(--input-bg)"> EXPENSES</div>`;
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
 if (!name || typeof name !== 'string') return;
 const safeName = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const count = expenses.filter(e => e && e.name === name).length;
 html += `
-<div style="
-padding: 12px;
-cursor: pointer;
-border-bottom: 1px solid var(--glass-border);
-font-size: 0.85rem;
-color: var(--text-main);
-background: var(--input-bg);
-transition: all 0.2s;
-"
+<div class="u-0f04ee6" style="background: var(--input-bg)"
 onmousedown="selectExpense('${safeName}', 'expense')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -1954,24 +1946,16 @@ ${count} expense records
 </div>`;
 });
 } else {
-html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching expenses — will create new</div>`;
+html += `<div class="u-02d7412">No matching expenses — will create new</div>`;
 }
-html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> ENTITIES</div>`;
+html += `<div class="u-423ed18" style="background: var(--input-bg)"> ENTITIES</div>`;
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return;
 const safeName = entity.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const txnCount = transactions.filter(t => t && t.entityId === entity.id).length;
 html += `
-<div style="
-padding: 12px;
-cursor: pointer;
-border-bottom: 1px solid var(--glass-border);
-font-size: 0.85rem;
-color: var(--text-main);
-background: var(--input-bg);
-transition: all 0.2s;
-"
+<div class="u-0f04ee6" style="background: var(--input-bg)"
 onmousedown="selectExpense('${safeName}', 'entity')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -1984,7 +1968,7 @@ ${txnCount > 0 ? txnCount + ' transactions' : ''}
 </div>`;
 });
 } else {
-html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching entities — will create new</div>`;
+html += `<div class="u-02d7412">No matching entities — will create new</div>`;
 }
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
@@ -2681,14 +2665,14 @@ tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: ba
 tr.onmouseover = function() { this.style.background = 'var(--card-hover)'; };
 tr.onmouseout = function() { this.style.background = 'transparent'; };
 tr.innerHTML = `
-<td style="padding: 10px 8px; font-size: 0.8rem; color: var(--text-muted);">
+<td class="u-2bc4a44">
 ${formattedDate}
 </td>
-<td style="padding: 10px 8px; font-weight: 600; color: var(--text-main);">
+<td class="u-bbe1428">
 ${esc(expense.name)}${expense.isMerged ? _mergedBadgeHtml(expense, {inline:true}) : ''}
 ${expense.description ? `<br><span class="u-fs-sm2 u-text-muted u-fw-400" >${esc(expense.description)}</span>` : ''}
 </td>
-<td style="padding: 10px 8px;">
+<td class="u-74366ec">
 <span style="
 background: ${categoryColor}15;
 color: ${categoryColor};
@@ -2702,20 +2686,9 @@ white-space: nowrap;
 <td style="padding: 10px 8px; text-align: right; font-weight: 700; color: var(--danger); font-size: 0.9rem;">
 ${fmtAmt(expense.amount)}
 </td>
-<td style="padding: 10px 8px; text-align: center;">
+<td class="u-1d3001e">
 <button
-onclick="openExpenseEntityDetails('${esc(expense.id)}')"
-style="
-background: linear-gradient(135deg, var(--accent) 0%, var(--accent-emerald) 100%);
-border: none;
-color: white;
-padding: 6px 12px;
-border-radius: 6px;
-font-size: 0.75rem;
-cursor: pointer;
-transition: all 0.2s;
-font-weight: 600;
-"
+onclick="openExpenseEntityDetails('${esc(expense.id)}')" class="u-3e75d4a" style="background: linear-gradient(135deg, var(--accent) 0%, var(--accent-emerald) 100%); border: none"
 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,122,255,0.3)'"
 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'"
 >
@@ -3032,16 +3005,16 @@ tr.onmouseout = function() { this.style.background = row.type === 'entity' ? 'va
 if (row.type === 'transaction') {
 tr.onclick = function(e) { if (!e.target.closest('a,button')) openExpenseEntityDetails(row.id); };
 tr.innerHTML = `
-<td style="padding: 8px 4px; font-size: 0.7rem; white-space: nowrap;">${row.dateStr}</td>
-<td style="padding: 8px 4px; font-weight: 600; font-size: 0.8rem; cursor:pointer;" onclick="openExpenseEntityDetails('${esc(row.id)}')">
+<td class="u-082f1e0">${row.dateStr}</td>
+<td class="u-3abc27b" onclick="openExpenseEntityDetails('${esc(row.id)}')">
 ${esc(row.name)}
-<div style="display: inline-block; margin-left: 6px;">
+<div class="u-8cdcd88" style="display: inline-block">
 <span style="color: ${row.typeLabel === 'EXPENSE' ? 'var(--warning)' : 'var(--accent)'}; padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700;">
 ${row.typeLabel}
 </span>
 </div>
 </td>
-<td style="padding: 8px 4px; font-size: 0.7rem; color: var(--text-muted);">${phoneActionHTML(row.contact)}</td>
+<td class="u-7fad896">${phoneActionHTML(row.contact)}</td>
 <td style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.color}; white-space: nowrap; font-size: 0.75rem;">
 ${row.amountStr}
 </td>`;
@@ -3049,18 +3022,18 @@ ${row.amountStr}
 tr.style.background = 'var(--input-bg)';
 tr.onclick = function(e) { if (!e.target.closest('a,button')) openEntityDetailsOverlay(row.id); };
 tr.innerHTML = `
-<td style="padding: 8px 4px; font-size: 0.7rem; white-space: nowrap; color: var(--text-main);">
+<td class="u-7170cf4">
 ${row.dateStr}
 </td>
 <td style="padding: 8px 4px; font-weight: 700; font-size: 0.8rem; color: ${row.nameColor}; cursor:pointer;" onclick="openEntityDetailsOverlay('${esc(row.id)}')">
 ${esc(row.name)}
-<div style="font-size: 0.6rem; margin-top: 2px;">
+<div class="u-c31b4a3">
 <span style="color: ${row.amountColor}; padding: 1px 4px; border-radius: 3px; font-size: 0.55rem; font-weight: 600;">
 ${row.balanceLabel}
 </span>
 </div>
 </td>
-<td style="padding: 8px 4px; font-size: 0.7rem; color: var(--text-muted);">${phoneActionHTML(row.contact)}</td>
+<td class="u-7fad896">${phoneActionHTML(row.contact)}</td>
 <td style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.amountColor}; white-space: nowrap; font-size: 0.75rem;">
 ${row.amountStr}
 </td>`;
@@ -3122,24 +3095,24 @@ const sortedCategories = Object.entries(categoryTotals)
 .sort((a, b) => b[1] - a[1])
 .slice(0, 5);
 if (sortedCategories.length === 0) {
-container.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">No operating expenses</div>';
+container.innerHTML = '<div class="u-76336ea">No operating expenses</div>';
 return;
 }
 let html = '';
 sortedCategories.forEach(([name, amount]) => {
 const percentage = totalExpenses > 0 ? (amount / totalExpenses * 100).toFixed(2) : 0;
 html += `
-<div style="display: flex; justify-content: space-between; margin-bottom: 4px; padding: 4px 0;">
+<div class="u-5bb520e" style="display: flex">
 <span class="u-text-main" >${name}:</span>
 <div style="text-align: right;">
-<span style="color: var(--danger); font-weight: 600; margin-right: 8px;">${formatCurrency(amount)}</span>
-<span style="color: var(--text-muted); font-size: 0.7rem;">(${percentage}%)</span>
+<span class="u-d2c10bd">${formatCurrency(amount)}</span>
+<span class="u-b51a44d">(${percentage}%)</span>
 </div>
 </div>`;
 });
 if (Object.keys(categoryTotals).length > 5) {
 const othersCount = Object.keys(categoryTotals).length - 5;
-html += `<div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 4px; font-style: italic;">${othersCount} more categories
+html += `<div class="u-976e6b7">${othersCount} more categories
 </div>`;
 }
 container.innerHTML = html;
@@ -3553,8 +3526,8 @@ const count = relatedExpenses.length;
 const statsEl = document.getElementById('expenseOverlayStats');
 if (statsEl) {
 statsEl.innerHTML = `
-<span style="color:var(--warning); font-weight:800;">Total: ${fmtAmt(filteredTotal)}</span>
-<span style="display:inline-flex; gap:8px; margin-left:12px; flex-wrap:wrap;">
+<span class="u-a5b525a">Total: ${fmtAmt(filteredTotal)}</span>
+<span class="u-d2c7c73" style="display: inline-flex">
 <span class="txn-stat-badge txn-warning">${count} record${count !== 1 ? 's' : ''}</span>
 <span class="txn-stat-badge txn-out">All-Time: ${fmtAmt(allTimeTotal)}</span>
 </span>`;
@@ -3575,14 +3548,14 @@ item.innerHTML = `
 <div class="u-fs-sm2 u-text-muted" >${formatDisplayDateTime(exp.date, exp.time || null)}${exp.isMerged ? _mergedBadgeHtml(exp, {inline:true}) : ''}</div>
 <div class="u-fs-sm2 u-text-muted" >${esc(exp.description || 'No description')}</div>
 </div>
-<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+<div class="u-d94b2d8" style="display: flex">
 <div style="text-align:right; margin-right:4px;">
 <span class="txn-label-badge txn-warning">EXPENSE</span>
-<div class="cost-val" style="font-size:0.9rem; margin-top:2px;">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
+<div class="cost-val u-bb4c6c9">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
 </div>
 <button id="${_expPhotoBadgeId}" title="View photo" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()"
   style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
-  <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
+  <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
   Photo
 </button>
 ${exp.isMerged ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('expense','${esc(exp.id)}')">✎</button><button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">⌫</button>`}
@@ -4691,7 +4664,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
   const container = document.getElementById('recycleBinList');
   const statsEl   = document.getElementById('recycleBinStats');
   if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Loading...</div>';
+  container.innerHTML = '<div class="u-7cbe623">Loading...</div>';
   try {
     let localDeletionRecords = ensureArray(await sqliteStore.get('deletions'));
     const _erasedPending = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
@@ -4829,9 +4802,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
       }
     }
     if (filtered.length === 0) {
-      container.innerHTML = `<div style="text-align:center;padding:50px 20px;color:var(--text-muted);">
-        <div style="font-size:1rem;font-weight:600;">Recycle Bin is empty</div>
-        <div style="font-size:0.78rem;margin-top:6px;">Deleted transactions will appear here and can be restored within 90 days.</div>
+      container.innerHTML = `<div class="u-9c4dffe">
+        <div class="u-5bfb9ec">Recycle Bin is empty</div>
+        <div class="u-9e8750b">Deleted transactions will appear here and can be restored within 90 days.</div>
       </div>`;
       return;
     }
@@ -4921,16 +4894,16 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const _rbBadgesHtml = [_rbManagedBadge, _rbCreatorBadge, _rbRepBadge].filter(Boolean).join('');
       const _rbDeletedByRaw = rec.deleted_by || null;
       const _rbDeletedByBadge = (_rbDeletedByRaw && _rbDeletedByRaw !== 'user')
-        ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.62rem;font-weight:700;letter-spacing:0.04em;color:#f87171;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>${esc(_rbDeletedByRaw)}</span>`
+        ? `<span class="u-24a7191" style="display: inline-flex"><svg width="9" height="9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>${esc(_rbDeletedByRaw)}</span>`
         : '';
       const nameHtml = displayName
-        ? `<span style="font-size:0.88rem;font-weight:700;color:var(--text-main);">${esc(displayName)}</span>`
-        : `<span style="font-size:0.82rem;font-weight:600;color:var(--text-muted);font-style:italic;">${esc(RECYCLE_BIN_COLLECTION_LABELS[col] || col)} — name unavailable</span>`;
+        ? `<span class="u-46acfb3">${esc(displayName)}</span>`
+        : `<span class="u-65dfeeb">${esc(RECYCLE_BIN_COLLECTION_LABELS[col] || col)} — name unavailable</span>`;
       const detailHtml = displayDetail
-        ? `<span style="font-size:0.72rem;color:var(--text-muted);">${esc(displayDetail)}</span>`
+        ? `<span class="u-dd827b8">${esc(displayDetail)}</span>`
         : '';
       const amountHtml = displayAmount
-        ? `<span style="font-size:0.78rem;font-weight:700;color:var(--accent);">${esc(displayAmount)}</span>`
+        ? `<span class="u-dd009f5">${esc(displayAmount)}</span>`
         : '';
       const syncBadge = rec.syncedToCloud
         ? `<span class="sync-status-badge sync-ok"> synced</span>`
@@ -4941,34 +4914,34 @@ export async function renderRecycleBin(filterCollection = 'all') {
         'returns':'#f97316','unknown':'#9ca3af'
       }[col] || '#9ca3af';
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
-      return `<div style="background:var(--input-bg);border:1px solid var(--glass-border);border-radius:12px;padding:12px 14px;margin-bottom:9px;display:flex;align-items:center;gap:11px;">
+      return `<div class="u-b8ea487" style="background: var(--input-bg); border: 1px solid var(--glass-border); display: flex">
         <div style="width:9px;height:9px;min-width:9px;border-radius:50%;background:${colDot};flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;overflow:hidden;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+          <div class="u-f3709bc" style="display: flex">
             ${nameHtml}
             ${amountHtml}
           </div>
-          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:3px;">
+          <div class="u-fefc851" style="display: flex">
             ${typeTag}
             ${detailHtml}
             ${syncBadge}
             ${_rbBadgesHtml}
             ${_rbDeletedByBadge}
           </div>
-          <div style="font-size:0.68rem;color:var(--text-muted);">
+          <div class="u-e8a64e6">
             Deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · ${deletedDate} · expires in ${expiresIn}d
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+        <div class="u-d533703" style="display: flex">
           ${canRecover
             ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
-          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:999px;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
+          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:999px;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
     }).join('');
   } catch(e) {
-    container.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted);">Failed to load recycle bin.</div>`;
+    container.innerHTML = `<div class="u-7cbe623">Failed to load recycle bin.</div>`;
     const emptyBtnErr = document.getElementById('recycleBinEmptyBtn');
     if (emptyBtnErr) emptyBtnErr.style.display = 'none';
     console.error('[RecycleBin] render error', _safeErr(e));
@@ -5975,7 +5948,7 @@ if (matches.length > 0) {
 matches.forEach(name => {
 const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div class="u-cf7d8a2" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'name')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6003,7 +5976,7 @@ const safeId = String(entity.id).replace(/'/g, "\\'");
 const entityBal = calculateEntityBalances()[entity.id] || 0;
 const typeColor = entityBal >= 0 ? 'var(--danger)' : 'var(--accent-emerald)';
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div class="u-cf7d8a2" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'entity', '${safeId}')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6029,7 +6002,7 @@ matches.forEach(supplier => {
 const safeName = String(supplier.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 const safeId = String(supplier.id).replace(/'/g, "\\'");
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div class="u-cf7d8a2" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'supplier', '${safeId}')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6063,7 +6036,7 @@ if (matches.length > 0) {
 matches.forEach(name => {
 const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div class="u-cf7d8a2" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'repName')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6675,16 +6648,16 @@ export function renderManageRepsList() {
 const list = document.getElementById('manage-reps-list');
 if (!list) return;
 if (salesRepsList.length === 0) {
-list.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">No representatives added yet.</div>';
+list.innerHTML = '<div class="u-cca393b">No representatives added yet.</div>';
 return;
 }
 list.innerHTML = salesRepsList.map((rep, i) => `
 <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:9999px; ${i === 0 ? 'border-left:3px solid var(--accent);' : ''}">
-<div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+<div class="u-2c42b11" style="display: flex">
 <span style="font-size:0.85rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(rep)}</span>
 <span style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}; flex-shrink:0;">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
-<button class="btn-theme" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="flex-shrink:0; color:var(--danger); border-color:rgba(239,68,68,0.4); font-size:0.8rem;"></button>
+<button class="btn-theme u-eeccbea" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="border-color: rgba(239,68,68,0.4)"></button>
 </div>
 `).join('');
 }
@@ -6713,7 +6686,7 @@ export function renderUserRoleList() {
 const list = document.getElementById('manage-userrole-list');
 if (!list) return;
 if (userRolesList.length === 0) {
-list.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:12px;">No users added yet.</div>';
+list.innerHTML = '<div class="u-cca393b">No users added yet.</div>';
 return;
 }
 const TAB_COLORS = { factory: 'var(--accent-purple)', prod: 'var(--accent-emerald)', payments: 'var(--accent-cyan)', sales: 'var(--accent-gold)' };
@@ -6721,14 +6694,14 @@ list.innerHTML = userRolesList.map((user, i) => {
 const tabs = Array.isArray(user.tabs) ? user.tabs : [];
 const tabBadges = tabs.map(t => `<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;color:${TAB_COLORS[t]||'var(--accent)'};border:1px solid ${TAB_COLORS[t]||'var(--accent)'}55;font-weight:700;text-transform:uppercase;">${t}</span>`).join('');
 return `
-<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:var(--radius-lg); margin-bottom:8px;">
-<div style="flex:1; min-width:0;">
-<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
-<span style="font-size:0.85rem; font-weight:800; color:var(--text-main);">${esc(user.name)}</span>
+<div class="u-b3a0b25" style="display: flex; background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-8b4ab7f">
+<div class="u-5e4bab7" style="display: flex">
+<span class="u-555bcbe">${esc(user.name)}</span>
 </div>
-<div style="display:flex;gap:4px;flex-wrap:wrap;">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
+<div class="u-91a590f" style="display: flex">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
 </div>
-<button class="btn-theme" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="flex-shrink:0; color:var(--danger); border-color:rgba(239,68,68,0.4); font-size:0.8rem;"></button>
+<button class="btn-theme u-eeccbea" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="border-color: rgba(239,68,68,0.4)"></button>
 </div>`;
 }).join('');
 }
@@ -6937,7 +6910,7 @@ const looksLikePhone = digitCount >= 7 && /^[\d\s\-+(). ]+$/.test(raw);
 if (!looksLikePhone) return esc(raw);
 const clean = raw.replace(/[\s\-().]/g, '');
 const wa = clean.startsWith('0') ? '92' + clean.slice(1) : clean;
-return `<a href="tel:${clean}" title="Tap to call · Long-press for WhatsApp" style="color:inherit;text-decoration:none;cursor:pointer;border-bottom:1px dotted currentColor;touch-action:manipulation;-webkit-touch-callout:default;" oncontextmenu="event.preventDefault();window.open('https://wa.me/${wa}','_blank')">${esc(raw)}</a>`;
+return `<a href="tel:${clean}" title="Tap to call · Long-press for WhatsApp" class="u-0d9dbdd" oncontextmenu="event.preventDefault();window.open('https://wa.me/${wa}','_blank')">${esc(raw)}</a>`;
 }
 
 window.phoneActionHTML = phoneActionHTML;
@@ -7041,8 +7014,8 @@ No other devices registered
 return;
 }
 let html = `
-<div style="margin-bottom: 15px; padding: 10px; background: rgba(0, 122, 255, 0.1); border-radius: 8px; border: 1px solid rgba(0, 122, 255, 0.3);">
-<div style="font-size: 0.75rem; color: var(--accent); font-weight: 600;">
+<div class="u-60c2221" style="background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3)">
+<div class="u-975bc61">
 Account: ${accountEmail}
 </div>
 <div class="u-field-hint-xxs" >
@@ -7104,37 +7077,37 @@ if (device.firstLoginAt) {
     if (flt) firstLoginStr = flt.toLocaleString();
   } catch (_) {}
 }
-let cardHtml = '<div style="background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:14px;padding:14px;margin-bottom:12px;">';
-cardHtml += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">';
-cardHtml += '<div style="font-size:0.65rem;font-family:var(--font-mono);color:var(--text-muted);flex:1;min-width:0;line-height:1.4;" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span style="color:var(--accent);font-weight:700;letter-spacing:0.08em;">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span style="color:var(--text-muted);font-weight:400;font-size:0.6rem;">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
+let cardHtml = '<div class="u-296d231" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">';
+cardHtml += '<div class="u-d42a404" style="display: flex">';
+cardHtml += '<div class="u-3eddfae" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span class="u-fe495ba">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span class="u-56e4c0c">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
 cardHtml += '<div style="text-align:right;flex-shrink:0;">';
 cardHtml += '<div style="font-size:0.8rem;font-weight:800;color:' + modeColor + ';white-space:nowrap;">' + modeLabel + '</div>';
 cardHtml += '<div style="font-size:0.6rem;color:' + onlineColor + ';margin-top:2px;">' + onlineDot + '</div>';
 cardHtml += '</div>';
 cardHtml += '</div>';
 const lastSeenStr = lastSeen ? new Date(lastSeen).toLocaleString() : 'Never';
-cardHtml += '<div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:6px;">Last seen: ' + lastSeenStr + '</div>';
+cardHtml += '<div class="u-af437a1">Last seen: ' + lastSeenStr + '</div>';
 const lastCmdStr = remoteAppliedAt ? new Date(remoteAppliedAt).toLocaleString() : null;
 const lastCmdMode = remoteAppliedMode ? remoteAppliedMode.toUpperCase() : null;
 const lastCmdBy = remoteAppliedBy || null;
 if (lastCmdMode || totalCommands > 0) {
-cardHtml += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:11px;padding:7px 10px;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid var(--glass-border);">';
-cardHtml += '<span style="font-size:0.6rem;color:var(--text-muted);flex-shrink:0;">Commands:</span>';
+cardHtml += '<div class="u-61da305" style="display: flex; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border)">';
+cardHtml += '<span class="u-2ae1270">Commands:</span>';
 if (totalCommands > 0) {
-cardHtml += '<span style="font-size:0.62rem;font-weight:700;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:99px;">' + totalCommands + ' sent</span>';
+cardHtml += '<span class="u-f07758c" style="background: var(--accent-dim)">' + totalCommands + ' sent</span>';
 }
 if (lastCmdMode) {
-cardHtml += '<span style="font-size:0.62rem;font-weight:700;color:var(--text-main);">→ ' + lastCmdMode + '</span>';
+cardHtml += '<span class="u-040bdbd">→ ' + lastCmdMode + '</span>';
 }
 if (lastCmdBy) {
-cardHtml += '<span style="font-size:0.6rem;color:var(--text-muted);">by ' + esc(lastCmdBy) + '</span>';
+cardHtml += '<span class="u-a2cad5b">by ' + esc(lastCmdBy) + '</span>';
 }
 if (lastCmdStr) {
-cardHtml += '<span style="font-size:0.58rem;color:var(--text-secondary);margin-left:auto;">' + lastCmdStr + '</span>';
+cardHtml += '<span class="u-bae6c2c">' + lastCmdStr + '</span>';
 }
 cardHtml += '</div>';
 } else {
-cardHtml += '<div style="margin-bottom:11px;padding:7px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--glass-border);font-size:0.6rem;color:var(--text-secondary);">No commands sent yet</div>';
+cardHtml += '<div class="u-3a66e13" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border)">No commands sent yet</div>';
 }
 const isAdmin = deviceMode === 'admin';
 const adminBg = isAdmin ? 'rgba(0,122,255,0.18)' : 'rgba(0,122,255,0.08)';
@@ -7144,8 +7117,8 @@ const adminTick = isAdmin ? ' ' : '';
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'admin\')"';
 cardHtml += ' style="width:100%;padding:9px;background:' + adminBg + ';border:' + adminBord + ';border-radius:99px;color:#007aff;cursor:pointer;font-size:0.72rem;font-weight:' + adminFw + ';margin-bottom:10px;">' + adminTick + 'Admin Mode</button>';
 if (salesRepsList.length > 0) {
-cardHtml += '<div style="font-size:0.6rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Sales Representatives</div>';
-cardHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:5px;margin-bottom:10px;">';
+cardHtml += '<div class="u-788ba48">Sales Representatives</div>';
+cardHtml += '<div class="u-ab90486" style="display: grid">';
 const repColors = [
 {bg:'48,209,88',hex:'#30d158'},{bg:'255,159,10',hex:'#ff9f0a'},
 {bg:'191,90,242',hex:'#bf5af2'},{bg:'255,69,58',hex:'#ff453a'},{bg:'90,200,250',hex:'#5ac8fa'}
@@ -7165,8 +7138,8 @@ cardHtml += repTick + rep + '</button>';
 cardHtml += '</div>';
 }
 if (userRolesList.length > 0) {
-cardHtml += '<div style="font-size:0.6rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">User Roles</div>';
-cardHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:5px;margin-bottom:10px;">';
+cardHtml += '<div class="u-788ba48">User Roles</div>';
+cardHtml += '<div class="u-ab90486" style="display: grid">';
 for (let ui = 0; ui < userRolesList.length; ui++) {
 const user = userRolesList[ui];
 const userLocked = deviceMode === 'userrole' && device.assignedManager === user.name;
@@ -7184,7 +7157,7 @@ cardHtml += userTick + user.name + '</button>';
 cardHtml += '</div>';
 }
 cardHtml += '<button onclick="removeDevice(\'' + device.deviceId + '\')"';
-cardHtml += ' style="width:100%;padding:7px;background:rgba(255,69,58,0.07);border:1px solid rgba(255,69,58,0.28);border-radius:99px;color:#ff453a;cursor:pointer;font-size:0.65rem;">Remove Device</button>';
+cardHtml += ' class="u-834b546" style="background: rgba(255,69,58,0.07); border: 1px solid rgba(255,69,58,0.28)">Remove Device</button>';
 cardHtml += '</div>';
 html += cardHtml;
 });
@@ -7193,7 +7166,7 @@ container.innerHTML = html;
 console.error('An unexpected error occurred.', _safeErr(error));
 showToast('An unexpected error occurred.', 'error');
 container.innerHTML = `
-<div style="text-align: center; padding: 20px; color: #ff453a;">
+<div class="u-72c3d7b">
 Error loading devices: ${esc(error.message)}
 </div>
 `;
@@ -7791,14 +7764,14 @@ item.innerHTML = `
     <div class="u-fs-sm2 u-text-muted">${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}</div>
     ${t.description ? `<div class="u-fs-sm2 u-text-muted">${esc(t.description)}</div>` : ''}
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     <div style="text-align:right;">
-      <span style="color:var(--accent);padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">TRANSFER</span>
-      <div class="cost-val" style="font-size:0.9rem;margin-top:2px;">${fmtAmt(t.amount)}</div>
+      <span class="u-56e02ab">TRANSFER</span>
+      <div class="cost-val u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')"
-      style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
-      <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
+      class="u-129f796" style="display: none; border: none; background: rgba(99,102,241,0.15)">
+      <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>
   </div>

@@ -53,9 +53,9 @@ const modal = document.createElement('div');
 modal.id = 'delta-stats-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radius:20px;text-align:center;">
-  <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
-  <div style="color:var(--text-muted);font-size:0.85rem;">Loading database structure…</div>
+modal.innerHTML = `<div class="u-ed43437" style="background: var(--glass)">
+  <div class="u-e6c5b02" style="display: flex"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
+  <div class="u-cf5ec96">Loading database structure…</div>
 </div>`;
 document.body.appendChild(modal);
 try {
@@ -171,19 +171,19 @@ try {
     return Math.floor(s/86400) + 'd ago';
   };
   const fmtVal = v => {
-    if (v === null || v === undefined) return '<span style="color:var(--text-muted)">null</span>';
+    if (v === null || v === undefined) return '<span class="u-d59bb54">null</span>';
     if (typeof v === 'boolean') return `<span style="color:${v?'#30d158':'#ff453a'}">${v}</span>`;
     if (typeof v === 'object') {
-      if (Array.isArray(v)) return `<span style="color:var(--accent-cyan)">Array(${v.length})</span>`;
-      if (v.seconds !== undefined) return `<span style="color:var(--text-muted)">${new Date(v.seconds*1000).toLocaleDateString()}</span>`;
-      return `<span style="color:var(--accent-cyan)">Object(${Object.keys(v).length})</span>`;
+      if (Array.isArray(v)) return `<span class="u-182e628">Array(${v.length})</span>`;
+      if (v.seconds !== undefined) return `<span class="u-d59bb54">${new Date(v.seconds*1000).toLocaleDateString()}</span>`;
+      return `<span class="u-182e628">Object(${Object.keys(v).length})</span>`;
     }
     if (typeof v === 'string') {
       const s = v.length > 28 ? v.slice(0,28)+'…' : v;
-      return `<span style="color:var(--text-muted)">"${s}"</span>`;
+      return `<span class="u-d59bb54">"${s}"</span>`;
     }
-    if (typeof v === 'number') return `<span style="color:var(--accent-gold)">${v > 1e10 ? ago(v) : v.toLocaleString()}</span>`;
-    return `<span style="color:var(--text)">${String(v).slice(0,30)}</span>`;
+    if (typeof v === 'number') return `<span class="u-e1a6e11">${v > 1e10 ? ago(v) : v.toLocaleString()}</span>`;
+    return `<span class="u-e6f0554">${String(v).slice(0,30)}</span>`;
   };
   const badge = (txt, color) =>
     `<span style="font-size:0.6rem;font-weight:700;padding:2px 7px;color:${color};letter-spacing:0.03em">${txt}</span>`;
@@ -194,21 +194,21 @@ try {
   let html = `
 <div id="dbv-root" style="background:var(--glass);border-radius:20px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="display:flex;align-items:center;"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></span>
+  <div class="u-05209d6" style="display: flex">
+    <div class="u-1043921" style="display: flex">
+      <span class="u-6a4ecdf" style="display: flex"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></span>
       <div>
-        <div style="font-weight:700;font-size:1rem;color:var(--text)">Database Structure</div>
-        <div style="font-size:0.67rem;color:var(--text-muted);font-family:var(--font-mono);margin-top:1px">
-          users/${currentUser.uid.slice(0,14)}…/  &nbsp;·&nbsp; shard&nbsp;<span style="color:var(--accent);font-weight:700">${myDeviceShard}</span>
+        <div class="u-4228bfa">Database Structure</div>
+        <div class="u-e59bcbb">
+          users/${currentUser.uid.slice(0,14)}…/  &nbsp;·&nbsp; shard&nbsp;<span class="u-478dfec">${myDeviceShard}</span>
         </div>
       </div>
     </div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      style="background:rgba(255,255,255,0.07);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+      class="u-c74ce47" style="background: rgba(255,255,255,0.07); border: none; display: flex"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
   </div>
 
-  <div style="display:flex;gap:4px;padding:14px 20px 0;flex-shrink:0">
+  <div class="u-d331926" style="display: flex">
     ${['Collections','Config Docs','Listeners','Summary'].map((t,i) =>
       `<button id="dbv-tab-${i}" onclick="dbvShowTab(${i})"
         style="padding:5px 12px;border-radius:12px;border:none;cursor:pointer;font-size:0.75rem;font-weight:600;
@@ -229,20 +229,20 @@ try {
   const _resetAgo   = firestoreStats.lastReset ? ago(firestoreStats.lastReset) : 'unknown';
   const _msLeft     = firestoreStats.lastReset ? Math.max(0, 864e5 - (Date.now() - firestoreStats.lastReset)) : 0;
   const _resetNext  = _msLeft > 0 ? (Math.floor(_msLeft/3600000) + 'h ' + Math.floor((_msLeft%3600000)/60000) + 'm') : 'soon';
-  html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-    <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
-      <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${totalFsDocs.toLocaleString()}</div>
-      <div style="font-size:0.63rem;color:var(--text-muted)">Firestore Docs</div>
-      <div style="font-size:0.58rem;color:var(--text-muted);margin-top:2px">live count</div>
+  html += `<div class="u-871c610" style="display: grid">
+    <div class="u-095dddc" style="background: rgba(128,128,128,0.08)">
+      <div class="u-0952787">${totalFsDocs.toLocaleString()}</div>
+      <div class="u-ae471a4">Firestore Docs</div>
+      <div class="u-5934f86">live count</div>
     </div>
-    <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
+    <div class="u-095dddc" style="background: rgba(128,128,128,0.08)">
       <div style="font-size:1.3rem;font-weight:700;color:${_readColor}">${_reads.toLocaleString()}</div>
-      <div style="font-size:0.63rem;color:var(--text-muted)">Reads (24 h)</div>
+      <div class="u-ae471a4">Reads (24 h)</div>
       <div style="font-size:0.58rem;color:${_readColor};margin-top:2px">${_readPct}% of 50 000</div>
     </div>
-    <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
+    <div class="u-095dddc" style="background: rgba(128,128,128,0.08)">
       <div style="font-size:1.3rem;font-weight:700;color:${_writeColor}">${_writes.toLocaleString()}</div>
-      <div style="font-size:0.63rem;color:var(--text-muted)">Writes (24 h)</div>
+      <div class="u-ae471a4">Writes (24 h)</div>
       <div style="font-size:0.58rem;color:${_writeColor};margin-top:2px">${_writePct}% of 20 000</div>
     </div>
   </div>
@@ -261,33 +261,33 @@ try {
     const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
     html += `
 <div style="margin-bottom:9px;padding:11px 13px;background:var(--input-bg);border-radius:14px;border:1px solid ${borderColor}">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
-        <span style="font-weight:700;font-size:0.82rem;color:var(--text);font-family:var(--font-mono)">${col.fsName}</span>
+  <div class="u-335e5cd" style="display: flex">
+    <div class="u-8b4ab7f">
+      <div class="u-0e3398e" style="display: flex">
+        <span class="u-4527bd8">${col.fsName}</span>
         ${hasLiveListener ? badge('LIVE','#30d158') : badge('SNAPSHOT','#f59e0b')}
         ${col.lock ? badge('LOCKED ON CLOSE','#888') : ''}
         ${isDirty ? badge('PENDING','#f59e0b') : ''}
       </div>
-      <div style="font-size:0.68rem;color:var(--text-muted);margin-bottom:4px">${col.desc}</div>
-      <div style="font-size:0.63rem;font-family:var(--font-mono);display:flex;flex-wrap:wrap;gap:6px">
+      <div class="u-a39b897">${col.desc}</div>
+      <div class="u-063dd15" style="display: flex">
         <span>SQLite: ${pill(col.sqliteKey,'var(--accent)')}</span>
         <span>JS: ${pill(col.jsVar,'var(--accent-cyan)')}</span>
         <span>Tab: ${pill(col.tabFn||'—','var(--text-muted)')}</span>
       </div>
     </div>
     <div style="text-align:right;flex-shrink:0">
-      <div style="font-size:0.78rem;font-weight:700;color:var(--accent)">${fsDocs} FS</div>
+      <div class="u-dd009f5">${fsDocs} FS</div>
       <div style="font-size:0.72rem;color:${mismatch?'#ff453a':'var(--text-muted)'}">
         ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="var(--warning)" fill-opacity="0.12" stroke="var(--warning)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="var(--warning)" fill-opacity=".85"/></svg>':''}
       </div>
     </div>
   </div>
-  <div style="border-top:1px solid var(--glass-border);margin-top:8px;padding-top:6px;display:flex;gap:14px;font-size:0.63rem;color:var(--text-muted);flex-wrap:wrap">
-    <span>↑ <b style="color:#30d158">${uuidCol.uploaded||0}</b> up</span>
-    <span>↓ <b style="color:#007aff">${uuidCol.downloaded||0}</b> down</span>
-    <span>Syncs: <b style="color:var(--text)">${colStats.syncCount||0}</b></span>
-    <span>Last: <b style="color:var(--text)">${lastSync}</b></span>
+  <div class="u-7fae4eb" style="display: flex">
+    <span>↑ <b class="u-e4906e4">${uuidCol.uploaded||0}</b> up</span>
+    <span>↓ <b class="u-8da8d88">${uuidCol.downloaded||0}</b> down</span>
+    <span>Syncs: <b class="u-e6f0554">${colStats.syncCount||0}</b></span>
+    <span>Last: <b class="u-e6f0554">${lastSync}</b></span>
     ${col.isPhotoStore ? `<span>Dirty keys: <b style="color:${sqliteCounts['_photos_dirty']>0?'#f59e0b':'var(--text)'}">${sqliteCounts['_photos_dirty']}</b></span>` : ''}
   </div>
 </div>`;
@@ -298,21 +298,21 @@ try {
     const exists = doc.doc && doc.doc.exists;
     const data   = exists ? doc.doc.data() : null;
     html += `
-<div style="margin-bottom:10px;padding:12px;background:var(--input-bg);border-radius:14px;border:1px solid var(--glass-border)">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
-    <div style="flex:1;min-width:0">
-      <div style="font-weight:700;font-size:0.82rem;color:var(--text);font-family:var(--font-mono);margin-bottom:2px">${doc.path}</div>
-      <div style="font-size:0.67rem;color:var(--text-muted);margin-bottom:4px">${doc.desc}</div>
-      <div style="font-size:0.62rem;color:var(--text-muted)">Listener: ${pill(doc.listener, '#30d158')}</div>
+<div class="u-7619a9f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+  <div class="u-3749291" style="display: flex">
+    <div class="u-8b4ab7f">
+      <div class="u-57e7f8a">${doc.path}</div>
+      <div class="u-34951f5">${doc.desc}</div>
+      <div class="u-3b03f58">Listener: ${pill(doc.listener, '#30d158')}</div>
     </div>
-    <div style="flex-shrink:0">
+    <div class="u-b62856e">
       ${exists ? badge('EXISTS','#30d158') : badge('MISSING','#ff453a')}
     </div>
   </div>`;
     if (doc.sqlite.length) {
-      html += `<div style="margin-bottom:6px">
-        <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:3px;font-weight:600">SQLite ↔ Firestore field mapping:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px">
+      html += `<div class="u-e7b1306">
+        <div class="u-0c93f7b">SQLite ↔ Firestore field mapping:</div>
+        <div class="u-f96187d" style="display: flex">
           ${doc.sqlite.map(([sk, fk]) =>
             `<div style="font-size:0.61rem;font-family:var(--font-mono);background:rgba(0,122,255,0.08);padding:2px 7px;border-radius:8px">
               <span style="color:var(--accent)">${sk}</span><span style="color:var(--text-muted)"> → </span><span style="color:var(--accent-cyan)">${fk}</span>
@@ -322,9 +322,9 @@ try {
       </div>`;
     }
     if (exists && data) {
-      html += `<div style="border-top:1px solid var(--glass-border);padding-top:6px">
-        <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:4px;font-weight:600">Firestore fields:</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px">
+      html += `<div class="u-17f05d4">
+        <div class="u-642b28e">Firestore fields:</div>
+        <div class="u-31c6720" style="display: grid">
           ${doc.fsFields.map(k => {
             const present = k in data;
             return `<div style="font-size:0.62rem;display:flex;justify-content:space-between;gap:6px;padding:1px 0">
@@ -358,34 +358,34 @@ try {
       fires: 'Any doc change; lockOnClose=' + c.lock,
     })),
   ];
-  html += `<div style="margin-bottom:10px;padding:10px 12px;background:rgba(48,209,88,0.07);border-radius:12px;border:1px solid rgba(48,209,88,0.2)">
-    <div style="font-size:0.75rem;font-weight:700;color:#30d158;margin-bottom:2px">● ${LISTENERS.length} Active Realtime Listeners</div>
-    <div style="font-size:0.65rem;color:var(--text-muted)">All subscribed via <code>onSnapshot</code> in <code>subscribeToRealtime()</code>. Reconnect on network restore.</div>
+  html += `<div class="u-41505bd" style="background: rgba(48,209,88,0.07); border: 1px solid rgba(48,209,88,0.2)">
+    <div class="u-c36ae2f">● ${LISTENERS.length} Active Realtime Listeners</div>
+    <div class="u-f1f33a6">All subscribed via <code>onSnapshot</code> in <code>subscribeToRealtime()</code>. Reconnect on network restore.</div>
   </div>`;
   LISTENERS.forEach(l => {
     html += `
-<div style="margin-bottom:8px;padding:10px 12px;background:var(--input-bg);border-radius:13px;border:1px solid var(--glass-border)">
-  <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap">
+<div class="u-d7e5900" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+  <div class="u-350ad3a" style="display: flex">
     ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2')}
-    <span style="font-weight:700;font-size:0.78rem;color:var(--text);font-family:var(--font-mono)">${l.name}</span>
+    <span class="u-a28f127">${l.name}</span>
   </div>
-  <div style="font-size:0.67rem;color:var(--text-muted);margin-bottom:3px">${l.purpose}</div>
-  <div style="font-size:0.62rem;display:flex;flex-wrap:wrap;gap:6px">
+  <div class="u-b80e433">${l.purpose}</div>
+  <div class="u-3fe1e71" style="display: flex">
     <span>Handler: ${pill(l.path,'var(--accent-cyan)')}</span>
   </div>
-  <div style="font-size:0.6rem;color:var(--text-muted);margin-top:3px">Fires when: ${l.fires}</div>
+  <div class="u-cd108c0">Fires when: ${l.fires}</div>
 </div>`;
   });
   html += `</div>`;
   html += `<div id="dbv-pane-3" style="display:none">`;
-  html += `<div style="margin-bottom:12px">
-    <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore → SQLite → JS Variable Map</div>
+  html += `<div class="u-5beb8fb">
+    <div class="u-87be69b">Firestore → SQLite → JS Variable Map</div>
     <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:0.63rem;font-family:var(--font-mono)">
-      <thead><tr style="border-bottom:1px solid var(--glass-border)">
-        <th style="text-align:left;padding:4px 6px;color:var(--text-muted);font-weight:600">Firestore</th>
-        <th style="text-align:left;padding:4px 6px;color:var(--text-muted);font-weight:600">SQLite Key</th>
-        <th style="text-align:left;padding:4px 6px;color:var(--text-muted);font-weight:600">JS Variable</th>
+    <table class="u-90d65a5">
+      <thead><tr class="u-c90a74f">
+        <th class="u-db30752">Firestore</th>
+        <th class="u-db30752">SQLite Key</th>
+        <th class="u-db30752">JS Variable</th>
         <th style="text-align:right;padding:4px 6px;color:var(--text-muted);font-weight:600">FS / Local</th>
       </tr></thead>
       <tbody>
@@ -404,32 +404,32 @@ try {
     </table>
     </div>
   </div>`;
-  html += `<div style="margin-bottom:12px;padding:12px;background:var(--input-bg);border-radius:14px">
-    <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore Schema (users/{uid}/…)</div>
-    <div style="font-size:0.63rem;font-family:var(--font-mono);line-height:1.9;color:var(--text-muted)">
-      <div><span style="color:var(--accent-gold)">users/</span><span style="color:var(--accent)">{uid}</span></div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">production/</span> <span style="color:var(--text-muted)">{docId}</span> — factory batches</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">sales/</span> <span style="color:var(--text-muted)">{docId}</span> — customer sales</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">calculator/</span> <span style="color:var(--text-muted)">{docId}</span> — ledger entries</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">rep/</span> <span style="color:var(--text-muted)">{docId}</span> — rep sales</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">clients/</span> <span style="color:var(--text-muted)">{docId}</span></div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">customers/</span> <span style="color:var(--text-muted)">{docId}</span></div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">transactions/</span> <span style="color:var(--text-muted)">{docId}</span> — payments</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">entities/</span> <span style="color:var(--text-muted)">{docId}</span> — payment entities</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">inventory/</span> <span style="color:var(--text-muted)">{docId}</span> — raw materials</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">factory/</span> <span style="color:var(--text-muted)">{docId}</span></div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">returns/</span> <span style="color:var(--text-muted)">{docId}</span></div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">expenses/</span> <span style="color:var(--text-muted)">{docId}</span></div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">deletions/</span> <span style="color:var(--text-muted)">{recordId}</span> — tombstones</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">photos/</span> <span style="color:var(--text-muted)">{base64Key}</span> — photos keyed by type:id (cust:name, entity:id, rep-cust:rep:name)</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">activity/</span> <span style="color:var(--text-muted)">{auto}</span> — write-only audit</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">updates/</span> <span style="color:var(--text-muted)">{auto}</span> — heartbeat log (cleaned hourly)</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">devices/</span> <span style="color:var(--text-muted)">{deviceId}</span> — fingerprint, mode, heartbeat</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">account/info</span> — email, displayName</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/config</span> — settings, repProfile</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/team</span> — reps, roles</div>
-      <div style="padding-left:14px"><span style="color:#30d158">├─</span> <span style="color:var(--accent-cyan)">settings/yearCloseSignal</span> — cross-device broadcast</div>
-      <div style="padding-left:14px"><span style="color:#30d158">└─</span> <span style="color:var(--accent-cyan)">formulas/config</span> — formulas, costs, prices</div>
+  html += `<div class="u-8f42027" style="background: var(--input-bg)">
+    <div class="u-87be69b">Firestore Schema (users/{uid}/…)</div>
+    <div class="u-ed97d82">
+      <div><span class="u-e1a6e11">users/</span><span class="u-b68d496">{uid}</span></div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">production/</span> <span class="u-d59bb54">{docId}</span> — factory batches</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">sales/</span> <span class="u-d59bb54">{docId}</span> — customer sales</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">calculator/</span> <span class="u-d59bb54">{docId}</span> — ledger entries</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">rep/</span> <span class="u-d59bb54">{docId}</span> — rep sales</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">clients/</span> <span class="u-d59bb54">{docId}</span></div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">customers/</span> <span class="u-d59bb54">{docId}</span></div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">transactions/</span> <span class="u-d59bb54">{docId}</span> — payments</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">entities/</span> <span class="u-d59bb54">{docId}</span> — payment entities</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">inventory/</span> <span class="u-d59bb54">{docId}</span> — raw materials</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">factory/</span> <span class="u-d59bb54">{docId}</span></div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">returns/</span> <span class="u-d59bb54">{docId}</span></div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">expenses/</span> <span class="u-d59bb54">{docId}</span></div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">deletions/</span> <span class="u-d59bb54">{recordId}</span> — tombstones</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">photos/</span> <span class="u-d59bb54">{base64Key}</span> — photos keyed by type:id (cust:name, entity:id, rep-cust:rep:name)</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">activity/</span> <span class="u-d59bb54">{auto}</span> — write-only audit</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">updates/</span> <span class="u-d59bb54">{auto}</span> — heartbeat log (cleaned hourly)</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">devices/</span> <span class="u-d59bb54">{deviceId}</span> — fingerprint, mode, heartbeat</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">account/info</span> — email, displayName</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">settings/config</span> — settings, repProfile</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">settings/team</span> — reps, roles</div>
+      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">settings/yearCloseSignal</span> — cross-device broadcast</div>
+      <div class="u-ce88006"><span class="u-e4906e4">└─</span> <span class="u-182e628">formulas/config</span> — formulas, costs, prices</div>
     </div>
   </div>
 
@@ -454,12 +454,12 @@ try {
   modal.innerHTML = html;
 } catch (err) {
   console.error('[showDeltaSyncDetails] error:', err);
-  modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radius:20px;text-align:center;max-width:400px">
-    <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.85;"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
-    <div style="color:var(--text);margin-bottom:20px">Failed to load database structure</div>
+  modal.innerHTML = `<div class="u-92d6a70" style="background: var(--glass)">
+    <div class="u-e6c5b02" style="display: flex"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-57164d6"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
+    <div class="u-5267c24">Failed to load database structure</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:20px">${err && err.message ? err.message : String(err)}</div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      style="padding:10px 20px;background:var(--accent);border:none;border-radius:16px;color:#fff;cursor:pointer">Close</button>
+      class="u-f86db90" style="background: var(--accent); border: none">Close</button>
   </div>`;
 }
 }
@@ -849,8 +849,8 @@ _cyBody.innerHTML = `
 #cy-panel::after, #cy-panel::before { display: none !important; }
 </style>
 <div id="cy-panel">
-  <div style="padding:0 0 6px;">
-    <div id="cy-preview-grid" style="display:grid;gap:6px;">${summary.rowsHtml}</div>
+  <div class="u-2acac37">
+    <div id="cy-preview-grid" class="u-35ecb16" style="display: grid">${summary.rowsHtml}</div>
   </div>
   <div id="close-year-progress-container" style="display:none;">
     <div id="cy-progress-inner">
@@ -881,7 +881,7 @@ _cyBody.innerHTML = `
           onkeydown="if(event.key==='Enter'&&!document.getElementById('close-year-confirm-btn').disabled){verifyAndExecuteCloseYear();}">
         <button type="button" id="cy-pwd-eye" tabindex="-1"
           onclick="(function(b){const i=document.getElementById('close-year-confirm-input');i.type=i.type==='password'?'text':'password';b.querySelector('svg').style.opacity=i.type==='text'?'1':'0.40';})(this)">
-          <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="transition:opacity 0.2s;"><path d="M2.5 18C6.5 10.8 12 7.8 18 7.8S29.5 10.8 33.5 18C29.5 25.2 24 28.2 18 28.2S6.5 25.2 2.5 18Z" fill="var(--accent)" fill-opacity="0.1" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="18" r="5.8" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" fill="var(--accent)"/></svg>
+          <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-c71e479"><path d="M2.5 18C6.5 10.8 12 7.8 18 7.8S29.5 10.8 33.5 18C29.5 25.2 24 28.2 18 28.2S6.5 25.2 2.5 18Z" fill="var(--accent)" fill-opacity="0.1" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="18" r="5.8" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" fill="var(--accent)"/></svg>
         </button>
       </div>
       <div id="close-year-pwd-error"></div>
@@ -1227,7 +1227,7 @@ rows += previewRow('ret', 'Stock Returns', 'returns',
   'var(--danger)', S.returns.nonMerged > 0
 );
 const rowsHtml = rows;
-const html = '<div style="display:grid;gap:4px;">' + rows + '</div>';
+const html = '<div class="u-4e91564" style="display: grid">' + rows + '</div>';
 return { html, rowsHtml, summary: S };
 }
 
@@ -1689,7 +1689,7 @@ if (completeSection) {
   const closedDateStr = fyMeta2.lastYearClosedDate || new Date().toLocaleDateString('en-PK', { day:'numeric', month:'short', year:'numeric' });
   const syncWarnBlock = hasSyncWarnings ? `
     <div class="cy-sync-warn">
-      <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:1px;"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="var(--warning)" fill-opacity="0.16" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="var(--warning)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="var(--warning)"/></svg>
+      <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-a80ec05"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="var(--warning)" fill-opacity="0.16" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="var(--warning)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="var(--warning)"/></svg>
       <div>
         <div class="cy-sync-warn-title">Cloud Sync Incomplete</div>
         <div class="cy-sync-warn-body">Local data is fully merged and safe. Marked rows will re-sync automatically when connectivity is restored, or force a manual sync from Settings.</div>
@@ -1699,7 +1699,7 @@ if (completeSection) {
   <div class="cy-complete-card">
     <div class="cy-complete-header">
       <div class="cy-complete-icon">
-        <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="stroke-dasharray:60;stroke-dashoffset:0;animation:cy-checkmark-draw 0.55s 0.2s cubic-bezier(0.22,1,0.36,1) both;"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--accent-emerald)" fill-opacity="0.15" stroke="var(--accent-emerald)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-6b77532"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--accent-emerald)" fill-opacity="0.15" stroke="var(--accent-emerald)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>
       </div>
       <div class="cy-complete-header-text">
         <h3 class="cy-complete-title">Financial Year Closed</h3>
@@ -1716,7 +1716,7 @@ if (completeSection) {
         <div class="cy-stat-label">Merged Rec.</div>
       </div>
       <div class="cy-stat-cell">
-        <div class="cy-stat-val" style="color:var(--accent-emerald);"></div>
+        <div class="cy-stat-val u-3b9712c"></div>
         <div class="cy-stat-label">Backup Safe</div>
       </div>
     </div>

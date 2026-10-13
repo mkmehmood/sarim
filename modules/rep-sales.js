@@ -819,7 +819,7 @@ return name && typeof name === 'string' && name.toLowerCase().includes(filter);
 });
 const totalItems = filteredCustomers.length;
 if (!filteredCustomers || !Array.isArray(filteredCustomers) || !custMap) {
-tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger);">Invalid customer data</td></tr>`;
+tbody.innerHTML = `<tr><td colspan="5" class="u-33b9990">Invalid customer data</td></tr>`;
 } else if (totalItems === 0) {
 if (Object.keys(custMap).length === 0) {
 tbody.innerHTML = `<tr><td class="u-empty-state-md" colspan="5" >No customers yet. Add your first sale to get started!</td></tr>`;
@@ -844,7 +844,7 @@ tr.style.borderBottom = '1px solid var(--glass-border)';
 const safeNameForAttr = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 tr.innerHTML = `
 <td class="u-table-td">${displayDate}</td>
-<td style="padding: 8px 2px; font-size: 0.8rem; color: var(--accent); font-weight: 600; cursor:pointer;" onclick="event.stopPropagation(); openRepCustomerManagement('${safeNameForAttr}')">${esc(name)}</td>
+<td class="u-0f0deda" onclick="event.stopPropagation(); openRepCustomerManagement('${safeNameForAttr}')">${esc(name)}</td>
 <td class="u-table-td">${phoneActionHTML(phone)}</td>
 <td style="padding: 8px 2px; text-align: right; font-size: 0.8rem; color: ${customerData.debt > 1 ? 'var(--warning)' : 'var(--accent-emerald)'}; font-weight: 700;">
 ${fmtAmt(Math.max(0, customerData.debt))}
@@ -1019,14 +1019,14 @@ const _repAvatarHTML = renderPersonAvatarHTML(_repHeaderPhoto, 42);
 const _repSafeName = esc(name).split("'").join("\\'");
 const headerTitle = document.getElementById('repManageCustomerTitle');
 headerTitle.innerHTML = `
-<div style="display:flex;align-items:center;gap:10px;">
+<div class="u-1043921" style="display: flex">
 ${_repAvatarHTML}
-<div style="min-width:0;flex:1;">
-<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+<div class="u-69f8e5a">
+<div class="u-611b408" style="display: flex">
 <span>${esc(name)}</span>
-<button class="sidebar-settings-btn" style="width:auto;padding:5px 10px;font-size:0.75rem;color:var(--accent);background:rgba(29,233,182,0.07);border-radius:8px;border:1px solid rgba(29,233,182,0.25);display:inline-flex;align-items:center;gap:5px;" onclick="openRepCustomerEditModal('${_repSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
+<button class="sidebar-settings-btn u-686d0e1" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25); display: inline-flex" onclick="openRepCustomerEditModal('${_repSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
 </div>
-<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:2px;">
+<div class="u-9e739fd">
 ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` : ''}
 </div>
 </div>
@@ -1055,15 +1055,15 @@ let toggleBtnHtml = '';
 if (t.isMerged) {
 const mergedSettled = t.creditReceived || effectiveDue <= 0.01;
 toggleBtnHtml = mergedSettled
-? `<span class="status-toggle-btn paid" style="opacity:0.8;">SETTLED</span>`
-: `<span class="status-toggle-btn pending" style="opacity:0.8;">PENDING</span>`;
+? `<span class="status-toggle-btn paid u-3b42672">SETTLED</span>`
+: `<span class="status-toggle-btn pending u-3b42672">PENDING</span>`;
 } else if (isCredit) {
 if (hasPartialPayment) {
 const remaining = effectiveDue;
 btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
 statusClass = 'partial';
 }
-toggleBtnHtml = `<span class="status-toggle-btn ${statusClass}" style="pointer-events:none;cursor:default;">${btnText}</span>`;
+toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99" style="pointer-events: none">${btnText}</span>`;
 } else if (isPartialPayment) {
 toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
@@ -1071,7 +1071,7 @@ toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
 } else {
 toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
 }
-const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('repsale','${esc(t.id)}')">✎</button>`;
+const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8 u-b68d496" style="border: 1px solid var(--accent); background: transparent" onclick="startEdit('repsale','${esc(t.id)}')">✎</button>`;
 const deleteBtnHtml = t.isMerged ? '' : `${editBtnHtml}<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteRepTransactionFromOverlay('${esc(t.id)}')">⌫</button>`;
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `rp-${t.id}`;
@@ -1089,10 +1089,10 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>
+    <div class="u-dbdd85e">Payment: ${await formatCurrency(collectionCollected(t))}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -1104,10 +1104,10 @@ itemContent = `
       ${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
     </div>
-    <div style="font-size:0.75rem;color:var(--warning);">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
+    <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${esc(t.notes || 'Brought forward from previous records')}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -1119,10 +1119,10 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
-    <div style="font-size:0.75rem;color:var(--text-muted);">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_repDisplayUnitPrice)} = ${await formatCurrency(t.totalValue)}</div>
+    <div class="u-d8853f1">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_repDisplayUnitPrice)} = ${await formatCurrency(t.totalValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)}</div>` : ''}
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -1740,8 +1740,8 @@ list.innerHTML = `<div class="u-empty-state-sm" >No activity found for ${esc(sel
 return;
 }
 let tableHTML = `
-<div class="section liquid-card" style="padding: 15px;">
-<h4 style="margin: 0 0 15px 0; color: var(--accent); font-size: 0.9rem;">${esc(headerText)}</h4>
+<div class="section liquid-card u-c1e18cf">
+<h4 class="u-e2215b2">${esc(headerText)}</h4>
 <div style="max-height: 400px; overflow-y: auto;">
 `;
 activityData.forEach(item => {
@@ -1777,9 +1777,9 @@ transition: all 0.2s;
 ${item.isSettled ? 'opacity:0.65;' : ''}
 ">
 <div class="u-flex-1" >
-<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-<span style="font-size: 1.2rem;">${typeIcon}</span>
-<strong style="color: var(--text-main); font-size: 0.9rem;">${esc(item.customerName)}</strong>
+<div class="u-4e5b492" style="display: flex">
+<span class="u-8ed6849">${typeIcon}</span>
+<strong class="u-37092d4">${esc(item.customerName)}</strong>
 ${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}
 ${item.isSettled ? `<span class="settled-badge"> Settled</span>` : ''}
 </div>
@@ -1788,7 +1788,7 @@ ${qtyAmount}
 </div>
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
-<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end;flex-wrap:wrap;">
+<div class="u-9dfb028" style="display: flex">
 <span class="u-fs-sm u-text-muted">${esc(item.time || '')}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 ${item.salesRep && !item.createdBy ? `<span class="sales-rep-badge">${esc(item.salesRep.split(' ')[0])}</span>` : ''}

@@ -3567,11 +3567,11 @@ export async function showSyncHealthPanel() {
       box-shadow:0 8px 32px rgba(0,0,0,.4);color:var(--text-main,#f1f5f9);font-size:.85rem;
     `;
     panel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <strong style="font-size:.95rem">Sync Health</strong>
+      <div class="u-73c1bbd" style="display: flex">
+        <strong class="u-d50f65a">Sync Health</strong>
       </div>
-      <div style="margin-bottom:8px">
-        <span style="color:#10b981"> ${ok} collections OK</span>
+      <div class="u-16949d4">
+        <span class="u-9470ace"> ${ok} collections OK</span>
         ${pending ? `&nbsp;·&nbsp;<span style="color:#f59e0b"> ${pending} issues</span>` : ''}
       </div>
       ${results.issues.map(s => `
@@ -3579,12 +3579,11 @@ export async function showSyncHealthPanel() {
           <strong>${s.collection}</strong> — never synced · ${s.localRecords} local records
           ${s.hasPendingChanges ? ' · <span style="color:#f87171">pending changes</span>' : ''}
         </div>`).join('')}
-      <div style="margin-top:10px;color:var(--text-muted,#94a3b8);font-size:.75rem">
+      <div class="u-db7c8ab">
         Last sync: ${results.valid[0]?.lastSync || 'Never'}
       </div>
       <button onclick="performOneClickSync();document.getElementById('sync-health-panel').remove()"
-        style="margin-top:12px;width:100%;padding:8px;border:none;border-radius:10px;
-               background:#2563eb;color:#fff;font-weight:700;cursor:pointer;font-size:.85rem">
+        class="u-ca0f564" style="border: none; background: #2563eb">
         Sync Now
       </button>
     `;
@@ -4284,10 +4283,10 @@ export async function loadAccountsList() {
 const listEl = document.getElementById('manage-accounts-list');
 if (!listEl) return;
 if (!navigator.onLine) {
-listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:16px;">Internet required to load accounts.</div>';
+listEl.innerHTML = '<div class="u-ed93e92">Internet required to load accounts.</div>';
 return;
 }
-listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:16px;">Loading...</div>';
+listEl.innerHTML = '<div class="u-ed93e92">Loading...</div>';
 try {
 const meSnap = await firebaseDB.collection('users').doc(currentUser.uid).get();
 const meData = meSnap.exists ? meSnap.data() : {};
@@ -4296,35 +4295,35 @@ const others = await _readAccountsIndex().catch(() => []);
 const allAccounts = [meEntry, ...others.filter(a => a.uid !== currentUser.uid)];
 allAccounts.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
 if (allAccounts.length === 0) {
-listEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-align:center;padding:16px;">No accounts found.</div>';
+listEl.innerHTML = '<div class="u-ed93e92">No accounts found.</div>';
 return;
 }
 listEl.innerHTML = allAccounts.map(acct => {
 const isMe     = acct.uid === currentUser.uid;
 const approved = acct.approved !== false;
 const dot = approved
-  ? '<span style="width:7px;height:7px;border-radius:50%;background:var(--accent-emerald);display:inline-block;flex-shrink:0;"></span>'
-  : '<span style="width:7px;height:7px;border-radius:50%;background:var(--danger);display:inline-block;flex-shrink:0;"></span>';
+  ? '<span class="u-eca6a09" style="background: var(--accent-emerald); display: inline-block"></span>'
+  : '<span class="u-eca6a09" style="background: var(--danger); display: inline-block"></span>';
 const actions = isMe
-  ? '<span style="font-size:0.65rem;color:var(--text-muted);font-style:italic;">(you)</span>'
+  ? '<span class="u-28e6137">(you)</span>'
   : [
       '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn-theme" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="font-size:0.72rem;padding:4px 9px;color:var(--danger);border-color:rgba(239,68,68,0.3);">Remove</button>'
+      '<button class="btn-theme u-af19549" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="border-color: rgba(239,68,68,0.3)">Remove</button>'
     ].join('');
-return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:var(--radius-lg);margin-bottom:8px;">' +
-  '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">' + dot +
-  '<div style="min-width:0;"><div style="font-size:0.82rem;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+return '<div class="u-a412d9a" style="display: flex; background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
+  '<div class="u-855cc88" style="display: flex">' + dot +
+  '<div class="u-33f2a66"><div style="font-size:0.82rem;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
-  '<div style="display:flex;gap:4px;align-items:center;margin-top:3px;">' +
+  '<div class="u-28c8f7e" style="display: flex">' +
   (acct.role === 'admin'
-    ? '<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;background:rgba(29,233,182,0.12);color:var(--accent-emerald);border:1px solid rgba(29,233,182,0.3);font-weight:700;text-transform:uppercase;">admin</span>'
-    : '<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;background:var(--glass-raised);color:var(--text-muted);border:1px solid var(--glass-border);font-weight:700;text-transform:uppercase;">user</span>') +
-  (!approved ? '<span style="font-size:0.58rem;color:var(--danger);font-weight:700;">· Suspended</span>' : '') +
+    ? '<span class="u-e4e2d96" style="background: rgba(29,233,182,0.12); border: 1px solid rgba(29,233,182,0.3)">admin</span>'
+    : '<span class="u-e7a1434" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">user</span>') +
+  (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
-  '</div></div><div style="display:flex;gap:5px;flex-shrink:0;">' + actions + '</div></div>';
+  '</div></div><div class="u-c59185e" style="display: flex">' + actions + '</div></div>';
 }).join('');
 } catch(err) {
-listEl.innerHTML = '<div style="color:var(--danger);font-size:0.8rem;text-align:center;padding:16px;">Failed to load: ' + esc(err.message||'') + '</div>';
+listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';
 console.error('loadAccountsList:', _safeErr(err));
 }
 }

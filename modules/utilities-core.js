@@ -1816,7 +1816,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
   const fromDate = fmtDate(dr.from);
   const toDate   = fmtDate(dr.to);
   const recCount = ms.recordCount || record.mergedRecordCount || '—';
-  let html = sec('<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--accent)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="12" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="25.5" r="1.5" fill="var(--accent-gold)" opacity="0.8"/></svg>Year-Close Overview');
+  let html = sec('<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-abe84e9" style="display: inline-block"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--accent)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="12" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="25.5" r="1.5" fill="var(--accent-gold)" opacity="0.8"/></svg>Year-Close Overview');
   html += row('Period',          `${fromDate} → ${toDate}`, 'muted');
   html += row('Transactions',    `${recCount} merged`, 'purple');
   html += row('Merge Date',      fmtDate(record.date), 'muted');
@@ -1854,7 +1854,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
     }
     html += sec('Status');
     const settled = ms.isSettled || netOut <= 0.01;
-    html += row('Settlement', settled ? '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-right:3px;"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>Fully Settled' : '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-right:3px;"><circle cx="18" cy="18" r="13.5" fill="var(--warning)" fill-opacity="0.15" stroke="var(--warning)" stroke-width="1.7"/><path d="M18 10V18L23.5 21.5" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="18" r="1.3" fill="var(--warning)"/></svg>Outstanding', settled ? 'green' : 'red');
+    html += row('Settlement', settled ? '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b2f0371" style="display: inline-block"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>Fully Settled' : '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b2f0371" style="display: inline-block"><circle cx="18" cy="18" r="13.5" fill="var(--warning)" fill-opacity="0.15" stroke="var(--warning)" stroke-width="1.7"/><path d="M18 10V18L23.5 21.5" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="18" r="1.3" fill="var(--warning)"/></svg>Outstanding', settled ? 'green' : 'red');
     if (record.creditReceivedDate) html += row('Settled On', fmtDate(record.creditReceivedDate), 'muted');
     html += row('Payment Type', record.paymentType || '—', 'muted');
     if (record.salesRep && record.salesRep !== 'NONE' && record.salesRep !== 'ADMIN')
@@ -1876,7 +1876,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
     if (record.description) html += row('Description', esc(record.description), 'muted');
   }
   if (record.notes) {
-    html += `<div style="margin-top:8px;font-size:0.67rem;color:var(--text-muted);font-style:italic;line-height:1.5;border-top:1px solid rgba(175,82,222,0.1);padding-top:8px;">${esc(record.notes)}</div>`;
+    html += `<div class="u-1000f16">${esc(record.notes)}</div>`;
   }
   return `<div class="txn-preclose-panel" id="${panelId}">
     <div class="txn-preclose-title">Pre-Close Year Data</div>
@@ -1954,7 +1954,7 @@ const _safeEntityId = String(entity.id).replace(/'/g, "\\'");
 const _entPhotoKey = 'entity:' + String(entity.id);
 const _entPhoto = await getPersonPhoto(_entPhotoKey);
 const _entAvatarHTML = renderPersonAvatarHTML(_entPhoto, 44);
-_manageET.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">${_entAvatarHTML}<div style="min-width:0;flex:1;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn" style="width:auto;padding:5px 10px;font-size:0.75rem;color:var(--accent);background:rgba(29,233,182,0.07);border-radius:8px;border:1px solid rgba(29,233,182,0.25);display:inline-flex;align-items:center;gap:5px;" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
+_manageET.innerHTML = `<div class="u-1043921" style="display: flex">${_entAvatarHTML}<div class="u-69f8e5a"><div class="u-611b408" style="display: flex"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn u-686d0e1" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25); display: inline-flex" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
 }
 try {
 const _freshInv = await sqliteStore.get('inventory', []);
@@ -1977,7 +1977,7 @@ balanceHtml = `<span class="u-text-accent u-fw-800" >Balance Settled</span>`;
 }
 statsEl.innerHTML = `
 ${balanceHtml}
-<span style="display:inline-flex; gap:8px; margin-left:12px; flex-wrap:wrap;">
+<span class="u-d2c7c73" style="display: inline-flex">
 <span class="txn-stat-badge txn-in">IN: ${fmtAmt(totalIn)}</span>
 <span class="txn-stat-badge txn-out">OUT: ${fmtAmt(totalOut)}</span>
 </span>`;
@@ -2042,14 +2042,14 @@ item.innerHTML = `
     ${transferPeerLine}
     ${t.isMerged ? _mergedBadgeHtml(t) : ''}
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     <div style="text-align:right;">
       <span style="color:${badgeColor};padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">${label}</span>
-      <div class="${colorClass}" style="font-size:0.9rem;margin-top:2px;">${fmtAmt(t.amount)}</div>
+      <div class="${colorClass} u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')"
-      style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
-      <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
+      class="u-129f796" style="display: none; border: none; background: rgba(99,102,241,0.15)">
+      <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>
     ${(t.isMerged || t.isSettled) ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('${t.isTransfer ? 'paytransfer' : 'payment'}','${esc(t.isTransfer ? t.transferPairId : t.id)}')">✎</button>`}<button class="btn btn-sm btn-danger u-p-4-8" onclick="${t.isTransfer ? `(async()=>{await deletePaymentTransfer('${esc(t.transferPairId)}');const _ent=(await sqliteStore.get('entities')||[]).find(e=>String(e.id)===String(currentEntityId));if(_ent)renderEntityOverlayContent(_ent);})()` : `deleteEntityTransaction('${esc(t.id)}')`}">⌫</button>
@@ -3957,7 +3957,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
     const safe = photoDataUrl.replace(/'/g, '&#39;');
-    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"><div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
+    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f" style="display: block"><div class="u-578ba6d" style="inset: 0; background: rgba(0,0,0,0)" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
   }
   return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
 }

@@ -166,7 +166,7 @@ const safeName = esc(c.name || 'Unknown');
 const safeNameForAttr = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 row.innerHTML = `
 <td class="u-table-td">${displayDate}</td>
-<td style="padding: 8px 2px; font-size: 0.8rem; color: var(--accent); font-weight: 600; cursor:pointer;" onclick="event.stopPropagation(); openCustomerManagement('${safeNameForAttr}')">${safeName}</td>
+<td class="u-0f0deda" onclick="event.stopPropagation(); openCustomerManagement('${safeNameForAttr}')">${safeName}</td>
 <td class="u-table-td">${phoneActionHTML(phone)}</td>
 <td style="padding: 8px 2px; text-align: right; font-size: 0.8rem; ${creditStyle}">${fmtAmt(safeValue(c.credit))}</td>`;
 return row;
@@ -345,14 +345,14 @@ const _custHeaderPhoto = await getPersonPhoto('cust:' + name.toLowerCase());
 const _custAvatarHTML = renderPersonAvatarHTML(_custHeaderPhoto, 42);
 const _custSafeName = esc(name).split("'").join("\\'");
 headerTitle.innerHTML = `
-<div style="display:flex;align-items:center;gap:10px;">
+<div class="u-1043921" style="display: flex">
 ${_custAvatarHTML}
-<div style="min-width:0;flex:1;">
-<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+<div class="u-69f8e5a">
+<div class="u-611b408" style="display: flex">
 <span>${esc(name)}</span>
-<button class="sidebar-settings-btn" style="width:auto;padding:5px 10px;font-size:0.75rem;color:var(--accent);background:rgba(29,233,182,0.07);border-radius:8px;border:1px solid rgba(29,233,182,0.25);display:inline-flex;align-items:center;gap:5px;" onclick="openCustomerEditModal('${_custSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
+<button class="sidebar-settings-btn u-686d0e1" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25); display: inline-flex" onclick="openCustomerEditModal('${_custSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
 </div>
-<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:2px;">
+<div class="u-9e739fd">
 ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` : ''}
 </div>
 </div>
@@ -384,15 +384,15 @@ const isOldDebt = t.transactionType === 'OLD_DEBT';
 if (t.isMerged) {
 const mergedSettled = t.creditReceived || (t.isMerged && effectiveDue <= 0.01);
 toggleBtnHtml = mergedSettled
-? `<span class="status-toggle-btn paid" style="opacity:0.8;">SETTLED</span>`
-: `<span class="status-toggle-btn pending" style="opacity:0.8;">PENDING</span>`;
+? `<span class="status-toggle-btn paid u-3b42672">SETTLED</span>`
+: `<span class="status-toggle-btn pending u-3b42672">PENDING</span>`;
 } else if(isCredit) {
 if (hasPartialPayment) {
 const remaining = effectiveDue;
 btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
 statusClass = 'partial';
 }
-toggleBtnHtml = `<span class="status-toggle-btn ${statusClass}" style="pointer-events:none;cursor:default;">${btnText}</span>`;
+toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99" style="pointer-events: none">${btnText}</span>`;
 } else if (isPartialPayment) {
 toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
@@ -400,7 +400,7 @@ toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
 } else {
 toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
 }
-const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
+const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8 u-b68d496" style="border: 1px solid var(--accent); background: transparent" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
 const deleteBtnHtml = t.isMerged ? '' : `${editBtnHtml}<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteTransactionFromOverlay('${esc(t.id)}')">⌫</button>`;
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;
@@ -415,10 +415,10 @@ itemContent = `
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>
+    <div class="u-dbdd85e">Payment: ${await formatCurrency(collectionCollected(t))}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -431,10 +431,10 @@ itemContent = `
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
     </div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
-    <div style="font-size:0.75rem;color:var(--warning);">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
+    <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${esc(t.notes || 'Brought forward from previous records')}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -451,7 +451,7 @@ itemContent = `
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? `⇄ Stock transfer from ${esc(t.repTransferFrom || t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;

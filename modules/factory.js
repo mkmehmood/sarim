@@ -483,20 +483,20 @@ let supplierHtml = '';
 if (item.supplierName) {
 const remainingPayable = item.totalPayable || 0;
 const isFullyPaid = item.paymentStatus === 'paid' || remainingPayable <= 0;
-const payableDisplay = isFullyPaid ? `<span class="u-text-emerald">0</span>` : `<span style="font-weight:600;color:var(--accent);">${fmtNum(safeNumber(remainingPayable, 0))}</span>`;
-supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;"><div class="supplier-name-badge">${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</div><div style="margin-top:3px;font-size:0.7rem;">${payableDisplay}</div></div>`;
+const payableDisplay = isFullyPaid ? `<span class="u-text-emerald">0</span>` : `<span class="u-ee2665d">${fmtNum(safeNumber(remainingPayable, 0))}</span>`;
+supplierHtml = `<div class="u-6e1a1fe"><div class="supplier-name-badge">${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</div><div style="margin-top:3px;font-size:0.7rem;">${payableDisplay}</div></div>`;
 } else {
-supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;font-style:italic;opacity:0.6;">No supplier linked</div>`;
+supplierHtml = `<div class="u-109ee1c">No supplier linked</div>`;
 }
 let quantityHtml = '';
 if (item.purchaseQuantity && item.purchaseUnitName && item.conversionFactor && item.conversionFactor !== 1) {
-quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${fmtNum(item.purchaseQuantity || 0)}</div><div class="u-fs-sm u-text-muted">${esc(item.purchaseUnitName)}</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">(${fmtNum(item.quantity || 0)})</div></div>`;
+quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${fmtNum(item.purchaseQuantity || 0)}</div><div class="u-fs-sm u-text-muted">${esc(item.purchaseUnitName)}</div><div class="u-3ff1ee5">(${fmtNum(item.quantity || 0)})</div></div>`;
 } else if (item.purchaseQuantity && item.conversionFactor && item.conversionFactor !== 1) {
-quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${fmtNum(item.purchaseQuantity || 0)}</div><div class="u-fs-sm u-text-muted">units</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">(${fmtNum(item.quantity || 0)})</div></div>`;
+quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${fmtNum(item.purchaseQuantity || 0)}</div><div class="u-fs-sm u-text-muted">units</div><div class="u-3ff1ee5">(${fmtNum(item.quantity || 0)})</div></div>`;
 } else {
 quantityHtml = `<div class="u-text-center"><div class="u-fs-sm3 u-text-main u-fw-600">${fmtNum(item.quantity || 0)}</div><div class="u-fs-sm u-text-muted">kg</div></div>`;
 }
-if (!(Number(item.quantity) > 0)) quantityHtml += `<div class="u-text-center" style="font-size:0.6rem;font-weight:700;color:var(--danger,#ef4444);margin-top:2px;">OUT OF STOCK</div>`;
+if (!(Number(item.quantity) > 0)) quantityHtml += `<div class="u-text-center u-8a26c59">OUT OF STOCK</div>`;
 let costHtml = '';
 if (item.purchaseCost && item.purchaseUnitName && item.conversionFactor && item.conversionFactor !== 1) {
 costHtml = `<div class="u-text-center"><div class="u-fs-sm2 u-text-main">${await formatCurrency(item.purchaseCost)}</div><div class="u-fs-sm u-text-muted">${esc(item.purchaseUnitName)}</div></div>`;
@@ -511,7 +511,7 @@ const itemName = esc(item.name);
 const tr = document.createElement('tr');
 tr.style.borderBottom = '1px solid var(--glass-border)';
 tr.style.cursor = 'pointer';
-tr.innerHTML = `<td style="padding:8px 2px; cursor:pointer;" onclick="editFactoryInventoryItem('${itemId}')"><div style="font-weight:600;font-size:0.8rem;color:var(--accent);">${itemName}</div>${supplierHtml}</td><td style="text-align:center;padding:8px 2px;">${quantityHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.75rem;color:var(--text-muted);">${costHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.8rem;font-weight:700;color:var(--accent);">${totalValueStr}</td>`;
+tr.innerHTML = `<td class="u-b42655f" onclick="editFactoryInventoryItem('${itemId}')"><div class="u-22bcfd2">${itemName}</div>${supplierHtml}</td><td class="u-6aafbb0">${quantityHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.75rem;color:var(--text-muted);">${costHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.8rem;font-weight:700;color:var(--accent);">${totalValueStr}</td>`;
 prebuiltRows.push(tr);
 }
 if (_mySeq !== _invRenderSeq) return;
@@ -725,16 +725,16 @@ const qty = i.quantity * units;
 const lineTotal = i.cost * qty;
 baseCost += lineTotal;
 let note = '';
-if (i.missing) note = ' <span style="color:var(--danger);">(not in inventory)</span>';
-else if (i.stock + 1e-6 < qty) note = ` <span style="color:var(--danger);">(short ${fmtNum(qty - i.stock)} kg)</span>`;
-lines.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;"><span>${esc(i.name)} (${fmtNum(qty)} kg)${note}</span><span>${await formatCurrency(lineTotal)}</span></div>`);
+if (i.missing) note = ' <span class="u-9cb6f55">(not in inventory)</span>';
+else if (i.stock + 1e-6 < qty) note = ` <span class="u-9cb6f55">(short ${fmtNum(qty - i.stock)} kg)</span>`;
+lines.push(`<div class="u-22ff3d7" style="display: flex"><span>${esc(i.name)} (${fmtNum(qty)} kg)${note}</span><span>${await formatCurrency(lineTotal)}</span></div>`);
 }
-let html = `<h4 style="margin:0 0 5px 0;font-size:0.9rem;">${esc(sel.name)} Formula (${units} Units)</h4>`;
+let html = `<h4 class="u-fcc405c">${esc(sel.name)} Formula (${units} Units)</h4>`;
 if (lines.length > 0) {
 html += lines.join('');
 const totalAdditionalCost = sel.additionalCost * units;
 if (totalAdditionalCost > 0) {
-html += `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;color:var(--danger);"><span>Additional Cost (${sel.additionalCost} per unit)</span><span>${await formatCurrency(totalAdditionalCost)}</span></div>`;
+html += `<div class="u-2bb3ddf" style="display: flex"><span>Additional Cost (${sel.additionalCost} per unit)</span><span>${await formatCurrency(totalAdditionalCost)}</span></div>`;
 baseCost += totalAdditionalCost;
 }
 } else {
@@ -1030,9 +1030,9 @@ const matName = esc(f.name || inv?.name || 'Material');
 const qtyUsed = fmtNum(_hasUsed ? f.quantity : f.quantity * entry.units);
 const unitCost = _hasUsed ? (f.cost != null ? f.cost : (inv ? inv.cost : 0)) : (inv ? inv.cost : (f.cost || 0));
 const matCost = _hasUsed ? (unitCost * f.quantity) : (unitCost * f.quantity * entry.units);
-return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--glass-border);">
-<span style="font-size:0.72rem;color:var(--text-main);font-weight:500;">${matName}</span>
-<span style="display:flex;gap:10px;align-items:center;">
+return `<div class="u-e665e23" style="display: flex">
+<span class="u-484c7e5">${matName}</span>
+<span class="u-ae6a320" style="display: flex">
 <span style="font-size:0.7rem;color:var(--text-muted);">${qtyUsed} kg</span>
 <span class="cost-val" style="font-size:0.72rem;min-width:60px;text-align:right;">${fmtAmt(matCost)}</span>
 </span>
@@ -1040,17 +1040,16 @@ return `<div style="display:flex;justify-content:space-between;align-items:cente
 }).join('');
 const breakdownId = `fh-breakdown-${entry.id}`;
 matsBreakdownHtml = `
-<div style="margin-top:8px;">
-<button onclick="(function(el){var p=document.getElementById('${breakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'':'';})(this)"
-style="display:flex;align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:4px 0;width:100%;">
-<span style="font-size:0.68rem;color:var(--accent);"></span>
-<span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Materials Breakdown</span>
+<div class="u-0d69e4b">
+<button onclick="(function(el){var p=document.getElementById('${breakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'':'';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<span class="u-5056b09"></span>
+<span class="u-e2e3ece">Materials Breakdown</span>
 </button>
-<div id="${breakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
-<div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</span>
-<span style="display:flex;gap:10px;">
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Qty Used</span>
+<div id="${breakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea" style="display: flex">
+<span class="u-2b7c172">Material</span>
+<span class="u-1e68903" style="display: flex">
+<span class="u-2b7c172">Qty Used</span>
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Cost</span>
 </span>
 </div>
@@ -1062,13 +1061,13 @@ const div = document.createElement('div');
 div.className = 'factory-history-item';
 if (entry.date) div.setAttribute('data-date', entry.date);
 div.innerHTML = `
-<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:5px;margin-bottom:8px;border-bottom:1px solid var(--glass-border);padding-bottom:5px;">
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;">
+<div class="u-a7c79e8" style="display: flex">
+<div class="u-9af2403" style="display: flex">
 <span class="u-fs-sm2 u-text-muted">${dateStr}</span>
 ${entry.managedBy ? `<span class="managed-by-badge">${esc(entry.managedBy)}</span>` : ''}
 ${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}
 </div>
-<div style="display:flex;gap:6px;align-items:center;">
+<div class="u-832bae1" style="display: flex">
 ${_mergedBadgeHtml(entry)}
 <span class="factory-badge ${badgeClass}">${formulaLabel}</span>
 </div>
