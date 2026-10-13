@@ -426,7 +426,6 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
-    <div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(_rrExp)} kg \u2192 CHORA</div>
     <div style="font-size:0.75rem;color:var(--accent-emerald);">Returned: ${fmtNum(_rrRet)} kg</div>
     ${Number(t.returnValue) > 0 ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">${_rrUsed.has(t.id) ? 'Credited' : 'Deducted from balance'}: ${await formatCurrency(Number(t.returnValue))}${Number(t.returnUnitPrice) > 0 ? ` (${fmtNum(_rrExp + _rrRet)} kg × ${fmtAmt(Number(t.returnUnitPrice))})` : ''}</div>` : ''}
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
