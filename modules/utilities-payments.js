@@ -7,7 +7,7 @@ import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditC
 import { round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _ensureSupplierInvoices, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
-import { handleReturnQtyInput, handleExpiredQtyInput, DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable,  revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { handleReturnQtyInput, handleExpiredQtyInput, DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable,  revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
@@ -653,7 +653,7 @@ const ampm = hours >= 12 ? 'PM' : 'AM';
 hours = hours % 12;
 hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
-const formulaStore = await getStoreFormulaType(storeKey);
+const formulaStore = await getStorePool(storeKey);
 const salePrice = await getSalePriceForStore(storeKey);
 const costPerKg = await getCostPriceForStore(storeKey);
 const totalCost = quantity * costPerKg;
@@ -1646,8 +1646,6 @@ console.error('calculateNetCash error:', _safeErr(e));
 }
 try {
 if (typeof updateFactoryInventoryDisplay === 'function') {
-const _std = factoryUnitTracking?.standard || {};
-const _asn = factoryUnitTracking?.asaan || {};
 updateFactoryInventoryDisplay();
 }
 } catch (e) {
@@ -6327,31 +6325,28 @@ defaults: {
 localKey: 'defaults',
 localVariable: 'factoryDefaultFormulas',
 type: 'object',
-defaultValue: { standard: [], asaan: [] },
-description: 'Recipe / formula definitions, Formula Store and store formula slots'
+defaultValue: {},
+description: 'Recipe / formula definitions by formula id'
 },
 costs: {
 localKey: 'costs',
 localVariable: 'factoryAdditionalCosts',
 type: 'object',
-defaultValue: { standard: 0, asaan: 0 },
+defaultValue: {},
 description: 'Overhead / extra costs per unit'
 },
 adjustment: {
 localKey: 'adjustment',
 localVariable: 'factoryCostAdjustmentFactor',
 type: 'object',
-defaultValue: { standard: 1, asaan: 1 },
+defaultValue: {},
 description: 'Cost-price multiplier for reporting'
 },
 tracking: {
 localKey: 'tracking',
 localVariable: 'factoryUnitTracking',
 type: 'object',
-defaultValue: {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-},
+defaultValue: {},
 description: 'Unit lifecycle: produced → consumed → available'
 },
 settings: {

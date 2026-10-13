@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   RECORD_STORES, AUX_STATE,
   collectAuxBackupFields, applyAuxBackupFields, isSupportedBackup, RECORD_KEYS,
-  mergeStringLists, mergeById, mergeSlots, resolveExpenseCategories,
+  mergeStringLists, mergeById, resolveExpenseCategories,
 } from '../modules/link-graph.js';
 const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 const sync = read('sync.js');
@@ -52,7 +52,7 @@ describe('every backup writer carries every record store and every aux key', () 
         assert.ok(new RegExp(`\\b${s.key}\\s*:`).test(body), `${name} is missing backup field "${s.key}"`);
       }
     });
-    it(`${name} writes expense categories, formula store/slots and photos via the shared collector`, () => {
+    it(`${name} writes expense categories, formula store and photos via the shared collector`, () => {
       assert.ok(body.includes('collectAuxBackupFields(sqliteStore)'), `${name} must spread collectAuxBackupFields`);
     });
   }
@@ -147,7 +147,6 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
   const source = () => memStore({
     categories: ['Fuel', 'Tea'],
     formulas: [{ id: 'f1', name: 'Std' }, { id: 'f2', name: 'Asaan' }],
-    slots: { standard: 'f1', asaan: 'f2' },
     photos: { a: 'data:x' },
     photostamps: { a: 5 },
   });
@@ -160,27 +159,25 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
     const data = await collectAuxBackupFields(source());
     const fresh = memStore();
     const written = await applyAuxBackupFields(data, fresh, 123, 'merge');
-    assert.deepEqual(written.sort(), ['categories', 'formulas', 'slots']);
+    assert.deepEqual(written.sort(), ['categories', 'formulas']);
     assert.deepEqual(fresh._m.get('categories'), ['Fuel', 'Tea']);
     assert.equal(fresh._m.get('categories_timestamp'), 123);
     assert.equal(fresh._m.get('formulas').length, 2);
-    assert.deepEqual(fresh._m.get('slots'), { standard: 'f1', asaan: 'f2' });
+    assert.equal(fresh._m.has('slots'), false);
   });
   it('merge restore never drops local data', async () => {
     const data = await collectAuxBackupFields(source());
-    const dev = memStore({ categories: ['Rent'], formulas: [{ id: 'f9' }], slots: { standard: 'f9', asaan: null } });
+    const dev = memStore({ categories: ['Rent'], formulas: [{ id: 'f9' }] });
     await applyAuxBackupFields(data, dev, 1, 'merge');
     assert.deepEqual(dev._m.get('categories'), ['Rent', 'Fuel', 'Tea']);
     assert.deepEqual(dev._m.get('formulas').map(f => f.id), ['f9', 'f1', 'f2']);
-    assert.deepEqual(dev._m.get('slots'), { standard: 'f9', asaan: 'f2' });
   });
   it('replace restore (year-close reversal) makes the backup win', async () => {
     const data = await collectAuxBackupFields(source());
-    const dev = memStore({ categories: ['Rent'], formulas: [{ id: 'f9' }], slots: { standard: 'f9', asaan: null } });
+    const dev = memStore({ categories: ['Rent'], formulas: [{ id: 'f9' }] });
     await applyAuxBackupFields(data, dev, 1, 'replace');
     assert.deepEqual(dev._m.get('categories'), ['Fuel', 'Tea']);
     assert.deepEqual(dev._m.get('formulas').map(f => f.id), ['f1', 'f2']);
-    assert.deepEqual(dev._m.get('slots'), { standard: 'f1', asaan: 'f2' });
   });
   it('old backups without these fields restore without touching local data', async () => {
     const dev = memStore({ categories: ['Rent'] });
@@ -196,8 +193,12 @@ describe('merge helpers and cloud category resolution', () => {
   it('mergeById keeps local, adds new, skips id-less', () => {
     assert.deepEqual(mergeById([{ id: 1, v: 'L' }], [{ id: 1, v: 'B' }, { id: 2 }, { v: 'x' }]), [{ id: 1, v: 'L' }, { id: 2 }]);
   });
-  it('mergeSlots fills only the missing side', () => {
-    assert.deepEqual(mergeSlots({ standard: 'a' }, { standard: 'z', asaan: 'b' }), { standard: 'a', asaan: 'b' });
+  it('a backup from before formula pools keeps its old assignment only as migration input', async () => {
+    const dev = memStore();
+    const written = await applyAuxBackupFields({ slots: { standard: 'f1', asaan: 'f2' } }, dev, 1, 'merge');
+    assert.deepEqual(written, ['slots']);
+    assert.deepEqual(dev._m.get('slots'), { standard: 'f1', asaan: 'f2' });
+    assert.equal((await collectAuxBackupFields(dev)).slots, undefined);
   });
   it('newer cloud stamp replaces local', () => {
     const r = resolveExpenseCategories(['A', 'B'], ['A'], 10, 20);

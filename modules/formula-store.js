@@ -5,13 +5,10 @@ import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor, getDefaultStoreKey, unitPoolKey, deriveSlots } from './store-keys.js';
+import { getDefaultStoreKey, formulaIdOf } from './store-keys.js';
+import { feedsFromFormulas } from './formula-pool-plan.js';
 const STORE_KEY = 'formulas';
 const STORE_TS_KEY = 'formulas_timestamp';
-const SLOTS_KEY = 'slots';
-const SLOTS_TS_KEY = 'slots_timestamp';
-const SLOT_KEYS = ['standard', 'asaan'];
-const FALLBACK = { standard: 'Standard', asaan: 'Asaan' };
 let _editingId = null;
 const _el = (id) => document.getElementById(id);
 const _num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
@@ -22,68 +19,32 @@ export async function getFormulaStore() {
   return ensureArray(await sqliteStore.get(STORE_KEY)).filter((f) => f && f.id);
 }
 
-export async function getStoredFormulaSlots() {
-  const v = await sqliteStore.get(SLOTS_KEY);
-  return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
-}
-
-// Derived from the stores' selected formulas (see deriveSlots).
-export async function getFormulaSlots() {
-  const [stored, stores] = await Promise.all([getStoredFormulaSlots(), getAppStores()]);
-  return deriveSlots(stores, stored);
-}
-
-export async function getSelectedFormula(storeKey) {
-  const b = await sqliteStore.getBatch([STORE_KEY, SLOTS_KEY, 'stores', 'defaults', 'costs', 'inventory']);
+export async function getSelectedFormula(ref) {
+  const b = await sqliteStore.getBatch([STORE_KEY, 'stores', 'inventory']);
   return resolveSelectedFormula({
-    list: ensureArray(b.get(STORE_KEY)), slots: b.get(SLOTS_KEY) || {}, stores: ensureArray(b.get('stores')),
-    feed: b.get('defaults') || {}, costs: b.get('costs') || {}, inventory: ensureArray(b.get('inventory')),
-  }, storeKey);
+    list: ensureArray(b.get(STORE_KEY)), stores: ensureArray(b.get('stores')), inventory: ensureArray(b.get('inventory')),
+  }, ref);
 }
 
-export async function getFormulaSlotLabels() {
-  const [list, slots] = await Promise.all([getFormulaStore(), getFormulaSlots()]);
+// formula id -> name
+export async function getFormulaNames() {
   const out = {};
-  SLOT_KEYS.forEach((k) => {
-    const f = list.find((x) => String(x.id) === String(slots[k]));
-    out[k] = f && f.name ? f.name : FALLBACK[k];
-  });
-  if (out.standard === out.asaan) out.asaan = out.asaan + ' (2)';
+  (await getFormulaStore()).forEach((f) => { out[String(f.id)] = f.name || 'Untitled'; });
   return out;
 }
 
 export async function getStoreFormulaNames() {
-  const [stores, list, slots] = await Promise.all([getAppStores(), getFormulaStore(), getFormulaSlots()]);
+  const [stores, names] = await Promise.all([getAppStores(), getFormulaNames()]);
   const out = {};
-  stores.forEach((s) => {
-    const id = s.formulaId || slots[s.formulaType || 'standard'];
-    const f = list.find((x) => String(x.id) === String(id));
-    out[s.key] = esc(f && f.name ? f.name : (FALLBACK[s.formulaType] || 'Formula'));
-  });
+  stores.forEach((s) => { if (names[formulaIdOf(s)]) out[s.key] = esc(names[formulaIdOf(s)]); });
   return out;
 }
 
-function _slotOfStore(key, typeMap) {
-  if (typeMap[key]) return typeMap[key];
-  if (key === 'standard' || key === 'asaan') return key;
-  return formulaTypeFor(key);
+function _feedWrites(list, now) {
+  const f = feedsFromFormulas(list);
+  return [['defaults', f.defaults], ['defaults_timestamp', now], ['costs', f.costs], ['costs_timestamp', now], ['adjustment', f.adjustment], ['adjustment_timestamp', now]];
 }
 
-function _feedWrites(list, slots, base, now) {
-  const formulas = { standard: [], asaan: [], ...(base.get('defaults') || {}) };
-  const costs = { standard: 0, asaan: 0, ...(base.get('costs') || {}) };
-  const factors = { standard: 1, asaan: 1, ...(base.get('adjustment') || {}) };
-  SLOT_KEYS.forEach((k) => {
-    const f = list.find((x) => String(x.id) === String(slots[k]));
-    if (!f) return;
-    formulas[k] = ensureArray(f.ingredients).map((i) => ({ id: i.id, name: i.name, cost: _num(i.cost, 0), quantity: _num(i.quantity, 0) }));
-    costs[k] = _num(f.additionalCost, 0);
-    factors[k] = _num(f.costAdjustmentFactor, 1) || 1;
-  });
-  return [['defaults', formulas], ['defaults_timestamp', now], ['costs', costs], ['costs_timestamp', now], ['adjustment', factors], ['adjustment_timestamp', now]];
-}
-
-const _FEED_KEYS = ['defaults', 'costs', 'adjustment'];
 
 function _afterChange() {
   notifyDataChange('all');
@@ -94,36 +55,12 @@ function _afterChange() {
 }
 
 export async function commitStoresWithFormulas(stores) {
-  const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getStoredFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('tracking')]);
-  stores = stores.map((s) => {
-    if (s.formulaId) return s;
-    const inherited = slots[s.formulaType || 'standard'];
-    return inherited ? { ...s, formulaId: inherited } : s;
-  });
-  const ids = [];
-  stores.forEach((s) => { if (s.formulaId && !ids.includes(String(s.formulaId))) ids.push(String(s.formulaId)); });
+  const list = await getFormulaStore();
+  const normalized = stores.map((s) => { const { formulaType, ...rest } = s; return rest; });
+  const ids = normalized.map(formulaIdOf).filter(Boolean);
   if (ids.some((id) => !list.find((f) => String(f.id) === id))) return { ok: false, error: 'Selected formula no longer exists in the Formula Store' };
-  if (ids.length > SLOT_KEYS.length) return { ok: false, error: 'Only two different formulas can be active across stores. Pick one of the formulas already in use.' };
-  const next = { standard: slots.standard, asaan: slots.asaan };
-  ids.filter((id) => String(next.standard) !== id && String(next.asaan) !== id).forEach((id) => {
-    const free = SLOT_KEYS.find((k) => !ids.includes(String(next[k])));
-    next[free] = id;
-  });
-  for (const k of SLOT_KEYS) {
-    if (!slots[k] || String(next[k]) === String(slots[k])) continue;
-    const available = _num(tracking && tracking[k] && tracking[k].available, 0);
-    if (available > 0) {
-      const old = list.find((f) => String(f.id) === String(slots[k]));
-      return { ok: false, error: `${available} unit${available === 1 ? '' : 's'} of "${old ? old.name : FALLBACK[k]}" are still available. Use them in manufacturing before assigning a different formula.` };
-    }
-  }
-  const normalized = stores.map((s) => {
-    const slot = s.formulaId ? SLOT_KEYS.find((k) => String(next[k]) === String(s.formulaId)) : null;
-    return { ...s, formulaType: slot || s.formulaType || 'standard' };
-  });
   const now = getTimestamp();
-  const writes = [..._feedWrites(list, next, batch, now), [SLOTS_KEY, next], [SLOTS_TS_KEY, now], ['stores', normalized], ['stores_timestamp', Date.now()]];
-  await sqliteStore.setBatch(writes);
+  await sqliteStore.setBatch([..._feedWrites(list, now), ['stores', normalized], ['stores_timestamp', Date.now()]]);
   _invalidateStoresCache();
   _afterChange();
   return { ok: true, stores: normalized };
@@ -175,13 +112,13 @@ function _card(f, inventory, usedBy) {
 export async function renderFormulaStoreList() {
   const box = _el('formulaStoreList');
   if (!box) return;
-  const [list, stores, slotsNow] = await Promise.all([getFormulaStore(), getAppStores(), getFormulaSlots()]);
+  const [list, stores] = await Promise.all([getFormulaStore(), getAppStores()]);
   if (!list.length) {
     box.innerHTML = '<div class="u-search-empty" style="padding:24px;text-align:center;">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
   const inventory = ensureArray(await sqliteStore.get('inventory'));
-  box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => String(s.formulaId || slotsNow[s.formulaType || 'standard']) === String(f.id)).map((s) => s.name))).join('');
+  box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => formulaIdOf(s) === String(f.id)).map((s) => s.name))).join('');
 }
 
 export async function openFormulaStore() {
@@ -404,7 +341,7 @@ async function _saveFormulaStoreEntryRaw() {
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }
   if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning', 'Warning'); return false; }
 if (!(await window.gcCommit({}))) return false;
-  const [list, slots, batch] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS)]);
+  const list = await getFormulaStore();
   const now = getTimestamp();
   const idx = _editingId ? list.findIndex((f) => String(f.id) === String(_editingId)) : -1;
   if (idx >= 0) {
@@ -413,8 +350,7 @@ if (!(await window.gcCommit({}))) return false;
     _editingId = generateUUID('formula');
     list.push({ id: _editingId, ...c, createdAt: now, updatedAt: now });
   }
-  const inSlot = SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId));
-  await _saveFormulaStore(list, inSlot ? _feedWrites(list, slots, batch, now) : []);
+  await _saveFormulaStore(list, _feedWrites(list, now));
   showToast('Formula saved', 'success');
   sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `"${c.name}" was saved with ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}.`, 'formula-' + _editingId).catch(() => {});
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
@@ -423,10 +359,10 @@ if (!(await window.gcCommit({}))) return false;
 
 export async function deleteFormulaStoreEntry() {
   if (!_editingId) return;
-  const [slots, stores] = await Promise.all([getFormulaSlots(), getAppStores()]);
-  const users = stores.filter((s) => String(s.formulaId || slots[s.formulaType || 'standard']) === String(_editingId)).map((s) => s.name);
-  if (users.length || SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId))) {
-    window.notifyBlocking(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning', 'Warning');
+  const stores = await getAppStores();
+  const users = stores.filter((s) => formulaIdOf(s) === String(_editingId)).map((s) => s.name);
+  if (users.length) {
+    window.notifyBlocking(`In use by ${users.join(', ')}. Assign those stores another formula first.`, 'warning', 'Warning');
     return;
   }
   const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
@@ -434,7 +370,7 @@ export async function deleteFormulaStoreEntry() {
   const fullList = await getFormulaStore();
   const removed = fullList.find((f) => String(f.id) === String(_editingId));
   const list = fullList.filter((f) => String(f.id) !== String(_editingId));
-  await _saveFormulaStore(list);
+  await _saveFormulaStore(list, _feedWrites(list, getTimestamp()));
   sendDeviceNotification('Formula deleted', removed && removed.name ? `"${removed.name}" was removed from your formulas.` : 'A formula was removed.', 'formula-del-' + _editingId).catch(() => {});
   _editingId = null;
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
@@ -496,62 +432,44 @@ export async function openStoreFormulaPicker(btn) {
   }
 }
 
-function _slotItems(view, order) {
-  return view ? order.map((k) => ({ value: k, label: view.labels[k] })) : [];
+function _items(view, order) {
+  return view ? order.map((k) => ({ value: k, label: view.labels[k] || 'Formula' })) : [];
 }
 
-export function syncFactoryFormulaPicker(slot) {
-  const view = window._formulaSlotView;
+export function syncFactoryFormulaPicker(pool) {
+  const view = window._formulaPickerView;
   const input = _el('factory-formula-value');
-  if (input) input.value = slot;
-  _renderChoice('factoryFormulaToggle', _slotItems(view, view ? view.entryOrder : []), slot, (k) => { if (typeof window.selectFactoryFormula === 'function') window.selectFactoryFormula(k); }, 'No formula');
+  if (input) input.value = pool || '';
+  _renderChoice('factoryFormulaToggle', _items(view, view ? view.entryOrder : []), pool, (k) => { if (typeof window.selectFactoryFormula === 'function') window.selectFactoryFormula(k); }, 'No formula');
 }
 
-export function syncFactoryAvailPicker(slot) {
-  const view = window._formulaSlotView;
+export function syncFactoryAvailPicker(pool) {
+  const view = window._formulaPickerView;
   const input = _el('factory-avail-value');
-  if (input) input.value = slot;
-  _renderChoice('factoryAvailToggle', _slotItems(view, view ? view.availOrder : []), slot, (k) => { if (typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(k); }, 'No formula');
+  if (input) input.value = pool || '';
+  _renderChoice('factoryAvailToggle', _items(view, view ? view.availOrder : []), pool, (k) => { if (typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(k); }, 'No formula');
 }
-
-let _slotHealTried = false;
 
 export async function refreshFormulaDependentUI() {
-  const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('tracking')]);
-  // Persist the derived slot assignment (and the per-slot feed costs that follow
-  // it) whenever the saved one has drifted from the stores' selected formulas.
-  // commit refuses if it would strand units.
-  if (!_slotHealTried) {
-    const stored = await getStoredFormulaSlots();
-    if (SLOT_KEYS.some((k) => String(stored[k] || '') !== String(slots[k] || ''))) {
-      _slotHealTried = true;
-      try {
-        const r = await commitStoresWithFormulas(stores);
-        if (r && r.ok) return;
-      } catch (e) { console.error('Formula slot reconcile failed:', (e && e.message) || e); }
-    }
-  }
-  const typeMap = {};
-  stores.forEach((s) => { typeMap[s.key] = unitPoolKey(s.formulaType, s.formulaId, slots); });
-  const used = new Set(Object.values(typeMap));
-  const entryOrder = SLOT_KEYS.filter((k) => !!slots[k] && used.has(k));
-  const availOrder = SLOT_KEYS.filter((k) => !!slots[k] && (used.has(k) || _num(tracking && tracking[k] && tracking[k].available, 0) > 0));
-  if (!entryOrder.length) entryOrder.push(SLOT_KEYS[0]);
-  if (!availOrder.length) availOrder.push(SLOT_KEYS[0]);
-  const shown = {};
-  SLOT_KEYS.forEach((k) => { shown[k] = slots[k] ? labels[k] : 'No formula'; });
-  window._formulaSlotLabels = labels;
-  window._formulaSlotView = { labels: shown, entryOrder, availOrder };
-  let activeSlot = _slotOfStore(window.currentFactoryEntryStore || getDefaultStoreKey(), typeMap);
-  if (!entryOrder.includes(activeSlot)) activeSlot = entryOrder[0];
-  const rep = stores.find((s) => typeMap[s.key] === activeSlot);
-  if (rep && typeMap[window.currentFactoryEntryStore] !== activeSlot) _set_currentFactoryEntryStore(rep.key);
-  syncFactoryFormulaPicker(activeSlot);
+  const [names, stores, tracking] = await Promise.all([getFormulaNames(), getAppStores(), sqliteStore.get('tracking')]);
+  const poolOfStore = {};
+  stores.forEach((s) => { if (names[formulaIdOf(s)]) poolOfStore[s.key] = formulaIdOf(s); });
+  const used = new Set(Object.values(poolOfStore));
+  const known = Object.keys(names);
+  const entryOrder = known.filter((id) => used.has(id));
+  const availOrder = known.filter((id) => used.has(id) || _num(tracking && tracking[id] && tracking[id].available, 0) > 0);
+  window._formulaNames = names;
+  window._formulaPickerView = { labels: names, entryOrder, availOrder };
+  let active = poolOfStore[window.currentFactoryEntryStore || getDefaultStoreKey()];
+  if (!entryOrder.includes(active)) active = entryOrder[0] || '';
+  const rep = stores.find((s) => poolOfStore[s.key] === active);
+  if (rep && poolOfStore[window.currentFactoryEntryStore] !== active) _set_currentFactoryEntryStore(rep.key);
+  syncFactoryFormulaPicker(active);
   const availInput = _el('factory-avail-value');
-  let availSlot = availInput ? availInput.value : availOrder[0];
-  if (!availOrder.includes(availSlot)) availSlot = availOrder[0];
-  if (typeof window.setFactoryAvailableStore === 'function') await window.setFactoryAvailableStore(availSlot);
-  else syncFactoryAvailPicker(availSlot);
+  let availPool = availInput ? availInput.value : (availOrder[0] || '');
+  if (!availOrder.includes(availPool)) availPool = availOrder[0] || '';
+  if (typeof window.setFactoryAvailableStore === 'function') await window.setFactoryAvailableStore(availPool);
+  else syncFactoryAvailPicker(availPool);
   refreshFormulaStoreScreens();
   if (typeof window.renderStoreList === 'function' && _el('store-manager-screen') && _el('store-manager-screen').style.display !== 'none') window.renderStoreList();
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
@@ -563,4 +481,4 @@ export function refreshFormulaStoreScreens() {
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
 
-Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });
+Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });

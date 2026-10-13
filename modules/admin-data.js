@@ -1,7 +1,7 @@
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID } from './business.js';
 import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToCloud, sanitizeForFirestore } from './sync.js';
 import { defaultSettings } from './utilities-core.js';
-import { DeltaSync, UUIDSyncRegistry, trackFirestoreWrite, verifyAccountPassword } from './utilities-sales.js';
+import { DeltaSync, UUIDSyncRegistry, getStorePool, trackFirestoreWrite, verifyAccountPassword } from './utilities-sales.js';
 import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
@@ -139,8 +139,8 @@ try {
       fsFields:['type','triggeredAt','triggeredBy','fyCloseCount'],
       listener:'_handleYearCloseSignal' },
     { path:'formulas/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, unit tracking',
-      sqlite:[['defaults','defaults'],['costs','costs'],['adjustment','adjustment'],['tracking','tracking'],['formulas','formulas'],['slots','slots']],
-      fsFields:['defaults','costs','adjustment','tracking','formulas','slots','defaults_timestamp','formulas_timestamp','slots_timestamp'],
+      sqlite:[['defaults','defaults'],['costs','costs'],['adjustment','adjustment'],['tracking','tracking'],['formulas','formulas']],
+      fsFields:['defaults','costs','adjustment','tracking','formulas','defaults_timestamp','formulas_timestamp'],
       listener:'_handleFactorySettingsSnapshot' },
     { path:'categories/list', doc:expenseCategoriesDoc, desc:'Expense category definitions',
       sqlite:[['categories','categories']],
@@ -1835,7 +1835,7 @@ for (const [store, items] of Object.entries(storeGroups)) {
     totalSale:     totals.totalSale,
     profit:        totals.profit,
     formulaUnits:  totals.formulaUnits,
-    formulaStore:  items[0]?.formulaStore || 'standard',
+    formulaStore:  items[0]?.formulaStore || '',
     formulaCost:   totals.formulaCost,
     paymentStatus: 'CASH',
     mergedRecordCount: items.length,
@@ -1885,7 +1885,7 @@ for (const [, grp] of Object.entries(sellerReturnGroups)) {
     totalSale:     totalSale,
     profit:        totalProfit,
     formulaUnits:  0,
-    formulaStore:  'standard',
+    formulaStore:  '',
     formulaCost:   0,
     paymentStatus: 'CASH',
     isReturn:      true,
@@ -2123,7 +2123,7 @@ for (const [seller, items] of Object.entries(repGroups)) {
     : (firstItem.unitPrice || 0);
   const avgCostPrice = mergedNetSold > 0
     ? parseFloat((sellerTotals.totalCost / mergedNetSold).toFixed(4))
-    : (firstItem.costPrice || (await calculateSalesCostPerKg('standard')) || 0);
+    : (firstItem.costPrice || (await calculateSalesCostPerKg(await getStorePool(getDefaultStoreKey()))) || 0);
   const returnStoreEntries = Object.entries(sellerTotals.returnsByStore);
   const primaryReturnStore = returnStoreEntries.length > 0
     ? returnStoreEntries.sort((a, b) => b[1] - a[1])[0][0]
@@ -2271,17 +2271,19 @@ if (nonMergedRecords.length === 0) {
 }
 const storeGroups = {};
 nonMergedRecords.forEach(item => {
-  const store = item.store || 'standard';
-  if (!storeGroups[store]) storeGroups[store] = [];
-  storeGroups[store].push(item);
+  const key = (item.formulaType || '') + '|' + (item.store || '');
+  if (!storeGroups[key]) storeGroups[key] = [];
+  storeGroups[key].push(item);
 });
 const nowDate = new Date();
 const nowISODate = nowDate.toISOString().split('T')[0];
 const mergeEpoch = nowDate.getTime();
 const nowTime = nowDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true});
 const mergedRecords = [];
-for (const [store, items] of Object.entries(storeGroups)) {
+for (const items of Object.values(storeGroups)) {
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+  const store = items[0].store || '';
+  const formulaType = items[0].formulaType;
   const totals = items.reduce((acc, item) => {
     acc.units += (item.units || 0);
     acc.totalCost += (item.totalCost || 0);
@@ -2300,6 +2302,7 @@ for (const [store, items] of Object.entries(storeGroups)) {
   const datesSorted = items.map(i => i.date).filter(Boolean).sort();
   const mergedRecord = ensureRecordIntegrity(_buildMergedBase(mergedId, mergeEpoch, nowISODate, nowTime, {
     store,
+    ...(formulaType ? { formulaType } : {}),
     units: totals.units,
     totalCost: totals.totalCost,
     materialsCost: totals.materialsCost,
@@ -2769,7 +2772,7 @@ await sqliteStore.set(collection.name, data);
 }
 const settingsKeys = [
 'defaults', 'costs',
-'adjustment', 'formulas', 'slots',
+'adjustment', 'formulas',
 'tracking', 'settings'
 ];
 for (const key of settingsKeys) {

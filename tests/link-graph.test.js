@@ -320,8 +320,9 @@ describe('new production card always shows the selected formula, freshly', () =>
     { id: 'F1', name: 'Premium', additionalCost: 7, ingredients: [{ id: 'sug', name: 'Sugar', cost: 1, quantity: 2 }, { id: 'fl', name: 'Flour', cost: 1, quantity: 4 }, { id: 'gone', name: 'Salt', cost: 3, quantity: 1 }] },
     { id: 'F2', name: 'Basic', additionalCost: 0, ingredients: [{ id: 'fl', name: 'Flour', quantity: 1 }] },
   ];
+  const stores = [{ key: 'zubair', formulaId: 'F1' }, { key: 'asaan', formulaId: 'F2' }, { key: 'bare' }];
   it('reads the formula from the formula store, with live names, costs and stock', () => {
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores: [], inventory: inv, feed: { standard: [{ id: 'old', name: 'Stale', quantity: 9 }] } }, 'zubair');
+    const r = resolveSelectedFormula({ list, stores, inventory: inv }, 'zubair');
     assert.equal(r.source, 'store');
     assert.equal(r.name, 'Premium');
     assert.equal(r.additionalCost, 7);
@@ -330,28 +331,27 @@ describe('new production card always shows the selected formula, freshly', () =>
     assert.equal(r.ingredients[2].missing, true);
     assert.equal(r.ingredients[1].stock, 3);
   });
-  it("uses the store's own selected formula before the slot's formula", () => {
-    const stores = [{ key: 'zubair', formulaType: 'standard', formulaId: 'F2' }];
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores, inventory: inv }, 'zubair');
-    assert.equal(r.name, 'Basic');
+  it("uses the store's own selected formula", () => {
+    assert.equal(resolveSelectedFormula({ list, stores, inventory: inv }, 'asaan').name, 'Basic');
+  });
+  it('accepts a formula id (a unit pool) as well as a store key', () => {
+    assert.equal(resolveSelectedFormula({ list, stores, inventory: inv }, 'F2').name, 'Basic');
   });
   it('picks up an edited formula immediately (no stale copy kept anywhere)', () => {
-    const before = resolveSelectedFormula({ list, slots: { standard: 'F2' }, inventory: inv }, 'zubair');
+    const before = resolveSelectedFormula({ list, stores, inventory: inv }, 'asaan');
     const edited = list.map(f => f.id === 'F2' ? { ...f, ingredients: [{ id: 'fl', name: 'Flour', quantity: 6 }] } : f);
-    const after = resolveSelectedFormula({ list: edited, slots: { standard: 'F2' }, inventory: inv }, 'zubair');
+    const after = resolveSelectedFormula({ list: edited, stores, inventory: inv }, 'asaan');
     assert.equal(before.ingredients[0].quantity, 1);
     assert.equal(after.ingredients[0].quantity, 6);
   });
-  it('falls back to the derived feed only when the formula no longer exists', () => {
-    const r = resolveSelectedFormula({ list: [], slots: { standard: 'F1' }, inventory: inv, feed: { standard: [{ id: 'fl', name: 'Flour', quantity: 2 }] }, costs: { standard: 4 } }, 'zubair');
-    assert.equal(r.source, 'feed');
-    assert.equal(r.additionalCost, 4);
-    assert.equal(r.ingredients.length, 1);
-  });
-  it('maps the asaan slot and slot-key inputs correctly', () => {
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1', asaan: 'F2' }, inventory: inv }, 'asaan');
-    assert.equal(r.type, 'asaan'); assert.equal(r.name, 'Basic');
-    assert.equal(resolveSelectedFormula({ list, slots: { asaan: 'F2' }, inventory: inv }, 'asaan').name, 'Basic');
+  it('is empty for a store with no formula or a formula that no longer exists', () => {
+    for (const ref of ['bare', 'nope']) {
+      const r = resolveSelectedFormula({ list, stores, inventory: inv }, ref);
+      assert.equal(r.source, 'none');
+      assert.equal(r.ingredients.length, 0);
+      assert.equal(r.additionalCost, 0);
+    }
+    assert.equal(resolveSelectedFormula({ list: [], stores, inventory: inv }, 'zubair').source, 'none');
   });
 });
 describe('credit settlement keeps its date in step with its flag', () => {

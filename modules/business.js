@@ -701,7 +701,7 @@ export const sqliteStore = (() => {
   };
   const _SETTINGS_KEYS = new Set([
     'defaults', 'costs',
-    'adjustment', 'formulas', 'slots',
+    'adjustment', 'formulas',
     'tracking', 'settings',
     'categories', 'reps', 'roles',
     'offline_operation_queue', 'offline_dead_letter_queue',

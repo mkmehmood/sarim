@@ -1,10 +1,9 @@
-export const SLOT_KEYS = Object.freeze(['standard', 'asaan']);
 export const STORE_KEY_FIELDS = Object.freeze(['store', 'supplyStore', 'returnStore', 'transferPeerStore']);
 
 export const DEFAULT_STORES = Object.freeze([
-  Object.freeze({ key: 'zubair',  name: 'ZUBAIR',  formulaType: 'standard' }),
-  Object.freeze({ key: 'mahmood', name: 'MAHMOOD', formulaType: 'standard' }),
-  Object.freeze({ key: 'asaan',   name: 'ASAAN',   formulaType: 'asaan' }),
+  Object.freeze({ key: 'zubair',  name: 'ZUBAIR' }),
+  Object.freeze({ key: 'mahmood', name: 'MAHMOOD' }),
+  Object.freeze({ key: 'asaan',   name: 'ASAAN' }),
 ]);
 
 export const DEFAULT_STORE_KEYS = Object.freeze(DEFAULT_STORES.map(s => s.key));
@@ -18,8 +17,7 @@ export function slugifyStoreName(name) {
 
 export function makeStoreKey(name, taken = []) {
   const used = taken instanceof Set ? taken : new Set(taken);
-  let base = slugifyStoreName(name);
-  if (SLOT_KEYS.includes(base)) base += '_store';
+  const base = slugifyStoreName(name);
   let key = base;
   for (let n = 2; used.has(key); n++) key = `${base}_${n}`;
   return key;
@@ -36,56 +34,21 @@ export function storeLabelFor(key, list = _stores()) {
   return hit ? hit.name : key;
 }
 
-export function formulaTypeFor(key, list = _stores()) {
-  const hit = list.find(s => s.key === key);
-  if (hit && hit.formulaType) return hit.formulaType;
-  return SLOT_KEYS.includes(key) ? key : 'standard';
+// A store's formula is the one it selected (store.formulaId). Units are pooled
+// per formula: every store using the same formula shares one pool, keyed by the
+// formula id, so one store can never show units another store using the very
+// same formula cannot see.
+export function formulaIdOf(store) {
+  return store && store.formulaId ? String(store.formulaId) : '';
 }
 
-// Units are pooled per formula. Slots/stores that point at the same formula
-// must share one pool, otherwise one store can show plenty of units while
-// another using the very same formula shows none.
-export function unitPoolKey(type, formulaId, slots) {
-  const t = type === 'asaan' ? 'asaan' : 'standard';
-  const sl = slots || {};
-  const fid = formulaId || sl[t];
-  if (!fid) return t;
-  for (const k of SLOT_KEYS) if (sl[k] && String(sl[k]) === String(fid)) return k;
-  return t;
-}
-
-// The stores' selected formulas are the single source of truth. The saved
-// slot assignment is only a hint that keeps unit tracking stable: it is kept
-// where a store still uses that formula, dropped where none does, and any
-// store formula without a slot takes a free one. Never read raw slots to
-// decide which formula a store uses.
-export function deriveSlots(stores, stored) {
-  const st = { standard: (stored && stored.standard) || null, asaan: (stored && stored.asaan) || null };
-  const ids = [];
-  (stores || []).forEach(s => {
-    const id = s && (s.formulaId || st[s.formulaType === 'asaan' ? 'asaan' : 'standard']);
-    if (id && !ids.includes(String(id))) ids.push(String(id));
-  });
-  if (!ids.length) return st;
-  const out = { standard: null, asaan: null };
-  SLOT_KEYS.forEach(k => { if (st[k] && ids.includes(String(st[k]))) out[k] = st[k]; });
-  ids.forEach(id => {
-    if (SLOT_KEYS.some(k => out[k] && String(out[k]) === id)) return;
-    const free = SLOT_KEYS.find(k => !out[k]);
-    if (free) out[free] = id;
-  });
-  return out;
-}
-
-export function buildUnitPools(stores, slots) {
-  const sl = { standard: (slots && slots.standard) || null, asaan: (slots && slots.asaan) || null };
+export function buildUnitPools(stores) {
   const storePool = {};
-  (stores || []).forEach(s => { storePool[s.key] = unitPoolKey(s.formulaType, s.formulaId, sl); });
-  const slotPool = { standard: unitPoolKey('standard', null, sl), asaan: unitPoolKey('asaan', null, sl) };
-  // A real store always wins: the ASAAN store's key 'asaan' is also a slot name,
-  // but its formula is the one selected on the store, not the 'asaan' slot.
-  const poolOf = (v) => storePool[v] || ((v === 'standard' || v === 'asaan') ? slotPool[v] : unitPoolKey(formulaTypeFor(v), null, sl));
-  return { slots: sl, storePool, slotPool, poolOf };
+  (stores || []).forEach(s => { if (s && s.key && formulaIdOf(s)) storePool[s.key] = formulaIdOf(s); });
+  // A store key resolves to its formula's pool; anything else is taken as a pool
+  // key already (a stored record that carries its formula id).
+  const poolOf = (v) => (v == null || v === '') ? '' : (storePool[v] || String(v));
+  return { storePool, poolOf };
 }
 
 export const BUILTIN_BADGE_CLASSES = Object.freeze({ zubair: 'store-zubair', mahmood: 'store-mahmood', asaan: 'store-asaan' });

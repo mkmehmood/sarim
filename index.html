@@ -2577,7 +2577,7 @@ No records found
 </div>
 <div class="field u-mb-15" id="factory-formula-field">
 <label>Formula</label>
-<input type="hidden" id="factory-formula-value" value="standard">
+<input type="hidden" id="factory-formula-value" value="">
 <div id="factoryFormulaToggle" class="formula-choice"></div>
 </div>
 <div class="grid-inputs">
@@ -2599,118 +2599,62 @@ Select a store...
 <div class="section-header">
 <h3 class="u-heading-main" >Units Available <span class="update-indicator" id="unitsUpdateIndicator"></span></h3>
 <div id="factory-avail-field">
-<input type="hidden" id="factory-avail-value" value="standard">
+<input type="hidden" id="factory-avail-value" value="">
 <div id="factoryAvailToggle" class="formula-choice"></div>
 </div>
 </div>
-<div id="factoryAvailStatsS1">
+<div id="factoryAvailStats">
 <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
-<span class="qty-val" id="factoryS1Units" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="qty-val" id="factoryAvailUnits" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
-<span class="qty-val" id="factoryS1UsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="qty-val" id="factoryAvailUsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
-<span class="qty-val" id="factoryS1Output" style="font-size:1.05rem;font-weight:700;">0 kg</span>
+<span class="qty-val" id="factoryAvailOutput" style="font-size:1.05rem;font-weight:700;">0 kg</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
-<span class="qty-val" id="factoryS1RawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
+<span class="qty-val" id="factoryAvailRawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
-<span class="cost-val" id="factoryS1UnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="cost-val" id="factoryAvailUnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="rev-val" id="factoryS1TotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="rev-val" id="factoryAvailTotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Materials</span>
-<span class="cost-val" id="factoryS1MatVal" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="cost-val" id="factoryAvailMatVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 <div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
 <span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="profit-val" id="factoryS1Profit" style="font-size:1.05rem;font-weight:700;">0</span>
+<span class="profit-val" id="factoryAvailProfit" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
 <div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
-<span class="profit-val" id="factoryS1ProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
-</div>
-</div>
-</div>
-</div>
-<div id="factoryAvailStatsS2" class="hidden">
-<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
-<span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
-<span class="qty-val" id="factoryS2Units" style="font-size:1.05rem;font-weight:700;">0</span>
-</div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
-<span class="qty-val" id="factoryS2UsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
-</div>
-</div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
-<span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
-<span class="qty-val" id="factoryS2Output" style="font-size:1.05rem;font-weight:700;">0 kg</span>
-</div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
-<span class="qty-val" id="factoryS2RawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
-</div>
-</div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
-<span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
-<span class="cost-val" id="factoryS2UnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
-</div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="rev-val" id="factoryS2TotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
-</div>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Materials</span>
-<span class="cost-val" id="factoryS2MatVal" style="font-size:0.88rem;font-weight:600;">0</span>
-</div>
-</div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
-<span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
-<span class="profit-val" id="factoryS2Profit" style="font-size:1.05rem;font-weight:700;">0</span>
-</div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;">
-<span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
-<span class="profit-val" id="factoryS2ProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
+<span class="profit-val" id="factoryAvailProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
 </div>
@@ -3292,7 +3236,6 @@ async function renderStoreList() {
     return;
   }
   const formulaNames = typeof getStoreFormulaNames === 'function' ? await getStoreFormulaNames() : {};
-  const fTypeColor = { standard: 'var(--accent)', asaan: 'var(--accent-purple,#a78bfa)' };
   container.innerHTML = stores.map((s, i) => {
     const isUsed = usedKeys.has(s.key);
     const isBuiltin = typeof window.isBuiltinStoreKey === 'function' ? window.isBuiltinStoreKey(s.key) : false;
@@ -3307,7 +3250,7 @@ async function renderStoreList() {
           <div style="font-size:0.65rem;color:var(--text-muted);margin-top:1px;">
             Key: <span style="font-family:monospace;color:var(--accent);">${s.key}</span>
             &nbsp;·&nbsp;
-            <span style="color:${fTypeColor[s.formulaType]||'var(--accent)'};">${formulaNames[s.key] || 'No formula'}</span>
+            <span style="color:var(--accent);">${formulaNames[s.key] || 'No formula'}</span>
             ${isUsed ? '&nbsp;·&nbsp;<span style="color:var(--text-muted);">Has records</span>' : ''}
           </div>
           <div style="font-size:0.72rem;color:var(--accent);margin-top:3px;font-weight:700;">
@@ -3341,7 +3284,7 @@ async function editStore(index) {
   document.getElementById('store-edit-index').value = String(index);
   document.getElementById('store-name-input').value = s.name;
   document.getElementById('store-sale-price-input').value = s.salePrice || 0;
-  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || (typeof getFormulaSlots === 'function' ? ((await getFormulaSlots())[s.formulaType || 'standard'] || '') : ''));
+  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || '');
   document.getElementById('store-form-heading').textContent = 'Edit Store';
   document.getElementById('store-save-btn-text').textContent = 'Save Changes';
   const cancelBtn = document.getElementById('store-cancel-edit-btn');
@@ -3395,7 +3338,7 @@ async function saveStoreFromForm() {
     const newKey = window.makeStoreKey(nameRaw, stores.map(function(st) { return st.key; }));
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
-    stores.push({ key: newKey, name: nameRaw, formulaType: 'standard', formulaId, salePrice });
+    stores.push({ key: newKey, name: nameRaw, formulaId, salePrice });
   }
   if (typeof window.showGlassConfirm === 'function') {
     const _storeOk = await window.showGlassConfirm(

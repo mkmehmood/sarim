@@ -207,7 +207,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return issue;
   }
   if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
-    const ft = snapshot.formulaStore || 'standard';
+    const ft = snapshot.formulaStore || '';
     const tracking = (await sqliteStore.get('tracking')) || {};
     const used = ctx && ctx.unitsUsed ? (ctx.unitsUsed.get(ft) || 0) : 0;
     const issue = getUnitsShortIssue(snapshot.formulaName || ft, Number(snapshot.formulaUnits) + used, (tracking[ft] && tracking[ft].available) || 0);

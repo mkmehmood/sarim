@@ -7,7 +7,7 @@ import { getProdPhotoKeys, persistProdPhotos, resetProdPhotos } from './prod-pho
 import { deleteProdPhotos } from './prod-photos.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
-import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, currentCashTrackerMode, currentCustomerChartMode, currentFactoryDate, currentFactoryEntryStore, currentIndMetric, currentIndMode, currentMfgMode, currentOverviewMode, currentProductionView, currentStoreComparisonMetric, custTransactionMode, getStoreFormulaType, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
+import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, currentCashTrackerMode, currentCustomerChartMode, currentFactoryDate, currentFactoryEntryStore, currentIndMetric, currentIndMode, currentMfgMode, currentOverviewMode, currentProductionView, currentStoreComparisonMetric, custTransactionMode, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, currentExpenseOverlayName, currentPerfOverviewMode, currentSalesSummaryMode, deletePaymentTransfer, editEntityBasicInfo, editingEntityId, entityViewMode, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, selectedEntityId, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, currentFactorySummaryMode, currentStore, editingFactoryInventoryId, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
@@ -1179,7 +1179,7 @@ const contWt = parseFloat(contWtEl ? contWtEl.value : 0) || 0;
 const inputDate = dateElement.value;
 const store = storeElement.value;
 const formulaUnits = parseFloat(formulaUnitsElement.value) || 0;
-const formulaStore = await getStoreFormulaType(store);
+const formulaStore = await getStorePool(store);
 const salePrice = await getSalePriceForStore(store);
 const validation = await validateFormulaAvailability(store, formulaUnits);
 const _unitCredit = (_ed && _ed.original.formulaStore === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;

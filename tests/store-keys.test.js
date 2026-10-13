@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  slugifyStoreName, makeStoreKey, setStoreCatalogCache, getDefaultStoreKey, storeLabelFor, formulaTypeFor,
+  slugifyStoreName, makeStoreKey, setStoreCatalogCache, getDefaultStoreKey, storeLabelFor, buildUnitPools, formulaIdOf,
   storeBadgeClass, DEFAULT_STORES, DEFAULT_STORE_KEYS, defaultStores,
 } from '../modules/store-keys.js';
 describe('store keys come from the store name', () => {
@@ -11,11 +11,11 @@ describe('store keys come from the store name', () => {
     assert.equal(slugifyStoreName('زبیر اسٹور'), 'زبیر_اسٹور');
     assert.equal(slugifyStoreName('***'), 'store');
   });
-  it('is unique and never takes a formula slot name', () => {
+  it('is unique and gives a store named like a default store a numbered key', () => {
     assert.equal(makeStoreKey('Zubair', ['zubair']), 'zubair_2');
     assert.equal(makeStoreKey('Zubair', ['zubair', 'zubair_2']), 'zubair_3');
-    assert.equal(makeStoreKey('Standard', []), 'standard_store');
-    assert.equal(makeStoreKey('Asaan', []), 'asaan_store');
+    assert.equal(makeStoreKey('Standard', []), 'standard');
+    assert.equal(makeStoreKey('Asaan', DEFAULT_STORE_KEYS), 'asaan_2');
   });
   it('the three built-in stores are zubair / mahmood / asaan, ASAAN included', () => {
     assert.deepEqual(DEFAULT_STORE_KEYS, ['zubair', 'mahmood', 'asaan']);
@@ -24,17 +24,36 @@ describe('store keys come from the store name', () => {
   });
 });
 describe('catalog helpers', () => {
-  it('default store, labels and formula types', () => {
+  it('default store and labels', () => {
     setStoreCatalogCache(null);
     assert.equal(getDefaultStoreKey(), 'zubair');
     assert.equal(storeLabelFor('mahmood'), 'MAHMOOD');
     assert.equal(storeLabelFor('unknown_key'), 'unknown_key');
-    assert.equal(formulaTypeFor('asaan'), 'asaan');
-    assert.equal(formulaTypeFor('zubair'), 'standard');
-    setStoreCatalogCache([{ key: 'new_shop', name: 'NEW SHOP', formulaType: 'asaan' }]);
+    setStoreCatalogCache([{ key: 'new_shop', name: 'NEW SHOP' }]);
     assert.equal(getDefaultStoreKey(), 'new_shop');
-    assert.equal(formulaTypeFor('new_shop'), 'asaan');
     setStoreCatalogCache(null);
+  });
+});
+describe('unit pools are keyed by formula id', () => {
+  const stores = [{ key: 'zubair', formulaId: 'f1' }, { key: 'asaan', formulaId: 'f1' }, { key: 'gul', formulaId: 'f2' }, { key: 'bare' }];
+  const { storePool, poolOf } = buildUnitPools(stores);
+  it('stores on the same formula share one pool', () => {
+    assert.equal(poolOf('zubair'), 'f1');
+    assert.equal(poolOf('asaan'), poolOf('zubair'));
+    assert.equal(poolOf('gul'), 'f2');
+  });
+  it('a store without a formula has no formula pool', () => {
+    assert.equal(storePool.bare, undefined);
+    assert.equal(formulaIdOf({ key: 'bare' }), '');
+  });
+  it('a pool key already on a record resolves to itself, empty to empty', () => {
+    assert.equal(poolOf('f2'), 'f2');
+    assert.equal(poolOf(''), '');
+    assert.equal(poolOf(null), '');
+  });
+  it('there is no limit on how many formulas are in use', () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({ key: 's' + i, formulaId: 'f' + i }));
+    assert.equal(new Set(many.map((s) => buildUnitPools(many).poolOf(s.key))).size, 5);
   });
 });
 describe('css badge classes are linked to the store name', () => {

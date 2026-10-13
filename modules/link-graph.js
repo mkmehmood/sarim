@@ -1,5 +1,4 @@
 export const GROUP_FIELD = '_deletionGroup';
-import { formulaTypeFor, deriveSlots } from './store-keys.js';
 
 export const REF_FIELDS = {
   sales:       { scalar: ['relatedSaleId'], array: [] },
@@ -403,15 +402,11 @@ export function getSupplierCreditReconsumeIssue(snapshot, liveTxs, resolve) {
     : null;
 }
 
-const _SLOTS = ['standard', 'asaan'];
-const _SLOT_LABEL = { standard: 'Standard', asaan: 'Asaan' };
-
-export function resolveSelectedFormula(data, storeKey) {
+// `ref` is a store key (its selected formula) or a formula id (a unit pool).
+export function resolveSelectedFormula(data, ref) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
-  const slots = deriveSlots(data.stores, data.slots);
-  const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === storeKey);
-  const type = _SLOTS.includes(storeKey) ? storeKey : ((st && st.formulaType) || formulaTypeFor(storeKey));
-  const formulaId = (st && st.formulaId) || slots[type] || null;
+  const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === ref);
+  const formulaId = st ? (st.formulaId || null) : (ref || null);
   const f = formulaId ? list.find(x => String(x.id) === String(formulaId)) : null;
   const inv = (Array.isArray(data.inventory) ? data.inventory : []).filter(i => i && !i.deletedAt);
   const resolve = (i) => {
@@ -428,11 +423,9 @@ export function resolveSelectedFormula(data, storeKey) {
     };
   };
   if (f) {
-    return { source: 'store', type, formulaId: f.id, name: f.name || _SLOT_LABEL[type], additionalCost: _n(f.additionalCost), ingredients: (Array.isArray(f.ingredients) ? f.ingredients : []).map(resolve) };
+    return { source: 'store', formulaId: f.id, name: f.name || 'Formula', additionalCost: _n(f.additionalCost), ingredients: (Array.isArray(f.ingredients) ? f.ingredients : []).map(resolve) };
   }
-  const feed = data.feed || {};
-  const costs = data.costs || {};
-  return { source: 'feed', type, formulaId: null, name: _SLOT_LABEL[type] || 'Formula', additionalCost: _n(costs[type] != null ? costs[type] : costs[storeKey]), ingredients: (Array.isArray(feed[type] || feed[storeKey]) ? (feed[type] || feed[storeKey]) : []).map(resolve) };
+  return { source: 'none', formulaId: null, name: '', additionalCost: 0, ingredients: [] };
 }
 
 const _SETTLE_FIELDS = ['creditReceivedDate', 'creditReceivedTime', 'creditReceivedManually'];
@@ -978,12 +971,6 @@ export const AUX_STATE = Object.freeze([
     firestore: { doc: 'formulas/config', field: 'formulas', tsField: 'formulas_timestamp' },
     kind: 'idList',
   },
-  {
-    sqlite: 'slots',
-    tsKey: 'slots_timestamp',
-    firestore: { doc: 'formulas/config', field: 'slots', tsField: 'slots_timestamp' },
-    kind: 'slots',
-  },
 ]);
 
 export function isSupportedBackup(data) {
@@ -1012,12 +999,6 @@ export function mergeById(local, incoming) {
   return out;
 }
 
-export function mergeSlots(local, incoming) {
-  const l = local && typeof local === 'object' ? local : {};
-  const i = incoming && typeof incoming === 'object' ? incoming : {};
-  return { standard: l.standard || i.standard || null, asaan: l.asaan || i.asaan || null };
-}
-
 export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0) {
   const l = Array.isArray(local) ? local : [];
   const c = Array.isArray(cloud) ? cloud : [];
@@ -1035,7 +1016,6 @@ export async function collectAuxBackupFields(store) {
     const v = await store.get(s.sqlite);
     if (s.kind === 'list')   out[s.sqlite] = Array.isArray(v) ? v : [];
     if (s.kind === 'idList') out[s.sqlite] = Array.isArray(v) ? v : [];
-    if (s.kind === 'slots')  out[s.sqlite] = v && typeof v === 'object' ? v : { standard: null, asaan: null };
   }
   out.photos = (await store.get('photos')) || {};
   out.photostamps = (await store.get('photostamps')) || {};
@@ -1059,15 +1039,18 @@ export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 
       next = mode === 'replace' ? incoming.filter(r => r && r.id) : mergeById(local, incoming);
       if (JSON.stringify(next) === JSON.stringify(Array.isArray(local) ? local : [])) continue;
     } else {
-      if (typeof incoming !== 'object' || !(incoming.standard || incoming.asaan)) continue;
-      next = mode === 'replace'
-        ? { standard: incoming.standard || null, asaan: incoming.asaan || null }
-        : mergeSlots(local, incoming);
-      if (JSON.stringify(next) === JSON.stringify(local || null)) continue;
+      continue;
     }
     await store.set(s.sqlite, next);
     await store.set(s.tsKey, ts);
     written.push(s.sqlite);
+  }
+  // Backups written before units were pooled per formula carry the old pool
+  // assignment. Keep it only as input for the pool migration, which removes it.
+  const old = data.slots;
+  if (old && typeof old === 'object' && (old.standard || old.asaan) && !(await store.get('slots'))) {
+    await store.set('slots', { standard: old.standard || null, asaan: old.asaan || null });
+    written.push('slots');
   }
   return written;
 }

@@ -25,5 +25,5 @@ window._lazyLoadRep = function (cb) {
 
 import './custom-date-picker.js';
 
-import { runUnitPoolMigration } from './unit-pool-migration.js';
-runUnitPoolMigration().catch((e) => console.warn('[unit-pool migration] failed:', e && e.message));
+import { runFormulaPoolMigration } from './formula-pool-migration.js';
+runFormulaPoolMigration().catch((e) => console.warn('[formula-pool migration] failed:', e && e.message));

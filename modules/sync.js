@@ -864,16 +864,13 @@ version: '2.0'
 });
 const factorySettingsRef = this.userRef.collection('formulas').doc('config');
 await factorySettingsRef.set({
-defaults: { standard: [], asaan: [] },
+defaults: {},
 defaults_timestamp: Date.now(),
-costs: { standard: 0, asaan: 0 },
+costs: {},
 costs_timestamp: Date.now(),
-adjustment: { standard: 1, asaan: 1 },
+adjustment: {},
 adjustment_timestamp: Date.now(),
-tracking: {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-},
+tracking: {},
 tracking_timestamp: Date.now(),
 synced: this.timestamp
 });
@@ -1764,13 +1761,11 @@ export async function subscribeToRealtime() {
           { cloud: cfs.adjustment_timestamp, local: await sqliteStore.get('adjustment_timestamp') },
           { cloud: cfs.tracking_timestamp,          local: await sqliteStore.get('tracking_timestamp') },
           { cloud: cfs.formulas_timestamp,          local: await sqliteStore.get('formulas_timestamp') },
-          { cloud: cfs.slots_timestamp,          local: await sqliteStore.get('slots_timestamp') },
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
         const _applyFactorySetting = async (cloudObj, cloudTs, localTsKey, localKey, transform) => {
           if (!cloudObj || typeof cloudObj !== 'object') return;
-          if (!(('standard' in cloudObj) && ('asaan' in cloudObj))) return;
           const lt = (await sqliteStore.get(localTsKey)) || 0;
           if ((cloudTs || 0) > lt) {
             const val = transform(cloudObj);
@@ -1782,25 +1777,22 @@ export async function subscribeToRealtime() {
         const newFormulas = await _applyFactorySetting(
           cfs.defaults, cfs.defaults_timestamp,
           'defaults_timestamp', 'defaults',
-          o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] })
+          _cleanFeedLists
         );
         const newCosts = await _applyFactorySetting(
           cfs.costs, cfs.costs_timestamp,
           'costs_timestamp', 'costs',
-          o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
+          _cleanFeedCosts
         );
         const newFactor = await _applyFactorySetting(
           cfs.adjustment, cfs.adjustment_timestamp,
           'adjustment_timestamp', 'adjustment',
-          o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 })
+          _cleanFeedFactors
         );
         const newTracking = await _applyFactorySetting(
           cfs.tracking, cfs.tracking_timestamp,
           'tracking_timestamp', 'tracking',
-          o => ({
-            standard: o.standard || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-            asaan:    o.asaan    || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-          })
+_cleanUnitPools
         );
         await _applyFormulaStoreFromCloud(cfs);
         if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
@@ -2285,7 +2277,7 @@ function _fillStoresFromCloud(localStores, cloudStores) {
     if (!c) return l;
     const n = { ...l };
     if (!(l.salePrice > 0) && c.salePrice > 0) { n.salePrice = c.salePrice; changed = true; }
-    if (!l.formulaId && c.formulaId) { n.formulaId = c.formulaId; if (c.formulaType) n.formulaType = c.formulaType; changed = true; }
+    if (!l.formulaId && c.formulaId) { n.formulaId = c.formulaId; changed = true; }
     return n;
   });
   cloud.forEach((c) => {
@@ -2348,7 +2340,7 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       if (sanitizedValue !== null && sanitizedValue !== undefined) {
         if (typeof sanitizedValue === 'object' && !Array.isArray(sanitizedValue)) {
           const isFactorySettings = ['defaults', 'costs', 'adjustment',
-            'tracking', 'standard', 'asaan', 'formulas', 'slots'].includes(cleanKey);
+            'tracking', 'formulas'].includes(cleanKey);
           if (Object.keys(sanitizedValue).length > 0 || isFactorySettings) sanitized[cleanKey] = sanitizedValue;
         } else {
           sanitized[cleanKey] = sanitizedValue;
@@ -2699,15 +2691,13 @@ async function _applyFormulaStoreFromCloud(cloud) {
   if (Array.isArray(cloud.formulas) && (cloudList.length > 0 || (cloud.formulas_timestamp || 0) > localListTs) && (!localHas || (cloud.formulas_timestamp || 0) > localListTs)) {
     await sqliteStore.setBatch([['formulas', cloudList], ['formulas_timestamp', cloud.formulas_timestamp || Date.now()]]);
   }
-  const localSlots = await sqliteStore.get('slots');
-  const localSlotsTs = (await sqliteStore.get('slots_timestamp')) || 0;
-  const cs = cloud.slots;
-  const cloudHasSlots = !!(cs && typeof cs === 'object' && (cs.standard || cs.asaan));
-  const localHasSlots = !!(localSlots && (localSlots.standard || localSlots.asaan));
-  if (cloudHasSlots && (!localHasSlots || (cloud.slots_timestamp || 0) > localSlotsTs)) {
-    await sqliteStore.setBatch([['slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['slots_timestamp', cloud.slots_timestamp || Date.now()]]);
-  }
 }
+
+const _mapEntries = (o, fn) => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, fn(v)]));
+const _cleanFeedLists = (o) => _mapEntries(o, (v) => (Array.isArray(v) ? v : []));
+const _cleanFeedCosts = (o) => _mapEntries(o, (v) => parseFloat(v) || 0);
+const _cleanFeedFactors = (o) => _mapEntries(o, (v) => parseFloat(v) || 1);
+const _cleanUnitPools = (o) => _mapEntries(o, (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] }));
 
 export async function _mergeAndPersist(cloudData) {
   try {
@@ -2953,20 +2943,17 @@ export async function _syncSettings(cloudData) {
       const ts = getTimestamp();
       const _applyFs = async (obj, tsKey, dataKey, transform) => {
         if (!obj || typeof obj !== 'object') return;
-        if (!(('standard' in obj) && ('asaan' in obj))) return;
         return transform(obj);
       };
       const newFormulas = await _applyFs(fsData.defaults, 'defaults_timestamp', 'defaults',
-        o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] }));
+        _cleanFeedLists);
       if (newFormulas) { await sqliteStore.setBatch([['defaults', newFormulas], ['defaults_timestamp', fsData.defaults_timestamp || ts]]); if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction(); }
-      const newCosts = await _applyFs(fsData.costs, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
+      const newCosts = await _applyFs(fsData.costs, null, null, _cleanFeedCosts);
       if (newCosts) { await sqliteStore.setBatch([['costs', newCosts], ['costs_timestamp', fsData.costs_timestamp || ts]]); }
-      const newFactor = await _applyFs(fsData.adjustment, null, null, o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 }));
+      const newFactor = await _applyFs(fsData.adjustment, null, null, _cleanFeedFactors);
       if (newFactor) { await sqliteStore.setBatch([['adjustment', newFactor], ['adjustment_timestamp', fsData.adjustment_timestamp || ts]]); }
-      if (fsData.tracking && ('standard' in fsData.tracking) && ('asaan' in fsData.tracking)) {
-        const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-        const newTracking = { standard: vt(fsData.tracking.standard), asaan: vt(fsData.tracking.asaan) };
-        await sqliteStore.setBatch([['tracking', newTracking], ['tracking_timestamp', fsData.tracking_timestamp || ts]]);
+      if (fsData.tracking && typeof fsData.tracking === 'object') {
+        await sqliteStore.setBatch([['tracking', _cleanUnitPools(fsData.tracking)], ['tracking_timestamp', fsData.tracking_timestamp || ts]]);
       }
       await _applyFormulaStoreFromCloud(fsData);
       if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
@@ -3111,31 +3098,28 @@ export async function _uploadChanges(userRef) {
   const localFactorTs  = await sqliteStore.get('adjustment_timestamp');
   const localUnitTs    = await sqliteStore.get('tracking_timestamp');
   const localStoreTs   = await sqliteStore.get('formulas_timestamp');
-  const localSlotsTs   = await sqliteStore.get('slots_timestamp');
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('formulas');
-  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs, localSlotsTs]
+  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
-    const [_fdf, _fac, _fcaf, _fut, _ffs, _ffsl] = await Promise.all([
+    const [_fdf, _fac, _fcaf, _fut, _ffs] = await Promise.all([
       sqliteStore.get('defaults'),
       sqliteStore.get('costs'),
       sqliteStore.get('adjustment'),
       sqliteStore.get('tracking'),
       sqliteStore.get('formulas'),
-      sqliteStore.get('slots'),
     ]);
     const _nowTs = Date.now();
     const fsPayload = {
-      defaults:                _fdf  || { standard: [], asaan: [] },
+      defaults:                _fdf  || {},
       defaults_timestamp:      localFormulaTs || _nowTs,
-      costs:                _fac  || { standard: 0, asaan: 0 },
+      costs:                _fac  || {},
       costs_timestamp:      localCostsTs   || _nowTs,
-      adjustment:          _fcaf || { standard: 1, asaan: 1 },
+      adjustment:          _fcaf || {},
       adjustment_timestamp:localFactorTs  || _nowTs,
-      tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
+      tracking:                   _fut  || {},
       tracking_timestamp:         localUnitTs    || _nowTs,
       ...(Array.isArray(_ffs) && localStoreTs ? { formulas: _ffs, formulas_timestamp: localStoreTs } : {}),
-      ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { slots: _ffsl, slots_timestamp: localSlotsTs || _nowTs } : {}),
     };
     configBatch.set(userRef.collection('formulas').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -3496,10 +3480,8 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
       if (fsData && typeof fsData === 'object') {
-        if (fsData.tracking && ('standard' in fsData.tracking) && ('asaan' in fsData.tracking)) {
-          const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-          const newTracking = { standard: vt(fsData.tracking.standard), asaan: vt(fsData.tracking.asaan) };
-          await sqliteStore.setBatch([['tracking', newTracking], ['tracking_timestamp', fsData.tracking_timestamp || Date.now()]]);
+        if (fsData.tracking && typeof fsData.tracking === 'object') {
+          await sqliteStore.setBatch([['tracking', _cleanUnitPools(fsData.tracking)], ['tracking_timestamp', fsData.tracking_timestamp || Date.now()]]);
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         }
         await _applyFormulaStoreFromCloud(fsData);
@@ -3513,18 +3495,12 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     const _fac  = _settingsBatch.get('costs');
     const _fcaf = _settingsBatch.get('adjustment');
     const _fut  = _settingsBatch.get('tracking');
-    const _ensureBothStores = (obj, dflt) => {
-      if (!obj || typeof obj !== 'object') return dflt;
-      return {
-        standard: obj.standard !== undefined ? obj.standard : dflt.standard,
-        asaan:    obj.asaan    !== undefined ? obj.asaan    : dflt.asaan,
-      };
-    };
+    const _objOr = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj) ? obj : {});
     await sqliteStore.setBatch([
-      ['defaults',       _ensureBothStores(_fdf,  { standard: [], asaan: [] })],
-      ['costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
-      ['adjustment', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
-      ['tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
+      ['defaults',   _objOr(_fdf)],
+      ['costs',      _objOr(_fac)],
+      ['adjustment', _objOr(_fcaf)],
+      ['tracking',   _objOr(_fut)],
       ['settings', defaultSettings],
       ['appMode', appMode],
       ['repProfile', currentRepProfile],
