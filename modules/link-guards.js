@@ -68,6 +68,10 @@ export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
     const stacked = getCollectionRevertIssue(rec, all);
     if (stacked) return stacked;
   }
+  if (!opts.forEdit && rec.paymentType === 'COLLECTION' && Number(rec.expiredQty) > 0) {
+    const choraIssue = await getExpiredDeleteBlockReason(rec);
+    if (choraIssue) return choraIssue;
+  }
   if (!opts.forEdit && !opts.ignoreChildren) {
     const children = all.filter(s => s && s.id !== id && s.relatedSaleId === id);
     if (children.length > 0) {
@@ -93,12 +97,13 @@ export async function getTransferDeleteBlockReason(entry) {
 }
 
 export async function getExpiredDeleteBlockReason(entry) {
-  if (!entry || !(entry.expired > 0) || entry.expiredApplied === false) return null;
+  const qty = entry ? (entry.expired > 0 ? Number(entry.expired) : (Number(entry.expiredQty) || 0)) : 0;
+  if (!entry || !(qty > 0) || entry.expiredApplied === false) return null;
   const inv = ensureArray(await sqliteStore.get('inventory'));
   const chora = inv.find(m => m && m.name && m.name.toUpperCase() === 'CHORA');
   if (!chora) return null;
-  if ((chora.quantity || 0) + 0.0001 < entry.expired) {
-    return `Only ${chora.quantity || 0} kg of CHORA is left, but this record added ${entry.expired} kg. Part of it has already been used, so it cannot be removed.`;
+  if ((chora.quantity || 0) + 0.0001 < qty) {
+    return `Only ${chora.quantity || 0} kg of CHORA is left, but this record added ${qty} kg. Part of it has already been used, so it cannot be removed.`;
   }
   return null;
 }
@@ -341,6 +346,12 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     }
     cleanRecord.allocations = cleanRecord.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) }));
     if (ids.length) await unifiedSave(key, arr, null, ids);
+  }
+  if (cleanRecord && collectionName === 'sales' && cleanRecord.paymentType === 'COLLECTION' &&
+      Number(cleanRecord.expiredQty) > 0 && cleanRecord.expiredApplied !== false &&
+      typeof window !== 'undefined' && typeof window.processExpiredToChora === 'function') {
+    try { await window.processExpiredToChora(Number(cleanRecord.expiredQty), cleanRecord.date, cleanRecord.customerName); }
+    catch (e) { console.warn('[recover] CHORA re-add failed', e && e.message); }
   }
   if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep')) {
     try { await ensureContactForRecoveredSale(collectionName, cleanRecord); }

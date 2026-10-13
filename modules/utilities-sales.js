@@ -1,4 +1,4 @@
-import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason } from './link-guards.js';
+import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
@@ -1293,6 +1293,7 @@ function _resetSaleForm() {
 const n = document.getElementById('cust-name'); if (n) n.value = '';
 const q = document.getElementById('cust-quantity'); if (q) q.value = '';
 const a = document.getElementById('cust-amount-collected'); if (a) a.value = '';
+const xe = document.getElementById('cust-expired-qty'); if (xe) xe.value = '';
 const ph = document.getElementById('new-cust-phone'); if (ph) ph.value = '';
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.add('hidden');
 setSaleMode('sale');
@@ -1320,7 +1321,6 @@ const repBtn = repBtns.find(b => (b.getAttribute('onclick') || '').includes(`'${
 if (repBtn) { repBtns.forEach(b => b.classList.remove('active')); repBtn.classList.add('active'); }
 set('sales-rep-value', rec.salesRep || 'NONE');
 set('cust-name', rec.customerName || '');
-_syncRepReturnLabel();
 set('cust-quantity', rec.quantity);
 if (rec.customerPhone) {
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.remove('hidden');
@@ -1340,13 +1340,14 @@ setSaleMode('collection');
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
 set('cust-date', editDateValue(rec, ['supplyDate','date','createdAt','timestamp']));
 set('cust-name', rec.customerName || '');
-set('cust-amount-collected', collectionCollected(rec));
+set('cust-amount-collected', collectionCollected(rec) > 0 ? collectionCollected(rec) : '');
+set('cust-expired-qty', Number(rec.expiredQty) > 0 ? rec.expiredQty : '');
 if (rec.customerPhone) {
 const pc = document.getElementById('new-customer-phone-container'); if (pc) pc.classList.remove('hidden');
 set('new-cust-phone', rec.customerPhone);
 }
 updateCollectionPreview();
-beginEditMode('collection', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Collection', watchIds: ['cust-name','cust-amount-collected','cust-date','new-cust-phone'], anchorId: 'cust-amount-collected', cancelFn: _resetSaleForm });
+beginEditMode('collection', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Collection', watchIds: ['cust-name','cust-amount-collected','cust-expired-qty','cust-date','new-cust-phone'], anchorId: 'cust-amount-collected', cancelFn: _resetSaleForm });
 }
 
 registerEditHandler('sale', startEditSale);
@@ -1389,149 +1390,38 @@ const v = el ? el.value : 'NONE';
 return (v && v !== 'NONE') ? v : '';
 }
 
-function _syncRepReturnLabel() {
-const btnColl = document.getElementById('btn-cust-mode-coll');
-if (btnColl) btnColl.textContent = _repSelectedValue() ? 'Return' : 'Collection';
-}
-
 export function setSaleMode(mode) {
-const _hasRep = !!_repSelectedValue();
-if (mode === 'collection' && _hasRep) mode = 'return';
-else if (mode === 'return' && !_hasRep) mode = 'collection';
-custTransactionMode = mode; window.custTransactionMode = custTransactionMode;
-const isSale = mode === 'sale';
-const isReturn = mode === 'return';
-const isColl = mode === 'collection';
+custTransactionMode = mode === 'collection' ? 'collection' : 'sale';
+window.custTransactionMode = custTransactionMode;
+const isSale = custTransactionMode === 'sale';
+const isColl = !isSale;
 const _el = id => document.getElementById(id);
 const btnSale = _el('btn-cust-mode-sale');
 const btnColl = _el('btn-cust-mode-coll');
 if (btnSale) btnSale.className = `toggle-opt${isSale ? ' active' : ''}`;
-if (btnColl) btnColl.className = `toggle-opt${!isSale ? ' active' : ''}`;
-_syncRepReturnLabel();
+if (btnColl) { btnColl.className = `toggle-opt${isColl ? ' active' : ''}`; btnColl.textContent = 'Collection'; }
 const saleIn  = _el('cust-sale-inputs');
 const collIn  = _el('cust-coll-inputs');
-const retIn   = _el('cust-return-inputs');
 const supPay  = _el('cust-sale-supply-payment');
 const collRes = _el('cust-coll-result');
 if (saleIn)  isSale ? saleIn.classList.remove('hidden')  : saleIn.classList.add('hidden');
 if (collIn)  isColl ? collIn.classList.remove('hidden')  : collIn.classList.add('hidden');
-if (retIn)   isReturn ? retIn.classList.remove('hidden') : retIn.classList.add('hidden');
 if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
 if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
 const collLbl = _el('cust-coll-result-label');
-if (collLbl) collLbl.textContent = isReturn ? 'Total Back From Rep:' : 'Balance After Collection:';
+if (collLbl) collLbl.textContent = 'Balance After Collection:';
 const qtyRow = _el('customer-qty-row');
 if (qtyRow) { qtyRow.style.display = isSale ? '' : 'none'; }
 const btn = _el('btn-save-cust-transaction');
-if (btn) btn.textContent = isSale ? 'Save Transaction' : (isReturn ? 'Save Return' : 'Save Collection');
+if (btn) btn.textContent = isSale ? 'Save Transaction' : 'Save Collection';
 if (isColl) {
 const amtEl = _el('cust-amount-collected');
 if (amtEl) amtEl.value = '';
-updateCollectionPreview();
-} else if (isReturn) {
-const expEl = _el('rep-return-expired');
-const qtyEl = _el('rep-return-qty');
+const expEl = _el('cust-expired-qty');
 if (expEl) expEl.value = '';
-if (qtyEl) qtyEl.value = '';
-updateRepReturnPreview();
+updateCollectionPreview();
 } else {
 calculateCustomerSale();
-}
-}
-
-export function updateRepReturnPreview() {
-if (custTransactionMode !== 'return') return;
-const exp = parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0;
-const ret = parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0;
-const balEl = document.getElementById('cust-coll-balance');
-const collRes = document.getElementById('cust-coll-result');
-if (collRes) collRes.style.display = '';
-if (balEl) {
-balEl.textContent = `${fmtNum(round2(exp + ret))} kg`;
-balEl.style.color = (exp + ret) > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)';
-}
-}
-
-export async function saveRepReturn() {
-if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
-}
-const date = (document.getElementById('cust-date') || {}).value;
-const rep = _repSelectedValue();
-const expired = round2(parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0);
-const returned = round2(parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0);
-if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
-if (!rep) { window.notifyBlocking('Please select a sales representative.', 'warning'); return; }
-if (expired < 0 || returned < 0) { window.notifyBlocking('Quantities cannot be negative.', 'warning'); return; }
-if (expired <= 0 && returned <= 0) { window.notifyBlocking('Enter an expired and/or returned quantity.', 'warning'); return; }
-const btn = document.getElementById('btn-save-cust-transaction');
-if (btn) { if (btn.disabled) return; btn.disabled = true; }
-try {
-const sales = ensureArray(await sqliteStore.get('sales'));
-let pendingDelivered = 0;
-try {
-const pend = await getPendingRepDeliveries(rep);
-pendingDelivered = pend.reduce((t, x) => t + (Number(x.quantity) || 0), 0);
-} catch (_) { pendingDelivered = -1; }
-const alreadyBack = (await getPendingRepReturns(rep)).reduce((t, x) => t + (Number(x.expiredQty) || 0) + (Number(x.returnedQty) || 0), 0);
-if (pendingDelivered >= 0 && round2(alreadyBack + expired + returned) > round2(pendingDelivered) + 0.0001) {
-window.notifyBlocking(`${rep} only has ${fmtNum(pendingDelivered)} kg awaiting reconciliation, and ${fmtNum(alreadyBack)} kg of that already has a pending return. Cannot add ${fmtNum(round2(expired + returned))} kg more.`, 'warning');
-return;
-}
-if (!(await window.gcCommit({ notes: ['Stock moves to CHORA / production only after the Calculator is reconciled.'] }))) return;
-let gpsCoords = null;
-try {
-gpsCoords = await Promise.race([getPosition(), new Promise(resolve => setTimeout(() => resolve(null), 10000))]);
-} catch (e) {}
-const now = new Date();
-const h12 = now.getHours() % 12 || 12;
-const p2 = n => String(n).padStart(2, '0');
-const timeString = `${p2(h12)}:${p2(now.getMinutes())}:${p2(now.getSeconds())} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
-let recordId = generateUUID('sale');
-if (!validateUUID(recordId)) recordId = generateUUID('sale');
-const ts = getTimestamp();
-let rec = {
-id: recordId, timestamp: ts, createdAt: ts, updatedAt: ts,
-date, time: timeString,
-customerName: rep, customerPhone: '',
-quantity: 0, supplyStore: null,
-paymentType: 'REP_RETURN',
-salesRep: rep, currentRepProfile: 'admin',
-totalCost: 0, totalValue: 0, profit: 0,
-creditReceived: true,
-isRepReturn: true,
-expiredQty: expired, returnedQty: returned,
-gps: gpsCoords,
-syncedAt: new Date().toISOString(),
-createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
-};
-rec = ensureRecordIntegrity(rec, false);
-const snapshot = [...sales];
-try {
-sales.push(rec);
-await unifiedSave('sales', sales, rec);
-notifyDataChange('sales');
-triggerAutoSync();
-emitSyncUpdate({ sales: null });
-const savedRep = rep;
-const _e1 = document.getElementById('rep-return-expired'); if (_e1) _e1.value = '';
-const _e2 = document.getElementById('rep-return-qty'); if (_e2) _e2.value = '';
-const _nameEl = document.getElementById('cust-name'); if (_nameEl) _nameEl.value = '';
-const _firstRepBtn = document.querySelector('#sales-rep-toggle-group .toggle-opt');
-if (_firstRepBtn) selectSalesRep(_firstRepBtn, 'NONE');
-setSaleMode('sale');
-if (typeof renderCustomersTable === 'function') renderCustomersTable();
-if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
-if (typeof loadSalesData === 'function') { try { await loadSalesData(currentCompMode); } catch (_) {} }
-showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned. It will reach CHORA / production when the Calculator is reconciled.`, 'success');
-} catch (error) {
-sales.length = 0;
-sales.push(...snapshot);
-try { await unifiedSave('sales', sales); } catch (_) {}
-window.notifyBlocking('Failed to save return. Please try again.', 'error');
-}
-} finally {
-if (btn) btn.disabled = false;
 }
 }
 
@@ -1565,13 +1455,16 @@ const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
 const amountEl = document.getElementById('cust-amount-collected');
 const amount = parseFloat(amountEl?.value) || 0;
+const expiredEl = document.getElementById('cust-expired-qty');
+const expired = round2(parseFloat(expiredEl?.value) || 0);
 const phoneInput = document.getElementById('new-cust-phone');
 const phoneNumber = (!document.getElementById('new-customer-phone-container').classList.contains('hidden'))
 ? phoneInput.value.trim()
 : '';
 if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
 if (!name) { window.notifyBlocking('Please enter customer name.', 'warning'); return; }
-if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning'); return; }
+if (amount < 0 || expired < 0) { window.notifyBlocking('Amount and expired quantity cannot be negative.', 'warning'); return; }
+if (amount <= 0 && expired <= 0) { window.notifyBlocking('Please enter an amount collected and/or an expired quantity.', 'warning'); return; }
 const btn = document.getElementById('btn-save-cust-transaction');
 if (btn) { if (btn.disabled) return; btn.disabled = true; }
 const restoreBtn = () => { if (btn) btn.disabled = false; };
@@ -1588,11 +1481,11 @@ if (_ed && Array.isArray(_ed.original.allocations)) _custOutstanding = round2(_c
 _custOutstanding = Math.max(0, _custOutstanding);
 } catch (_e) { _custOutstanding = -1; }
 let _gcWarn = null;
-if (_custOutstanding === 0 && !_ed) {
+if (amount > 0 && _custOutstanding === 0 && !_ed) {
 window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error');
 restoreBtn();
 return;
-} else if (_custOutstanding >= 0 && amount > _custOutstanding) {
+} else if (amount > 0 && _custOutstanding >= 0 && amount > _custOutstanding) {
 const _overAmt = amount - _custOutstanding;
 _gcWarn = { lines: [`Owes: ${fmtAmt(_custOutstanding)}`, `Collecting: ${fmtAmt(amount)}`, `Overpayment: ${fmtAmt(_overAmt)}`], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
 }
@@ -1600,7 +1493,9 @@ if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relate
 window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning');
 restoreBtn(); return;
 }
-if (!(await window.gcCommit(_gcWarn || {}))) { restoreBtn(); return; }
+const _gcExtra = _gcWarn ? { ..._gcWarn } : {};
+if (expired > 0) _gcExtra.notes = [`Expired ${fmtNum(expired)} kg will be added to CHORA raw material.`];
+if (!(await window.gcCommit(_gcExtra))) { restoreBtn(); return; }
 let gpsCoords = null;
 try {
 gpsCoords = await Promise.race([
@@ -1646,6 +1541,7 @@ gps: gpsCoords,
 syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
 };
+if (expired > 0) collRecord.expiredQty = expired;
 if (_ed) {
 const o = _ed.original;
 stampEdit(collRecord, o);
@@ -1654,11 +1550,43 @@ collRecord.time = o.time;
 if (!collRecord.gps && o.gps) collRecord.gps = o.gps;
 }
 let _alloc = null;
-if (!(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
+if (!(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT') && (amount > 0 || _ed)) {
 try {
 _alloc = await applyCollectionToSales({ kind: 'customer', arr: sales, record: collRecord, amount, name, original: _ed ? _ed.original : null, when: { date: collRecord.date, time: timeString }, getGross: getSaleTransactionValue });
 } catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning'); restoreBtn(); return; }
 }
+const _origExp = _ed ? (Number(_ed.original.expiredQty) || 0) : 0;
+const _origApplied = (_origExp > 0 && _ed.original.expiredApplied !== false) ? _origExp : 0;
+const _expDelta = round2(expired - _origApplied);
+let _choraAdded = 0, _choraRemoved = 0, _choraOk = true;
+const _undoChora = async () => {
+try {
+if (_choraAdded > 0) await reverseExpiredFromChora(_choraAdded, collRecord.date);
+else if (_choraRemoved > 0) await processExpiredToChora(_choraRemoved, collRecord.date, name);
+} catch (_) {}
+_choraAdded = 0; _choraRemoved = 0;
+};
+try {
+if (_expDelta > 0) {
+_choraOk = !!(await processExpiredToChora(_expDelta, collRecord.date, name));
+if (_choraOk) _choraAdded = _expDelta;
+} else if (_expDelta < 0) {
+const _choraBlock = await getExpiredDeleteBlockReason({ expired: -_expDelta, expiredApplied: true });
+if (_choraBlock) {
+if (_alloc) _alloc.undo();
+window.notifyBlocking(_choraBlock, 'warning');
+restoreBtn(); return;
+}
+await reverseExpiredFromChora(-_expDelta, collRecord.date);
+_choraRemoved = -_expDelta;
+}
+} catch (_choraErr) {
+await _undoChora();
+if (_alloc) _alloc.undo();
+window.notifyBlocking('Could not update CHORA raw material: ' + ((_choraErr && _choraErr.message) || 'unknown error'), 'error');
+restoreBtn(); return;
+}
+if (expired > 0) collRecord.expiredApplied = _expDelta > 0 ? _choraOk : true;
 const validated = ensureRecordIntegrity(collRecord, !!_ed);
 const snapshot = [...sales];
 try {
@@ -1673,18 +1601,26 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 emitSyncUpdate({ sales: null});
 const savedName = name;
 if (amountEl) amountEl.value = '';
+if (expiredEl) expiredEl.value = '';
 const _custNameEl = document.getElementById('cust-name');
 if (_custNameEl) _custNameEl.value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
 if (phoneInput) phoneInput.value = '';
+{ const _fr = document.querySelector('#sales-rep-toggle-group .toggle-opt'); if (_fr && _repSelectedValue()) selectSalesRep(_fr, 'NONE'); }
 if (_ed) endEditMode();
 if (typeof setSaleMode === 'function') setSaleMode('sale');
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 if (typeof calculateCustomerStatsForDisplay === 'function') await calculateCustomerStatsForDisplay(savedName);
 const _allocNote = _alloc && (_alloc.paidCount || _alloc.partialCount) ? ` — ${_alloc.paidCount} sale${_alloc.paidCount === 1 ? '' : 's'} marked paid${_alloc.partialCount ? `, 1 part-paid` : ''}` : '';
-showToast(_ed ? ` Collection updated: ${fmtAmt(amount)} for ${name}${_allocNote}` : ` Collection of ${fmtAmt(amount)} recorded for ${name}${_allocNote}`, 'success');
+const _expNote = expired > 0 ? `${_allocNote ? ',' : ' —'} ${fmtNum(expired)} kg expired ${collRecord.expiredApplied === false ? 'recorded (CHORA not updated)' : 'added to CHORA'}` : '';
+const _collHead = _ed
+? (amount > 0 ? ` Collection updated: ${fmtAmt(amount)} for ${name}` : ` Collection updated for ${name}`)
+: (amount > 0 ? ` Collection of ${fmtAmt(amount)} recorded for ${name}` : ` Collection recorded for ${name}`);
+showToast(`${_collHead}${_allocNote}${_expNote}`, 'success');
+if (expired > 0 || _expDelta !== 0) { if (typeof renderFactoryInventory === 'function') renderFactoryInventory(); }
 } catch (error) {
+await _undoChora();
 if (_alloc) _alloc.undo();
 sales.length = 0;
 sales.push(...snapshot);
@@ -1696,7 +1632,7 @@ restoreBtn();
 }
 }
 
-export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [[() => (custTransactionMode === 'sale' ? ((document.getElementById('supply-store-value') || {}).value || '') : ''), 'Store'], [() => (custTransactionMode === 'sale' ? ((document.getElementById('cust-quantity') || {}).value || '') : ''), 'Quantity'], [() => (custTransactionMode === 'return' ? _repSelectedValue() : ''), 'Rep'], [() => (custTransactionMode === 'return' ? ((document.getElementById('rep-return-expired') || {}).value || '') : ''), 'Expired (kg)'], [() => (custTransactionMode === 'return' ? ((document.getElementById('rep-return-qty') || {}).value || '') : ''), 'Returned (kg)'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
+export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [[() => (custTransactionMode === 'sale' ? ((document.getElementById('supply-store-value') || {}).value || '') : ''), 'Store'], [() => (custTransactionMode === 'sale' ? ((document.getElementById('cust-quantity') || {}).value || '') : ''), 'Quantity'], [() => (custTransactionMode === 'collection' ? ((document.getElementById('cust-amount-collected') || {}).value || '') : ''), 'Amount'], [() => (custTransactionMode === 'collection' ? ((document.getElementById('cust-expired-qty') || {}).value || '') : ''), 'Expired (kg)'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'] }); }
 
 async function _saveCustomerTransactionRaw() {
 const sales = ensureArray(await sqliteStore.get('sales'));
@@ -1704,8 +1640,6 @@ const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
 if (custTransactionMode === 'collection') {
 await saveCustomerCollection();
-} else if (custTransactionMode === 'return') {
-await saveRepReturn();
 } else {
 await saveCustomerSale();
 }
@@ -1845,7 +1779,7 @@ const returns = ensureArray(await sqliteStore.get('returns'));
 const sales = ensureArray(await sqliteStore.get('sales'));
 const customers = ensureArray(await sqliteStore.get('customers'));
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-if (typeof custTransactionMode !== 'undefined' && (custTransactionMode === 'collection' || custTransactionMode === 'return')) return;
+if (typeof custTransactionMode !== 'undefined' && custTransactionMode === 'collection') return;
 const quantity = parseFloat(document.getElementById('cust-quantity').value) || 0;
 const date = document.getElementById('cust-date').value;
 const store = document.getElementById('supply-store-value').value;
@@ -1905,10 +1839,6 @@ document.querySelectorAll('#sales-rep-toggle-group .toggle-opt').forEach(b => b.
 if (btn) btn.classList.add('active');
 document.getElementById('sales-rep-value').value = value;
 autoFillCustomerName();
-const _hasRep = !!(value && value !== 'NONE');
-if (_hasRep && custTransactionMode === 'collection') setSaleMode('return');
-else if (!_hasRep && custTransactionMode === 'return') setSaleMode('collection');
-else _syncRepReturnLabel();
 calculateCustomerSale();
 }
 
@@ -2019,8 +1949,10 @@ _dcMsg += `\nExpired / Damage: ${fmtNum(recordToDelete.expiredQty || 0)} kg`;
 _dcMsg += `\nReturned: ${fmtNum(recordToDelete.returnedQty || 0)} kg`;
 _dcMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator. No stock has moved yet.`;
 } else if (_dcIsCollection) {
-_dcMsg += `\nAmount: ${fmtAmt(collectionCollected(recordToDelete))}`;
-_dcMsg += `\n\n Deleting this collection will restore the credit balance to this customer${(recordToDelete.allocations||[]).length ? ' and mark the sales it paid as unpaid again' : ''}.`;
+if (collectionCollected(recordToDelete) > 0) _dcMsg += `\nAmount: ${fmtAmt(collectionCollected(recordToDelete))}`;
+if (Number(recordToDelete.expiredQty) > 0) _dcMsg += `\nExpired / Damage: ${fmtNum(recordToDelete.expiredQty)} kg`;
+if (collectionCollected(recordToDelete) > 0) _dcMsg += `\n\n Deleting this collection will restore the credit balance to this customer${(recordToDelete.allocations||[]).length ? ' and mark the sales it paid as unpaid again' : ''}.`;
+if (Number(recordToDelete.expiredQty) > 0 && recordToDelete.expiredApplied !== false) _dcMsg += `\n\n ${fmtNum(recordToDelete.expiredQty)} kg will be removed from CHORA raw material.`;
 } else {
 _dcMsg += `\nQty: ${recordToDelete.quantity || 0} kg`;
 if (recordToDelete.totalValue) _dcMsg += `\nValue: ${fmtAmt(recordToDelete.totalValue||0)}`;
@@ -2039,6 +1971,9 @@ try {
 await detachChildPayment('customer', recordToDelete, sales);
 const customerSalesFiltered = sales.filter(s => s.id !== id);
 await unifiedDelete('sales', customerSalesFiltered, id, { strict: true }, recordToDelete);
+if (_dcIsCollection && Number(recordToDelete.expiredQty) > 0 && recordToDelete.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(recordToDelete.expiredQty), recordToDelete.date);
+}
 await refreshCustomerSales();
 calculateNetCash();
 calculateCashTracker();
@@ -2053,7 +1988,7 @@ emitSyncUpdate({ sales: null});
 const _delToast = _dcIsRepReturn
 ? ` Rep return for ${recordToDelete.customerName || 'rep'} deleted.`
 : _dcIsCollection
-? ` Collection of ${fmtAmt(collectionCollected(recordToDelete))} deleted.`
+? ` Collection${collectionCollected(recordToDelete) > 0 ? ` of ${fmtAmt(collectionCollected(recordToDelete))}` : ''} deleted.${Number(recordToDelete.expiredQty) > 0 && recordToDelete.expiredApplied !== false ? ` ${fmtNum(recordToDelete.expiredQty)} kg expired removed from CHORA.` : ''}`
 : ` Sale deleted! ${recordToDelete.quantity} kg restored to ${recordDate} inventory.`;
 showToast(_delToast, "success");
 } catch (error) {
@@ -2692,13 +2627,6 @@ if (typeof calculateSales === 'function') calculateSales();
 }
 
 export function handleExpiredQtyInput() {
-const expQty = parseFloat(document.getElementById('expiredQuantity').value) || 0;
-const section = document.getElementById('expiredSection');
-if (expQty > 0) {
-section.classList.remove('hidden');
-} else {
-section.classList.add('hidden');
-}
 if (typeof calculateSales === 'function') calculateSales();
 }
 
@@ -2955,7 +2883,6 @@ if (_rr) { delete _rr.dataset.repReturnAuto; _rr.style.cssText = ''; }
 if (_ee) { delete _ee.dataset.repReturnAuto; _ee.style.cssText = ''; }
 if (_hh) { _hh.classList.add('hidden'); _hh.textContent = ''; } }
 document.getElementById('returnStoreSection').classList.add('hidden');
-document.getElementById('expiredSection').classList.add('hidden');
 window._calcFromManual = false;
 showToast(`Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');
 await loadSalesData(currentCompMode);
@@ -6603,7 +6530,8 @@ ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
 ${supplyDateLine}
 <hr>
-<p><span>Amount Collected:</span> <span class="profit-val">${fmtAmt(safeValue(item.totalValue))}</span></p>
+${(collectionCollected(item) > 0 || !(safeValue(item.expiredQty) > 0)) ? `<p><span>Amount Collected:</span> <span class="profit-val">${fmtAmt(safeValue(collectionCollected(item)))}</span></p>` : ''}
+${safeValue(item.expiredQty) > 0 ? `<p><span>Expired / Damage:</span> <span class="qty-val">${fmtNum(safeValue(item.expiredQty))} kg</span></p><p class="u-fs-sm u-text-muted">${item.expiredApplied === false ? 'Not added to CHORA (material missing).' : 'Added to CHORA raw material.'}</p>` : ''}
 ${deleteBtnHtml}
 `;
 } else {
@@ -6910,8 +6838,6 @@ window.updateEconomicDashboard = updateEconomicDashboard;
 window.saveCustomerSale = saveCustomerSale;
 window.setSaleMode = setSaleMode;
 window.updateCollectionPreview = updateCollectionPreview;
-window.updateRepReturnPreview = updateRepReturnPreview;
-window.saveRepReturn = saveRepReturn;
 window.saveCustomerCollection = saveCustomerCollection;
 window.saveCustomerTransaction = saveCustomerTransaction;
 window._DEFAULT_STORES = _DEFAULT_STORES;

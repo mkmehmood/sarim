@@ -5,7 +5,7 @@ import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, curren
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLabel, refreshCustomerSales, updateCollectionPreview } from './utilities-sales.js';
-import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, safeValue } from './utilities-payments.js';
+import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, reverseExpiredFromChora, safeValue } from './utilities-payments.js';
 import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, updateUnitsAvailableIndicator } from './factory.js';
 import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
@@ -437,8 +437,9 @@ itemContent = `
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    ${(isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0)) ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>` : ''}
+    ${Number(t.expiredQty) > 0 ? `<div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg ${t.expiredApplied === false ? '(CHORA not updated)' : '\u2192 CHORA'}</div>` : ''}
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? 'Bulk Payment' : 'Expired Stock')}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -581,11 +582,13 @@ if (_txDate) _txMsg += `\nRecorded: ${_txDate}`;
 if (_txItem?.notes) _txMsg += `\nNote: ${_txItem.notes}`;
 _txMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance from the customer's history permanently.`;
 } else if (_txItem?.paymentType === 'COLLECTION') {
-_txTitle = 'Delete Bulk Collection';
-_txMsg = `Delete this bulk collection payment from ${_txCust || 'customer'}?`;
+_txTitle = 'Delete Collection';
+_txMsg = `Delete this collection from ${_txCust || 'customer'}?`;
 if (_txDate) _txMsg += `\nDate: ${_txDate}`;
-_txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
-_txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (collectionCollected(_txItem) > 0) _txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
+if (Number(_txItem.expiredQty) > 0) _txMsg += `\nExpired / Damage: ${fmtNum(Number(_txItem.expiredQty))} kg`;
+if (collectionCollected(_txItem) > 0) _txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (Number(_txItem.expiredQty) > 0 && _txItem.expiredApplied !== false) _txMsg += `\n\n\u21a9 ${fmtNum(Number(_txItem.expiredQty))} kg will be removed from CHORA raw material.`;
 } else if (_txItem?.isRepReturn) {
 _txTitle = 'Delete Rep Return';
 _txMsg = `Delete this return logged for ${_txCust || 'the rep'}?`;
@@ -624,6 +627,9 @@ if (!item) { renderCustomerTransactions(currentManagingCustomer); return; }
 await detachChildPayment('customer', item, sales);
 const customerSalesFiltered = sales.filter(s => s.id !== id);
 await unifiedDelete('sales', customerSalesFiltered, id, { strict: true }, item);
+if (item.paymentType === 'COLLECTION' && Number(item.expiredQty) > 0 && item.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(item.expiredQty), item.date);
+}
 refreshAllCalculations();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();

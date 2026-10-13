@@ -2244,17 +2244,16 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <div class="field"><label>Quantity (kg)</label><input type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
 </div>
-<div id="cust-return-inputs" class="hidden">
-<div class="grid-inputs">
-<div class="field"><label>Expired / Damage Qty (kg)</label><input type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
-<div class="field"><label>Returned Qty (kg)</label><input type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
-</div>
-<div class="u-field-hint" id="rep-return-hint">* Saved as pending against the rep. In the Calculator tab these fill Expired / Damage Qty and Returned Qty; you pick the return store there. Expired goes to CHORA and returned goes to production only after reconciliation.</div>
-</div>
 <div id="cust-coll-inputs" class="hidden">
+<div class="grid-inputs">
 <div class="field">
 <label>Amount Collected (₨)</label>
 <input type="number" id="cust-amount-collected" step="1" placeholder="Enter amount received" oninput="updateCollectionPreview()">
+</div>
+<div class="field">
+<label>Expired / Damage Qty (kg)</label>
+<input type="number" id="cust-expired-qty" step="0.001" min="0" placeholder="0">
+</div>
 </div>
 </div>
 <div id="customer-info-display" class="hidden" style="margin: 10px 0; padding: 12px; background: rgba(37, 99, 235, 0.05); border-radius: 10px; border: 1px solid var(--glass-border);">
@@ -2422,15 +2421,6 @@ No records found
 <div class="toggle-group" style="margin-top: 8px;">
 <button id="ret-store-zubair" class="toggle-opt" onclick="selectReturnStore('zubair', this)">ZUBAIR</button>
 <button id="ret-store-mahmood" class="toggle-opt" onclick="selectReturnStore('mahmood', this)">MAHMOOD</button>
-</div>
-<div class="u-field-hint" >
-* This will increase the store's stock level without creating a new production record.
-</div>
-</div>
-<div id="expiredSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(220, 38, 38, 0.08); border-radius: 10px; border: 1px solid var(--danger, #dc2626);">
-<label style="color: var(--danger, #dc2626); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Expired Stock — Added to CHORA Raw Material:</label>
-<div class="u-field-hint" style="margin-top: 6px;">
-* Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
 </div>
 </div>
 <div class="field"><label>Credit Sales Qty</label><input type="number" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>

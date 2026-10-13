@@ -3298,7 +3298,7 @@ const getSalePrice = async (t) => {
 const buildSaleRow = async (t, runBal) => {
   const pt = t.paymentType || 'CASH';
   const isOldDebt = t.transactionType === 'OLD_DEBT';
-  let debit = 0, credit = 0, typeLabel = '', detailLabel = '', displayDate = formatDisplayDate(t.supplyDate || t.date);
+  let debit = 0, credit = 0, typeLabel = '', detailLabel = '', extraDetail = '', displayDate = formatDisplayDate(t.supplyDate || t.date);
   if (isOldDebt) {
     debit = parseFloat(t.totalValue) || 0;
     credit = parseFloat(t.partialPaymentReceived) || 0;
@@ -3330,7 +3330,8 @@ const buildSaleRow = async (t, runBal) => {
   } else if (pt === 'COLLECTION') {
     credit = parseFloat(t.totalValue) || 0;
     typeLabel = 'COLLECTION';
-    detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : 'Cash payment received';
+    detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : (credit > 0 || !(Number(t.expiredQty) > 0) ? 'Cash payment received' : 'Expired stock received');
+    if (Number(t.expiredQty) > 0) extraDetail = `\nExpired: ${fmtAmt(Number(t.expiredQty))} kg`;
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {
     credit = parseFloat(t.totalValue) || 0;
@@ -3343,7 +3344,7 @@ const buildSaleRow = async (t, runBal) => {
   if (Math.abs(runBal.val) < 0.01) balDisplay = 'SETTLED';
   else if (runBal.val > 0) balDisplay = fmtAmt(runBal.val);
   else balDisplay = 'OVERPAID\n' + fmtAmt(Math.abs(runBal.val));
-  return { row: [displayDate, typeLabel, detailLabel.substring(0,55),
+  return { row: [displayDate, typeLabel, detailLabel.substring(0,55) + extraDetail,
     debit>0?fmtAmt(debit):'-', credit>0?fmtAmt(credit):'-', balDisplay],
     debit, credit, qty: t.quantity||0 };
 };
