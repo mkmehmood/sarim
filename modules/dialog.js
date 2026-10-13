@@ -25,10 +25,11 @@ let lockState = null;
 export function isDialogOpen() {
   return !!document.querySelector('.dlg-overlay');
 }
-const FLOW_MS = 8000;
-let flowUntil = 0;
+let flowActive = false;
+const endFlowOnInput = (e) => { if (!isDialogOpen() && !(e.target && e.target.closest && e.target.closest('.dlg-overlay'))) flowActive = false; };
+['pointerdown', 'keydown', 'touchstart'].forEach((name) => document.addEventListener(name, endFlowOnInput, true));
 export function isDialogFlowActive() {
-  return isDialogOpen() || Date.now() < flowUntil;
+  return flowActive || isDialogOpen();
 }
 
 function lockPage() {
@@ -159,7 +160,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     const finish = (value, immediate) => {
       if (settled) return;
       settled = true;
-      flowUntil = Date.now() + FLOW_MS;
+      flowActive = true;
       document.removeEventListener('keydown', onKey, true);
       active = null;
       overlay.querySelectorAll('button').forEach((b) => { b.disabled = true; });
@@ -238,7 +239,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
 }
 
 export function showGlassConfirm(message, { title = null, confirmText = 'Confirm', cancelText = 'Cancel', danger = false, icon = null, tone = null, alertOnly = false } = {}) {
-  const shownTitle = deriveTitle(message, tone || (danger ? 'danger' : 'primary'), title, confirmText);
+  const shownTitle = requireTitle(title);
   const resolvedTone = pickTone(shownTitle, message, danger, tone);
   const svg = (icon && String(icon).indexOf('<') !== -1) ? icon : pickIcon(resolvedTone, shownTitle, confirmText);
   const actions = alertOnly
@@ -262,7 +263,8 @@ export function showGlassConfirm(message, { title = null, confirmText = 'Confirm
   });
 }
 
-export function showPasswordConfirm({ title = 'Confirm Password', message = '', email = '', confirmText = 'Confirm', cancelText = 'Cancel', inputId = '_dlg_pwd_input', verify = null } = {}) {
+export function showPasswordConfirm({ title = null, message = '', email = '', confirmText = 'Confirm', cancelText = 'Cancel', inputId = '_dlg_pwd_input', verify = null } = {}) {
+  const shownTitle = requireTitle(title);
   const errId = `${inputId}_err`;
   const account = email ? `<p class="dlg-account">Account: <strong>${escapeHtml(email)}</strong></p>` : '';
   const body = `${formatMessage(message)}${account}<div class="dlg-field"><input type="password" id="${inputId}" class="dlg-input" placeholder="Your account password" autocomplete="current-password" autocapitalize="none" spellcheck="false"><button type="button" class="dlg-eye" id="${inputId}_eye" aria-label="Show password">${dialogIcons.eye}</button></div><div class="dlg-error" id="${errId}" role="alert" aria-live="polite"></div>`;
@@ -287,7 +289,7 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
   };
   const result = openDialog({
     tone: 'primary',
-    title,
+    title: shownTitle,
     caption: 'Account password required',
     icon: dialogIcons.lock,
     body,
@@ -296,7 +298,7 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
     dismissOnBackdrop: false,
     focusIndex: -1
   }).then((value) => {
-    announce(`${message}${email ? `\nAccount: ${email}` : ''}`, 'primary', title, value ? `Confirmed: ${confirmText}` : `Chosen: ${cancelText}`);
+    announce(`${message}${email ? `\nAccount: ${email}` : ''}`, 'primary', shownTitle, value ? `Confirmed: ${confirmText}` : `Chosen: ${cancelText}`);
     return value;
   });
   const input = document.getElementById(inputId);
@@ -322,14 +324,14 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
 }
 
 
-export function showGlassAlert(message, { title = null, tone = 'warning', buttonText = 'OK', icon = null } = {}) {
+export function showGlassAlert(message, { title = null, tone, buttonText = 'OK', icon = null } = {}) {
   const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
   return showGlassConfirm(message, { title, confirmText: buttonText, tone: t, icon, alertOnly: true });
 }
 
 export function showChoiceDialog(message, choices, { title = null, cancelText = 'Cancel', icon = null } = {}) {
   const list = Array.isArray(choices) ? choices : [];
-  const shownTitle = deriveTitle(message, 'primary', title, '');
+  const shownTitle = requireTitle(title);
   const options = list.map((c, i) => `<li><button type="button" class="dlg-option" data-opt="${i}" data-act="${i + 1}">${c.icon ? `<span class="dlg-option-icon" aria-hidden="true">${c.icon}</span>` : ''}<span class="dlg-option-label">${escapeHtml(c.label)}</span><span class="dlg-option-go" aria-hidden="true">${dialogIcons.chevron}</span></button></li>`).join('');
   return openDialog({
     tone: 'primary',
@@ -353,37 +355,14 @@ export function splitFigures(message) {
     .replace(/\s*(?:\u2014|,|\.)\s+(?=(?:Required|Requested|Shortage|Extra required)\b[^:]*:)/g, '\n');
 }
 
-export function alertTitle(message, tone) {
-  const m = String(message || '');
-  if (/cash in hand/i.test(m)) return 'Low cash in hand';
-  if (/formula units/i.test(m)) return 'Low formula units';
-  if (/insufficient|not enough|not in raw material|short by|shortage/i.test(m) && /inventory|material|stock|units|kg/i.test(m)) return tone === 'error' ? 'Low inventory' : 'Inventory warning';
-  if (/credit/i.test(m)) return tone === 'error' ? 'Credit error' : 'Credit warning';
-  if (/cannot delete|cannot be deleted|cannot change|cannot be edited/i.test(m)) return 'Action not allowed';
-  if (/payment/i.test(m)) return tone === 'error' ? 'Payment error' : 'Payment warning';
-  const failed = m.match(/^\s*failed to ([a-z ]{3,40}?)[.:!,]/i);
-  if (failed) return `Could not ${failed[1].trim().toLowerCase()}`;
-  if (/^\s*access denied/i.test(m)) return 'Access denied';
-  if (/not logged in|please sign in/i.test(m)) return 'Sign-in required';
-  if (/incorrect password|wrong password/i.test(m)) return 'Incorrect password';
-  if (/\b(is|are) required\b|^\s*(please )?(enter|select|choose|add)\b/i.test(m)) return 'Missing information';
-  if (/\binvalid\b/i.test(m)) return 'Invalid entry';
-  if (/not found/i.test(m)) return 'Not found';
-  return null;
-}
-
-export function notifyBlocking(message, tone = 'warning', title = null) {
-  return showGlassAlert(splitFigures(message), { tone, title: title || alertTitle(message, tone) });
+export function notifyBlocking(message, tone, title) {
+  return showGlassAlert(splitFigures(message), { tone, title });
 }
 const TONE_LINES = { warning: CAPTIONS.warning, danger: CAPTIONS.danger, error: CAPTIONS.error };
-const clip = (text, max) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}\u2026` : text);
-function deriveTitle(message, tone, title, label) {
-  const given = humanizeKeys(String(title == null ? '' : title)).trim();
-  if (given) return given;
-  const known = alertTitle(message, tone);
-  if (known) return known;
-  const first = humanizeKeys(String(message == null ? '' : message)).split('\n').map((l) => l.replace(LEADING_GLYPHS, '').trim()).find(Boolean) || '';
-  return clip(first.split(/[.:!?\u2014]/)[0].trim() || String(label || '').trim(), 48);
+function requireTitle(title) {
+  const text = humanizeKeys(String(title == null ? '' : title)).trim();
+  if (!text) throw new TypeError('A dialog title is required');
+  return text;
 }
 export function describeForDevice(message, { tone = 'warning', title = null, action = '' } = {}) {
   const t = EYEBROWS[tone] ? tone : 'warning';
@@ -401,7 +380,7 @@ export function describeForDevice(message, { tone = 'warning', title = null, act
   if (!figureDone) lines.unshift(figureLine);
   if (TONE_LINES[t]) lines.unshift(TONE_LINES[t]);
   if (action) lines.unshift(action);
-  return { tone: t, title: deriveTitle(message, t, title, ''), body: lines.join('\n') };
+  return { tone: t, title: requireTitle(title), body: lines.join('\n') };
 }
 function announce(message, tone, title, action) {
   if (typeof window.notifyFromDialog !== 'function') return;

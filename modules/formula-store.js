@@ -394,8 +394,8 @@ export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaSt
 
 async function _saveFormulaStoreEntryRaw() {
   const c = _collectEditor();
-  if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning'); return false; }
-  if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning'); return false; }
+  if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }
+  if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning', 'Warning'); return false; }
 if (!(await window.gcCommit({}))) return false;
   const [list, slots, batch] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS)]);
   const now = getTimestamp();
@@ -419,7 +419,7 @@ export async function deleteFormulaStoreEntry() {
   const [slots, stores] = await Promise.all([getFormulaSlots(), getAppStores()]);
   const users = stores.filter((s) => String(s.formulaId || slots[s.formulaType || 'standard']) === String(_editingId)).map((s) => s.name);
   if (users.length || SLOT_KEYS.some((k) => String(slots[k]) === String(_editingId))) {
-    window.notifyBlocking(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning');
+    window.notifyBlocking(users.length ? `In use by ${users.join(', ')}. Assign those stores another formula first.` : 'This formula is active in the factory. Assign another formula to the stores first.', 'warning', 'Warning');
     return;
   }
   const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
@@ -431,7 +431,6 @@ export async function deleteFormulaStoreEntry() {
   sendDeviceNotification('Formula deleted', removed && removed.name ? `"${removed.name}" was removed from your formulas.` : 'A formula was removed.', 'formula-del-' + _editingId).catch(() => {});
   _editingId = null;
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
-  showToast('Formula deleted', 'success');
 }
 
 function _renderChoice(hostId, items, active, onPick, emptyText) {

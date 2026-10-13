@@ -1161,7 +1161,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('prod')) {
-window.notifyBlocking('Access Denied — Production not in your assigned tabs', 'warning'); return;
+window.notifyBlocking('Access Denied — Production not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const netElement = document.getElementById('net-wt');
 const dateElement = document.getElementById('sys-date');
@@ -1170,7 +1170,7 @@ const formulaUnitsElement = document.getElementById('formula-units');
 const grossWtEl = document.getElementById('gross-wt');
 const contWtEl = document.getElementById('cont-wt');
 if (!netElement || !dateElement || !storeElement || !formulaUnitsElement) {
-window.notifyBlocking('Form error: Missing required fields', 'error');
+window.notifyBlocking('Form error: Missing required fields', 'error', 'Something went wrong');
 return;
 }
 const net = parseFloat(netElement.value) || 0;
@@ -1184,7 +1184,7 @@ const salePrice = await getSalePriceForStore(store);
 const validation = await validateFormulaAvailability(store, formulaUnits);
 const _unitCredit = (_ed && _ed.original.formulaStore === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;
 if (!validation.sufficient && !(_ed && validation.available + _unitCredit + 1e-9 >= formulaUnits)) {
-window.notifyBlocking(`Not enough formula units at ${(typeof window.getStoreLabel === 'function' && window.getStoreLabel(store)) || store}\nAvailable: ${fmtNum(validation.available)} units\nRequested: ${fmtNum(formulaUnits)} units\nShortage: ${fmtNum(Math.max(0, formulaUnits - validation.available))} units`, 'error');
+window.notifyBlocking(`Not enough formula units at ${(typeof window.getStoreLabel === 'function' && window.getStoreLabel(store)) || store}\nAvailable: ${fmtNum(validation.available)} units\nRequested: ${fmtNum(formulaUnits)} units\nShortage: ${fmtNum(Math.max(0, formulaUnits - validation.available))} units`, 'error', 'Low formula units');
 return;
 }
 if (_ed) {
@@ -1194,7 +1194,7 @@ const prodOld = production.filter(p => p && !p.isReturn && p.id !== o.id && p.da
 const retOld = returns.filter(r => r && r.date === o.date && r.store === o.store).reduce((a, r) => a + (r.quantity || 0), 0);
 const soldOld = sales.filter(s => s && (s.supplyDate || s.date) === o.date && s.supplyStore === o.store).reduce((a, s) => a + (s.quantity || 0), 0);
 if (prodOld + retOld - soldOld < -1e-6) {
-window.notifyBlocking(` Cannot reduce this entry: ${fmtNum(soldOld - prodOld - retOld)} kg already sold from ${o.date}. Reduce or delete those sales first.`, 'warning');
+window.notifyBlocking(` Cannot reduce this entry: ${fmtNum(soldOld - prodOld - retOld)} kg already sold from ${o.date}. Reduce or delete those sales first.`, 'warning', 'Warning');
 return;
 }
 }
@@ -1204,19 +1204,19 @@ const _frozenUnit = _ed.original.formulaCost / _ed.original.formulaUnits;
 costData = { ...costData, costPerUnit: _frozenUnit, totalFormulaCost: _frozenUnit * formulaUnits, dynamicCostPerKg: (_frozenUnit * formulaUnits) / net, formulaName: _ed.original.formulaName || costData.formulaName, formulaMaterials: _ed.original.formulaMaterials };
 }
 if (net <= 0) {
-window.notifyBlocking('Net production must be greater than zero. Please check weights.', 'warning');
+window.notifyBlocking('Net production must be greater than zero. Please check weights.', 'warning', 'Warning');
 return;
 }
 if (!inputDate) {
-window.notifyBlocking('Please select a date.', 'warning');
+window.notifyBlocking('Please select a date.', 'warning', 'Warning');
 return;
 }
 if (salePrice <= 0) {
-window.notifyBlocking('Please set a sale price in Factory Formulas first.', 'warning');
+window.notifyBlocking('Please set a sale price in Factory Formulas first.', 'warning', 'Warning');
 return;
 }
 if (formulaUnits <= 0) {
-window.notifyBlocking('Please enter formula units used.', 'warning');
+window.notifyBlocking('Please enter formula units used.', 'warning', 'Low formula units');
 return;
 }
 if (!(await window.gcCommit({ lead: _ed ? 'Update this production entry?' : 'Save this production entry?', lines: [`Total Cost: ${fmtAmt(net * costData.dynamicCostPerKg)}`, `Net Profit: ${fmtAmt(net * salePrice - net * costData.dynamicCostPerKg)}`] }))) return;
@@ -1283,7 +1283,7 @@ notifyDataChange('production');
 emitSyncUpdate({ production: null});
 } catch (error) {
 if (_ed && _edIdx >= 0) production[_edIdx] = _ed.original; else production.pop();
-window.notifyBlocking(" Failed to save production entry. Please try again.", 'error');
+window.notifyBlocking(" Failed to save production entry. Please try again.", 'error', 'Something went wrong');
 return;
 }
 await syncFactoryProductionStats().catch(e => console.warn('[saveProductionEntry] stats failed:', _safeErr(e)));
@@ -2352,7 +2352,7 @@ const entities = ensureArray(await sqliteStore.get('entities'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 if (!id || !validateUUID(id)) {
-window.notifyBlocking('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error', 'Something went wrong');
 return;
 }
 const _dt = transactions.find(t => t.id === id);
@@ -2369,7 +2369,7 @@ const _ent0b = entities.find(e => String(e.id) === String(currentEntityId));
 if (_ent0b) renderEntityOverlayContent(_ent0b);
 return;
 }
-if (_dtGuard.block) { window.notifyBlocking(_dtGuard.block, 'warning'); return; }
+if (_dtGuard.block) { window.notifyBlocking(_dtGuard.block, 'warning', 'Warning'); return; }
 const _dtEntity = entities.find(e => String(e.id) === String(_dt.entityId));
 const _dtEntityName = _dtEntity ? _dtEntity.name : 'Unknown';
 const _dtTypeLabel = _dt.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';
@@ -2399,9 +2399,8 @@ notifyDataChange('payments');
 await _refreshSupplierLinkViews();
 const _dtEntityRefreshed = ensureArray(await sqliteStore.get('entities')).find(e => String(e.id) === String(_dt.entityId));
 if (_dtEntityRefreshed) await renderEntityOverlayContent(_dtEntityRefreshed);
-showToast(_dt.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
-window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error', 'Something went wrong');
 }
 }
 }
@@ -2412,17 +2411,17 @@ const transactions = ensureArray(await sqliteStore.get('transactions'));
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 if (!currentEntityId) return;
 if (!validateUUID(String(currentEntityId))) {
-window.notifyBlocking('Invalid entity ID', 'error');
+window.notifyBlocking('Invalid entity ID', 'error', 'Something went wrong');
 return;
 }
 const _entityToDel = entities.find(e => String(e.id) === String(currentEntityId));
 if (!_entityToDel) {
-window.notifyBlocking('Entity not found', 'error');
+window.notifyBlocking('Entity not found', 'error', 'Something went wrong');
 return;
 }
 const _entityName = _entityToDel.name || 'this entity';
 const _entDelBlock = await getEntityDeleteBlockReason(currentEntityId, { allTxs: transactions, name: `"${_entityName}"` });
-if (_entDelBlock) { window.notifyBlocking(_entDelBlock, 'warning'); return; }
+if (_entDelBlock) { window.notifyBlocking(_entDelBlock, 'warning', 'Warning'); return; }
 const _entityTxs = transactions.filter(t => String(t.entityId) === String(currentEntityId));
 const _totalIn = _entityTxs.filter(t => t.type === 'IN' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const _totalOut = _entityTxs.filter(t => t.type === 'OUT' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
@@ -2489,9 +2488,8 @@ if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_)
 notifyDataChange('entities');
 closeEntityDetailsOverlay();
 await _refreshSupplierLinkViews();
-showToast(`"${_entityName}" and all its transactions deleted.`, 'success');
 } catch (error) {
-window.notifyBlocking('Failed to delete entity. Please try again.', 'error');
+window.notifyBlocking('Failed to delete entity. Please try again.', 'error', 'Something went wrong');
 }
 }
 

@@ -947,7 +947,7 @@ if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
 const valid = await verifyAccountPassword(pwd);
 if (!valid) {
   if (errEl) { errEl.textContent = ' Incorrect password — please try again.'; errEl.style.display = 'block'; }
-  window.notifyBlocking('Incorrect password. Please try again.', 'error');
+  window.notifyBlocking('Incorrect password. Please try again.', 'error', 'Something went wrong');
   if (confirmBtn) {
     confirmBtn.disabled = false;
     confirmBtn.style.opacity = '1';
@@ -1477,7 +1477,7 @@ try {
       window.showGlassAlert(' Encrypted year-end backup downloaded!', { tone: 'success', title: 'Backup Downloaded' });
     } catch (encErr) {
       console.error('Encryption failed:', _safeErr(encErr));
-      window.notifyBlocking('Local backup encryption failed — proceeding with cloud backup only.', 'warning');
+      window.notifyBlocking('Local backup encryption failed — proceeding with cloud backup only.', 'warning', 'Warning');
     }
   } else {
     showToast('No verified password — skipping local encrypted backup.', 'info', 2500);
@@ -1500,7 +1500,7 @@ try {
   backupTimestamp = await createMergeBackup();
 } catch (backupErr) {
   closeYearInProgress = false;
-  window.notifyBlocking('Failed to create rollback snapshot: ' + backupErr.message, 'error');
+  window.notifyBlocking('Failed to create rollback snapshot: ' + backupErr.message, 'error', 'Something went wrong');
   closeCloseYearDialog();
   return;
 }
@@ -1730,19 +1730,16 @@ if (completeSection) {
   if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close finished. Balances were carried forward and old records were merged.', 'year-closed').catch(() => {});
 }
 } catch (error) {
-if (error.name === 'AbortError') {
-  showToast('Close Financial Year was cancelled', 'info');
-} else {
+if (error.name !== 'AbortError') {
   console.error('Close Financial Year failed:', _safeErr(error));
-  window.notifyBlocking('Close Financial Year failed: ' + error.message, 'error');
+  window.notifyBlocking('Close Financial Year failed: ' + error.message, 'error', 'Something went wrong');
   if (typeof backupTimestamp !== 'undefined') {
     updateCloseYearProgress('Restoring from backup...', 0);
     try {
       await restoreFromBackup(backupTimestamp);
-      showToast('Data restored from backup. No changes were committed.', 'info');
     } catch (restoreErr) {
       console.error('Failed to restore from backup:', _safeErr(restoreErr));
-      window.notifyBlocking('CRITICAL: Failed to restore from backup. Manual intervention required.', 'error');
+      window.notifyBlocking('CRITICAL: Failed to restore from backup. Manual intervention required.', 'error', 'Something went wrong');
     }
   }
   closeCloseYearDialog();
@@ -2812,7 +2809,6 @@ export async function deduplicateAllData() {
 if (!(await showGlassConfirm(_ddMsg, { title: 'Deduplicate All Data', confirmText: 'Run Cleanup', cancelText: 'Cancel', danger: true }))) {
 return;
 }
-showToast('Scanning for duplicates and old IDs...', 'info');
 const results = {
 collections: {},
 totalDuplicates: 0,
@@ -2911,15 +2907,11 @@ await sqliteStore.set(collection.key, cleaned);
 }
 }
 if (results.totalDuplicates > 0) {
-showToast(` Removed ${results.totalDuplicates} duplicates!`, 'success');
 await refreshAllDisplays();
 if (firebaseDB && currentUser) {
-showToast('Syncing cleaned data to cloud...', 'info');
 await performOneClickSync(true);
 }
 window.showGlassAlert(` Done! ${results.totalDuplicates} duplicates removed. Data synced to cloud.`, { tone: 'success', title: 'Cleanup Complete' });
-} else {
-showToast(' No duplicates found! Data is clean.', 'success');
 }
 return results;
 }
@@ -3171,7 +3163,6 @@ report.issues.slice(0, 5).forEach((issue, i) => {
 });
 if (report.issues.length > 5) {
 }
-} else {
 }
 if (report.issues.length > 0) {
 showToast(` Full verification: ${report.issues.length} issue${report.issues.length !== 1 ? 's' : ''} detected.`, 'warning', 4500);
@@ -3221,7 +3212,6 @@ if (!(await showGlassConfirm(
   'Clean all duplicate records?\n\n\u2022 Scans every collection in SQLite\n\u2022 Removes duplicates using record timestamps as the version selector\n\u2022 Deletes the duplicate documents from Firestore\n\u2022 Re-uploads the clean, deduplicated set\n\nNo valid records are deleted \u2014 only true duplicates (same UUID) are resolved.',
   { title: 'Clean Duplicates & Sync', confirmText: 'Clean & Sync', cancelText: 'Cancel', danger: false }
 ))) return;
-showToast('Scanning for duplicates\u2026', 'info', 4000);
 const COLLECTIONS = RECORD_STORES.map(r => ({ sqliteKey: r.sqlite, firestore: r.collection, label: r.label, liveVar: r.jsVar }));
 try {
   let totalDuplicates = 0;
@@ -3252,10 +3242,8 @@ try {
     }
   }
   if (totalDuplicates === 0) {
-    showToast('\u2714 No duplicates found \u2014 data is clean.', 'success', 4000);
     return;
   }
-  showToast(`Found ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''}. Removing from Firestore\u2026`, 'info', 5000);
   if (firebaseDB && currentUser) {
     const userRef = firebaseDB.collection('users').doc(currentUser.uid);
     for (const col of dirtyCollections) {
@@ -3295,23 +3283,14 @@ try {
         if (typeof DeltaSync !== 'undefined') await DeltaSync.setLastSyncTimestamp(col.firestore);
       } catch (colErr) {
         console.error('[Cleanup] Firestore sync failed for', col.firestore, _safeErr(colErr));
-        showToast('Firestore sync failed for ' + col.label + ': ' + colErr.message, 'error');
+        window.notifyBlocking('Firestore sync failed for ' + col.label + ': ' + colErr.message, 'error', 'Something went wrong');
       }
     }
-    showToast(
-      `\u2714 Removed ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''} from SQLite and Firestore. Canonical records re-uploaded.`,
-      'success', 6000
-    );
-  } else {
-    showToast(
-      `\u2714 Removed ${totalDuplicates} duplicate${totalDuplicates !== 1 ? 's' : ''} from local storage. Sign in to sync to cloud.`,
-      'success', 5000
-    );
   }
   try { await refreshAllDisplays(); } catch(e) {}
 } catch (err) {
   console.error('[runUnifiedCleanup] error:', _safeErr(err));
-  window.notifyBlocking('\u26a0 Cleanup failed: ' + err.message, 'error');
+  window.notifyBlocking('\u26a0 Cleanup failed: ' + err.message, 'error', 'Something went wrong');
 }
 }
 

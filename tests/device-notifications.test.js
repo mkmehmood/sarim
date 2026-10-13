@@ -7,10 +7,11 @@ class FakeNotification {
 }
 FakeNotification.permission = 'granted';
 const overlays = [];
+const docListeners = {};
 globalThis.window = { Notification: FakeNotification, Capacitor: null, matchMedia: () => ({ matches: true }) };
 globalThis.Notification = FakeNotification;
 globalThis.document = {
-  addEventListener() {},
+  addEventListener(name, fn) { docListeners[name] = fn; },
   removeEventListener() {},
   activeElement: null,
   contains: () => false,
@@ -47,7 +48,7 @@ const clickAction = (index) => {
 describe('describeForDevice mirrors the dialog', () => {
   it('uses the dialog title, tone line and every detail', () => {
     const msg = 'Insufficient cash in hand. Available: Rs 1,000 \u2014 Required: Rs 5,000';
-    const d = dialog.describeForDevice(msg, { tone: 'warning' });
+    const d = dialog.describeForDevice(msg, { tone: 'warning', title: 'Low cash in hand' });
     assert.equal(d.title, 'Low cash in hand');
     assert.match(d.body, /^Needs your attention/);
     assert.match(d.body, /Available: Rs 1,000/);
@@ -57,17 +58,17 @@ describe('describeForDevice mirrors the dialog', () => {
     const d = dialog.describeForDevice('The statement could not be created.', { tone: 'error', title: 'Statement failed' });
     assert.equal(d.title, 'Statement failed');
   });
-  it('derives a title from the message when nothing else applies', () => {
-    const d = dialog.describeForDevice('Backup file was saved on this phone.', { tone: 'success' });
-    assert.equal(d.title, 'Backup file was saved on this phone');
-    assert.equal(d.body, 'Backup file was saved on this phone.');
+  it('refuses to describe a dialog that has no title', () => {
+    assert.throws(() => dialog.describeForDevice('Backup file was saved on this phone.', { tone: 'success' }), TypeError);
   });
-  it('turns failure messages into specific titles', () => {
-    assert.equal(dialog.describeForDevice('Failed to save expense. Please try again.', { tone: 'error' }).title, 'Could not save expense');
+  it('refuses to open a dialog that has no title', () => {
+    assert.throws(() => dialog.showGlassAlert('Something happened', { tone: 'warning' }), TypeError);
+    assert.throws(() => dialog.showGlassConfirm('Delete it?', { confirmText: 'Delete' }), TypeError);
+    assert.throws(() => dialog.notifyBlocking('Something happened', 'warning'), TypeError);
   });
   it('keeps the full text without cutting it short', () => {
     const long = Array.from({ length: 30 }, (_, i) => `Item ${i}: Rs ${i * 100}`).join('\n');
-    const d = dialog.describeForDevice(`Review these items.\n${long}`, { tone: 'warning' });
+    const d = dialog.describeForDevice(`Review these items.\n${long}`, { tone: 'warning', title: 'Review items' });
     assert.match(d.body, /Item 29: Rs 2900/);
   });
   it('puts the chosen action first', () => {
@@ -102,7 +103,7 @@ describe('device notification after a dialog closes', () => {
   });
   it('notifies after an alert is acknowledged', async () => {
     shown.length = 0;
-    const p = dialog.showGlassAlert('Please enter a valid amount', { tone: 'warning' });
+    const p = dialog.showGlassAlert('Please enter a valid amount', { tone: 'warning', title: 'Missing information' });
     assert.equal(shown.length, 0);
     clickAction(0);
     await p;
@@ -114,7 +115,7 @@ describe('device notification after a dialog closes', () => {
   it('sends one notification for each dialog even when the text repeats', async () => {
     shown.length = 0;
     for (let i = 0; i < 2; i++) {
-      const p = dialog.showGlassAlert('Please enter a valid amount', { tone: 'warning' });
+      const p = dialog.showGlassAlert('Please enter a valid amount', { tone: 'warning', title: 'Missing information' });
       clickAction(0);
       await p;
     }
@@ -129,11 +130,15 @@ describe('toasts and fallbacks', () => {
     await wait(1400);
     assert.equal(shown.length, 0);
   });
-  it('reports the dialog flow as active until it settles', async () => {
-    const p = dialog.showGlassAlert('Merged opening balance records cannot be deleted', { tone: 'warning' });
+  it('keeps the dialog flow active until the next user input, however long it takes', async () => {
+    const p = dialog.showGlassAlert('Merged opening balance records cannot be deleted', { tone: 'warning', title: 'Action not allowed' });
     assert.equal(dialog.isDialogFlowActive(), true);
     clickAction(0);
     await p;
+    await wait(1200);
     assert.equal(dialog.isDialogFlowActive(), true);
+    overlays.length = 0;
+    docListeners.pointerdown({ target: { closest: () => null } });
+    assert.equal(dialog.isDialogFlowActive(), false);
   });
 });
