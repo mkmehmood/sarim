@@ -637,16 +637,16 @@ export async function getPaymentDeleteBlockReason(tx) {
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
 }
 
-// Unified single-transaction delete guard: merged records and transfer pairs are
-// classified by the pure planner, cash safety is checked against live balances.
-// Returns { block } — when plan.kind === 'transfer' the caller should delegate to
-// deletePaymentTransfer instead of deleting directly.
 export async function getBulkPaymentDeleteBlockReason(txs, what = 'Deleting these payments') {
   const drop = planBulkCashDrop(txs);
   if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), what);
 }
 
+// Unified single-transaction delete guard: merged records and transfer pairs are
+// classified by the pure planner, cash safety is checked against live balances.
+// Returns { block } — when plan.kind === 'transfer' the caller should delegate to
+// deletePaymentTransfer instead of deleting directly.
 export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
   if (!tx) return { block: null, plan: null };
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));

@@ -855,6 +855,26 @@ export function getTxLinkIssue(tx, ctx = {}) {
   return null;
 }
 
+// Price per kg a customer (or rep) is charged, from their own unpaid credit sales:
+// total value / total kg. Returns 0 when there is nothing to base it on.
+export function weightedUnitPrice(items) {
+  let qty = 0, val = 0;
+  for (const it of Array.isArray(items) ? items : []) {
+    const q = _n(it && it.quantity), v = _n(it && it.value);
+    if (q > 0 && v > 0) { qty += q; val += v; }
+  }
+  return qty > 0 ? Math.round((val / qty) * 10000) / 10000 : 0;
+}
+
+// Value of goods handed back, never more than what is still owed (a credit cannot
+// push the balance below zero). `outstanding` < 0 means "unknown": no cap is applied.
+export function planGoodsCredit(qty, unitPrice, outstanding) {
+  const raw = _r2(Math.max(0, _n(qty)) * Math.max(0, _n(unitPrice)));
+  if (outstanding == null || _n(outstanding) < 0) return { value: raw, raw, capped: false };
+  const cap = _r2(Math.max(0, _n(outstanding)));
+  return raw > cap ? { value: cap, raw, capped: true } : { value: raw, raw, capped: false };
+}
+
 export function planBulkCashDrop(txs) {
   return _r2((Array.isArray(txs) ? txs : [txs]).reduce((t, x) => t + getDeleteCashDrop(x), 0));
 }

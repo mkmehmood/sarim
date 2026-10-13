@@ -1,5 +1,5 @@
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
-import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue } from './link-graph.js';
+import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
@@ -9,7 +9,7 @@ import { _set_restoring, _set_closing, restoring, closing } from './admin-data.j
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getPendingRepDeliveries, getPendingRepReturns, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, selectReturnStore, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
-import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
+import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, getGoodsCreditUnitPrice, getReconciledRepReturnIds, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
@@ -1167,10 +1167,11 @@ const existingCustomer = sales.find(s => s && s.customerName && name && s.custom
 let existingCredit = 0;
 let _gcWarn = null;
 if (existingCustomer) {
+const _rrDone = await getReconciledRepReturnIds();
 for (const sale of sales) {
 if (!(sale && sale.customerName && name && sale.customerName.toLowerCase() === name.toLowerCase())) continue;
 if (_ed && sale.id === _ed.id) continue;
-existingCredit = round2(existingCredit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0));
+existingCredit = round2(existingCredit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0, { reconciledReturnIds: _rrDone }));
 }
 existingCredit = Math.max(0, existingCredit);
 }
@@ -1419,6 +1420,7 @@ if (collIn)  isColl ? collIn.classList.remove('hidden')  : collIn.classList.add(
 if (retIn)   isReturn ? retIn.classList.remove('hidden') : retIn.classList.add('hidden');
 if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
 if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
+if (isSale) _setCreditBox('');
 const collLbl = _el('cust-coll-result-label');
 if (collLbl) collLbl.textContent = isReturn ? 'Total Back From Rep:' : 'Balance After Collection:';
 const qtyRow = _el('customer-qty-row');
@@ -1442,8 +1444,10 @@ calculateCustomerSale();
 }
 }
 
+let _repPreviewSeq = 0;
 export function updateRepReturnPreview() {
 if (custTransactionMode !== 'return') return;
+const seq = ++_repPreviewSeq;
 const exp = parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0;
 const ret = parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0;
 const balEl = document.getElementById('cust-coll-balance');
@@ -1453,6 +1457,17 @@ if (balEl) {
 balEl.textContent = `${fmtNum(round2(exp + ret))} kg`;
 balEl.style.color = (exp + ret) > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)';
 }
+if (exp + ret <= 0) { _setCreditBox(''); return; }
+(async () => {
+try {
+const rep = _repSelectedValue();
+if (!rep) return;
+const [owed, unit] = await Promise.all([_partyOutstanding(rep), getGoodsCreditUnitPrice(rep)]);
+const plan = planGoodsCredit(exp + ret, unit, owed);
+if (seq !== _repPreviewSeq || custTransactionMode !== 'return') return;
+_setCreditBox(`${fmtAmt(plan.value)} off ${rep}'s balance (${fmtAmt(owed)} → ${fmtAmt(Math.max(0, round2(owed - plan.value)))}) · ${fmtNum(round2(exp + ret))} kg × ${fmtAmt(unit)}${plan.capped ? ' — limited to what is owed' : ''}`);
+} catch (_) {}
+})();
 }
 
 export async function saveRepReturn() {
@@ -1481,7 +1496,14 @@ if (pendingDelivered >= 0 && round2(alreadyBack + expired + returned) > round2(p
 window.notifyBlocking(`${rep} only has ${fmtNum(pendingDelivered)} kg awaiting reconciliation, and ${fmtNum(alreadyBack)} kg of that already has a pending return. Cannot add ${fmtNum(round2(expired + returned))} kg more.`, 'warning');
 return;
 }
-if (!(await window.gcCommit({ notes: ['Stock moves to CHORA / production only after the Calculator is reconciled.'] }))) return;
+const _repOwed = await _partyOutstanding(rep);
+const _repUnit = await getGoodsCreditUnitPrice(rep);
+const _repPlan = planGoodsCredit(round2(expired + returned), _repUnit, _repOwed);
+const _repNotes = ['Stock moves to CHORA / production only after the Calculator is reconciled.'];
+_repNotes.push(_repPlan.value > 0
+? `${fmtAmt(_repPlan.value)} (${fmtNum(round2(expired + returned))} kg × ${fmtAmt(_repUnit)}) will be deducted from ${rep}'s balance${_repPlan.capped ? ' (limited to what is owed)' : ''}. This is not cash.`
+: `${rep} has no balance owed, so nothing is deducted.`);
+if (!(await window.gcCommit({ notes: _repNotes }))) return;
 let gpsCoords = null;
 try {
 gpsCoords = await Promise.race([getPosition(), new Promise(resolve => setTimeout(() => resolve(null), 10000))]);
@@ -1504,6 +1526,7 @@ totalCost: 0, totalValue: 0, profit: 0,
 creditReceived: true,
 isRepReturn: true,
 expiredQty: expired, returnedQty: returned,
+...(_repPlan.value > 0 ? { returnValue: _repPlan.value, returnUnitPrice: _repUnit } : {}),
 gps: gpsCoords,
 syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
@@ -1519,6 +1542,7 @@ emitSyncUpdate({ sales: null });
 const savedRep = rep;
 const _e1 = document.getElementById('rep-return-expired'); if (_e1) _e1.value = '';
 const _e2 = document.getElementById('rep-return-qty'); if (_e2) _e2.value = '';
+_setCreditBox('');
 const _nameEl = document.getElementById('cust-name'); if (_nameEl) _nameEl.value = '';
 const _firstRepBtn = document.querySelector('#sales-rep-toggle-group .toggle-opt');
 if (_firstRepBtn) selectSalesRep(_firstRepBtn, 'NONE');
@@ -1526,7 +1550,7 @@ setSaleMode('sale');
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
 if (typeof loadSalesData === 'function') { try { await loadSalesData(currentCompMode); } catch (_) {} }
-showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned. It will reach CHORA / production when the Calculator is reconciled.`, 'success');
+showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned${_repPlan.value > 0 ? `, ${fmtAmt(_repPlan.value)} deducted from the balance` : ''}. Stock reaches CHORA / production when the Calculator is reconciled.`, 'success');
 } catch (error) {
 sales.length = 0;
 sales.push(...snapshot);
@@ -1538,22 +1562,64 @@ if (btn) btn.disabled = false;
 }
 }
 
+// What a customer / rep currently owes: unpaid credit sales and old debt, less money
+// collected and goods credited back. Returns 0 at minimum.
+async function _partyOutstanding(name, excludeId) {
+const lname = String(name || '').trim().toLowerCase();
+if (!lname) return 0;
+const done = await getReconciledRepReturnIds();
+let total = 0;
+for (const s of ensureArray(await sqliteStore.get('sales'))) {
+if (!s || s.deletedAt || s.currentRepProfile !== 'admin' || s.id === excludeId) continue;
+if (!s.customerName || s.customerName.toLowerCase() !== lname) continue;
+total = round2(total + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: done }));
+}
+return Math.max(0, total);
+}
+
+function _setCreditBox(text) {
+const box = document.getElementById('cust-coll-credit-box');
+const val = document.getElementById('cust-coll-credit');
+if (!box) return;
+if (!text) { box.style.display = 'none'; return; }
+box.style.display = '';
+if (val) val.textContent = text;
+}
+
+let _previewSeq = 0;
 export function updateCollectionPreview() {
 if (custTransactionMode !== 'collection') return;
+const seq = ++_previewSeq;
 const creditEl = document.getElementById('customer-current-credit');
 const collRes  = document.getElementById('cust-coll-result');
 const balEl    = document.getElementById('cust-coll-balance');
 const amtEl    = document.getElementById('cust-amount-collected');
+const expEl    = document.getElementById('cust-expired-qty');
+const nameEl   = document.getElementById('cust-name');
 const currentDebt = creditEl
 ? parseFloat((creditEl.innerText || '0').replace(/[^0-9.-]/g, '')) || 0
 : 0;
 const collected = parseFloat(amtEl?.value) || 0;
-const remaining = Math.max(0, currentDebt - collected);
+const expired = parseFloat(expEl?.value) || 0;
+const paint = (remaining) => {
 if (collRes) collRes.style.display = '';
 if (balEl) {
 balEl.textContent = fmtAmt(remaining);
 balEl.style.color = remaining === 0 ? 'var(--accent-emerald)' : 'var(--warning)';
 }
+};
+paint(Math.max(0, currentDebt - collected));
+if (expired <= 0) { _setCreditBox(''); return; }
+(async () => {
+try {
+const name = nameEl ? nameEl.value.trim() : '';
+const unit = await getGoodsCreditUnitPrice(name);
+const plan = planGoodsCredit(expired, unit, Math.max(0, currentDebt - collected));
+if (seq !== _previewSeq || custTransactionMode !== 'collection') return;
+paint(Math.max(0, round2(currentDebt - collected - plan.value)));
+_setCreditBox(`${fmtAmt(plan.value)} (${fmtNum(expired)} kg × ${fmtAmt(unit)})${plan.capped ? ' — limited to what is owed' : ''}`);
+} catch (_) {}
+})();
 }
 
 export async function saveCustomerCollection() {
@@ -1589,7 +1655,8 @@ s && s.currentRepProfile === 'admin' &&
 !(_ed && s.id === _ed.id) &&
 s.customerName && s.customerName.toLowerCase() === name.toLowerCase()
 );
-for (const s of _custHistory) _custOutstanding = round2(_custOutstanding + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
+const _rrDone = await getReconciledRepReturnIds();
+for (const s of _custHistory) _custOutstanding = round2(_custOutstanding + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
 if (_ed && Array.isArray(_ed.original.allocations)) _custOutstanding = round2(_custOutstanding + _ed.original.allocations.reduce((t, a) => t + (Number(a.amount) || 0), 0));
 _custOutstanding = Math.max(0, _custOutstanding);
 } catch (_e) { _custOutstanding = -1; }
@@ -1606,8 +1673,19 @@ if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relate
 window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 'Credit warning');
 restoreBtn(); return;
 }
+let expiredValue = 0, _expUnit = 0, _expCapped = false;
+if (expired > 0) {
+_expUnit = await getGoodsCreditUnitPrice(name, _ed ? _ed.id : null);
+const _gp = planGoodsCredit(expired, _expUnit, _custOutstanding >= 0 ? Math.max(0, _custOutstanding - amount) : -1);
+expiredValue = _gp.value; _expCapped = _gp.capped;
+}
 const _gcExtra = _gcWarn ? { ..._gcWarn } : {};
-if (expired > 0) _gcExtra.notes = [`Expired ${fmtNum(expired)} kg will be added to CHORA raw material.`];
+if (expired > 0) {
+_gcExtra.notes = [`Expired ${fmtNum(expired)} kg will be added to CHORA raw material.`];
+_gcExtra.notes.push(expiredValue > 0
+? `Expired goods credited: ${fmtAmt(expiredValue)} (${fmtNum(expired)} kg × ${fmtAmt(_expUnit)}) will be deducted from ${name}'s balance${_expCapped ? ' (limited to what is owed)' : ''}. This is not cash.`
+: `No balance is owed, so the expired goods are recorded without a credit.`);
+}
 if (!(await window.gcCommit(_gcExtra))) { restoreBtn(); return; }
 let gpsCoords = null;
 try {
@@ -1655,6 +1733,7 @@ syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
 };
 if (expired > 0) collRecord.expiredQty = expired;
+if (expiredValue > 0) { collRecord.expiredValue = expiredValue; collRecord.expiredUnitPrice = _expUnit; }
 if (_ed) {
 const o = _ed.original;
 stampEdit(collRecord, o);
@@ -1715,6 +1794,7 @@ emitSyncUpdate({ sales: null});
 const savedName = name;
 if (amountEl) amountEl.value = '';
 if (expiredEl) expiredEl.value = '';
+_setCreditBox('');
 const _custNameEl = document.getElementById('cust-name');
 if (_custNameEl) _custNameEl.value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
@@ -1726,7 +1806,7 @@ if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') refreshCustomerSales();
 if (typeof calculateCustomerStatsForDisplay === 'function') await calculateCustomerStatsForDisplay(savedName);
 const _allocNote = _alloc && (_alloc.paidCount || _alloc.partialCount) ? ` — ${_alloc.paidCount} sale${_alloc.paidCount === 1 ? '' : 's'} marked paid${_alloc.partialCount ? `, 1 part-paid` : ''}` : '';
-const _expNote = expired > 0 ? `${_allocNote ? ',' : ' —'} ${fmtNum(expired)} kg expired ${collRecord.expiredApplied === false ? 'recorded (CHORA not updated)' : 'added to CHORA'}` : '';
+const _expNote = expired > 0 ? `${_allocNote ? ',' : ' —'} ${fmtNum(expired)} kg expired ${collRecord.expiredApplied === false ? 'recorded (CHORA not updated)' : 'added to CHORA'}${expiredValue > 0 ? `, ${fmtAmt(expiredValue)} credited to the balance` : ''}` : '';
 const _collHead = _ed
 ? (amount > 0 ? ` Collection updated: ${fmtAmt(amount)} for ${name}` : ` Collection updated for ${name}`)
 : (amount > 0 ? ` Collection of ${fmtAmt(amount)} recorded for ${name}` : ` Collection recorded for ${name}`);
@@ -2066,10 +2146,12 @@ _dcMsg += `\nDate: ${recordDate}`;
 if (_dcIsRepReturn) {
 _dcMsg += `\nExpired / Damage: ${fmtNum(recordToDelete.expiredQty || 0)} kg`;
 _dcMsg += `\nReturned: ${fmtNum(recordToDelete.returnedQty || 0)} kg`;
-_dcMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator. No stock has moved yet.`;
+if (Number(recordToDelete.returnValue) > 0) _dcMsg += `\nBalance deducted: ${fmtAmt(recordToDelete.returnValue)}`;
+_dcMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator${Number(recordToDelete.returnValue) > 0 ? ' and the deduction will be added back to the rep\'s balance' : ''}. No stock has moved yet.`;
 } else if (_dcIsCollection) {
 if (collectionCollected(recordToDelete) > 0) _dcMsg += `\nAmount: ${fmtAmt(collectionCollected(recordToDelete))}`;
 if (Number(recordToDelete.expiredQty) > 0) _dcMsg += `\nExpired / Damage: ${fmtNum(recordToDelete.expiredQty)} kg`;
+if (Number(recordToDelete.expiredValue) > 0) _dcMsg += `\nExpired credit: ${fmtAmt(recordToDelete.expiredValue)} (balance will go back up by this)`;
 if (collectionCollected(recordToDelete) > 0) _dcMsg += `\n\n Deleting this collection will restore the credit balance to this customer${(recordToDelete.allocations||[]).length ? ' and mark the sales it paid as unpaid again' : ''}.`;
 if (Number(recordToDelete.expiredQty) > 0 && recordToDelete.expiredApplied !== false) _dcMsg += `\n\n ${fmtNum(recordToDelete.expiredQty)} kg will be removed from CHORA raw material.`;
 } else {
