@@ -48,10 +48,22 @@ export function debtNeedsGross(t) {
   return t.paymentType === 'CREDIT' && !(t.isMerged && typeof t.creditValue === 'number');
 }
 
-export function debtDelta(t, grossValue) {
+// Goods handed back (expired / returned) are credited to the customer at their own
+// price per kg. This is a NON-CASH credit: it lowers what is owed but never counts
+// as money received. `opts.reconciledReturnIds` lets callers say which rep returns the
+// Calculator has already settled; those stop deducting because the rep's credit sales
+// are marked paid at that point.
+export function debtDelta(t, grossValue, opts) {
   if (!t) return 0;
   const partial = num(t.partialPaymentReceived, 0);
   const gross = num(grossValue, 0);
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN') {
+    const v = round2(Math.max(0, num(t.returnValue, 0)));
+    if (v <= 0) return 0;
+    const done = opts && opts.reconciledReturnIds;
+    if (done && typeof done.has === 'function' && done.has(t.id)) return 0;
+    return -v;
+  }
   if (t.transactionType === 'OLD_DEBT') {
     return t.creditReceived ? 0 : round2(Math.max(0, gross - partial));
   }
@@ -60,7 +72,7 @@ export function debtDelta(t, grossValue) {
     return round2(Math.max(0, gross - partial));
   }
   if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') {
-    return round2(-Math.max(0, num(t.totalValue, 0)));
+    return round2(-(Math.max(0, num(t.totalValue, 0)) + Math.max(0, num(t.expiredValue, 0))));
   }
   return 0;
 }

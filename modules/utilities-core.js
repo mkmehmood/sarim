@@ -3293,6 +3293,7 @@ const getSalePrice = async (t) => {
   if (lockedUnitPrice(t) > 0) return lockedUnitPrice(t);
   return await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey());
 };
+const _rrSet = await (typeof window.getReconciledRepReturnIds === 'function' ? window.getReconciledRepReturnIds() : new Set());
 const buildSaleRow = async (t, runBal) => {
   const pt = t.paymentType || 'CASH';
   const isOldDebt = t.transactionType === 'OLD_DEBT';
@@ -3324,12 +3325,14 @@ const buildSaleRow = async (t, runBal) => {
   } else if (pt === 'REP_RETURN') {
     typeLabel = 'REP RETURN';
     detailLabel = `Expired ${fmtAmt(t.expiredQty||0)} kg | Returned ${fmtAmt(t.returnedQty||0)} kg`;
+    if (Number(t.returnValue) > 0 && !_rrSet.has(t.id)) { credit = Number(t.returnValue); extraDetail = `\nCredited: ${fmtAmt(credit)} (not cash)`; }
     displayDate = formatDisplayDate(t.date);
   } else if (pt === 'COLLECTION') {
     credit = parseFloat(t.totalValue) || 0;
     typeLabel = 'COLLECTION';
     detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : (credit > 0 || !(Number(t.expiredQty) > 0) ? 'Cash payment received' : 'Expired stock received');
     if (Number(t.expiredQty) > 0) extraDetail = `\nExpired: ${fmtAmt(Number(t.expiredQty))} kg`;
+    if (Number(t.expiredValue) > 0) { credit += Number(t.expiredValue); extraDetail += `\nExpired credit: ${fmtAmt(Number(t.expiredValue))} (not cash)`; }
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {
     credit = parseFloat(t.totalValue) || 0;

@@ -6,7 +6,7 @@ import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLabel, refreshCustomerSales, updateCollectionPreview } from './utilities-sales.js';
 import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, reverseExpiredFromChora, safeValue } from './utilities-payments.js';
-import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, updateUnitsAvailableIndicator } from './factory.js';
+import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, getReconciledRepReturnIds, updateUnitsAvailableIndicator } from './factory.js';
 import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
@@ -44,9 +44,10 @@ return;
 }
 let totalCredit = 0;
 let totalQty = 0;
+const _rrDone = await getReconciledRepReturnIds();
 for (const s of matchedSales) {
 totalQty += (s.quantity || 0);
-totalCredit = round2(totalCredit + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
+totalCredit = round2(totalCredit + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
 }
 totalCredit = Math.max(0, totalCredit);
 const _setCust = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -93,6 +94,7 @@ console.warn('Registry refresh failed, using in-memory:', _safeErr(regError));
 const filterInput = document.getElementById('customer-filter');
 const filterValue = filterInput ? filterInput.value.toLowerCase() : '';
 const customerStats = {};
+const _rrDone = await getReconciledRepReturnIds();
 for (const sale of sales) {
 const name = sale.customerName;
 if (!name || name.trim() === '') continue;
@@ -102,7 +104,7 @@ if (!customerStats[name]) {
 customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
 }
 customerStats[name].quantity += (sale.quantity || 0);
-customerStats[name].credit = round2(customerStats[name].credit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0));
+customerStats[name].credit = round2(customerStats[name].credit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0, { reconciledReturnIds: _rrDone }));
 const saleDate = sale.date;
 if (saleDate) {
 const timestamp = new Date(saleDate).getTime();
@@ -225,7 +227,8 @@ const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true 
 if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
 }
 let totalDebt = 0;
-for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
+const _rrDone = await getReconciledRepReturnIds();
+for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
 totalDebt = Math.max(0, totalDebt);
 let msg = `Permanently delete customer "${name}"?`;
 if (txs.length > 0) {
@@ -300,7 +303,8 @@ historyTxns = sales.filter(s =>
 s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 }
-const _custDelta = async (t) => debtDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0);
+const _rrDone = await getReconciledRepReturnIds();
+const _custDelta = async (t) => debtDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone });
 const _runBal = new Map();
 let _runTotal = 0;
 const _ascTx = historyTxns.map((t, i) => ({ t, i })).sort((a, b) => txChronoCompare(a.t, b.t) || (a.i - b.i));
@@ -424,7 +428,8 @@ itemContent = `
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     <div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(_rrExp)} kg \u2192 CHORA</div>
     <div style="font-size:0.75rem;color:var(--accent-emerald);">Returned: ${fmtNum(_rrRet)} kg</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation' : 'Waiting for Calculator reconciliation'}</div>
+    ${Number(t.returnValue) > 0 ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">${_rrUsed.has(t.id) ? 'Credited' : 'Deducted from balance'}: ${await formatCurrency(Number(t.returnValue))}${Number(t.returnUnitPrice) > 0 ? ` (${fmtNum(_rrExp + _rrRet)} kg × ${fmtAmt(Number(t.returnUnitPrice))})` : ''}</div>` : ''}
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -438,7 +443,8 @@ itemContent = `
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     ${(isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0)) ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>` : ''}
     ${Number(t.expiredQty) > 0 ? `<div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg ${t.expiredApplied === false ? '(CHORA not updated)' : '\u2192 CHORA'}</div>` : ''}
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? 'Bulk Payment' : 'Expired Stock')}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    ${Number(t.expiredValue) > 0 ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">Expired credit: ${await formatCurrency(Number(t.expiredValue))}${Number(t.expiredUnitPrice) > 0 ? ` (${fmtNum(Number(t.expiredQty))} kg × ${fmtAmt(Number(t.expiredUnitPrice))})` : ''} — not cash</div>` : ''}
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -586,6 +592,7 @@ _txMsg = `Delete this collection from ${_txCust || 'customer'}?`;
 if (_txDate) _txMsg += `\nDate: ${_txDate}`;
 if (collectionCollected(_txItem) > 0) _txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
 if (Number(_txItem.expiredQty) > 0) _txMsg += `\nExpired / Damage: ${fmtNum(Number(_txItem.expiredQty))} kg`;
+if (Number(_txItem.expiredValue) > 0) _txMsg += `\nExpired credit: ${fmtAmt(Number(_txItem.expiredValue))}`;
 if (collectionCollected(_txItem) > 0) _txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
 if (Number(_txItem.expiredQty) > 0 && _txItem.expiredApplied !== false) _txMsg += `\n\n\u21a9 ${fmtNum(Number(_txItem.expiredQty))} kg will be removed from CHORA raw material.`;
 } else if (_txItem?.isRepReturn) {
@@ -594,7 +601,8 @@ _txMsg = `Delete this return logged for ${_txCust || 'the rep'}?`;
 if (_txDate) _txMsg += `\nDate: ${_txDate}`;
 _txMsg += `\nExpired / Damage: ${fmtNum(_txItem.expiredQty || 0)} kg`;
 _txMsg += `\nReturned: ${fmtNum(_txItem.returnedQty || 0)} kg`;
-_txMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator. No stock has moved yet.`;
+if (Number(_txItem.returnValue) > 0) _txMsg += `\nBalance deducted: ${fmtAmt(Number(_txItem.returnValue))}`;
+_txMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator${Number(_txItem.returnValue) > 0 ? ' and the deduction will be added back to the rep\'s balance' : ''}. No stock has moved yet.`;
 } else if (_txItem?.paymentType === 'PARTIAL_PAYMENT') {
 _txTitle = 'Delete Partial Payment';
 _txMsg = `Delete this partial payment from ${_txCust || 'customer'}?`;

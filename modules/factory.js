@@ -1,5 +1,5 @@
 import { findCalcLinkForReturn } from './link-guards.js';
-import { sortInventoryItems, runExclusive, findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment } from './link-graph.js';
+import { sortInventoryItems, runExclusive, findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment, weightedUnitPrice } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, stampEdit } from './edit-mode.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
@@ -694,6 +694,33 @@ const qty = parseFloat(t.quantity) || 0;
 const locked = lockedSaleValue(t);
 if (locked !== null) return locked;
 return round2(qty * (await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey())));
+}
+
+// Rep returns the Calculator has already settled (they stop deducting from the rep's balance).
+export async function getReconciledRepReturnIds() {
+const ids = new Set();
+ensureArray(await sqliteStore.get('calculator')).forEach(h => {
+if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => ids.add(i));
+});
+return ids;
+}
+
+// Price per kg used to value goods handed back by a customer or rep: what they are
+// actually charged on their unpaid credit sales, else their last sale, else their
+// current price list.
+export async function getGoodsCreditUnitPrice(name, excludeId) {
+const lname = String(name || '').trim().toLowerCase();
+if (!lname) return 0;
+const sales = ensureArray(await sqliteStore.get('sales')).filter(s =>
+s && !s.deletedAt && !s.isMerged && s.currentRepProfile === 'admin' && s.id !== excludeId &&
+s.customerName && String(s.customerName).trim().toLowerCase() === lname &&
+s.paymentType === 'CREDIT' && s.transactionType !== 'OLD_DEBT' && !s.isRepTransfer && Number(s.quantity) > 0);
+const toItem = async (x) => ({ quantity: x.quantity, value: await getSaleTransactionValue(x) });
+let price = weightedUnitPrice(await Promise.all(sales.filter(x => !x.creditReceived).map(toItem)));
+if (price > 0) return price;
+const last = sales.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0))[0];
+if (last) { price = weightedUnitPrice([await toItem(last)]); if (price > 0) return price; }
+return (await getEffectiveSalePriceForCustomer(name, getDefaultStoreKey())) || 0;
 }
 
 export async function getCostPriceForStore(store) {
@@ -1420,6 +1447,7 @@ window.linkMaterialToSupplier = linkMaterialToSupplier;
 window.selectFactoryFormula = selectFactoryFormula;
 window.getSalePriceForStore = getSalePriceForStore;
 window.getEffectiveSalePriceForCustomer = getEffectiveSalePriceForCustomer;
+window.getReconciledRepReturnIds = getReconciledRepReturnIds;
 window.getSaleTransactionValue = getSaleTransactionValue;
 window.getCostPriceForStore = getCostPriceForStore;
 window.getStorePricing = getStorePricing;
