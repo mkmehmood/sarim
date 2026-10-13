@@ -1393,7 +1393,7 @@ return (v && v !== 'NONE') ? v : '';
 
 function _syncRepReturnLabel() {
 const btnColl = document.getElementById('btn-cust-mode-coll');
-if (btnColl) btnColl.textContent = _repSelectedValue() ? 'Return' : 'Collection';
+if (btnColl) btnColl.textContent = 'Collection';
 }
 
 export function setSaleMode(mode) {
