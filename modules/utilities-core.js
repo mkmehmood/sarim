@@ -1182,8 +1182,7 @@ const formulaUnits = parseFloat(formulaUnitsElement.value) || 0;
 const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(store) : formulaTypeFor(store);
 const salePrice = await getSalePriceForStore(store);
 const validation = await validateFormulaAvailability(store, formulaUnits);
-const _origPool = (_ed && _ed.original.formulaStore && typeof getStoreFormulaType === 'function') ? await getStoreFormulaType(_ed.original.formulaStore) : (_ed && _ed.original.formulaStore);
-const _unitCredit = (_ed && _origPool === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;
+const _unitCredit = (_ed && _ed.original.formulaStore === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;
 if (!validation.sufficient && !(_ed && validation.available + _unitCredit + 1e-9 >= formulaUnits)) {
 window.notifyBlocking(`Not enough formula units at ${(typeof window.getStoreLabel === 'function' && window.getStoreLabel(store)) || store}\nAvailable: ${fmtNum(validation.available)} units\nRequested: ${fmtNum(formulaUnits)} units\nShortage: ${fmtNum(Math.max(0, formulaUnits - validation.available))} units`, 'error', 'Low formula units');
 return;
@@ -1200,7 +1199,7 @@ return;
 }
 }
 let costData = await calculateDynamicCost(store, formulaUnits, net);
-if (_ed && _origPool === costData.formulaStore && Array.isArray(_ed.original.formulaMaterials) && _ed.original.formulaUnits > 0 && _ed.original.formulaCost > 0 && net > 0) {
+if (_ed && _ed.original.formulaStore === costData.formulaStore && Array.isArray(_ed.original.formulaMaterials) && _ed.original.formulaUnits > 0 && _ed.original.formulaCost > 0 && net > 0) {
 const _frozenUnit = _ed.original.formulaCost / _ed.original.formulaUnits;
 costData = { ...costData, costPerUnit: _frozenUnit, totalFormulaCost: _frozenUnit * formulaUnits, dynamicCostPerKg: (_frozenUnit * formulaUnits) / net, formulaName: _ed.original.formulaName || costData.formulaName, formulaMaterials: _ed.original.formulaMaterials };
 }

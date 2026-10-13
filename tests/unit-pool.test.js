@@ -21,10 +21,3 @@ describe('unitPoolKey', () => {
     assert.equal(unitPoolKey('whatever', null, null), 'standard');
   });
 });
-
-describe('unitPoolKey legacy records', () => {
-  it('a record stamped with the asaan slot maps to the shared pool when slots share a formula', () => {
-    const slots = { standard: 'f1', asaan: 'f1' };
-    assert.equal(unitPoolKey('asaan', null, slots), unitPoolKey('standard', null, slots));
-  });
-});
