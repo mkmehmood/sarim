@@ -507,8 +507,21 @@ export function syncFactoryAvailPicker(slot) {
   _renderChoice('factoryAvailToggle', _slotItems(view, view ? view.availOrder : []), slot, (k) => { if (typeof window.setFactoryAvailableStore === 'function') window.setFactoryAvailableStore(k); }, 'No formula');
 }
 
+let _slotHealTried = false;
+
 export async function refreshFormulaDependentUI() {
   const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('tracking')]);
+  // A store can have a formula selected (Store Manager) that no slot holds, so
+  // New Entry resolves it to an empty slot (0 units, "Asaan"). Reconcile the
+  // slots with the stores once; commit refuses if it would strand units.
+  if (!_slotHealTried && stores.some((s) => s.formulaId && !SLOT_KEYS.some((k) => String(slots[k]) === String(s.formulaId)))) {
+    _slotHealTried = true;
+    try {
+      const r = await commitStoresWithFormulas(stores);
+      if (r && r.ok) return;
+    } catch (e) { console.error('Formula slot reconcile failed:', (e && e.message) || e); }
+    return refreshFormulaDependentUI();
+  }
   // Resolve each store's slot from the formula it actually has selected (same
   // rule the unit pools use). A stale formulaType must not surface an empty slot.
   const typeMap = {};
