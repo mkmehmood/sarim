@@ -294,10 +294,10 @@ const cost = parseFloat(document.getElementById('factoryMaterialCost').value) ||
 const conversionFactor = parseFloat(document.getElementById('factoryMaterialConversionFactor').value) || 1;
 const unitName = document.getElementById('factoryMaterialUnitName').value.trim() || '';
 const supplierType = document.getElementById('factoryMaterialSupplierType').value;
-if (!name) return window.notifyBlocking('Name required', 'warning');
-if (qty < 0) return window.notifyBlocking('Quantity cannot be negative', 'warning');
-if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater than 0', 'warning');
-if (conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning');
+if (!name) return window.notifyBlocking('Name required', 'warning', 'Warning');
+if (qty < 0) return window.notifyBlocking('Quantity cannot be negative', 'warning', 'Warning');
+if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater than 0', 'warning', 'Warning');
+if (conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning', 'Warning');
 if (!(await window.gcCommit({}))) return;
 try {
 const quantityInKg = qty * conversionFactor;
@@ -385,9 +385,8 @@ if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 closeFactoryInventoryModal();
 if (typeof calculateNetCash === 'function') calculateNetCash();
-showToast('Material saved successfully!', 'success');
 } catch (error) {
-window.notifyBlocking('Failed to save material. Please try again.', 'error');
+window.notifyBlocking('Failed to save material. Please try again.', 'error', 'Something went wrong');
 }
 }
 
@@ -534,8 +533,8 @@ if (Array.isArray(reloadedData)) {
 material = inventory.find(m => m.id === materialId);
 }
 }
-if (!material) { window.notifyBlocking('Material not found', 'error'); return; }
-if (!material.supplierId) { window.notifyBlocking('No supplier linked', 'warning'); return; }
+if (!material) { window.notifyBlocking('Material not found', 'error', 'Something went wrong'); return; }
+if (!material.supplierId) { window.notifyBlocking('No supplier linked', 'warning', 'Warning'); return; }
 const linkedTransactions = transactions.filter(t => t.materialId === materialId && t.entityId === material.supplierId && t.isPayable === true);
 const _us2Total = linkedTransactions.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 let confirmMsg = `Unlink ${material.supplierName} from "${material.name}"?`;
@@ -773,7 +772,7 @@ export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFact
 async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
 if (!currentFactoryEntryStore) {
-window.notifyBlocking('Please select a formula before saving.', 'warning');
+window.notifyBlocking('Please select a formula before saving.', 'warning', 'Warning');
 return;
 }
 const _sfpeBatch = await sqliteStore.getBatch([
@@ -785,11 +784,11 @@ const factoryAdditionalCosts = _sfpeBatch.get('costs') || {};
 const inventory = ensureArray(_sfpeBatch.get('inventory'));
 const factory = ensureArray(_sfpeBatch.get('factory'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('factory')) {
-window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning');
+window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning', 'Warning');
 return;
 }
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
-if (units <= 0) return window.notifyBlocking('Invalid units', 'warning');
+if (units <= 0) return window.notifyBlocking('Invalid units', 'warning', 'Warning');
 const inventorySnapshot = JSON.parse(JSON.stringify(inventory));
 const historySnapshot = [...factory];
 let _histSavedRec = null;
@@ -798,7 +797,7 @@ const _sfpeType = typeof getStoreFormulaType === 'function' ? await getStoreForm
 const _freshFormula = await getSelectedFormula(currentFactoryEntryStore);
 const settings = _freshFormula.ingredients.filter(i => i.quantity > 0);
 if (!settings || settings.length === 0) {
-window.notifyBlocking('No formula configured for this store. Assign a formula to it in Store Manager first.', 'warning');
+window.notifyBlocking('No formula configured for this store. Assign a formula to it in Store Manager first.', 'warning', 'Warning');
 return;
 }
 let _edHistIdx = -1;
@@ -951,7 +950,7 @@ await sqliteStore.setBatch([
 ]);
 } catch (rollbackError) {
 console.error('Failed to save data locally.', _safeErr(rollbackError));
-window.notifyBlocking('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+window.notifyBlocking('Production rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error', 'Something went wrong');
 }
 if (_histSavedRec) {
 try {
@@ -960,7 +959,7 @@ else await unifiedDelete('factory', factory, _histSavedRec.id, { strict: false }
 } catch (_undoErr) { console.error('Could not undo the saved batch record.', _safeErr(_undoErr)); }
 }
 if (error && error.message === '__GC_CANCEL__') return;
-window.notifyBlocking(error.message || 'Failed to save production data. Please try again.', 'error');
+window.notifyBlocking(error.message || 'Failed to save production data. Please try again.', 'error', 'Something went wrong');
 }
 }
 
@@ -1092,11 +1091,11 @@ export async function deleteFactoryEntry(id) {
 const factory = ensureArray(await sqliteStore.get('factory'));
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
-if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid factory entry ID', 'error'); return; }
+if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid factory entry ID', 'error', 'Something went wrong'); return; }
 const entryIndex = factory.findIndex(e => e.id === id);
 if (entryIndex === -1) { await refreshFactoryTab(); return; }
 const entry = factory[entryIndex];
-if (entry.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning'); return; }
+if (entry.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed'); return; }
 const _feFormulaKey = entry.formulaType || (typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(entry.store) : entry.store);
 const _feRestore = (Array.isArray(entry.materialsUsed) && entry.materialsUsed.length > 0)
 ? entry.materialsUsed.map(m => ({ id: m.id, name: m.name, quantity: m.quantity }))
@@ -1112,7 +1111,7 @@ return ` • ${inv?.name || f.name || 'Material'}: ${fmtNum(f.quantity)} kg rest
 const _feTracking = await updateFormulaInventory();
 const _feAvail = _feTracking?.[_feFormulaKey]?.available || 0;
 if (_feAvail + 1e-9 < (entry.units || 0)) {
-window.notifyBlocking(`Cannot delete: ${fmtNum((entry.units || 0) - _feAvail)} unit${((entry.units || 0) - _feAvail) === 1 ? '' : 's'} of this batch already used in manufacturing entries. Delete those first.`, 'warning');
+window.notifyBlocking(`Cannot delete: ${fmtNum((entry.units || 0) - _feAvail)} unit${((entry.units || 0) - _feAvail) === 1 ? '' : 's'} of this batch already used in manufacturing entries. Delete those first.`, 'warning', 'Action not allowed');
 return;
 }
 }
@@ -1154,13 +1153,8 @@ await refreshFactoryTab();
 calculateNetCash();
 calculateCashTracker();
 notifyDataChange('factory');
-if (restoredMaterials.length > 0) {
-showToast(` Entry deleted! Raw materials restored: ${restoredMaterials.map(m => `${m.name}: +${fmtNum(m.quantity)} kg`).join(', ')}`, 'success');
-} else {
-showToast(' Entry deleted and inventory restored.', 'success');
-}
 } catch (error) {
-window.notifyBlocking(' Failed to delete entry. Please try again.', 'error');
+window.notifyBlocking(' Failed to delete entry. Please try again.', 'error', 'Something went wrong');
 }
 }
 }
@@ -1337,10 +1331,10 @@ export async function deleteProdEntry(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const production = ensureArray(await sqliteStore.get('production'));
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
-if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid production record ID', 'error'); return; }
+if (!id || !validateUUID(id)) { window.notifyBlocking('Invalid production record ID', 'error', 'Something went wrong'); return; }
 const entryToDelete = production.find(item => item.id === id);
 if (!entryToDelete) return;
-if (entryToDelete.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning'); return; }
+if (entryToDelete.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed'); return; }
 if (entryToDelete.isTransfer === true) {
 if (typeof deleteStockTransfer === 'function') await deleteStockTransfer(entryToDelete.transferPairId);
 return;
@@ -1348,7 +1342,7 @@ return;
 const isReturn = entryToDelete.isReturn === true;
 if (isReturn) {
 const _lk = await findCalcLinkForReturn(entryToDelete);
-if (_lk) { window.notifyBlocking(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning'); return; }
+if (_lk) { window.notifyBlocking(`This return belongs to ${_lk.entry.seller}'s calculator record of ${_lk.entry.date}. Delete that calculator record to remove it.`, 'warning', 'Warning'); return; }
 }
 const _dpStoreLabel = getStoreLabel(entryToDelete.store) || entryToDelete.store;
 const _retLog = isReturn ? findReturnLogFor(entryToDelete, ensureArray(await sqliteStore.get('returns'))) : null;
@@ -1356,7 +1350,7 @@ const _stockDrop = isReturn ? getReturnStockDrop(entryToDelete, _retLog) : (entr
 if (_stockDrop > 0 && typeof window.computeStoreStockSnapshot === 'function') {
 const _snap = await window.computeStoreStockSnapshot(entryToDelete.store, entryToDelete.date);
 if (_snap.available - _stockDrop < -0.0001) {
-window.notifyBlocking(`Cannot delete: ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning');
+window.notifyBlocking(`Cannot delete: ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning', 'Action not allowed');
 return;
 }
 }
@@ -1398,13 +1392,8 @@ await refreshUI();
 calculateNetCash();
 calculateCashTracker();
 const deletedQuantity = entryToDelete.net || 0;
-if (isReturn) {
-showToast(` Return record removed. ${deletedQuantity} kg removed from ${entryToDelete.date} stock.`, 'success');
-} else {
-showToast(` Production deleted. ${deletedQuantity} kg removed from ${entryToDelete.date} inventory. Sales on this date may be affected.`, 'success');
-}
 } catch (error) {
-window.notifyBlocking(' Failed to delete entry. Please try again.', 'error');
+window.notifyBlocking(' Failed to delete entry. Please try again.', 'error', 'Something went wrong');
 }
 }
 }

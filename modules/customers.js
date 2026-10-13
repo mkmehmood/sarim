@@ -222,7 +222,7 @@ s && s.customerName === name
 );
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true });
-if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning'); return; }
+if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
 }
 let totalDebt = 0;
 for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
@@ -255,9 +255,8 @@ await unifiedDelete('sales', prunedSales, tx.id, { strict: true }, stampGroup(tx
 notifyDataChange('sales');
 triggerAutoSync();
 closeCustomerManagement();
-showToast(`Customer "${name}" and all records deleted.`, 'success');
 } catch (e) {
-window.notifyBlocking('Failed to delete customer. Please try again.', 'error');
+window.notifyBlocking('Failed to delete customer. Please try again.', 'error', 'Something went wrong');
 }
 }
 
@@ -493,11 +492,11 @@ export async function toggleSingleTransactionStatus(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const record = sales.find(s => s.id === id);
 if (record?.isMerged) {
-window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning');
+window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 'Payment warning');
 return;
 }
 const _tgBlock = await getSettleToggleBlockReason(id, 'customer');
-if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning'); return; }
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning', 'Warning'); return; }
 const snapshot = [...sales];
 try {
 const idx = sales.findIndex(s => s.id === id);
@@ -523,11 +522,11 @@ export async function toggleRepTransactionStatus(id) {
 const rep = ensureArray(await sqliteStore.get('rep'));
 const record = rep.find(s => s.id === id);
 if (record?.isMerged) {
-window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning');
+window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 'Payment warning');
 return;
 }
 const _tgBlock = await getSettleToggleBlockReason(id, 'rep');
-if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning'); return; }
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning', 'Warning'); return; }
 const snapshot = [...rep];
 try {
 const idx = rep.findIndex(s => s.id === id);
@@ -553,17 +552,17 @@ export async function deleteTransactionFromOverlay(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 if (!id || !validateUUID(id)) {
-window.notifyBlocking('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error', 'Something went wrong');
 return;
 }
 const _txItem = sales.find(s => s.id === id);
 if (_txItem?.isMerged) {
-window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed');
 return;
 }
 {
 const _blk = await getSaleBlockReason(id, 'customer');
-if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
 }
 const _isOldDebt = _txItem?.transactionType === 'OLD_DEBT';
 const _txType = _isOldDebt ? 'Old Debt Record' : _txItem ? (_txItem.paymentType === 'CREDIT' ? 'Credit Sale' : _txItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _txItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
@@ -637,26 +636,25 @@ renderCustomersTable();
 if (currentManagingCustomer) renderCustomerTransactions(currentManagingCustomer);
 notifyDataChange('sales');
 triggerAutoSync();
-showToast(` Transaction deleted successfully.`, 'success');
 } catch (e) {
-window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error', 'Something went wrong');
 }
 }
 
 export async function deleteRepTransactionFromOverlay(id) {
 const rep = ensureArray(await sqliteStore.get('rep'));
 if (!id || !validateUUID(id)) {
-window.notifyBlocking('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error', 'Something went wrong');
 return;
 }
 const _rItem = rep.find(s => s.id === id);
 if (_rItem?.isMerged) {
-window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed');
 return;
 }
 {
 const _blk = await getSaleBlockReason(id, 'rep');
-if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
 }
 const _rIsOldDebt = _rItem?.transactionType === 'OLD_DEBT';
 const _rType = _rIsOldDebt ? 'Old Debt Record' : _rItem ? (_rItem.paymentType === 'CREDIT' ? 'Credit Sale' : _rItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _rItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
@@ -713,9 +711,8 @@ renderRepCustomerTransactions(currentManagingRepCustomer);
 renderRepCustomerTable();
 notifyDataChange('rep');
 triggerAutoSync();
-showToast(` Transaction deleted successfully.`, 'success');
 } catch (e) {
-window.notifyBlocking('Failed to delete transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error', 'Something went wrong');
 }
 }
 
@@ -807,9 +804,16 @@ setTimeout(dismiss, duration);
 toast.addEventListener('click', dismiss, { once: true });
 }
 
-export function showToast(message, type = 'info', duration = 3000) {
-const typeMap = { danger: 'error', warn: 'warning', ok: 'success' };
-type = typeMap[type] || (['success','warning','error','info'].includes(type) ? type : 'info');
+const _TOAST_TYPES = ['success', 'warning', 'error', 'info'];
+export function showToast(message, type, duration = 3000) {
+if (!_TOAST_TYPES.includes(type)) { console.error('showToast needs a type of success, warning, error or info, got', type); return; }
+if (typeof window.isDialogFlowActive === 'function' && window.isDialogFlowActive()) {
+if (type === 'error' && typeof window.notifyBlocking === 'function') {
+const raise = () => { if (window.isDialogOpen()) setTimeout(raise, 250); else window.notifyBlocking(message, 'error', 'Something went wrong'); };
+raise();
+}
+return;
+}
 _toastQueue.push({ message, type, duration });
 _playNextToast();
 if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type);
@@ -903,15 +907,15 @@ const phone = document.getElementById('edit-cust-phone').value.trim();
 const address = document.getElementById('edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('edit-cust-old-debit').value) || 0;
 const customSalePrice = parseFloat(document.getElementById('edit-cust-custom-price').value) || 0;
-if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
-if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
-if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning'); return; }
+if (!name) { window.notifyBlocking('Customer name is required', 'error', 'Something went wrong'); return; }
+if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning', 'Warning'); return; }
+if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning', 'Warning'); return; }
 if (oldDebit > 0) {
 const _pcSales = ensureArray(await sqliteStore.get('sales'));
 const _pcTx = _pcSales.find(s => s && s.transactionType === 'OLD_DEBT' && s.customerName && (s.customerName === name || s.customerName.toLowerCase() === originalName.toLowerCase()));
 if (_pcTx && _pcTx.totalValue !== oldDebit) {
 const _pcChk = await getOldDebtChangeIssue(_pcTx, oldDebit);
-if (_pcChk.issue) { window.notifyBlocking(_pcChk.issue, 'warning'); return; }
+if (_pcChk.issue) { window.notifyBlocking(_pcChk.issue, 'warning', 'Warning'); return; }
 }
 }
 if (!(await window.gcCommit({}))) return;
@@ -968,7 +972,7 @@ const amountChanged = tx.totalValue !== oldDebit;
 let _odCollected = 0;
 if (amountChanged) {
 const _odChk = await getOldDebtChangeIssue(tx, oldDebit);
-if (_odChk.issue) { window.notifyBlocking(_odChk.issue, 'warning'); return; }
+if (_odChk.issue) { window.notifyBlocking(_odChk.issue, 'warning', 'Warning'); return; }
 _odCollected = _odChk.collected;
 }
 tx.totalValue = oldDebit; tx.customerPhone = phone; tx.timestamp = getTimestamp();
@@ -1048,7 +1052,7 @@ if (typeof renderCustomersTable === 'function') renderCustomersTable();
 notifyDataChange('entities');
 triggerAutoSync();
 } catch (error) {
-window.notifyBlocking('Failed to save customer details. Please try again.', 'error');
+window.notifyBlocking('Failed to save customer details. Please try again.', 'error', 'Something went wrong');
 }
 }
 

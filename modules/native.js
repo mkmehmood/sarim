@@ -2,7 +2,7 @@ const Cap = window.Capacitor;
 export const isNative = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
 const P = () => (window.Capacitor && window.Capacitor.Plugins) || {};
 
-function toast(msg, type = 'info', ms = 3000) {
+function toast(msg, type, ms = 3000) {
   if (typeof window.showToast === 'function') window.showToast(msg, type, ms);
 }
 

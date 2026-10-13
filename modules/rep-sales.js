@@ -66,7 +66,6 @@ await sqliteStore.remove('bio_cred_id');
 window.__appLocked = false;
 if (window.__setBioHint) window.__setBioHint(false);
 try { await sqliteStore.flush(); } catch (_) {}
-showToast("Biometric Lock Removed", "info");
 await syncBiometricButton();
 }
 }
@@ -116,7 +115,7 @@ setTimeout(() => { splash.style.display = 'none'; }, 620);
 const errName = e && e.name ? e.name : '';
 failures++;
 if (errName !== 'NotAllowedError' && failures === 1) {
-window.notifyBlocking((e && e.message) ? e.message : 'Authentication failed', 'error');
+window.notifyBlocking((e && e.message) ? e.message : 'Authentication failed', 'error', 'Something went wrong');
 }
 if (failures < 5) scheduleRetry(errName === 'NotAllowedError' ? 1200 : 2000);
 } finally {
@@ -145,7 +144,7 @@ const rec = rep.find(s => s && String(s.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This entry cannot be edited.', 'warning'); return; }
 {
 const _blk = await getSaleBlockReason(rec.id, 'rep', { forEdit: true });
-if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
 }
 if (rec.transactionType === 'OLD_DEBT') { showToast('Opening balances are edited from the customer details.', 'warning'); return; }
 if (typeof showTab === 'function') showTab('rep');
@@ -272,7 +271,7 @@ const phoneNumber = (!document.getElementById('rep-new-customer-phone-container'
 ? phoneInput.value.trim()
 : '';
 if(!date || !name) {
-window.notifyBlocking("Date and Name required", 'warning');
+window.notifyBlocking("Date and Name required", 'warning', 'Warning');
 restoreBtn();
 return;
 }
@@ -290,17 +289,17 @@ if(repTransactionMode === 'sale') {
 const qty = parseFloat(document.getElementById('rep-quantity').value) || 0;
 const payType = document.getElementById('rep-payment-value').value;
 if(qty <= 0) {
-window.notifyBlocking("Enter Quantity", 'warning');
+window.notifyBlocking("Enter Quantity", 'warning', 'Warning');
 restoreBtn();
 return;
 }
 if(!salePrice || salePrice <= 0) {
-window.notifyBlocking(" Sale price not configured. Set prices in Factory Formulas before recording rep sales.", 'warning');
+window.notifyBlocking(" Sale price not configured. Set prices in Factory Formulas before recording rep sales.", 'warning', 'Warning');
 restoreBtn();
 return;
 }
 if(costPerKg < 0) {
-window.notifyBlocking(" Invalid cost price detected. Please check Factory Formulas.", 'warning');
+window.notifyBlocking(" Invalid cost price detected. Please check Factory Formulas.", 'warning', 'Warning');
 restoreBtn();
 return;
 }
@@ -309,7 +308,7 @@ const _lockedCost = (_ed && _ed.original.quantity > 0) ? (_ed.original.totalCost
 const totalValue = qty * _lockedPrice;
 const computedProfit = totalValue - (qty * _lockedCost);
 if(computedProfit < 0) {
-window.notifyBlocking(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, 'warning');
+window.notifyBlocking(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, 'warning', 'Warning');
 restoreBtn();
 return;
 }
@@ -343,7 +342,7 @@ transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 } else {
 const amount = parseFloat(document.getElementById('rep-amount-collected').value) || 0;
 if(amount <= 0) {
-window.notifyBlocking("Enter Amount", 'warning');
+window.notifyBlocking("Enter Amount", 'warning', 'Warning');
 restoreBtn();
 return;
 }
@@ -358,7 +357,7 @@ if (_ed && Array.isArray(_ed.original.allocations)) _repOutstanding = round2(_re
 _repOutstanding = Math.max(0, _repOutstanding);
 } catch (_e) { _repOutstanding = -1; }
 if (_repOutstanding === 0 && !_ed) {
-window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error');
+window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error', 'Credit error');
 restoreBtn();
 return;
 } else if (_repOutstanding >= 0 && amount > _repOutstanding) {
@@ -394,16 +393,16 @@ syncedAt: new Date().toISOString()
 transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 }
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - (transactionRecord.totalValue || 0)) > 0.001) {
-window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning'); restoreBtn(); return;
+window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 'Credit warning'); restoreBtn(); return;
 }
 let _repAlloc = null;
 if (transactionRecord.paymentType === 'COLLECTION' && !(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
 try {
 _repAlloc = await applyCollectionToSales({ kind: 'rep', arr: rep, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
-} catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning'); restoreBtn(); return; }
+} catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 'Warning'); restoreBtn(); return; }
 }
 const _linkIssue = _ed ? await getSaleEditLinkIssue('rep', _ed.original, transactionRecord) : null;
-if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); window.notifyBlocking(_linkIssue, 'warning'); restoreBtn(); return; }
+if (_linkIssue) { if (_repAlloc) _repAlloc.undo(); window.notifyBlocking(_linkIssue, 'warning', 'Warning'); restoreBtn(); return; }
 if (transactionRecord.paymentType === 'CREDIT' && !_gcWarn) {
 let _rcOwed = 0;
 for (const h of rep) {
@@ -484,7 +483,7 @@ renderRepHistory();
 showToast(_ed ? "Transaction updated" : "Transaction Saved Successfully", "success");
 setTimeout(updateRepLiveMap, 300);
 } catch (error) {
-window.notifyBlocking('Failed to save transaction. Please try again.', 'error');
+window.notifyBlocking('Failed to save transaction. Please try again.', 'error', 'Something went wrong');
 } finally {
 restoreBtn();
 }
@@ -909,7 +908,7 @@ const name = currentManagingRepCustomer;
 const txs = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'rep', { ignoreChildren: true });
-if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning'); return; }
+if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
 }
 let totalDebt = 0;
 for (const s of txs) totalDebt = round2(totalDebt + debtDelta(s, s.totalValue));
@@ -961,9 +960,8 @@ await sqliteStore.set('photodirty', _rcDk);
 notifyDataChange('rep');
 triggerAutoSync();
 closeRepCustomerManagement();
-showToast(`Rep customer "${name}" and all records deleted.`, 'success');
 } catch (e) {
-window.notifyBlocking('Failed to delete rep customer. Please try again.', 'error');
+window.notifyBlocking('Failed to delete rep customer. Please try again.', 'error', 'Something went wrong');
 }
 }
 
@@ -1207,8 +1205,8 @@ const originalName = nameInput.dataset.originalName || name;
 const phone = document.getElementById('rep-edit-cust-phone').value.trim();
 const address = document.getElementById('rep-edit-cust-address').value.trim();
 const oldDebit = parseFloat(document.getElementById('rep-edit-cust-old-debit').value) || 0;
-if (!name) { window.notifyBlocking('Customer name is required', 'error'); return; }
-if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning'); return; }
+if (!name) { window.notifyBlocking('Customer name is required', 'error', 'Something went wrong'); return; }
+if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning', 'Warning'); return; }
 if (!(await window.gcCommit({}))) return;
 try {
 const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
@@ -1335,7 +1333,7 @@ if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 notifyDataChange('rep');
 triggerAutoSync();
 } catch (error) {
-window.notifyBlocking('Failed to save rep customer details. Please try again.', 'error');
+window.notifyBlocking('Failed to save rep customer details. Please try again.', 'error', 'Something went wrong');
 }
 }
 
