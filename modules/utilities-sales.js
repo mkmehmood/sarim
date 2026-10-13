@@ -444,7 +444,7 @@ const netCashOutflow = amount - materialPayableReduction;
 if (type === 'OUT') {
 const _spAvailCash = await getAvailableCashInHand();
 if (_spAvailCash < netCashOutflow) {
-window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _spAvailCash))} — Required (net): ${fmtAmt(netCashOutflow)}`, 'error');
+window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _spAvailCash))} — Required (net): ${fmtAmt(netCashOutflow)}`, 'error', 'Low cash in hand');
 return;
 }
 }
@@ -567,7 +567,7 @@ const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 if (!id || !validateUUID(id)) {
-window.notifyBlocking('Invalid transaction ID', 'error');
+window.notifyBlocking('Invalid transaction ID', 'error', 'Something went wrong');
 return;
 }
 const _dpTx = transactions.find(t => t.id === id);
@@ -581,7 +581,7 @@ if (_dpGuard.plan && _dpGuard.plan.kind === 'transfer') {
 if (typeof deletePaymentTransfer === 'function') await deletePaymentTransfer(_dpGuard.plan.pairId);
 return;
 }
-if (_dpGuard.block) { window.notifyBlocking(_dpGuard.block, 'warning'); return; }
+if (_dpGuard.block) { window.notifyBlocking(_dpGuard.block, 'warning', 'Warning'); return; }
 const _dpEntity = _dpTx ? entities.find(e => String(e.id) === String(_dpTx.entityId)) : null;
 const _dpEntityName = _dpEntity ? _dpEntity.name : 'Unknown Entity';
 const _dpTypeLabel = _dpTx?.type === 'IN' ? 'Payment Received (IN)' : 'Payment Made (OUT)';
@@ -614,7 +614,6 @@ await _restorePayableFromDeletedTransaction(transaction, transactions, inventory
 await deletePaymentTxWithLinks(transaction, { groupId: _dpGroupId });
 notifyDataChange('payments');
 await _refreshSupplierLinkViews();
-showToast(transaction.isPayable ? " Transaction deleted, supplier link and balances updated!" : " Transaction deleted and all balances restored!", "success");
 } catch (error) {
 try {
 const _healTx = ensureArray(await sqliteStore.get('transactions'));
@@ -623,7 +622,7 @@ const _healTarget = _healTx.find(t => t && t.id === id);
 if (_healTarget && _healTarget.entityId) await _recomputeSupplierPayables([String(_healTarget.entityId)], _healInv, _healTx, new Set(), new Set((_healTarget.materialIds || []).map(String)));
 await _refreshSupplierLinkViews();
 } catch (_) { }
-window.notifyBlocking(" Failed to delete transaction. Please try again.", 'error');
+window.notifyBlocking(" Failed to delete transaction. Please try again.", 'error', 'Something went wrong');
 }
 }
 }
@@ -1094,7 +1093,7 @@ const production = ensureArray(await sqliteStore.get('production'));
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
+window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
@@ -1107,15 +1106,15 @@ const phoneNumber = (!document.getElementById('new-customer-phone-container').cl
 ? phoneInput.value.trim()
 : '';
 if (!date) {
-window.notifyBlocking('Please select a date.', 'warning');
+window.notifyBlocking('Please select a date.', 'warning', 'Warning');
 return;
 }
 if (!name) {
-window.notifyBlocking('Please enter customer name.', 'warning');
+window.notifyBlocking('Please enter customer name.', 'warning', 'Warning');
 return;
 }
 if (quantity <= 0) {
-window.notifyBlocking('Please enter a valid quantity.', 'warning');
+window.notifyBlocking('Please enter a valid quantity.', 'warning', 'Warning');
 return;
 }
 let storeSpecificProduction = 0;
@@ -1142,16 +1141,16 @@ storeReturns += returnEntry.quantity || 0;
 const totalAvailableInventory = storeSpecificProduction + storeReturns;
 const storeAvailableInventory = totalAvailableInventory - storeSpecificSales;
 if (totalAvailableInventory === 0) {
-window.notifyBlocking(` No production recorded for ${date}. You cannot sell what has not been produced.`, 'warning');
+window.notifyBlocking(` No production recorded for ${date}. You cannot sell what has not been produced.`, 'warning', 'Warning');
 return;
 }
 if (storeSpecificProduction === 0 && storeReturns === 0) {
-window.notifyBlocking(` No production or returns for ${getStoreLabel(store)} on ${date}. Check available stores.`, 'warning');
+window.notifyBlocking(` No production or returns for ${getStoreLabel(store)} on ${date}. Check available stores.`, 'warning', 'Warning');
 return;
 }
 const remainingAfterSale = storeAvailableInventory - quantity;
 if (remainingAfterSale < 0) {
-window.notifyBlocking(` Insufficient stock! Available: ${fmtNum(safeNumber(storeAvailableInventory, 0))} kg, Requested: ${fmtNum(safeNumber(quantity, 0))} kg. Shortage: ${fmtNum(safeNumber(Math.abs(remainingAfterSale), 0))} kg`, 'error');
+window.notifyBlocking(` Insufficient stock! Available: ${fmtNum(safeNumber(storeAvailableInventory, 0))} kg, Requested: ${fmtNum(safeNumber(quantity, 0))} kg. Shortage: ${fmtNum(safeNumber(Math.abs(remainingAfterSale), 0))} kg`, 'error', 'Low inventory');
 return;
 }
 const _sameBasis = !!(_ed && _ed.original.supplyStore === store && String(_ed.original.customerName || '').toLowerCase() === name.toLowerCase());
@@ -1159,7 +1158,7 @@ const costData = await calculateSalesCost(store, quantity);
 const totalCost = (_sameBasis && _ed.original.quantity > 0) ? round2((_ed.original.totalCost || 0) / _ed.original.quantity * quantity) : costData.totalCost;
 const _effectiveSalePrice = (_sameBasis && _ed.original.unitPrice > 0) ? _ed.original.unitPrice : await getEffectiveSalePriceForCustomer(name, store);
 if (!_effectiveSalePrice || _effectiveSalePrice <= 0) {
-window.notifyBlocking(' Sale price not configured for this store. Set prices in Factory Formulas before recording sales.', 'warning');
+window.notifyBlocking(' Sale price not configured for this store. Set prices in Factory Formulas before recording sales.', 'warning', 'Warning');
 return;
 }
 const totalValue = quantity * _effectiveSalePrice;
@@ -1194,7 +1193,7 @@ const deviceDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2
 const recordId = _ed ? _ed.id : generateUUID('sale');
 const recordTimestamp = getTimestamp();
 if (!validateUUID(recordId)) {
-window.notifyBlocking(' Error generating transaction ID. Please try again.', 'error');
+window.notifyBlocking(' Error generating transaction ID. Please try again.', 'error', 'Something went wrong');
 return;
 }
 const saleRecord = {
@@ -1231,7 +1230,7 @@ applySettlement(saleRecord, planEditSettlement(o, paymentType));
 }
 if (_ed) {
 const _linkIssue = await getSaleEditLinkIssue('customer', _ed.original, saleRecord);
-if (_linkIssue) { window.notifyBlocking(_linkIssue, 'warning'); return; }
+if (_linkIssue) { window.notifyBlocking(_linkIssue, 'warning', 'Warning'); return; }
 }
 const validatedRecord = ensureRecordIntegrity(saleRecord, !!_ed);
 const salesSnapshot = [...sales];
@@ -1283,9 +1282,9 @@ try {
 await unifiedSave('sales', sales);
 } catch (rollbackError) {
 console.error('UI refresh failed.', _safeErr(rollbackError));
-window.notifyBlocking('Sale rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error');
+window.notifyBlocking('Sale rollback failed: ' + (_safeErr(rollbackError).message || 'data may be inconsistent, please reload'), 'error', 'Something went wrong');
 }
-window.notifyBlocking(' Failed to save sale. Please try again.', 'error');
+window.notifyBlocking(' Failed to save sale. Please try again.', 'error', 'Something went wrong');
 }
 }
 
@@ -1306,7 +1305,7 @@ if (rec && rec.isRepReturn) { showToast('A rep return cannot be edited. Delete i
 if (!rec || rec.isMerged || rec.isRepTransfer) { showToast('This entry cannot be edited.', 'warning'); return; }
 {
 const _blk = await getSaleBlockReason(rec.id, 'customer', { forEdit: true });
-if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
 }
 if (rec.paymentType === 'COLLECTION' || rec.paymentType === 'PARTIAL_PAYMENT') { await startEditCollection(id); return; }
 if (typeof showTab === 'function') showTab('sales');
@@ -1563,7 +1562,7 @@ const sales = ensureArray(await sqliteStore.get('sales'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entities = ensureArray(await sqliteStore.get('entities'));
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning'); return;
+window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
@@ -1575,10 +1574,10 @@ const phoneInput = document.getElementById('new-cust-phone');
 const phoneNumber = (!document.getElementById('new-customer-phone-container').classList.contains('hidden'))
 ? phoneInput.value.trim()
 : '';
-if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
-if (!name) { window.notifyBlocking('Please enter customer name.', 'warning'); return; }
-if (amount < 0 || expired < 0) { window.notifyBlocking('Amount and expired quantity cannot be negative.', 'warning'); return; }
-if (amount <= 0 && expired <= 0) { window.notifyBlocking('Please enter an amount collected and/or an expired quantity.', 'warning'); return; }
+if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
+if (!name) { window.notifyBlocking('Please enter customer name.', 'warning', 'Warning'); return; }
+if (amount < 0 || expired < 0) { window.notifyBlocking('Amount and expired quantity cannot be negative.', 'warning', 'Warning'); return; }
+if (amount <= 0 && expired <= 0) { window.notifyBlocking('Please enter an amount collected and/or an expired quantity.', 'warning', 'Warning'); return; }
 const btn = document.getElementById('btn-save-cust-transaction');
 if (btn) { if (btn.disabled) return; btn.disabled = true; }
 const restoreBtn = () => { if (btn) btn.disabled = false; };
@@ -1596,7 +1595,7 @@ _custOutstanding = Math.max(0, _custOutstanding);
 } catch (_e) { _custOutstanding = -1; }
 let _gcWarn = null;
 if (amount > 0 && _custOutstanding === 0 && !_ed) {
-window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error');
+window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error', 'Credit error');
 restoreBtn();
 return;
 } else if (amount > 0 && _custOutstanding >= 0 && amount > _custOutstanding) {
@@ -1604,7 +1603,7 @@ const _overAmt = amount - _custOutstanding;
 _gcWarn = { lines: [`Owes: ${fmtAmt(_custOutstanding)}`, `Collecting: ${fmtAmt(amount)}`, `Overpayment: ${fmtAmt(_overAmt)}`], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
 }
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - amount) > 0.001) {
-window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning');
+window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 'Credit warning');
 restoreBtn(); return;
 }
 const _gcExtra = _gcWarn ? { ..._gcWarn } : {};
@@ -1623,12 +1622,12 @@ const ampm = hours >= 12 ? 'PM' : 'AM';
 const h12 = hours % 12 || 12;
 const timeString = `${String(h12).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')} ${ampm}`;
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - amount) > 0.001) {
-window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning');
+window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 'Credit warning');
 restoreBtn(); return;
 }
 const recordId = _ed ? _ed.id : generateUUID('sale');
 if (!validateUUID(recordId)) {
-window.notifyBlocking('Error generating transaction ID. Please try again.', 'error');
+window.notifyBlocking('Error generating transaction ID. Please try again.', 'error', 'Something went wrong');
 restoreBtn(); return;
 }
 const recordTimestamp = getTimestamp();
@@ -1667,7 +1666,7 @@ let _alloc = null;
 if (!(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT') && (amount > 0 || _ed)) {
 try {
 _alloc = await applyCollectionToSales({ kind: 'customer', arr: sales, record: collRecord, amount, name, original: _ed ? _ed.original : null, when: { date: collRecord.date, time: timeString }, getGross: getSaleTransactionValue });
-} catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning'); restoreBtn(); return; }
+} catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 'Warning'); restoreBtn(); return; }
 }
 const _origExp = _ed ? (Number(_ed.original.expiredQty) || 0) : 0;
 const _origApplied = (_origExp > 0 && _ed.original.expiredApplied !== false) ? _origExp : 0;
@@ -1739,7 +1738,7 @@ if (_alloc) _alloc.undo();
 sales.length = 0;
 sales.push(...snapshot);
 try { await unifiedSave('sales', sales); } catch (_) {}
-window.notifyBlocking('Failed to save collection. Please try again.', 'error');
+window.notifyBlocking('Failed to save collection. Please try again.', 'error', 'Something went wrong');
 }
 } finally {
 restoreBtn();
@@ -2036,7 +2035,7 @@ const production = ensureArray(await sqliteStore.get('production'));
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 if (!id || !validateUUID(id)) {
-window.notifyBlocking(' Invalid transaction ID. Cannot delete.', 'error');
+window.notifyBlocking(' Invalid transaction ID. Cannot delete.', 'error', 'Action not allowed');
 return;
 }
 const recordToDelete = sales.find(item => item.id === id);
@@ -2046,12 +2045,12 @@ renderCustomersTable();
 return;
 }
 if (recordToDelete.isMerged) {
-window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning');
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed');
 return;
 }
 {
 const _blk = await getSaleBlockReason(id, 'customer');
-if (_blk) { window.notifyBlocking(_blk, 'warning'); return; }
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
 }
 const recordDate = recordToDelete.date || 'Unknown date';
 const _dcStoreLabel = recordToDelete.supplyStore && !recordToDelete.isRepTransfer ? getStoreLabel(recordToDelete.supplyStore) : '';
@@ -2110,9 +2109,8 @@ const _delToast = _dcIsRepReturn
 : _dcIsCollection
 ? ` Collection${collectionCollected(recordToDelete) > 0 ? ` of ${fmtAmt(collectionCollected(recordToDelete))}` : ''} deleted.${Number(recordToDelete.expiredQty) > 0 && recordToDelete.expiredApplied !== false ? ` ${fmtNum(recordToDelete.expiredQty)} kg expired removed from CHORA.` : ''}`
 : ` Sale deleted! ${recordToDelete.quantity} kg restored to ${recordDate} inventory.`;
-showToast(_delToast, "success");
 } catch (error) {
-window.notifyBlocking(" Failed to delete sale. Please try again.", 'error');
+window.notifyBlocking(" Failed to delete sale. Please try again.", 'error', 'Something went wrong');
 }
 }
 }
@@ -2836,28 +2834,28 @@ selectedRep = window._returnRep;
 } else if (window._returnStore) {
 selectedStore = { value: window._returnStore };
 } else {
-window.notifyBlocking('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning');
+window.notifyBlocking('Please select a store (ZUBAIR or MAHMOOD) for a product return, or a sales representative for a transfer!', 'warning', 'Warning');
 return;
 }
 }
 const costPerKg = (await getCostPriceForStore(getDefaultStoreKey())) || 0;
 const salePrice = await getSalePriceForStore(getDefaultStoreKey());
-if(!date) return window.notifyBlocking('Please select a date', 'warning');
-if(sold <= 0) return window.notifyBlocking('Please enter valid units sold (must be greater than 0)', 'warning');
-if(salePrice <= 0) return window.notifyBlocking('Please set a sale price in Factory Formulas first', 'warning');
-if(ret > sold) return window.notifyBlocking('Returned quantity cannot exceed total sold', 'warning');
-if(exp < 0) return window.notifyBlocking('Expired quantity cannot be negative', 'warning');
-if(ret < 0) return window.notifyBlocking('Returned quantity cannot be negative', 'warning');
-if(shared < 0) return window.notifyBlocking('Shared (deduction) quantity cannot be negative', 'warning');
-if(cred < 0) return window.notifyBlocking('Credit sales cannot be negative', 'warning');
-if(prev < 0) return window.notifyBlocking('Previous credit received cannot be negative', 'warning');
-if(rec < 0) return window.notifyBlocking('Received cash cannot be negative', 'warning');
-if(fieldExp < 0) return window.notifyBlocking('Field expenses cannot be negative', 'warning');
-if(commissionPerUnit < 0) return window.notifyBlocking('Commission per unit cannot be negative', 'warning');
-if(commissionPaid < 0) return window.notifyBlocking('Commission paid cannot be negative', 'warning');
-if((ret + exp + shared) > sold) return window.notifyBlocking('Combined returned + expired + shared quantity cannot exceed total sold', 'warning');
+if(!date) return window.notifyBlocking('Please select a date', 'warning', 'Warning');
+if(sold <= 0) return window.notifyBlocking('Please enter valid units sold (must be greater than 0)', 'warning', 'Warning');
+if(salePrice <= 0) return window.notifyBlocking('Please set a sale price in Factory Formulas first', 'warning', 'Warning');
+if(ret > sold) return window.notifyBlocking('Returned quantity cannot exceed total sold', 'warning', 'Warning');
+if(exp < 0) return window.notifyBlocking('Expired quantity cannot be negative', 'warning', 'Warning');
+if(ret < 0) return window.notifyBlocking('Returned quantity cannot be negative', 'warning', 'Warning');
+if(shared < 0) return window.notifyBlocking('Shared (deduction) quantity cannot be negative', 'warning', 'Warning');
+if(cred < 0) return window.notifyBlocking('Credit sales cannot be negative', 'warning', 'Credit warning');
+if(prev < 0) return window.notifyBlocking('Previous credit received cannot be negative', 'warning', 'Credit warning');
+if(rec < 0) return window.notifyBlocking('Received cash cannot be negative', 'warning', 'Warning');
+if(fieldExp < 0) return window.notifyBlocking('Field expenses cannot be negative', 'warning', 'Warning');
+if(commissionPerUnit < 0) return window.notifyBlocking('Commission per unit cannot be negative', 'warning', 'Warning');
+if(commissionPaid < 0) return window.notifyBlocking('Commission paid cannot be negative', 'warning', 'Warning');
+if((ret + exp + shared) > sold) return window.notifyBlocking('Combined returned + expired + shared quantity cannot exceed total sold', 'warning', 'Warning');
 const netSold = Math.max(0, sold - ret - exp - shared);
-if(cred > netSold) return window.notifyBlocking('Credit sales cannot exceed net sold quantity', 'warning');
+if(cred > netSold) return window.notifyBlocking('Credit sales cannot exceed net sold quantity', 'warning', 'Credit warning');
 const cashQty = Math.max(0, netSold - cred);
 const creditValue = cred * salePrice;
 const revenue = netSold * salePrice;
@@ -2908,7 +2906,7 @@ _expApplied = await processExpiredToChora(exp, date, seller);
 }
 } catch (e) {
 await _rollbackCalc();
-window.notifyBlocking('Could not save: ' + ((e && e.message) || 'unknown error'), 'error');
+window.notifyBlocking('Could not save: ' + ((e && e.message) || 'unknown error'), 'error', 'Something went wrong');
 return;
 }
 let calcId = generateUUID('calc');
@@ -2971,7 +2969,7 @@ entry.linkedRepSalesIds = linkedRepIds;
 entry.linkedRepReturnIds = (await getPendingRepReturns(seller, _cycSel.to || date)).map(r => r.id);
 } catch (e) {
 await _rollbackCalc();
-window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error');
+window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error', 'Something went wrong');
 return;
 }
 let _persisted = false;
@@ -3016,10 +3014,10 @@ if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
 } catch (error) {
 if (_persisted) {
 console.warn('[saveTransaction] saved, but a screen refresh failed:', error && error.message);
-window.notifyBlocking('Saved. Some screens could not refresh - reload to see everything.', 'warning');
+window.notifyBlocking('Saved. Some screens could not refresh - reload to see everything.', 'warning', 'Warning');
 } else {
 await _rollbackCalc();
-window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error');
+window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error', 'Something went wrong');
 }
 }
 }
@@ -4077,7 +4075,7 @@ const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 if (!currentUser) {
-window.notifyBlocking('Please sign in to create a backup.', 'error');
+window.notifyBlocking('Please sign in to create a backup.', 'error', 'Something went wrong');
 showAuthOverlay();
 return;
 }
@@ -4114,18 +4112,16 @@ _meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, created
 const encEmail = currentUser.email;
 const encPassword = await promptVerifiedBackupPassword({ inputId: 'enc_bkp_pwd' });
 if (!encPassword) {
-showToast('Backup cancelled.', 'info');
 return;
 }
 try {
-showToast(' Encrypting backup with AES-256-GCM + account binding...', 'info', 3000);
 const encryptedBlob = await CryptoEngine.encrypt(data, encEmail, encPassword, currentUser.uid);
 const timestamp = localDateStr();
 _triggerFileDownload(encryptedBlob, `NaswarDealers_SecureBackup_${timestamp}.gznd`);
 window.showGlassAlert(' Encrypted backup created! File requires your credentials to restore.', { tone: 'success', title: 'Backup Created' });
 } catch(encErr) {
 console.error('Encryption failed:', _safeErr(encErr));
-window.notifyBlocking('Encryption failed: ' + encErr.message, 'error');
+window.notifyBlocking('Encryption failed: ' + encErr.message, 'error', 'Something went wrong');
 }
 }
 
@@ -4144,7 +4140,7 @@ const file = event.target.files[0];
 if (!file) return;
 event.target.value = '';
 if (!currentUser) {
-window.notifyBlocking('Please sign in before restoring a backup.', 'error');
+window.notifyBlocking('Please sign in before restoring a backup.', 'error', 'Something went wrong');
 showAuthOverlay();
 return;
 }
@@ -4191,13 +4187,13 @@ try {
 data = await CryptoEngine.decrypt(arrayBuffer, currentUser.email, decPassword, currentUser.uid);
 } catch(decErr) {
 if (decErr.message === 'WRONG_ACCOUNT') {
-window.notifyBlocking('This backup belongs to a different account and cannot be restored here.', 'error');
+window.notifyBlocking('This backup belongs to a different account and cannot be restored here.', 'error', 'Something went wrong');
 } else if (decErr.message === 'WRONG_CREDENTIALS') {
-window.notifyBlocking('Incorrect password. Decryption failed.', 'error');
+window.notifyBlocking('Incorrect password. Decryption failed.', 'error', 'Something went wrong');
 } else if (decErr.message === 'INVALID_FORMAT') {
-window.notifyBlocking('This file is not a valid encrypted backup.', 'error');
+window.notifyBlocking('This file is not a valid encrypted backup.', 'error', 'Something went wrong');
 } else {
-window.notifyBlocking('Decryption failed: ' + decErr.message, 'error');
+window.notifyBlocking('Decryption failed: ' + decErr.message, 'error', 'Something went wrong');
 }
 return;
 }
@@ -4220,7 +4216,6 @@ const _ycCostNote  = (typeof buildFirestoreCostEstimate === 'function')
   ? '\n\n' + buildFirestoreCostEstimate(_ycEstReads, _ycEstWrites) : '';
 const _ycRestoreMsg = `This backup was created by Close Financial Year on ${closedDate}.\n\nRestoring it will:\n \u2022 REPLACE all current data with the pre-close snapshot\n \u2022 Remove all merged opening-balance records\n \u2022 Reverse the financial year close counter\n \u2022 Upload the reversed data to cloud\n\n\u26a0\ufe0f This is a full reversal — your current year's data will be overwritten.\n\nOnly proceed if you want to completely undo the financial year close.` + _ycCostNote;
 if (!(await showGlassConfirm(_ycRestoreMsg, { title: '\u21a9 Reverse Financial Year Close', confirmText: 'Reverse Year Close', cancelText: 'Cancel' }))) {
-showToast('Year-close reversal cancelled.', 'info');
 return;
 }
 const _allBackupItems = [
@@ -4260,7 +4255,7 @@ if (!(await showGlassConfirm(_encRestoreMsg, { title: 'Restore From Encrypted Ba
 await _doRestoreMerge(data);
 }
 } catch(err) {
-window.notifyBlocking('Restore error: ' + err.message, 'error');
+window.notifyBlocking('Restore error: ' + err.message, 'error', 'Something went wrong');
 }
 } else {
 window.notifyBlocking('Only encrypted .gznd backup files can be restored.', 'error', 'Unsupported file');
@@ -6759,7 +6754,7 @@ export function saveStockTransfer(...a) { return confirmGuard('saveStockTransfer
 async function _saveStockTransferImpl() {
 const _ed = getEditCtx('stocktransfer');
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sales')) {
-window.notifyBlocking('Access Denied — Stock Transfer not in your assigned tabs', 'warning');
+window.notifyBlocking('Access Denied — Stock Transfer not in your assigned tabs', 'warning', 'Warning');
 return;
 }
 const fromStore = (document.getElementById('stock-transfer-from-value') || {}).value;
@@ -6767,10 +6762,10 @@ const toStore = (document.getElementById('stock-transfer-to-value') || {}).value
 const date = (document.getElementById('stock-transfer-date') || {}).value;
 const quantity = parseFloat((document.getElementById('stock-transfer-qty') || {}).value) || 0;
 const note = ((document.getElementById('stock-transfer-note') || {}).value || '').trim();
-if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; }
-if (!fromStore || !toStore) { window.notifyBlocking('Please select both stores.', 'warning'); return; }
-if (fromStore === toStore) { window.notifyBlocking('From and To stores must be different.', 'warning'); return; }
-if (quantity <= 0) { window.notifyBlocking('Please enter a valid quantity.', 'warning'); return; }
+if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
+if (!fromStore || !toStore) { window.notifyBlocking('Please select both stores.', 'warning', 'Warning'); return; }
+if (fromStore === toStore) { window.notifyBlocking('From and To stores must be different.', 'warning', 'Warning'); return; }
+if (quantity <= 0) { window.notifyBlocking('Please enter a valid quantity.', 'warning', 'Warning'); return; }
 const _pairIds = _ed ? _ed.original.records.map(r => r.id) : null;
 const snapshot = await computeStoreStockSnapshot(fromStore, date, _pairIds);
 if (_ed) {
@@ -6779,13 +6774,13 @@ if (o) {
 const oldTo = await computeStoreStockSnapshot(o.store, o.date, _pairIds);
 const adj = (o.store === toStore && o.date === date ? quantity : 0) - (o.store === fromStore && o.date === date ? quantity : 0);
 if (oldTo.available + adj < -1e-6) {
-window.notifyBlocking(` Cannot change: ${getStoreLabel(o.store)} would go short by ${fmtNum(-(oldTo.available + adj))} kg on ${o.date} (already sold or transferred).`, 'error');
+window.notifyBlocking(` Cannot change: ${getStoreLabel(o.store)} would go short by ${fmtNum(-(oldTo.available + adj))} kg on ${o.date} (already sold or transferred).`, 'error', 'Low inventory');
 return;
 }
 }
 }
 if (quantity > snapshot.available) {
-window.notifyBlocking(` Insufficient stock at ${getStoreLabel(fromStore)}. Available: ${fmtNum(safeNumber(snapshot.available, 0))} kg, Requested: ${fmtNum(safeNumber(quantity, 0))} kg.`, 'error');
+window.notifyBlocking(` Insufficient stock at ${getStoreLabel(fromStore)}. Available: ${fmtNum(safeNumber(snapshot.available, 0))} kg, Requested: ${fmtNum(safeNumber(quantity, 0))} kg.`, 'error', 'Low inventory');
 return;
 }
 if (!(await window.gcCommit({}))) return;
@@ -6918,7 +6913,7 @@ const toLabel = inSide ? getStoreLabel(inSide.store) : (outSide ? getStoreLabel(
 if (inSide && inSide.store && (inSide.net || 0) > 0) {
 const _snap = await computeStoreStockSnapshot(inSide.store, inSide.date);
 if (_snap.available - (inSide.net || 0) < -0.0001) {
-window.notifyBlocking(`Cannot remove: ${fmtNum(inSide.net)} kg received in ${getStoreLabel(inSide.store)} on ${inSide.date} was already sold.`, 'warning');
+window.notifyBlocking(`Cannot remove: ${fmtNum(inSide.net)} kg received in ${getStoreLabel(inSide.store)} on ${inSide.date} was already sold.`, 'warning', 'Warning');
 return;
 }
 }
@@ -6937,9 +6932,8 @@ if (typeof syncFactoryProductionStats === 'function') { try { await syncFactoryP
 if (typeof renderStockTransferHistory === 'function') await renderStockTransferHistory();
 if (typeof updateStockTransferAvailability === 'function') await updateStockTransferAvailability();
 if (typeof refreshUI === 'function') { try { await refreshUI(); } catch (_) {} }
-showToast('Stock transfer removed', 'success');
 } catch (e) {
-window.notifyBlocking('Failed to remove transfer. Please try again.', 'error');
+window.notifyBlocking('Failed to remove transfer. Please try again.', 'error', 'Something went wrong');
 }
 }
 

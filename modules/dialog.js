@@ -25,6 +25,12 @@ let lockState = null;
 export function isDialogOpen() {
   return !!document.querySelector('.dlg-overlay');
 }
+let flowActive = false;
+const endFlowOnInput = (e) => { if (!isDialogOpen() && !(e.target && e.target.closest && e.target.closest('.dlg-overlay'))) flowActive = false; };
+['pointerdown', 'keydown', 'touchstart'].forEach((name) => document.addEventListener(name, endFlowOnInput, true));
+export function isDialogFlowActive() {
+  return flowActive || isDialogOpen();
+}
 
 function lockPage() {
   if (lockState) return;
@@ -154,6 +160,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     const finish = (value, immediate) => {
       if (settled) return;
       settled = true;
+      flowActive = true;
       document.removeEventListener('keydown', onKey, true);
       active = null;
       overlay.querySelectorAll('button').forEach((b) => { b.disabled = true; });
@@ -231,9 +238,10 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
   });
 }
 
-export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Confirm', cancelText = 'Cancel', danger = false, icon = null, tone = null, alertOnly = false } = {}) {
-  const resolvedTone = pickTone(title, message, danger, tone);
-  const svg = (icon && String(icon).indexOf('<') !== -1) ? icon : pickIcon(resolvedTone, title, confirmText);
+export function showGlassConfirm(message, { title = null, confirmText = 'Confirm', cancelText = 'Cancel', danger = false, icon = null, tone = null, alertOnly = false } = {}) {
+  const shownTitle = requireTitle(title);
+  const resolvedTone = pickTone(shownTitle, message, danger, tone);
+  const svg = (icon && String(icon).indexOf('<') !== -1) ? icon : pickIcon(resolvedTone, shownTitle, confirmText);
   const actions = alertOnly
     ? [{ label: confirmText, variant: 'solid', value: true }]
     : [{ label: cancelText, variant: 'ghost', value: false }, { label: confirmText, variant: 'solid', value: true }];
@@ -241,7 +249,7 @@ export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Co
   const parsed = parseMessage(message);
   return openDialog({
     tone: resolvedTone,
-    title,
+    title: shownTitle,
     icon: svg,
     body: renderBlocks(parsed.blocks),
     figure: parsed.figure,
@@ -249,10 +257,14 @@ export function showGlassConfirm(message, { title = 'Confirm', confirmText = 'Co
     dismissIndex: 0,
     dismissOnBackdrop: !safeFirst,
     focusIndex: safeFirst ? 0 : actions.length - 1
+  }).then((value) => {
+    announce(message, resolvedTone, shownTitle, alertOnly ? '' : (value === true ? `Confirmed: ${confirmText}` : `Chosen: ${cancelText}`));
+    return value;
   });
 }
 
-export function showPasswordConfirm({ title = 'Confirm Password', message = '', email = '', confirmText = 'Confirm', cancelText = 'Cancel', inputId = '_dlg_pwd_input', verify = null } = {}) {
+export function showPasswordConfirm({ title = null, message = '', email = '', confirmText = 'Confirm', cancelText = 'Cancel', inputId = '_dlg_pwd_input', verify = null } = {}) {
+  const shownTitle = requireTitle(title);
   const errId = `${inputId}_err`;
   const account = email ? `<p class="dlg-account">Account: <strong>${escapeHtml(email)}</strong></p>` : '';
   const body = `${formatMessage(message)}${account}<div class="dlg-field"><input type="password" id="${inputId}" class="dlg-input" placeholder="Your account password" autocomplete="current-password" autocapitalize="none" spellcheck="false"><button type="button" class="dlg-eye" id="${inputId}_eye" aria-label="Show password">${dialogIcons.eye}</button></div><div class="dlg-error" id="${errId}" role="alert" aria-live="polite"></div>`;
@@ -277,7 +289,7 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
   };
   const result = openDialog({
     tone: 'primary',
-    title,
+    title: shownTitle,
     caption: 'Account password required',
     icon: dialogIcons.lock,
     body,
@@ -285,6 +297,9 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
     dismissIndex: 0,
     dismissOnBackdrop: false,
     focusIndex: -1
+  }).then((value) => {
+    announce(`${message}${email ? `\nAccount: ${email}` : ''}`, 'primary', shownTitle, value ? `Confirmed: ${confirmText}` : `Chosen: ${cancelText}`);
+    return value;
   });
   const input = document.getElementById(inputId);
   const eye = document.getElementById(`${inputId}_eye`);
@@ -308,25 +323,29 @@ export function showPasswordConfirm({ title = 'Confirm Password', message = '', 
   return result;
 }
 
-const ALERT_TITLES = { success: 'Success', warning: 'Warning', error: 'Something went wrong' };
 
-export function showGlassAlert(message, { title = null, tone = 'warning', buttonText = 'OK', icon = null } = {}) {
+export function showGlassAlert(message, { title = null, tone, buttonText = 'OK', icon = null } = {}) {
   const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
-  return showGlassConfirm(message, { title: title || ALERT_TITLES[t], confirmText: buttonText, tone: t, icon, alertOnly: true });
+  return showGlassConfirm(message, { title, confirmText: buttonText, tone: t, icon, alertOnly: true });
 }
 
-export function showChoiceDialog(message, choices, { title = 'Choose', cancelText = 'Cancel', icon = null } = {}) {
+export function showChoiceDialog(message, choices, { title = null, cancelText = 'Cancel', icon = null } = {}) {
   const list = Array.isArray(choices) ? choices : [];
+  const shownTitle = requireTitle(title);
   const options = list.map((c, i) => `<li><button type="button" class="dlg-option" data-opt="${i}" data-act="${i + 1}">${c.icon ? `<span class="dlg-option-icon" aria-hidden="true">${c.icon}</span>` : ''}<span class="dlg-option-label">${escapeHtml(c.label)}</span><span class="dlg-option-go" aria-hidden="true">${dialogIcons.chevron}</span></button></li>`).join('');
   return openDialog({
     tone: 'primary',
-    title,
+    title: shownTitle,
     icon: icon && String(icon).indexOf('<') !== -1 ? icon : dialogIcons.question,
     body: `${formatMessage(message)}<ul class="dlg-options">${options}</ul>`,
     actions: [{ label: cancelText, variant: 'ghost', value: null }],
     dismissIndex: 0,
     focusIndex: -1,
     onBodyClick: (i) => (list[i] ? list[i].value : null)
+  }).then((value) => {
+    const picked = value == null ? null : list.find((c) => c.value === value);
+    announce(message, 'primary', shownTitle, `Chosen: ${picked ? picked.label : cancelText}`);
+    return value;
   });
 }
 
@@ -336,24 +355,41 @@ export function splitFigures(message) {
     .replace(/\s*(?:\u2014|,|\.)\s+(?=(?:Required|Requested|Shortage|Extra required)\b[^:]*:)/g, '\n');
 }
 
-export function alertTitle(message, tone) {
-  const m = String(message || '');
-  if (/cash in hand/i.test(m)) return 'Low cash in hand';
-  if (/formula units/i.test(m)) return 'Low formula units';
-  if (/insufficient|not enough|not in raw material|short by|shortage/i.test(m) && /inventory|material|stock|units|kg/i.test(m)) return tone === 'error' ? 'Low inventory' : 'Inventory warning';
-  if (/credit/i.test(m)) return tone === 'error' ? 'Credit error' : 'Credit warning';
-  if (/cannot delete|cannot be deleted|cannot change|cannot be edited/i.test(m)) return 'Action not allowed';
-  if (/payment/i.test(m)) return tone === 'error' ? 'Payment error' : 'Payment warning';
-  return null;
+export function notifyBlocking(message, tone, title) {
+  return showGlassAlert(splitFigures(message), { tone, title });
 }
-
-export function notifyBlocking(message, tone = 'warning', title = null) {
-  return showGlassAlert(splitFigures(message), { tone, title: title || alertTitle(message, tone) });
+const TONE_LINES = { warning: CAPTIONS.warning, danger: CAPTIONS.danger, error: CAPTIONS.error };
+function requireTitle(title) {
+  const text = humanizeKeys(String(title == null ? '' : title)).trim();
+  if (!text) throw new TypeError('A dialog title is required');
+  return text;
 }
-
+export function describeForDevice(message, { tone = 'warning', title = null, action = '' } = {}) {
+  const t = EYEBROWS[tone] ? tone : 'warning';
+  const parsed = parseMessage(splitFigures(message));
+  const lines = [];
+  const figureLine = parsed.figure ? `${parsed.figure.k}: ${parsed.figure.v}` : '';
+  let figureDone = !figureLine;
+  parsed.blocks.forEach((blk) => {
+    if (blk.type === 'facts') blk.items.forEach((f) => lines.push(`${f.k}: ${f.v}`));
+    else if (blk.type === 'points') blk.items.forEach((x) => lines.push(`\u2022 ${x}`));
+    else if (blk.type === 'callout') lines.push(`${blk.label}: ${blk.text}`);
+    else lines.push(blk.text);
+    if (!figureDone && (blk.type === 'p' || blk.type === 'subhead')) { lines.push(figureLine); figureDone = true; }
+  });
+  if (!figureDone) lines.unshift(figureLine);
+  if (TONE_LINES[t]) lines.unshift(TONE_LINES[t]);
+  if (action) lines.unshift(action);
+  return { tone: t, title: requireTitle(title), body: lines.join('\n') };
+}
+function announce(message, tone, title, action) {
+  if (typeof window.notifyFromDialog !== 'function') return;
+  try { window.notifyFromDialog(describeForDevice(message, { tone, title, action })); } catch (_) {}
+}
 window.showGlassConfirm = showGlassConfirm;
 window.showGlassAlert = showGlassAlert;
 window.showChoiceDialog = showChoiceDialog;
 window.showPasswordConfirm = showPasswordConfirm;
 window.notifyBlocking = notifyBlocking;
 window.isDialogOpen = isDialogOpen;
+window.isDialogFlowActive = isDialogFlowActive;

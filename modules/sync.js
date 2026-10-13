@@ -2112,7 +2112,7 @@ export async function subscribeToRealtime() {
           await pullDataFromCloud(false, true);
         } catch (_rebuildErr) {
           console.warn('[yearCloseSignal] pullDataFromCloud failed:', _safeErr(_rebuildErr));
-          window.notifyBlocking('Auto-refresh failed — please sync manually.', 'warning');
+          window.notifyBlocking('Auto-refresh failed — please sync manually.', 'warning', 'Warning');
           return;
         }
         try {
@@ -3654,7 +3654,7 @@ export async function wakeUpDatabaseAndSync() {
 
 export async function triggerCloudAction(action) {
 if (!firebaseDB) {
-window.notifyBlocking("Cloud system not initialized. Check internet.", 'error');
+window.notifyBlocking("Cloud system not initialized. Check internet.", 'error', 'Something went wrong');
 return;
 }
 if (isSyncing) {
@@ -3674,7 +3674,6 @@ const _ufc_localCount = Object.keys(localStorage).filter(k => k.startsWith('gznd
 const _ufc_msg = `Merge the latest cloud data into this device?\n\n• Your local records will be compared with cloud records\n• Newer versions of each record always win\n• No local data will be overwritten or deleted\n• This device only — other devices are unaffected\n\nRecommended if another device has recently added records.`;
 if (await showGlassConfirm(_ufc_msg, { title: "Sync from Cloud", confirmText: "Update from Cloud", cancelText: "Cancel" })) {
 closeDataMenu();
-showToast("Starting Update...", "info");
 await pullDataFromCloud(false);
 }
 }
@@ -4348,16 +4347,15 @@ await firebaseDB.collection('users').doc(uid).update(_toggleUpdate).catch(() => 
 const accounts = await _readAccountsIndex();
 const updated = accounts.map(a => a.uid === uid ? { ...a, approved: !currentlyApproved } : a);
 await _writeAccountsIndex(updated);
-showToast('Account ' + (currentlyApproved ? 'suspended' : 'reinstated') + ': ' + email, currentlyApproved ? 'warning' : 'success');
 await loadAccountsList();
 } catch(err) {
-window.notifyBlocking('Failed to update account.', 'error');
+window.notifyBlocking('Failed to update account.', 'error', 'Something went wrong');
 console.error('adminToggleApproval:', _safeErr(err));
 }
 }
 
 export async function adminRemoveAccount(uid, email) {
-if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning'); return; }
+if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning', 'Warning'); return; }
 const confirmed = await showGlassConfirm(
 'Remove access for ' + email + '?\n\nThey will be blocked immediately. Their stored data is preserved.\n\nTo fully delete the Firebase Auth account, use Firebase Console.',
 { title: 'Remove Account', confirmText: 'Remove', cancelText: 'Cancel', danger: true }
@@ -4368,10 +4366,9 @@ await firebaseDB.collection('users').doc(uid).update({ approved: false, removedA
 const accounts = await _readAccountsIndex();
 const updated = accounts.map(a => a.uid === uid ? { ...a, approved: false } : a);
 await _writeAccountsIndex(updated);
-showToast('Access removed: ' + email, 'success');
 await loadAccountsList();
 } catch(err) {
-window.notifyBlocking('Failed to remove account.', 'error');
+window.notifyBlocking('Failed to remove account.', 'error', 'Something went wrong');
 console.error('adminRemoveAccount:', _safeErr(err));
 }
 }
@@ -4501,7 +4498,7 @@ createAuthOverlay();
 showAuthOverlay();
 }, 500);
 } catch (error) {
-showToast(' Error signing out', 'danger');
+showToast(' Error signing out', 'error');
 }
 }
 

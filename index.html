@@ -1542,7 +1542,7 @@ window._showLogoutConfirmDialog = async function() {
   if (confirmed) {
     if (typeof signOut === 'function') { signOut(); }
     else if (typeof firebase !== 'undefined' && firebase.auth) { firebase.auth().signOut().catch(function(e){console.error('Sign out failed:',(e&&e.message)||String(e)||'(unknown)')}); }
-    else { showToast('Sign out failed', 'error'); }
+    else { window.notifyBlocking('Sign out failed', 'error', 'Something went wrong'); }
   }
 };
 </script><div class="liquid-bg-element liquid-2"></div>
@@ -3406,7 +3406,7 @@ async function saveStoreFromForm() {
   }
   const commitResult = await commitStoresWithFormulas(stores);
   if (!commitResult.ok) {
-    if (typeof showToast === 'function') showToast(commitResult.error, 'warning', 5000);
+    window.notifyBlocking(commitResult.error, 'warning', 'Warning');
     return;
   }
   resetStoreForm();

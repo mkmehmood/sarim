@@ -5,7 +5,7 @@ const _thumbCache = new Map();
 let _picker = [];
 const _selected = new Set();
 
-function _toast(msg, type = 'info', ms = 3000) {
+function _toast(msg, type, ms = 3000) {
   if (window.showToast) window.showToast(msg, type, ms);
 }
 
