@@ -315,9 +315,9 @@ box-sizing: inherit;
 -webkit-font-smoothing: antialiased;
 }
 
-*[style*="overflow-y: auto"],
-*[style*="overflow-x: auto"],
-*[style*="overflow: auto"] {
+.scroll-y,
+.scroll-x,
+.scroll-auto {
 -webkit-overflow-scrolling: touch;
 overscroll-behavior: contain;
 scroll-behavior: smooth;
@@ -387,14 +387,14 @@ background: rgba(255, 255, 255, 0.90);
 box-shadow: var(--shadow-lg);
 }
 
-div[style*="overflow"], table, tbody {
+div.has-overflow, table, tbody {
 -webkit-overflow-scrolling: touch;
 overscroll-behavior: contain;
 scroll-behavior: smooth;
 }
 
-div[style*="overflow-y: auto"],
-div[style*="overflow-x: auto"] {
+div.scroll-y,
+div.scroll-x {
 transform: translateZ(0);
 -webkit-transform: translateZ(0);
 backface-visibility: hidden;
@@ -405,7 +405,7 @@ touch-action: pan-y;
 will-change: scroll-position;
 }
 
-div[style*="overflow-x: auto"] {
+div.scroll-x {
 touch-action: pan-x pan-y;
 }
 
@@ -416,7 +416,7 @@ height: 100%;
 body {
 height: 100%;
 }
-div[style*="overflow"] {
+div.has-overflow {
 -webkit-overflow-scrolling: touch !important;
 }
 }
@@ -2393,9 +2393,6 @@ padding-top: 10px;
 }
 
 @media (max-width: 768px) {
-.report-grid[style*="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))"] {
-grid-template-columns: 1fr !important;
-}
 #cash-net-total,
 #credit-total {
 font-size: 1.2rem !important;
@@ -2947,7 +2944,7 @@ h1, h2, h3 {
 font-family: var(--font-display) !important;
 }
 
-[id$="-total"], [id$="-net"], [id$="-balance"], [id$="-cash"], [id$="-credit"], [id$="-profit"], [id*="cash-"], [id*="net-"], [id*="profit-"], td.profit-val, td.cost-val, span.profit-val, span.cost-val, p .profit-val, p .cost-val, td[style*="text-align:right"], td[style*="text-align: right"], .net-cash-value {
+[id$="-total"], [id$="-net"], [id$="-balance"], [id$="-cash"], [id$="-credit"], [id$="-profit"], [id*="cash-"], [id*="net-"], [id*="profit-"], td.profit-val, td.cost-val, span.profit-val, span.cost-val, p .profit-val, p .cost-val, td.text-right, .net-cash-value {
 font-family: var(--font-num) !important;
 font-variant-numeric: tabular-nums !important;
 letter-spacing: -0.025em !important;
@@ -6434,4 +6431,48 @@ code, pre, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .u-33bd72e { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; font-style: italic; }
 .u-cff0795 { margin-top: 5px; font-size: 0.75rem; font-weight: 400; color: var(--text-muted); }
 .u-50337d2 { align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 5px; margin-bottom: 2px; }
+.u-327750f { position: absolute; z-index: var(--z-modal, 1000); width: 100%; max-height: 200px; border-radius: 10px; margin-top: 5px; box-shadow: var(--shadow); }
+.u-f984b84 { padding: 4px 10px; }
+.u-c86c980 { width: 88px; height: 88px; border-radius: 50%; align-items: center; justify-content: center; cursor: pointer; }
+.u-63b5e54 { position: relative; width: 100%; height: 100%; align-items: center; justify-content: center; }
+.u-fc13188 { font-size: 0.7rem; color: var(--text-muted); margin-top: 5px; }
+.u-7a02ed1 { max-height: 400px; margin-top: 10px; }
+.u-c186ab5 { padding: 8px 2px; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%; }
+.u-7960f3f { color: var(--text-muted); margin-top: 5px; font-weight: 400; }
+.u-bcef30c { color: var(--text-muted); margin: 0; }
+.u-53e2e10 { max-height: 500px; margin-top: 10px; }
+.u-9d9fbca { padding: 8px 2px; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 20%; }
+.u-6f2f27f { padding: 8px 2px; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%; cursor: pointer; user-select: none; }
+.u-0b2e367 { color: var(--text-muted); margin-top: 8px; }
+.u-92a53e7 { padding: 10px 2px; font-weight: 700; font-size: 0.75rem; }
+.u-bcf20a9 { padding: 10px 2px; font-weight: 700; font-size: 0.85rem; }
+.u-a3d5906 { color: var(--accent); border-radius: 8px; padding: 5px 10px; font-weight: 700; cursor: pointer; }
+.u-7f49e10 { border-radius: 20px; max-width: 760px; width: 100%; max-height: 88vh; flex-direction: column; }
+.u-ee0901a { padding: 16px 20px 20px; flex: 1; min-height: 0; }
+.u-391e335 { font-size: 0.59rem; color: var(--text-muted); margin-bottom: 10px; padding-right: 2px; }
+.u-b62856e { flex-shrink: 0; }
+.u-1982257 { padding: 4px 6px; color: var(--text-muted); font-weight: 600; }
+.u-bb2fbde { color: var(--text-muted); margin-bottom: 20px; }
+.u-5d1cf22 { color: var(--text-muted); margin-top: 2px; }
+.u-c5521f3 { margin-top: 3px; }
+.u-d780054 { padding: 8px 2px; font-size: 0.75rem; color: var(--text-muted); }
+.u-7f65e2c { padding: 8px 2px; font-size: 0.8rem; font-weight: 700; color: var(--accent); }
+.u-d59bb54 { color: var(--text-muted); }
+.u-6734184 { font-size: 0.72rem; min-width: 60px; }
+.u-e89dac7 { font-size: 0.62rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; min-width: 60px; }
+.u-7c8c142 { max-height: 400px; }
+.u-d111b8a { flex-direction: column; align-items: flex-end; gap: 5px; }
+.u-d2751c2 { font-size: 0.82rem; font-weight: 700; color: var(--text-main); white-space: nowrap; text-overflow: ellipsis; }
+.u-bd37878 { padding: 10px 8px; font-weight: 700; color: var(--danger); font-size: 0.9rem; }
+.u-1d673f2 { margin-right: 4px; }
+.u-8b4ab7f { flex: 1; min-width: 0; }
+.u-064a084 { align-items: center; gap: 4px; padding: 5px 10px; color: #ef4444; border-radius: 999px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.u-76ebb48 { font-size: 0.85rem; font-weight: 800; color: var(--text-main); white-space: nowrap; text-overflow: ellipsis; }
+.u-74fa97c { cursor: pointer; }
+.u-de0c801 { font-size: 0.75rem; }
+.u-0990a82 { font-size: 0.72rem; color: var(--text-main); font-weight: 500; flex: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.u-ba8bce3 { color: var(--text-main); flex: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.u-24324ab { font-weight: 700; color: var(--cost-val, #f59e0b); white-space: nowrap; margin-left: 8px; }
+.text-right { text-align: right; }
+.text-xs { font-size: 0.7rem; }
 }

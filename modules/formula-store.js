@@ -211,6 +211,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   const dropdown = document.createElement('div');
   dropdown.className = 'factory-mat-dropdown hidden u-search-dropdown';
   dropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:999;max-height:180px;overflow-y:auto;';
+  dropdown.classList.add('has-overflow', 'scroll-y');
   const costInput = document.createElement('input');
   costInput.type = 'number';
   costInput.className = 'factory-mat-cost';
@@ -486,6 +487,7 @@ export async function openStoreFormulaPicker(btn) {
     pop.style.left = '0';
     pop.style.maxHeight = '220px';
     pop.style.overflowY = 'auto';
+    pop.classList.add('has-overflow', 'scroll-y');
   }
 }
 

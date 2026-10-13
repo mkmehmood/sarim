@@ -484,7 +484,7 @@ if (item.supplierName) {
 const remainingPayable = item.totalPayable || 0;
 const isFullyPaid = item.paymentStatus === 'paid' || remainingPayable <= 0;
 const payableDisplay = isFullyPaid ? `<span class="u-text-emerald">0</span>` : `<span class="u-ee2665d">${fmtNum(safeNumber(remainingPayable, 0))}</span>`;
-supplierHtml = `<div class="u-6e1a1fe"><div class="supplier-name-badge">${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</div><div style="margin-top:3px;font-size:0.7rem;">${payableDisplay}</div></div>`;
+supplierHtml = `<div class="u-6e1a1fe"><div class="supplier-name-badge">${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</div><div class="u-c5521f3 text-xs">${payableDisplay}</div></div>`;
 } else {
 supplierHtml = `<div class="u-109ee1c">No supplier linked</div>`;
 }
@@ -511,7 +511,7 @@ const itemName = esc(item.name);
 const tr = document.createElement('tr');
 tr.style.borderBottom = '1px solid var(--glass-border)';
 tr.style.cursor = 'pointer';
-tr.innerHTML = `<td class="u-b42655f" onclick="editFactoryInventoryItem('${itemId}')"><div class="u-22bcfd2">${itemName}</div>${supplierHtml}</td><td class="u-6aafbb0">${quantityHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.75rem;color:var(--text-muted);">${costHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.8rem;font-weight:700;color:var(--accent);">${totalValueStr}</td>`;
+tr.innerHTML = `<td class="u-b42655f" onclick="editFactoryInventoryItem('${itemId}')"><div class="u-22bcfd2">${itemName}</div>${supplierHtml}</td><td class="u-6aafbb0">${quantityHtml}</td><td class="u-d780054 text-right">${costHtml}</td><td class="u-7f65e2c text-right">${totalValueStr}</td>`;
 prebuiltRows.push(tr);
 }
 if (_mySeq !== _invRenderSeq) return;
@@ -1033,8 +1033,8 @@ const matCost = _hasUsed ? (unitCost * f.quantity) : (unitCost * f.quantity * en
 return `<div class="u-e665e23" style="display: flex">
 <span class="u-484c7e5">${matName}</span>
 <span class="u-ae6a320" style="display: flex">
-<span style="font-size:0.7rem;color:var(--text-muted);">${qtyUsed} kg</span>
-<span class="cost-val" style="font-size:0.72rem;min-width:60px;text-align:right;">${fmtAmt(matCost)}</span>
+<span class="u-d59bb54 text-xs">${qtyUsed} kg</span>
+<span class="cost-val u-6734184 text-right">${fmtAmt(matCost)}</span>
 </span>
 </div>`;
 }).join('');
@@ -1050,7 +1050,7 @@ matsBreakdownHtml = `
 <span class="u-2b7c172">Material</span>
 <span class="u-1e68903" style="display: flex">
 <span class="u-2b7c172">Qty Used</span>
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Cost</span>
+<span class="u-e89dac7 text-right">Cost</span>
 </span>
 </div>
 ${rowsHtml}

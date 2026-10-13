@@ -990,7 +990,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             autocomplete="off"
             class="u-13f34eb"
           >
-          <div id="payment-transfer-from-results" class="hidden" style="position:absolute;z-index:var(--z-modal, 1000);width:100%;max-height:200px;overflow-y:auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;margin-top:5px;box-shadow:var(--shadow);"></div>
+          <div id="payment-transfer-from-results" class="hidden u-327750f has-overflow" style="overflow-y: auto; background: var(--glass); border: 1px solid var(--glass-border)"></div>
         </div>
         <div class="field u-a8a9035">
           <label>To Entity</label>
@@ -1003,7 +1003,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             autocomplete="off"
             class="u-13f34eb"
           >
-          <div id="payment-transfer-to-results" class="hidden" style="position:absolute;z-index:var(--z-modal, 1000);width:100%;max-height:200px;overflow-y:auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;margin-top:5px;box-shadow:var(--shadow);"></div>
+          <div id="payment-transfer-to-results" class="hidden u-327750f has-overflow" style="overflow-y: auto; background: var(--glass); border: 1px solid var(--glass-border)"></div>
         </div>
       </div>
       <div class="grid-inputs u-mb-15">
@@ -1253,7 +1253,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="u-3e0b028">
       <div class="u-79e0958" style="display: flex">
         <label class="u-540eca8">Registered Accounts</label>
-        <button class="btn-theme" style="font-size:0.7rem;padding:4px 10px;" onclick="loadAccountsList()">&#8635; Refresh</button>
+        <button class="btn-theme u-f984b84 text-xs" onclick="loadAccountsList()">&#8635; Refresh</button>
       </div>
       <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
     </div>
@@ -1362,7 +1362,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006" style="display: flex">
       <div class="u-8124785">
-        <div id="entity-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('entity')">
+        <div id="entity-photo-preview" class="u-c86c980 has-overflow" style="background: var(--input-bg); border: 2.5px solid var(--accent); overflow: hidden; display: flex" onclick="previewPhotoClick('entity')">
           <svg id="entity-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="entity-photo-img" src="" alt="" class="u-b19d6a5" style="display: none">
         </div>
@@ -1477,7 +1477,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006" style="display: flex">
       <div class="u-8124785">
-        <div id="cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('cust')">
+        <div id="cust-photo-preview" class="u-c86c980 has-overflow" style="background: var(--input-bg); border: 2.5px solid var(--accent); overflow: hidden; display: flex" onclick="previewPhotoClick('cust')">
           <svg id="cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="cust-photo-img" src="" alt="" class="u-b19d6a5" style="display: none">
         </div>
@@ -1563,7 +1563,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006" style="display: flex">
       <div class="u-8124785">
-        <div id="rep-cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('rep-cust')">
+        <div id="rep-cust-photo-preview" class="u-c86c980 has-overflow" style="background: var(--input-bg); border: 2.5px solid var(--accent); overflow: hidden; display: flex" onclick="previewPhotoClick('rep-cust')">
           <svg id="rep-cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="rep-cust-photo-img" src="" alt="" class="u-b19d6a5" style="display: none">
         </div>
@@ -1620,7 +1620,7 @@ window._showLogoutConfirmDialog = async function() {
 <span id="system-name-display" style="left: 50%; transform: translateX(-50%); pointer-events: none" class="shimmer-text u-39e031c">MAHMOOD KHAN</span>
 </div>
 <div id="photo-lightbox-modal" class="u-5dc23f3" style="display: none; inset: 0; background: rgba(0,0,0,0.96)">
-  <div id="photo-lightbox-inner" style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+  <div id="photo-lightbox-inner" class="u-63b5e54 has-overflow" style="display: flex; overflow: hidden">
     <img id="photo-lightbox-img" src="" alt="" class="u-091ed00" style="display: block">
   </div>
   <div class="u-976b6bc" style="left: 0; display: flex; pointer-events: none">
@@ -1754,7 +1754,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 </div>
 <div id="rep-map-container" class="u-d6af5d3" style="border: 2px solid var(--glass-border)"></div>
-<div style="text-align: right; font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;">
+<div class="u-fc13188 text-right">
  Cash Sale |  Collection |  Credit Sale
 </div>
 </div>
@@ -1793,14 +1793,14 @@ oninput="renderRepCustomerTable()">
 <button class="btn-theme u-e1b82f4" onclick="exportCustomerData('rep')" title="Download PDF" style="border-color: var(--accent-emerald)"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388" style="display: inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 <button class="btn-theme u-4ae4ad1" onclick="openRepCustomerEditModal('')" title="Add New Customer" style="border-color: var(--accent); display: inline-flex"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
-<div style="overflow-x: auto; overflow-y: auto; max-height: 400px; margin-top: 10px;">
+<div class="u-7a02ed1 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
 <th class="u-cda0ed3">Date</th>
 <th class="u-8bcb4b4">Name</th>
 <th class="u-d20410e">Contact</th>
-<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%;">Amount</th>
+<th class="u-c186ab5 text-right">Amount</th>
 </tr>
 </thead>
 <tbody id="rep-customers-table-body">
@@ -1852,7 +1852,7 @@ No records found
 <div class="field">
 <label>Net Production (kg)</label>
 <input type="number" id="net-wt" readonly class="u-540e04e" style="background: rgba(37, 99, 235, 0.1)">
-<div id="dynamic-cost-display" style="font-size:0.7rem; color:var(--text-muted); margin-top:5px; font-weight: 400;">
+<div id="dynamic-cost-display" class="u-7960f3f text-xs">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
 </div>
@@ -2069,14 +2069,14 @@ oninput="filterCustomers()">
 <button class="btn-theme u-7c64339" onclick="exportCustomerData('admin')" title="Download PDF" style="border-color: var(--accent)"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388" style="display: inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 <button class="btn-theme u-2386b90" onclick="openCustomerEditModal('')" title="Add New Customer" style="border-color: var(--accent-emerald); display: inline-flex"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
-<div style="overflow-x: auto; overflow-y: auto; max-height: 400px; margin-top: 10px;">
+<div class="u-7a02ed1 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
 <th class="u-cda0ed3">Date</th>
 <th class="u-8bcb4b4">Name</th>
 <th class="u-d20410e">Contact</th>
-<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%;">Amount</th>
+<th class="u-c186ab5 text-right">Amount</th>
 </tr>
 </thead>
 <tbody id="customers-table-body">
@@ -2334,7 +2334,7 @@ No records found
 <div class="section-header">
 <h3 class="u-text-accent" >New Production Entry</h3>
 <div class="u-8ae412c" style="display: flex">
-<label style="font-size:0.7rem; color:var(--text-muted); margin:0;">Date</label>
+<label class="u-bcef30c text-xs">Date</label>
 <input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" class="u-8da625c">
 </div>
 </div>
@@ -2483,14 +2483,14 @@ Select a store...
 <div class="section-header">
 <h3 class="u-heading-main" >Raw Material Inventory</h3>
 </div>
-<div style="overflow-x: auto; overflow-y: auto; max-height: 500px; margin-top: 10px;">
+<div class="u-53e2e10 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
 <th class="u-85c1b26" id="factoryInvSortName" onclick="sortFactoryInventory('name')">Material ⇅</th>
 <th class="u-5f75a4a">Stock</th>
-<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 20%;">Cost/Unit</th>
-<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%; cursor:pointer; user-select:none;" id="factoryInvSortAmount" onclick="sortFactoryInventory('amount')">Total Value ⇅</th>
+<th class="u-9d9fbca text-right">Cost/Unit</th>
+<th class="u-6f2f27f text-right" id="factoryInvSortAmount" onclick="sortFactoryInventory('amount')">Total Value ⇅</th>
 </tr>
 </thead>
 <tbody id="factoryInventoryTableBody">
@@ -2617,18 +2617,7 @@ placeholder="Search expenses or entities..."
 oninput="handleExpenseSearch()"
 autocomplete="off" class="u-13f34eb"
 >
-<div id="expense-search-results" class="hidden" style="
-position: absolute;
-z-index: var(--z-modal, 1000);
-width: 100%;
-max-height: 200px;
-overflow-y: auto;
-background: var(--glass);
-border: 1px solid var(--glass-border);
-border-radius: 10px;
-margin-top: 5px;
-box-shadow: var(--shadow);
-"></div>
+<div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y" style="overflow-y: auto; background: var(--glass); border: 1px solid var(--glass-border)"></div>
 </div>
 </div>
 <div class="u-aa4c87b" style="display: flex">
@@ -2819,7 +2808,7 @@ Save Transaction
 <p><span>Calculator Credits:</span> <span class="qty-val" id="credit-calculator">Rs 0</span></p>
 <hr class="u-09601dc" style="border-color: rgba(245, 158, 11, 0.2)">
 <p><span>TOTAL CREDITS:</span> <span class="cost-val u-1eee58e" id="credit-total">Rs 0</span></p>
-<div style="font-size:0.7rem; color:var(--text-muted); margin-top:8px;">
+<div class="u-0b2e367 text-xs">
 <span class="update-indicator"></span> Credits awaiting collection
 </div>
 </div>
@@ -2850,14 +2839,14 @@ oninput="renderUnifiedTable()">
 </select>
 </div>
 </div>
-<div id="unified-table-container" style="overflow-x: auto; overflow-y: auto; max-height: 500px; margin-top: 10px;">
+<div id="unified-table-container" class="u-53e2e10 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
 <th class="u-cda0ed3">Date</th>
 <th class="u-8bcb4b4">Name</th>
 <th class="u-d20410e">Contact</th>
-<th style="padding: 8px 2px; text-align: right; font-weight: 700; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; width: 25%;">Amount</th>
+<th class="u-c186ab5 text-right">Amount</th>
 </tr>
 </thead>
 <tbody id="unified-table-body">
@@ -2869,10 +2858,10 @@ No records found
 </tbody>
 <tfoot>
 <tr class="u-1426cf2" style="background: var(--input-bg)">
-<td colspan="3" style="padding: 10px 2px; font-weight: 700; text-align: right; font-size: 0.75rem;">
+<td colspan="3" class="u-92a53e7 text-right">
 <span id="unified-table-footer-label">Total:</span>
 </td>
-<td id="unified-table-total" style="padding: 10px 2px; font-weight: 700; text-align: right; font-size: 0.85rem;">0.00</td>
+<td id="unified-table-total" class="u-bcf20a9 text-right">0.00</td>
 </tr>
 </tfoot>
 </table>
@@ -3073,7 +3062,7 @@ async function renderStoreList() {
           </div>
         </div>
         <div class="u-3141675" style="display: flex">
-          <button onclick="editStore(${i})" style="background:rgba(29,233,182,0.1);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">Edit</button>
+          <button onclick="editStore(${i})" class="u-a3d5906 text-xs" style="background: rgba(29,233,182,0.1); border: 1px solid var(--accent)">Edit</button>
           ${!isBuiltin && !isUsed ? `<button onclick="deleteStore(${i})" style="background:rgba(239,68,68,0.1);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:5px 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">Delete</button>` : ''}
         </div>
       </div>

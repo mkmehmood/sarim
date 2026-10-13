@@ -4312,7 +4312,7 @@ const actions = isMe
     ].join('');
 return '<div class="u-a412d9a" style="display: flex; background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
   '<div class="u-855cc88" style="display: flex">' + dot +
-  '<div class="u-33f2a66"><div style="font-size:0.82rem;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
+  '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow" style="overflow: hidden">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
   '<div class="u-28c8f7e" style="display: flex">' +
   (acct.role === 'admin'

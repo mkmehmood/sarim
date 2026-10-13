@@ -2683,7 +2683,7 @@ font-weight: 600;
 white-space: nowrap;
 ">${esc(categoryLabel)}</span>
 </td>
-<td style="padding: 10px 8px; text-align: right; font-weight: 700; color: var(--danger); font-size: 0.9rem;">
+<td class="u-bd37878 text-right">
 ${fmtAmt(expense.amount)}
 </td>
 <td class="u-1d3001e">
@@ -3015,7 +3015,7 @@ ${row.typeLabel}
 </div>
 </td>
 <td class="u-7fad896">${phoneActionHTML(row.contact)}</td>
-<td style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.color}; white-space: nowrap; font-size: 0.75rem;">
+<td class="text-right" style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.color}; white-space: nowrap; font-size: 0.75rem;">
 ${row.amountStr}
 </td>`;
 } else {
@@ -3034,7 +3034,7 @@ ${row.balanceLabel}
 </div>
 </td>
 <td class="u-7fad896">${phoneActionHTML(row.contact)}</td>
-<td style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.amountColor}; white-space: nowrap; font-size: 0.75rem;">
+<td class="text-right" style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.amountColor}; white-space: nowrap; font-size: 0.75rem;">
 ${row.amountStr}
 </td>`;
 }
@@ -3104,7 +3104,7 @@ const percentage = totalExpenses > 0 ? (amount / totalExpenses * 100).toFixed(2)
 html += `
 <div class="u-5bb520e" style="display: flex">
 <span class="u-text-main" >${name}:</span>
-<div style="text-align: right;">
+<div class="text-right" style="text-align: right;">
 <span class="u-d2c10bd">${formatCurrency(amount)}</span>
 <span class="u-b51a44d">(${percentage}%)</span>
 </div>
@@ -3549,7 +3549,7 @@ item.innerHTML = `
 <div class="u-fs-sm2 u-text-muted" >${esc(exp.description || 'No description')}</div>
 </div>
 <div class="u-d94b2d8" style="display: flex">
-<div style="text-align:right; margin-right:4px;">
+<div class="u-1d673f2 text-right">
 <span class="txn-label-badge txn-warning">EXPENSE</span>
 <div class="cost-val u-bb4c6c9">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
 </div>
@@ -4916,7 +4916,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
       return `<div class="u-b8ea487" style="background: var(--input-bg); border: 1px solid var(--glass-border); display: flex">
         <div style="width:9px;height:9px;min-width:9px;border-radius:50%;background:${colDot};flex-shrink:0;"></div>
-        <div style="flex:1;min-width:0;overflow:hidden;">
+        <div class="u-8b4ab7f has-overflow" style="overflow: hidden">
           <div class="u-f3709bc" style="display: flex">
             ${nameHtml}
             ${amountHtml}
@@ -4936,7 +4936,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
           ${canRecover
             ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
-          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:999px;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
+          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs" style="display: inline-flex; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3)"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
     }).join('');
@@ -6654,7 +6654,7 @@ return;
 list.innerHTML = salesRepsList.map((rep, i) => `
 <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:9999px; ${i === 0 ? 'border-left:3px solid var(--accent);' : ''}">
 <div class="u-2c42b11" style="display: flex">
-<span style="font-size:0.85rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(rep)}</span>
+<span class="u-76ebb48 has-overflow" style="overflow: hidden">${esc(rep)}</span>
 <span style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}; flex-shrink:0;">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
 <button class="btn-theme u-eeccbea" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="border-color: rgba(239,68,68,0.4)"></button>
@@ -7080,7 +7080,7 @@ if (device.firstLoginAt) {
 let cardHtml = '<div class="u-296d231" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">';
 cardHtml += '<div class="u-d42a404" style="display: flex">';
 cardHtml += '<div class="u-3eddfae" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span class="u-fe495ba">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span class="u-56e4c0c">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
-cardHtml += '<div style="text-align:right;flex-shrink:0;">';
+cardHtml += '<div class="u-b62856e text-right">';
 cardHtml += '<div style="font-size:0.8rem;font-weight:800;color:' + modeColor + ';white-space:nowrap;">' + modeLabel + '</div>';
 cardHtml += '<div style="font-size:0.6rem;color:' + onlineColor + ';margin-top:2px;">' + onlineDot + '</div>';
 cardHtml += '</div>';
@@ -7132,7 +7132,7 @@ const repBord = (repLocked ? '2' : '1') + 'px solid rgba(' + c.bg + ',' + (repLo
 const repFw = repLocked ? '800' : '600';
 const repTick = repLocked ? ' ' : '';
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'rep\', \'' + rep + '\')"';
-cardHtml += ' style="padding:8px 5px;background:' + repBg + ';border:' + repBord + ';border-radius:99px;color:' + c.hex + ';cursor:pointer;font-size:0.68rem;font-weight:' + repFw + ';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+cardHtml += ' class="has-overflow" style="padding:8px 5px;background:' + repBg + ';border:' + repBord + ';border-radius:99px;color:' + c.hex + ';cursor:pointer;font-size:0.68rem;font-weight:' + repFw + ';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
 cardHtml += repTick + rep + '</button>';
 }
 cardHtml += '</div>';
@@ -7151,7 +7151,7 @@ const lookupKey = '_devTabsCache';
 if (!window[lookupKey]) window[lookupKey] = {};
 window[lookupKey][device.deviceId + '_' + ui] = user.tabs || [];
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'userrole\', \'' + user.name + '\', (window._devTabsCache||{})[\'' + device.deviceId + '_' + ui + '\'])"';
-cardHtml += ' style="padding:8px 5px;background:' + userBg + ';border:' + userBord + ';border-radius:99px;color:#ffcc02;cursor:pointer;font-size:0.68rem;font-weight:' + userFw + ';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+cardHtml += ' class="has-overflow" style="padding:8px 5px;background:' + userBg + ';border:' + userBord + ';border-radius:99px;color:#ffcc02;cursor:pointer;font-size:0.68rem;font-weight:' + userFw + ';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
 cardHtml += userTick + user.name + '</button>';
 }
 cardHtml += '</div>';
@@ -7765,7 +7765,7 @@ item.innerHTML = `
     ${t.description ? `<div class="u-fs-sm2 u-text-muted">${esc(t.description)}</div>` : ''}
   </div>
   <div class="u-d94b2d8" style="display: flex">
-    <div style="text-align:right;">
+    <div class="text-right" style="text-align:right;">
       <span class="u-56e02ab">TRANSFER</span>
       <div class="cost-val u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>

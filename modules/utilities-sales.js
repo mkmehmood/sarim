@@ -3725,8 +3725,8 @@ tr.innerHTML = `
 <div class="u-fw-700">${esc(safeName)}</div>
 <div class="u-cffbbf2" onclick="event.stopPropagation(); editEntityBasicInfo('${esc(entity.id)}')"> Edit info</div>
 </td>
-<td style="text-align:right; cursor:pointer;" onclick="openEntityDetailsOverlay('${esc(entity.id)}')">${balanceHtml}</td>
-<td style="text-align:right; font-size:0.75rem;">${phoneActionHTML(entity.phone)}</td>
+<td class="u-74fa97c text-right" onclick="openEntityDetailsOverlay('${esc(entity.id)}')">${balanceHtml}</td>
+<td class="u-de0c801 text-right">${phoneActionHTML(entity.phone)}</td>
 `;
 fragment.appendChild(tr);
 });
@@ -3745,7 +3745,7 @@ if (entityListViewType === 'table') {
 const rows = document.querySelectorAll('#entityListBody tr');
 rows.forEach(row => {
 const entityName = row.querySelector('strong')?.textContent.toLowerCase() || '';
-const phone = row.querySelector('div[style*="font-size:0.7rem"]')?.textContent.toLowerCase() || '';
+const phone = row.querySelector('div.text-xs')?.textContent.toLowerCase() || '';
 if (entityName.includes(searchTerm) || phone.includes(searchTerm)) {
 row.style.display = '';
 } else {
@@ -5483,10 +5483,10 @@ if (_rawBreakdownEl) {
     const _bId = 'perf-sum-raw-breakdown';
     const _rowsHtml = _rawEntries.map(([name, data]) => `
 <div class="u-e665e23" style="display: flex">
-<span style="font-size:0.72rem;color:var(--text-main);font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
+<span class="u-0990a82 has-overflow" style="overflow: hidden">${esc(name)}</span>
 <span class="u-ae6a320" style="display: flex">
-<span style="font-size:0.7rem;color:var(--text-muted);">${fmtNum(safeNumber(data.qty,0))} kg</span>
-<span class="cost-val" style="font-size:0.72rem;min-width:60px;text-align:right;">${fmtAmt(data.cost)}</span>
+<span class="u-d59bb54 text-xs">${fmtNum(safeNumber(data.qty,0))} kg</span>
+<span class="cost-val u-6734184 text-right">${fmtAmt(data.cost)}</span>
 </span>
 </div>`).join('');
     _rawBreakdownEl.innerHTML = `
@@ -5500,7 +5500,7 @@ if (_rawBreakdownEl) {
 <span class="u-2b7c172">Material</span>
 <span class="u-1e68903" style="display: flex">
 <span class="u-2b7c172">Qty Used</span>
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Cost</span>
+<span class="u-e89dac7 text-right">Cost</span>
 </span>
 </div>
 ${_rowsHtml}
@@ -5835,8 +5835,8 @@ if (soldBreakdownEntries.length > 0) {
 const soldBreakdownId = `sold-breakdown-${store}-${index}`;
 const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
 <div class="u-dd56633" style="display: flex">
-<span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
-<span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${fmtNum(safeValue(qty))} kg</span>
+<span class="u-ba8bce3 has-overflow text-xs" style="overflow: hidden">${esc(cust)}</span>
+<span class="u-24324ab text-xs">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 soldBreakdownHtml = `
 <div class="u-6b1f0d9">
@@ -5847,7 +5847,7 @@ soldBreakdownHtml = `
 <div id="${soldBreakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-0ad85ea" style="display: flex">
 <span class="u-2b7c172">Customer</span>
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
+<span class="u-e89dac7 text-right">Qty Sold</span>
 </div>
 ${soldRowsHtml}
 </div>
@@ -5906,8 +5906,8 @@ if (combinedSoldEntries.length > 0) {
 const combinedSoldBreakdownId = `sold-breakdown-combined`;
 const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
 <div class="u-dd56633" style="display: flex">
-<span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
-<span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${fmtNum(safeValue(qty))} kg</span>
+<span class="u-ba8bce3 has-overflow text-xs" style="overflow: hidden">${esc(cust)}</span>
+<span class="u-24324ab text-xs">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 combinedSoldBreakdownHtml = `
 <div class="u-6b1f0d9">
@@ -5918,7 +5918,7 @@ combinedSoldBreakdownHtml = `
 <div id="${combinedSoldBreakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-0ad85ea" style="display: flex">
 <span class="u-2b7c172">Customer</span>
-<span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
+<span class="u-e89dac7 text-right">Qty Sold</span>
 </div>
 ${combinedSoldRowsHtml}
 </div>

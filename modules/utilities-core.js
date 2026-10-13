@@ -2043,7 +2043,7 @@ item.innerHTML = `
     ${t.isMerged ? _mergedBadgeHtml(t) : ''}
   </div>
   <div class="u-d94b2d8" style="display: flex">
-    <div style="text-align:right;">
+    <div class="text-right" style="text-align:right;">
       <span style="color:${badgeColor};padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">${label}</span>
       <div class="${colorClass} u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>

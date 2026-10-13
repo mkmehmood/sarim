@@ -846,7 +846,7 @@ tr.innerHTML = `
 <td class="u-table-td">${displayDate}</td>
 <td class="u-0f0deda" onclick="event.stopPropagation(); openRepCustomerManagement('${safeNameForAttr}')">${esc(name)}</td>
 <td class="u-table-td">${phoneActionHTML(phone)}</td>
-<td style="padding: 8px 2px; text-align: right; font-size: 0.8rem; color: ${customerData.debt > 1 ? 'var(--warning)' : 'var(--accent-emerald)'}; font-weight: 700;">
+<td class="text-right" style="padding: 8px 2px; text-align: right; font-size: 0.8rem; color: ${customerData.debt > 1 ? 'var(--warning)' : 'var(--accent-emerald)'}; font-weight: 700;">
 ${fmtAmt(Math.max(0, customerData.debt))}
 </td>`;
 return tr;
@@ -1090,7 +1090,7 @@ itemContent = `
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
     <div class="u-dbdd85e">Payment: ${await formatCurrency(collectionCollected(t))}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -1105,7 +1105,7 @@ itemContent = `
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
     </div>
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${esc(t.notes || 'Brought forward from previous records')}</div>
+    <div class="u-5d1cf22 text-xs">${esc(t.notes || 'Brought forward from previous records')}</div>
   </div>
   <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -1742,7 +1742,7 @@ return;
 let tableHTML = `
 <div class="section liquid-card u-c1e18cf">
 <h4 class="u-e2215b2">${esc(headerText)}</h4>
-<div style="max-height: 400px; overflow-y: auto;">
+<div class="u-7c8c142 has-overflow scroll-y" style="overflow-y: auto">
 `;
 activityData.forEach(item => {
 let typeIcon = '';
@@ -1787,7 +1787,7 @@ ${item.isSettled ? `<span class="settled-badge"> Settled</span>` : ''}
 ${qtyAmount}
 </div>
 </div>
-<div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+<div class="u-d111b8a text-right" style="display: flex">
 <div class="u-9dfb028" style="display: flex">
 <span class="u-fs-sm u-text-muted">${esc(item.time || '')}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}

@@ -168,7 +168,7 @@ row.innerHTML = `
 <td class="u-table-td">${displayDate}</td>
 <td class="u-0f0deda" onclick="event.stopPropagation(); openCustomerManagement('${safeNameForAttr}')">${safeName}</td>
 <td class="u-table-td">${phoneActionHTML(phone)}</td>
-<td style="padding: 8px 2px; text-align: right; font-size: 0.8rem; ${creditStyle}">${fmtAmt(safeValue(c.credit))}</td>`;
+<td class="text-right" style="padding: 8px 2px; text-align: right; font-size: 0.8rem; ${creditStyle}">${fmtAmt(safeValue(c.credit))}</td>`;
 return row;
 } catch (rowError) {
 console.warn('An unexpected error occurred.', _safeErr(rowError));
@@ -416,7 +416,7 @@ itemContent = `
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-dbdd85e">Payment: ${await formatCurrency(collectionCollected(t))}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -432,7 +432,7 @@ itemContent = `
     </div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${esc(t.notes || 'Brought forward from previous records')}</div>
+    <div class="u-5d1cf22 text-xs">${esc(t.notes || 'Brought forward from previous records')}</div>
   </div>
   <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -449,7 +449,7 @@ itemContent = `
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-fs-sm2 u-text-muted">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_displayUnitPrice)} = ${await formatCurrency(_txValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? `⇄ Stock transfer from ${esc(t.repTransferFrom || t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
+    <div class="u-5d1cf22 text-xs">${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? `⇄ Stock transfer from ${esc(t.repTransferFrom || t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
   </div>
   <div class="u-d94b2d8" style="display: flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}

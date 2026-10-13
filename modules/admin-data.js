@@ -192,7 +192,7 @@ try {
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
   let html = `
-<div id="dbv-root" style="background:var(--glass);border-radius:20px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+<div id="dbv-root" class="u-7f49e10 has-overflow" style="background: var(--glass); display: flex; overflow: hidden">
 
   <div class="u-05209d6" style="display: flex">
     <div class="u-1043921" style="display: flex">
@@ -217,7 +217,7 @@ try {
     ).join('')}
   </div>
 
-  <div id="dbv-body" style="overflow-y:auto;padding:16px 20px 20px;flex:1;min-height:0">
+  <div id="dbv-body" class="u-ee0901a has-overflow" style="overflow-y: auto">
 `;
   html += `<div id="dbv-pane-0">`;
   const _reads      = firestoreStats.reads  || 0;
@@ -246,7 +246,7 @@ try {
       <div style="font-size:0.58rem;color:${_writeColor};margin-top:2px">${_writePct}% of 20 000</div>
     </div>
   </div>
-  <div style="font-size:0.59rem;color:var(--text-muted);text-align:right;margin-bottom:10px;padding-right:2px">
+  <div class="u-391e335 text-right">
     Counter started ${_resetAgo} &nbsp;·&nbsp; resets in ${_resetNext}
   </div>`;
   COLLECTIONS.forEach(col => {
@@ -276,7 +276,7 @@ try {
         <span>Tab: ${pill(col.tabFn||'—','var(--text-muted)')}</span>
       </div>
     </div>
-    <div style="text-align:right;flex-shrink:0">
+    <div class="u-b62856e text-right">
       <div class="u-dd009f5">${fsDocs} FS</div>
       <div style="font-size:0.72rem;color:${mismatch?'#ff453a':'var(--text-muted)'}">
         ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="var(--warning)" fill-opacity="0.12" stroke="var(--warning)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="var(--warning)" fill-opacity=".85"/></svg>':''}
@@ -380,13 +380,13 @@ try {
   html += `<div id="dbv-pane-3" style="display:none">`;
   html += `<div class="u-5beb8fb">
     <div class="u-87be69b">Firestore → SQLite → JS Variable Map</div>
-    <div style="overflow-x:auto">
+    <div class="has-overflow" style="overflow-x:auto">
     <table class="u-90d65a5">
       <thead><tr class="u-c90a74f">
         <th class="u-db30752">Firestore</th>
         <th class="u-db30752">SQLite Key</th>
         <th class="u-db30752">JS Variable</th>
-        <th style="text-align:right;padding:4px 6px;color:var(--text-muted);font-weight:600">FS / Local</th>
+        <th class="u-1982257 text-right">FS / Local</th>
       </tr></thead>
       <tbody>
         ${COLLECTIONS.map(c => {
@@ -457,7 +457,7 @@ try {
   modal.innerHTML = `<div class="u-92d6a70" style="background: var(--glass)">
     <div class="u-e6c5b02" style="display: flex"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-57164d6"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
     <div class="u-5267c24">Failed to load database structure</div>
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:20px">${err && err.message ? err.message : String(err)}</div>
+    <div class="u-bb2fbde text-xs">${err && err.message ? err.message : String(err)}</div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
       class="u-f86db90" style="background: var(--accent); border: none">Close</button>
   </div>`;
@@ -1538,6 +1538,7 @@ const liveUpdate = (rowId, afterText, accentColor, resultLabel, resultNote) => {
     detailEl.style.fontSize = '0';
     detailEl.style.maxHeight = '0';
     detailEl.style.overflow = 'hidden';
+    detailEl.classList.add('has-overflow');
     detailEl.style.transition = 'all 0.35s ease';
   }
 };
