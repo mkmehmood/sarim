@@ -1420,7 +1420,6 @@ if (collIn)  isColl ? collIn.classList.remove('hidden')  : collIn.classList.add(
 if (retIn)   isReturn ? retIn.classList.remove('hidden') : retIn.classList.add('hidden');
 if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
 if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
-if (isSale) _setCreditBox('');
 const collLbl = _el('cust-coll-result-label');
 if (collLbl) collLbl.textContent = isReturn ? 'Total Back From Rep:' : 'Balance After Collection:';
 const qtyRow = _el('customer-qty-row');
@@ -1444,10 +1443,8 @@ calculateCustomerSale();
 }
 }
 
-let _repPreviewSeq = 0;
 export function updateRepReturnPreview() {
 if (custTransactionMode !== 'return') return;
-const seq = ++_repPreviewSeq;
 const exp = parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0;
 const ret = parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0;
 const balEl = document.getElementById('cust-coll-balance');
@@ -1457,17 +1454,6 @@ if (balEl) {
 balEl.textContent = `${fmtNum(round2(exp + ret))} kg`;
 balEl.style.color = (exp + ret) > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)';
 }
-if (exp + ret <= 0) { _setCreditBox(''); return; }
-(async () => {
-try {
-const rep = _repSelectedValue();
-if (!rep) return;
-const [owed, unit] = await Promise.all([_partyOutstanding(rep), getGoodsCreditUnitPrice(rep)]);
-const plan = planGoodsCredit(exp + ret, unit, owed);
-if (seq !== _repPreviewSeq || custTransactionMode !== 'return') return;
-_setCreditBox(`${fmtAmt(plan.value)} off ${rep}'s balance (${fmtAmt(owed)} → ${fmtAmt(Math.max(0, round2(owed - plan.value)))}) · ${fmtNum(round2(exp + ret))} kg × ${fmtAmt(unit)}${plan.capped ? ' — limited to what is owed' : ''}`);
-} catch (_) {}
-})();
 }
 
 export async function saveRepReturn() {
@@ -1542,7 +1528,6 @@ emitSyncUpdate({ sales: null });
 const savedRep = rep;
 const _e1 = document.getElementById('rep-return-expired'); if (_e1) _e1.value = '';
 const _e2 = document.getElementById('rep-return-qty'); if (_e2) _e2.value = '';
-_setCreditBox('');
 const _nameEl = document.getElementById('cust-name'); if (_nameEl) _nameEl.value = '';
 const _firstRepBtn = document.querySelector('#sales-rep-toggle-group .toggle-opt');
 if (_firstRepBtn) selectSalesRep(_firstRepBtn, 'NONE');
@@ -1577,15 +1562,6 @@ total = round2(total + debtDelta(s, debtNeedsGross(s) ? await getSaleTransaction
 return Math.max(0, total);
 }
 
-function _setCreditBox(text) {
-const box = document.getElementById('cust-coll-credit-box');
-const val = document.getElementById('cust-coll-credit');
-if (!box) return;
-if (!text) { box.style.display = 'none'; return; }
-box.style.display = '';
-if (val) val.textContent = text;
-}
-
 let _previewSeq = 0;
 export function updateCollectionPreview() {
 if (custTransactionMode !== 'collection') return;
@@ -1609,7 +1585,7 @@ balEl.style.color = remaining === 0 ? 'var(--accent-emerald)' : 'var(--warning)'
 }
 };
 paint(Math.max(0, currentDebt - collected));
-if (expired <= 0) { _setCreditBox(''); return; }
+if (expired <= 0) return;
 (async () => {
 try {
 const name = nameEl ? nameEl.value.trim() : '';
@@ -1617,7 +1593,6 @@ const unit = await getGoodsCreditUnitPrice(name);
 const plan = planGoodsCredit(expired, unit, Math.max(0, currentDebt - collected));
 if (seq !== _previewSeq || custTransactionMode !== 'collection') return;
 paint(Math.max(0, round2(currentDebt - collected - plan.value)));
-_setCreditBox(`${fmtAmt(plan.value)} (${fmtNum(expired)} kg × ${fmtAmt(unit)})${plan.capped ? ' — limited to what is owed' : ''}`);
 } catch (_) {}
 })();
 }
@@ -1794,7 +1769,6 @@ emitSyncUpdate({ sales: null});
 const savedName = name;
 if (amountEl) amountEl.value = '';
 if (expiredEl) expiredEl.value = '';
-_setCreditBox('');
 const _custNameEl = document.getElementById('cust-name');
 if (_custNameEl) _custNameEl.value = '';
 document.getElementById('new-customer-phone-container').classList.add('hidden');
