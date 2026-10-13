@@ -156,7 +156,7 @@ function _card(f, inventory, usedBy) {
   let html = `<h4 style="margin:0 0 6px 0;font-size:0.9rem;">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
   html += ings.length ? ings.map((i) => _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_num(i.cost, 0) * _num(i.quantity, 0)))).join('') : '<div class="u-text-muted">No ingredients.</div>';
   if (addl > 0) html += _row(`Additional Cost (${addl} per unit)`, _money(addl), 'color:var(--danger);');
-  html += '<div style="border-top:1px dashed var(--glass-border);margin:8px 0 6px 0;"></div>';
+  html += '<div style="border-top:1px dashed var(--nm-line);margin:8px 0 6px 0;"></div>';
   html += _row('Unit Weight', _fmt(t.weight) + ' kg');
   html += _row('Raw Material Cost per Unit', _money(t.raw));
   html += _row('Total Cost per Unit', _money(t.perUnit), 'font-weight:700;');
@@ -217,17 +217,17 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   costInput.placeholder = 'Cost';
   costInput.value = currentCost;
   costInput.readOnly = true;
-  costInput.style.cssText = 'background:rgba(0,0,0,0.05);color:var(--text-muted);cursor:default;';
+  costInput.style.cssText = 'color:var(--text-muted);cursor:default;';
   const renderDropdown = (query) => {
     const q = (query || '').toLowerCase();
     const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;
     const typed = (query || '').trim();
     const exact = typed && inventory.some((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
-    const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom" data-custom="1" data-name="${esc(typed)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.78rem;font-weight:700;color:var(--accent);">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
+    const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom" data-custom="1" data-name="${esc(typed)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--nm-line);font-size:0.78rem;font-weight:700;color:var(--accent);">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
     if (!filtered.length) {
       dropdown.innerHTML = (customOpt || '<div class="u-search-empty">No materials found</div>');
     } else {
-      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);background:var(--input-bg);">${esc(i.name)}</div>`).join('') + customOpt;
+      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option nm-well" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="padding:9px 10px; cursor:pointer; border-bottom:1px solid var(--nm-line); font-size:0.85rem; color:var(--text-main);">${esc(i.name)}</div>`).join('') + customOpt;
     }
     dropdown.classList.remove('hidden');
     dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {

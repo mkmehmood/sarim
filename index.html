@@ -460,7 +460,7 @@ html[data-bio="1"] .splash-brand { display: none; }
 </script><script src="vendor/leaflet/leaflet.js" defer></script><script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
-window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){existing.style.display=existing.style.display==='none'?'block':'none';return;}var pop=document.createElement('div');pop.id=popId;pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:140px;padding:6px 0;';items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);white-space:nowrap;';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);pop.style.display='none';};pop.appendChild(d);});anchor.style.position='relative';anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)pop.style.display='none';}},true);};
+window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){existing.style.display=existing.style.display==='none'?'block':'none';return;}var pop=document.createElement('div');pop.id=popId;pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--nm-bg);border:1px solid var(--nm-line);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:140px;padding:6px 0;';items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);white-space:nowrap;';d.onmouseenter=function(){d.style.background='var(--nm-bg)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);pop.style.display='none';};pop.appendChild(d);});anchor.style.position='relative';anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)pop.style.display='none';}},true);};
 
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
@@ -543,221 +543,7 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
     });
   });
 }
-</script><script src="https://accounts.google.com/gsi/client" async defer></script><style>
-#sidebar-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.55);
-  z-index: var(--z-sidebar-backdrop, 10100);
-  display: none;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: opacity 0.3s ease;
-}
-
-#sidebar-backdrop.open { display: block; }
-
-#app-sidebar {
-  position: fixed;
-  top: 0; left: 0; bottom: 0;
-  width: 288px;
-  z-index: var(--z-sidebar, 10101);
-  background: var(--glass);
-  border-right: 1px solid var(--glass-border);
-  display: flex;
-  flex-direction: column;
-  transform: translateX(-100%);
-  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1);
-  overflow: hidden;
-  padding-top: env(safe-area-inset-top);
-}
-
-#app-sidebar.open { transform: translateX(0); }
-
-.sidebar-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--glass-border);
-  flex-shrink: 0;
-}
-
-.sidebar-brand {
-  font-size: 0.72rem; font-weight: 800; color: var(--accent);
-  text-transform: uppercase; letter-spacing: 0.08em;
-}
-
-.sidebar-scroll {
-  flex: 1; overflow-y: auto; padding: 10px 10px 24px;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
-  will-change: scroll-position;
-}
-
-.sidebar-section-label {
-  font-size: 0.58rem; font-weight: 800; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.1em;
-  padding: 12px 6px 6px;
-}
-
-.sidebar-nav-btn, .sidebar-settings-btn {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 11px 12px; border: none;
-  background: transparent; color: var(--text-muted);
-  cursor: pointer; border-radius: var(--radius-lg);
-  font-family: inherit; font-size: 0.78rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.05em;
-  text-align: left; transition: background 0.15s, color 0.15s;
-}
-
-.sidebar-nav-btn:hover, .sidebar-settings-btn:hover {
-  background: var(--glass-raised); color: var(--text-main);
-}
-
-.sidebar-nav-btn.active {
-  background: rgba(29,233,182,0.12); color: var(--accent);
-}
-
-.sidebar-nav-btn svg, .sidebar-settings-btn svg {
-  width: 16px; height: 16px; flex-shrink: 0; opacity: 1;
-  color: inherit;
-}
-
-.sidebar-nav-btn.active svg { opacity: 1; }
-
-.sidebar-divider {
-  height: 1px; background: var(--glass-border); margin: 6px 0;
-}
-
-.sidebar-hamburger {
-  width: 36px; height: 36px; border: none;
-  background: transparent;
-  cursor: pointer;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 5px; padding: 0;
-  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), filter 0.22s;
-}
-
-.sidebar-hamburger:hover {
-  transform: scale(1.15);
-  filter: drop-shadow(0 0 7px var(--accent));
-}
-
-.sidebar-hamburger:active { transform: scale(0.94); }
-
-.sidebar-hamburger span {
-  display: block; border-radius: 9999px;
-  background: linear-gradient(90deg, var(--accent), rgba(255,255,255,0.55));
-  transition: width 0.22s cubic-bezier(0.34,1.56,0.64,1);
-}
-
-.sidebar-hamburger span:nth-child(1) { width: 22px; height: 2px; }
-.sidebar-hamburger span:nth-child(2) { width: 14px; height: 2px; }
-.sidebar-hamburger span:nth-child(3) { width: 18px; height: 2px; }
-.sidebar-hamburger:hover span:nth-child(1) { width: 22px; }
-.sidebar-hamburger:hover span:nth-child(2) { width: 22px; }
-.sidebar-hamburger:hover span:nth-child(3) { width: 22px; }
-
-.standalone-screen {
-  position: fixed; inset: 0;
-  z-index: var(--z-screen, 10200);
-  background: var(--bg-gradient, #121212);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-
-.screen-topbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px;
-  padding-top: calc(10px + env(safe-area-inset-top));
-  background: var(--glass);
-  border-bottom: 1px solid var(--glass-border);
-  flex-shrink: 0; min-height: 52px;
-}
-
-.screen-back-btn { display: none !important; }
-
-.screen-title {
-  font-size: 0.9rem; font-weight: 800; color: var(--text-main);
-  margin: 0; text-transform: uppercase; letter-spacing: 0.04em;
-  flex: 1;
-}
-
-.screen-body {
-  flex: 1; overflow-y: auto;
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
-  will-change: scroll-position;
-}
-
-.settings-list-item {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 16px; margin-bottom: 4px;
-  background: var(--glass); border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg); cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.settings-list-item:hover { background: var(--glass-raised); border-color: var(--accent); }
-
-.settings-list-item-icon {
-  width: 36px; height: 36px; border-radius: var(--radius-base);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; font-size: 0.9rem;
-}
-
-.settings-list-item-info { flex: 1; min-width: 0; }
-
-.settings-list-item-title {
-  font-size: 0.82rem; font-weight: 700; color: var(--text-main);
-  margin: 0 0 2px;
-}
-
-.settings-list-item-desc {
-  font-size: 0.68rem; color: var(--text-muted); margin: 0;
-}
-
-.settings-list-item-chevron {
-  color: var(--text-secondary); flex-shrink: 0;
-}
-
-.settings-group-label {
-  font-size: 0.62rem; font-weight: 800; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.1em;
-  padding: 16px 4px 6px; margin: 0;
-}
-
-.screen-theme-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px; background: var(--glass);
-  border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
-  margin-bottom: 4px;
-}
-
-.theme-toggle-switch {
-  position: relative; width: 48px; height: 26px;
-}
-
-.theme-toggle-switch input { opacity: 0; width: 0; height: 0; }
-
-.theme-toggle-track {
-  position: absolute; inset: 0; background: var(--toggle-bg);
-  border-radius: var(--radius-full); cursor: pointer;
-  transition: background 0.2s;
-}
-
-.theme-toggle-track::before {
-  content: ''; position: absolute;
-  width: 20px; height: 20px; left: 3px; bottom: 3px;
-  background: var(--toggle-knob); border-radius: 50%;
-  transition: transform 0.2s;
-}
-
-input:checked + .theme-toggle-track { background: var(--accent); }
-input:checked + .theme-toggle-track::before { transform: translateX(22px); }
-#calcRangeInputs { position:absolute; left:0; right:0; top:0; height:36px; opacity:0; pointer-events:none; }
-#calcRangeInputs .cdp-wrap { position:absolute; left:0; top:0; width:100%; }
-</style></head>
+</script><script src="https://accounts.google.com/gsi/client" async defer></script></head>
 <body>
 <div id="splash-screen">
 <div class="splash-glow"></div>
@@ -928,8 +714,7 @@ var fl=Promise.all([document.fonts.load('600 16px "Cinzel"'),document.fonts.load
 Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,reveal);
 }else reveal();
 })();
-</script><div class="liquid-bg-element liquid-1"></div>
-<div id="sidebar-backdrop" onclick="closeSidebar()"></div>
+</script><div id="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div id="app-sidebar">
   <div class="sidebar-topbar">
     <span class="sidebar-brand">GULL AND ZUBAIR</span>
@@ -1049,7 +834,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Store Manager</h2>
   </div>
   <div class="screen-body" id="store-manager-body">
-    <div class="liquid-card" style="padding:16px;margin-bottom:16px;border:1px solid var(--glass-border);border-radius:var(--radius-lg);">
+    <div class="liquid-card" style="padding:16px; margin-bottom:16px; border-radius:var(--radius-lg);">
       <p class="settings-group-label" id="store-form-heading">New Store</p>
       <input type="hidden" id="store-edit-index" value="-1">
       <div class="grid-inputs u-mb-15">
@@ -1073,12 +858,12 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <button class="btn btn-noman" style="flex:1;" onclick="(async()=>{await saveStoreFromForm()})()">
           <span id="store-save-btn-text">Add Store</span>
         </button>
-        <button class="btn" id="store-cancel-edit-btn" style="display:none;background:var(--glass-raised);color:var(--text-muted);" onclick="resetStoreForm()">Cancel</button>
+        <button class="btn" id="store-cancel-edit-btn" style="display:none; color:var(--text-muted);" onclick="resetStoreForm()">Cancel</button>
       </div>
     </div>
     <p class="settings-group-label">Existing Stores</p>
     <div id="store-list-container"></div>
-    <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
+    <div style="margin-top:20px; padding:12px 14px; border-radius:var(--radius-lg); font-size:0.72rem; color:var(--text-muted); line-height:1.6;" class="nm-well">
       <strong style="color:var(--warning);">Note:</strong> A store's key is generated from its name when the store is created (ZUBAIR becomes <code>zubair</code>). It is permanent and links to all historical records, so renaming a store later is safe.
       Renaming a store updates its display name everywhere. Deleting is only allowed if the store has no production records.
       Changes sync to all connected devices automatically.
@@ -1092,7 +877,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-body">
     <p class="settings-group-label">Backup</p>
     <div class="settings-list-item" onclick="triggerLocalBackup()">
-      <div class="settings-list-item-icon" style="background:rgba(29,233,182,0.1);">
+      <div class="settings-list-item-icon">
         <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 31V17.5M12.8 22.2L18 17 23.2 22.2" stroke="var(--accent-gold)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--accent-gold)"/></svg>
       </div>
       <div class="settings-list-item-info">
@@ -1103,7 +888,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-group-label">Restore</p>
     <div class="settings-list-item" onclick="document.getElementById('restoreInput').click()">
-      <div class="settings-list-item-icon" style="background:rgba(255,179,0,0.1);">
+      <div class="settings-list-item-icon">
         <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--warning)" fill-opacity="0.14" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 17V31M12.8 25.8L18 31 23.2 25.8" stroke="var(--warning)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--warning)"/></svg>
       </div>
       <div class="settings-list-item-info">
@@ -1123,7 +908,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="recycleBinStats" style="font-size:0.75rem;color:var(--text-muted);"></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <div style="position:relative;">
-          <button id="recycleBinFilterBtn" class="store-selector" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);font-size:0.78rem;" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button id="recycleBinFilterBtn" class="store-selector" style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:5px 10px; border-radius:999px; color:var(--text-main); font-size:0.78rem;" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <select id="recycleBinFilter" style="display:none;">
             <option value="all">All Tabs</option>
             <option value="tab_sales">Sales Tab</option>
@@ -1134,13 +919,13 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             <option value="tab_payments">Payments Tab</option>
           </select>
         </div>
-        <button id="recycleBinEmptyBtn" onclick="(async()=>{await emptyRecycleBin()})()" style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.10);color:#ef4444;font-size:0.78rem;font-weight:600;">
+        <button id="recycleBinEmptyBtn" onclick="(async()=>{await emptyRecycleBin()})()" style="display:flex; align-items:center; gap:5px; cursor:pointer; padding:5px 10px; border-radius:999px; color:#ef4444; font-size:0.78rem; font-weight:600;" class="nm-well">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>
           <span id="recycleBinEmptyBtnLabel">Empty Bin</span>
         </button>
       </div>
     </div>
-    <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:14px;padding:9px 13px;font-size:0.73rem;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">
+    <div style="border-radius:14px; padding:9px 13px; font-size:0.73rem; color:var(--text-muted); line-height:1.5; margin-bottom:10px;" class="nm-well">
       Restore puts the record back to its original collection. Records expire after <strong style="color:var(--text-main);">90 days</strong>. Use <strong style="color:#ef4444;">Delete Forever</strong> to erase a record immediately and permanently.
     </div>
     <div id="recycleBinList"></div>
@@ -1151,7 +936,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Stock Transfer</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card" style="padding:16px;margin-bottom:16px;border:1px solid var(--glass-border);border-radius:var(--radius-lg);">
+    <div class="liquid-card" style="padding:16px; margin-bottom:16px; border-radius:var(--radius-lg);">
       <p class="settings-group-label">Move Stock Between Stores</p>
       <div class="grid-inputs u-mb-15">
         <div class="field">
@@ -1184,7 +969,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-group-label">Transfer History</p>
     <div id="stockTransferHistoryList"></div>
-    <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
+    <div style="margin-top:20px; padding:12px 14px; border-radius:var(--radius-lg); font-size:0.72rem; color:var(--text-muted); line-height:1.6;" class="nm-well">
       <strong style="color:var(--warning);">Note:</strong> A transfer is only allowed up to the stock currently available at the source store on the selected date.
       Transfers are recorded against both stores' stock history and sync to all connected devices automatically.
     </div>
@@ -1195,7 +980,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Payment Transfer</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card" style="padding:16px;margin-bottom:16px;border:1px solid var(--glass-border);border-radius:var(--radius-lg);">
+    <div class="liquid-card" style="padding:16px; margin-bottom:16px; border-radius:var(--radius-lg);">
       <p class="settings-group-label">Move Balance Between Entities</p>
       <div class="grid-inputs u-mb-15">
         <div class="field" style="position:relative;">
@@ -1207,9 +992,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             placeholder="Search entity..."
             oninput="handleUniversalSearch('payment-transfer-from-search','payment-transfer-from-results','entities');document.getElementById('payment-transfer-from-value').value=''"
             autocomplete="off"
-            style="width:100%;font-size:0.85rem;padding:8px;"
-          >
-          <div id="payment-transfer-from-results" class="hidden" style="position:absolute;z-index:var(--z-modal, 1000);width:100%;max-height:200px;overflow-y:auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;margin-top:5px;box-shadow:var(--shadow);"></div>
+            style="width:100%; font-size:0.85rem;">
+          <div id="payment-transfer-from-results" class="hidden nm-panel" style="position:absolute; z-index:var(--z-modal, 1000); width:100%; max-height:200px; overflow-y:auto; border-radius:10px; margin-top:5px;"></div>
         </div>
         <div class="field" style="position:relative;">
           <label>To Entity</label>
@@ -1220,9 +1004,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             placeholder="Search entity..."
             oninput="handleUniversalSearch('payment-transfer-to-search','payment-transfer-to-results','entities');document.getElementById('payment-transfer-to-value').value=''"
             autocomplete="off"
-            style="width:100%;font-size:0.85rem;padding:8px;"
-          >
-          <div id="payment-transfer-to-results" class="hidden" style="position:absolute;z-index:var(--z-modal, 1000);width:100%;max-height:200px;overflow-y:auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;margin-top:5px;box-shadow:var(--shadow);"></div>
+            style="width:100%; font-size:0.85rem;">
+          <div id="payment-transfer-to-results" class="hidden nm-panel" style="position:absolute; z-index:var(--z-modal, 1000); width:100%; max-height:200px; overflow-y:auto; border-radius:10px; margin-top:5px;"></div>
         </div>
       </div>
       <div class="grid-inputs u-mb-15">
@@ -1239,9 +1022,9 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <label>Note (optional)</label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" style="flex:1;">
-          <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" style="flex-shrink:0;width:36px;height:36px;border-radius:8px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;position:relative;">
+          <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" style="flex-shrink:0; width:36px; height:36px; border-radius:8px; color:var(--accent); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; position:relative;" class="nm-well">
             <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
-            <span id="payment-transfer-photo-dot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--card-bg,#111827);"></span>
+            <span id="payment-transfer-photo-dot" style="display:none; position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:var(--accent);"></span>
           </button>
         </div>
         <input type="file" id="payment-transfer-photo-file" accept="image/*" style="display:none" onchange="handlePaymentTransferPhotoFile(event)">
@@ -1250,7 +1033,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-group-label">Transfer History</p>
     <div id="paymentTransferHistoryList"></div>
-    <div style="margin-top:20px;padding:12px 14px;background:rgba(245,158,11,0.07);border:1px solid var(--warning);border-radius:var(--radius-lg);font-size:0.72rem;color:var(--text-muted);line-height:1.6;">
+    <div style="margin-top:20px; padding:12px 14px; border-radius:var(--radius-lg); font-size:0.72rem; color:var(--text-muted); line-height:1.6;" class="nm-well">
       <strong style="color:var(--warning);">Note:</strong> A payment transfer records an OUT transaction against the source entity and an IN transaction against the destination entity.
       Both entities' balances update immediately and sync to all connected devices automatically.
     </div>
@@ -1412,7 +1195,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div style="display:flex;gap:10px;margin-bottom:20px;">
       <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="addNewSalesRep()">Add Representative</button>
     </div>
-    <div style="border-top:1px solid var(--glass-border);padding-top:16px;">
+    <div style="border-top:1px solid var(--nm-line);padding-top:16px;">
       <label style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px;">Current Representatives</label>
       <div id="manage-reps-list"></div>
     </div>
@@ -1442,7 +1225,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div style="display:flex;gap:10px;margin-bottom:20px;">
       <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="addNewUserRole()">Add User</button>
     </div>
-    <div style="border-top:1px solid var(--glass-border);padding-top:16px;">
+    <div style="border-top:1px solid var(--nm-line);padding-top:16px;">
       <label style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px;">Current Users</label>
       <div id="manage-userrole-list"></div>
     </div>
@@ -1461,7 +1244,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div style="margin-bottom:10px;">
         <label style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px;">Role</label>
-        <div style="display:flex;gap:6px;background:var(--glass-raised);border-radius:var(--radius-full);padding:4px;">
+        <div style="display:flex; gap:6px; border-radius:var(--radius-full); padding:4px;" class="nm-raised">
           <button id="acct-role-user" class="toggle-opt active" onclick="setNewAccountRole('user')" style="flex:1;font-size:0.72rem;padding:7px 4px;border-radius:var(--radius-full);">User</button>
           <button id="acct-role-admin" class="toggle-opt" onclick="setNewAccountRole('admin')" style="flex:1;font-size:0.72rem;padding:7px 4px;border-radius:var(--radius-full);">Admin</button>
         </div>
@@ -1469,7 +1252,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="acct-add-msg" style="font-size:0.75rem;min-height:18px;margin-bottom:8px;"></div>
       <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="adminAddAccount()" id="acct-add-btn">Add Account</button>
     </div>
-    <div style="border-top:1px solid var(--glass-border);padding-top:14px;">
+    <div style="border-top:1px solid var(--nm-line);padding-top:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <label style="font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Registered Accounts</label>
         <button class="btn-theme" style="font-size:0.7rem;padding:4px 10px;" onclick="loadAccountsList()">&#8635; Refresh</button>
@@ -1494,7 +1277,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
 </div>
 <div id="close-financial-year-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
-    <div style="flex-shrink:0;width:36px;height:36px;border-radius:10px;background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.25);display:flex;align-items:center;justify-content:center;">
+    <div style="flex-shrink:0; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;" class="nm-well">
       <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--danger)" fill-opacity="0.12" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--danger)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="25" cy="25" r="6.2" fill="var(--danger)" fill-opacity="0.35" stroke="var(--danger)" stroke-width="1.6"/><path d="M22 25.2L24.2 27.4 28.2 22.8" stroke="var(--danger)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M9.5 22H15M9.5 27H13" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/></svg>
     </div>
     <div style="flex:1;min-width:0;">
@@ -1510,7 +1293,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
 <div id="db-structure-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <h2 class="screen-title">Database Structure</h2>
-    <button onclick="loadDbStructureScreen()" title="Refresh" style="flex-shrink:0;width:34px;height:34px;border-radius:10px;background:var(--glass-raised);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);transition:background 0.15s,color 0.15s;margin-left:auto;" onmouseover="this.style.background='var(--glass-hover)';this.style.color='var(--text-main)'" onmouseout="this.style.background='var(--glass-raised)';this.style.color='var(--text-muted)'">
+    <button onclick="loadDbStructureScreen()" title="Refresh" style="flex-shrink:0; width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-muted); transition:background 0.15s,color 0.15s; margin-left:auto;" onmouseover="this.style.background='var(--nm-bg)';this.style.color='var(--text-main)'" onmouseout="this.style.background='var(--nm-bg)';this.style.color='var(--text-muted)'" class="nm-raised">
       <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="ic-sync-arrows"><path d="M30.5 15.5A12.8 12.8 0 0 0 8.2 10" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M8 4.8V10.4H13.6" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M5.5 20.5A12.8 12.8 0 0 0 27.8 26" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M28 31.2V25.6H22.4" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g><circle cx="18" cy="18" r="3.6" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="1.2" fill="var(--accent-gold)"/></svg>
     </button>
   </div>
@@ -1545,9 +1328,7 @@ window._showLogoutConfirmDialog = async function() {
     else { showToast('Sign out failed', 'error'); }
   }
 };
-</script><div class="liquid-bg-element liquid-2"></div>
-<div class="liquid-bg-element liquid-3"></div>
-<div id="entity-details-screen" class="standalone-screen" style="display:none">
+</script><div id="entity-details-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
     <div style="flex:1;min-width:0;">
       <div class="screen-title" id="manageEntityTitle" style="font-size:0.88rem;">Entity Name</div>
@@ -1565,11 +1346,11 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div style="position:relative;flex-shrink:0;">
-        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_entity');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_entity';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('entityPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';promptStatementShare('entity');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_entity');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_entity';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--nm-bg);border:1px solid var(--nm-line);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--nm-bg)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('entityPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';promptStatementShare('entity');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div id="entityManagementHistoryList"></div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--nm-line);">
       <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteCurrentEntity()">Delete Entity</button>
     </div>
   </div>
@@ -1581,7 +1362,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
-        <div id="entity-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('entity')">
+        <div id="entity-photo-preview" style="width:88px; height:88px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="previewPhotoClick('entity')" class="nm-well">
           <svg id="entity-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="entity-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
         </div>
@@ -1590,11 +1371,11 @@ window._showLogoutConfirmDialog = async function() {
         </button>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="openPhotoCapture('entity')">
+        <button class="btn-theme" style="font-size:0.72rem; padding:5px 12px; color:var(--accent); border-radius:8px; display:flex; align-items:center; gap:5px;" onclick="openPhotoCapture('entity')">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
           Camera
         </button>
-        <button class="btn-theme" id="entity-photo-clear-btn" style="font-size:0.72rem;padding:5px 10px;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);border-radius:8px;display:none;" onclick="clearPersonPhoto('entity')" title="Remove photo">✕</button>
+        <button class="btn-theme" id="entity-photo-clear-btn" style="font-size:0.72rem; padding:5px 10px; color:var(--danger,#ef4444); border-radius:8px; display:none;" onclick="clearPersonPhoto('entity')" title="Remove photo">✕</button>
       </div>
       <input type="file" id="entity-photo-file" accept="image/*" style="display:none" onchange="handlePersonPhotoFile(event,'entity')">
     </div>
@@ -1638,7 +1419,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div style="position:relative;flex-shrink:0;">
-        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--nm-bg);border:1px solid var(--nm-line);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--nm-bg)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div class="debt-panel u-debt-header liquid-card" style="margin-bottom:14px;">
@@ -1657,7 +1438,7 @@ window._showLogoutConfirmDialog = async function() {
       <div class="u-field-hint">* Adds a new expense record under "<span class="u-text-warning u-fw-600" id="quickExpenseNameLabel"></span>" for today's date.</div>
     </div>
     <div id="expenseManagementHistoryList"></div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--nm-line);">
       <button class="btn btn-danger btn-sm" style="width:100%;" onclick="deleteAllExpensesByName()">Delete All Expenses</button>
     </div>
   </div>
@@ -1680,11 +1461,11 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div style="position:relative;flex-shrink:0;">
-        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_cust');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_cust';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('customerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';promptStatementShare('customer');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_cust');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_cust';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--nm-bg);border:1px solid var(--nm-line);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--nm-bg)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('customerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';promptStatementShare('customer');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div id="customerManagementHistoryList"></div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--nm-line);">
       <button class="btn btn-danger btn-sm" style="width:100%;" onclick="(async()=>{await deleteCurrentCustomer()})()">Delete Customer</button>
     </div>
   </div>
@@ -1696,7 +1477,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
-        <div id="cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('cust')">
+        <div id="cust-photo-preview" style="width:88px; height:88px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="previewPhotoClick('cust')" class="nm-well">
           <svg id="cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="cust-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
         </div>
@@ -1705,11 +1486,11 @@ window._showLogoutConfirmDialog = async function() {
         </button>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="openPhotoCapture('cust')">
+        <button class="btn-theme" style="font-size:0.72rem; padding:5px 12px; color:var(--accent); border-radius:8px; display:flex; align-items:center; gap:5px;" onclick="openPhotoCapture('cust')">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
           Camera
         </button>
-        <button class="btn-theme" id="cust-photo-clear-btn" style="font-size:0.72rem;padding:5px 10px;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);border-radius:8px;display:none;" onclick="clearPersonPhoto('cust')" title="Remove photo">✕</button>
+        <button class="btn-theme" id="cust-photo-clear-btn" style="font-size:0.72rem; padding:5px 10px; color:var(--danger,#ef4444); border-radius:8px; display:none;" onclick="clearPersonPhoto('cust')" title="Remove photo">✕</button>
       </div>
       <input type="file" id="cust-photo-file" accept="image/*" style="display:none" onchange="handlePersonPhotoFile(event,'cust')">
     </div>
@@ -1733,7 +1514,7 @@ window._showLogoutConfirmDialog = async function() {
         <label>Address / Location</label>
         <div style="display:flex;gap:5px;">
           <input class="u-flex-1" type="text" id="edit-cust-address" placeholder="Area, Shop #, etc.">
-          <button class="btn-theme" onclick="fetchDeviceLocation()" title="Auto-Fetch Location" style="border:1px solid var(--accent);color:var(--accent);padding:0 10px;">
+          <button class="btn-theme" onclick="fetchDeviceLocation()" title="Auto-Fetch Location" style="color:var(--accent); padding:0 10px;">
             <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" fill="var(--accent-gold)" fill-opacity="0.16" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4.1" fill="var(--accent)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="1.7"/><ellipse cx="18" cy="32.6" rx="8" ry="1.9" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity=".7"/></svg>
           </button>
         </div>
@@ -1766,11 +1547,11 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div style="position:relative;flex-shrink:0;">
-        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_rep');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_rep';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('repCustomerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';promptStatementShare('rep');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf" title="Export to PDF" style="padding:8px 12px;display:flex;align-items:center;justify-content:center;" onclick="(function(b){var p=document.getElementById('_epop_rep');if(p){p.style.display=p.style.display==='none'?'block':'none';}else{var pop=document.createElement('div');pop.id='_epop_rep';pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--nm-bg);border:1px solid var(--nm-line);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:130px;padding:6px 0;';['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);';d.onmouseenter=function(){d.style.background='var(--nm-bg)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('repCustomerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}pop.style.display='none';promptStatementShare('rep');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){pop.style.display='none';}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div id="repCustomerManagementHistoryList"></div>
-    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--glass-border);">
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--nm-line);">
       <button class="btn btn-danger btn-sm" style="width:100%;" onclick="(async()=>{await deleteCurrentRepCustomer()})()">Delete Customer</button>
     </div>
   </div>
@@ -1782,7 +1563,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
       <div style="position:relative;width:88px;height:88px;margin-bottom:10px;">
-        <div id="rep-cust-photo-preview" style="width:88px;height:88px;border-radius:50%;background:var(--input-bg);border:2.5px solid var(--accent);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="previewPhotoClick('rep-cust')">
+        <div id="rep-cust-photo-preview" style="width:88px; height:88px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:pointer;" onclick="previewPhotoClick('rep-cust')" class="nm-well">
           <svg id="rep-cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.5;"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="rep-cust-photo-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
         </div>
@@ -1791,11 +1572,11 @@ window._showLogoutConfirmDialog = async function() {
         </button>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn-theme" style="font-size:0.72rem;padding:5px 12px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;display:flex;align-items:center;gap:5px;" onclick="openPhotoCapture('rep-cust')">
+        <button class="btn-theme" style="font-size:0.72rem; padding:5px 12px; color:var(--accent); border-radius:8px; display:flex; align-items:center; gap:5px;" onclick="openPhotoCapture('rep-cust')">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
           Camera
         </button>
-        <button class="btn-theme" id="rep-cust-photo-clear-btn" style="font-size:0.72rem;padding:5px 10px;border:1px solid var(--danger,#ef4444);color:var(--danger,#ef4444);border-radius:8px;display:none;" onclick="clearPersonPhoto('rep-cust')" title="Remove photo">✕</button>
+        <button class="btn-theme" id="rep-cust-photo-clear-btn" style="font-size:0.72rem; padding:5px 10px; color:var(--danger,#ef4444); border-radius:8px; display:none;" onclick="clearPersonPhoto('rep-cust')" title="Remove photo">✕</button>
       </div>
       <input type="file" id="rep-cust-photo-file" accept="image/*" style="display:none" onchange="handlePersonPhotoFile(event,'rep-cust')">
     </div>
@@ -1819,7 +1600,7 @@ window._showLogoutConfirmDialog = async function() {
         <label>Address / Location</label>
         <div style="display:flex;gap:5px;">
           <input class="u-flex-1" type="text" id="rep-edit-cust-address" placeholder="Area, Shop #, etc.">
-          <button class="btn-theme" onclick="fetchRepDeviceLocation()" title="Auto-Fetch Location" style="border:1px solid var(--accent);color:var(--accent);padding:0 10px;">
+          <button class="btn-theme" onclick="fetchRepDeviceLocation()" title="Auto-Fetch Location" style="color:var(--accent); padding:0 10px;">
             <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" fill="var(--accent-gold)" fill-opacity="0.16" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4.1" fill="var(--accent)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="1.7"/><ellipse cx="18" cy="32.6" rx="8" ry="1.9" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity=".7"/></svg>
           </button>
         </div>
@@ -1895,18 +1676,7 @@ window._showLogoutConfirmDialog = async function() {
       <span class="cam-spacer"></span>
     </div>
   </div>
-</div><style>
-.person-avatar-ring {
-  width: 52px; height: 52px; border-radius: 50%;
-  background: var(--input-bg);
-  border: 2.5px solid var(--accent);
-  overflow: hidden; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-
-.person-avatar-ring img { width:100%; height:100%; object-fit:cover; }
-.person-avatar-ring svg { opacity: 0.35; }
-</style><input type="file" id="restoreInput" class="hidden" accept=".gznd" onchange="(async () => { await unifiedRestore(event) })()">
+</div><input type="file" id="restoreInput" class="hidden" accept=".gznd" onchange="(async () => { await unifiedRestore(event) })()">
 <div id="tab-rep" class="hidden">
 <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
 <h1 class="shimmer-text u-heading-bold">Rep Sales</h1>
@@ -1932,7 +1702,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="field" style="margin:0;">
 <label style="color:var(--accent-emerald);">Mobile number</label>
 <input type="tel" id="rep-new-cust-phone" placeholder="03XX-XXXXXXX"
-style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; padding:10px; font-size:16px;">
+style="width:100%; box-sizing:border-box; font-size:16px;">
 </div>
 </div>
 <div id="rep-sale-inputs">
@@ -1954,7 +1724,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 <input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received" oninput="updateRepCollectionPreview()">
 </div>
 </div>
-<div id="rep-customer-info-display" class="hidden" style="margin: 10px 0; padding: 12px; background: rgba(37, 99, 235, 0.05); border-radius: 10px; border: 1px solid var(--glass-border);">
+<div id="rep-customer-info-display" class="hidden nm-well" style="margin: 10px 0; padding: 12px; border-radius: 10px;">
 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
 <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">Current Debt:</span>
 <span id="rep-customer-current-credit" style="color: var(--warning); font-weight: 800;">0.00</span>
@@ -1984,7 +1754,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 <input type="date" id="admin-rep-date" onchange="handleAdminRepDateChange(this.value)">
 </div>
 </div>
-<div id="rep-map-container" style="height: 300px; width: 100%; margin-top: 15px; border-radius: 12px; border: 2px solid var(--glass-border); z-index: 1;"></div>
+<div id="rep-map-container" style="height: 300px; width: 100%; margin-top: 15px; border-radius: 12px; z-index: 1;"></div>
 <div style="text-align: right; font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;">
  Cash Sale |  Collection |  Credit Sale
 </div>
@@ -2001,11 +1771,11 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 </div>
 </div>
 <div style="display: flex; flex-direction: column; gap: 8px;">
-<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--glass-border);">
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--nm-line);">
 <span class="u-fs-md u-text-muted u-fw-600" >Collections</span>
 <span class="profit-val" id="rep-analytics-collections" style="font-size: 0.95rem; font-weight: 800;">0.00</span>
 </div>
-<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--glass-border);">
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--nm-line);">
 <span class="u-fs-md u-text-muted u-fw-600" >Cash Sales</span>
 <span class="profit-val" id="rep-analytics-cash-sales" style="font-size: 0.95rem; font-weight: 800;">0.00</span>
 </div>
@@ -2022,8 +1792,8 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box; pa
 placeholder="Search customers..."
 oninput="renderRepCustomerTable()">
 <button class="btn-theme" onclick="exportCustomerData('rep')" title="Download PDF"
-style="color: var(--accent-emerald); border-color: var(--accent-emerald); flex-shrink: 0; padding: 6px 12px; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
-<button class="btn-theme" onclick="openRepCustomerEditModal('')" title="Add New Customer" style="color: var(--accent); border-color: var(--accent); flex-shrink: 0; padding: 6px 8px; white-space: nowrap; display:inline-flex; align-items:center;"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+style="color: var(--accent-emerald); flex-shrink: 0; padding: 6px 12px; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn-theme" onclick="openRepCustomerEditModal('')" title="Add New Customer" style="color: var(--accent); flex-shrink: 0; padding: 6px 8px; white-space: nowrap; display:inline-flex; align-items:center;"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
 <div style="overflow-x: auto; overflow-y: auto; max-height: 400px; margin-top: 10px;">
 <table class="u-table-full" >
@@ -2044,7 +1814,7 @@ No records found
 </tbody>
 </table>
 </div>
-<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--nm-line);">
 <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
 <span style="color: var(--text-muted); font-weight: 400;">Total Outstanding Credit:</span>
 <span id="rep-customers-total-credit" style="color: var(--warning); font-weight: 400;">0.00</span>
@@ -2083,7 +1853,7 @@ No records found
 <div class="grid-inputs">
 <div class="field">
 <label>Net Production (kg)</label>
-<input type="number" id="net-wt" readonly style="background:rgba(37, 99, 235, 0.1); color:var(--accent); font-weight:bold;">
+<input type="number" id="net-wt" readonly style="color:var(--accent); font-weight:bold;">
 <div id="dynamic-cost-display" style="font-size:0.7rem; color:var(--text-muted); margin-top:5px; font-weight: 400;">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
@@ -2125,7 +1895,7 @@ Units of factory mixture consumed
 <span class="u-danger-bold" id="dynamic-cost-per-kg" >0.00/kg</span>
 </div>
 </div>
-<div class="result-box" id="prod-profit-block" style="background:rgba(37, 99, 235, 0.05);">
+<div class="result-box" id="prod-profit-block">
 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Dynamic Cost Price:</span>
 <span class="u-danger-bold" id="factory-cost-price" >0.00/kg</span>
@@ -2206,7 +1976,7 @@ Insufficient formula units available! Please reduce formula units used.
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
 <h3 class="u-text-accent" style="margin:0;">New Sale</h3>
 <div style="display:flex;align-items:center;gap:8px;">
-<span id="new-sale-id-display" style="font-size:0.62rem;color:var(--text-secondary);font-family:var(--font-mono);background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:var(--radius-full);padding:2px 8px;letter-spacing:0.03em;display:none;">ID: —</span>
+<span id="new-sale-id-display" style="font-size:0.62rem; color:var(--text-secondary); font-family:var(--font-mono); border-radius:var(--radius-full); padding:2px 8px; letter-spacing:0.03em; display:none;" class="nm-raised">ID: —</span>
 <div class="toggle-group" style="margin:0;">
 <button id="btn-cust-mode-sale" class="toggle-opt active" onclick="setSaleMode('sale')">Sale</button>
 <button id="btn-cust-mode-coll" class="toggle-opt" onclick="setSaleMode('collection')">Collection</button>
@@ -2225,7 +1995,7 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <div class="field" style="flex:1; min-width:0; margin:0;">
 <label style="color:var(--accent-emerald);">Mobile number</label>
 <input type="tel" id="new-cust-phone" placeholder="03XX-XXXXXXX"
-style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
+style="width:100%; box-sizing:border-box;">
 </div>
 </div>
 </div>
@@ -2250,7 +2020,7 @@ style="border-color:var(--accent-emerald); width:100%; box-sizing:border-box;">
 <input type="number" id="cust-amount-collected" step="1" placeholder="Enter amount received" oninput="updateCollectionPreview()">
 </div>
 </div>
-<div id="customer-info-display" class="hidden" style="margin: 10px 0; padding: 12px; background: rgba(37, 99, 235, 0.05); border-radius: 10px; border: 1px solid var(--glass-border);">
+<div id="customer-info-display" class="hidden nm-well" style="margin: 10px 0; padding: 12px; border-radius: 10px;">
 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Current Credit:</span>
 <span id="customer-current-credit" style="color: var(--warning); font-weight: 400;">0.00</span>
@@ -2299,8 +2069,8 @@ Profit: <span id="cust-profit">0.00</span>
 <input type="text" id="customer-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
 oninput="filterCustomers()">
 <span id="customer-count" style="font-size: 0.7rem; color: var(--text-muted);">0 customers</span>
-<button class="btn-theme" onclick="exportCustomerData('admin')" title="Download PDF" style="color: var(--accent); border-color: var(--accent); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
-<button class="btn-theme" onclick="openCustomerEditModal('')" title="Add New Customer" style="color: var(--accent-emerald); border-color: var(--accent-emerald); padding: 6px 8px; flex-shrink: 0; white-space: nowrap; display:inline-flex; align-items:center;"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+<button class="btn-theme" onclick="exportCustomerData('admin')" title="Download PDF" style="color: var(--accent); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn-theme" onclick="openCustomerEditModal('')" title="Add New Customer" style="color: var(--accent-emerald); padding: 6px 8px; flex-shrink: 0; white-space: nowrap; display:inline-flex; align-items:center;"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
 <div style="overflow-x: auto; overflow-y: auto; max-height: 400px; margin-top: 10px;">
 <table class="u-table-full" >
@@ -2321,7 +2091,7 @@ No records found
 </tbody>
 </table>
 </div>
-<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--nm-line);">
 <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
 <span style="color: var(--text-muted); font-weight: 400;">Total Outstanding Credit:</span>
 <span id="customers-total-credit" style="color: var(--warning); font-weight: 400;">0.00</span>
@@ -2404,12 +2174,12 @@ No records found
 <div class="grid-inputs">
 <div class="field">
 <label>Total Sold Qty</label>
-<input type="number" id="totalSold" readonly style="background:rgba(37, 99, 235, 0.1); color:var(--text-main); font-weight:800; border:1px solid var(--accent);" onclick="handleTripleTap(this, 'sales')">
+<input type="number" id="totalSold" readonly style="color:var(--text-main); font-weight:800;" onclick="handleTripleTap(this, 'sales')">
 </div>
 <div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
 <div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
-<div id="returnStoreSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; border: 1px solid var(--warning);">
+<div id="returnStoreSection" class="hidden nm-well" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; border-radius: 10px;">
 <label style="color: var(--warning); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group" style="margin-top: 8px;">
 <button id="ret-store-zubair" class="toggle-opt" onclick="selectReturnStore('zubair', this)">ZUBAIR</button>
@@ -2419,7 +2189,7 @@ No records found
 * This will increase the store's stock level without creating a new production record.
 </div>
 </div>
-<div id="expiredSection" class="hidden" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; background: rgba(220, 38, 38, 0.08); border-radius: 10px; border: 1px solid var(--danger, #dc2626);">
+<div id="expiredSection" class="hidden nm-well" style="grid-column: 1 / -1; margin: 10px 0; padding: 12px; border-radius: 10px;">
 <label style="color: var(--danger, #dc2626); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;"> Expired Stock — Added to CHORA Raw Material:</label>
 <div class="u-field-hint" style="margin-top: 6px;">
 * Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
@@ -2568,7 +2338,7 @@ No records found
 <h3 class="u-text-accent" >New Production Entry</h3>
 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
 <label style="font-size:0.7rem; color:var(--text-muted); margin:0;">Date</label>
-<input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" style="font-size:0.8rem; padding:5px 8px;">
+<input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" style="font-size:0.8rem;">
 </div>
 </div>
 <div class="field u-mb-15" id="factory-formula-field">
@@ -2601,37 +2371,37 @@ Select a store...
 </div>
 <div id="factoryAvailStatsS1">
 <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
 <span class="qty-val" id="factoryS1Units" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
 <span class="qty-val" id="factoryS1UsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
 <span class="qty-val" id="factoryS1Output" style="font-size:1.05rem;font-weight:700;">0 kg</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
 <span class="qty-val" id="factoryS1RawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
 <span class="cost-val" id="factoryS1UnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
 <span class="rev-val" id="factoryS1TotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
@@ -2641,13 +2411,13 @@ Select a store...
 <span class="cost-val" id="factoryS1MatVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
 <span class="profit-val" id="factoryS1Profit" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
 <span class="profit-val" id="factoryS1ProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
@@ -2657,37 +2427,37 @@ Select a store...
 </div>
 <div id="factoryAvailStatsS2" class="hidden">
 <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
 <span class="qty-val" id="factoryS2Units" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
 <span class="qty-val" id="factoryS2UsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
 <span class="qty-val" id="factoryS2Output" style="font-size:1.05rem;font-weight:700;">0 kg</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
 <span class="qty-val" id="factoryS2RawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
 <span class="cost-val" id="factoryS2UnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
 <span class="rev-val" id="factoryS2TotalVal" style="font-size:0.88rem;font-weight:600;">0</span>
@@ -2697,13 +2467,13 @@ Select a store...
 <span class="cost-val" id="factoryS2MatVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
 <span class="profit-val" id="factoryS2Profit" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
 <span class="profit-val" id="factoryS2ProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
@@ -2730,7 +2500,7 @@ Select a store...
 </tbody>
 </table>
 </div>
-<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--nm-line);">
 <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
 <span style="color: var(--text-muted); font-weight: 600;">Total Inventory Value:</span>
 <span class="rev-val" id="factoryTotalInventoryValue" style="color: var(--accent); font-weight: 700;">0</span>
@@ -2749,43 +2519,43 @@ Select a store...
 </div>
 </div>
 <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:4px;">
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Units</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Available</span>
 <span class="qty-val" id="factorySumUnits" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Used</span>
 <span class="qty-val" id="factorySumUsedUnits" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Avg Add. Cost/Day</span>
 <span class="cost-val" id="factorySumCostPerDay" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--accent-purple);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Output</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Quantity</span>
 <span class="qty-val" id="factorySumOutput" style="font-size:1.05rem;font-weight:700;">0 kg</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Raw Used</span>
 <span class="qty-val" id="factorySumRawUsed" style="font-size:0.88rem;font-weight:600;">0 kg</span>
 </div>
 <div id="factorySumRawBreakdown"></div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid var(--glass-border);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--warning);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Cost</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per Unit</span>
 <span class="cost-val" id="factorySumUnitCost" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
 <span class="rev-val" id="factorySumTotalCost" style="font-size:0.88rem;font-weight:600;">0</span>
@@ -2795,13 +2565,13 @@ Select a store...
 <span class="cost-val" id="factorySumMatVal" style="font-size:0.88rem;font-weight:600;">0</span>
 </div>
 </div>
-<div style="background:var(--glass-raised); border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; border:1px solid rgba(102,187,106,0.3);">
+<div style="border-radius:18px; padding:14px 16px; display:flex; flex-direction:column; gap:6px;" class="nm-raised">
 <span style="font-size:0.62rem;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px;">Profit</span>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Total</span>
 <span class="profit-val" id="factorySumProfit" style="font-size:1.05rem;font-weight:700;">0</span>
 </div>
-<div style="height:1px;background:var(--glass-border);margin:2px 0;"></div>
+<div style="height:1px;background:var(--nm-line);margin:2px 0;"></div>
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <span style="font-size:0.75rem;color:var(--text-muted);">Per kg</span>
 <span class="profit-val" id="factorySumProfitUnit" style="font-size:0.88rem;font-weight:600;">0</span>
@@ -2825,7 +2595,7 @@ Select a store...
 <div class="section-header u-row-between" >
 <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
 <h3 class="u-heading-main" style="margin:0;">Transaction Manager</h3>
-<span id="expense-id-display" style="font-size:0.62rem;color:var(--text-secondary);font-family:var(--font-mono);background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:var(--radius-full);padding:2px 8px;letter-spacing:0.03em;white-space:nowrap;display:none;">ID: —</span>
+<span id="expense-id-display" style="font-size:0.62rem; color:var(--text-secondary); font-family:var(--font-mono); border-radius:var(--radius-full); padding:2px 8px; letter-spacing:0.03em; white-space:nowrap; display:none;" class="nm-raised">ID: —</span>
 </div>
 <button class="btn-theme" onclick="clearExpenseForm()" style="padding: 6px 12px; font-size: 0.75rem;">
 Clear
@@ -2838,9 +2608,8 @@ Clear
 <input
 type="date"
 id="expenseDate"
-style="width: 100%; font-size: 0.85rem; padding: 8px;"
-onchange="setCashTrackerMode(currentCashTrackerMode || 'day'); calculateNetCash();"
->
+style="width: 100%; font-size: 0.85rem;"
+onchange="setCashTrackerMode(currentCashTrackerMode || 'day'); calculateNetCash();">
 </div>
 <div id="expense-name-wrap" style="flex: 2; min-width: 200px; position: relative;">
 <label class="u-label-sm" >Name/Entity</label>
@@ -2850,20 +2619,8 @@ id="expenseName"
 placeholder="Search expenses or entities..."
 oninput="handleExpenseSearch()"
 autocomplete="off"
-style="width: 100%; font-size: 0.85rem; padding: 8px;"
->
-<div id="expense-search-results" class="hidden" style="
-position: absolute;
-z-index: var(--z-modal, 1000);
-width: 100%;
-max-height: 200px;
-overflow-y: auto;
-background: var(--glass);
-border: 1px solid var(--glass-border);
-border-radius: 10px;
-margin-top: 5px;
-box-shadow: var(--shadow);
-"></div>
+style="width: 100%; font-size: 0.85rem;">
+<div id="expense-search-results" class="hidden nm-panel" style="position: absolute; z-index: var(--z-modal, 1000); width: 100%; max-height: 200px; overflow-y: auto; border-radius: 10px; margin-top: 5px;"></div>
 </div>
 </div>
 <div style="display: flex; gap: 8px; align-items: flex-end;">
@@ -2875,8 +2632,7 @@ id="expenseAmount"
 placeholder="0"
 step="0.01"
 min="0"
-style="width: 100%; font-size: 0.85rem; font-weight: 600; padding: 8px;"
->
+style="width: 100%; font-size: 0.85rem; font-weight: 600;">
 </div>
 <div style="flex: 2; min-width: 200px;">
 <label class="u-label-sm">Description <span style="opacity: 0.6;">(Optional)</span></label>
@@ -2885,11 +2641,10 @@ style="width: 100%; font-size: 0.85rem; font-weight: 600; padding: 8px;"
     type="text"
     id="expenseDescription"
     placeholder="Add details..."
-    style="flex:1; font-size: 0.85rem; padding: 8px;"
-  >
-  <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" style="flex-shrink:0;width:36px;height:36px;border-radius:8px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--accent);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;position:relative;">
+    style="flex:1; font-size: 0.85rem;">
+  <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" style="flex-shrink:0; width:36px; height:36px; border-radius:8px; color:var(--accent); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; position:relative;" class="nm-well">
     <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
-    <span id="expense-photo-dot" style="display:none;position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--card-bg,#111827);"></span>
+    <span id="expense-photo-dot" style="display:none; position:absolute; top:4px; right:4px; width:7px; height:7px; border-radius:50%; background:var(--accent);"></span>
   </button>
 </div>
 <input type="file" id="expense-photo-file" accept="image/*" style="display:none" onchange="handleExpensePhotoFile(event)">
@@ -2918,14 +2673,14 @@ Save Transaction
 <div class="section liquid-card net-cash-dashboard">
 <h3 style="color:var(--accent); margin-top:0; text-align:center;">ECONOMIC HEALTH DASHBOARD</h3>
 <div class="net-cash-value" id="netCashValue">0.00</div>
-<div class="formula-item" style="background:rgba(37, 99, 235, 0.1); padding:10px; border-radius:14px; margin-bottom:15px;">
+<div class="formula-item nm-well" style="padding:10px; border-radius:14px; margin-bottom:15px;">
 <div class="u-row-between" >
 <span style="color:var(--accent); font-weight:800; font-size:0.9rem;">Operating Cash Flow:</span>
 <span style="font-weight:800; font-size:1.1rem; color:var(--accent-emerald);" id="operatingCashFlow">0.00</span>
 </div>
 </div>
 <div class="formula-breakdown">
-<h4 style="color:var(--accent-emerald); margin:15px 0 10px 0; border-bottom:2px solid var(--accent-emerald); padding-bottom:5px;">CASH IN HAND DETAILS</h4>
+<h4 style="color:var(--accent-emerald); margin:15px 0 10px 0; border-bottom:2px solid var(--nm-line); padding-bottom:5px;">CASH IN HAND DETAILS</h4>
 <div class="formula-item">
 <span>Net Sales Cash (Direct Customers):</span>
 <span class="formula-value" id="cashDetailDirectSales">0.00</span>
@@ -2942,11 +2697,11 @@ Save Transaction
 <span>External Payments Received:</span>
 <span class="formula-value" id="cashDetailPaymentsIn">0.00</span>
 </div>
-<div class="formula-item" style="background:rgba(220, 38, 38, 0.1); padding:5px; border-radius:10px;">
+<div class="formula-item nm-well" style="padding:5px; border-radius:10px;">
 <span>External Payments Made:</span>
 <span class="formula-value u-text-danger" id="cashDetailPaymentsOut">0.00</span>
 </div>
-<div class="formula-item" style="background:rgba(220, 38, 38, 0.1); padding:5px; border-radius:10px;">
+<div class="formula-item nm-well" style="padding:5px; border-radius:10px;">
 <span>Operating Expenses:</span>
 <span class="formula-value u-text-danger" id="cashDetailOperatingExpenses">0.00</span>
 </div>
@@ -2954,7 +2709,7 @@ Save Transaction
 <span>NET CASH IN HAND:</span>
 <span class="formula-value u-text-emerald" id="cashDetailNet">0.00</span>
 </div>
-<h4 style="color:var(--store-zubair); margin:15px 0 10px 0; border-bottom:2px solid var(--store-zubair); padding-bottom:5px;">CURRENT ASSETS</h4>
+<h4 style="color:var(--store-zubair); margin:15px 0 10px 0; border-bottom:2px solid var(--nm-line); padding-bottom:5px;">CURRENT ASSETS</h4>
 <div class="formula-item">
 <span>Cash in Hand (Above):</span>
 <span class="formula-value" id="formulaProdTotal">0.00</span>
@@ -2967,7 +2722,7 @@ Save Transaction
 <span>Formula Units Inventory:</span>
 <span class="formula-value" style="color:var(--store-mahmood);" id="formulaUnitsValue">0.00</span>
 </div>
-<h4 style="color:var(--accent); margin:15px 0 10px 0; border-bottom:2px solid var(--accent); padding-bottom:5px;">ACCOUNTS RECEIVABLE</h4>
+<h4 style="color:var(--accent); margin:15px 0 10px 0; border-bottom:2px solid var(--nm-line); padding-bottom:5px;">ACCOUNTS RECEIVABLE</h4>
 <div class="formula-item">
 <span>Direct Customer Credits:</span>
 <span class="formula-value" id="salesReceivables">0.00</span>
@@ -2984,7 +2739,7 @@ Save Transaction
 <span>TOTAL CURRENT ASSETS:</span>
 <span class="formula-value u-text-emerald" id="currentAssetsTotal">0.00</span>
 </div>
-<h4 style="color:var(--danger); margin:15px 0 10px 0; border-bottom:2px solid var(--danger); padding-bottom:5px;">CURRENT LIABILITIES</h4>
+<h4 style="color:var(--danger); margin:15px 0 10px 0; border-bottom:2px solid var(--nm-line); padding-bottom:5px;">CURRENT LIABILITIES</h4>
 <div class="formula-item" style="font-weight:700; color:var(--danger);">
 <span>ACCOUNTS PAYABLE:</span>
 </div>
@@ -2996,23 +2751,23 @@ Save Transaction
 <span>Entity Payables (Payment Entities):</span>
 <span class="formula-value u-text-danger" id="entityPayables">0.00</span>
 </div>
-<div class="formula-item" style="margin-left:15px; font-weight:700; background:rgba(220, 38, 38, 0.05); padding:5px; border-radius:10px;">
+<div class="formula-item nm-well" style="margin-left:15px; font-weight:700; padding:5px; border-radius:10px;">
 <span>TOTAL ACCOUNTS PAYABLE:</span>
 <span class="formula-value u-text-danger" id="formulaPayOut">0.00</span>
 </div>
-<div class="formula-item" style="font-weight:800; background:rgba(220, 38, 38, 0.1); padding:8px; border-radius:10px; margin-top:10px;">
+<div class="formula-item nm-well" style="font-weight:800; padding:8px; border-radius:10px; margin-top:10px;">
 <span>TOTAL CURRENT LIABILITIES:</span>
 <span class="formula-value u-text-danger" id="currentLiabilitiesTotal">0.00</span>
 </div>
-<div class="formula-item" style="font-weight:800; color:var(--accent-emerald); background:rgba(5, 150, 105, 0.1); padding:10px; border-radius:14px;">
+<div class="formula-item nm-well" style="font-weight:800; color:var(--accent-emerald); padding:10px; border-radius:14px;">
 <span>Net Working Capital:</span>
 <span class="formula-value" id="formulaPayIn">0.00</span>
 </div>
-<div class="formula-item" style="font-weight:800; color:var(--accent); background:rgba(37, 99, 235, 0.1); padding:10px; border-radius:14px;">
+<div class="formula-item nm-well" style="font-weight:800; color:var(--accent); padding:10px; border-radius:14px;">
 <span>Total Enterprise Value:</span>
 <span class="formula-value" id="formulaFinal">0.00</span>
 </div>
-<h4 style="color:var(--text-main); margin:15px 0 10px 0; border-bottom:1px solid var(--glass-border); padding-bottom:5px;">FINANCIAL RATIOS</h4>
+<h4 style="color:var(--text-main); margin:15px 0 10px 0; border-bottom:1px solid var(--nm-line); padding-bottom:5px;">FINANCIAL RATIOS</h4>
 <div class="formula-item">
 <span>Current Ratio:</span>
 <span class="formula-value" id="formulaCalcDisc">—</span>
@@ -3050,7 +2805,7 @@ Save Transaction
 <hr style="margin: 10px 0;">
 <p><span>NET CASH:</span> <span class="profit-val" id="cash-net-total" style="font-size:1.2rem;">Rs 0</span></p>
 </div>
-<div class="card liquid-card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%); border-color: rgba(245, 158, 11, 0.3);">
+<div class="card liquid-card">
 <h4 style="color:var(--warning);">TOTAL OUTSTANDING CREDITS</h4>
 <p><span>Sales Tab Credits:</span> <span class="qty-val" id="credit-sales-tab">Rs 0</span></p>
 <p><span>Calculator Credits:</span> <span class="qty-val" id="credit-calculator">Rs 0</span></p>
@@ -3068,7 +2823,7 @@ Save Transaction
 <input type="text" id="unified-search" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
 oninput="renderUnifiedTable()">
 <button class="btn-theme" onclick="exportUnifiedData()" title="Download PDF"
-style="color: var(--accent-emerald); border-color: var(--accent-emerald); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+style="color: var(--accent-emerald); padding: 6px 12px; flex-shrink: 0; white-space: nowrap;"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-2px;"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 </div>
 <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
 <div style="position:relative;flex:1;min-width:150px;">
@@ -3106,7 +2861,7 @@ No records found
 </tr>
 </tbody>
 <tfoot>
-<tr style="background: var(--input-bg); border-top: 2px solid var(--glass-border);">
+<tr style="border-top: 2px solid var(--nm-line);" class="nm-well">
 <td colspan="3" style="padding: 10px 2px; font-weight: 700; text-align: right; font-size: 0.75rem;">
 <span id="unified-table-footer-label">Total:</span>
 </td>
@@ -3115,21 +2870,21 @@ No records found
 </tfoot>
 </table>
 </div>
-<div id="unified-summary" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); display: none;">
+<div id="unified-summary" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--nm-line); display: none;">
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 0.75rem;">
-<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--accent-emerald);">
+<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--accent-emerald);" class="nm-status">
 <span class="u-text-muted" >Total Receivable</span>
 <span id="unified-receivables" style="color:var(--accent-emerald); font-weight:700;">0.00</span>
 </div>
-<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--warning);">
+<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--warning);" class="nm-status">
 <span class="u-text-muted" >Expenses</span>
 <span id="unified-expenses" style="color:var(--warning); font-weight:700;">0.00</span>
 </div>
-<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--danger);">
+<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--danger);" class="nm-status">
 <span class="u-text-muted" >Supplies Payable</span>
 <span id="unified-supplier-payables" style="color:var(--danger); font-weight:700;">0.00</span>
 </div>
-<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--accent-purple);">
+<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:10px; border-left:3px solid var(--accent-purple);" class="nm-status">
 <span class="u-text-muted" >Entity Payable</span>
 <span id="unified-entity-payables" style="color:var(--accent-purple); font-weight:700;">0.00</span>
 </div>
@@ -3295,7 +3050,7 @@ async function renderStoreList() {
     return `
     <div class="settings-list-item" style="flex-direction:column;align-items:stretch;gap:0;padding:12px 14px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:rgba(29,233,182,0.1);border:1.5px solid var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.75rem;color:var(--accent);flex-shrink:0;">
+        <div style="width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; color:var(--accent); flex-shrink:0;" class="nm-well">
           ${(s.name || '?').slice(0,2)}
         </div>
         <div style="flex:1;min-width:0;">
@@ -3311,8 +3066,8 @@ async function renderStoreList() {
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="editStore(${i})" style="background:rgba(29,233,182,0.1);border:1px solid var(--accent);color:var(--accent);border-radius:8px;padding:5px 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">Edit</button>
-          ${!isBuiltin && !isUsed ? `<button onclick="deleteStore(${i})" style="background:rgba(239,68,68,0.1);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:5px 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">Delete</button>` : ''}
+          <button onclick="editStore(${i})" style="color:var(--accent); border-radius:8px; padding:5px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;" class="nm-well">Edit</button>
+          ${!isBuiltin && !isUsed ? `<button onclick="deleteStore(${i})" style="color:var(--danger); border-radius:8px; padding:5px 10px; font-size:0.7rem; font-weight:700; cursor:pointer;" class="nm-well">Delete</button>` : ''}
         </div>
       </div>
     </div>`;

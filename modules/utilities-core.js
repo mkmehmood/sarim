@@ -1954,7 +1954,7 @@ const _safeEntityId = String(entity.id).replace(/'/g, "\\'");
 const _entPhotoKey = 'entity:' + String(entity.id);
 const _entPhoto = await getPersonPhoto(_entPhotoKey);
 const _entAvatarHTML = renderPersonAvatarHTML(_entPhoto, 44);
-_manageET.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">${_entAvatarHTML}<div style="min-width:0;flex:1;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn" style="width:auto;padding:5px 10px;font-size:0.75rem;color:var(--accent);background:rgba(29,233,182,0.07);border-radius:8px;border:1px solid rgba(29,233,182,0.25);display:inline-flex;align-items:center;gap:5px;" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
+_manageET.innerHTML = `<div style="display:flex;align-items:center;gap:10px;">${_entAvatarHTML}<div style="min-width:0;flex:1;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn nm-well" style="width:auto; padding:5px 10px; font-size:0.75rem; color:var(--accent); border-radius:8px; display:inline-flex; align-items:center; gap:5px;" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
 }
 try {
 const _freshInv = await sqliteStore.get('inventory', []);
@@ -2048,11 +2048,11 @@ item.innerHTML = `
       <div class="${colorClass}" style="font-size:0.9rem;margin-top:2px;">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')"
-      style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
+      style="display:none; align-items:center; gap:3px; padding:3px 7px; border:none; border-radius:6px; cursor:pointer; font-size:0.62rem; font-weight:700; color:#818cf8; white-space:nowrap;" class="nm-well">
       <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>
-    ${(t.isMerged || t.isSettled) ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('${t.isTransfer ? 'paytransfer' : 'payment'}','${esc(t.isTransfer ? t.transferPairId : t.id)}')">✎</button>`}<button class="btn btn-sm btn-danger u-p-4-8" onclick="${t.isTransfer ? `(async()=>{await deletePaymentTransfer('${esc(t.transferPairId)}');const _ent=(await sqliteStore.get('entities')||[]).find(e=>String(e.id)===String(currentEntityId));if(_ent)renderEntityOverlayContent(_ent);})()` : `deleteEntityTransaction('${esc(t.id)}')`}">⌫</button>
+    ${(t.isMerged || t.isSettled) ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);" onclick="startEdit('${t.isTransfer ? 'paytransfer' : 'payment'}','${esc(t.isTransfer ? t.transferPairId : t.id)}')">✎</button>`}<button class="btn btn-sm btn-danger u-p-4-8" onclick="${t.isTransfer ? `(async()=>{await deletePaymentTransfer('${esc(t.transferPairId)}');const _ent=(await sqliteStore.get('entities')||[]).find(e=>String(e.id)===String(currentEntityId));if(_ent)renderEntityOverlayContent(_ent);})()` : `deleteEntityTransaction('${esc(t.id)}')`}">⌫</button>
   </div>
 </div>`;
 _entityFrag.appendChild(item);
@@ -3950,7 +3950,7 @@ export function _applyExpensePendingPhoto(dataUrl) {
   const btn = document.getElementById('expense-photo-btn');
   if (dot) dot.style.display = dataUrl ? '' : 'none';
   if (btn) {
-    btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
+    btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--nm-line)';
     btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
   }
 }
@@ -3959,7 +3959,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
     const safe = photoDataUrl.replace(/'/g, '&#39;');
-    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"><div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
+    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"><div style="position:absolute; inset:0; border-radius:50%; transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'" class="nm-well"></div></div>`;
   }
   return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
 }
@@ -4324,7 +4324,7 @@ export const SarimChart = (() => {
       const sz=120, cx=60, cy=60, r=54;
       let paths = '';
       if (total <= 0) {
-        paths = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--glass-border)"/>`;
+        paths = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--nm-line)"/>`;
       } else {
         let ang = -Math.PI/2;
         raw.forEach((v, i) => {
@@ -4333,7 +4333,7 @@ export const SarimChart = (() => {
           const x1=cx+r*Math.cos(ang), y1=cy+r*Math.sin(ang);
           const x2=cx+r*Math.cos(end), y2=cy+r*Math.sin(end);
           const c = cols[i%cols.length], tip = _esc(`${labels[i]||''}: ${_fmt(v)} (${(pct*100).toFixed(1)}%)`);
-          paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${pct>.5?1:0},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${c}" stroke="var(--glass-bg,#0f172a)" stroke-width="1.5" class="sc-pie-slice" data-tip="${tip}" tabindex="0"/>`;
+          paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${pct>.5?1:0},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${c}" stroke="var(--nm-bg)" stroke-width="1.5" class="sc-pie-slice" data-tip="${tip}" tabindex="0"/>`;
           ang = end;
         });
       }
@@ -4381,11 +4381,11 @@ export const SarimChart = (() => {
         }
         svg += `<polyline points="${lpts}" fill="none" stroke="${ds.borderColor||'#2563eb'}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
         pts.forEach((p,i) => {
-          svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${ds.borderColor||'#2563eb'}" stroke="var(--glass-bg,#0f172a)" stroke-width="1.2" class="sc-dot" data-tip="${_esc(`${ds.label||''}: ${_fmt(p.v)}`)}"/>`;
+          svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="${ds.borderColor||'#2563eb'}" stroke="var(--nm-bg)" stroke-width="1.2" class="sc-dot" data-tip="${_esc(`${ds.label||''}: ${_fmt(p.v)}`)}"/>`;
         });
       });
-      svg += `<line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+cH}" stroke="var(--glass-border,rgba(255,255,255,0.1))" stroke-width="1"/>`;
-      svg += `<line x1="${pL}" y1="${pT+cH}" x2="${W-pR}" y2="${pT+cH}" stroke="var(--glass-border,rgba(255,255,255,0.1))" stroke-width="1"/>`;
+      svg += `<line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+cH}" stroke="var(--nm-line)" stroke-width="1"/>`;
+      svg += `<line x1="${pL}" y1="${pT+cH}" x2="${W-pR}" y2="${pT+cH}" stroke="var(--nm-line)" stroke-width="1"/>`;
       this.el.innerHTML = `${this._titleHtml()}${this._legendHtml(datasets)}
 <div class="sc-line-wrap"><svg viewBox="0 0 ${W} ${H}" class="sc-line-svg">${svg}</svg></div>
 `;

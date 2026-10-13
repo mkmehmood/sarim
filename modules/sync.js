@@ -3562,7 +3562,7 @@ export async function showSyncHealthPanel() {
     panel.setAttribute('role', 'dialog');
     panel.style.cssText = `
       position:fixed;bottom:20px;right:20px;z-index:10300;
-      background:var(--glass-bg,#1e293b);border:1px solid var(--glass-border,#334155);
+      background:var(--nm-bg);border:1px solid var(--nm-line);
       border-radius:16px;padding:20px 24px;min-width:280px;max-width:360px;
       box-shadow:0 8px 32px rgba(0,0,0,.4);color:var(--text-main,#f1f5f9);font-size:.85rem;
     `;
@@ -3575,7 +3575,7 @@ export async function showSyncHealthPanel() {
         ${pending ? `&nbsp;·&nbsp;<span style="color:#f59e0b"> ${pending} issues</span>` : ''}
       </div>
       ${results.issues.map(s => `
-        <div style="padding:6px 10px;margin-top:4px;background:rgba(245,158,11,.1);border-radius:8px;font-size:.78rem">
+        <div style="padding:6px 10px; margin-top:4px; border-radius:8px; font-size:.78rem;" class="nm-well">
           <strong>${s.collection}</strong> — never synced · ${s.localRecords} local records
           ${s.hasPendingChanges ? ' · <span style="color:#f87171">pending changes</span>' : ''}
         </div>`).join('')}
@@ -3692,7 +3692,6 @@ overlay.setAttribute('aria-label', 'Sign in');
 const logo = 'brand-logo.jpg';
 const _showGoogle = !(window.__desktopApp || (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()));
 overlay.innerHTML = `
-<div class="auth-bg" aria-hidden="true"><i class="auth-orb auth-orb-a"></i><i class="auth-orb auth-orb-b"></i></div>
 <div class="auth-wrap">
 <div class="auth-hero">
 <div class="auth-logo"><img src="${logo}" alt="Gull And Zubair Naswar Dealers"></div>
@@ -4309,17 +4308,17 @@ const dot = approved
 const actions = isMe
   ? '<span style="font-size:0.65rem;color:var(--text-muted);font-style:italic;">(you)</span>'
   : [
-      '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn-theme" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="font-size:0.72rem;padding:4px 9px;color:var(--danger);border-color:rgba(239,68,68,0.3);">Remove</button>'
+      '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem; padding:4px 9px; color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
+      '<button class="btn-theme" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="font-size:0.72rem; padding:4px 9px; color:var(--danger);">Remove</button>'
     ].join('');
-return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:var(--radius-lg);margin-bottom:8px;">' +
+return '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:var(--radius-lg); margin-bottom:8px;" class="nm-raised">' +
   '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">' + dot +
   '<div style="min-width:0;"><div style="font-size:0.82rem;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
   '<div style="display:flex;gap:4px;align-items:center;margin-top:3px;">' +
   (acct.role === 'admin'
-    ? '<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;background:rgba(29,233,182,0.12);color:var(--accent-emerald);border:1px solid rgba(29,233,182,0.3);font-weight:700;text-transform:uppercase;">admin</span>'
-    : '<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;background:var(--glass-raised);color:var(--text-muted);border:1px solid var(--glass-border);font-weight:700;text-transform:uppercase;">user</span>') +
+    ? '<span style="font-size:0.58rem; padding:2px 7px; border-radius:9999px; color:var(--accent-emerald); font-weight:700; text-transform:uppercase;" class="nm-well">admin</span>'
+    : '<span style="font-size:0.58rem; padding:2px 7px; border-radius:9999px; color:var(--text-muted); font-weight:700; text-transform:uppercase;" class="nm-raised">user</span>') +
   (!approved ? '<span style="font-size:0.58rem;color:var(--danger);font-weight:700;">· Suspended</span>' : '') +
   '</div>' +
   '</div></div><div style="display:flex;gap:5px;flex-shrink:0;">' + actions + '</div></div>';

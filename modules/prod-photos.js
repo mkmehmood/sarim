@@ -59,7 +59,7 @@ function _renderPicker() {
   const n = _picker.length;
   if (dot) { dot.style.display = n ? '' : 'none'; dot.textContent = n > 1 ? String(n) : ''; dot.classList.toggle('pp-dot-count', n > 1); }
   if (btn) {
-    btn.style.borderColor = n ? 'var(--accent)' : 'var(--glass-border)';
+    btn.style.borderColor = n ? 'var(--accent)' : 'var(--nm-line)';
     btn.title = n ? `${n} photo${n === 1 ? '' : 's'} attached — tap to add another` : 'Attach photo';
   }
   if (clr) clr.style.display = n ? '' : 'none';

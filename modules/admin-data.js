@@ -53,7 +53,7 @@ const modal = document.createElement('div');
 modal.id = 'delta-stats-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radius:20px;text-align:center;">
+modal.innerHTML = `<div style="padding:40px; border-radius:20px; text-align:center;" class="nm-panel">
   <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
   <div style="color:var(--text-muted);font-size:0.85rem;">Loading database structure…</div>
 </div>`;
@@ -192,7 +192,7 @@ try {
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
   let html = `
-<div id="dbv-root" style="background:var(--glass);border-radius:20px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+<div id="dbv-root" style="border-radius:20px; max-width:760px; width:100%; max-height:88vh; display:flex; flex-direction:column; overflow:hidden;" class="nm-panel">
 
   <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;flex-shrink:0">
     <div style="display:flex;align-items:center;gap:10px">
@@ -205,7 +205,7 @@ try {
       </div>
     </div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      style="background:rgba(255,255,255,0.07);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+      style="border:none; border-radius:50%; width:32px; height:32px; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center;" class="nm-well"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
   </div>
 
   <div style="display:flex;gap:4px;padding:14px 20px 0;flex-shrink:0">
@@ -230,17 +230,17 @@ try {
   const _msLeft     = firestoreStats.lastReset ? Math.max(0, 864e5 - (Date.now() - firestoreStats.lastReset)) : 0;
   const _resetNext  = _msLeft > 0 ? (Math.floor(_msLeft/3600000) + 'h ' + Math.floor((_msLeft%3600000)/60000) + 'm') : 'soon';
   html += `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px">
-    <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
+    <div style="border-radius:12px; padding:10px 12px; text-align:center;" class="nm-well">
       <div style="font-size:1.3rem;font-weight:700;color:var(--accent)">${totalFsDocs.toLocaleString()}</div>
       <div style="font-size:0.63rem;color:var(--text-muted)">Firestore Docs</div>
       <div style="font-size:0.58rem;color:var(--text-muted);margin-top:2px">live count</div>
     </div>
-    <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
+    <div style="border-radius:12px; padding:10px 12px; text-align:center;" class="nm-well">
       <div style="font-size:1.3rem;font-weight:700;color:${_readColor}">${_reads.toLocaleString()}</div>
       <div style="font-size:0.63rem;color:var(--text-muted)">Reads (24 h)</div>
       <div style="font-size:0.58rem;color:${_readColor};margin-top:2px">${_readPct}% of 50 000</div>
     </div>
-    <div style="background:rgba(128,128,128,0.08);border-radius:12px;padding:10px 12px;text-align:center">
+    <div style="border-radius:12px; padding:10px 12px; text-align:center;" class="nm-well">
       <div style="font-size:1.3rem;font-weight:700;color:${_writeColor}">${_writes.toLocaleString()}</div>
       <div style="font-size:0.63rem;color:var(--text-muted)">Writes (24 h)</div>
       <div style="font-size:0.58rem;color:${_writeColor};margin-top:2px">${_writePct}% of 20 000</div>
@@ -258,9 +258,9 @@ try {
     const lastSync = colStats.lastSync ? ago(colStats.lastSync) : 'never';
     const hasLiveListener = col.fsName !== 'deletions' && col.fsName !== 'photos';
     const mismatch = !col.isPhotoStore && Math.abs(fsDocs - sqDocs) > 0;
-    const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
+    const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--nm-line)';
     html += `
-<div style="margin-bottom:9px;padding:11px 13px;background:var(--input-bg);border-radius:14px;border:1px solid ${borderColor}">
+<div style="margin-bottom:9px;padding:11px 13px;background:var(--nm-bg);border-radius:14px;border:1px solid ${borderColor}">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">
@@ -283,7 +283,7 @@ try {
       </div>
     </div>
   </div>
-  <div style="border-top:1px solid var(--glass-border);margin-top:8px;padding-top:6px;display:flex;gap:14px;font-size:0.63rem;color:var(--text-muted);flex-wrap:wrap">
+  <div style="border-top:1px solid var(--nm-line);margin-top:8px;padding-top:6px;display:flex;gap:14px;font-size:0.63rem;color:var(--text-muted);flex-wrap:wrap">
     <span>↑ <b style="color:#30d158">${uuidCol.uploaded||0}</b> up</span>
     <span>↓ <b style="color:#007aff">${uuidCol.downloaded||0}</b> down</span>
     <span>Syncs: <b style="color:var(--text)">${colStats.syncCount||0}</b></span>
@@ -298,7 +298,7 @@ try {
     const exists = doc.doc && doc.doc.exists;
     const data   = exists ? doc.doc.data() : null;
     html += `
-<div style="margin-bottom:10px;padding:12px;background:var(--input-bg);border-radius:14px;border:1px solid var(--glass-border)">
+<div style="margin-bottom:10px; padding:12px; border-radius:14px;" class="nm-well">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
     <div style="flex:1;min-width:0">
       <div style="font-weight:700;font-size:0.82rem;color:var(--text);font-family:var(--font-mono);margin-bottom:2px">${doc.path}</div>
@@ -314,7 +314,7 @@ try {
         <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:3px;font-weight:600">SQLite ↔ Firestore field mapping:</div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">
           ${doc.sqlite.map(([sk, fk]) =>
-            `<div style="font-size:0.61rem;font-family:var(--font-mono);background:rgba(0,122,255,0.08);padding:2px 7px;border-radius:8px">
+            `<div style="font-size:0.61rem; font-family:var(--font-mono); padding:2px 7px; border-radius:8px;" class="nm-well">
               <span style="color:var(--accent)">${sk}</span><span style="color:var(--text-muted)"> → </span><span style="color:var(--accent-cyan)">${fk}</span>
             </div>`
           ).join('')}
@@ -322,7 +322,7 @@ try {
       </div>`;
     }
     if (exists && data) {
-      html += `<div style="border-top:1px solid var(--glass-border);padding-top:6px">
+      html += `<div style="border-top:1px solid var(--nm-line);padding-top:6px">
         <div style="font-size:0.63rem;color:var(--text-muted);margin-bottom:4px;font-weight:600">Firestore fields:</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px">
           ${doc.fsFields.map(k => {
@@ -358,13 +358,13 @@ try {
       fires: 'Any doc change; lockOnClose=' + c.lock,
     })),
   ];
-  html += `<div style="margin-bottom:10px;padding:10px 12px;background:rgba(48,209,88,0.07);border-radius:12px;border:1px solid rgba(48,209,88,0.2)">
+  html += `<div style="margin-bottom:10px; padding:10px 12px; border-radius:12px;" class="nm-well">
     <div style="font-size:0.75rem;font-weight:700;color:#30d158;margin-bottom:2px">● ${LISTENERS.length} Active Realtime Listeners</div>
     <div style="font-size:0.65rem;color:var(--text-muted)">All subscribed via <code>onSnapshot</code> in <code>subscribeToRealtime()</code>. Reconnect on network restore.</div>
   </div>`;
   LISTENERS.forEach(l => {
     html += `
-<div style="margin-bottom:8px;padding:10px 12px;background:var(--input-bg);border-radius:13px;border:1px solid var(--glass-border)">
+<div style="margin-bottom:8px; padding:10px 12px; border-radius:13px;" class="nm-well">
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap">
     ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2')}
     <span style="font-weight:700;font-size:0.78rem;color:var(--text);font-family:var(--font-mono)">${l.name}</span>
@@ -382,7 +382,7 @@ try {
     <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore → SQLite → JS Variable Map</div>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:0.63rem;font-family:var(--font-mono)">
-      <thead><tr style="border-bottom:1px solid var(--glass-border)">
+      <thead><tr style="border-bottom:1px solid var(--nm-line)">
         <th style="text-align:left;padding:4px 6px;color:var(--text-muted);font-weight:600">Firestore</th>
         <th style="text-align:left;padding:4px 6px;color:var(--text-muted);font-weight:600">SQLite Key</th>
         <th style="text-align:left;padding:4px 6px;color:var(--text-muted);font-weight:600">JS Variable</th>
@@ -404,7 +404,7 @@ try {
     </table>
     </div>
   </div>`;
-  html += `<div style="margin-bottom:12px;padding:12px;background:var(--input-bg);border-radius:14px">
+  html += `<div style="margin-bottom:12px; padding:12px; border-radius:14px;" class="nm-well">
     <div style="font-size:0.75rem;font-weight:700;color:var(--text);margin-bottom:8px">Firestore Schema (users/{uid}/…)</div>
     <div style="font-size:0.63rem;font-family:var(--font-mono);line-height:1.9;color:var(--text-muted)">
       <div><span style="color:var(--accent-gold)">users/</span><span style="color:var(--accent)">{uid}</span></div>
@@ -438,7 +438,7 @@ try {
     const fyCount = fy.fyCloseCount || 0;
     const fyDate  = fy.lastYearClosedDate ? new Date(fy.lastYearClosedDate).toLocaleDateString('en-PK',{day:'numeric',month:'short',year:'numeric'}) : '—';
     const fySignal = yearCloseSignalDoc.exists ? yearCloseSignalDoc.data() : null;
-    return `<div style="padding:10px 12px;background:rgba(128,128,128,0.06);border-radius:12px;font-size:0.7rem">
+    return `<div style="padding:10px 12px; border-radius:12px; font-size:0.7rem;" class="nm-well">
       <div style="font-weight:700;color:var(--text);margin-bottom:5px">Financial Year Status</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--text-muted)">
         <div>Close count: <b style="color:var(--accent)">${fyCount}</b></div>
@@ -454,7 +454,7 @@ try {
   modal.innerHTML = html;
 } catch (err) {
   console.error('[showDeltaSyncDetails] error:', err);
-  modal.innerHTML = `<div style="background:var(--glass);padding:40px;border-radius:20px;text-align:center;max-width:400px">
+  modal.innerHTML = `<div style="padding:40px; border-radius:20px; text-align:center; max-width:400px;" class="nm-panel">
     <div style="margin-bottom:12px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.85;"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
     <div style="color:var(--text);margin-bottom:20px">Failed to load database structure</div>
     <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:20px">${err && err.message ? err.message : String(err)}</div>
@@ -569,7 +569,7 @@ _cyBody.innerHTML = `
   position: relative;
 }
 [data-theme="light"] .cy-data-row {
-  border-color: var(--glass-border);
+  border-color: var(--nm-line);
   background: rgba(0,0,0,0.02);
 }
 .cy-data-row.cy-no-data { opacity: 0.32; }
@@ -657,7 +657,7 @@ _cyBody.innerHTML = `
 }
 [data-theme="light"] #cy-progress-inner {
   background: rgba(0,0,0,0.025);
-  border-color: var(--glass-border);
+  border-color: var(--nm-line);
 }
 #cy-progress-meta { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 #cy-progress-meta-stage { font-size:0.75rem; color:var(--text-muted); font-family:var(--font-ui); }
@@ -712,7 +712,7 @@ _cyBody.innerHTML = `
 }
 [data-theme="light"] #close-year-confirm-input {
   background: rgba(0,0,0,0.03);
-  border-color: var(--glass-border);
+  border-color: var(--nm-line);
 }
 #close-year-confirm-input:focus {
   border-color: rgba(239,83,80,0.55);
@@ -764,7 +764,7 @@ _cyBody.innerHTML = `
   font-family: var(--font-ui); white-space: nowrap;
 }
 [data-theme="light"] #cy-cancel-btn {
-  background: var(--glass-raised); border-color: var(--glass-border);
+  background: var(--nm-bg); border-color: var(--nm-line);
 }
 #cy-cancel-btn:hover {
   background: rgba(255,255,255,0.10);
@@ -908,13 +908,11 @@ if (value.trim().length > 0) {
   confirmBtn.disabled = false;
   confirmBtn.style.opacity = '1';
   confirmBtn.style.cursor = 'pointer';
-  confirmBtn.style.boxShadow = '0 3px 10px rgba(255,69,58,0.2)';
   confirmBtn.onclick = verifyAndExecuteCloseYear;
 } else {
   confirmBtn.disabled = true;
   confirmBtn.style.opacity = '0.38';
   confirmBtn.style.cursor = 'not-allowed';
-  confirmBtn.style.boxShadow = 'none';
   confirmBtn.onclick = null;
 }
 if (errEl) errEl.style.display = 'none';

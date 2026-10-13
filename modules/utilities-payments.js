@@ -297,10 +297,8 @@ if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
 updateCalcRangeLabel();
 totalSoldField.value = safeNumber(sel.qty, 0).toFixed(2);
 totalSoldField.readOnly = true;
-totalSoldField.style.background = 'rgba(37, 99, 235, 0.1)';
 totalSoldField.style.color = 'var(--accent)';
 totalSoldField.style.fontWeight = 'bold';
-totalSoldField.style.border = '1px solid var(--accent)';
 const usedRepSaleIds = new Set();
 if (Array.isArray(calculator)) {
   calculator.forEach(calcEntry => {
@@ -337,10 +335,8 @@ if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
 
 export function styleAutoFilledField(field) {
-field.style.background = 'rgba(5, 150, 105, 0.1)';
 field.style.color = 'var(--accent-emerald)';
 field.style.fontWeight = 'bold';
-field.style.border = '1px solid var(--accent-emerald)';
 }
 
 export async function loadSalesData(compMode = 'all') {
@@ -1928,25 +1924,17 @@ if (entity.isExpenseEntity === true) return false;
 return entity.name.toLowerCase().includes(query);
 });
 let html = '';
-html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> EXPENSES</div>`;
+html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--nm-line);" class="nm-well"> EXPENSES</div>`;
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
 if (!name || typeof name !== 'string') return;
 const safeName = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const count = expenses.filter(e => e && e.name === name).length;
 html += `
-<div style="
-padding: 12px;
-cursor: pointer;
-border-bottom: 1px solid var(--glass-border);
-font-size: 0.85rem;
-color: var(--text-main);
-background: var(--input-bg);
-transition: all 0.2s;
-"
+<div style="padding: 12px; cursor: pointer; border-bottom: 1px solid var(--nm-line); font-size: 0.85rem; color: var(--text-main); transition: all 0.2s;"
 onmousedown="selectExpense('${safeName}', 'expense')"
 onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+onmouseout="this.style.background='var(--nm-bg)'" class="nm-well">
 <div class="u-row-between" >
 <strong>${esc(name)}</strong>
 <span class="u-fs-sm u-text-muted" >
@@ -1958,25 +1946,17 @@ ${count} expense records
 } else {
 html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No matching expenses — will create new</div>`;
 }
-html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; background: var(--input-bg); border-bottom: 1px solid var(--glass-border);"> ENTITIES</div>`;
+html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--nm-line);" class="nm-well"> ENTITIES</div>`;
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return;
 const safeName = entity.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const txnCount = transactions.filter(t => t && t.entityId === entity.id).length;
 html += `
-<div style="
-padding: 12px;
-cursor: pointer;
-border-bottom: 1px solid var(--glass-border);
-font-size: 0.85rem;
-color: var(--text-main);
-background: var(--input-bg);
-transition: all 0.2s;
-"
+<div style="padding: 12px; cursor: pointer; border-bottom: 1px solid var(--nm-line); font-size: 0.85rem; color: var(--text-main); transition: all 0.2s;"
 onmousedown="selectExpense('${safeName}', 'entity')"
 onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+onmouseout="this.style.background='var(--nm-bg)'" class="nm-well">
 <div class="u-row-between" >
 <strong>${esc(entity.name)}</strong>
 <span class="u-fs-sm u-text-muted" >
@@ -2679,8 +2659,8 @@ const categoryColor = getCategoryColor(expense.category);
 const categoryLabel = getCategoryLabel(expense.category);
 const formattedDate = formatExpenseDate(expense.date);
 const tr = document.createElement('tr');
-tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s;';
-tr.onmouseover = function() { this.style.background = 'var(--card-hover)'; };
+tr.style.cssText = 'border-bottom: 1px solid var(--nm-line); transition: background 0.2s;';
+tr.onmouseover = function() { this.style.background = 'var(--nm-bg)'; };
 tr.onmouseout = function() { this.style.background = 'transparent'; };
 tr.innerHTML = `
 <td style="padding: 10px 8px; font-size: 0.8rem; color: var(--text-muted);">
@@ -2707,20 +2687,9 @@ ${fmtAmt(expense.amount)}
 <td style="padding: 10px 8px; text-align: center;">
 <button
 onclick="openExpenseEntityDetails('${esc(expense.id)}')"
-style="
-background: linear-gradient(135deg, var(--accent) 0%, var(--accent-emerald) 100%);
-border: none;
-color: white;
-padding: 6px 12px;
-border-radius: 6px;
-font-size: 0.75rem;
-cursor: pointer;
-transition: all 0.2s;
-font-weight: 600;
-"
+style="border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; font-weight: 600;"
 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,122,255,0.3)'"
-onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'"
->
+onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'" class="nm-well">
 Manage
 </button>
 </td>
@@ -3028,9 +2997,9 @@ return;
 }
 function buildUnifiedRow(row) {
 const tr = document.createElement('tr');
-tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s; cursor: pointer;';
+tr.style.cssText = 'border-bottom: 1px solid var(--nm-line); transition: background 0.2s; cursor: pointer;';
 tr.onmouseover = function() { this.style.background = 'var(--highlight-bg)'; };
-tr.onmouseout = function() { this.style.background = row.type === 'entity' ? 'var(--input-bg)' : 'transparent'; };
+tr.onmouseout = function() { this.style.background = row.type === 'entity' ? 'var(--nm-bg)' : 'transparent'; };
 if (row.type === 'transaction') {
 tr.onclick = function(e) { if (!e.target.closest('a,button')) openExpenseEntityDetails(row.id); };
 tr.innerHTML = `
@@ -3048,7 +3017,7 @@ ${row.typeLabel}
 ${row.amountStr}
 </td>`;
 } else {
-tr.style.background = 'var(--input-bg)';
+tr.style.background = 'var(--nm-bg)';
 tr.onclick = function(e) { if (!e.target.closest('a,button')) openEntityDetailsOverlay(row.id); };
 tr.innerHTML = `
 <td style="padding: 8px 4px; font-size: 0.7rem; white-space: nowrap; color: var(--text-main);">
@@ -3583,11 +3552,11 @@ item.innerHTML = `
 <div class="cost-val" style="font-size:0.9rem; margin-top:2px;">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
 </div>
 <button id="${_expPhotoBadgeId}" title="View photo" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()"
-  style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
+  style="display:none; align-items:center; gap:3px; padding:3px 7px; border:none; border-radius:6px; cursor:pointer; font-size:0.62rem; font-weight:700; color:#818cf8; white-space:nowrap;" class="nm-well">
   <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
   Photo
 </button>
-${exp.isMerged ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('expense','${esc(exp.id)}')">✎</button><button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">⌫</button>`}
+${exp.isMerged ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);" onclick="startEdit('expense','${esc(exp.id)}')">✎</button><button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">⌫</button>`}
 </div>
 `;
 _expFrag.appendChild(item);
@@ -4945,7 +4914,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
         'returns':'#f97316','unknown':'#9ca3af'
       }[col] || '#9ca3af';
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
-      return `<div style="background:var(--input-bg);border:1px solid var(--glass-border);border-radius:12px;padding:12px 14px;margin-bottom:9px;display:flex;align-items:center;gap:11px;">
+      return `<div style="border-radius:12px; padding:12px 14px; margin-bottom:9px; display:flex; align-items:center; gap:11px;" class="nm-well">
         <div style="width:9px;height:9px;min-width:9px;border-radius:50%;background:${colDot};flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;overflow:hidden;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
@@ -4965,9 +4934,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
           ${canRecover
-            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
+            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex; align-items:center; gap:4px; padding:7px 13px; color:#10b981; border-radius:999px; font-size:0.78rem; font-weight:700; cursor:pointer; white-space:nowrap;" class="nm-well"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
-          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:999px;font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
+          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; color:#ef4444; border-radius:999px; font-size:0.7rem; font-weight:700; cursor:pointer; white-space:nowrap;" class="nm-well"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
     }).join('');
@@ -5988,10 +5957,10 @@ if (matches.length > 0) {
 matches.forEach(name => {
 const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--nm-line); font-size: 0.85rem; color: var(--text-main);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'name')"
 onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+onmouseout="this.style.background='var(--nm-bg)'" class="nm-well">
 <strong>${esc(name)}</strong>
 </div>`;
 });
@@ -6016,10 +5985,10 @@ const safeId = String(entity.id).replace(/'/g, "\\'");
 const entityBal = calculateEntityBalances()[entity.id] || 0;
 const typeColor = entityBal >= 0 ? 'var(--danger)' : 'var(--accent-emerald)';
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--nm-line); font-size: 0.85rem; color: var(--text-main);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'entity', '${safeId}')"
 onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+onmouseout="this.style.background='var(--nm-bg)'" class="nm-well">
 <strong>${esc(entity.name)}</strong>
 </div>`;
 });
@@ -6042,10 +6011,10 @@ matches.forEach(supplier => {
 const safeName = String(supplier.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 const safeId = String(supplier.id).replace(/'/g, "\\'");
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--nm-line); font-size: 0.85rem; color: var(--text-main);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'supplier', '${safeId}')"
 onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+onmouseout="this.style.background='var(--nm-bg)'" class="nm-well">
 <strong>${esc(supplier.name)}</strong>
 ${supplier.phone ? `<span style="font-size: 0.7rem; color: var(--text-muted); margin-left: 8px;">${phoneActionHTML(supplier.phone)}</span>` : ''}
 </div>`;
@@ -6076,10 +6045,10 @@ if (matches.length > 0) {
 matches.forEach(name => {
 const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
+<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--nm-line); font-size: 0.85rem; color: var(--text-main);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'repName')"
 onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+onmouseout="this.style.background='var(--nm-bg)'" class="nm-well">
 <strong>${esc(name)}</strong>
 </div>`;
 });
@@ -6692,12 +6661,12 @@ list.innerHTML = '<div style="color:var(--text-muted);font-size:0.8rem;text-alig
 return;
 }
 list.innerHTML = salesRepsList.map((rep, i) => `
-<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:9999px; ${i === 0 ? 'border-left:3px solid var(--accent);' : ''}">
+<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; border-radius:9999px; ${i === 0 ? 'border-left:3px solid var(--accent); ' : ''};" class="nm-raised">
 <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
 <span style="font-size:0.85rem; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(rep)}</span>
 <span style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}; flex-shrink:0;">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
-<button class="btn-theme" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="flex-shrink:0; color:var(--danger); border-color:rgba(239,68,68,0.4); font-size:0.8rem;"></button>
+<button class="btn-theme" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="flex-shrink:0; color:var(--danger); font-size:0.8rem;"></button>
 </div>
 `).join('');
 }
@@ -6734,14 +6703,14 @@ list.innerHTML = userRolesList.map((user, i) => {
 const tabs = Array.isArray(user.tabs) ? user.tabs : [];
 const tabBadges = tabs.map(t => `<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;color:${TAB_COLORS[t]||'var(--accent)'};border:1px solid ${TAB_COLORS[t]||'var(--accent)'}55;font-weight:700;text-transform:uppercase;">${t}</span>`).join('');
 return `
-<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:var(--radius-lg); margin-bottom:8px;">
+<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-radius:var(--radius-lg); margin-bottom:8px;" class="nm-raised">
 <div style="flex:1; min-width:0;">
 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
 <span style="font-size:0.85rem; font-weight:800; color:var(--text-main);">${esc(user.name)}</span>
 </div>
 <div style="display:flex;gap:4px;flex-wrap:wrap;">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
 </div>
-<button class="btn-theme" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="flex-shrink:0; color:var(--danger); border-color:rgba(239,68,68,0.4); font-size:0.8rem;"></button>
+<button class="btn-theme" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="flex-shrink:0; color:var(--danger); font-size:0.8rem;"></button>
 </div>`;
 }).join('');
 }
@@ -7056,7 +7025,7 @@ No other devices registered
 return;
 }
 let html = `
-<div style="margin-bottom: 15px; padding: 10px; background: rgba(0, 122, 255, 0.1); border-radius: 8px; border: 1px solid rgba(0, 122, 255, 0.3);">
+<div style="margin-bottom: 15px; padding: 10px; border-radius: 8px;" class="nm-well">
 <div style="font-size: 0.75rem; color: var(--accent); font-weight: 600;">
 Account: ${accountEmail}
 </div>
@@ -7119,7 +7088,7 @@ if (device.firstLoginAt) {
     if (flt) firstLoginStr = flt.toLocaleString();
   } catch (_) {}
 }
-let cardHtml = '<div style="background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:14px;padding:14px;margin-bottom:12px;">';
+let cardHtml = '<div style="border-radius:14px; padding:14px; margin-bottom:12px;" class="nm-raised">';
 cardHtml += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">';
 cardHtml += '<div style="font-size:0.65rem;font-family:var(--font-mono);color:var(--text-muted);flex:1;min-width:0;line-height:1.4;" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span style="color:var(--accent);font-weight:700;letter-spacing:0.08em;">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span style="color:var(--text-muted);font-weight:400;font-size:0.6rem;">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
 cardHtml += '<div style="text-align:right;flex-shrink:0;">';
@@ -7133,7 +7102,7 @@ const lastCmdStr = remoteAppliedAt ? new Date(remoteAppliedAt).toLocaleString() 
 const lastCmdMode = remoteAppliedMode ? remoteAppliedMode.toUpperCase() : null;
 const lastCmdBy = remoteAppliedBy || null;
 if (lastCmdMode || totalCommands > 0) {
-cardHtml += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:11px;padding:7px 10px;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid var(--glass-border);">';
+cardHtml += '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:11px; padding:7px 10px; border-radius:8px;" class="nm-well">';
 cardHtml += '<span style="font-size:0.6rem;color:var(--text-muted);flex-shrink:0;">Commands:</span>';
 if (totalCommands > 0) {
 cardHtml += '<span style="font-size:0.62rem;font-weight:700;color:var(--accent);background:var(--accent-dim);padding:2px 7px;border-radius:99px;">' + totalCommands + ' sent</span>';
@@ -7149,7 +7118,7 @@ cardHtml += '<span style="font-size:0.58rem;color:var(--text-secondary);margin-l
 }
 cardHtml += '</div>';
 } else {
-cardHtml += '<div style="margin-bottom:11px;padding:7px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid var(--glass-border);font-size:0.6rem;color:var(--text-secondary);">No commands sent yet</div>';
+cardHtml += '<div style="margin-bottom:11px; padding:7px 10px; border-radius:8px; font-size:0.6rem; color:var(--text-secondary);" class="nm-well">No commands sent yet</div>';
 }
 const isAdmin = deviceMode === 'admin';
 const adminBg = isAdmin ? 'rgba(0,122,255,0.18)' : 'rgba(0,122,255,0.08)';
@@ -7776,7 +7745,7 @@ const dot = document.getElementById('payment-transfer-photo-dot');
 const btn = document.getElementById('payment-transfer-photo-btn');
 if (dot) dot.style.display = dataUrl ? '' : 'none';
 if (btn) {
-btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
+btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--nm-line)';
 btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
 }
 }
@@ -7814,7 +7783,7 @@ item.innerHTML = `
       <div class="cost-val" style="font-size:0.9rem;margin-top:2px;">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')"
-      style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
+      style="display:none; align-items:center; gap:3px; padding:3px 7px; border:none; border-radius:6px; cursor:pointer; font-size:0.62rem; font-weight:700; color:#818cf8; white-space:nowrap;" class="nm-well">
       <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>

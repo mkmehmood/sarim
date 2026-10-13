@@ -334,7 +334,7 @@ transactionCard.innerHTML = `
 <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 8px;">
 ${esc(transaction.description || 'No description')}${etCreatorBadge}
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border);">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--nm-line);">
 <span class="u-fs-sm2 u-text-muted" >Amount:</span>
 <span class="${amountClass}" style="font-size: 1.1rem; font-weight: 800;">${fmtAmt(safeAmount)}</span>
 </div>
@@ -1757,17 +1757,14 @@ if (quantity > availableInventory) {
 inventoryWarning.innerHTML = ` Warning: Only ${fmtNum(safeNumber(availableInventory, 0))} kg available.<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
 inventoryWarning.style.display = 'block';
 inventoryWarning.style.color = 'var(--danger)';
-inventoryWarning.style.background = 'rgba(220, 38, 38, 0.1)';
 } else if (availableInventory < (quantity * 1.5)) {
 inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available (${fmtNum(safeNumber(availableInventory - quantity, 0))} kg remaining)<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg</small>`;
 inventoryWarning.style.display = 'block';
 inventoryWarning.style.color = 'var(--warning)';
-inventoryWarning.style.background = 'rgba(245, 158, 11, 0.1)';
 } else {
 inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
 inventoryWarning.style.display = 'block';
 inventoryWarning.style.color = 'var(--accent-emerald)';
-inventoryWarning.style.background = 'rgba(5, 150, 105, 0.1)';
 }
 }
 }
@@ -1836,6 +1833,7 @@ infoDisplay.classList.add('hidden');
 export function createInventoryWarningElement() {
 const warningDiv = document.createElement('div');
 warningDiv.id = 'inventory-warning';
+warningDiv.className = 'nm-well';
 warningDiv.style.fontSize = '0.8rem';
 warningDiv.style.marginTop = '8px';
 warningDiv.style.padding = '6px';
@@ -3971,11 +3969,11 @@ modal.innerHTML = `
 <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;">This backup is encrypted with your account credentials.</p>
 <p style="font-size:0.72rem;color:var(--accent);margin-bottom:16px;">Account: <strong>${esc(currentUser.email)}</strong></p>
 <input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password"
-style="width:100%;padding:12px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;box-sizing:border-box;color:var(--text-main);font-size:0.9rem;margin-bottom:14px;">
+style="width:100%; box-sizing:border-box; color:var(--text-main); font-size:0.9rem; margin-bottom:14px;">
 <div id="dec-pwd-error" style="font-size:0.75rem;color:var(--danger);min-height:18px;margin-bottom:10px;"></div>
 <div style="display:flex;gap:10px;">
 <button id="dec-pwd-ok" style="flex:1;padding:11px;background:var(--accent);border:none;border-radius:10px;color:#003d2e;font-weight:700;cursor:pointer;">Decrypt & Restore</button>
-<button id="dec-pwd-cancel" style="flex:1;padding:11px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;color:var(--text-main);cursor:pointer;">Cancel</button>
+<button id="dec-pwd-cancel" style="flex:1; padding:11px; border-radius:10px; color:var(--text-main); cursor:pointer;" class="nm-well">Cancel</button>
 </div>
 </div>`;
 document.body.appendChild(modal);
@@ -5488,7 +5486,7 @@ if (_rawBreakdownEl) {
   if (_rawEntries.length > 0) {
     const _bId = 'perf-sum-raw-breakdown';
     const _rowsHtml = _rawEntries.map(([name, data]) => `
-<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--nm-line);">
 <span style="font-size:0.72rem;color:var(--text-main);font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
 <span style="display:flex;gap:10px;align-items:center;">
 <span style="font-size:0.7rem;color:var(--text-muted);">${fmtNum(safeNumber(data.qty,0))} kg</span>
@@ -5502,7 +5500,7 @@ style="display:flex;align-items:center;gap:5px;background:none;border:none;curso
 <span style="font-size:0.68rem;color:var(--accent);">&#x25b6;</span>
 <span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Materials Breakdown</span>
 </button>
-<div id="${_bId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div id="${_bId}" style="display:none; border-radius:10px; padding:8px 10px; margin-top:4px;" class="nm-raised">
 <div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</span>
 <span style="display:flex;gap:10px;">
@@ -5841,7 +5839,7 @@ const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] 
 if (soldBreakdownEntries.length > 0) {
 const soldBreakdownId = `sold-breakdown-${store}-${index}`;
 const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
-<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--nm-line);">
 <span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
 <span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
@@ -5852,7 +5850,7 @@ style="display:flex;align-items:center;gap:5px;background:none;border:none;curso
 <span style="font-size:0.68rem;color:var(--accent);">▶</span>
 <span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Sold Breakdown</span>
 </button>
-<div id="${soldBreakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div id="${soldBreakdownId}" style="display:none; border-radius:10px; padding:8px 10px; margin-top:4px;" class="nm-raised">
 <div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Customer</span>
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
@@ -5870,10 +5868,10 @@ card.innerHTML = `
 ${returnsHtml}
 <p><span>Sold (Sales Tab):</span> <span class="cost-val">${fmtNum(safeValue(soldQty))} kg</span></p>
 ${soldBreakdownHtml}
-<div style="border-top:1px dashed var(--glass-border); margin:4px 0; padding-top:4px;">
+<div style="border-top:1px dashed var(--nm-line); margin:4px 0; padding-top:4px;">
 <p><span>Remaining:</span> <span class="profit-val" style="font-size:1.1rem;">${fmtNum(safeValue(remainingQty))} kg</span></p>
 </div>
-<div style="background:rgba(37,99,235,0.03); padding:5px; border-radius:6px; margin:5px 0;">
+<div style="padding:5px; border-radius:6px; margin:5px 0;" class="nm-well">
 <p><span>Formula Units:</span> <span class="qty-val u-fw-700" >${fmtNum(safeValue(storeData.formulaUnits))}</span></p>
 <p><span>Formula Cost:</span> <span class="cost-val u-fw-700" >${fmtAmt(safeValue(storeData.formulaCost))}</span></p>
 </div>
@@ -5913,7 +5911,7 @@ const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) 
 if (combinedSoldEntries.length > 0) {
 const combinedSoldBreakdownId = `sold-breakdown-combined`;
 const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
-<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--glass-border);">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--nm-line);">
 <span style="font-size:0.7rem;color:var(--text-main);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(cust)}</span>
 <span style="font-size:0.7rem;font-weight:700;color:var(--cost-val, #f59e0b);white-space:nowrap;margin-left:8px;">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
@@ -5924,7 +5922,7 @@ style="display:flex;align-items:center;gap:5px;background:none;border:none;curso
 <span style="font-size:0.68rem;color:var(--accent);">▶</span>
 <span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Sold Breakdown</span>
 </button>
-<div id="${combinedSoldBreakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div id="${combinedSoldBreakdownId}" style="display:none; border-radius:10px; padding:8px 10px; margin-top:4px;" class="nm-raised">
 <div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Customer</span>
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;min-width:60px;text-align:right;">Qty Sold</span>
@@ -5941,7 +5939,7 @@ combinedCard.innerHTML = `
 ${totalCombined.returns > 0 ? `<p><span>Total Returns:</span> <span style="color:#10b981; font-weight:800;">${fmtNum(safeValue(totalCombined.returns))} kg</span></p>` : ''}
 <p><span>Total Sold:</span> <span class="cost-val">${fmtNum(safeValue(totalCombined.sold))} kg</span></p>
 ${combinedSoldBreakdownHtml}
-<div style="border-top:1px dashed var(--glass-border); margin:4px 0; padding-top:4px;">
+<div style="border-top:1px dashed var(--nm-line); margin:4px 0; padding-top:4px;">
 <p><span>Total Remaining:</span> <span class="profit-val" style="font-size:1.1rem;">${fmtNum(safeValue(combinedRemaining))} kg</span></p>
 </div>
 <p><span>Total Formula Units:</span> <span class="qty-val">${fmtNum(safeValue(totalCombined.formulaUnits))}</span></p>

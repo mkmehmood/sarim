@@ -510,7 +510,7 @@ const totalValueStr = await formatCurrency(itemTotalValue);
 const itemId = esc(item.id);
 const itemName = esc(item.name);
 const tr = document.createElement('tr');
-tr.style.borderBottom = '1px solid var(--glass-border)';
+tr.style.borderBottom = '1px solid var(--nm-line)';
 tr.style.cursor = 'pointer';
 tr.innerHTML = `<td style="padding:8px 2px; cursor:pointer;" onclick="editFactoryInventoryItem('${itemId}')"><div style="font-weight:600;font-size:0.8rem;color:var(--accent);">${itemName}</div>${supplierHtml}</td><td style="text-align:center;padding:8px 2px;">${quantityHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.75rem;color:var(--text-muted);">${costHtml}</td><td style="text-align:right;padding:8px 2px;font-size:0.8rem;font-weight:700;color:var(--accent);">${totalValueStr}</td>`;
 prebuiltRows.push(tr);
@@ -1031,7 +1031,7 @@ const matName = esc(f.name || inv?.name || 'Material');
 const qtyUsed = fmtNum(_hasUsed ? f.quantity : f.quantity * entry.units);
 const unitCost = _hasUsed ? (f.cost != null ? f.cost : (inv ? inv.cost : 0)) : (inv ? inv.cost : (f.cost || 0));
 const matCost = _hasUsed ? (unitCost * f.quantity) : (unitCost * f.quantity * entry.units);
-return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--glass-border);">
+return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--nm-line);">
 <span style="font-size:0.72rem;color:var(--text-main);font-weight:500;">${matName}</span>
 <span style="display:flex;gap:10px;align-items:center;">
 <span style="font-size:0.7rem;color:var(--text-muted);">${qtyUsed} kg</span>
@@ -1047,7 +1047,7 @@ style="display:flex;align-items:center;gap:5px;background:none;border:none;curso
 <span style="font-size:0.68rem;color:var(--accent);"></span>
 <span style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;">Materials Breakdown</span>
 </button>
-<div id="${breakdownId}" style="display:none;background:var(--glass-raised);border-radius:10px;padding:8px 10px;margin-top:4px;border:1px solid var(--glass-border);">
+<div id="${breakdownId}" style="display:none; border-radius:10px; padding:8px 10px; margin-top:4px;" class="nm-raised">
 <div style="display:flex;justify-content:space-between;padding-bottom:5px;margin-bottom:2px;">
 <span style="font-size:0.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Material</span>
 <span style="display:flex;gap:10px;">
@@ -1063,7 +1063,7 @@ const div = document.createElement('div');
 div.className = 'factory-history-item';
 if (entry.date) div.setAttribute('data-date', entry.date);
 div.innerHTML = `
-<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:5px;margin-bottom:8px;border-bottom:1px solid var(--glass-border);padding-bottom:5px;">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:5px;margin-bottom:8px;border-bottom:1px solid var(--nm-line);padding-bottom:5px;">
 <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;">
 <span class="u-fs-sm2 u-text-muted">${dateStr}</span>
 ${entry.managedBy ? `<span class="managed-by-badge">${esc(entry.managedBy)}</span>` : ''}
