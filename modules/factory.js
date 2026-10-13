@@ -4,7 +4,7 @@ import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHand
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, unifiedDelete, unifiedSave } from './sync.js';
 import { OfflineQueue, _refreshSupplierLinkViews, _recomputeSupplierPayables, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
-import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, deleteStockTransfer, getAppStores, getStoreFormulaType, getStoreLabel, refreshFactoryTab, refreshUI, updateAllTabsWithFactoryCosts, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
+import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, deleteStockTransfer, getAppStores, getStoreFormulaType, getUnitPoolContext, getStoreLabel, refreshFactoryTab, refreshUI, updateAllTabsWithFactoryCosts, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { getFormulaSlotLabels, getSelectedFormula } from './formula-store.js';
@@ -1242,16 +1242,13 @@ const tracking = {
 standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
 asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
 };
-const _appStores = (typeof getAppStores === 'function') ? await getAppStores() : [];
-const _storeTypeMap = {};
-_appStores.forEach(s => { _storeTypeMap[s.key] = s.formulaType || 'standard'; });
+const _poolCtx = await getUnitPoolContext();
 function _resolveFormulaType(storeVal) {
-  if (storeVal === 'standard' || storeVal === 'asaan') return storeVal;
-  return _storeTypeMap[storeVal] || formulaTypeFor(storeVal);
+  return _poolCtx.poolOf(storeVal);
 }
 factory.forEach(entry => {
 if (entry.store && entry.units > 0) {
-const ft = entry.formulaType || _resolveFormulaType(entry.store);
+const ft = _resolveFormulaType(entry.formulaType || entry.store);
 if (!tracking[ft]) tracking[ft] = { produced: 0, consumed: 0, available: 0, unitCostHistory: [] };
 tracking[ft].produced += entry.units;
 if (entry.totalCost && entry.units > 0) {
@@ -1261,7 +1258,7 @@ tracking[ft].unitCostHistory.push({ date: entry.date, costPerUnit: entry.totalCo
 });
 production.forEach(entry => {
 if (entry.isReturn) return;
-const formulaStore = entry.formulaStore || _resolveFormulaType(entry.store);
+const formulaStore = _resolveFormulaType(entry.formulaStore || entry.store);
 if (!tracking[formulaStore]) tracking[formulaStore] = { produced: 0, consumed: 0, available: 0, unitCostHistory: [] };
 if (entry.formulaUnits) tracking[formulaStore].consumed += entry.formulaUnits;
 });

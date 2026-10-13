@@ -1,5 +1,6 @@
 import { sqliteStore, ensureArray, getTimestamp, ensureRecordIntegrity, debtDelta, debtNeedsGross } from './business.js';
 import { unifiedSave, unifiedDelete } from './sync.js';
+import { unitPoolKey } from './store-keys.js';
 
 import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
@@ -207,7 +208,8 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return issue;
   }
   if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
-    const ft = snapshot.formulaStore || 'standard';
+    const _slots = (await sqliteStore.get('slots')) || {};
+    const ft = unitPoolKey(snapshot.formulaStore || 'standard', null, _slots);
     const tracking = (await sqliteStore.get('tracking')) || {};
     const used = ctx && ctx.unitsUsed ? (ctx.unitsUsed.get(ft) || 0) : 0;
     const issue = getUnitsShortIssue(snapshot.formulaName || ft, Number(snapshot.formulaUnits) + used, (tracking[ft] && tracking[ft].available) || 0);

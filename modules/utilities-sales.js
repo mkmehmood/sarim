@@ -14,7 +14,7 @@ import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustom
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
+import { unitPoolKey, formulaTypeFor, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
@@ -1856,10 +1856,21 @@ export async function getStoreLabelAsync(storeCode) {
   return storeLabelFor(storeCode, stores);
 }
 
-export async function getStoreFormulaType(storeCode) {
+export async function getUnitPoolContext() {
   const stores = await getAppStores();
-  const f = stores.find(s => s.key === storeCode);
-  return f ? (f.formulaType || 'standard') : 'standard';
+  const rawSlots = (await sqliteStore.get('slots')) || {};
+  const slots = { standard: rawSlots.standard || null, asaan: rawSlots.asaan || null };
+  const storePool = {};
+  stores.forEach(s => { storePool[s.key] = unitPoolKey(s.formulaType, s.formulaId, slots); });
+  const slotPool = { standard: unitPoolKey('standard', null, slots), asaan: unitPoolKey('asaan', null, slots) };
+  const poolOf = (v) => (v === 'standard' || v === 'asaan') ? slotPool[v] : (storePool[v] || unitPoolKey(formulaTypeFor(v), null, slots));
+  return { stores, slots, storePool, slotPool, poolOf };
+}
+
+export async function getStoreFormulaType(storeCode) {
+  const ctx = await getUnitPoolContext();
+  const f = ctx.stores.find(s => s.key === storeCode);
+  return f ? ctx.storePool[storeCode] : 'standard';
 }
 
 window.getStoreFormulaType = getStoreFormulaType;
@@ -5527,7 +5538,8 @@ return fallbackWeight;
 }
 
 function _prodSlot(entry, storeFormulaMap) {
-const ft = entry.formulaStore || storeFormulaMap[entry.store] || formulaTypeFor(entry.store);
+const fs = entry.formulaStore;
+const ft = (fs && (storeFormulaMap['$' + fs] || fs)) || storeFormulaMap[entry.store] || formulaTypeFor(entry.store);
 return ft === 'asaan' ? 'asaan' : 'standard';
 }
 
@@ -5560,9 +5572,11 @@ const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
 const stores = typeof getAppStores === 'function' ? await getAppStores() : [];
 const storeFormulaMap = {};
+const _poolCtx = await getUnitPoolContext();
 for (const s of stores) {
-storeFormulaMap[s.key] = s.formulaType || 'standard';
+storeFormulaMap[s.key] = _poolCtx.storePool[s.key];
 }
+storeFormulaMap.$standard = _poolCtx.slotPool.standard; storeFormulaMap.$asaan = _poolCtx.slotPool.asaan;
 const stdTracking = factoryUnitTracking.standard || { produced: 0, consumed: 0, available: 0 };
 const asaanTracking = factoryUnitTracking.asaan || { produced: 0, consumed: 0, available: 0 };
 const stdProducedUnits = stdTracking.produced;
@@ -5641,10 +5655,12 @@ return true;
 }
 const _sfStores = typeof getAppStores === 'function' ? await getAppStores() : [];
 const _sfMap = {};
-_sfStores.forEach(s => { _sfMap[s.key] = s.formulaType || 'standard'; });
+const _sfCtx = await getUnitPoolContext();
+_sfStores.forEach(s => { _sfMap[s.key] = _sfCtx.storePool[s.key]; });
+_sfMap.$standard = _sfCtx.slotPool.standard; _sfMap.$asaan = _sfCtx.slotPool.asaan;
 const allTimeRecomp = { standard: { produced: 0, consumed: 0 }, asaan: { produced: 0, consumed: 0 } };
 for (const entry of factory) {
-const store = (entry.formulaType || await getStoreFormulaType(entry.store)) === 'asaan' ? 'asaan' : 'standard';
+const store = _sfCtx.poolOf(entry.formulaType || entry.store) === 'asaan' ? 'asaan' : 'standard';
 allTimeRecomp[store].produced += entry.units || 0;
 }
 production.forEach(entry => {

@@ -42,6 +42,18 @@ export function formulaTypeFor(key, list = _stores()) {
   return SLOT_KEYS.includes(key) ? key : 'standard';
 }
 
+// Units are pooled per formula. Slots/stores that point at the same formula
+// must share one pool, otherwise one store can show plenty of units while
+// another using the very same formula shows none.
+export function unitPoolKey(type, formulaId, slots) {
+  const t = type === 'asaan' ? 'asaan' : 'standard';
+  const sl = slots || {};
+  const fid = formulaId || sl[t];
+  if (!fid) return t;
+  for (const k of SLOT_KEYS) if (sl[k] && String(sl[k]) === String(fid)) return k;
+  return t;
+}
+
 export const BUILTIN_BADGE_CLASSES = Object.freeze({ zubair: 'store-zubair', mahmood: 'store-mahmood', asaan: 'store-asaan' });
 export const CUSTOM_BADGE_CLASSES = Object.freeze(['store-custom-1', 'store-custom-2']);
 
