@@ -277,3 +277,43 @@ describe('legacy partly-paid audit', () => {
     assert.equal(saves.length, 0);
   });
 });
+
+describe('transfer restore needs a complete pair', () => {
+  beforeEach(() => seed({}));
+  const half = { id: 'T1', type: 'OUT', amount: 50, isTransfer: true, transferPairId: 'P', entityId: 'A', entityName: 'Ali', transferPeerEntityId: 'B', transferPeerEntityName: 'Bilal' };
+
+  it('blocked when the other side is permanently gone, allowed when live, in the bin, or in the same set', async () => {
+    seed({ entities: [{ id: 'A' }, { id: 'B' }], transactions: [], deletions: [] });
+    assert.match(await G.getRecoverLinkBlockReason('transactions', half), /other side of this transfer was permanently deleted/);
+    seed({ entities: [{ id: 'A' }, { id: 'B' }], transactions: [{ id: 'T2', isTransfer: true, transferPairId: 'P' }], deletions: [] });
+    assert.equal(await G.getRecoverLinkBlockReason('transactions', half), null);
+    seed({ entities: [{ id: 'A' }, { id: 'B' }], transactions: [], deletions: [{ id: 'T2', recordId: 'T2', collection: 'transactions', snapshot: { id: 'T2', isTransfer: true, transferPairId: 'P' } }] });
+    assert.equal(await G.getRecoverLinkBlockReason('transactions', half), null);
+    seed({ entities: [{ id: 'A' }, { id: 'B' }], transactions: [], deletions: [] });
+    assert.equal(await G.getRecoverLinkBlockReason('transactions', half, { pairInSet: () => true }), null);
+  });
+
+  it('a transfer whose peer entity comes back in the same set is allowed; a missing peer is still blocked', async () => {
+    seed({ entities: [{ id: 'A' }], transactions: [{ id: 'T2', isTransfer: true, transferPairId: 'P' }], deletions: [] });
+    assert.match(await G.getRecoverLinkBlockReason('transactions', half), /"Bilal"/);
+    assert.equal(await G.getRecoverLinkBlockReason('transactions', half, { entityInSet: (id) => id === 'B' }), null);
+  });
+});
+
+describe('bulk delete cash guard', () => {
+  beforeEach(() => seed({}));
+
+  it('sums IN payments and ignores transfers and payable invoices', async () => {
+    globalThis.window.getAvailableCashInHand = async () => 400;
+    const txs = [
+      { type: 'IN', amount: 300 },
+      { type: 'IN', amount: 200 },
+      { type: 'IN', amount: 900, isTransfer: true },
+      { type: 'IN', amount: 900, isPayable: true },
+      { type: 'OUT', amount: 900 },
+    ];
+    assert.match(await G.getBulkPaymentDeleteBlockReason(txs, 'Deleting "Ali"'), /Deleting "Ali"/);
+    assert.equal(await G.getBulkPaymentDeleteBlockReason(txs.slice(2), 'x'), null);
+    assert.equal(await G.getBulkPaymentDeleteBlockReason([{ type: 'IN', amount: 300 }], 'x'), null);
+  });
+});
