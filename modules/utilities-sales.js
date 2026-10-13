@@ -14,7 +14,7 @@ import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustom
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
-import { buildUnitPools, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
+import { buildUnitPools, deriveSlots, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
@@ -1859,14 +1859,15 @@ export async function getStoreLabelAsync(storeCode) {
 export async function getUnitPoolContext() {
   const stores = await getAppStores();
   const rawSlots = (await sqliteStore.get('slots')) || {};
-  return { stores, ...buildUnitPools(stores, rawSlots) };
+  return { stores, ...buildUnitPools(stores, deriveSlots(stores, rawSlots)) };
 }
 
 export async function getStoreFormulaType(storeCode) {
   const ctx = await getUnitPoolContext();
-  if (storeCode === 'standard' || storeCode === 'asaan') return ctx.slotPool[storeCode];
   const f = ctx.stores.find(s => s.key === storeCode);
-  return f ? ctx.storePool[storeCode] : 'standard';
+  if (f) return ctx.storePool[storeCode];
+  if (storeCode === 'standard' || storeCode === 'asaan') return ctx.slotPool[storeCode];
+  return 'standard';
 }
 
 window.getStoreFormulaType = getStoreFormulaType;

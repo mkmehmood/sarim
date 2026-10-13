@@ -5,7 +5,7 @@ import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor, getDefaultStoreKey, unitPoolKey } from './store-keys.js';
+import { formulaTypeFor, getDefaultStoreKey, unitPoolKey, deriveSlots } from './store-keys.js';
 const STORE_KEY = 'formulas';
 const STORE_TS_KEY = 'formulas_timestamp';
 const SLOTS_KEY = 'slots';
@@ -22,9 +22,15 @@ export async function getFormulaStore() {
   return ensureArray(await sqliteStore.get(STORE_KEY)).filter((f) => f && f.id);
 }
 
-export async function getFormulaSlots() {
+export async function getStoredFormulaSlots() {
   const v = await sqliteStore.get(SLOTS_KEY);
   return { standard: (v && v.standard) || null, asaan: (v && v.asaan) || null };
+}
+
+// Derived from the stores' selected formulas (see deriveSlots).
+export async function getFormulaSlots() {
+  const [stored, stores] = await Promise.all([getStoredFormulaSlots(), getAppStores()]);
+  return deriveSlots(stores, stored);
 }
 
 export async function getSelectedFormula(storeKey) {
@@ -58,8 +64,9 @@ export async function getStoreFormulaNames() {
 }
 
 function _slotOfStore(key, typeMap) {
+  if (typeMap[key]) return typeMap[key];
   if (key === 'standard' || key === 'asaan') return key;
-  return typeMap[key] || formulaTypeFor(key);
+  return formulaTypeFor(key);
 }
 
 function _feedWrites(list, slots, base, now) {
@@ -87,7 +94,7 @@ function _afterChange() {
 }
 
 export async function commitStoresWithFormulas(stores) {
-  const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('tracking')]);
+  const [list, slots, batch, tracking] = await Promise.all([getFormulaStore(), getStoredFormulaSlots(), sqliteStore.getBatch(_FEED_KEYS), sqliteStore.get('tracking')]);
   stores = stores.map((s) => {
     if (s.formulaId) return s;
     const inherited = slots[s.formulaType || 'standard'];
@@ -511,19 +518,19 @@ let _slotHealTried = false;
 
 export async function refreshFormulaDependentUI() {
   const [labels, slots, stores, tracking] = await Promise.all([getFormulaSlotLabels(), getFormulaSlots(), getAppStores(), sqliteStore.get('tracking')]);
-  // A store can have a formula selected (Store Manager) that no slot holds, so
-  // New Entry resolves it to an empty slot (0 units, "Asaan"). Reconcile the
-  // slots with the stores once; commit refuses if it would strand units.
-  if (!_slotHealTried && stores.some((s) => s.formulaId && !SLOT_KEYS.some((k) => String(slots[k]) === String(s.formulaId)))) {
-    _slotHealTried = true;
-    try {
-      const r = await commitStoresWithFormulas(stores);
-      if (r && r.ok) return;
-    } catch (e) { console.error('Formula slot reconcile failed:', (e && e.message) || e); }
-    return refreshFormulaDependentUI();
+  // Persist the derived slot assignment (and the per-slot feed costs that follow
+  // it) whenever the saved one has drifted from the stores' selected formulas.
+  // commit refuses if it would strand units.
+  if (!_slotHealTried) {
+    const stored = await getStoredFormulaSlots();
+    if (SLOT_KEYS.some((k) => String(stored[k] || '') !== String(slots[k] || ''))) {
+      _slotHealTried = true;
+      try {
+        const r = await commitStoresWithFormulas(stores);
+        if (r && r.ok) return;
+      } catch (e) { console.error('Formula slot reconcile failed:', (e && e.message) || e); }
+    }
   }
-  // Resolve each store's slot from the formula it actually has selected (same
-  // rule the unit pools use). A stale formulaType must not surface an empty slot.
   const typeMap = {};
   stores.forEach((s) => { typeMap[s.key] = unitPoolKey(s.formulaType, s.formulaId, slots); });
   const used = new Set(Object.values(typeMap));

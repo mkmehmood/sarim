@@ -54,12 +54,37 @@ export function unitPoolKey(type, formulaId, slots) {
   return t;
 }
 
+// The stores' selected formulas are the single source of truth. The saved
+// slot assignment is only a hint that keeps unit tracking stable: it is kept
+// where a store still uses that formula, dropped where none does, and any
+// store formula without a slot takes a free one. Never read raw slots to
+// decide which formula a store uses.
+export function deriveSlots(stores, stored) {
+  const st = { standard: (stored && stored.standard) || null, asaan: (stored && stored.asaan) || null };
+  const ids = [];
+  (stores || []).forEach(s => {
+    const id = s && (s.formulaId || st[s.formulaType === 'asaan' ? 'asaan' : 'standard']);
+    if (id && !ids.includes(String(id))) ids.push(String(id));
+  });
+  if (!ids.length) return st;
+  const out = { standard: null, asaan: null };
+  SLOT_KEYS.forEach(k => { if (st[k] && ids.includes(String(st[k]))) out[k] = st[k]; });
+  ids.forEach(id => {
+    if (SLOT_KEYS.some(k => out[k] && String(out[k]) === id)) return;
+    const free = SLOT_KEYS.find(k => !out[k]);
+    if (free) out[free] = id;
+  });
+  return out;
+}
+
 export function buildUnitPools(stores, slots) {
   const sl = { standard: (slots && slots.standard) || null, asaan: (slots && slots.asaan) || null };
   const storePool = {};
   (stores || []).forEach(s => { storePool[s.key] = unitPoolKey(s.formulaType, s.formulaId, sl); });
   const slotPool = { standard: unitPoolKey('standard', null, sl), asaan: unitPoolKey('asaan', null, sl) };
-  const poolOf = (v) => (v === 'standard' || v === 'asaan') ? slotPool[v] : (storePool[v] || unitPoolKey(formulaTypeFor(v), null, sl));
+  // A real store always wins: the ASAAN store's key 'asaan' is also a slot name,
+  // but its formula is the one selected on the store, not the 'asaan' slot.
+  const poolOf = (v) => storePool[v] || ((v === 'standard' || v === 'asaan') ? slotPool[v] : unitPoolKey(formulaTypeFor(v), null, sl));
   return { slots: sl, storePool, slotPool, poolOf };
 }
 

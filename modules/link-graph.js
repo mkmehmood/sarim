@@ -1,5 +1,5 @@
 export const GROUP_FIELD = '_deletionGroup';
-import { formulaTypeFor } from './store-keys.js';
+import { formulaTypeFor, deriveSlots } from './store-keys.js';
 
 export const REF_FIELDS = {
   sales:       { scalar: ['relatedSaleId'], array: [] },
@@ -408,7 +408,7 @@ const _SLOT_LABEL = { standard: 'Standard', asaan: 'Asaan' };
 
 export function resolveSelectedFormula(data, storeKey) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
-  const slots = data.slots || {};
+  const slots = deriveSlots(data.stores, data.slots);
   const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === storeKey);
   const type = _SLOTS.includes(storeKey) ? storeKey : ((st && st.formulaType) || formulaTypeFor(storeKey));
   const formulaId = (st && st.formulaId) || slots[type] || null;

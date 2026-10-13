@@ -58,3 +58,26 @@ describe('planUnitPoolMigration', () => {
     assert.equal(plan.factory.length, 0);
   });
 });
+
+import { deriveSlots } from '../modules/store-keys.js';
+
+describe('deriveSlots (stores are the single source of truth)', () => {
+  it('drops a stale slot and puts the store formula in a free slot', () => {
+    const stores = [{ key: 'zubair', formulaId: 'f1' }, { key: 'asaan', formulaType: 'asaan', formulaId: 'f1' }];
+    assert.deepEqual(deriveSlots(stores, { standard: 'f1', asaan: 'f-orphan' }), { standard: 'f1', asaan: null });
+  });
+  it('keeps existing assignments and assigns a formula missing from the slots', () => {
+    const stores = [{ key: 'zubair', formulaId: 'f1' }, { key: 'asaan', formulaId: 'f2' }];
+    assert.deepEqual(deriveSlots(stores, { standard: 'f1', asaan: null }), { standard: 'f1', asaan: 'f2' });
+    assert.deepEqual(deriveSlots(stores, { standard: 'f2', asaan: 'f1' }), { standard: 'f2', asaan: 'f1' });
+  });
+  it('a store without formulaId inherits the saved slot of its type', () => {
+    const stores = [{ key: 'asaan', formulaType: 'asaan' }];
+    assert.deepEqual(deriveSlots(stores, { standard: 'f1', asaan: 'f2' }), { standard: null, asaan: 'f2' });
+  });
+  it('New Entry pool matches the Store Manager formula', () => {
+    const stores = [{ key: 'zubair', formulaType: 'standard', formulaId: 'f1' }, { key: 'asaan', formulaType: 'asaan', formulaId: 'f1' }];
+    const pools = buildUnitPools(stores, deriveSlots(stores, { standard: 'fx', asaan: null }));
+    assert.equal(pools.poolOf('asaan'), pools.poolOf('zubair'));
+  });
+});
