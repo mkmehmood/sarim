@@ -54,6 +54,15 @@ export function unitPoolKey(type, formulaId, slots) {
   return t;
 }
 
+export function buildUnitPools(stores, slots) {
+  const sl = { standard: (slots && slots.standard) || null, asaan: (slots && slots.asaan) || null };
+  const storePool = {};
+  (stores || []).forEach(s => { storePool[s.key] = unitPoolKey(s.formulaType, s.formulaId, sl); });
+  const slotPool = { standard: unitPoolKey('standard', null, sl), asaan: unitPoolKey('asaan', null, sl) };
+  const poolOf = (v) => (v === 'standard' || v === 'asaan') ? slotPool[v] : (storePool[v] || unitPoolKey(formulaTypeFor(v), null, sl));
+  return { slots: sl, storePool, slotPool, poolOf };
+}
+
 export const BUILTIN_BADGE_CLASSES = Object.freeze({ zubair: 'store-zubair', mahmood: 'store-mahmood', asaan: 'store-asaan' });
 export const CUSTOM_BADGE_CLASSES = Object.freeze(['store-custom-1', 'store-custom-2']);
 

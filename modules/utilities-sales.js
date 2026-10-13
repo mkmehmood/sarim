@@ -14,7 +14,7 @@ import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustom
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
-import { unitPoolKey, formulaTypeFor, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
+import { buildUnitPools, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
@@ -1859,12 +1859,7 @@ export async function getStoreLabelAsync(storeCode) {
 export async function getUnitPoolContext() {
   const stores = await getAppStores();
   const rawSlots = (await sqliteStore.get('slots')) || {};
-  const slots = { standard: rawSlots.standard || null, asaan: rawSlots.asaan || null };
-  const storePool = {};
-  stores.forEach(s => { storePool[s.key] = unitPoolKey(s.formulaType, s.formulaId, slots); });
-  const slotPool = { standard: unitPoolKey('standard', null, slots), asaan: unitPoolKey('asaan', null, slots) };
-  const poolOf = (v) => (v === 'standard' || v === 'asaan') ? slotPool[v] : (storePool[v] || unitPoolKey(formulaTypeFor(v), null, slots));
-  return { stores, slots, storePool, slotPool, poolOf };
+  return { stores, ...buildUnitPools(stores, rawSlots) };
 }
 
 export async function getStoreFormulaType(storeCode) {
@@ -5538,10 +5533,8 @@ if (item && Array.isArray(item.formulaMaterials)) return item.formulaMaterials.r
 return fallbackWeight;
 }
 
-function _prodSlot(entry, storeFormulaMap) {
-const fs = entry.formulaStore;
-const ft = (fs && (storeFormulaMap['$' + fs] || fs)) || storeFormulaMap[entry.store] || formulaTypeFor(entry.store);
-return ft === 'asaan' ? 'asaan' : 'standard';
+function _prodSlot(entry) {
+return entry.formulaStore === 'asaan' ? 'asaan' : 'standard';
 }
 
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
@@ -5555,11 +5548,10 @@ previousDate.setDate(previousDate.getDate() - 1);
 const previousDateStr = previousDate.toISOString().split('T')[0];
 const prevProduction = production.filter(item => item.date === previousDateStr);
 const prevFactoryProduction = factory.filter(item => item.date === previousDateStr);
-const _pdCtx = await getUnitPoolContext();
-const _pdPool = _pdCtx.poolOf(storeType);
-const prevUsed = prevProduction.filter(item => !item.isReturn && _pdCtx.poolOf(item.formulaStore || item.store) === _pdPool)
+const _pdPool = await getStoreFormulaType(storeType);
+const prevUsed = prevProduction.filter(item => !item.isReturn && item.formulaStore === _pdPool)
 .reduce((sum, item) => sum + (item.formulaUnits || 0), 0);
-const prevProduced = prevFactoryProduction.filter(item => _pdCtx.poolOf(item.formulaType || item.store) === _pdPool)
+const prevProduced = prevFactoryProduction.filter(item => item.formulaType === _pdPool)
 .reduce((sum, item) => sum + (item.units || 0), 0);
 if (previousDate >= new Date('2020-01-01')) {
 const prevPrevAvailable = await getPreviousDayAvailableUnits(storeType, previousDate);
@@ -5574,12 +5566,6 @@ const factory = ensureArray(await sqliteStore.get('factory'));
 const production = ensureArray(await sqliteStore.get('production'));
 const sales = ensureArray(await sqliteStore.get('sales'));
 const stores = typeof getAppStores === 'function' ? await getAppStores() : [];
-const storeFormulaMap = {};
-const _poolCtx = await getUnitPoolContext();
-for (const s of stores) {
-storeFormulaMap[s.key] = _poolCtx.storePool[s.key];
-}
-storeFormulaMap.$standard = _poolCtx.slotPool.standard; storeFormulaMap.$asaan = _poolCtx.slotPool.asaan;
 const stdTracking = factoryUnitTracking.standard || { produced: 0, consumed: 0, available: 0 };
 const asaanTracking = factoryUnitTracking.asaan || { produced: 0, consumed: 0, available: 0 };
 const stdProducedUnits = stdTracking.produced;
@@ -5588,8 +5574,8 @@ const stdAvailableUnits = stdTracking.available;
 const asaanProducedUnits = asaanTracking.produced;
 const asaanUsedUnits = asaanTracking.consumed;
 const asaanAvailableUnits = asaanTracking.available;
-const stdProductionData = production.filter(item => item.isReturn !== true && _prodSlot(item, storeFormulaMap) === 'standard');
-const asaanProductionData = production.filter(item => item.isReturn !== true && _prodSlot(item, storeFormulaMap) === 'asaan');
+const stdProductionData = production.filter(item => item.isReturn !== true && _prodSlot(item) === 'standard');
+const asaanProductionData = production.filter(item => item.isReturn !== true && _prodSlot(item) === 'asaan');
 const stdOutputQuantity = stdProductionData.reduce((sum, item) => sum + (item.net || 0), 0);
 const stdTotalCost = stdProductionData.reduce((sum, item) => sum + (item.totalCost || 0), 0);
 const stdTotalSaleValue = stdProductionData.reduce((sum, item) => sum + (item.totalSale || 0), 0);
@@ -5656,19 +5642,14 @@ if (mode === 'monthly') return entryDate.getMonth() === selectedMonth && entryDa
 if (mode === 'yearly') return entryDate.getFullYear() === selectedYear;
 return true;
 }
-const _sfStores = typeof getAppStores === 'function' ? await getAppStores() : [];
-const _sfMap = {};
-const _sfCtx = await getUnitPoolContext();
-_sfStores.forEach(s => { _sfMap[s.key] = _sfCtx.storePool[s.key]; });
-_sfMap.$standard = _sfCtx.slotPool.standard; _sfMap.$asaan = _sfCtx.slotPool.asaan;
 const allTimeRecomp = { standard: { produced: 0, consumed: 0 }, asaan: { produced: 0, consumed: 0 } };
 for (const entry of factory) {
-const store = _sfCtx.poolOf(entry.formulaType || entry.store) === 'asaan' ? 'asaan' : 'standard';
+const store = entry.formulaType === 'asaan' ? 'asaan' : 'standard';
 allTimeRecomp[store].produced += entry.units || 0;
 }
 production.forEach(entry => {
 if (entry.isReturn === true) return;
-const store = _prodSlot(entry, _sfMap);
+const store = _prodSlot(entry);
 allTimeRecomp[store].consumed += entry.formulaUnits || 0;
 });
 const stdAvailable = Math.max(0, allTimeRecomp.standard.produced - allTimeRecomp.standard.consumed);
@@ -5685,7 +5666,7 @@ const rawByMaterial = {};
 for (const entry of production) {
 if (entry.isReturn === true) continue;
 if (!isInRange(entry.date)) continue;
-const formulaStore = _prodSlot(entry, _sfMap);
+const formulaStore = _prodSlot(entry);
 const units = entry.formulaUnits || 0;
 frozenUnitCostTotal += (entry.formulaCost > 0 && units > 0) ? entry.formulaCost : units * (formulaStore === 'asaan' ? asaanCostPerUnit : stdCostPerUnit);
 if (formulaStore === 'asaan') asaanConsumed += units;
@@ -5719,7 +5700,7 @@ let totalAdditionalCostProd = 0;
 for (const entry of factory) {
   if (entry.isMerged || !isInRange(entry.date)) continue;
   const units = entry.units || 0;
-  const ft = entry.formulaType || await getStoreFormulaType(entry.store);
+  const ft = entry.formulaType;
   totalAdditionalCostProd += (entry.additionalCost != null ? (parseFloat(entry.additionalCost) || 0) : (factoryAdditionalCosts[ft] || 0) * units);
 }
 let periodDays = 1;

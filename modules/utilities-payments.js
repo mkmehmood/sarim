@@ -13,7 +13,6 @@ import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCusto
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
 import { collectAuxBackupFields, isSupportedBackup, RECORD_STORES } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCompMode = 'all';
 window.currentCompMode = currentCompMode;
@@ -654,7 +653,7 @@ const ampm = hours >= 12 ? 'PM' : 'AM';
 hours = hours % 12;
 hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
-const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(storeKey) : formulaTypeFor(storeKey);
+const formulaStore = await getStoreFormulaType(storeKey);
 const salePrice = await getSalePriceForStore(storeKey);
 const costPerKg = await getCostPriceForStore(storeKey);
 const totalCost = quantity * costPerKg;

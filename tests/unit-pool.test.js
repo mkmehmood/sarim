@@ -21,3 +21,35 @@ describe('unitPoolKey', () => {
     assert.equal(unitPoolKey('whatever', null, null), 'standard');
   });
 });
+
+import { planUnitPoolMigration, buildUnitPools } from '../modules/unit-pool-plan.js';
+
+describe('planUnitPoolMigration', () => {
+  const stores = [
+    { key: 'zubair', formulaType: 'standard' },
+    { key: 'asaan', formulaType: 'asaan' },
+  ];
+  const pools = buildUnitPools(stores, { standard: 'f1', asaan: 'f1' });
+  it('stamps production and factory records with the shared pool key', () => {
+    const production = [
+      { id: 'p1', store: 'asaan', formulaStore: 'asaan', formulaUnits: 3 },
+      { id: 'p2', store: 'zubair', formulaUnits: 1 },
+      { id: 'p3', store: 'zubair', formulaStore: 'standard' },
+    ];
+    const factory = [{ id: 'f1', store: 'asaan', units: 5 }, { id: 'f2', store: 'zubair', formulaType: 'standard' }];
+    const plan = planUnitPoolMigration(production, factory, pools.poolOf, 123);
+    assert.deepEqual(plan.production.map(r => [r.id, r.formulaStore]), [['p1', 'standard'], ['p2', 'standard']]);
+    assert.deepEqual(plan.factory.map(r => [r.id, r.formulaType]), [['f1', 'standard']]);
+    assert.equal(plan.production[0].updatedAt, 123);
+  });
+  it('keeps separate pools when formulas differ and is idempotent', () => {
+    const p = buildUnitPools(stores, { standard: 'f1', asaan: 'f2' });
+    const rows = [{ id: 'p1', store: 'asaan', formulaStore: 'asaan' }];
+    assert.equal(planUnitPoolMigration(rows, [], p.poolOf, 1).production.length, 0);
+  });
+  it('skips records with no store or stamp and tolerates non-arrays', () => {
+    const plan = planUnitPoolMigration([{ id: 'x' }, null], undefined, pools.poolOf, 1);
+    assert.equal(plan.production.length, 0);
+    assert.equal(plan.factory.length, 0);
+  });
+});
