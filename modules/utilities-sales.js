@@ -1869,6 +1869,7 @@ export async function getUnitPoolContext() {
 
 export async function getStoreFormulaType(storeCode) {
   const ctx = await getUnitPoolContext();
+  if (storeCode === 'standard' || storeCode === 'asaan') return ctx.slotPool[storeCode];
   const f = ctx.stores.find(s => s.key === storeCode);
   return f ? ctx.storePool[storeCode] : 'standard';
 }
@@ -5554,9 +5555,11 @@ previousDate.setDate(previousDate.getDate() - 1);
 const previousDateStr = previousDate.toISOString().split('T')[0];
 const prevProduction = production.filter(item => item.date === previousDateStr);
 const prevFactoryProduction = factory.filter(item => item.date === previousDateStr);
-const prevUsed = prevProduction.filter(item => item.formulaStore === storeType)
+const _pdCtx = await getUnitPoolContext();
+const _pdPool = _pdCtx.poolOf(storeType);
+const prevUsed = prevProduction.filter(item => !item.isReturn && _pdCtx.poolOf(item.formulaStore || item.store) === _pdPool)
 .reduce((sum, item) => sum + (item.formulaUnits || 0), 0);
-const prevProduced = prevFactoryProduction.filter(item => item.store === storeType)
+const prevProduced = prevFactoryProduction.filter(item => _pdCtx.poolOf(item.formulaType || item.store) === _pdPool)
 .reduce((sum, item) => sum + (item.units || 0), 0);
 if (previousDate >= new Date('2020-01-01')) {
 const prevPrevAvailable = await getPreviousDayAvailableUnits(storeType, previousDate);

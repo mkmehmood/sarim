@@ -1189,19 +1189,16 @@ window.notifyBlocking(' Failed to delete entry. Please try again.', 'error', 'So
 export async function calculateDynamicCost(storeType, formulaUnits, netWeight) {
 const _dcInv = ensureArray(await sqliteStore.get('inventory'));
 let formulaStore = 'standard';
-if (storeType === 'standard' || storeType === 'asaan') {
-  formulaStore = storeType;
-} else if (typeof getStoreFormulaType === 'function') {
+if (typeof getStoreFormulaType === 'function') {
   formulaStore = await getStoreFormulaType(storeType);
 } else {
-  formulaStore = formulaTypeFor(storeType);
+  formulaStore = (storeType === 'standard' || storeType === 'asaan') ? storeType : formulaTypeFor(storeType);
 }
 const sel = await getSelectedFormula(storeType);
 const formula = sel && Array.isArray(sel.ingredients) ? sel.ingredients : [];
 if (formula.length === 0) {
 return { costPerUnit: 0, totalFormulaCost: 0, dynamicCostPerKg: 0, formulaStore, formulaName: '', formulaMaterials: [], rawMaterialCost: 0 };
 }
-formulaStore = sel.type || formulaStore;
 const additionalCost = Number(sel.additionalCost) || 0;
 let totalMaterialCost = 0;
 let totalWeight = 0;
@@ -1281,12 +1278,10 @@ return tracking;
 export async function validateFormulaAvailability(storeType, requestedUnits) {
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 let formulaStore = 'standard';
-if (storeType === 'standard' || storeType === 'asaan') {
-  formulaStore = storeType;
-} else if (typeof getStoreFormulaType === 'function') {
+if (typeof getStoreFormulaType === 'function') {
   formulaStore = await getStoreFormulaType(storeType);
 } else {
-  formulaStore = formulaTypeFor(storeType);
+  formulaStore = (storeType === 'standard' || storeType === 'asaan') ? storeType : formulaTypeFor(storeType);
 }
 const available = factoryUnitTracking[formulaStore]?.available || 0;
 return { available, sufficient: available >= requestedUnits, deficit: Math.max(0, requestedUnits - available) };
