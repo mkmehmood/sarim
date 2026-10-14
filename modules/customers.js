@@ -443,7 +443,7 @@ itemContent = `
 } else if (isPartialPayment || isCollection) {
 const _hasPay = isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0);
 const _hasExp = Number(t.expiredValue) > 0;
-const _expText = _hasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${await formatCurrency(Number(t.expiredValue))}${(Number(t.expiredQty) * Number(t.expiredUnitPrice)) - Number(t.expiredValue) > 0.5 ? ' (limited to balance owed)' : ''}` : await formatCurrency(Number(t.expiredValue))) : '';
+const _expText = _hasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${await formatCurrency(Number(t.expiredValue) + (_hasPay ? collectionCollected(t) : 0))}${(Number(t.expiredQty) * Number(t.expiredUnitPrice)) - Number(t.expiredValue) > 0.5 ? ' (limited to balance owed)' : ''}` : await formatCurrency(Number(t.expiredValue))) : '';
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
