@@ -431,8 +431,9 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">Returned: ${fmtNum(_rrRet)} kg</div>
-    ${Number(t.returnValue) > 0 ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">${_rrUsed.has(t.id) ? 'Credited' : 'Deducted from balance'}: ${await formatCurrency(Number(t.returnValue))}${Number(t.returnUnitPrice) > 0 ? ` (${fmtNum(_rrExp + _rrRet)} kg × ${fmtAmt(Number(t.returnUnitPrice))})` : ''}</div>` : ''}
+    ${_rrExp > 0 ? `<div style="font-size:0.7rem;color:var(--text-muted);">Return + Expired credit</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">${fmtNum(_rrRet)} kg + ${fmtNum(_rrExp)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''} = ${await formatCurrency(Number(t.returnValue) || 0)}</div>` : `<div style="font-size:0.7rem;color:var(--text-muted);">Return</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">${fmtNum(_rrRet)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}${Number(t.returnValue) > 0 ? ` = ${await formatCurrency(Number(t.returnValue))}` : ''}</div>`}
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
@@ -440,14 +441,17 @@ itemContent = `
   </div>
 </div>${panelPlaceholder}`;
 } else if (isPartialPayment || isCollection) {
+const _hasPay = isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0);
+const _hasExp = Number(t.expiredValue) > 0;
+const _expText = _hasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${await formatCurrency(Number(t.expiredValue))}${(Number(t.expiredQty) * Number(t.expiredUnitPrice)) - Number(t.expiredValue) > 0.5 ? ' (limited to balance owed)' : ''}` : await formatCurrency(Number(t.expiredValue))) : '';
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
-    ${(isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0)) ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">Payment: ${await formatCurrency(collectionCollected(t))}</div>` : ''}
+    ${(_hasPay || _hasExp) ? `<div style="font-size:0.7rem;color:var(--text-muted);">${[_hasPay ? 'Payment' : '', _hasExp ? 'Expired credit' : ''].filter(Boolean).join(' | ')}</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? _expText : ''].filter(Boolean).join(' | ')}</div>` : ''}
     ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div style="font-size:0.75rem;color:var(--warning);">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
-    ${Number(t.expiredValue) > 0 ? `<div style="font-size:0.75rem;color:var(--accent-emerald);">Expired credit: ${Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @ ${await formatCurrency(Number(t.expiredUnitPrice))} = ${await formatCurrency(Number(t.expiredValue))}${(Number(t.expiredQty) * Number(t.expiredUnitPrice)) - Number(t.expiredValue) > 0.5 ? ' (limited to balance owed)' : ''}` : await formatCurrency(Number(t.expiredValue))}</div>` : ''}
     <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
