@@ -2,7 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { feedsFromFormulas, computeUnitPools } from '../modules/formula-pool-plan.js';
 
-
 describe('feedsFromFormulas / computeUnitPools', () => {
   it('feeds default cost and factor when missing', () => {
     const f = feedsFromFormulas([{ id: 'x', ingredients: [{ id: 'i', name: 'n' }] }, null, {}]);

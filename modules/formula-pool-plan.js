@@ -3,7 +3,6 @@ import './store-keys.js';
 const _num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 const _arr = (v) => (Array.isArray(v) ? v : []);
 
-// Cost feeds are a cache of the Formula Store, keyed by formula id.
 export function feedsFromFormulas(list) {
   const defaults = {};
   const costs = {};
@@ -18,7 +17,6 @@ export function feedsFromFormulas(list) {
   return { defaults, costs, adjustment };
 }
 
-// Units of a formula, one pool per formula id.
 export function computeUnitPools(factory, production) {
   const pools = {};
   const pool = (k) => (pools[k] = pools[k] || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] });

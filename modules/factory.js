@@ -62,7 +62,6 @@ return totalUnits > 0 ? totalWeightedCost / totalUnits : 0;
 return 0;
 }
 
-// Value of every formula's available units at its current cost per unit.
 export async function getFormulaUnitsValue(tracking) {
 const list = ensureArray(await sqliteStore.get('formulas')).filter(f => f && f.id);
 let value = 0;
@@ -699,7 +698,6 @@ if (locked !== null) return locked;
 return round2(qty * (await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey())));
 }
 
-// Rep returns the Calculator has already settled (they stop deducting from the rep's balance).
 export async function getReconciledRepReturnIds() {
 const ids = new Set();
 ensureArray(await sqliteStore.get('calculator')).forEach(h => {
@@ -708,9 +706,6 @@ if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => 
 return ids;
 }
 
-// Price per kg used to value goods handed back by a customer or rep: what they are
-// actually charged on their unpaid credit sales, else their last sale, else their
-// current price list.
 export async function getGoodsCreditUnitPrice(name, excludeId) {
 const lname = String(name || '').trim().toLowerCase();
 if (!lname) return 0;

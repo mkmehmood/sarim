@@ -1542,8 +1542,6 @@ if (btn) btn.disabled = false;
 }
 }
 
-// What a customer / rep currently owes: unpaid credit sales and old debt, less money
-// collected and goods credited back. Returns 0 at minimum.
 async function _partyOutstanding(name, excludeId) {
 const lname = String(name || '').trim().toLowerCase();
 if (!lname) return 0;
@@ -1856,8 +1854,6 @@ export async function getUnitPoolContext() {
   return { stores, ...buildUnitPools(stores) };
 }
 
-// The unit pool a store draws from and produces into: its formula's id ('' when
-// the store has no formula).
 export async function getStorePool(storeCode) {
   const ctx = await getUnitPoolContext();
   return ctx.poolOf(storeCode);

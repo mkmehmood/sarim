@@ -323,7 +323,6 @@ export function showPasswordConfirm({ title = null, message = '', email = '', co
   return result;
 }
 
-
 export function showGlassAlert(message, { title = null, tone, buttonText = 'OK', icon = null } = {}) {
   const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';
   return showGlassConfirm(message, { title, confirmText: buttonText, tone: t, icon, alertOnly: true });

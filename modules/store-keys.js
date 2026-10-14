@@ -34,10 +34,6 @@ export function storeLabelFor(key, list = _stores()) {
   return hit ? hit.name : key;
 }
 
-// A store's formula is the one it selected (store.formulaId). Units are pooled
-// per formula: every store using the same formula shares one pool, keyed by the
-// formula id, so one store can never show units another store using the very
-// same formula cannot see.
 export function formulaIdOf(store) {
   return store && store.formulaId ? String(store.formulaId) : '';
 }
@@ -45,8 +41,6 @@ export function formulaIdOf(store) {
 export function buildUnitPools(stores) {
   const storePool = {};
   (stores || []).forEach(s => { if (s && s.key && formulaIdOf(s)) storePool[s.key] = formulaIdOf(s); });
-  // A store key resolves to its formula's pool; anything else is taken as a pool
-  // key already (a stored record that carries its formula id).
   const poolOf = (v) => (v == null || v === '') ? '' : (storePool[v] || String(v));
   return { storePool, poolOf };
 }
