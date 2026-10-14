@@ -66,7 +66,7 @@ export function _triggerFileDownload(blob, filename) {
   const a = document.createElement('a');
   a.href = objectUrl;
   a.download = filename;
-  a.style.display = 'none';
+  window.setDisplay(a, 'none');
   document.body.appendChild(a);
   setTimeout(() => {
     a.click();

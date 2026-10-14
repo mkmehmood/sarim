@@ -54,7 +54,7 @@ modal.id = 'delta-stats-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 modal.innerHTML = `<div class="u-ed43437" style="background: var(--glass)">
-  <div class="u-e6c5b02" style="display: flex"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
+  <div class="u-e6c5b02 d-flex"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
   <div class="u-cf5ec96">Loading database structure…</div>
 </div>`;
 document.body.appendChild(modal);
@@ -192,11 +192,11 @@ try {
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
   let html = `
-<div id="dbv-root" class="u-7f49e10 has-overflow" style="background: var(--glass); display: flex; overflow: hidden">
+<div id="dbv-root" class="u-7f49e10 has-overflow d-flex" style="background: var(--glass); overflow: hidden">
 
-  <div class="u-05209d6" style="display: flex">
-    <div class="u-1043921" style="display: flex">
-      <span class="u-6a4ecdf" style="display: flex"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></span>
+  <div class="u-05209d6 d-flex">
+    <div class="u-1043921 d-flex">
+      <span class="u-6a4ecdf d-flex"><svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></span>
       <div>
         <div class="u-4228bfa">Database Structure</div>
         <div class="u-e59bcbb">
@@ -205,10 +205,10 @@ try {
       </div>
     </div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      class="u-c74ce47" style="background: rgba(255,255,255,0.07); border: none; display: flex"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+      class="u-c74ce47 d-flex" style="background: rgba(255,255,255,0.07); border: none"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
   </div>
 
-  <div class="u-d331926" style="display: flex">
+  <div class="u-d331926 d-flex">
     ${['Collections','Config Docs','Listeners','Summary'].map((t,i) =>
       `<button id="dbv-tab-${i}" onclick="dbvShowTab(${i})"
         style="padding:5px 12px;border-radius:12px;border:none;cursor:pointer;font-size:0.75rem;font-weight:600;
@@ -229,7 +229,7 @@ try {
   const _resetAgo   = firestoreStats.lastReset ? ago(firestoreStats.lastReset) : 'unknown';
   const _msLeft     = firestoreStats.lastReset ? Math.max(0, 864e5 - (Date.now() - firestoreStats.lastReset)) : 0;
   const _resetNext  = _msLeft > 0 ? (Math.floor(_msLeft/3600000) + 'h ' + Math.floor((_msLeft%3600000)/60000) + 'm') : 'soon';
-  html += `<div class="u-871c610" style="display: grid">
+  html += `<div class="u-871c610 d-grid">
     <div class="u-095dddc" style="background: rgba(128,128,128,0.08)">
       <div class="u-0952787">${totalFsDocs.toLocaleString()}</div>
       <div class="u-ae471a4">Firestore Docs</div>
@@ -261,16 +261,16 @@ try {
     const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
     html += `
 <div style="margin-bottom:9px;padding:11px 13px;background:var(--input-bg);border-radius:14px;border:1px solid ${borderColor}">
-  <div class="u-335e5cd" style="display: flex">
+  <div class="u-335e5cd d-flex">
     <div class="u-8b4ab7f">
-      <div class="u-0e3398e" style="display: flex">
+      <div class="u-0e3398e d-flex">
         <span class="u-4527bd8">${col.fsName}</span>
         ${hasLiveListener ? badge('LIVE','#30d158') : badge('SNAPSHOT','#f59e0b')}
         ${col.lock ? badge('LOCKED ON CLOSE','#888') : ''}
         ${isDirty ? badge('PENDING','#f59e0b') : ''}
       </div>
       <div class="u-a39b897">${col.desc}</div>
-      <div class="u-063dd15" style="display: flex">
+      <div class="u-063dd15 d-flex">
         <span>SQLite: ${pill(col.sqliteKey,'var(--accent)')}</span>
         <span>JS: ${pill(col.jsVar,'var(--accent-cyan)')}</span>
         <span>Tab: ${pill(col.tabFn||'—','var(--text-muted)')}</span>
@@ -283,7 +283,7 @@ try {
       </div>
     </div>
   </div>
-  <div class="u-7fae4eb" style="display: flex">
+  <div class="u-7fae4eb d-flex">
     <span>↑ <b class="u-e4906e4">${uuidCol.uploaded||0}</b> up</span>
     <span>↓ <b class="u-8da8d88">${uuidCol.downloaded||0}</b> down</span>
     <span>Syncs: <b class="u-e6f0554">${colStats.syncCount||0}</b></span>
@@ -293,13 +293,13 @@ try {
 </div>`;
   });
   html += `</div>`;
-  html += `<div id="dbv-pane-1" style="display:none">`;
+  html += `<div id="dbv-pane-1" class="d-none">`;
   CONFIG_DOCS.forEach(doc => {
     const exists = doc.doc && doc.doc.exists;
     const data   = exists ? doc.doc.data() : null;
     html += `
 <div class="u-7619a9f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
-  <div class="u-3749291" style="display: flex">
+  <div class="u-3749291 d-flex">
     <div class="u-8b4ab7f">
       <div class="u-57e7f8a">${doc.path}</div>
       <div class="u-34951f5">${doc.desc}</div>
@@ -312,7 +312,7 @@ try {
     if (doc.sqlite.length) {
       html += `<div class="u-e7b1306">
         <div class="u-0c93f7b">SQLite ↔ Firestore field mapping:</div>
-        <div class="u-f96187d" style="display: flex">
+        <div class="u-f96187d d-flex">
           ${doc.sqlite.map(([sk, fk]) =>
             `<div style="font-size:0.61rem;font-family:var(--font-mono);background:rgba(0,122,255,0.08);padding:2px 7px;border-radius:8px">
               <span style="color:var(--accent)">${sk}</span><span style="color:var(--text-muted)"> → </span><span style="color:var(--accent-cyan)">${fk}</span>
@@ -324,7 +324,7 @@ try {
     if (exists && data) {
       html += `<div class="u-17f05d4">
         <div class="u-642b28e">Firestore fields:</div>
-        <div class="u-31c6720" style="display: grid">
+        <div class="u-31c6720 d-grid">
           ${doc.fsFields.map(k => {
             const present = k in data;
             return `<div style="font-size:0.62rem;display:flex;justify-content:space-between;gap:6px;padding:1px 0">
@@ -338,7 +338,7 @@ try {
     html += `</div>`;
   });
   html += `</div>`;
-  html += `<div id="dbv-pane-2" style="display:none">`;
+  html += `<div id="dbv-pane-2" class="d-none">`;
   const LISTENERS = [
     { name:'users/{uid}',                      type:'doc',  path:'userRef.onSnapshot',                              purpose:'Force-logout, account suspension, lastWrite ping for pull trigger', fires:'Any write to the user root doc' },
     { name:'settings/config',                  type:'doc',  path:'_handleSettingsSnapshot',                         purpose:'settings, repProfile, reps (init copy)', fires:'Timestamp guard on settings_timestamp, repProfile_timestamp, reps_timestamp' },
@@ -365,19 +365,19 @@ try {
   LISTENERS.forEach(l => {
     html += `
 <div class="u-d7e5900" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
-  <div class="u-350ad3a" style="display: flex">
+  <div class="u-350ad3a d-flex">
     ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2')}
     <span class="u-a28f127">${l.name}</span>
   </div>
   <div class="u-b80e433">${l.purpose}</div>
-  <div class="u-3fe1e71" style="display: flex">
+  <div class="u-3fe1e71 d-flex">
     <span>Handler: ${pill(l.path,'var(--accent-cyan)')}</span>
   </div>
   <div class="u-cd108c0">Fires when: ${l.fires}</div>
 </div>`;
   });
   html += `</div>`;
-  html += `<div id="dbv-pane-3" style="display:none">`;
+  html += `<div id="dbv-pane-3" class="d-none">`;
   html += `<div class="u-5beb8fb">
     <div class="u-87be69b">Firestore → SQLite → JS Variable Map</div>
     <div class="has-overflow" style="overflow-x:auto">
@@ -455,7 +455,7 @@ try {
 } catch (err) {
   console.error('[showDeltaSyncDetails] error:', err);
   modal.innerHTML = `<div class="u-92d6a70" style="background: var(--glass)">
-    <div class="u-e6c5b02" style="display: flex"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-57164d6"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
+    <div class="u-e6c5b02 d-flex"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-57164d6"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
     <div class="u-5267c24">Failed to load database structure</div>
     <div class="u-bb2fbde text-xs">${err && err.message ? err.message : String(err)}</div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
@@ -496,9 +496,9 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('close-fina
 _cyBody.innerHTML = `
 <div id="cy-panel">
   <div class="u-2acac37">
-    <div id="cy-preview-grid" class="u-35ecb16" style="display: grid">${summary.rowsHtml}</div>
+    <div id="cy-preview-grid" class="u-35ecb16 d-grid">${summary.rowsHtml}</div>
   </div>
-  <div id="close-year-progress-container" style="display:none;">
+  <div id="close-year-progress-container" class="d-none">
     <div id="cy-progress-inner">
       <div id="cy-progress-meta">
         <span id="cy-progress-meta-stage">Processing: <b id="close-year-stage">Initializing…</b></span>
@@ -563,7 +563,7 @@ if (value.trim().length > 0) {
   confirmBtn.style.boxShadow = 'none';
   confirmBtn.onclick = null;
 }
-if (errEl) errEl.style.display = 'none';
+if (errEl) window.setDisplay(errEl, 'none');
 }
 
 export async function verifyAndExecuteCloseYear() {
@@ -589,10 +589,10 @@ if (confirmBtn) {
   confirmBtn.style.opacity = '0.6';
   confirmBtn.textContent = 'Verifying…';
 }
-if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+if (errEl) { errEl.textContent = ''; window.setDisplay(errEl, 'none'); }
 const valid = await verifyAccountPassword(pwd);
 if (!valid) {
-  if (errEl) { errEl.textContent = ' Incorrect password — please try again.'; errEl.style.display = 'block'; }
+  if (errEl) { errEl.textContent = ' Incorrect password — please try again.'; window.setDisplay(errEl, 'block'); }
   window.notifyBlocking('Incorrect password. Please try again.', 'error', 'Something went wrong');
   if (confirmBtn) {
     confirmBtn.disabled = false;
@@ -651,7 +651,7 @@ if (rowId) {
   const isDone = stage.includes('Merged') || stage.includes('No New') || stage.includes('No Records');
   const statusEl = document.getElementById('cy-status-' + rowId);
   const rowEl    = document.getElementById('cy-row-'    + rowId);
-  if (statusEl) { statusEl.style.display = 'inline-flex'; statusEl.classList.add('ok'); }
+  if (statusEl) { window.setDisplay(statusEl, 'inline-flex'); statusEl.classList.add('ok'); }
   if (rowEl && isDone) { rowEl.classList.add('cy-done'); rowEl.style.opacity = '1'; }
 }
 if (percent >= 100) {
@@ -873,7 +873,7 @@ rows += previewRow('ret', 'Stock Returns', 'returns',
   'var(--danger)', S.returns.nonMerged > 0
 );
 const rowsHtml = rows;
-const html = '<div class="u-4e91564" style="display: grid">' + rows + '</div>';
+const html = '<div class="u-4e91564 d-grid">' + rows + '</div>';
 return { html, rowsHtml, summary: S };
 }
 
@@ -1063,8 +1063,8 @@ closeYearInProgress = true;
 const inputSection  = document.getElementById('close-year-input-section');
 const progressContainer = document.getElementById('close-year-progress-container');
 const phaseBadge    = document.getElementById('cy-phase-badge');
-if (inputSection) inputSection.style.display = 'none';
-if (progressContainer) progressContainer.style.display = 'block';
+if (inputSection) window.setDisplay(inputSection, 'none');
+if (progressContainer) window.setDisplay(progressContainer, 'block');
 updateCloseYearProgress('Uploading cloud backup...', 3);
 try {
   if (!currentUser) throw new Error('Not signed in — cannot create backup');
@@ -1169,14 +1169,14 @@ const liveUpdate = (rowId, afterText, accentColor, resultLabel, resultNote) => {
     afterEl.style.color = accentColor || 'var(--accent-emerald)';
   }
   const statusEl = document.getElementById('cy-status-' + rowId);
-  if (statusEl) statusEl.style.display = 'inline';
+  if (statusEl) window.setDisplay(statusEl, 'inline');
   const resultBlock = document.getElementById('cy-result-' + rowId);
   const resultLabelEl = document.getElementById('cy-result-label-' + rowId);
   const resultNoteEl  = document.getElementById('cy-result-note-' + rowId);
   if (resultBlock && resultLabelEl && resultNoteEl) {
     resultLabelEl.textContent = resultLabel || afterText;
     resultNoteEl.textContent  = resultNote  || '';
-    resultBlock.style.display = 'block';
+    window.setDisplay(resultBlock, 'block');
   }
   const detailEl = document.getElementById('cy-detail-' + rowId);
   if (detailEl) {
@@ -1306,7 +1306,7 @@ if (panelSubtitle) {
   panelSubtitle.style.fontStyle = 'normal';
   panelSubtitle.style.fontWeight = '600';
 }
-if (progressContainer) progressContainer.style.display = 'none';
+if (progressContainer) window.setDisplay(progressContainer, 'none');
 const prodMergedFinal   = Array.isArray(production) ? production.filter(i=>i.isMerged) : [];
 const storeFinal        = prodMergedFinal.filter(i=>!i.isReturn);
 const sellerRetFinal    = prodMergedFinal.filter(i=>i.isReturn);
@@ -1330,7 +1330,7 @@ if (completeSection) {
   };
   const totalMergedRecords = await _freshMergedCount();
   const collectionsCompacted = ['prod','sales','calc','pay','factory','repsales','exp','ret']
-    .filter(id => { const el = document.getElementById('cy-status-' + id); return el && el.style.display !== 'none'; }).length;
+    .filter(id => { const el = document.getElementById('cy-status-' + id); return el && window.getDisplay(el) !== 'none'; }).length;
   const fyMeta2 = fyMeta || {};
   const closeCount = fyMeta2.fyCloseCount || 1;
   const closedDateStr = fyMeta2.lastYearClosedDate || new Date().toLocaleDateString('en-PK', { day:'numeric', month:'short', year:'numeric' });
@@ -1372,7 +1372,7 @@ if (completeSection) {
       Continue to App →
     </button>
   </div>`;
-  completeSection.style.display = 'block';
+  window.setDisplay(completeSection, 'block');
   window.showGlassAlert('Financial Year closed successfully!', { tone: 'success', title: 'Financial Year Closed' });
   if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close finished. Balances were carried forward and old records were merged.', 'year-closed').catch(() => {});
 }
@@ -1408,7 +1408,7 @@ export function _markRowSyncWarning(rowId, commitResult) {
       statusEl.style.background = 'rgba(255,179,0,0.15)';
       statusEl.style.color = 'var(--warning)';
       statusEl.style.borderColor = 'rgba(255,179,0,0.35)';
-      statusEl.style.display = 'inline';
+      window.setDisplay(statusEl, 'inline');
     }
     const noteEl = document.getElementById('cy-result-note-' + rowId);
     if (noteEl) {
@@ -2567,7 +2567,7 @@ export function dbvShowTab(i) {
   [0,1,2,3].forEach(j => {
     const p = document.getElementById('dbv-pane-'+j);
     const t = document.getElementById('dbv-tab-'+j);
-    if (p) p.style.display = j===i ? '' : 'none';
+    if (p) window.setDisplay(p, j===i ? '' : 'none');
     if (t) {
       t.style.background = j===i ? 'var(--accent)' : 'rgba(128,128,128,0.12)';
       t.style.color = j===i ? '#fff' : 'var(--text-muted)';

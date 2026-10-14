@@ -371,7 +371,7 @@ export async function openFormulaStoreEditor(id) {
   const entry = id ? list.find((f) => String(f.id) === String(id)) : null;
   if (id && !entry) { showToast('Formula not found', 'warning'); return; }
   const del = _el('fs-delete-btn');
-  if (del) del.style.display = entry ? '' : 'none';
+  if (del) window.setDisplay(del, entry ? '' : 'none');
   const title = _el('fs-edit-title');
   if (title) title.textContent = entry ? 'Edit Formula' : 'New Formula';
   _bindEditor();
@@ -473,7 +473,7 @@ export async function setStoreFormulaSelection(id) {
 
 export async function openStoreFormulaPicker(btn) {
   const old = document.getElementById('_pop_storeFormula');
-  const wasOpen = !!old && old.style.display !== 'none';
+  const wasOpen = !!old && window.getDisplay(old) !== 'none';
   if (old) old.remove();
   if (wasOpen) return;
   const list = await getFormulaStore();
@@ -533,14 +533,14 @@ export async function refreshFormulaDependentUI() {
   if (typeof window.setFactoryAvailableStore === 'function') await window.setFactoryAvailableStore(availSlot);
   else syncFactoryAvailPicker(availSlot);
   refreshFormulaStoreScreens();
-  if (typeof window.renderStoreList === 'function' && _el('store-manager-screen') && _el('store-manager-screen').style.display !== 'none') window.renderStoreList();
+  if (typeof window.renderStoreList === 'function' && _el('store-manager-screen') && window.getDisplay(_el('store-manager-screen')) !== 'none') window.renderStoreList();
   if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
   if (typeof window.renderFactoryHistory === 'function') window.renderFactoryHistory();
 }
 
 export function refreshFormulaStoreScreens() {
   const listScreen = _el('formula-store-screen');
-  if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
+  if (listScreen && window.getDisplay(listScreen) !== 'none') renderFormulaStoreList();
 }
 
 Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaSlotLabels, getFormulaSlots, getFormulaStore });

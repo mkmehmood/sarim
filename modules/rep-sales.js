@@ -110,7 +110,7 @@ splash.classList.remove('splash-locked');
 splash.classList.add('splash-out');
 splash.style.pointerEvents = 'none';
 if (window.__restoreThemeColor) window.__restoreThemeColor();
-setTimeout(() => { splash.style.display = 'none'; }, 620);
+setTimeout(() => { window.setDisplay(splash, 'none'); }, 620);
 } catch (e) {
 const errName = e && e.name ? e.name : '';
 failures++;
@@ -1019,12 +1019,12 @@ const _repAvatarHTML = renderPersonAvatarHTML(_repHeaderPhoto, 42);
 const _repSafeName = esc(name).split("'").join("\\'");
 const headerTitle = document.getElementById('repManageCustomerTitle');
 headerTitle.innerHTML = `
-<div class="u-1043921" style="display: flex">
+<div class="u-1043921 d-flex">
 ${_repAvatarHTML}
 <div class="u-69f8e5a">
-<div class="u-611b408" style="display: flex">
+<div class="u-611b408 d-flex">
 <span>${esc(name)}</span>
-<button class="sidebar-settings-btn u-686d0e1" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25); display: inline-flex" onclick="openRepCustomerEditModal('${_repSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
+<button class="sidebar-settings-btn u-686d0e1 d-inline-flex" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25)" onclick="openRepCustomerEditModal('${_repSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
 </div>
 <div class="u-9e739fd">
 ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` : ''}
@@ -1092,7 +1092,7 @@ itemContent = `
     <div class="u-dbdd85e">Payment: ${await formatCurrency(collectionCollected(t))}</div>
     <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
-  <div class="u-d94b2d8" style="display: flex">
+  <div class="u-d94b2d8 d-flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -1107,7 +1107,7 @@ itemContent = `
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div class="u-5d1cf22 text-xs">${esc(t.notes || 'Brought forward from previous records')}</div>
   </div>
-  <div class="u-d94b2d8" style="display: flex">
+  <div class="u-d94b2d8 d-flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -1122,7 +1122,7 @@ itemContent = `
     <div class="u-d8853f1">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_repDisplayUnitPrice)} = ${await formatCurrency(t.totalValue)}</div>
     ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)}</div>` : ''}
   </div>
-  <div class="u-d94b2d8" style="display: flex">
+  <div class="u-d94b2d8 d-flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -1328,7 +1328,7 @@ if (nameChanged && currentManagingRepCustomer && currentManagingRepCustomer.toLo
 _set_currentManagingRepCustomer(name);
 }
 const overlay = document.getElementById('rep-customer-management-screen');
-if (overlay && overlay.style.display !== 'none') await renderRepCustomerTransactions(currentManagingRepCustomer || name);
+if (overlay && window.getDisplay(overlay) !== 'none') await renderRepCustomerTransactions(currentManagingRepCustomer || name);
 if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 notifyDataChange('rep');
 triggerAutoSync();
@@ -1777,7 +1777,7 @@ transition: all 0.2s;
 ${item.isSettled ? 'opacity:0.65;' : ''}
 ">
 <div class="u-flex-1" >
-<div class="u-4e5b492" style="display: flex">
+<div class="u-4e5b492 d-flex">
 <span class="u-8ed6849">${typeIcon}</span>
 <strong class="u-37092d4">${esc(item.customerName)}</strong>
 ${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}
@@ -1787,8 +1787,8 @@ ${item.isSettled ? `<span class="settled-badge"> Settled</span>` : ''}
 ${qtyAmount}
 </div>
 </div>
-<div class="u-d111b8a text-right" style="display: flex">
-<div class="u-9dfb028" style="display: flex">
+<div class="u-d111b8a text-right d-flex">
+<div class="u-9dfb028 d-flex">
 <span class="u-fs-sm u-text-muted">${esc(item.time || '')}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 ${item.salesRep && !item.createdBy ? `<span class="sales-rep-badge">${esc(item.salesRep.split(' ')[0])}</span>` : ''}

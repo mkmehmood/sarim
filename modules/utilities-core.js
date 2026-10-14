@@ -450,16 +450,16 @@ if (msgEl) msgEl.textContent = message;
 if (badge) {
 if (!isOnline) {
 badge.textContent = pending > 0 ? `${pending} pending` : 'saves queued locally';
-badge.style.display = '';
+window.setDisplay(badge, '');
 } else if (isSlow && pending > 0) {
 badge.textContent = `${pending} pending`;
-badge.style.display = '';
+window.setDisplay(badge, '');
 } else if (pending > 0) {
 badge.textContent = `Syncing ${pending}...`;
-badge.style.display = '';
+window.setDisplay(badge, '');
 } else {
 badge.textContent = '';
-badge.style.display = 'none';
+window.setDisplay(badge, 'none');
 }
 }
 if (dot) {
@@ -1816,7 +1816,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
   const fromDate = fmtDate(dr.from);
   const toDate   = fmtDate(dr.to);
   const recCount = ms.recordCount || record.mergedRecordCount || '—';
-  let html = sec('<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-abe84e9" style="display: inline-block"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--accent)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="12" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="25.5" r="1.5" fill="var(--accent-gold)" opacity="0.8"/></svg>Year-Close Overview');
+  let html = sec('<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-abe84e9 d-inline-block"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--accent)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="20" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="12" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="18" cy="25.5" r="1.5" fill="var(--accent)" opacity="0.8"/><circle cx="24" cy="25.5" r="1.5" fill="var(--accent-gold)" opacity="0.8"/></svg>Year-Close Overview');
   html += row('Period',          `${fromDate} → ${toDate}`, 'muted');
   html += row('Transactions',    `${recCount} merged`, 'purple');
   html += row('Merge Date',      fmtDate(record.date), 'muted');
@@ -1854,7 +1854,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
     }
     html += sec('Status');
     const settled = ms.isSettled || netOut <= 0.01;
-    html += row('Settlement', settled ? '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b2f0371" style="display: inline-block"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>Fully Settled' : '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b2f0371" style="display: inline-block"><circle cx="18" cy="18" r="13.5" fill="var(--warning)" fill-opacity="0.15" stroke="var(--warning)" stroke-width="1.7"/><path d="M18 10V18L23.5 21.5" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="18" r="1.3" fill="var(--warning)"/></svg>Outstanding', settled ? 'green' : 'red');
+    html += row('Settlement', settled ? '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b2f0371 d-inline-block"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>Fully Settled' : '<svg width="12" height="12" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b2f0371 d-inline-block"><circle cx="18" cy="18" r="13.5" fill="var(--warning)" fill-opacity="0.15" stroke="var(--warning)" stroke-width="1.7"/><path d="M18 10V18L23.5 21.5" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="18" r="1.3" fill="var(--warning)"/></svg>Outstanding', settled ? 'green' : 'red');
     if (record.creditReceivedDate) html += row('Settled On', fmtDate(record.creditReceivedDate), 'muted');
     html += row('Payment Type', record.paymentType || '—', 'muted');
     if (record.salesRep && record.salesRep !== 'NONE' && record.salesRep !== 'ADMIN')
@@ -1954,7 +1954,7 @@ const _safeEntityId = String(entity.id).replace(/'/g, "\\'");
 const _entPhotoKey = 'entity:' + String(entity.id);
 const _entPhoto = await getPersonPhoto(_entPhotoKey);
 const _entAvatarHTML = renderPersonAvatarHTML(_entPhoto, 44);
-_manageET.innerHTML = `<div class="u-1043921" style="display: flex">${_entAvatarHTML}<div class="u-69f8e5a"><div class="u-611b408" style="display: flex"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn u-686d0e1" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25); display: inline-flex" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
+_manageET.innerHTML = `<div class="u-1043921 d-flex">${_entAvatarHTML}<div class="u-69f8e5a"><div class="u-611b408 d-flex"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn u-686d0e1 d-inline-flex" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25)" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
 }
 try {
 const _freshInv = await sqliteStore.get('inventory', []);
@@ -1977,7 +1977,7 @@ balanceHtml = `<span class="u-text-accent u-fw-800" >Balance Settled</span>`;
 }
 statsEl.innerHTML = `
 ${balanceHtml}
-<span class="u-d2c7c73" style="display: inline-flex">
+<span class="u-d2c7c73 d-inline-flex">
 <span class="txn-stat-badge txn-in">IN: ${fmtAmt(totalIn)}</span>
 <span class="txn-stat-badge txn-out">OUT: ${fmtAmt(totalOut)}</span>
 </span>`;
@@ -2042,13 +2042,13 @@ item.innerHTML = `
     ${transferPeerLine}
     ${t.isMerged ? _mergedBadgeHtml(t) : ''}
   </div>
-  <div class="u-d94b2d8" style="display: flex">
+  <div class="u-d94b2d8 d-flex">
     <div class="text-right" style="text-align:right;">
       <span style="color:${badgeColor};padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">${label}</span>
       <div class="${colorClass} u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')"
-      class="u-129f796" style="display: none; border: none; background: rgba(99,102,241,0.15)">
+      class="u-129f796 d-none" style="border: none; background: rgba(99,102,241,0.15)">
       <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>
@@ -2061,7 +2061,7 @@ if (_photoRefId) {
   sqliteStore.get('photos').then(ph => {
     if (ph && ph[_phKey]) {
       const badge = document.getElementById(photoBadgeId);
-      if (badge) badge.style.display = 'inline-flex';
+      if (badge) window.setDisplay(badge, 'inline-flex');
     }
   }).catch(() => {});
 }
@@ -2074,8 +2074,8 @@ const term = document.getElementById('entity-trans-search').value.toLowerCase();
 const items = document.querySelectorAll('#entityManagementHistoryList .cust-history-item');
 items.forEach(item => {
 const text = item.innerText.toLowerCase();
-if (!text.includes(term)) { item.style.display = 'none'; return; }
-item.style.display = item.style.flexDirection === 'column' ? 'flex' : 'flex';
+if (!text.includes(term)) { window.setDisplay(item, 'none'); return; }
+window.setDisplay(item, item.style.flexDirection === 'column' ? 'flex' : 'flex');
 });
 }
 
@@ -3560,9 +3560,9 @@ export function applyPersonPhoto(prefix, dataUrl) {
   const ph = document.getElementById(ids.placeholder);
   const img = document.getElementById(ids.img);
   const clearBtn = document.getElementById(ids.clearBtn);
-  if (ph) ph.style.display = 'none';
-  if (img) { img.src = dataUrl; img.style.display = 'block'; }
-  if (clearBtn) clearBtn.style.display = '';
+  if (ph) window.setDisplay(ph, 'none');
+  if (img) { img.src = dataUrl; window.setDisplay(img, 'block'); }
+  if (clearBtn) window.setDisplay(clearBtn, '');
   const preview = document.getElementById(ids.preview);
   if (preview) preview.dataset.pendingPhoto = dataUrl;
 }
@@ -3572,9 +3572,9 @@ export function clearPersonPhoto(prefix) {
   const ph = document.getElementById(ids.placeholder);
   const img = document.getElementById(ids.img);
   const clearBtn = document.getElementById(ids.clearBtn);
-  if (ph) ph.style.display = '';
-  if (img) { img.src = ''; img.style.display = 'none'; }
-  if (clearBtn) clearBtn.style.display = 'none';
+  if (ph) window.setDisplay(ph, '');
+  if (img) { img.src = ''; window.setDisplay(img, 'none'); }
+  if (clearBtn) window.setDisplay(clearBtn, 'none');
   const preview = document.getElementById(ids.preview);
   if (preview) { preview.dataset.pendingPhoto = ''; preview.dataset.existingPhotoKey = ''; }
 }
@@ -3776,8 +3776,8 @@ async function _camStart() {
   video.style.transform = _camFacing === 'user' ? 'scaleX(-1)' : '';
   const track = _photoCaptureStream.getVideoTracks()[0];
   const caps = track && track.getCapabilities ? track.getCapabilities() : {};
-  if (torch) torch.style.display = caps.torch ? 'flex' : 'none';
-  if (flip) flip.style.display = 'flex';
+  if (torch) window.setDisplay(torch, caps.torch ? 'flex' : 'none');
+  if (flip) window.setDisplay(flip, 'flex');
   if (caps.zoom && typeof caps.zoom.max === 'number' && caps.zoom.max > caps.zoom.min) {
     _camCaps = { min: Math.max(1, caps.zoom.min), max: Math.min(caps.zoom.max, 10), hw: true };
   } else {
@@ -3807,7 +3807,7 @@ export async function openPhotoCapture(prefix) {
   _photoCaptureTarget = prefix;
   const { modal, video, torch } = _camEls();
   if (!modal || !video) return;
-  modal.style.display = 'flex';
+  window.setDisplay(modal, 'flex');
   _camFacing = 'environment';
   window._torchOn = false;
   if (torch) torch.classList.remove('on');
@@ -3815,7 +3815,7 @@ export async function openPhotoCapture(prefix) {
   try {
     await _camStart();
   } catch (e) {
-    modal.style.display = 'none';
+    window.setDisplay(modal, 'none');
     _photoCaptureTarget = null;
     showToast('Camera not available. Check the camera permission for this app.', 'warning');
   }
@@ -3831,7 +3831,7 @@ export async function flipCamera() {
 
 export function closePhotoCapture() {
   const { modal, video } = _camEls();
-  if (modal) modal.style.display = 'none';
+  if (modal) window.setDisplay(modal, 'none');
   _camStopStream();
   if (video) { video.srcObject = null; video.style.transform = ''; }
   _camPointers.clear();
@@ -3946,7 +3946,7 @@ export function _applyExpensePendingPhoto(dataUrl) {
   window._expensePendingPhoto = dataUrl;
   const dot = document.getElementById('expense-photo-dot');
   const btn = document.getElementById('expense-photo-btn');
-  if (dot) dot.style.display = dataUrl ? '' : 'none';
+  if (dot) window.setDisplay(dot, dataUrl ? '' : 'none');
   if (btn) {
     btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
     btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
@@ -3957,7 +3957,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
     const safe = photoDataUrl.replace(/'/g, '&#39;');
-    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f" style="display: block"><div class="u-578ba6d" style="inset: 0; background: rgba(0,0,0,0)" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
+    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f d-block"><div class="u-578ba6d" style="inset: 0; background: rgba(0,0,0,0)" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
   }
   return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
 }
@@ -4006,7 +4006,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
     img.src = src;
     img.style.transform = 'translate(0,0) scale(1)';
     img.style.transition = 'none';
-    modal.style.display = 'flex';
+    window.setDisplay(modal, 'flex');
     document.body.style.overflow = 'hidden';
     const lbl = document.getElementById('photo-lb-zoom-label');
     if (lbl) lbl.textContent = '1×';
@@ -4015,7 +4015,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   closePhotoLightbox = function() {
     const modal = document.getElementById('photo-lightbox-modal');
     if (modal) {
-      modal.style.display = 'none';
+      window.setDisplay(modal, 'none');
       _lbUnbindEvents(modal);
     }
     document.body.style.overflow = '';
@@ -4143,7 +4143,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
 
 export function previewPhotoClick(prefix) {
   const img = document.getElementById(prefix + '-photo-img');
-  if (img && img.style.display !== 'none' && img.src && img.src !== window.location.href) {
+  if (img && window.getDisplay(img) !== 'none' && img.src && img.src !== window.location.href) {
     openPhotoLightbox(img.src);
   } else {
     document.getElementById(prefix + '-photo-file').click();
@@ -4219,7 +4219,7 @@ export const SarimChart = (() => {
       const show = () => {
         const tip = _getBodyTip();
         tip.textContent = el.dataset.tip;
-        tip.style.display = 'block';
+        window.setDisplay(tip, 'block');
         const r = el.getBoundingClientRect();
         const tw = tip.offsetWidth || 120;
         let left = r.left + r.width / 2 - tw / 2;
@@ -4231,8 +4231,8 @@ export const SarimChart = (() => {
       };
       el.addEventListener('mouseenter', show);
       el.addEventListener('touchstart', e => { if (e.cancelable) e.preventDefault(); show(); }, {passive:false});
-      el.addEventListener('mouseleave', () => { const tip = _getBodyTip(); tip.style.display = 'none'; });
-      el.addEventListener('touchend', () => setTimeout(() => { const tip = _getBodyTip(); tip.style.display = 'none'; }, 1800));
+      el.addEventListener('mouseleave', () => { const tip = _getBodyTip(); window.setDisplay(tip, 'none'); });
+      el.addEventListener('touchend', () => setTimeout(() => { const tip = _getBodyTip(); window.setDisplay(tip, 'none'); }, 1800));
     });
   }
   class SarimChart {

@@ -57,12 +57,12 @@ function _renderPicker() {
   const btn = document.getElementById('prod-photo-btn');
   const clr = document.getElementById('prod-photo-clear');
   const n = _picker.length;
-  if (dot) { dot.style.display = n ? '' : 'none'; dot.textContent = n > 1 ? String(n) : ''; dot.classList.toggle('pp-dot-count', n > 1); }
+  if (dot) { window.setDisplay(dot, n ? '' : 'none'); dot.textContent = n > 1 ? String(n) : ''; dot.classList.toggle('pp-dot-count', n > 1); }
   if (btn) {
     btn.style.borderColor = n ? 'var(--accent)' : 'var(--glass-border)';
     btn.title = n ? `${n} photo${n === 1 ? '' : 's'} attached — tap to add another` : 'Attach photo';
   }
-  if (clr) clr.style.display = n ? '' : 'none';
+  if (clr) window.setDisplay(clr, n ? '' : 'none');
 }
 
 export function clearProdPhotos() {
@@ -152,8 +152,8 @@ export async function toggleProdPhotoPanel(btn, id, singleKey) {
   if (singleKey) { await openProdPhoto(singleKey); return; }
   const panel = document.getElementById('pp-panel-' + id);
   if (!panel) return;
-  const open = panel.style.display === 'none' || !panel.style.display;
-  panel.style.display = open ? 'block' : 'none';
+  const open = window.getDisplay(panel) === 'none' || !window.getDisplay(panel);
+  window.setDisplay(panel, open ? 'block' : 'none');
   if (open) hydrateProdPhotoThumbs(panel);
 }
 
@@ -163,7 +163,7 @@ export function prodPhotoStripHtml(item) {
   const id = String(item.id).replace(/[^a-z0-9_-]/gi, '');
   const thumbs = keys.map(k => `<img class="pp-strip-img" data-photo-key="${esc(k)}" alt="Product photo" onclick="openProdPhoto('${esc(k)}')">`).join('');
   const checked = _selected.has(item.id);
-  return `<div class="pp-actions"><button type="button" class="pp-badge" title="View photos" onclick="toggleProdPhotoPanel(this,'${id}'${keys.length === 1 ? `,'${esc(keys[0])}'` : ''})">${VIEW_SVG}Photo${keys.length > 1 ? ' \u00d7' + keys.length : ''}</button><button type="button" class="pp-box${checked ? ' on' : ''}" data-pp-box="${esc(item.id)}" aria-pressed="${checked ? 'true' : 'false'}" title="Tap to mark \u2022 hold 3 seconds to share" aria-label="Mark or share">${BOX_SVG}</button></div><div class="pp-strip" id="pp-panel-${id}" style="display:none;">${thumbs}</div>`;
+  return `<div class="pp-actions"><button type="button" class="pp-badge" title="View photos" onclick="toggleProdPhotoPanel(this,'${id}'${keys.length === 1 ? `,'${esc(keys[0])}'` : ''})">${VIEW_SVG}Photo${keys.length > 1 ? ' \u00d7' + keys.length : ''}</button><button type="button" class="pp-box${checked ? ' on' : ''}" data-pp-box="${esc(item.id)}" aria-pressed="${checked ? 'true' : 'false'}" title="Tap to mark \u2022 hold 3 seconds to share" aria-label="Mark or share">${BOX_SVG}</button></div><div class="pp-strip d-none" id="pp-panel-${id}">${thumbs}</div>`;
 }
 
 export async function hydrateProdPhotoThumbs(root = document) {

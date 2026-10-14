@@ -3567,7 +3567,7 @@ export async function showSyncHealthPanel() {
       box-shadow:0 8px 32px rgba(0,0,0,.4);color:var(--text-main,#f1f5f9);font-size:.85rem;
     `;
     panel.innerHTML = `
-      <div class="u-73c1bbd" style="display: flex">
+      <div class="u-73c1bbd d-flex">
         <strong class="u-d50f65a">Sync Health</strong>
       </div>
       <div class="u-16949d4">
@@ -4302,25 +4302,25 @@ listEl.innerHTML = allAccounts.map(acct => {
 const isMe     = acct.uid === currentUser.uid;
 const approved = acct.approved !== false;
 const dot = approved
-  ? '<span class="u-eca6a09" style="background: var(--accent-emerald); display: inline-block"></span>'
-  : '<span class="u-eca6a09" style="background: var(--danger); display: inline-block"></span>';
+  ? '<span class="u-eca6a09 d-inline-block" style="background: var(--accent-emerald)"></span>'
+  : '<span class="u-eca6a09 d-inline-block" style="background: var(--danger)"></span>';
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
       '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
       '<button class="btn-theme u-af19549" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="border-color: rgba(239,68,68,0.3)">Remove</button>'
     ].join('');
-return '<div class="u-a412d9a" style="display: flex; background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
-  '<div class="u-855cc88" style="display: flex">' + dot +
+return '<div class="u-a412d9a d-flex" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
+  '<div class="u-855cc88 d-flex">' + dot +
   '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow" style="overflow: hidden">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
-  '<div class="u-28c8f7e" style="display: flex">' +
+  '<div class="u-28c8f7e d-flex">' +
   (acct.role === 'admin'
     ? '<span class="u-e4e2d96" style="background: rgba(29,233,182,0.12); border: 1px solid rgba(29,233,182,0.3)">admin</span>'
     : '<span class="u-e7a1434" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">user</span>') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
-  '</div></div><div class="u-c59185e" style="display: flex">' + actions + '</div></div>';
+  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
 }).join('');
 } catch(err) {
 listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';

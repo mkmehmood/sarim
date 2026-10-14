@@ -925,7 +925,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   preventAdminAccess();
   if (typeof checkBiometricLock === 'function') await checkBiometricLock();
   const cloudMenuBtn = document.getElementById('cloudMenuBtn');
-  if (cloudMenuBtn) cloudMenuBtn.style.display = (appMode === 'admin') ? '' : 'none';
+  if (cloudMenuBtn) window.setDisplay(cloudMenuBtn, (appMode === 'admin') ? '' : 'none');
   updateSyncButton();
   setTimeout(() => {
     if (typeof initializeFirebaseSystem === 'function') initializeFirebaseSystem();
@@ -996,16 +996,16 @@ const weekStart = new Date(selectedDate);
 weekStart.setDate(selectedDate.getDate() - 6);
 document.querySelectorAll('#factoryHistoryList .factory-history-item').forEach(item => {
 const ds = item.getAttribute('data-date');
-if (!ds) { item.style.display = ''; return; }
+if (!ds) { window.setDisplay(item, ''); return; }
 const cd = new Date(ds);
-if (isNaN(cd.getTime())) { item.style.display = ''; return; }
+if (isNaN(cd.getTime())) { window.setDisplay(item, ''); return; }
 let show = false;
 if (mode === 'daily') show = (ds === selectedDateVal);
 else if (mode === 'weekly') show = (cd >= weekStart && cd <= selectedDate);
 else if (mode === 'monthly') show = (cd.getMonth() === selectedDate.getMonth() && cd.getFullYear() === selectedDate.getFullYear());
 else if (mode === 'yearly') show = (cd.getFullYear() === selectedDate.getFullYear());
 else show = true;
-item.style.display = show ? '' : 'none';
+window.setDisplay(item, show ? '' : 'none');
 });
 }
 
@@ -1020,10 +1020,10 @@ else if (period === 'week') { startDate = new Date(today); startDate.setDate(tod
 else if (period === 'month') { startDate = new Date(today); startDate.setDate(today.getDate() - 30); }
 document.querySelectorAll('#paymentHistoryList .card').forEach(card => {
 const ds = card.getAttribute('data-date');
-if (!ds) { card.style.display = ''; return; }
+if (!ds) { window.setDisplay(card, ''); return; }
 const cd = new Date(ds);
-if (isNaN(cd.getTime())) { card.style.display = ''; return; }
-card.style.display = (cd >= startDate) ? '' : 'none';
+if (isNaN(cd.getTime())) { window.setDisplay(card, ''); return; }
+window.setDisplay(card, (cd >= startDate) ? '' : 'none');
 });
 }
 
@@ -1034,16 +1034,16 @@ const weekStart = new Date(refDate);
 weekStart.setDate(refDate.getDate() - 6);
 document.querySelectorAll(listSelector + ' .card').forEach(card => {
 const ds = card.getAttribute('data-date');
-if (!ds) { card.style.display = ''; return; }
+if (!ds) { window.setDisplay(card, ''); return; }
 const cd = new Date(ds);
-if (isNaN(cd.getTime())) { card.style.display = ''; return; }
+if (isNaN(cd.getTime())) { window.setDisplay(card, ''); return; }
 let show = false;
 if (mode === 'day') show = (ds === refDateStr);
 else if (mode === 'week') show = (cd >= weekStart && cd <= refDate);
 else if (mode === 'month') show = (cd.getMonth() === refDate.getMonth() && cd.getFullYear() === refDate.getFullYear());
 else if (mode === 'year') show = (cd.getFullYear() === refDate.getFullYear());
 else show = true;
-card.style.display = show ? '' : 'none';
+window.setDisplay(card, show ? '' : 'none');
 });
 }
 
@@ -1373,7 +1373,7 @@ export function filterEntityCards() {
 const searchTerm = document.getElementById('entity-list-search').value.toLowerCase().trim();
 const entityCards = document.querySelectorAll('#entityCardsGrid .entity-card-compact');
 if (!searchTerm) {
-entityCards.forEach(card => card.style.display = '');
+entityCards.forEach(card => window.setDisplay(card, ''));
 return;
 }
 entityCards.forEach(card => {
@@ -1382,9 +1382,9 @@ const entityType = card.querySelector('.entity-type-badge').textContent.toLowerC
 const entityPhone = card.querySelector('.entity-contact')?.textContent?.toLowerCase() || '';
 const cardText = (entityName + ' ' + entityType + ' ' + entityPhone).toLowerCase();
 if (cardText.includes(searchTerm)) {
-card.style.display = '';
+window.setDisplay(card, '');
 } else {
-card.style.display = 'none';
+window.setDisplay(card, 'none');
 }
 });
 }
@@ -1395,7 +1395,7 @@ const _en = document.getElementById('entityName'); if (_en) _en.value = '';
 const _ep = document.getElementById('entityPhone'); if (_ep) _ep.value = '';
 const _ew = document.getElementById('entityWallet'); if (_ew) _ew.value = '';
 const _entMT1 = document.getElementById('entityManagementModalTitle'); if (_entMT1) _entMT1.innerText = 'Add New Entity';
-const _delBtn = document.getElementById('deleteEntityBtn'); if (_delBtn) { _delBtn.classList.add('u-hidden'); _delBtn.style.display = 'none'; }
+const _delBtn = document.getElementById('deleteEntityBtn'); if (_delBtn) { _delBtn.classList.add('u-hidden'); window.setDisplay(_delBtn, 'none'); }
 clearPersonPhoto('entity');
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('add-entity-screen');
 }
@@ -1404,7 +1404,7 @@ export async function closeEntityManagement() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('add-entity-screen');
 const entities = ensureArray(await sqliteStore.get('entities'));
 const detailsScreen = document.getElementById('entity-details-screen');
-if (detailsScreen && detailsScreen.style.display !== 'none' && currentEntityId) {
+if (detailsScreen && window.getDisplay(detailsScreen) !== 'none' && currentEntityId) {
 const entity = entities.find(e => String(e.id) === String(currentEntityId));
 if (entity) renderEntityOverlayContent(entity);
 }
@@ -1639,7 +1639,7 @@ card.className = `card liquid-card${isSettled ? ' is-settled-record' : ''}`;
 if (transaction.date) card.setAttribute('data-date', transaction.date);
 card.innerHTML = `
 <span class="transaction-badge ${badgeClass}">${badgeText}</span>
-<div class="u-edba70e" style="display: flex">
+<div class="u-edba70e d-flex">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(transaction.date, transaction.time || null)}${creatorBadge}${mergedBadge}${settledBadge}</span>
 </div>
 <div class="customer-name">${esc(entityName)}</div>
@@ -3008,7 +3008,7 @@ tr.innerHTML = `
 <td class="u-082f1e0">${row.dateStr}</td>
 <td class="u-3abc27b" onclick="openExpenseEntityDetails('${esc(row.id)}')">
 ${esc(row.name)}
-<div class="u-8cdcd88" style="display: inline-block">
+<div class="u-8cdcd88 d-inline-block">
 <span style="color: ${row.typeLabel === 'EXPENSE' ? 'var(--warning)' : 'var(--accent)'}; padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700;">
 ${row.typeLabel}
 </span>
@@ -3059,7 +3059,7 @@ totalSpan.style.color = totalAmount >= 0 ? 'var(--accent-emerald)' : 'var(--dang
 }
 }
 if (summaryDiv) {
-summaryDiv.style.display = 'block';
+window.setDisplay(summaryDiv, 'block');
 const receivablesEl = document.getElementById('unified-receivables');
 const payablesEl = document.getElementById('unified-payables');
 const supplierPayablesEl = document.getElementById('unified-supplier-payables');
@@ -3102,7 +3102,7 @@ let html = '';
 sortedCategories.forEach(([name, amount]) => {
 const percentage = totalExpenses > 0 ? (amount / totalExpenses * 100).toFixed(2) : 0;
 html += `
-<div class="u-5bb520e" style="display: flex">
+<div class="u-5bb520e d-flex">
 <span class="u-text-main" >${name}:</span>
 <div class="text-right" style="text-align: right;">
 <span class="u-d2c10bd">${formatCurrency(amount)}</span>
@@ -3527,7 +3527,7 @@ const statsEl = document.getElementById('expenseOverlayStats');
 if (statsEl) {
 statsEl.innerHTML = `
 <span class="u-a5b525a">Total: ${fmtAmt(filteredTotal)}</span>
-<span class="u-d2c7c73" style="display: inline-flex">
+<span class="u-d2c7c73 d-inline-flex">
 <span class="txn-stat-badge txn-warning">${count} record${count !== 1 ? 's' : ''}</span>
 <span class="txn-stat-badge txn-out">All-Time: ${fmtAmt(allTimeTotal)}</span>
 </span>`;
@@ -3548,7 +3548,7 @@ item.innerHTML = `
 <div class="u-fs-sm2 u-text-muted" >${formatDisplayDateTime(exp.date, exp.time || null)}${exp.isMerged ? _mergedBadgeHtml(exp, {inline:true}) : ''}</div>
 <div class="u-fs-sm2 u-text-muted" >${esc(exp.description || 'No description')}</div>
 </div>
-<div class="u-d94b2d8" style="display: flex">
+<div class="u-d94b2d8 d-flex">
 <div class="u-1d673f2 text-right">
 <span class="txn-label-badge txn-warning">EXPENSE</span>
 <div class="cost-val u-bb4c6c9">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
@@ -3566,7 +3566,7 @@ const _expPhKey = 'expense:' + exp.id;
 sqliteStore.get('photos').then(ph => {
   if (ph && ph[_expPhKey]) {
     const badge = document.getElementById(_expPhotoBadgeId);
-    if (badge) badge.style.display = 'inline-flex';
+    if (badge) window.setDisplay(badge, 'inline-flex');
   }
 }).catch(() => {});
 });
@@ -3577,7 +3577,7 @@ export function filterExpenseManagementHistory() {
 const term = document.getElementById('expense-history-search').value.toLowerCase();
 const items = document.querySelectorAll('#expenseManagementHistoryList .cust-history-item');
 items.forEach(item => {
-item.style.display = item.innerText.toLowerCase().includes(term) ? 'flex' : 'none';
+window.setDisplay(item, item.innerText.toLowerCase().includes(term) ? 'flex' : 'none');
 });
 }
 
@@ -3586,7 +3586,7 @@ const expenses = ensureArray(await sqliteStore.get('expenses'));
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 await deleteExpense(expenseId);
 const overlayEl = document.getElementById('expense-details-screen');
-if (overlayEl && overlayEl.style.display !== 'none' && currentExpenseOverlayName) {
+if (overlayEl && window.getDisplay(overlayEl) !== 'none' && currentExpenseOverlayName) {
 renderExpenseOverlayContent();
 }
 }
@@ -4637,18 +4637,18 @@ if (filterSel) {
   const allowedFilters = new Set();
   allowedFilters.add('all');
   if (mode === 'admin') {
-    Array.from(filterSel.options).forEach(opt => { opt.style.display = ''; });
+    Array.from(filterSel.options).forEach(opt => { window.setDisplay(opt, ''); });
   } else if (mode === 'userrole') {
     const tabs = window._assignedUserTabs || [];
     const tabToFilter = { prod:'tab_production', factory:'tab_factory', rep:'tab_rep', sales:'tab_sales', calc:'tab_calculator', payments:'tab_payments' };
     tabs.forEach(t => { if (tabToFilter[t]) allowedFilters.add(tabToFilter[t]); });
     Array.from(filterSel.options).forEach(opt => {
-      opt.style.display = allowedFilters.has(opt.value) ? '' : 'none';
+      window.setDisplay(opt, allowedFilters.has(opt.value) ? '' : 'none');
     });
   } else {
     if (defaultFilter !== 'all') allowedFilters.add(defaultFilter);
     Array.from(filterSel.options).forEach(opt => {
-      opt.style.display = allowedFilters.has(opt.value) ? '' : 'none';
+      window.setDisplay(opt, allowedFilters.has(opt.value) ? '' : 'none');
     });
   }
   filterSel.value = defaultFilter;
@@ -4793,9 +4793,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
     const emptyBtnLabel = document.getElementById('recycleBinEmptyBtnLabel');
     if (emptyBtn && emptyBtnLabel) {
       if (filtered.length === 0) {
-        emptyBtn.style.display = 'none';
+        window.setDisplay(emptyBtn, 'none');
       } else {
-        emptyBtn.style.display = 'flex';
+        window.setDisplay(emptyBtn, 'flex');
         emptyBtnLabel.textContent = filterCollection === 'all'
           ? `Empty Bin (${filtered.length})`
           : `Empty Tab (${filtered.length})`;
@@ -4894,7 +4894,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const _rbBadgesHtml = [_rbManagedBadge, _rbCreatorBadge, _rbRepBadge].filter(Boolean).join('');
       const _rbDeletedByRaw = rec.deleted_by || null;
       const _rbDeletedByBadge = (_rbDeletedByRaw && _rbDeletedByRaw !== 'user')
-        ? `<span class="u-24a7191" style="display: inline-flex"><svg width="9" height="9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>${esc(_rbDeletedByRaw)}</span>`
+        ? `<span class="u-24a7191 d-inline-flex"><svg width="9" height="9" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>${esc(_rbDeletedByRaw)}</span>`
         : '';
       const nameHtml = displayName
         ? `<span class="u-46acfb3">${esc(displayName)}</span>`
@@ -4914,14 +4914,14 @@ export async function renderRecycleBin(filterCollection = 'all') {
         'returns':'#f97316','unknown':'#9ca3af'
       }[col] || '#9ca3af';
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
-      return `<div class="u-b8ea487" style="background: var(--input-bg); border: 1px solid var(--glass-border); display: flex">
+      return `<div class="u-b8ea487 d-flex" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
         <div style="width:9px;height:9px;min-width:9px;border-radius:50%;background:${colDot};flex-shrink:0;"></div>
         <div class="u-8b4ab7f has-overflow" style="overflow: hidden">
-          <div class="u-f3709bc" style="display: flex">
+          <div class="u-f3709bc d-flex">
             ${nameHtml}
             ${amountHtml}
           </div>
-          <div class="u-fefc851" style="display: flex">
+          <div class="u-fefc851 d-flex">
             ${typeTag}
             ${detailHtml}
             ${syncBadge}
@@ -4932,18 +4932,18 @@ export async function renderRecycleBin(filterCollection = 'all') {
             Deleted ${daysAgo === 0 ? 'today' : daysAgo + 'd ago'} · ${deletedDate} · expires in ${expiresIn}d
           </div>
         </div>
-        <div class="u-d533703" style="display: flex">
+        <div class="u-d533703 d-flex">
           ${canRecover
             ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
-          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs" style="display: inline-flex; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3)"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
+          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs d-inline-flex" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3)"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
     }).join('');
   } catch(e) {
     container.innerHTML = `<div class="u-7cbe623">Failed to load recycle bin.</div>`;
     const emptyBtnErr = document.getElementById('recycleBinEmptyBtn');
-    if (emptyBtnErr) emptyBtnErr.style.display = 'none';
+    if (emptyBtnErr) window.setDisplay(emptyBtnErr, 'none');
     console.error('[RecycleBin] render error', _safeErr(e));
   }
 }
@@ -5488,79 +5488,79 @@ el.textContent = (window._assignedManagerName || 'User').toUpperCase();
 
 export function lockToRepMode() {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-if (btn.id !== 'snav-rep') btn.style.display = 'none';
+if (btn.id !== 'snav-rep') window.setDisplay(btn, 'none');
 });
 const cloudMenuBtn = document.getElementById('cloudMenuBtn');
-if (cloudMenuBtn) cloudMenuBtn.style.display = 'none';
+if (cloudMenuBtn) window.setDisplay(cloudMenuBtn, 'none');
 updateSystemName();
 ['prod', 'sales', 'calc', 'factory', 'payments'].forEach(t => {
 const el = document.getElementById('tab-' + t);
-if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const repTab = document.getElementById('tab-rep');
 if (repTab) { repTab.classList.remove('hidden'); repTab.style.removeProperty('display'); }
 const adminControls = document.getElementById('admin-rep-controls');
-if (adminControls) { adminControls.classList.add('hidden'); adminControls.style.display = 'none'; }
+if (adminControls) { adminControls.classList.add('hidden'); window.setDisplay(adminControls, 'none'); }
 const manageRepsBtn = document.getElementById('btn-manage-reps');
-if (manageRepsBtn) manageRepsBtn.style.display = 'none';
+if (manageRepsBtn) window.setDisplay(manageRepsBtn, 'none');
 const adminAnalytics = document.getElementById('admin-rep-analytics');
-if (adminAnalytics) { adminAnalytics.classList.add('hidden'); adminAnalytics.style.display = 'none'; }
+if (adminAnalytics) { adminAnalytics.classList.add('hidden'); window.setDisplay(adminAnalytics, 'none'); }
 const newTransCard = document.getElementById('rep-new-transaction-card');
-if (newTransCard) newTransCard.style.display = 'block';
+if (newTransCard) window.setDisplay(newTransCard, 'block');
 if (typeof refreshRepUI === 'function') refreshRepUI();
 }
 
 export function lockToProductionMode() {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-if (btn.id !== 'snav-prod') btn.style.display = 'none';
+if (btn.id !== 'snav-prod') window.setDisplay(btn, 'none');
 });
 const cloudMenuBtn = document.getElementById('cloudMenuBtn');
-if (cloudMenuBtn) cloudMenuBtn.style.display = 'none';
+if (cloudMenuBtn) window.setDisplay(cloudMenuBtn, 'none');
 const manageRepsBtn = document.getElementById('btn-manage-reps');
-if (manageRepsBtn) manageRepsBtn.style.display = 'none';
+if (manageRepsBtn) window.setDisplay(manageRepsBtn, 'none');
 updateSystemName();
 ['sales', 'calc', 'factory', 'payments', 'rep'].forEach(t => {
 const el = document.getElementById('tab-' + t);
-if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const prodTab = document.getElementById('tab-prod');
 if (prodTab) { prodTab.classList.remove('hidden'); prodTab.style.removeProperty('display'); }
 const prodToggle = document.querySelector('.production-toggle-container');
-if (prodToggle) prodToggle.style.display = 'none';
+if (prodToggle) window.setDisplay(prodToggle, 'none');
 ['combinedOverview', 'combinedChart', 'prod-analytics-section',
 'prod-history-header', 'prodHistoryList'].forEach(id => {
 const el = document.getElementById(id);
-if (el) el.style.display = 'none';
+if (el) window.setDisplay(el, 'none');
 });
 const fBlock = document.getElementById('prod-formula-cost-block');
-if (fBlock) fBlock.style.display = 'none';
+if (fBlock) window.setDisplay(fBlock, 'none');
 const pBlock = document.getElementById('prod-profit-block');
-if (pBlock) pBlock.style.display = 'none';
+if (pBlock) window.setDisplay(pBlock, 'none');
 const spField = document.getElementById('prod-sale-price-field');
-if (spField) spField.style.display = 'none';
+if (spField) window.setDisplay(spField, 'none');
 const dynCost = document.getElementById('dynamic-cost-display');
-if (dynCost) dynCost.style.display = 'none';
+if (dynCost) window.setDisplay(dynCost, 'none');
 }
 
 export function lockToFactoryMode() {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-if (btn.id !== 'snav-factory') btn.style.display = 'none';
+if (btn.id !== 'snav-factory') window.setDisplay(btn, 'none');
 });
 const cloudMenuBtn = document.getElementById('cloudMenuBtn');
-if (cloudMenuBtn) cloudMenuBtn.style.display = 'none';
+if (cloudMenuBtn) window.setDisplay(cloudMenuBtn, 'none');
 const manageRepsBtn = document.getElementById('btn-manage-reps');
-if (manageRepsBtn) manageRepsBtn.style.display = 'none';
+if (manageRepsBtn) window.setDisplay(manageRepsBtn, 'none');
 updateSystemName();
 ['prod', 'sales', 'calc', 'payments', 'rep'].forEach(t => {
 const el = document.getElementById('tab-' + t);
-if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const factoryTab = document.getElementById('tab-factory');
 if (factoryTab) { factoryTab.classList.remove('hidden'); factoryTab.style.removeProperty('display'); }
 const factorySettingsBtn = document.getElementById('factory-settings-btn');
-if (factorySettingsBtn) factorySettingsBtn.style.display = 'none';
+if (factorySettingsBtn) window.setDisplay(factorySettingsBtn, 'none');
 document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => {
-sec.style.display = 'none';
+window.setDisplay(sec, 'none');
 });
 const entrySection = document.getElementById('factory-entry-section');
 if (entrySection) {
@@ -5569,10 +5569,10 @@ entrySection.classList.add('liquid-card');
 const costDisplay = document.getElementById('factoryTotalProductionCostDisplay');
 if (costDisplay) {
 const fieldDiv = costDisplay.closest('.field');
-if (fieldDiv) fieldDiv.style.display = 'none';
+if (fieldDiv) window.setDisplay(fieldDiv, 'none');
 }
 const formulaDisplay = document.getElementById('factoryFormulaDisplay');
-if (formulaDisplay) formulaDisplay.style.display = 'none';
+if (formulaDisplay) window.setDisplay(formulaDisplay, 'none');
 }
 }
 
@@ -5581,7 +5581,7 @@ const assignedTabs = window._assignedUserTabs || [];
 const userName = window._assignedManagerName || 'User';
 const allTabs = ['prod','sales','calc','factory','payments','rep'];
 ['cloudMenuBtn','btn-manage-reps'].forEach(id => {
-const el = document.getElementById(id); if (el) el.style.display = 'none';
+const el = document.getElementById(id); if (el) window.setDisplay(el, 'none');
 });
 updateSystemName();
 allTabs.forEach(t => {
@@ -5590,18 +5590,18 @@ if (el) { el.classList.add('hidden'); el.style.removeProperty('display'); }
 });
 if (assignedTabs.includes('prod')) {
 const prodToggle = document.querySelector('.production-toggle-container');
-if (prodToggle) prodToggle.style.display = 'none';
+if (prodToggle) window.setDisplay(prodToggle, 'none');
 ['combinedOverview','combinedChart','prod-analytics-section',
 'prod-history-header','prodHistoryList'].forEach(id => {
-const el = document.getElementById(id); if (el) el.style.display = 'none';
+const el = document.getElementById(id); if (el) window.setDisplay(el, 'none');
 });
 ['prod-formula-cost-block','prod-profit-block','prod-sale-price-field'].forEach(id => {
-const el = document.getElementById(id); if (el) el.style.display = 'none';
+const el = document.getElementById(id); if (el) window.setDisplay(el, 'none');
 });
 const dynCostEl = document.getElementById('dynamic-cost-display');
-if (dynCostEl) dynCostEl.style.display = 'none';
+if (dynCostEl) window.setDisplay(dynCostEl, 'none');
 document.querySelectorAll('#tab-prod .section.liquid-card').forEach(sec => {
-if (sec.id !== 'production-entry-section') sec.style.display = 'none';
+if (sec.id !== 'production-entry-section') window.setDisplay(sec, 'none');
 });
 const ui = document.getElementById('unitsAvailableIndicator');
 if (ui) ui.style.removeProperty('display');
@@ -5610,50 +5610,50 @@ if (iuw) iuw.style.removeProperty('display');
 }
 if (assignedTabs.includes('factory')) {
 const fsBtn = document.getElementById('factory-settings-btn');
-if (fsBtn) fsBtn.style.display = 'none';
-document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => sec.style.display = 'none');
+if (fsBtn) window.setDisplay(fsBtn, 'none');
+document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => window.setDisplay(sec, 'none'));
 const entry = document.getElementById('factory-entry-section');
 if (entry) {
 entry.style.removeProperty('display');
 entry.classList.add('liquid-card');
 const cd = document.getElementById('factoryTotalProductionCostDisplay');
-if (cd) { const f = cd.closest('.field'); if (f) f.style.display = 'none'; }
+if (cd) { const f = cd.closest('.field'); if (f) window.setDisplay(f, 'none'); }
 const fd = document.getElementById('factoryFormulaDisplay');
-if (fd) fd.style.display = 'none';
+if (fd) window.setDisplay(fd, 'none');
 }
 }
 if (assignedTabs.includes('sales')) {
 const sh = document.querySelector('#tab-sales header');
-if (sh) sh.querySelectorAll('button, .btn-theme').forEach(b => b.style.display = 'none');
+if (sh) sh.querySelectorAll('button, .btn-theme').forEach(b => window.setDisplay(b, 'none'));
 let si = 0;
 document.querySelectorAll('#tab-sales .section.liquid-card').forEach(sec => {
 if (si === 0) { si++; return; }
-sec.style.display = 'none'; si++;
+window.setDisplay(sec, 'none'); si++;
 });
 ['sale-result-cost','sale-result-value','sale-result-profit'].forEach(id => {
-const el = document.getElementById(id); if (el) el.style.display = 'none';
+const el = document.getElementById(id); if (el) window.setDisplay(el, 'none');
 });
 const st = document.getElementById('sales-summary-toggle');
-if (st) { const sh2 = st.closest('.section-header'); if (sh2) sh2.style.display = 'none'; }
+if (st) { const sh2 = st.closest('.section-header'); if (sh2) window.setDisplay(sh2, 'none'); }
 const sc = document.getElementById('sales-summary-card');
-if (sc) sc.style.display = 'none';
+if (sc) window.setDisplay(sc, 'none');
 const cl = document.getElementById('custHistoryList');
-if (cl) { const prev = cl.previousElementSibling; if (prev) prev.style.display = 'none'; cl.style.display = 'none'; }
+if (cl) { const prev = cl.previousElementSibling; if (prev) window.setDisplay(prev, 'none'); window.setDisplay(cl, 'none'); }
 }
 if (assignedTabs.includes('payments')) {
 const eb = document.querySelector('#tab-payments header .btn-theme');
-if (eb) eb.style.display = 'none';
+if (eb) window.setDisplay(eb, 'none');
 let pi = 0;
 document.querySelectorAll('#tab-payments .section.liquid-card').forEach(sec => {
 if (pi === 0) { pi++; return; }
-sec.style.display = 'none'; pi++;
+window.setDisplay(sec, 'none'); pi++;
 });
 const us = document.getElementById('payments-unified-section');
-if (us) us.style.display = 'none';
+if (us) window.setDisplay(us, 'none');
 const ph = document.getElementById('payment-history-section');
-if (ph) ph.style.display = 'none';
+if (ph) window.setDisplay(ph, 'none');
 const pl = document.getElementById('paymentHistoryList');
-if (pl) pl.style.display = 'none';
+if (pl) window.setDisplay(pl, 'none');
 }
 if (assignedTabs.length > 0 && typeof showTab === 'function') {
 showTab(assignedTabs[0]);
@@ -5707,7 +5707,7 @@ if (typeof originalShowTab === 'function') originalShowTab(tab);
 }
 };
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-btn.style.display = 'none';
+window.setDisplay(btn, 'none');
 });
 } else if (appMode === 'userrole') {
 const allowedTabs = window._userRoleAllowedTabs || window._assignedUserTabs || [];
@@ -5720,19 +5720,19 @@ return;
 if (typeof originalShowTabUR === 'function') originalShowTabUR(tab);
 if (tab === 'payments') {
 const _ph = document.getElementById('payment-history-section');
-if (_ph) { _ph.style.display = 'none'; _ph.style.visibility = 'hidden'; }
+if (_ph) { window.setDisplay(_ph, 'none'); _ph.style.visibility = 'hidden'; }
 const _pl = document.getElementById('paymentHistoryList');
-if (_pl) _pl.style.display = 'none';
+if (_pl) window.setDisplay(_pl, 'none');
 const _us = document.getElementById('payments-unified-section');
-if (_us) _us.style.display = 'none';
+if (_us) window.setDisplay(_us, 'none');
 }
 };
 if (allowedTabs.length <= 1) {
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => { btn.style.display = 'none'; });
+document.querySelectorAll('.sidebar-nav-btn').forEach(btn => { window.setDisplay(btn, 'none'); });
 } else {
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
 const tid = btn.id.replace('snav-', '');
-btn.style.display = (allowedTabs.includes(tid)) ? '' : 'none';
+window.setDisplay(btn, (allowedTabs.includes(tid)) ? '' : 'none');
 });
 }
 window._userRoleAllowedTabs = allowedTabs;
@@ -5746,7 +5746,7 @@ return;
 if (typeof originalShowTabProd === 'function') originalShowTabProd(tab);
 };
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-btn.style.display = 'none';
+window.setDisplay(btn, 'none');
 });
 } else if (appMode === 'factory') {
 const originalShowTabFactory = window._originalShowTab || window.showTab;
@@ -5758,7 +5758,7 @@ return;
 if (typeof originalShowTabFactory === 'function') originalShowTabFactory(tab);
 };
 document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
-btn.style.display = 'none';
+window.setDisplay(btn, 'none');
 });
 }
 }
@@ -6097,8 +6097,8 @@ document.addEventListener('click', function(e) {
 if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown') &&
     !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"], button[onclick*="perf-sum-raw-breakdown"]')) {
   document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown').forEach(panel => {
-    if (panel.style.display !== 'none') {
-      panel.style.display = 'none';
+    if (window.getDisplay(panel) !== 'none') {
+      window.setDisplay(panel, 'none');
       const btn = panel.previousElementSibling;
       if (btn && btn.tagName === 'BUTTON') {
         const arrow = btn.querySelector('span:first-child');
@@ -6653,7 +6653,7 @@ return;
 }
 list.innerHTML = salesRepsList.map((rep, i) => `
 <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:9999px; ${i === 0 ? 'border-left:3px solid var(--accent);' : ''}">
-<div class="u-2c42b11" style="display: flex">
+<div class="u-2c42b11 d-flex">
 <span class="u-76ebb48 has-overflow" style="overflow: hidden">${esc(rep)}</span>
 <span style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}; flex-shrink:0;">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
@@ -6694,12 +6694,12 @@ list.innerHTML = userRolesList.map((user, i) => {
 const tabs = Array.isArray(user.tabs) ? user.tabs : [];
 const tabBadges = tabs.map(t => `<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;color:${TAB_COLORS[t]||'var(--accent)'};border:1px solid ${TAB_COLORS[t]||'var(--accent)'}55;font-weight:700;text-transform:uppercase;">${t}</span>`).join('');
 return `
-<div class="u-b3a0b25" style="display: flex; background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-b3a0b25 d-flex" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-8b4ab7f">
-<div class="u-5e4bab7" style="display: flex">
+<div class="u-5e4bab7 d-flex">
 <span class="u-555bcbe">${esc(user.name)}</span>
 </div>
-<div class="u-91a590f" style="display: flex">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
+<div class="u-91a590f d-flex">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
 </div>
 <button class="btn-theme u-eeccbea" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="border-color: rgba(239,68,68,0.4)"></button>
 </div>`;
@@ -6711,7 +6711,7 @@ export function switchManageTeamTab(tab) {
 const btn = document.getElementById('team-tab-' + t);
 const panel = document.getElementById('team-panel-' + t);
 if (btn) btn.classList.toggle('active', t === tab);
-if (panel) panel.style.display = t === tab ? '' : 'none';
+if (panel) window.setDisplay(panel, t === tab ? '' : 'none');
 });
 if (tab === 'userrole') renderUserRoleList();
 if (tab === 'rep') renderManageRepsList();
@@ -6841,7 +6841,7 @@ export const _overlayStack = (() => {
       const el = document.getElementById(id);
       if (!el) continue;
       const isOpen = el.classList.contains('open') ||
-                     (el.style.display && el.style.display !== 'none' && el.style.display !== '');
+                     (window.getDisplay(el) && window.getDisplay(el) !== 'none' && window.getDisplay(el) !== '');
       if (isOpen) open.push({ id, el, ...cfg });
     }
     open.sort((a, b) => {
@@ -7078,7 +7078,7 @@ if (device.firstLoginAt) {
   } catch (_) {}
 }
 let cardHtml = '<div class="u-296d231" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">';
-cardHtml += '<div class="u-d42a404" style="display: flex">';
+cardHtml += '<div class="u-d42a404 d-flex">';
 cardHtml += '<div class="u-3eddfae" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span class="u-fe495ba">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span class="u-56e4c0c">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
 cardHtml += '<div class="u-b62856e text-right">';
 cardHtml += '<div style="font-size:0.8rem;font-weight:800;color:' + modeColor + ';white-space:nowrap;">' + modeLabel + '</div>';
@@ -7091,7 +7091,7 @@ const lastCmdStr = remoteAppliedAt ? new Date(remoteAppliedAt).toLocaleString() 
 const lastCmdMode = remoteAppliedMode ? remoteAppliedMode.toUpperCase() : null;
 const lastCmdBy = remoteAppliedBy || null;
 if (lastCmdMode || totalCommands > 0) {
-cardHtml += '<div class="u-61da305" style="display: flex; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border)">';
+cardHtml += '<div class="u-61da305 d-flex" style="background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border)">';
 cardHtml += '<span class="u-2ae1270">Commands:</span>';
 if (totalCommands > 0) {
 cardHtml += '<span class="u-f07758c" style="background: var(--accent-dim)">' + totalCommands + ' sent</span>';
@@ -7118,7 +7118,7 @@ cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \
 cardHtml += ' style="width:100%;padding:9px;background:' + adminBg + ';border:' + adminBord + ';border-radius:99px;color:#007aff;cursor:pointer;font-size:0.72rem;font-weight:' + adminFw + ';margin-bottom:10px;">' + adminTick + 'Admin Mode</button>';
 if (salesRepsList.length > 0) {
 cardHtml += '<div class="u-788ba48">Sales Representatives</div>';
-cardHtml += '<div class="u-ab90486" style="display: grid">';
+cardHtml += '<div class="u-ab90486 d-grid">';
 const repColors = [
 {bg:'48,209,88',hex:'#30d158'},{bg:'255,159,10',hex:'#ff9f0a'},
 {bg:'191,90,242',hex:'#bf5af2'},{bg:'255,69,58',hex:'#ff453a'},{bg:'90,200,250',hex:'#5ac8fa'}
@@ -7139,7 +7139,7 @@ cardHtml += '</div>';
 }
 if (userRolesList.length > 0) {
 cardHtml += '<div class="u-788ba48">User Roles</div>';
-cardHtml += '<div class="u-ab90486" style="display: grid">';
+cardHtml += '<div class="u-ab90486 d-grid">';
 for (let ui = 0; ui < userRolesList.length; ui++) {
 const user = userRolesList[ui];
 const userLocked = deviceMode === 'userrole' && device.assignedManager === user.name;
@@ -7730,7 +7730,7 @@ export function _applyPaymentTransferPendingPhoto(dataUrl) {
 window._paymentTransferPendingPhoto = dataUrl || null;
 const dot = document.getElementById('payment-transfer-photo-dot');
 const btn = document.getElementById('payment-transfer-photo-btn');
-if (dot) dot.style.display = dataUrl ? '' : 'none';
+if (dot) window.setDisplay(dot, dataUrl ? '' : 'none');
 if (btn) {
 btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
 btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
@@ -7764,13 +7764,13 @@ item.innerHTML = `
     <div class="u-fs-sm2 u-text-muted">${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}</div>
     ${t.description ? `<div class="u-fs-sm2 u-text-muted">${esc(t.description)}</div>` : ''}
   </div>
-  <div class="u-d94b2d8" style="display: flex">
+  <div class="u-d94b2d8 d-flex">
     <div class="text-right" style="text-align:right;">
       <span class="u-56e02ab">TRANSFER</span>
       <div class="cost-val u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')"
-      class="u-129f796" style="display: none; border: none; background: rgba(99,102,241,0.15)">
+      class="u-129f796 d-none" style="border: none; background: rgba(99,102,241,0.15)">
       <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>
@@ -7784,7 +7784,7 @@ if (t.id) {
   sqliteStore.get('photos').then(ph => {
     if (ph && ph[_phKey]) {
       const badge = document.getElementById(photoBadgeId);
-      if (badge) badge.style.display = 'inline-flex';
+      if (badge) window.setDisplay(badge, 'inline-flex');
     }
   }).catch(() => {});
 }

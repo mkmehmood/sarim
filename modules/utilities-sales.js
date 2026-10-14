@@ -334,7 +334,7 @@ transactionCard.innerHTML = `
 <div class="u-b1b556c">
 ${esc(transaction.description || 'No description')}${etCreatorBadge}
 </div>
-<div class="u-20c1821" style="display: flex">
+<div class="u-20c1821 d-flex">
 <span class="u-fs-sm2 u-text-muted" >Amount:</span>
 <span class="${amountClass} u-8ba9017">${fmtAmt(safeAmount)}</span>
 </div>
@@ -347,7 +347,7 @@ transactionsList.replaceChildren(_etFrag);
 requestAnimationFrame(() => {
 document.body.style.overflow = 'hidden';
 document.documentElement.style.overflow = 'hidden';
-document.getElementById('entityTransactionsOverlay').style.display = 'flex';
+window.setDisplay(document.getElementById('entityTransactionsOverlay'), 'flex');
 });
 }
 
@@ -355,7 +355,7 @@ export function closeEntityTransactions() {
 requestAnimationFrame(() => {
 document.body.style.overflow = '';
 document.documentElement.style.overflow = '';
-document.getElementById('entityTransactionsOverlay').style.display = 'none';
+window.setDisplay(document.getElementById('entityTransactionsOverlay'), 'none');
 });
 }
 
@@ -636,9 +636,9 @@ const allCards = document.querySelectorAll('#paymentHistoryList .card');
 allCards.forEach(card => {
 const cardText = card.textContent.toLowerCase();
 if (cardText.includes(searchTerm)) {
-card.style.display = '';
+window.setDisplay(card, '');
 } else {
-card.style.display = 'none';
+window.setDisplay(card, 'none');
 }
 });
 }
@@ -1393,10 +1393,10 @@ const supPay  = _el('cust-sale-supply-payment');
 const collRes = _el('cust-coll-result');
 if (saleIn)  isSale ? saleIn.classList.remove('hidden')  : saleIn.classList.add('hidden');
 if (collIn)  isSale ? collIn.classList.add('hidden')     : collIn.classList.remove('hidden');
-if (supPay)  { supPay.style.display = isSale ? '' : 'none'; }
-if (collRes) { collRes.style.display = isSale ? 'none' : ''; }
+if (supPay)  { window.setDisplay(supPay, isSale ? '' : 'none'); }
+if (collRes) { window.setDisplay(collRes, isSale ? 'none' : ''); }
 const qtyRow = _el('customer-qty-row');
-if (qtyRow) { qtyRow.style.display = isSale ? '' : 'none'; }
+if (qtyRow) { window.setDisplay(qtyRow, isSale ? '' : 'none'); }
 const btn = _el('btn-save-cust-transaction');
 if (btn) btn.textContent = isSale ? 'Save Transaction' : 'Save Collection';
 if (!isSale) {
@@ -1419,7 +1419,7 @@ const currentDebt = creditEl
 : 0;
 const collected = parseFloat(amtEl?.value) || 0;
 const remaining = Math.max(0, currentDebt - collected);
-if (collRes) collRes.style.display = '';
+if (collRes) window.setDisplay(collRes, '');
 if (balEl) {
 balEl.textContent = fmtAmt(remaining);
 balEl.style.color = remaining === 0 ? 'var(--accent-emerald)' : 'var(--warning)';
@@ -1754,17 +1754,17 @@ const availableInventory = totalAvailable - storeSales;
 const inventoryWarning = document.getElementById('inventory-warning') || createInventoryWarningElement();
 if (quantity > availableInventory) {
 inventoryWarning.innerHTML = ` Warning: Only ${fmtNum(safeNumber(availableInventory, 0))} kg available.<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
-inventoryWarning.style.display = 'block';
+window.setDisplay(inventoryWarning, 'block');
 inventoryWarning.style.color = 'var(--danger)';
 inventoryWarning.style.background = 'rgba(220, 38, 38, 0.1)';
 } else if (availableInventory < (quantity * 1.5)) {
 inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available (${fmtNum(safeNumber(availableInventory - quantity, 0))} kg remaining)<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg</small>`;
-inventoryWarning.style.display = 'block';
+window.setDisplay(inventoryWarning, 'block');
 inventoryWarning.style.color = 'var(--warning)';
 inventoryWarning.style.background = 'rgba(245, 158, 11, 0.1)';
 } else {
 inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
-inventoryWarning.style.display = 'block';
+window.setDisplay(inventoryWarning, 'block');
 inventoryWarning.style.color = 'var(--accent-emerald)';
 inventoryWarning.style.background = 'rgba(5, 150, 105, 0.1)';
 }
@@ -1839,7 +1839,7 @@ warningDiv.style.fontSize = '0.8rem';
 warningDiv.style.marginTop = '8px';
 warningDiv.style.padding = '6px';
 warningDiv.style.borderRadius = '6px';
-warningDiv.style.display = 'none';
+window.setDisplay(warningDiv, 'none');
 const salesSection = document.querySelector('#tab-sales .section.liquid-card');
 const calculateButton = salesSection.querySelector('.btn-main');
 salesSection.insertBefore(warningDiv, calculateButton);
@@ -3550,7 +3550,7 @@ const isOutSide = item.transferDirection === 'out';
 const peerLabel = getStoreLabel(item.transferPeerStore) || item.transferPeerStore;
 div.innerHTML = `
 ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeClass}">${esc(storeLabel)}</span>` : ''}
-<div class="u-edba70e" style="display: flex">
+<div class="u-edba70e d-flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -3563,7 +3563,7 @@ ${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action
 div.innerHTML = `
 ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeClass}">${esc(storeLabel)}</span>` : ''}
 ${item.isMerged ? '' : paymentBadge}
-<div class="u-edba70e" style="display: flex">
+<div class="u-edba70e d-flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>` : ''}
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
@@ -3630,9 +3630,9 @@ const allCards = document.querySelectorAll('#prodHistoryList .card');
 allCards.forEach(card => {
 const cardText = card.textContent.toLowerCase();
 if (cardText.includes(searchTerm)) {
-card.style.display = '';
+window.setDisplay(card, '');
 } else {
-card.style.display = 'none';
+window.setDisplay(card, 'none');
 }
 });
 }
@@ -3645,9 +3645,9 @@ const cardText = card.textContent.toLowerCase();
 const sellerElement = card.querySelector('.seller-badge');
 const sellerText = sellerElement ? sellerElement.textContent.toLowerCase() : '';
 if (cardText.includes(searchTerm) || sellerText.includes(searchTerm)) {
-card.style.display = '';
+window.setDisplay(card, '');
 } else {
-card.style.display = 'none';
+window.setDisplay(card, 'none');
 }
 });
 }
@@ -3658,9 +3658,9 @@ const allCards = document.querySelectorAll('#custHistoryList .card');
 allCards.forEach(card => {
 const customerName = card.querySelector('.customer-name')?.textContent.toLowerCase() || '';
 if (customerName.includes(searchTerm)) {
-card.style.display = '';
+window.setDisplay(card, '');
 } else {
-card.style.display = 'none';
+window.setDisplay(card, 'none');
 }
 });
 }
@@ -3747,9 +3747,9 @@ rows.forEach(row => {
 const entityName = row.querySelector('strong')?.textContent.toLowerCase() || '';
 const phone = row.querySelector('div.text-xs')?.textContent.toLowerCase() || '';
 if (entityName.includes(searchTerm) || phone.includes(searchTerm)) {
-row.style.display = '';
+window.setDisplay(row, '');
 } else {
-row.style.display = 'none';
+window.setDisplay(row, 'none');
 }
 });
 } else {
@@ -3757,9 +3757,9 @@ const cards = document.querySelectorAll('#entityListBody .entity-card');
 cards.forEach(card => {
 const cardText = card.textContent.toLowerCase();
 if (cardText.includes(searchTerm)) {
-card.style.display = '';
+window.setDisplay(card, '');
 } else {
-card.style.display = 'none';
+window.setDisplay(card, 'none');
 }
 });
 }
@@ -3968,7 +3968,7 @@ modal.innerHTML = `
 <p class="u-ed7ce38">Account: <strong>${esc(currentUser.email)}</strong></p>
 <input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
 <div id="dec-pwd-error" class="u-19cb4ec"></div>
-<div class="u-1e68903" style="display: flex">
+<div class="u-1e68903 d-flex">
 <button id="dec-pwd-ok" class="u-bc38067" style="background: var(--accent); border: none">Decrypt & Restore</button>
 <button id="dec-pwd-cancel" class="u-4a0b42c" style="background: var(--input-bg); border: 1px solid var(--glass-border)">Cancel</button>
 </div>
@@ -4804,11 +4804,11 @@ window.scrollTo({ top: 0, behavior: 'instant' });
 const paymentSummarySection = document.getElementById('payment-summary-section');
 const paymentHistorySection = document.getElementById('payment-history-section');
 if (paymentSummarySection) {
-paymentSummarySection.style.display = '';
+window.setDisplay(paymentSummarySection, '');
 paymentSummarySection.style.visibility = 'visible';
 }
 if (paymentHistorySection) {
-paymentHistorySection.style.display = '';
+window.setDisplay(paymentHistorySection, '');
 paymentHistorySection.style.visibility = 'visible';
 }
 setTimeout(async () => {
@@ -4870,20 +4870,20 @@ const newTransCard = document.getElementById('rep-new-transaction-card');
 if (appMode === 'admin') {
 if (adminControls) {
 adminControls.classList.remove('hidden');
-adminControls.style.display = 'block';
+window.setDisplay(adminControls, 'block');
 }
 if (adminAnalytics) {
 adminAnalytics.classList.remove('hidden');
-adminAnalytics.style.display = 'block';
+window.setDisplay(adminAnalytics, 'block');
 }
 const manageRepsBtnAdmin = document.getElementById('btn-manage-reps');
-if (manageRepsBtnAdmin) manageRepsBtnAdmin.style.display = '';
+if (manageRepsBtnAdmin) window.setDisplay(manageRepsBtnAdmin, '');
 const mainDate = document.getElementById('rep-date');
 const adminDate = document.getElementById('admin-rep-date');
 if (mainDate && adminDate) {
 adminDate.value = mainDate.value;
 }
-if (newTransCard) newTransCard.style.display = 'block';
+if (newTransCard) window.setDisplay(newTransCard, 'block');
 if (typeof calculateRepAnalytics === 'function') {
 calculateRepAnalytics();
 }
@@ -4899,11 +4899,11 @@ updateRepLiveMap();
 }, 100);
 });
 } else {
-if (adminControls) adminControls.style.display = 'none';
-if (adminAnalytics) adminAnalytics.style.display = 'none';
+if (adminControls) window.setDisplay(adminControls, 'none');
+if (adminAnalytics) window.setDisplay(adminAnalytics, 'none');
 const manageRepsBtnRep = document.getElementById('btn-manage-reps');
-if (manageRepsBtnRep) manageRepsBtnRep.style.display = 'none';
-if (newTransCard) newTransCard.style.display = 'block';
+if (manageRepsBtnRep) window.setDisplay(manageRepsBtnRep, 'none');
+if (newTransCard) window.setDisplay(newTransCard, 'block');
 if (typeof renderRepCustomerTable === 'function') {
 renderRepCustomerTable();
 }
@@ -5032,7 +5032,7 @@ return animation.finished;
 export function fadeIn(element, duration = 150) {
 if (!element) return Promise.resolve();
 element.style.opacity = '0';
-element.style.display = '';
+window.setDisplay(element, '');
 return animateElement(element, [
 { opacity: 0 },
 { opacity: 1 }
@@ -5045,7 +5045,7 @@ return animateElement(element, [
 { opacity: 1 },
 { opacity: 0 }
 ], { duration }).then(() => {
-element.style.display = 'none';
+window.setDisplay(element, 'none');
 });
 }
 
@@ -5057,7 +5057,7 @@ down: [{ transform: 'translateY(-20px)', opacity: 0 }, { transform: 'translateY(
 left: [{ transform: 'translateX(20px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }],
 right: [{ transform: 'translateX(-20px)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }]
 };
-element.style.display = '';
+window.setDisplay(element, '');
 return animateElement(element, transforms[direction] || transforms.up, { duration });
 }
 
@@ -5482,23 +5482,23 @@ if (_rawBreakdownEl) {
   if (_rawEntries.length > 0) {
     const _bId = 'perf-sum-raw-breakdown';
     const _rowsHtml = _rawEntries.map(([name, data]) => `
-<div class="u-e665e23" style="display: flex">
+<div class="u-e665e23 d-flex">
 <span class="u-0990a82 has-overflow" style="overflow: hidden">${esc(name)}</span>
-<span class="u-ae6a320" style="display: flex">
+<span class="u-ae6a320 d-flex">
 <span class="u-d59bb54 text-xs">${fmtNum(safeNumber(data.qty,0))} kg</span>
 <span class="cost-val u-6734184 text-right">${fmtAmt(data.cost)}</span>
 </span>
 </div>`).join('');
     _rawBreakdownEl.innerHTML = `
 <div class="u-0d69e4b">
-<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62 d-flex" style="background: none; border: none">
 <span class="u-5056b09">&#x25b6;</span>
 <span class="u-e2e3ece">Materials Breakdown</span>
 </button>
-<div id="${_bId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
-<div class="u-0ad85ea" style="display: flex">
+<div id="${_bId}" class="u-fdf6e25 d-none" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Material</span>
-<span class="u-1e68903" style="display: flex">
+<span class="u-1e68903 d-flex">
 <span class="u-2b7c172">Qty Used</span>
 <span class="u-e89dac7 text-right">Cost</span>
 </span>
@@ -5834,18 +5834,18 @@ const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] 
 if (soldBreakdownEntries.length > 0) {
 const soldBreakdownId = `sold-breakdown-${store}-${index}`;
 const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
-<div class="u-dd56633" style="display: flex">
+<div class="u-dd56633 d-flex">
 <span class="u-ba8bce3 has-overflow text-xs" style="overflow: hidden">${esc(cust)}</span>
 <span class="u-24324ab text-xs">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 soldBreakdownHtml = `
 <div class="u-6b1f0d9">
-<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex" style="background: none; border: none">
 <span class="u-5056b09">▶</span>
 <span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${soldBreakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
-<div class="u-0ad85ea" style="display: flex">
+<div id="${soldBreakdownId}" class="u-fdf6e25 d-none" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Customer</span>
 <span class="u-e89dac7 text-right">Qty Sold</span>
 </div>
@@ -5905,18 +5905,18 @@ const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) 
 if (combinedSoldEntries.length > 0) {
 const combinedSoldBreakdownId = `sold-breakdown-combined`;
 const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
-<div class="u-dd56633" style="display: flex">
+<div class="u-dd56633 d-flex">
 <span class="u-ba8bce3 has-overflow text-xs" style="overflow: hidden">${esc(cust)}</span>
 <span class="u-24324ab text-xs">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 combinedSoldBreakdownHtml = `
 <div class="u-6b1f0d9">
-<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62" style="display: flex; background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex" style="background: none; border: none">
 <span class="u-5056b09">▶</span>
 <span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${combinedSoldBreakdownId}" class="u-fdf6e25" style="display: none; background: var(--glass-raised); border: 1px solid var(--glass-border)">
-<div class="u-0ad85ea" style="display: flex">
+<div id="${combinedSoldBreakdownId}" class="u-fdf6e25 d-none" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Customer</span>
 <span class="u-e89dac7 text-right">Qty Sold</span>
 </div>
@@ -6425,7 +6425,7 @@ ${deleteBtnHtml}
 card.innerHTML = `
 <div class="payment-badge collection">COLLECTION</div>
 <div class="customer-name u-4bb9003">${esc(item.customerName)} ${mergedBadge}</div>
-<div class="u-50337d2" style="display: flex">
+<div class="u-50337d2 d-flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}</span>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -6438,7 +6438,7 @@ ${deleteBtnHtml}
 card.innerHTML = `
 <div class="payment-badge ${badgeClass}">${esc(badgeText)}</div>
 <div class="customer-name u-4bb9003">${esc(item.customerName)} ${repBadge} ${mergedBadge}</div>
-<div class="u-50337d2" style="display: flex">
+<div class="u-50337d2 d-flex">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}</span>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -6670,7 +6670,7 @@ transfers.forEach(item => {
 const div = document.createElement('div');
 div.className = 'card liquid-card';
 div.innerHTML = `
-<div class="u-edba70e" style="display: flex">
+<div class="u-edba70e d-flex">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(item.date, item.time)}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
