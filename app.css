@@ -2674,8 +2674,6 @@ border: 1px solid var(--glass-border);
 box-shadow: none;
 }
 
-.liquid-toast::after { display: none !important; }
-
 .toast-inner {
 display: flex;
 align-items: center;
@@ -2685,9 +2683,6 @@ width: 100%;
 position: relative;
 background: transparent;
 }
-
-.toast-inner::before, .toast-inner::after { display: none !important; }
-.liquid-toast::before { display: none !important; }
 
 .toast-icon-wrap {
 width: 26px;
@@ -2702,8 +2697,6 @@ font-weight: 900;
 position: relative;
 animation: toastIconPop 0.40s cubic-bezier(0.34,1.5,0.64,1) forwards;
 }
-
-.toast-icon-wrap::before { display: none !important; }
 
 .toast-icon-glyph {
 display: block;
@@ -5588,13 +5581,10 @@ code, pre, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-  max-width: 100% !important;
   max-height: none !important;
-  overflow-y: visible !important;
   padding: 0 !important;
   animation: none !important;
 }
-#cy-panel::after, #cy-panel::before { display: none !important; }
 }
 @layer utilities {
 .u-b2dd813 { padding-top: 6px; color: var(--text-secondary); font-size: 0.55rem; }
@@ -6244,3 +6234,10 @@ input[type="password"]:read-only { height: 38px; min-height: 38px; }
   0%,100% { opacity:0.5; }
   50%      { opacity:1; }
 }
+@layer overrides {
+ .liquid-toast::after { display: none; }
+ .toast-inner::before, .toast-inner::after { display: none; }
+ .liquid-toast::before { display: none; }
+ .toast-icon-wrap::before { display: none; }
+ #cy-panel { max-width: 100%; overflow-y: visible; }
+ #cy-panel::after, #cy-panel::before { display: none; } }
