@@ -1,5 +1,5 @@
 import { APP_CONFIG } from './constants.js';
-import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSettings, loadUIState, triggerAutoSync } from './utilities-core.js';
+import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
 import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';

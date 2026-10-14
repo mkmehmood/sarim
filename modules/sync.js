@@ -1825,10 +1825,8 @@ _cleanUnitPools
         if (cloudTs <= localTs) { recordSuccessfulConnection(); return; }
         await sqliteStore.set('categories', cloud.categories.filter(v => typeof v === 'string' && v.trim()));
         await sqliteStore.set('categories_timestamp', cloudTs);
-        {
-          emitSyncUpdate({ categories: null});
-          flashLivePulse();
-        }
+        emitSyncUpdate({ categories: null});
+        flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
         console.warn('[sync] local save error in snapshot handler:', _safeErr(error));

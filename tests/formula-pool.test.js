@@ -2,8 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { feedsFromFormulas, computeUnitPools } from '../modules/formula-pool-plan.js';
 
-const ing = (id, q, c = 1) => ({ id, name: id, quantity: q, cost: c });
-const mk = () => 'new-id';
 
 describe('feedsFromFormulas / computeUnitPools', () => {
   it('feeds default cost and factor when missing', () => {
