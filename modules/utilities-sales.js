@@ -15,6 +15,19 @@ import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRep
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 import { buildUnitPools, getDefaultStoreKey, defaultStores, setStoreCatalogCache, storeLabelFor, storeBadgeClass, makeStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
+
+function _inPeriod(dateStr, mode, selectedDate, selectedDateObj, selectedYear, selectedMonth) {
+  const d = new Date(dateStr);
+  if (mode === 'day') return dateStr === selectedDate;
+  if (mode === 'week') {
+    const weekStart = new Date(selectedDateObj);
+    weekStart.setDate(selectedDateObj.getDate() - 6);
+    return d >= weekStart && d <= selectedDateObj;
+  }
+  if (mode === 'month') return d.getFullYear() === selectedYear && d.getMonth() === selectedMonth;
+  if (mode === 'year') return d.getFullYear() === selectedYear;
+  return mode === 'all';
+}
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCashTrackerMode = 'day';
 window.currentCashTrackerMode = currentCashTrackerMode;
@@ -5923,19 +5936,7 @@ formulaUnits: 0,
 formulaCost: 0
 };
 production.forEach(item => {
-const itemDate = new Date(item.date);
-const itemYear = itemDate.getFullYear();
-const itemMonth = itemDate.getMonth();
-let includeItem = false;
-if (mode === 'day' && item.date === selectedDate) includeItem = true;
-else if (mode === 'week') {
-const weekStart = new Date(selectedDateObj);
-weekStart.setDate(selectedDateObj.getDate() - 6);
-if (itemDate >= weekStart && itemDate <= selectedDateObj) includeItem = true;
-}
-else if (mode === 'month' && itemYear === selectedYear && itemMonth === selectedMonth) includeItem = true;
-else if (mode === 'year' && itemYear === selectedYear) includeItem = true;
-else if (mode === 'all') includeItem = true;
+const includeItem = _inPeriod(item.date, mode, selectedDate, selectedDateObj, selectedYear, selectedMonth);
 if (includeItem && item.store === store) {
 if (item.isReturn) {
 storeData.returns += (item.net || 0);
@@ -5952,20 +5953,7 @@ storeData.profit += (item.profit || 0);
 let soldQty = 0;
 const soldByCustomer = {};
 sales.forEach(sale => {
-const saleDate = new Date(sale.supplyDate || sale.date);
-const saleYear = saleDate.getFullYear();
-const saleMonth = saleDate.getMonth();
-const saleDateStr = sale.supplyDate || sale.date;
-let includeSale = false;
-if (mode === 'day' && saleDateStr === selectedDate) includeSale = true;
-else if (mode === 'week') {
-const weekStart = new Date(selectedDateObj);
-weekStart.setDate(selectedDateObj.getDate() - 6);
-if (saleDate >= weekStart && saleDate <= selectedDateObj) includeSale = true;
-}
-else if (mode === 'month' && saleYear === selectedYear && saleMonth === selectedMonth) includeSale = true;
-else if (mode === 'year' && saleYear === selectedYear) includeSale = true;
-else if (mode === 'all') includeSale = true;
+const includeSale = _inPeriod(sale.supplyDate || sale.date, mode, selectedDate, selectedDateObj, selectedYear, selectedMonth);
 if (includeSale && sale.supplyStore === store) {
 const qty = sale.quantity || 0;
 soldQty += qty;
@@ -5977,19 +5965,7 @@ storeData.sold = soldQty;
 	let calcTabStoreReturns = 0;
 	if (Array.isArray(calculator)) {
 		calculator.forEach(h => {
-			const hDate = new Date(h.date);
-			const hYear = hDate.getFullYear();
-			const hMonth = hDate.getMonth();
-			let includeInCalc = false;
-			if (mode === 'day' && h.date === selectedDate) includeInCalc = true;
-			else if (mode === 'week') {
-				const weekStart = new Date(selectedDateObj);
-				weekStart.setDate(selectedDateObj.getDate() - 6);
-				if (hDate >= weekStart && hDate <= selectedDateObj) includeInCalc = true;
-			}
-			else if (mode === 'month' && hYear === selectedYear && hMonth === selectedMonth) includeInCalc = true;
-			else if (mode === 'year' && hYear === selectedYear) includeInCalc = true;
-			else if (mode === 'all') includeInCalc = true;
+			const includeInCalc = _inPeriod(h.date, mode, selectedDate, selectedDateObj, selectedYear, selectedMonth);
 			if (includeInCalc && (h.returned || 0) > 0) {
 				if (h.isMerged && h.returnsByStore && typeof h.returnsByStore === 'object') {
 					const storeReturnFromMerged = h.returnsByStore[store] || 0;
@@ -6077,19 +6053,7 @@ const combinedRemaining = totalCombined.qty - totalCombined.sold;
 	let calcTabTotalReturns = 0;
 	if (Array.isArray(calculator)) {
 		calculator.forEach(h => {
-			const hDate = new Date(h.date);
-			const hYear = hDate.getFullYear();
-			const hMonth = hDate.getMonth();
-			let includeInCalc = false;
-			if (mode === 'day' && h.date === selectedDate) includeInCalc = true;
-			else if (mode === 'week') {
-				const weekStart = new Date(selectedDateObj);
-				weekStart.setDate(selectedDateObj.getDate() - 6);
-				if (hDate >= weekStart && hDate <= selectedDateObj) includeInCalc = true;
-			}
-			else if (mode === 'month' && hYear === selectedYear && hMonth === selectedMonth) includeInCalc = true;
-			else if (mode === 'year' && hYear === selectedYear) includeInCalc = true;
-			else if (mode === 'all') includeInCalc = true;
+			const includeInCalc = _inPeriod(h.date, mode, selectedDate, selectedDateObj, selectedYear, selectedMonth);
 			if (includeInCalc) {
 				calcTabTotalReturns += (h.returned || 0);
 			}

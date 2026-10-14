@@ -1,11 +1,11 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
-import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore } from './link-graph.js';
+import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, salesRepsList, sqliteStore, validateTimestamp, validateUUID, readFileAsDataUrl } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, deletePaymentTransfer, editEntityBasicInfo, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, toSafeDate } from './utilities-payments.js';
@@ -14,6 +14,7 @@ import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, refreshRepUI, renderRepCustomerTable } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { getDefaultStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
+import { ledgerEffectiveDate } from './tx-date.js';
 export let currentEntityId;
 window.currentEntityId = currentEntityId;
 export function _set_currentEntityId(v) { currentEntityId = v; window.currentEntityId = v; }
@@ -1313,24 +1314,6 @@ calculateCashTracker();
 showToast(_ed ? "Production record updated!" : "Production record saved successfully!", "success");
 }
 
-export function _dedupDeletionRecordsLocal(arr) {
-  if (!Array.isArray(arr)) return [];
-  const seen = new Map();
-  arr.forEach(r => {
-    if (!r) return;
-    const key = String(r.id || r.recordId || '');
-    if (!key) return;
-    const existing = seen.get(key);
-    if (!existing
-        || (!existing.displayName && r.displayName)
-        || (!existing.snapshot && r.snapshot)
-        || (r.syncedToCloud && !existing.syncedToCloud)) {
-      seen.set(key, r);
-    }
-  });
-  return Array.from(seen.values());
-}
-
 export async function registerDeletion(id, collectionName = 'unknown', preDeletedRecord = null) {
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
@@ -1482,7 +1465,7 @@ deletionRecords[existingIndex] = deletionRecord;
 } else {
 deletionRecords.push(deletionRecord);
 }
-const _deduped = _dedupDeletionRecordsLocal(deletionRecords);
+const _deduped = dedupDeletionRecords(deletionRecords);
 await sqliteStore.set('deletions', _deduped);
 await sqliteStore.set('deleted', Array.from(deletedRecordIds));
 triggerAutoSync();
@@ -2093,13 +2076,6 @@ export async function _toggleEntityTxnPanel(btn, panelId, txnId, expenseId) {
 
 const _supplierMatOriginal = (m) => parseFloat((m.totalValue || (m.purchaseCost && m.purchaseQuantity ? m.purchaseCost * m.purchaseQuantity : (m.quantity || 0) * (m.cost || 0)) || 0).toFixed(2));
 
-const _txMaterialIds = (t) => {
-const ids = new Set();
-if (t && t.materialId) ids.add(String(t.materialId));
-if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
-return ids;
-};
-
 const _clearMaterialSupplier = (m) => {
 delete m.supplierId;
 delete m.supplierName;
@@ -2119,7 +2095,7 @@ const payments = transactions
 .filter(t => !excludeIds.has(String(t.id)) && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(sid))
 .sort((a, b) => new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0));
 const ids = new Set(extraMaterialIds || []);
-payments.forEach(t => _txMaterialIds(t).forEach(i => ids.add(i)));
+payments.forEach(t => txMaterialIds(t).forEach(i => ids.add(i)));
 const skip = skipMaterialIds || new Set();
 const mats = inventory.filter(m => !skip.has(String(m.id)) && (String(m.supplierId) === String(sid) || (!m.supplierId && ids.has(String(m.id)))));
 if (mats.length === 0) continue;
@@ -2140,12 +2116,12 @@ export function _describeSupplierLinkImpact(tx, transactions, inventory) {
 const out = { materialNames: [], paymentCount: 0, paymentTotal: 0 };
 const seen = new Set();
 if (!tx || !tx.isPayable || tx.type !== 'IN') return out;
-const ids = _txMaterialIds(tx);
+const ids = txMaterialIds(tx);
 const inv = ensureArray(inventory);
 const txs = ensureArray(transactions);
 inv.filter(m => ids.has(String(m.id)) && String(m.supplierId) === String(tx.entityId)).forEach(m => {
 out.materialNames.push(m.name || 'Material');
-txs.filter(t => String(t.id) !== String(tx.id) && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(tx.entityId) && _txMaterialIds(t).size > 0 && [..._txMaterialIds(t)].every(i => ids.has(i))).forEach(t => {
+txs.filter(t => String(t.id) !== String(tx.id) && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(tx.entityId) && txMaterialIds(t).size > 0 && [...txMaterialIds(t)].every(i => ids.has(i))).forEach(t => {
 if (seen.has(String(t.id))) return;
 seen.add(String(t.id));
 out.paymentCount++;
@@ -2185,21 +2161,21 @@ const extraMaterialIds = new Set();
 const unlinkIds = new Set();
 txs.forEach(t => {
 if (!t.isPayable) return;
-if (t.type === 'IN') _txMaterialIds(t).forEach(i => unlinkIds.add(i));
+if (t.type === 'IN') txMaterialIds(t).forEach(i => unlinkIds.add(i));
 else if (t.type === 'OUT') {
 supplierIds.add(String(t.entityId));
-_txMaterialIds(t).forEach(i => extraMaterialIds.add(i));
+txMaterialIds(t).forEach(i => extraMaterialIds.add(i));
 }
 });
 for (const id of unlinkIds) {
 const mat = inventory.find(m => String(m.id) === id);
 if (!mat || !mat.supplierId) continue;
 const oldSupplier = String(mat.supplierId);
-const entityMatches = txs.some(t => t.type === 'IN' && t.isPayable && String(t.entityId) === oldSupplier && _txMaterialIds(t).has(id));
+const entityMatches = txs.some(t => t.type === 'IN' && t.isPayable && String(t.entityId) === oldSupplier && txMaterialIds(t).has(id));
 if (!entityMatches) continue;
-const linked = transactions.filter(t => !deletingIds.has(String(t.id)) && t.isPayable === true && String(t.entityId) === oldSupplier && _txMaterialIds(t).has(id));
+const linked = transactions.filter(t => !deletingIds.has(String(t.id)) && t.isPayable === true && String(t.entityId) === oldSupplier && txMaterialIds(t).has(id));
 for (const lt of linked) {
-const ids = _txMaterialIds(lt);
+const ids = txMaterialIds(lt);
 const exclusive = lt.type === 'IN' || [...ids].every(i => unlinkIds.has(i));
 if (!exclusive) continue;
 const idx = transactions.findIndex(t => String(t.id) === String(lt.id));
@@ -2228,7 +2204,7 @@ const entities = ensureArray(await sqliteStore.get('entities'));
 let changed = false;
 if (tx.type === 'IN') {
 const ent = entities.find(e => String(e.id) === String(tx.entityId));
-for (const id of _txMaterialIds(tx)) {
+for (const id of txMaterialIds(tx)) {
 const mat = inventory.find(m => String(m.id) === id);
 if (!mat || mat.supplierId || !ent) continue;
 mat.supplierId = ent.id;
@@ -2262,7 +2238,7 @@ await unifiedSave('transactions', transactions, null, creditChanged);
 changed = true;
 }
 }
-const saved = await _recomputeSupplierPayables([String(tx.entityId)], inventory, transactions, new Set(), _txMaterialIds(tx));
+const saved = await _recomputeSupplierPayables([String(tx.entityId)], inventory, transactions, new Set(), txMaterialIds(tx));
 return changed || saved.length > 0;
 }
 
@@ -2285,7 +2261,7 @@ const ent = entities.find(e => e && !e.deletedAt && String(e.id) === String(m.su
 if (!ent) continue;
 if (findPayableInTxs(transactions, m.id, m.supplierId).length > 0) continue;
 const paid = transactions
-.filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(m.supplierId) && _txMaterialIds(t).size === 1 && _txMaterialIds(t).has(String(m.id)))
+.filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'OUT' && String(t.entityId) === String(m.supplierId) && txMaterialIds(t).size === 1 && txMaterialIds(t).has(String(m.id)))
 .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 const amount = parseFloat((owed + paid).toFixed(2));
 const when = new Date(m.purchaseDate || m.createdAt || Date.now());
@@ -3233,20 +3209,12 @@ const custOpeningBalance = custPriorTxns.reduce((bal, t) => {
   }
   return bal + (debit - credit);
 }, 0);
-const _custEffDate = (t) => {
-const pt = t.paymentType || 'CASH';
-if (t.transactionType === 'OLD_DEBT') return new Date(0);
-if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT' || (pt === 'CREDIT' && t.creditReceived)) {
-return new Date(t.creditReceivedDate || t.date || 0);
-}
-return new Date(t.supplyDate || t.date || 0);
-};
 transactions.sort((a, b) => {
 if (a.isMerged && !b.isMerged) return -1;
 if (!a.isMerged && b.isMerged) return 1;
 if (a.transactionType === 'OLD_DEBT' && b.transactionType !== 'OLD_DEBT') return -1;
 if (a.transactionType !== 'OLD_DEBT' && b.transactionType === 'OLD_DEBT') return 1;
-return _custEffDate(a) - _custEffDate(b);
+return ledgerEffectiveDate(a) - ledgerEffectiveDate(b);
 });
 const salesContact = customers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
 const phone = salesContact?.phone || transactions.find(t => t.customerPhone)?.customerPhone || 'N/A';
@@ -3900,15 +3868,6 @@ export function openCameraGallery() {
   if (input) input.click();
 }
 
-function _readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
-}
-
 export async function handleCameraGalleryFiles(event) {
   const files = Array.from((event.target.files || [])).filter(f => !f.type || f.type.startsWith('image/'));
   event.target.value = '';
@@ -3920,7 +3879,7 @@ export async function handleCameraGalleryFiles(event) {
       await window.addProdPhotos(files);
       return;
     }
-    const dataUrl = await _readFileAsDataUrl(files[0]);
+    const dataUrl = await readFileAsDataUrl(files[0]);
     if (target === 'expense') {
       _applyExpensePendingPhoto(dataUrl);
     } else if (target === 'paytransfer') {
@@ -4445,7 +4404,6 @@ window.splashQuotes = splashQuotes;
 window.initSplashScreen = initSplashScreen;
 window.updatePaymentStatusVisibility = updatePaymentStatusVisibility;
 window.recordEntry = recordEntry;
-window._dedupDeletionRecordsLocal = _dedupDeletionRecordsLocal;
 window.registerDeletion = registerDeletion;
 window._captureRecordSnapshot = _captureRecordSnapshot;
 window.uploadDeletionToCloud = uploadDeletionToCloud;

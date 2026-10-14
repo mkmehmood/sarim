@@ -1,4 +1,4 @@
-import { esc, fmtAmt, fmtNum, sqliteStore, ensureArray } from './business.js';
+import { esc, fmtAmt, fmtNum, sqliteStore, ensureArray, readFileAsDataUrl } from './business.js';
 const getStoreLabel = (s) => (typeof window.getStoreLabel === 'function' ? window.getStoreLabel(s) : s);
 const MAX_PHOTOS = 6;
 const _thumbCache = new Map();
@@ -7,15 +7,6 @@ const _selected = new Set();
 
 function _toast(msg, type, ms = 3000) {
   if (window.showToast) window.showToast(msg, type, ms);
-}
-
-function _readFile(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-    r.readAsDataURL(file);
-  });
 }
 
 async function _compress(dataUrl, maxDim = 1280, quality = 0.75) {
@@ -80,7 +71,7 @@ export async function addProdPhotos(fileList) {
   if (files.length > room) _toast(`Only ${room} more photo${room === 1 ? '' : 's'} allowed — extra files skipped.`, 'warning');
   for (const f of use) {
     try {
-      const raw = await _readFile(f);
+      const raw = await readFileAsDataUrl(f);
       const small = await _compress(raw, 1400, 0.82);
       _picker.push({ key: null, dataUrl: small, isNew: true });
     } catch (e) {

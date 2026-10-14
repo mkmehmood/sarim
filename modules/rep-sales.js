@@ -1,5 +1,5 @@
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales } from './link-guards.js';
-import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
+import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -1486,20 +1486,12 @@ const repOpeningBalance = repPriorTxns.reduce((bal, t) => {
   }
   return bal + (debit - credit);
 }, 0);
-const _repEffDate = (t) => {
-const pt = t.paymentType || 'CASH';
-if (t.transactionType === 'OLD_DEBT') return new Date(0);
-if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT' || (pt === 'CREDIT' && t.creditReceived)) {
-return new Date(t.creditReceivedDate || t.date || 0);
-}
-return new Date(t.supplyDate || t.date || 0);
-};
 transactions.sort((a, b) => {
 if (a.isMerged && !b.isMerged) return -1;
 if (!a.isMerged && b.isMerged) return 1;
 if (a.transactionType === 'OLD_DEBT' && b.transactionType !== 'OLD_DEBT') return -1;
 if (a.transactionType !== 'OLD_DEBT' && b.transactionType === 'OLD_DEBT') return 1;
-return _repEffDate(a) - _repEffDate(b);
+return ledgerEffectiveDate(a) - ledgerEffectiveDate(b);
 });
 const repContact = clients.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
 const phone = repContact?.phone || transactions.find(t => t.customerPhone)?.customerPhone || 'N/A';

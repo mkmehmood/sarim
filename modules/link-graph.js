@@ -292,7 +292,7 @@ export function getUnitsShortIssue(label, requested, available) {
   return null;
 }
 
-const _txMatIds = (t) => {
+export const txMaterialIds = (t) => {
   const ids = new Set();
   if (t && t.materialId) ids.add(String(t.materialId));
   if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
@@ -303,12 +303,12 @@ const _stockValueFallback = (m) => _r2(m.totalValue || (m.purchaseCost && m.purc
 
 export function findPayableInTxs(txs, materialId, supplierId) {
   return (Array.isArray(txs) ? txs : []).filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'IN' &&
-    (supplierId == null || String(t.entityId) === String(supplierId)) && _txMatIds(t).has(String(materialId)));
+    (supplierId == null || String(t.entityId) === String(supplierId)) && txMaterialIds(t).has(String(materialId)));
 }
 
 export function isOrphanSupplierTx(t, inventory) {
   if (!t || t.isPayable !== true) return false;
-  const ids = _txMatIds(t);
+  const ids = txMaterialIds(t);
   if (ids.size === 0) return false;
   const inv = Array.isArray(inventory) ? inventory : [];
   return !inv.some(m => m && !m.deletedAt && ids.has(String(m.id)) && m.supplierId && String(m.supplierId) === String(t.entityId));
@@ -319,7 +319,7 @@ export function hasLiveSupplierInvoice(material, txs) {
 }
 
 export function materialOriginalPayable(material, inTxs) {
-  const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);
+  const direct = findPayableInTxs(inTxs, material && material.id).filter(t => txMaterialIds(t).size === 1);
   if (direct.length) return _r2(direct.reduce((s, t) => s + _n(t.amount), 0));
   return _stockValueFallback(material || {});
 }
@@ -999,4 +999,22 @@ export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 
     written.push(s.sqlite);
   }
   return written;
+}
+
+export function dedupDeletionRecords(arr) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Map();
+  arr.forEach(r => {
+    if (!r) return;
+    const key = String(r.id || r.recordId || '');
+    if (!key) return;
+    const existing = seen.get(key);
+    if (!existing
+        || (!existing.displayName && r.displayName)
+        || (!existing.snapshot && r.snapshot)
+        || (r.syncedToCloud && !existing.syncedToCloud)) {
+      seen.set(key, r);
+    }
+  });
+  return Array.from(seen.values());
 }

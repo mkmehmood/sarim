@@ -2785,3 +2785,12 @@ window.getRecordTimestamp = getRecordTimestamp;
 window.ensureRecordIntegrity = ensureRecordIntegrity;
 window.cleanupOldTombstones = cleanupOldTombstones;
 window.scheduleAutomaticCleanup = scheduleAutomaticCleanup;
+
+export function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}

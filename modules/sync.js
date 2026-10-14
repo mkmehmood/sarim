@@ -7,7 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { RECORD_STORES } from './link-graph.js';
+import { RECORD_STORES, dedupDeletionRecords } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -1253,6 +1253,22 @@ _syncQueue.run(async () => {
 });
 }
 
+const _getMs = (rec) => {
+  if (!rec) return 0;
+  const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
+  if (typeof ts === 'number') return ts;
+  if (ts && typeof ts.toMillis === 'function') return ts.toMillis();
+  if (ts && typeof ts === 'object') {
+    if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+    if (typeof ts._seconds === 'number') return ts._seconds * 1000;
+  }
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts === 'string') {
+    try { const t = new Date(ts).getTime(); if (!isNaN(t)) return t; } catch (e) {}
+  }
+  return 0;
+};
+
 export function _updateArray(array, docData, collectionName) {
   if (docData._placeholder || docData.id === '_placeholder_') return array;
   if (!docData.id) {
@@ -1267,21 +1283,8 @@ export function _updateArray(array, docData, collectionName) {
         if (!UUIDSyncRegistry.shouldApplyCloud(docData, localRecord)) return array;
       }
     }
-    const _getMs_pre = (rec) => {
-      if (!rec) return 0;
-      const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
-      if (typeof ts === 'number') return ts;
-      if (ts && typeof ts.toMillis === 'function') return ts.toMillis();
-      if (ts && typeof ts === 'object') {
-        if (typeof ts.seconds === 'number') return ts.seconds * 1000;
-        if (typeof ts._seconds === 'number') return ts._seconds * 1000;
-      }
-      if (ts instanceof Date) return ts.getTime();
-      if (typeof ts === 'string') { try { const t = new Date(ts).getTime(); if (!isNaN(t)) return t; } catch (e) {} }
-      return 0;
-    };
-    const cloudMs = _getMs_pre(docData);
-    const localMs = _getMs_pre(localRecord);
+    const cloudMs = _getMs(docData);
+    const localMs = _getMs(localRecord);
     if (docData.isMerged === true && localRecord.isMerged !== true) {
     } else if (localRecord.isMerged === true && docData.isMerged !== true) {
       return array;
@@ -1289,21 +1292,6 @@ export function _updateArray(array, docData, collectionName) {
       return array;
     }
   }
-  const _getMs = (rec) => {
-    if (!rec) return 0;
-    const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
-    if (typeof ts === 'number') return ts;
-    if (ts && typeof ts.toMillis === 'function') return ts.toMillis();
-    if (ts && typeof ts === 'object') {
-      if (typeof ts.seconds === 'number') return ts.seconds * 1000;
-      if (typeof ts._seconds === 'number') return ts._seconds * 1000;
-    }
-    if (ts instanceof Date) return ts.getTime();
-    if (typeof ts === 'string') {
-      try { const t = new Date(ts).getTime(); if (!isNaN(t)) return t; } catch (e) {}
-    }
-    return 0;
-  };
   const existingIdx = array.findIndex(item => item && item.id === docData.id);
   if (existingIdx === -1) {
     array.push(docData);
@@ -1880,24 +1868,7 @@ _cleanUnitPools
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(appStoresUnsub);
-    function _dedupDeletionRecords(arr) {
-      if (!Array.isArray(arr)) return [];
-      const seen = new Map();
-      arr.forEach(r => {
-        if (!r) return;
-        const key = String(r.id || r.recordId || '');
-        if (!key) return;
-        const existing = seen.get(key);
-        if (!existing
-            || (!existing.displayName && r.displayName)
-            || (!existing.snapshot && r.snapshot)
-            || (r.syncedToCloud && !existing.syncedToCloud)) {
-          seen.set(key, r);
-        }
-      });
-      return Array.from(seen.values());
-    }
-    window._dedupDeletionRecords = _dedupDeletionRecords;
+    window._dedupDeletionRecords = dedupDeletionRecords;
     const _handleDeletionsSnapshot = async (snapshot) => {
       try {
         if (snapshot.metadata.hasPendingWrites) return;
@@ -1993,7 +1964,7 @@ _cleanUnitPools
           } catch (docError) { console.warn('Failed to save data locally.', _safeErr(docError)); }
         }
         if (hasChanges) {
-          deletionRecords = _dedupDeletionRecords(deletionRecords);
+          deletionRecords = dedupDeletionRecords(deletionRecords);
           await sqliteStore.set('deletions', deletionRecords);
           await sqliteStore.set('deleted', Array.from(deletedSet));
           emitSyncUpdate({ deletions: null});
@@ -4375,8 +4346,7 @@ if (window._syncUpdatesCleanupInterval) { clearInterval(window._syncUpdatesClean
 if (window._tombstoneCleanupInterval) { clearInterval(window._tombstoneCleanupInterval); window._tombstoneCleanupInterval = null; }
 if (window._perfMonitorInterval) { clearInterval(window._perfMonitorInterval); window._perfMonitorInterval = null; }
 if (typeof syncState !== 'undefined' && syncState.syncInterval) { clearInterval(syncState.syncInterval); syncState.syncInterval = null; }
-if (auth) {
-await auth.signOut();
+if (auth) await auth.signOut();
 _set_currentUser(null);
 SQLiteCrypto.clearSessionKey();
 await sqliteStore.clearUserData().catch(() => {});
@@ -4419,52 +4389,7 @@ if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }
 window._forceLogoutSignOut = false;
-showToast(' Signed out successfully', 'success');
-} else {
-_set_currentUser(null);
-SQLiteCrypto.clearSessionKey();
-await sqliteStore.clearUserData().catch(() => {});
-await OfflineAuth.clearCredentials().catch(() => {});
-try {
-const keysToRemove = ['_gznd_session_active','_gznd_session_start','_gznd_session_key_backup',
-'persistentLogin','_gznd_login_attempts','_gznd_login_lockout'];
-keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
-sessionStorage.clear();
-} catch(e) {}
-try {
-await sqliteStore.clearAll().catch(() => {});
-try {
-  if (navigator.storage && navigator.storage.getDirectory) {
-    const root = await navigator.storage.getDirectory();
-    const opfsFiles = [
-      'naswar_dealers.sqlite', 'naswar_dealers.sqlite.bak',
-      'gznd_auth.json', 'gznd_keystore.json',
-      'gznd_entropy.json', 'gznd_session.json'
-    ];
-    for (const f of opfsFiles) { await root.removeEntry(f).catch(() => {}); }
-  }
-} catch(_) {}
-try {
-  const lsCleanup = [
-    '_gznd_sqlite_db', '_gznd_sqlite_db_bak',
-    '_gznd_auth_data', '_gznd_keystore',
-    '_gznd_entropy', '_gznd_session_store'
-  ];
-  lsCleanup.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
-} catch(_) {}
-} catch(e) {}
-sqliteStore.clearUserPrefix();
-DeltaSync.clearAllTimestamps().catch(() => {});
-if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
-if (typeof _clearDeviceIdStorage === 'function') {
-  await _clearDeviceIdStorage().catch(() => {});
-}
-if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
-  await sqliteStore.setBatch(_savedAppMode).catch(() => {});
-}
-window._forceLogoutSignOut = false;
-showToast(' Signed out', 'success');
-}
+showToast(auth ? ' Signed out successfully' : ' Signed out', 'success');
 setTimeout(() => {
 createAuthOverlay();
 showAuthOverlay();
