@@ -1821,7 +1821,7 @@ for (const [store, items] of Object.entries(storeGroups)) {
     totalSale:     totals.totalSale,
     profit:        totals.profit,
     formulaUnits:  totals.formulaUnits,
-    formulaStore:  items[0]?.formulaStore || '',
+    formulaId:  items[0]?.formulaId || '',
     formulaCost:   totals.formulaCost,
     paymentStatus: 'CASH',
     mergedRecordCount: items.length,
@@ -1871,7 +1871,7 @@ for (const [, grp] of Object.entries(sellerReturnGroups)) {
     totalSale:     totalSale,
     profit:        totalProfit,
     formulaUnits:  0,
-    formulaStore:  '',
+    formulaId:  '',
     formulaCost:   0,
     paymentStatus: 'CASH',
     isReturn:      true,
@@ -2257,7 +2257,7 @@ if (nonMergedRecords.length === 0) {
 }
 const storeGroups = {};
 nonMergedRecords.forEach(item => {
-  const key = (item.formulaType || '') + '|' + (item.store || '');
+  const key = (item.formulaId || '') + '|' + (item.store || '');
   if (!storeGroups[key]) storeGroups[key] = [];
   storeGroups[key].push(item);
 });
@@ -2269,7 +2269,7 @@ const mergedRecords = [];
 for (const items of Object.values(storeGroups)) {
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
   const store = items[0].store || '';
-  const formulaType = items[0].formulaType;
+  const formulaId = items[0].formulaId;
   const totals = items.reduce((acc, item) => {
     acc.units += (item.units || 0);
     acc.totalCost += (item.totalCost || 0);
@@ -2288,7 +2288,7 @@ for (const items of Object.values(storeGroups)) {
   const datesSorted = items.map(i => i.date).filter(Boolean).sort();
   const mergedRecord = ensureRecordIntegrity(_buildMergedBase(mergedId, mergeEpoch, nowISODate, nowTime, {
     store,
-    ...(formulaType ? { formulaType } : {}),
+    ...(formulaId ? { formulaId } : {}),
     units: totals.units,
     totalCost: totals.totalCost,
     materialsCost: totals.materialsCost,

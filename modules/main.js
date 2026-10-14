@@ -10,6 +10,8 @@ import './prod-photos.js';
 import './utilities-payments.js';
 import './customers.js';
 import './formula-store.js';
+import { runRecordFormulaIdMigration } from './record-formula-id-migration.js';
+runRecordFormulaIdMigration().catch((e) => console.warn('[formula-id migration] failed:', e && e.message));
 let _factoryLoad = null;
 let _repLoad = null;
 

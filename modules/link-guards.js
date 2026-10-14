@@ -205,7 +205,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return issue;
   }
   if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
-    const ft = snapshot.formulaStore || '';
+    const ft = snapshot.formulaId || '';
     const tracking = (await sqliteStore.get('tracking')) || {};
     const used = ctx && ctx.unitsUsed ? (ctx.unitsUsed.get(ft) || 0) : 0;
     const issue = getUnitsShortIssue(snapshot.formulaName || ft, Number(snapshot.formulaUnits) + used, (tracking[ft] && tracking[ft].available) || 0);
@@ -226,7 +226,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const formulas = (await sqliteStore.get('defaults')) || {};
     const idMap = await _loadIdMap();
     const entry = { ...snapshot, materialsUsed: (snapshot.materialsUsed || []).map(m => ({ ...m, id: resolveId(m.id, idMap) })) };
-    const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
+    const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaId || snapshot.store);
     if (block) return block;
     if (ctx && updates) updates.forEach(u => { const it = inv.find(i => i && i.id === u.id); if (it) it.quantity = u.quantity; });
     return null;
@@ -304,7 +304,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
   if (collectionName === 'factory' && cleanRecord) {
     const inv = ensureArray(await sqliteStore.get('inventory'));
     const formulas = (await sqliteStore.get('defaults')) || {};
-    const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaType || cleanRecord.store);
+    const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaId || cleanRecord.store);
     if (updates && updates.length) {
       const now = getTimestamp();
       for (const u of updates) {

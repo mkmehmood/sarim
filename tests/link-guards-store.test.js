@@ -258,7 +258,7 @@ describe('stock and factory units on restore', () => {
 
   it('recovered production needs factory formula units', async () => {
     seed({ tracking: { standard: { available: 3 } } });
-    const prod = { id: 'p', formulaUnits: 5, formulaStore: 'standard' };
+    const prod = { id: 'p', formulaUnits: 5, formulaId: 'standard' };
     assert.match(await G.getRecoverLinkBlockReason('production', prod), /only 3 are available/);
     seed({ tracking: { standard: { available: 9 } } });
     assert.equal(await G.getRecoverLinkBlockReason('production', prod), null);

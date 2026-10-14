@@ -653,7 +653,7 @@ const ampm = hours >= 12 ? 'PM' : 'AM';
 hours = hours % 12;
 hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
-const formulaStore = await getStorePool(storeKey);
+const formulaId = await getStorePool(storeKey);
 const salePrice = await getSalePriceForStore(storeKey);
 const costPerKg = await getCostPriceForStore(storeKey);
 const totalCost = quantity * costPerKg;
@@ -674,7 +674,7 @@ totalCost: totalCost,
 totalSale: totalSale,
 profit: profit,
 formulaUnits: 0,
-formulaStore: formulaStore,
+formulaId: formulaId,
 formulaCost: 0,
 paymentStatus: 'CASH',
 createdAt: retCreatedAt,

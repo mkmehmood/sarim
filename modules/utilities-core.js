@@ -1180,10 +1180,10 @@ const contWt = parseFloat(contWtEl ? contWtEl.value : 0) || 0;
 const inputDate = dateElement.value;
 const store = storeElement.value;
 const formulaUnits = parseFloat(formulaUnitsElement.value) || 0;
-const formulaStore = await getStorePool(store);
+const formulaId = await getStorePool(store);
 const salePrice = await getSalePriceForStore(store);
 const validation = await validateFormulaAvailability(store, formulaUnits);
-const _unitCredit = (_ed && _ed.original.formulaStore === formulaStore) ? (_ed.original.formulaUnits || 0) : 0;
+const _unitCredit = (_ed && _ed.original.formulaId === formulaId) ? (_ed.original.formulaUnits || 0) : 0;
 if (!validation.sufficient && !(_ed && validation.available + _unitCredit + 1e-9 >= formulaUnits)) {
 window.notifyBlocking(`Not enough formula units at ${(typeof window.getStoreLabel === 'function' && window.getStoreLabel(store)) || store}\nAvailable: ${fmtNum(validation.available)} units\nRequested: ${fmtNum(formulaUnits)} units\nShortage: ${fmtNum(Math.max(0, formulaUnits - validation.available))} units`, 'error', 'Low formula units');
 return;
@@ -1200,7 +1200,7 @@ return;
 }
 }
 let costData = await calculateDynamicCost(store, formulaUnits, net);
-if (_ed && _ed.original.formulaStore === costData.formulaStore && Array.isArray(_ed.original.formulaMaterials) && _ed.original.formulaUnits > 0 && _ed.original.formulaCost > 0 && net > 0) {
+if (_ed && _ed.original.formulaId === costData.formulaId && Array.isArray(_ed.original.formulaMaterials) && _ed.original.formulaUnits > 0 && _ed.original.formulaCost > 0 && net > 0) {
 const _frozenUnit = _ed.original.formulaCost / _ed.original.formulaUnits;
 costData = { ...costData, costPerUnit: _frozenUnit, totalFormulaCost: _frozenUnit * formulaUnits, dynamicCostPerKg: (_frozenUnit * formulaUnits) / net, formulaName: _ed.original.formulaName || costData.formulaName, formulaMaterials: _ed.original.formulaMaterials };
 }
@@ -1252,7 +1252,7 @@ totalCost,
 totalSale,
 profit,
 formulaUnits: formulaUnits,
-formulaStore: costData.formulaStore,
+formulaId: costData.formulaId,
 formulaName: costData.formulaName,
 formulaMaterials: costData.formulaMaterials,
 formulaCost: costData.totalFormulaCost,

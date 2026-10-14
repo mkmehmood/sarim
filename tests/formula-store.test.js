@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { DEFAULT_STORES, getDefaultStoreKey, formulaIdOf } from '../modules/store-keys.js';
-import { feedsFromFormulas } from '../modules/formula-pool-plan.js';
+import { feedsFromFormulas } from '../modules/formula-pools.js';
 const src = readFileSync(new URL('../modules/formula-store.js', import.meta.url), 'utf8');
 const DEFAULTS = DEFAULT_STORES.map(x => ({ ...x }));
 function load(initial = {}) {
@@ -51,7 +51,6 @@ describe('commitStoresWithFormulas', () => {
     const saved = data.get('stores');
     assert.deepEqual(saved.map((s) => s.salePrice), [540, 515, 610]);
     assert.deepEqual(saved.map((s) => s.formulaId), ['f1', 'f1', 'f2']);
-    assert.ok(saved.every((s) => !('formulaType' in s)));
     assert.ok(data.get('stores_timestamp') > 0);
   });
   it('writes cost feeds keyed by formula id for every formula, not only two', async () => {

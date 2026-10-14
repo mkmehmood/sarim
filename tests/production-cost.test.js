@@ -38,7 +38,7 @@ describe('production tab cost price', () => {
     assert.equal(c.costPerUnit, 10 * 120 + 2 * 50 + 30);
     assert.equal(c.totalFormulaCost, 2 * (10 * 120 + 2 * 50 + 30));
     assert.equal(c.dynamicCostPerKg, 0);
-    assert.equal(c.formulaStore, 'F1');
+    assert.equal(c.formulaId, 'F1');
     assert.equal(c.formulaMaterials.length, 2);
   });
   it('cost per kg is the total formula cost over the net weight once a weight exists', async () => {

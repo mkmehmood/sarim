@@ -5532,9 +5532,9 @@ const previousDateStr = previousDate.toISOString().split('T')[0];
 const prevProduction = production.filter(item => item.date === previousDateStr);
 const prevFactoryProduction = factory.filter(item => item.date === previousDateStr);
 const _pdPool = await getStorePool(storeType);
-const prevUsed = prevProduction.filter(item => !item.isReturn && item.formulaStore === _pdPool)
+const prevUsed = prevProduction.filter(item => !item.isReturn && item.formulaId === _pdPool)
 .reduce((sum, item) => sum + (item.formulaUnits || 0), 0);
-const prevProduced = prevFactoryProduction.filter(item => item.formulaType === _pdPool)
+const prevProduced = prevFactoryProduction.filter(item => item.formulaId === _pdPool)
 .reduce((sum, item) => sum + (item.units || 0), 0);
 if (previousDate >= new Date('2020-01-01')) {
 const prevPrevAvailable = await getPreviousDayAvailableUnits(storeType, previousDate);
@@ -5549,7 +5549,7 @@ const production = ensureArray(await sqliteStore.get('production'));
 const availInput = document.getElementById('factory-avail-value');
 const pool = availInput ? availInput.value : '';
 const tracking = (pool && factoryUnitTracking[pool]) || { produced: 0, consumed: 0, available: 0 };
-const data = production.filter(item => item.isReturn !== true && pool && item.formulaStore === pool);
+const data = production.filter(item => item.isReturn !== true && pool && item.formulaId === pool);
 const outputQuantity = data.reduce((sum, item) => sum + (item.net || 0), 0);
 const totalProfit = data.reduce((sum, item) => sum + (item.profit || 0), 0);
 const costPerUnit = pool ? await getCostPerUnit(pool) : 0;
@@ -5598,11 +5598,11 @@ return true;
 const allTimeRecomp = {};
 const _pool = (k) => (allTimeRecomp[k] = allTimeRecomp[k] || { produced: 0, consumed: 0 });
 for (const entry of factory) {
-if (entry.formulaType) _pool(entry.formulaType).produced += entry.units || 0;
+if (entry.formulaId) _pool(entry.formulaId).produced += entry.units || 0;
 }
 production.forEach(entry => {
-if (entry.isReturn === true || !entry.formulaStore) return;
-_pool(entry.formulaStore).consumed += entry.formulaUnits || 0;
+if (entry.isReturn === true || !entry.formulaId) return;
+_pool(entry.formulaId).consumed += entry.formulaUnits || 0;
 });
 const totalAvailable = Object.values(allTimeRecomp).reduce((sum, t) => sum + Math.max(0, t.produced - t.consumed), 0);
 let totalConsumed = 0;
@@ -5616,19 +5616,19 @@ const _unitCost = async (k) => (k in _costPerUnitCache ? _costPerUnitCache[k] : 
 for (const entry of production) {
 if (entry.isReturn === true) continue;
 if (!isInRange(entry.date)) continue;
-const formulaStore = entry.formulaStore || '';
+const formulaId = entry.formulaId || '';
 const units = entry.formulaUnits || 0;
-frozenUnitCostTotal += (entry.formulaCost > 0 && units > 0) ? entry.formulaCost : units * (await _unitCost(formulaStore));
+frozenUnitCostTotal += (entry.formulaCost > 0 && units > 0) ? entry.formulaCost : units * (await _unitCost(formulaId));
 totalConsumed += units;
 totalOutput += entry.net || 0;
 totalCost += entry.totalCost || 0;
 totalSaleValue += entry.totalSale || 0;
 totalProfit += entry.profit || 0;
 totalRawMatCost += entry.formulaCost || entry.totalCost || 0;
-const weightPerUnit = _recordUnitWeight(entry, await getWeightPerUnit(formulaStore));
+const weightPerUnit = _recordUnitWeight(entry, await getWeightPerUnit(formulaId));
 totalRawUsed += weightPerUnit * units;
 const _frozenMats = Array.isArray(entry.formulaMaterials);
-const formula = _frozenMats ? entry.formulaMaterials : (factoryDefaultFormulas[formulaStore] || []);
+const formula = _frozenMats ? entry.formulaMaterials : (factoryDefaultFormulas[formulaId] || []);
 formula.forEach(f => {
   const inv = _frozenMats ? null : (inventory.find(i => String(i.id) === String(f.id)) ||
                (f.name ? inventory.find(i => i.name && i.name.trim().toLowerCase() === f.name.trim().toLowerCase()) : null));
@@ -5648,7 +5648,7 @@ let totalAdditionalCostProd = 0;
 for (const entry of factory) {
   if (entry.isMerged || !isInRange(entry.date)) continue;
   const units = entry.units || 0;
-  const ft = entry.formulaType;
+  const ft = entry.formulaId;
   totalAdditionalCostProd += (entry.additionalCost != null ? (parseFloat(entry.additionalCost) || 0) : (factoryAdditionalCosts[ft] || 0) * units);
 }
 let periodDays = 1;

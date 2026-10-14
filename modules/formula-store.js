@@ -6,7 +6,7 @@ import { resolveSelectedFormula } from './link-graph.js';
 import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { getDefaultStoreKey, formulaIdOf } from './store-keys.js';
-import { feedsFromFormulas } from './formula-pool-plan.js';
+import { feedsFromFormulas } from './formula-pools.js';
 const STORE_KEY = 'formulas';
 const STORE_TS_KEY = 'formulas_timestamp';
 let _editingId = null;
@@ -54,7 +54,7 @@ function _afterChange() {
 
 export async function commitStoresWithFormulas(stores) {
   const list = await getFormulaStore();
-  const normalized = stores.map((s) => { const { formulaType, ...rest } = s; return rest; });
+  const normalized = stores;
   const ids = normalized.map(formulaIdOf).filter(Boolean);
   if (ids.some((id) => !list.find((f) => String(f.id) === id))) return { ok: false, error: 'Selected formula no longer exists in the Formula Store' };
   const now = getTimestamp();

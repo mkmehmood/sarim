@@ -21,14 +21,14 @@ export function computeUnitPools(factory, production) {
   const pools = {};
   const pool = (k) => (pools[k] = pools[k] || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] });
   _arr(factory).forEach((e) => {
-    if (!e || !e.store || !(e.units > 0) || !e.formulaType) return;
-    const t = pool(e.formulaType);
+    if (!e || !e.store || !(e.units > 0) || !e.formulaId) return;
+    const t = pool(e.formulaId);
     t.produced += e.units;
     if (e.totalCost) t.unitCostHistory.push({ date: e.date, costPerUnit: e.totalCost / e.units, units: e.units });
   });
   _arr(production).forEach((e) => {
-    if (!e || e.isReturn || !e.formulaStore || !e.formulaUnits) return;
-    pool(e.formulaStore).consumed += e.formulaUnits;
+    if (!e || e.isReturn || !e.formulaId || !e.formulaUnits) return;
+    pool(e.formulaId).consumed += e.formulaUnits;
   });
   Object.values(pools).forEach((t) => { t.available = Math.max(0, t.produced - t.consumed); });
   return pools;
