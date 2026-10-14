@@ -6163,7 +6163,7 @@ themeToggle.title = savedTheme === 'dark' ? "Switch to Light Mode" : "Switch to 
 }
 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 if (metaThemeColor) {
-metaThemeColor.setAttribute('content', savedTheme === 'light' ? '#E8E4EB' : '#2E2B33');
+metaThemeColor.setAttribute('content', savedTheme === 'light' ? '#EBE3DC' : '#302B29');
 }
 }
 
