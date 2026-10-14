@@ -259,10 +259,7 @@ export const OfflineAuth = {
     const record = await _OPFSStore.read(this._FILE, this._LS);
     if (!record || !record.email) return false;
     if (record.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
-    if (!record.saltHex) {
-      console.warn('OfflineAuth: legacy credential record — re-authentication required');
-      return false;
-    }
+    if (!record.saltHex) return false;
     const { hash } = await CryptoEngine.hashCredentials(email, password, record.saltHex);
     return hash === record.hash;
   },

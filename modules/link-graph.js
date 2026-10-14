@@ -624,32 +624,6 @@ export function planCalcRestore(entry, ctx) {
   return { block: problems.length ? `This calculator record cannot be recovered because ${problems.join('; ')}. Enter the calculation again.` : null };
 }
 
-export function findPartialConflicts(sales) {
-  const list = (Array.isArray(sales) ? sales : []).filter(s => s && !s.deletedAt);
-  const kids = new Map();
-  list.forEach(s => {
-    if (s.paymentType === 'PARTIAL_PAYMENT' && s.relatedSaleId) {
-      const k = String(s.relatedSaleId);
-      if (!kids.has(k)) kids.set(k, []);
-      kids.get(k).push(s);
-    }
-  });
-  const out = [];
-  list.forEach(p => {
-    const c = kids.get(String(p.id));
-    if (!c || p.paymentType !== 'CREDIT') return;
-    const childSum = _r2(c.reduce((t, x) => t + _n(x.totalValue), 0));
-    if (childSum <= 0) return;
-    const parentPaid = _n(p.partialPaymentReceived);
-    if (p.creditReceived) {
-      out.push({ id: p.id, customerName: p.customerName, kind: 'cash-counted-twice', amount: childSum, children: c.length });
-    } else if (parentPaid > 0) {
-      out.push({ id: p.id, customerName: p.customerName, kind: 'debt-reduced-twice', amount: _r2(Math.min(parentPaid, childSum)), children: c.length });
-    }
-  });
-  return out;
-}
-
 export function collectionCollected(rec) {
   if (!rec) return 0;
   return rec.collectedAmount != null ? _n(rec.collectedAmount) : _n(rec.totalValue);
@@ -1044,13 +1018,6 @@ export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 
     await store.set(s.sqlite, next);
     await store.set(s.tsKey, ts);
     written.push(s.sqlite);
-  }
-  // Backups written before units were pooled per formula carry the old pool
-  // assignment. Keep it only as input for the pool migration, which removes it.
-  const old = data.slots;
-  if (old && typeof old === 'object' && (old.standard || old.asaan) && !(await store.get('slots'))) {
-    await store.set('slots', { standard: old.standard || null, asaan: old.asaan || null });
-    written.push('slots');
   }
   return written;
 }

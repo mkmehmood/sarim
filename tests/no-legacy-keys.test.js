@@ -28,11 +28,9 @@ describe('app runs on current keys only', () => {
   }
 });
 
-const SLOT_CONCEPT_ALLOWED = new Set(['modules/formula-pool-plan.js', 'modules/formula-pool-migration.js', 'modules/link-graph.js']);
 describe('the formula slot concept is gone', () => {
   for (const f of files) {
     it(`${f} has no standard/asaan pools, slot helpers or slot keys`, () => {
-      if (SLOT_CONCEPT_ALLOWED.has(f)) return;
       const src = readFileSync(new URL(f, root), 'utf8');
       assert.ok(!/SLOT_KEYS|deriveSlots|unitPoolKey|formulaTypeFor|getFormulaSlot|getStoredFormulaSlots|getStoreFormulaType|_formulaSlot|slotPool/.test(src), `${f} still uses a slot helper`);
       assert.ok(!/\b(standard|asaan)\s*:\s*(\[|\{|\d)/.test(src.replace(/privileges:[^\n]*/g, '')), `${f} still keys data by standard/asaan`);
@@ -40,8 +38,4 @@ describe('the formula slot concept is gone', () => {
       assert.ok(!/['"`]slots(_timestamp)?['"`]/.test(src), `${f} still reads the slots key`);
     });
   }
-  it('link-graph only mentions the old assignment as backup input for the migration', () => {
-    const src = readFileSync(new URL('modules/link-graph.js', root), 'utf8');
-    assert.ok(!/mergeSlots|deriveSlots/.test(src));
-  });
 });

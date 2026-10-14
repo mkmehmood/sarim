@@ -5,7 +5,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
   getTransferPairRestoreIssue, getSupplierCreditReconsumeIssue,
@@ -44,9 +44,7 @@ export async function findCalcLinkForReturn(rec) {
   const hist = await _calcHistory();
   const byId = hist.find(h => h.returnEntryId === rec.id);
   if (byId) return { entry: byId, via: 'return' };
-  const legacy = hist.find(h => !h.returnEntryId && h.returnStore && h.returnStore === rec.store &&
-    Number(h.returned) === Number(rec.net) && h.date === rec.date && (!rec.returnedBy || rec.returnedBy === h.seller));
-  return legacy ? { entry: legacy, via: 'return' } : null;
+  return null;
 }
 
 export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
@@ -542,28 +540,6 @@ export async function loadCalcRestoreContext(entry) {
 
 export async function getCalcRestoreBlockReason(entry) {
   return planCalcRestore(entry, await loadCalcRestoreContext(entry)).block;
-}
-
-export async function auditLegacyPartialPayments(opts = {}) {
-  const customer = findPartialConflicts(ensureArray(await sqliteStore.get('sales')));
-  const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep')));
-  const all = [...customer.map(c => ({ ...c, where: 'customer' })), ...rep.map(c => ({ ...c, where: 'rep' }))];
-  const debt = all.filter(c => c.kind === 'debt-reduced-twice').reduce((t, c) => t + c.amount, 0);
-  const cash = all.filter(c => c.kind === 'cash-counted-twice').reduce((t, c) => t + c.amount, 0);
-  const report = { count: all.length, debtUnderstatedBy: Math.round(debt * 100) / 100, cashOverstatedBy: Math.round(cash * 100) / 100, items: all };
-  if (typeof window !== 'undefined') window._partialAudit = report;
-  if (all.length && !opts.silent) {
-    const today = new Date().toISOString().slice(0, 10);
-    if ((await sqliteStore.get('audit')) !== today) {
-      await sqliteStore.set('audit', today);
-      const names = [...new Set(all.map(c => c.customerName).filter(Boolean))].slice(0, 3).join(', ');
-      if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
-        window.window.notifyBlocking(`${all.length} old partly-paid sale${all.length !== 1 ? 's' : ''} (${names}) are counted twice: customer debt is understated by ${report.debtUnderstatedBy} and cash overstated by ${report.cashOverstatedBy}. Details: window._partialAudit`, 'warning', 'Warning');
-      }
-      console.table(all);
-    }
-  }
-  return report;
 }
 
 function _snapshotSales(list) { return list.map(x => ({ ref: x, copy: JSON.parse(JSON.stringify(x)) })); }

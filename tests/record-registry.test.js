@@ -193,13 +193,6 @@ describe('merge helpers and cloud category resolution', () => {
   it('mergeById keeps local, adds new, skips id-less', () => {
     assert.deepEqual(mergeById([{ id: 1, v: 'L' }], [{ id: 1, v: 'B' }, { id: 2 }, { v: 'x' }]), [{ id: 1, v: 'L' }, { id: 2 }]);
   });
-  it('a backup from before formula pools keeps its old assignment only as migration input', async () => {
-    const dev = memStore();
-    const written = await applyAuxBackupFields({ slots: { standard: 'f1', asaan: 'f2' } }, dev, 1, 'merge');
-    assert.deepEqual(written, ['slots']);
-    assert.deepEqual(dev._m.get('slots'), { standard: 'f1', asaan: 'f2' });
-    assert.equal((await collectAuxBackupFields(dev)).slots, undefined);
-  });
   it('newer cloud stamp replaces local', () => {
     const r = resolveExpenseCategories(['A', 'B'], ['A'], 10, 20);
     assert.deepEqual(r, { value: ['A'], ts: 20, changed: true });

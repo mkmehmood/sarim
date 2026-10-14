@@ -265,19 +265,6 @@ describe('stock and factory units on restore', () => {
   });
 });
 
-describe('legacy partly-paid audit', () => {
-  it('finds the double-counted sales and stays read-only', async () => {
-    seed({
-      sales: [{ id: 'p', paymentType: 'CREDIT', customerName: 'Ali', partialPaymentReceived: 300 }, { id: 'k', paymentType: 'PARTIAL_PAYMENT', relatedSaleId: 'p', totalValue: 300 }],
-      rep: [],
-    });
-    const r = await G.auditLegacyPartialPayments({ silent: true });
-    assert.equal(r.count, 1);
-    assert.equal(r.debtUnderstatedBy, 300);
-    assert.equal(saves.length, 0);
-  });
-});
-
 describe('transfer restore needs a complete pair', () => {
   beforeEach(() => seed({}));
   const half = { id: 'T1', type: 'OUT', amount: 50, isTransfer: true, transferPairId: 'P', entityId: 'A', entityName: 'Ali', transferPeerEntityId: 'B', transferPeerEntityName: 'Bilal' };

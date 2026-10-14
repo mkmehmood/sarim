@@ -1,4 +1,4 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getEntityDeleteBlockReason, getExpenseLinkedTxBlockReason } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getEntityDeleteBlockReason, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
@@ -906,7 +906,6 @@ async function _awaitVisualReady() {
 
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   initSplashScreen();
-  setTimeout(() => { auditLegacyPartialPayments().catch(() => {}); }, 9000);
   const urlParams = new URLSearchParams(window.location.search);
   const _action = urlParams.get('action');
   if (_action) {
@@ -7955,7 +7954,6 @@ window.setSalesSummaryMode = setSalesSummaryMode;
 window.setPerfOverviewMode = setPerfOverviewMode;
 window.setOverviewMode = setOverviewMode;
 window.deleteSalesEntry = deleteSalesEntry;
-window.auditLegacyPartialPayments = auditLegacyPartialPayments;
 window.revertSpecificSalesEntries = revertSpecificSalesEntries;
 window.toggleEntityViewMode = toggleEntityViewMode;
 window.calculateEntityBalances = calculateEntityBalances;

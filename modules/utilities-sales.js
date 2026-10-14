@@ -4548,7 +4548,6 @@ await sqliteStore.set('stores_timestamp', settingsTimestamp);
 if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
 }
 try { await applyAuxBackupFields(data, sqliteStore, settingsTimestamp, 'merge'); } catch (_auxErr) { console.warn('[restore] aux settings restore failed', _safeErr(_auxErr)); }
-try { await window.runFormulaPoolMigration(); } catch (_fpErr) { console.warn('[restore] formula pool migration failed', _safeErr(_fpErr)); }
 await loadAllData();
 try { syncFactoryProductionStats(); } catch(e) { console.error('Factory stats error:', _safeErr(e)); }
 try { await invalidateAllCaches(); } catch(e) { console.error('Cache invalidation error:', _safeErr(e)); }
@@ -4872,7 +4871,6 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
   if (data.tracking) { await sqliteStore.set('tracking', data.tracking); await sqliteStore.set('tracking_timestamp', settingsTimestamp); factoryUnitTracking = data.tracking; }
   if (Array.isArray(data.stores) && data.stores.length > 0) { await sqliteStore.set('stores', data.stores); await sqliteStore.set('stores_timestamp', settingsTimestamp); if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache(); }
   try { await applyAuxBackupFields(data, sqliteStore, settingsTimestamp, 'replace'); } catch (_auxErr) { console.warn('[ycRestore] aux settings restore failed', _safeErr(_auxErr)); }
-  try { await window.runFormulaPoolMigration(); } catch (_fpErr) { console.warn('[ycRestore] formula pool migration failed', _safeErr(_fpErr)); }
   try {
     const currentSettings = await sqliteStore.get('settings', {});
     const snap = (data._meta && data._meta.fyCloseSnapshot) || {};
