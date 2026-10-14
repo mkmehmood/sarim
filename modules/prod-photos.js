@@ -59,7 +59,7 @@ function _renderPicker() {
   const n = _picker.length;
   if (dot) { window.setDisplay(dot, n ? '' : 'none'); dot.textContent = n > 1 ? String(n) : ''; dot.classList.toggle('pp-dot-count', n > 1); }
   if (btn) {
-    btn.style.borderColor = n ? 'var(--accent)' : 'var(--glass-border)';
+    window.setStyle(btn, 'border-color', n ? 'st-border-color__38fcbe' : 'st-border-color__aa2589');
     btn.title = n ? `${n} photo${n === 1 ? '' : 's'} attached — tap to add another` : 'Attach photo';
   }
   if (clr) window.setDisplay(clr, n ? '' : 'none');

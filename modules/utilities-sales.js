@@ -247,9 +247,9 @@ const elCashNet = document.getElementById('cash-net-total');
 if (elCashNet) {
 elCashNet.textContent = `${fmtAmt(safeValue(netCash))}`;
 if (netCash < 0) {
-elCashNet.style.color = 'var(--danger)';
+window.setStyle(elCashNet, 'color', 'st-color__497726');
 } else {
-elCashNet.style.color = 'var(--accent-emerald)';
+window.setStyle(elCashNet, 'color', 'st-color__a4c6ac');
 }
 }
 const elCreditSales = document.getElementById('credit-sales-tab');
@@ -319,8 +319,8 @@ const sortedTransactions = [...entityTransactions].sort((a, b) => b.timestamp - 
 sortedTransactions.forEach(transaction => {
 const transactionCard = document.createElement('div');
 transactionCard.className = 'liquid-card';
-transactionCard.style.padding = '15px';
-transactionCard.style.position = 'relative';
+window.setStyle(transactionCard, 'padding', 'st-padding__4092fd');
+window.setStyle(transactionCard, 'position', 'st-position__d461c9');
 const badgeClass = transaction.type === 'IN' ? 'transaction-in' : 'transaction-out';
 const badgeText = transaction.type === 'IN' ? 'IN' : 'OUT';
 const amountClass = transaction.type === 'IN' ? 'profit-val' : 'cost-val';
@@ -1057,7 +1057,7 @@ if (currentRatioElement) {
 const currentRatio = indicators.liquidityRatios?.currentRatio;
 if (currentRatio === null || currentRatio === undefined) {
 currentRatioElement.textContent = 'N/A';
-currentRatioElement.style.color = 'var(--text-muted)';
+window.setStyle(currentRatioElement, 'color', 'st-color__5872de');
 } else {
 const _cr = safeNumber(parseFloat(currentRatio), 0);
 currentRatioElement.textContent = _cr.toFixed(2);
@@ -1422,7 +1422,7 @@ const remaining = Math.max(0, currentDebt - collected);
 if (collRes) window.setDisplay(collRes, '');
 if (balEl) {
 balEl.textContent = fmtAmt(remaining);
-balEl.style.color = remaining === 0 ? 'var(--accent-emerald)' : 'var(--warning)';
+window.setStyle(balEl, 'color', remaining === 0 ? 'st-color__a4c6ac' : 'st-color__52df2b');
 }
 }
 
@@ -1755,18 +1755,18 @@ const inventoryWarning = document.getElementById('inventory-warning') || createI
 if (quantity > availableInventory) {
 inventoryWarning.innerHTML = ` Warning: Only ${fmtNum(safeNumber(availableInventory, 0))} kg available.<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
 window.setDisplay(inventoryWarning, 'block');
-inventoryWarning.style.color = 'var(--danger)';
-inventoryWarning.style.background = 'rgba(220, 38, 38, 0.1)';
+window.setStyle(inventoryWarning, 'color', 'st-color__497726');
+window.setStyle(inventoryWarning, 'background', 'st-background__10233b');
 } else if (availableInventory < (quantity * 1.5)) {
 inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available (${fmtNum(safeNumber(availableInventory - quantity, 0))} kg remaining)<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg</small>`;
 window.setDisplay(inventoryWarning, 'block');
-inventoryWarning.style.color = 'var(--warning)';
-inventoryWarning.style.background = 'rgba(245, 158, 11, 0.1)';
+window.setStyle(inventoryWarning, 'color', 'st-color__52df2b');
+window.setStyle(inventoryWarning, 'background', 'st-background__3031a5');
 } else {
 inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
 window.setDisplay(inventoryWarning, 'block');
-inventoryWarning.style.color = 'var(--accent-emerald)';
-inventoryWarning.style.background = 'rgba(5, 150, 105, 0.1)';
+window.setStyle(inventoryWarning, 'color', 'st-color__a4c6ac');
+window.setStyle(inventoryWarning, 'background', 'st-background__ca4057');
 }
 }
 }
@@ -1835,10 +1835,10 @@ infoDisplay.classList.add('hidden');
 export function createInventoryWarningElement() {
 const warningDiv = document.createElement('div');
 warningDiv.id = 'inventory-warning';
-warningDiv.style.fontSize = '0.8rem';
-warningDiv.style.marginTop = '8px';
-warningDiv.style.padding = '6px';
-warningDiv.style.borderRadius = '6px';
+window.setStyle(warningDiv, 'font-size', 'st-font-size__c95659');
+window.setStyle(warningDiv, 'margin-top', 'st-margin-top__8a77e5');
+window.setStyle(warningDiv, 'padding', 'st-padding__492c8f');
+window.setStyle(warningDiv, 'border-radius', 'st-border-radius__0dc840');
 window.setDisplay(warningDiv, 'none');
 const salesSection = document.querySelector('#tab-sales .section.liquid-card');
 const calculateButton = salesSection.querySelector('.btn-main');
@@ -3719,7 +3719,7 @@ balanceHtml = `<span class="u-text-emerald u-fw-800" >Receivable: ${fmtAmt(Math.
 balanceHtml = `<span class="u-text-muted" >Settled</span>`;
 }
 const tr = document.createElement('tr');
-tr.style.cursor = 'pointer';
+window.setStyle(tr, 'cursor', 'st-cursor__3b6a3a');
 tr.innerHTML = `
 <td class="u-99ff2f6" onclick="openEntityDetailsOverlay('${esc(entity.id)}')">
 <div class="u-fw-700">${esc(safeName)}</div>
@@ -3966,11 +3966,11 @@ modal.innerHTML = `
 <h3 class="u-454fb31">Enter Password to Decrypt</h3>
 <p class="u-97b6268">This backup is encrypted with your account credentials.</p>
 <p class="u-ed7ce38">Account: <strong>${esc(currentUser.email)}</strong></p>
-<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
 <div id="dec-pwd-error" class="u-19cb4ec"></div>
 <div class="u-1e68903 d-flex">
-<button id="dec-pwd-ok" class="u-bc38067" style="background: var(--accent); border: none">Decrypt & Restore</button>
-<button id="dec-pwd-cancel" class="u-4a0b42c" style="background: var(--input-bg); border: 1px solid var(--glass-border)">Cancel</button>
+<button id="dec-pwd-ok" class="u-bc38067 st-background__36d305 st-border-bottom__2eda1d" style="background: var(--accent); border: none">Decrypt & Restore</button>
+<button id="dec-pwd-cancel" class="u-4a0b42c st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">Cancel</button>
 </div>
 </div>`;
 document.body.appendChild(modal);
@@ -4805,11 +4805,11 @@ const paymentSummarySection = document.getElementById('payment-summary-section')
 const paymentHistorySection = document.getElementById('payment-history-section');
 if (paymentSummarySection) {
 window.setDisplay(paymentSummarySection, '');
-paymentSummarySection.style.visibility = 'visible';
+window.setStyle(paymentSummarySection, 'visibility', 'st-visibility__8a20bb');
 }
 if (paymentHistorySection) {
 window.setDisplay(paymentHistorySection, '');
-paymentHistorySection.style.visibility = 'visible';
+window.setStyle(paymentHistorySection, 'visibility', 'st-visibility__8a20bb');
 }
 setTimeout(async () => {
 try {
@@ -4961,9 +4961,9 @@ return lastScrollY;
 
 export function enableGPUAcceleration(element) {
 if (!element) return;
-element.style.transform = 'translateZ(0)';
-element.style.willChange = 'transform';
-element.style.backfaceVisibility = 'hidden';
+window.setStyle(element, 'transform', 'st-transform__e315e8');
+window.setStyle(element, 'will-change', 'st-will-change__0cef00');
+window.setStyle(element, 'backface-visibility', 'st-backface-visibility__c6582b');
 }
 
 export const DOMBatch = {
@@ -5031,7 +5031,7 @@ return animation.finished;
 
 export function fadeIn(element, duration = 150) {
 if (!element) return Promise.resolve();
-element.style.opacity = '0';
+window.setStyle(element, 'opacity', 'st-opacity__8d919c');
 window.setDisplay(element, '');
 return animateElement(element, [
 { opacity: 0 },
@@ -5491,11 +5491,11 @@ if (_rawBreakdownEl) {
 </div>`).join('');
     _rawBreakdownEl.innerHTML = `
 <div class="u-0d69e4b">
-<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62 d-flex" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
 <span class="u-5056b09">&#x25b6;</span>
 <span class="u-e2e3ece">Materials Breakdown</span>
 </button>
-<div id="${_bId}" class="u-fdf6e25 d-none" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${_bId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Material</span>
 <span class="u-1e68903 d-flex">
@@ -5840,11 +5840,11 @@ const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
 </div>`).join('');
 soldBreakdownHtml = `
 <div class="u-6b1f0d9">
-<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
 <span class="u-5056b09">▶</span>
 <span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${soldBreakdownId}" class="u-fdf6e25 d-none" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${soldBreakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Customer</span>
 <span class="u-e89dac7 text-right">Qty Sold</span>
@@ -5865,7 +5865,7 @@ ${soldBreakdownHtml}
 <div class="u-9cc1f8f">
 <p><span>Remaining:</span> <span class="profit-val u-7463f71">${fmtNum(safeValue(remainingQty))} kg</span></p>
 </div>
-<div class="u-1f16247" style="background: rgba(37,99,235,0.03)">
+<div class="u-1f16247 st-background__396ef7" style="background: rgba(37,99,235,0.03)">
 <p><span>Formula Units:</span> <span class="qty-val u-fw-700" >${fmtNum(safeValue(storeData.formulaUnits))}</span></p>
 <p><span>Formula Cost:</span> <span class="cost-val u-fw-700" >${fmtAmt(safeValue(storeData.formulaCost))}</span></p>
 </div>
@@ -5911,11 +5911,11 @@ const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
 </div>`).join('');
 combinedSoldBreakdownHtml = `
 <div class="u-6b1f0d9">
-<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
 <span class="u-5056b09">▶</span>
 <span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${combinedSoldBreakdownId}" class="u-fdf6e25 d-none" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${combinedSoldBreakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Customer</span>
 <span class="u-e89dac7 text-right">Qty Sold</span>
@@ -6395,7 +6395,7 @@ let creditSection = '';
 if (!isOldDebtItem) {
 if (paymentType === 'CREDIT' && !creditReceived) {
 creditSection = `
-<div class="credit-checkbox-container u-b34d4f2" style="pointer-events: none">
+<div class="credit-checkbox-container u-b34d4f2 st-pointer-events__8b1364" style="pointer-events: none">
 <input type="checkbox" class="credit-checkbox" disabled>
 <label class="credit-checkbox-label">Mark as Received</label>
 </div>
@@ -6530,7 +6530,7 @@ if (!el) return;
 if (!fromStore || !date) { el.textContent = ''; return; }
 const snap = await computeStoreStockSnapshot(fromStore, date);
 el.textContent = `${fmtNum(safeNumber(snap.available, 0))} kg available at ${getStoreLabel(fromStore)} on ${date}`;
-el.style.color = snap.available > 0 ? 'var(--accent-emerald)' : 'var(--danger)';
+window.setStyle(el, 'color', snap.available > 0 ? 'st-color__a4c6ac' : 'st-color__497726');
 }
 
 window.updateStockTransferAvailability = updateStockTransferAvailability;

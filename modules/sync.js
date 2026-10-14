@@ -473,7 +473,7 @@ showAuthOverlay();
 const messageDiv = document.getElementById('auth-message');
 if (messageDiv) {
 messageDiv.textContent = 'Please enter your password to restore encrypted data access';
-messageDiv.style.color = 'var(--warning)';
+window.setStyle(messageDiv, 'color', 'st-color__52df2b');
 }
 const emailInput = document.getElementById('auth-email');
 if (emailInput) emailInput.value = user.email;
@@ -3583,7 +3583,7 @@ export async function showSyncHealthPanel() {
         Last sync: ${results.valid[0]?.lastSync || 'Never'}
       </div>
       <button onclick="performOneClickSync();document.getElementById('sync-health-panel').remove()"
-        class="u-ca0f564" style="border: none; background: #2563eb">
+        class="u-ca0f564 st-border-bottom__2eda1d st-background__830bed" style="border: none; background: #2563eb">
         Sync Now
       </button>
     `;
@@ -3760,7 +3760,7 @@ document.body.style.overflow = 'hidden';
 export function hideAuthOverlay() {
 const overlay = document.getElementById('auth-overlay');
 if (overlay) {
-overlay.style.animation = 'auth-fade-out 0.22s ease forwards';
+window.setStyle(overlay, 'animation', 'st-animation__aa0082');
 setTimeout(() => {
   if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
 }, 230);
@@ -3841,8 +3841,8 @@ const check = await _checkUserApproved(user.uid, user.email);
 if (check.denied) {
 const messageDiv = document.getElementById('auth-message');
 const btn = document.getElementById('auth-google-btn');
-if (messageDiv) { messageDiv.textContent = check.reason; messageDiv.style.color = 'var(--danger)'; }
-if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+if (messageDiv) { messageDiv.textContent = check.reason; window.setStyle(messageDiv, 'color', 'st-color__497726'); }
+if (btn) { btn.disabled = false; window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); }
 return;
 }
 const _googleKeyMaterial = user.uid;
@@ -3917,18 +3917,18 @@ console.warn('Password link failed (non-critical):', _safeErr(e));
 export async function _onGoogleCredential(response) {
 const messageDiv = document.getElementById('auth-message');
 if (!response || !response.credential) {
-if (messageDiv) { messageDiv.textContent = 'Google sign-in cancelled.'; messageDiv.style.color = 'var(--danger)'; }
+if (messageDiv) { messageDiv.textContent = 'Google sign-in cancelled.'; window.setStyle(messageDiv, 'color', 'st-color__497726'); }
 return;
 }
-if (messageDiv) { messageDiv.textContent = 'Signing in…'; messageDiv.style.color = 'var(--accent)'; }
+if (messageDiv) { messageDiv.textContent = 'Signing in…'; window.setStyle(messageDiv, 'color', 'st-color__a80552'); }
 const container = document.getElementById('gsi-btn-container');
-if (container) container.style.pointerEvents = 'none';
+if (container) window.setStyle(container, 'pointer-events', 'st-pointer-events__8b1364');
 try {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const _gAuth = (typeof auth !== 'undefined' && auth) ? auth : firebase.auth();
 const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
 const result = await _gAuth.signInWithCredential(credential);
-if (messageDiv) { messageDiv.textContent = 'Signed in! Opening app…'; messageDiv.style.color = 'var(--accent-emerald)'; }
+if (messageDiv) { messageDiv.textContent = 'Signed in! Opening app…'; window.setStyle(messageDiv, 'color', 'st-color__a4c6ac'); }
 await _applyGoogleUser(result.user);
 } catch(error) {
 console.error('Google credential sign-in failed:', _safeErr(error));
@@ -3938,13 +3938,13 @@ const _pendingGCred  = error.credential || firebase.auth.GoogleAuthProvider.cred
 if (_existingEmail) {
 if (messageDiv) {
 messageDiv.textContent = 'This Google account\'s email already has a password account. Enter your password below first — Google will link automatically on sign-in.';
-messageDiv.style.color = 'var(--warning)';
+window.setStyle(messageDiv, 'color', 'st-color__52df2b');
 const emailInput = document.getElementById('auth-email');
 if (emailInput) emailInput.value = _existingEmail;
 }
-if (container) container.style.pointerEvents = '';
+if (container) window.setStyle(container, 'pointer-events', '');
 const btn = document.getElementById('auth-google-btn');
-if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+if (btn) { btn.disabled = false; window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); }
 return;
 }
 }
@@ -3958,10 +3958,10 @@ else if (error.code === 'auth/account-exists-with-different-credential')
 else if (error.code === 'auth/network-request-failed')
   msg = 'Network error. Check your connection and try again.';
 else msg = 'Google sign-in failed: ' + (error.message || error.code || '');
-if (messageDiv) { messageDiv.textContent = msg; messageDiv.style.color = 'var(--danger)'; }
-if (container) container.style.pointerEvents = '';
+if (messageDiv) { messageDiv.textContent = msg; window.setStyle(messageDiv, 'color', 'st-color__497726'); }
+if (container) window.setStyle(container, 'pointer-events', '');
 const btn = document.getElementById('auth-google-btn');
-if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+if (btn) { btn.disabled = false; window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); }
 }
 }
 
@@ -3991,10 +3991,10 @@ export function _handleGoogleBtnClick() {
 const btn = document.getElementById('auth-google-btn');
 const msg = document.getElementById('auth-message');
 if (!navigator.onLine) {
-if (msg) { msg.textContent = 'Google sign-in requires internet.'; msg.style.color = 'var(--danger)'; }
+if (msg) { msg.textContent = 'Google sign-in requires internet.'; window.setStyle(msg, 'color', 'st-color__497726'); }
 return;
 }
-if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+if (btn) { btn.disabled = true; window.setStyle(btn, 'opacity', 'st-opacity__d95b59'); }
 if (msg) { msg.textContent = ''; }
 function doPrompt() {
 if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
@@ -4005,13 +4005,13 @@ if (!_gsiInitialized) _initGSIInOverlay();
 google.accounts.id.prompt(notification => {
   const mom = notification.getMomentType ? notification.getMomentType() : '';
   if (notification.isSkippedMoment && notification.isSkippedMoment()) {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (btn) { btn.disabled = false; window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); }
     if (msg) {
-      msg.style.color = 'var(--text-muted)';
+      window.setStyle(msg, 'color', 'st-color__5872de');
       msg.textContent = 'No Google accounts detected. Sign into Google in your browser first, then try again.';
     }
   } else if (notification.isDismissedMoment && notification.isDismissedMoment()) {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    if (btn) { btn.disabled = false; window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); }
     if (msg) { msg.textContent = ''; }
   }
 });
@@ -4031,7 +4031,7 @@ const email = emailInput.value.trim();
 const password = passwordInput.value;
 if (!email || !password) {
 messageDiv.textContent = 'Please enter both email and password';
-messageDiv.style.color = 'var(--warning)';
+window.setStyle(messageDiv, 'color', 'st-color__52df2b');
 return;
 }
 if (LoginRateLimiter.isLockedOut()) {
@@ -4039,7 +4039,7 @@ const remainSec = Math.ceil(LoginRateLimiter.lockoutRemainingMs() / 1000);
 const mins = Math.floor(remainSec / 60);
 const secs = String(remainSec % 60).padStart(2,'0');
 messageDiv.textContent = `Too many failed attempts. Try again in ${mins}m ${secs}s.`;
-messageDiv.style.color = 'var(--danger)';
+window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
 const _loginBackoff = LoginRateLimiter.backoffMs();
@@ -4047,7 +4047,7 @@ if (_loginBackoff > 0) {
 const _submitBtn = document.querySelector('#auth-form button[type="submit"]');
 if (_submitBtn) _submitBtn.disabled = true;
 messageDiv.textContent = `Too many attempts — waiting ${Math.round(_loginBackoff/1000)}s…`;
-messageDiv.style.color = 'var(--warning)';
+window.setStyle(messageDiv, 'color', 'st-color__52df2b');
 await new Promise(r => setTimeout(r, _loginBackoff));
 if (_submitBtn) _submitBtn.disabled = false;
 if (LoginRateLimiter.isLockedOut()) {
@@ -4055,12 +4055,12 @@ const remainSec2 = Math.ceil(LoginRateLimiter.lockoutRemainingMs() / 1000);
 const mins2 = Math.floor(remainSec2 / 60);
 const secs2 = String(remainSec2 % 60).padStart(2,'0');
 messageDiv.textContent = `Too many failed attempts. Try again in ${mins2}m ${secs2}s.`;
-messageDiv.style.color = 'var(--danger)';
+window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
 }
 messageDiv.textContent = 'Verifying credentials...';
-messageDiv.style.color = 'var(--accent)';
+window.setStyle(messageDiv, 'color', 'st-color__a80552');
 if (typeof firebase !== 'undefined' && !firebase.apps.length) {
 try { firebase.initializeApp(firebaseConfig); } catch(initErr) { console.warn('Firebase init on sign-in:', _safeErr(initErr)); }
 }
@@ -4077,7 +4077,7 @@ const _signInCred = await firebaseAuth.signInWithEmailAndPassword(email, passwor
 const _wlCheck = await _checkUserApproved(_signInCred.user.uid, email);
 if (_wlCheck.denied) {
 messageDiv.textContent = _wlCheck.reason;
-messageDiv.style.color = 'var(--danger)';
+window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
 await OfflineAuth.saveCredentials(email, password);
@@ -4098,7 +4098,7 @@ window._sessionStartMs = Date.now();
 sqliteStore.set('session_start', Date.now()).catch(() => {});
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = 'Success! Loading...';
-messageDiv.style.color = 'var(--accent-emerald)';
+window.setStyle(messageDiv, 'color', 'st-color__a4c6ac');
 try {
   if (typeof loadAllData === 'function') await loadAllData();
 } catch(e) { console.warn('Post-login data reload failed:', _safeErr(e)); }
@@ -4111,13 +4111,13 @@ if(typeof performOneClickSync === 'function') performOneClickSync();
 const hasStored = await OfflineAuth.hasStoredCredentials();
 if (!hasStored) {
 messageDiv.textContent = 'No offline account found. Please connect to internet for first-time login.';
-messageDiv.style.color = 'var(--danger)';
+window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
 const valid = await OfflineAuth.verifyCredentials(email, password);
 if (!valid) {
 messageDiv.textContent = 'Incorrect email or password.';
-messageDiv.style.color = 'var(--danger)';
+window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
 _set_currentUser({
@@ -4132,7 +4132,7 @@ sqliteStore.reEncryptAll().catch(() => {});
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
 LoginRateLimiter.recordSuccess();
 messageDiv.textContent = ' Offline Login Successful';
-messageDiv.style.color = 'var(--accent-emerald)';
+window.setStyle(messageDiv, 'color', 'st-color__a4c6ac');
 if (typeof initDeviceShard === 'function') {
   await initDeviceShard().catch(() => {});
 }
@@ -4155,7 +4155,7 @@ else if (error.code === 'auth/invalid-credential' || error.code === 'auth/invali
 const _methods = await firebase.auth().fetchSignInMethodsForEmail(email).catch(() => []);
 if (_methods.includes('google.com') && !_methods.includes('password')) {
 messageDiv.textContent = 'This account uses Google sign-in. Tap the Google button above to sign in — your password will also be linked.';
-messageDiv.style.color = 'var(--warning)';
+window.setStyle(messageDiv, 'color', 'st-color__52df2b');
 _pendingLinkEmail    = email;
 _pendingLinkPassword = password;
 LoginRateLimiter.recordSuccess();
@@ -4175,7 +4175,7 @@ try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem(
 if (typeof initDeviceShard === 'function') { await initDeviceShard().catch(() => {}); }
 try { if (typeof loadAllData === 'function') await loadAllData(); } catch(e) {}
 messageDiv.textContent = ' Offline Login (Network unavailable)';
-messageDiv.style.color = 'var(--accent-emerald)';
+window.setStyle(messageDiv, 'color', 'st-color__a4c6ac');
 setTimeout(() => { hideAuthOverlay(); if(typeof refreshAllDisplays==='function')refreshAllDisplays(); }, 300);
 return;
 }
@@ -4190,7 +4190,7 @@ const secs = String(remainSec % 60).padStart(2,'0');
 errorMessage = `Too many failed attempts. Account temporarily locked. Try again in ${mins}m ${secs}s.`;
 }
 messageDiv.textContent = errorMessage;
-messageDiv.style.color = 'var(--danger)';
+window.setStyle(messageDiv, 'color', 'st-color__497726');
 }
 }
 
@@ -4302,22 +4302,22 @@ listEl.innerHTML = allAccounts.map(acct => {
 const isMe     = acct.uid === currentUser.uid;
 const approved = acct.approved !== false;
 const dot = approved
-  ? '<span class="u-eca6a09 d-inline-block" style="background: var(--accent-emerald)"></span>'
-  : '<span class="u-eca6a09 d-inline-block" style="background: var(--danger)"></span>';
+  ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3" style="background: var(--accent-emerald)"></span>'
+  : '<span class="u-eca6a09 d-inline-block st-background__047b23" style="background: var(--danger)"></span>';
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
       '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn-theme u-af19549" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="border-color: rgba(239,68,68,0.3)">Remove</button>'
+      '<button class="btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="border-color: rgba(239,68,68,0.3)">Remove</button>'
     ].join('');
-return '<div class="u-a412d9a d-flex" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
+return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
   '<div class="u-855cc88 d-flex">' + dot +
   '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow" style="overflow: hidden">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
   '<div class="u-28c8f7e d-flex">' +
   (acct.role === 'admin'
-    ? '<span class="u-e4e2d96" style="background: rgba(29,233,182,0.12); border: 1px solid rgba(29,233,182,0.3)">admin</span>'
-    : '<span class="u-e7a1434" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">user</span>') +
+    ? '<span class="u-e4e2d96 st-background__74ab11 st-border-bottom__cdd2cd" style="background: rgba(29,233,182,0.12); border: 1px solid rgba(29,233,182,0.3)">admin</span>'
+    : '<span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">user</span>') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
   '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
@@ -4513,7 +4513,7 @@ showAuthOverlay();
 syncBtn.style.removeProperty('background');
 syncBtn.style.setProperty('background-color', '#ff9f0a', 'important');
 syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, #ff9f0a 0%, #ff375f 100%)', 'important');
-syncBtn.style.color = '#fff';
+window.setStyle(syncBtn, 'color', 'st-color__729d2f');
 } else {
 syncBtn.innerHTML = ' SYNC DATA';
 syncBtn.onclick = () => {
@@ -4522,7 +4522,7 @@ performOneClickSync();
 syncBtn.style.removeProperty('background');
 syncBtn.style.setProperty('background-color', '#2563eb', 'important');
 syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, #2563eb 0%, #059669 100%)', 'important');
-syncBtn.style.color = '#fff';
+window.setStyle(syncBtn, 'color', 'st-color__729d2f');
 }
 }
 

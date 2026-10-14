@@ -297,10 +297,10 @@ if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
 updateCalcRangeLabel();
 totalSoldField.value = safeNumber(sel.qty, 0).toFixed(2);
 totalSoldField.readOnly = true;
-totalSoldField.style.background = 'rgba(37, 99, 235, 0.1)';
-totalSoldField.style.color = 'var(--accent)';
-totalSoldField.style.fontWeight = 'bold';
-totalSoldField.style.border = '1px solid var(--accent)';
+window.setStyle(totalSoldField, 'background', 'st-background__44812c');
+window.setStyle(totalSoldField, 'color', 'st-color__a80552');
+window.setStyle(totalSoldField, 'font-weight', 'st-font-weight__bff3d1');
+window.setStyle(totalSoldField, 'border', 'st-border__89f1f8');
 const usedRepSaleIds = new Set();
 if (Array.isArray(calculator)) {
   calculator.forEach(calcEntry => {
@@ -337,10 +337,10 @@ if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
 
 export function styleAutoFilledField(field) {
-field.style.background = 'rgba(5, 150, 105, 0.1)';
-field.style.color = 'var(--accent-emerald)';
-field.style.fontWeight = 'bold';
-field.style.border = '1px solid var(--accent-emerald)';
+window.setStyle(field, 'background', 'st-background__ca4057');
+window.setStyle(field, 'color', 'st-color__a4c6ac');
+window.setStyle(field, 'font-weight', 'st-font-weight__bff3d1');
+window.setStyle(field, 'border', 'st-border__43d086');
 }
 
 export async function loadSalesData(compMode = 'all') {
@@ -1926,14 +1926,14 @@ if (entity.isExpenseEntity === true) return false;
 return entity.name.toLowerCase().includes(query);
 });
 let html = '';
-html += `<div class="u-423ed18" style="background: var(--input-bg)"> EXPENSES</div>`;
+html += `<div class="u-423ed18 st-background__356c02" style="background: var(--input-bg)"> EXPENSES</div>`;
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
 if (!name || typeof name !== 'string') return;
 const safeName = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const count = expenses.filter(e => e && e.name === name).length;
 html += `
-<div class="u-0f04ee6" style="background: var(--input-bg)"
+<div class="u-0f04ee6 st-background__356c02" style="background: var(--input-bg)"
 onmousedown="selectExpense('${safeName}', 'expense')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -1948,14 +1948,14 @@ ${count} expense records
 } else {
 html += `<div class="u-02d7412">No matching expenses — will create new</div>`;
 }
-html += `<div class="u-423ed18" style="background: var(--input-bg)"> ENTITIES</div>`;
+html += `<div class="u-423ed18 st-background__356c02" style="background: var(--input-bg)"> ENTITIES</div>`;
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return;
 const safeName = entity.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
 const txnCount = transactions.filter(t => t && t.entityId === entity.id).length;
 html += `
-<div class="u-0f04ee6" style="background: var(--input-bg)"
+<div class="u-0f04ee6 st-background__356c02" style="background: var(--input-bg)"
 onmousedown="selectExpense('${safeName}', 'entity')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -1982,29 +1982,29 @@ document.getElementById('expenseAmount').focus();
 return;
 }
 if (type === 'entity') {
-document.getElementById('btn-category-operating').style.opacity = '0.4';
-document.getElementById('btn-category-operating').style.pointerEvents = 'none';
-document.getElementById('btn-category-in').style.opacity = '1';
-document.getElementById('btn-category-in').style.pointerEvents = 'auto';
-document.getElementById('btn-category-out').style.opacity = '1';
-document.getElementById('btn-category-out').style.pointerEvents = 'auto';
+window.setStyle(document.getElementById('btn-category-operating'), 'opacity', 'st-opacity__c4c3c1');
+window.setStyle(document.getElementById('btn-category-operating'), 'pointer-events', 'st-pointer-events__8b1364');
+window.setStyle(document.getElementById('btn-category-in'), 'opacity', 'st-opacity__c6e797');
+window.setStyle(document.getElementById('btn-category-in'), 'pointer-events', 'st-pointer-events__0b4908');
+window.setStyle(document.getElementById('btn-category-out'), 'opacity', 'st-opacity__c6e797');
+window.setStyle(document.getElementById('btn-category-out'), 'pointer-events', 'st-pointer-events__0b4908');
 if (window._expenseCategory !== 'IN' && window._expenseCategory !== 'OUT') {
 selectExpenseCategory('OUT', document.getElementById('btn-category-out'));
 }
 } else if (type === 'expense') {
-document.getElementById('btn-category-operating').style.opacity = '1';
-document.getElementById('btn-category-operating').style.pointerEvents = 'auto';
-document.getElementById('btn-category-in').style.opacity = '0.4';
-document.getElementById('btn-category-in').style.pointerEvents = 'none';
-document.getElementById('btn-category-out').style.opacity = '0.4';
-document.getElementById('btn-category-out').style.pointerEvents = 'none';
+window.setStyle(document.getElementById('btn-category-operating'), 'opacity', 'st-opacity__c6e797');
+window.setStyle(document.getElementById('btn-category-operating'), 'pointer-events', 'st-pointer-events__0b4908');
+window.setStyle(document.getElementById('btn-category-in'), 'opacity', 'st-opacity__c4c3c1');
+window.setStyle(document.getElementById('btn-category-in'), 'pointer-events', 'st-pointer-events__8b1364');
+window.setStyle(document.getElementById('btn-category-out'), 'opacity', 'st-opacity__c4c3c1');
+window.setStyle(document.getElementById('btn-category-out'), 'pointer-events', 'st-pointer-events__8b1364');
 if (window._expenseCategory === 'IN' || window._expenseCategory === 'OUT') {
 selectExpenseCategory('operating', document.getElementById('btn-category-operating'));
 }
 } else {
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
 const btn = document.getElementById(id);
-if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+if (btn) { window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); window.setStyle(btn, 'pointer-events', 'st-pointer-events__0b4908'); }
 });
 }
 document.getElementById('expenseAmount').focus();
@@ -2054,7 +2054,7 @@ grp.querySelectorAll('.ret-rep-btn').forEach(b => b.remove());
 const seller = (document.getElementById('sellerSelect') || {}).value;
 const reps = (Array.isArray(window.salesRepsList) ? window.salesRepsList : []).filter(r => r && r !== seller && r !== 'NONE' && r !== 'ADMIN');
 if (window._returnRep && !reps.includes(window._returnRep)) window._returnRep = null;
-grp.style.flexWrap = 'wrap';
+window.setStyle(grp, 'flex-wrap', 'st-flex-wrap__62da06');
 reps.forEach(r => {
 const b = document.createElement('button');
 b.type = 'button';
@@ -2662,8 +2662,8 @@ const categoryLabel = getCategoryLabel(expense.category);
 const formattedDate = formatExpenseDate(expense.date);
 const tr = document.createElement('tr');
 tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s;';
-tr.onmouseover = function() { this.style.background = 'var(--card-hover)'; };
-tr.onmouseout = function() { this.style.background = 'transparent'; };
+tr.onmouseover = function() { window.setStyle(this, 'background', 'st-background__ebfb68'); };
+tr.onmouseout = function() { window.setStyle(this, 'background', 'st-background__a8869d'); };
 tr.innerHTML = `
 <td class="u-2bc4a44">
 ${formattedDate}
@@ -2688,7 +2688,7 @@ ${fmtAmt(expense.amount)}
 </td>
 <td class="u-1d3001e">
 <button
-onclick="openExpenseEntityDetails('${esc(expense.id)}')" class="u-3e75d4a" style="background: linear-gradient(135deg, var(--accent) 0%, var(--accent-emerald) 100%); border: none"
+onclick="openExpenseEntityDetails('${esc(expense.id)}')" class="u-3e75d4a st-background__a9f971 st-border-bottom__2eda1d" style="background: linear-gradient(135deg, var(--accent) 0%, var(--accent-emerald) 100%); border: none"
 onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,122,255,0.3)'"
 onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'"
 >
@@ -3000,8 +3000,8 @@ return;
 function buildUnifiedRow(row) {
 const tr = document.createElement('tr');
 tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s; cursor: pointer;';
-tr.onmouseover = function() { this.style.background = 'var(--highlight-bg)'; };
-tr.onmouseout = function() { this.style.background = row.type === 'entity' ? 'var(--input-bg)' : 'transparent'; };
+tr.onmouseover = function() { window.setStyle(this, 'background', 'st-background__c95778'); };
+tr.onmouseout = function() { window.setStyle(this, 'background', row.type === 'entity' ? 'st-background__356c02' : 'st-background__a8869d'); };
 if (row.type === 'transaction') {
 tr.onclick = function(e) { if (!e.target.closest('a,button')) openExpenseEntityDetails(row.id); };
 tr.innerHTML = `
@@ -3049,13 +3049,13 @@ if (footerLabel) footerLabel.textContent = 'Net Balance:';
 if (totalSpan) {
 const netBalance = totalReceivables - totalPayables;
 totalSpan.textContent = `${fmtAmt(Math.abs(netBalance))}`;
-totalSpan.style.color = netBalance >= 0 ? 'var(--accent-emerald)' : 'var(--danger)';
+window.setStyle(totalSpan, 'color', netBalance >= 0 ? 'st-color__a4c6ac' : 'st-color__497726');
 }
 } else {
 if (footerLabel) footerLabel.textContent = 'Net Total:';
 if (totalSpan) {
 totalSpan.textContent = `${fmtAmt(totalAmount)}`;
-totalSpan.style.color = totalAmount >= 0 ? 'var(--accent-emerald)' : 'var(--danger)';
+window.setStyle(totalSpan, 'color', totalAmount >= 0 ? 'st-color__a4c6ac' : 'st-color__497726');
 }
 }
 if (summaryDiv) {
@@ -3984,7 +3984,7 @@ document.getElementById('expense-search-results').classList.add('hidden');
 selectExpenseCategory('OUT', document.getElementById('btn-category-out'));
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
 const btn = document.getElementById(id);
-if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+if (btn) { window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); window.setStyle(btn, 'pointer-events', 'st-pointer-events__0b4908'); }
 });
 const expIdEl = document.getElementById('expense-id-display');
 if (expIdEl && typeof generateUUID === 'function') {
@@ -4914,7 +4914,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
         'returns':'#f97316','unknown':'#9ca3af'
       }[col] || '#9ca3af';
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
-      return `<div class="u-b8ea487 d-flex" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+      return `<div class="u-b8ea487 d-flex st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
         <div style="width:9px;height:9px;min-width:9px;border-radius:50%;background:${colDot};flex-shrink:0;"></div>
         <div class="u-8b4ab7f has-overflow" style="overflow: hidden">
           <div class="u-f3709bc d-flex">
@@ -4936,7 +4936,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
           ${canRecover
             ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
-          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs d-inline-flex" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3)"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
+          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs d-inline-flex st-background__2d27c1 st-border-bottom__111288" style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3)"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
     }).join('');
@@ -5031,7 +5031,7 @@ async function _emptyRecycleBinImpl() {
   );
   if (!confirmed) return;
   const emptyBtn = document.getElementById('recycleBinEmptyBtn');
-  if (emptyBtn) emptyBtn.style.pointerEvents = 'none';
+  if (emptyBtn) window.setStyle(emptyBtn, 'pointer-events', 'st-pointer-events__8b1364');
   let failCount = 0;
   for (const rec of targets) {
     const rid = rec.id || rec.recordId;
@@ -5048,7 +5048,7 @@ async function _emptyRecycleBinImpl() {
   notifyDataChange('all');
   if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
   if (typeof calculateCashTracker === 'function') { try { calculateCashTracker(); } catch (_) {} }
-  if (emptyBtn) emptyBtn.style.pointerEvents = '';
+  if (emptyBtn) window.setStyle(emptyBtn, 'pointer-events', '');
   await renderRecycleBin(currentFilter);
   if (failCount > 0) {
     window.notifyBlocking(`Emptied recycle bin with ${failCount} error${failCount !== 1 ? 's' : ''}. Some records may need a retry.`, 'warning', 'Warning');
@@ -5498,7 +5498,7 @@ const el = document.getElementById('tab-' + t);
 if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const repTab = document.getElementById('tab-rep');
-if (repTab) { repTab.classList.remove('hidden'); repTab.style.removeProperty('display'); }
+if (repTab) { repTab.classList.remove('hidden'); window.setDisplay(repTab, ''); }
 const adminControls = document.getElementById('admin-rep-controls');
 if (adminControls) { adminControls.classList.add('hidden'); window.setDisplay(adminControls, 'none'); }
 const manageRepsBtn = document.getElementById('btn-manage-reps');
@@ -5524,7 +5524,7 @@ const el = document.getElementById('tab-' + t);
 if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const prodTab = document.getElementById('tab-prod');
-if (prodTab) { prodTab.classList.remove('hidden'); prodTab.style.removeProperty('display'); }
+if (prodTab) { prodTab.classList.remove('hidden'); window.setDisplay(prodTab, ''); }
 const prodToggle = document.querySelector('.production-toggle-container');
 if (prodToggle) window.setDisplay(prodToggle, 'none');
 ['combinedOverview', 'combinedChart', 'prod-analytics-section',
@@ -5556,7 +5556,7 @@ const el = document.getElementById('tab-' + t);
 if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const factoryTab = document.getElementById('tab-factory');
-if (factoryTab) { factoryTab.classList.remove('hidden'); factoryTab.style.removeProperty('display'); }
+if (factoryTab) { factoryTab.classList.remove('hidden'); window.setDisplay(factoryTab, ''); }
 const factorySettingsBtn = document.getElementById('factory-settings-btn');
 if (factorySettingsBtn) window.setDisplay(factorySettingsBtn, 'none');
 document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => {
@@ -5564,7 +5564,7 @@ window.setDisplay(sec, 'none');
 });
 const entrySection = document.getElementById('factory-entry-section');
 if (entrySection) {
-entrySection.style.removeProperty('display');
+window.setDisplay(entrySection, '');
 entrySection.classList.add('liquid-card');
 const costDisplay = document.getElementById('factoryTotalProductionCostDisplay');
 if (costDisplay) {
@@ -5586,7 +5586,7 @@ const el = document.getElementById(id); if (el) window.setDisplay(el, 'none');
 updateSystemName();
 allTabs.forEach(t => {
 const el = document.getElementById('tab-' + t);
-if (el) { el.classList.add('hidden'); el.style.removeProperty('display'); }
+if (el) { el.classList.add('hidden'); window.setDisplay(el, ''); }
 });
 if (assignedTabs.includes('prod')) {
 const prodToggle = document.querySelector('.production-toggle-container');
@@ -5604,9 +5604,9 @@ document.querySelectorAll('#tab-prod .section.liquid-card').forEach(sec => {
 if (sec.id !== 'production-entry-section') window.setDisplay(sec, 'none');
 });
 const ui = document.getElementById('unitsAvailableIndicator');
-if (ui) ui.style.removeProperty('display');
+if (ui) window.setDisplay(ui, '');
 const iuw = document.getElementById('insufficientUnitsWarning');
-if (iuw) iuw.style.removeProperty('display');
+if (iuw) window.setDisplay(iuw, '');
 }
 if (assignedTabs.includes('factory')) {
 const fsBtn = document.getElementById('factory-settings-btn');
@@ -5614,7 +5614,7 @@ if (fsBtn) window.setDisplay(fsBtn, 'none');
 document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => window.setDisplay(sec, 'none'));
 const entry = document.getElementById('factory-entry-section');
 if (entry) {
-entry.style.removeProperty('display');
+window.setDisplay(entry, '');
 entry.classList.add('liquid-card');
 const cd = document.getElementById('factoryTotalProductionCostDisplay');
 if (cd) { const f = cd.closest('.field'); if (f) window.setDisplay(f, 'none'); }
@@ -5720,7 +5720,7 @@ return;
 if (typeof originalShowTabUR === 'function') originalShowTabUR(tab);
 if (tab === 'payments') {
 const _ph = document.getElementById('payment-history-section');
-if (_ph) { window.setDisplay(_ph, 'none'); _ph.style.visibility = 'hidden'; }
+if (_ph) { window.setDisplay(_ph, 'none'); window.setStyle(_ph, 'visibility', 'st-visibility__e77555'); }
 const _pl = document.getElementById('paymentHistoryList');
 if (_pl) window.setDisplay(_pl, 'none');
 const _us = document.getElementById('payments-unified-section');
@@ -5948,7 +5948,7 @@ if (matches.length > 0) {
 matches.forEach(name => {
 const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
-<div class="u-cf7d8a2" style="background: var(--input-bg)"
+<div class="u-cf7d8a2 st-background__356c02" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'name')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -5976,7 +5976,7 @@ const safeId = String(entity.id).replace(/'/g, "\\'");
 const entityBal = calculateEntityBalances()[entity.id] || 0;
 const typeColor = entityBal >= 0 ? 'var(--danger)' : 'var(--accent-emerald)';
 html += `
-<div class="u-cf7d8a2" style="background: var(--input-bg)"
+<div class="u-cf7d8a2 st-background__356c02" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'entity', '${safeId}')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6002,7 +6002,7 @@ matches.forEach(supplier => {
 const safeName = String(supplier.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 const safeId = String(supplier.id).replace(/'/g, "\\'");
 html += `
-<div class="u-cf7d8a2" style="background: var(--input-bg)"
+<div class="u-cf7d8a2 st-background__356c02" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'supplier', '${safeId}')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6036,7 +6036,7 @@ if (matches.length > 0) {
 matches.forEach(name => {
 const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
-<div class="u-cf7d8a2" style="background: var(--input-bg)"
+<div class="u-cf7d8a2 st-background__356c02" style="background: var(--input-bg)"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'repName')"
 onmouseover="this.style.background='var(--highlight-bg)'"
 onmouseout="this.style.background='var(--input-bg)'">
@@ -6657,7 +6657,7 @@ list.innerHTML = salesRepsList.map((rep, i) => `
 <span class="u-76ebb48 has-overflow" style="overflow: hidden">${esc(rep)}</span>
 <span style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}; flex-shrink:0;">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
-<button class="btn-theme u-eeccbea" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="border-color: rgba(239,68,68,0.4)"></button>
+<button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="border-color: rgba(239,68,68,0.4)"></button>
 </div>
 `).join('');
 }
@@ -6694,14 +6694,14 @@ list.innerHTML = userRolesList.map((user, i) => {
 const tabs = Array.isArray(user.tabs) ? user.tabs : [];
 const tabBadges = tabs.map(t => `<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;color:${TAB_COLORS[t]||'var(--accent)'};border:1px solid ${TAB_COLORS[t]||'var(--accent)'}55;font-weight:700;text-transform:uppercase;">${t}</span>`).join('');
 return `
-<div class="u-b3a0b25 d-flex" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-b3a0b25 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-8b4ab7f">
 <div class="u-5e4bab7 d-flex">
 <span class="u-555bcbe">${esc(user.name)}</span>
 </div>
 <div class="u-91a590f d-flex">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
 </div>
-<button class="btn-theme u-eeccbea" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="border-color: rgba(239,68,68,0.4)"></button>
+<button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}" style="border-color: rgba(239,68,68,0.4)"></button>
 </div>`;
 }).join('');
 }
@@ -7014,7 +7014,7 @@ No other devices registered
 return;
 }
 let html = `
-<div class="u-60c2221" style="background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3)">
+<div class="u-60c2221 st-background__e7d797 st-border-bottom__f9139a" style="background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3)">
 <div class="u-975bc61">
 Account: ${accountEmail}
 </div>
@@ -7077,7 +7077,7 @@ if (device.firstLoginAt) {
     if (flt) firstLoginStr = flt.toLocaleString();
   } catch (_) {}
 }
-let cardHtml = '<div class="u-296d231" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">';
+let cardHtml = '<div class="u-296d231 st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">';
 cardHtml += '<div class="u-d42a404 d-flex">';
 cardHtml += '<div class="u-3eddfae" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span class="u-fe495ba">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span class="u-56e4c0c">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
 cardHtml += '<div class="u-b62856e text-right">';
@@ -7091,10 +7091,10 @@ const lastCmdStr = remoteAppliedAt ? new Date(remoteAppliedAt).toLocaleString() 
 const lastCmdMode = remoteAppliedMode ? remoteAppliedMode.toUpperCase() : null;
 const lastCmdBy = remoteAppliedBy || null;
 if (lastCmdMode || totalCommands > 0) {
-cardHtml += '<div class="u-61da305 d-flex" style="background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border)">';
+cardHtml += '<div class="u-61da305 d-flex st-background__6fedaa st-border-bottom__e54b2f" style="background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border)">';
 cardHtml += '<span class="u-2ae1270">Commands:</span>';
 if (totalCommands > 0) {
-cardHtml += '<span class="u-f07758c" style="background: var(--accent-dim)">' + totalCommands + ' sent</span>';
+cardHtml += '<span class="u-f07758c st-background__776447" style="background: var(--accent-dim)">' + totalCommands + ' sent</span>';
 }
 if (lastCmdMode) {
 cardHtml += '<span class="u-040bdbd">→ ' + lastCmdMode + '</span>';
@@ -7107,7 +7107,7 @@ cardHtml += '<span class="u-bae6c2c">' + lastCmdStr + '</span>';
 }
 cardHtml += '</div>';
 } else {
-cardHtml += '<div class="u-3a66e13" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border)">No commands sent yet</div>';
+cardHtml += '<div class="u-3a66e13 st-background__64ff56 st-border-bottom__e54b2f" style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border)">No commands sent yet</div>';
 }
 const isAdmin = deviceMode === 'admin';
 const adminBg = isAdmin ? 'rgba(0,122,255,0.18)' : 'rgba(0,122,255,0.08)';
@@ -7157,7 +7157,7 @@ cardHtml += userTick + user.name + '</button>';
 cardHtml += '</div>';
 }
 cardHtml += '<button onclick="removeDevice(\'' + device.deviceId + '\')"';
-cardHtml += ' class="u-834b546" style="background: rgba(255,69,58,0.07); border: 1px solid rgba(255,69,58,0.28)">Remove Device</button>';
+cardHtml += ' class="u-834b546 st-background__534216 st-border-bottom__c806be" style="background: rgba(255,69,58,0.07); border: 1px solid rgba(255,69,58,0.28)">Remove Device</button>';
 cardHtml += '</div>';
 html += cardHtml;
 });
@@ -7732,7 +7732,7 @@ const dot = document.getElementById('payment-transfer-photo-dot');
 const btn = document.getElementById('payment-transfer-photo-btn');
 if (dot) window.setDisplay(dot, dataUrl ? '' : 'none');
 if (btn) {
-btn.style.borderColor = dataUrl ? 'var(--accent)' : 'var(--glass-border)';
+window.setStyle(btn, 'border-color', dataUrl ? 'st-border-color__38fcbe' : 'st-border-color__aa2589');
 btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
 }
 }
@@ -7754,7 +7754,7 @@ transfers.forEach(t => {
 const item = document.createElement('div');
 item.className = 'cust-history-item';
 item.style.flexDirection = 'column';
-item.style.alignItems = 'stretch';
+window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 const safeId = String(t.id).replace(/'/g, "\\'");
 const photoBadgeId = 'ph-badge-trf-' + String(t.id).replace(/[^a-z0-9]/gi, '');
 item.innerHTML = `
@@ -7770,7 +7770,7 @@ item.innerHTML = `
       <div class="cost-val u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')"
-      class="u-129f796 d-none" style="border: none; background: rgba(99,102,241,0.15)">
+      class="u-129f796 d-none st-border-bottom__2eda1d st-background__c6ed62" style="border: none; background: rgba(99,102,241,0.15)">
       <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>

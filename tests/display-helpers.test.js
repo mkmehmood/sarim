@@ -36,6 +36,29 @@ describe('display helpers', () => {
     assert.equal(el.style.display, '');
     assert.equal(window.getDisplay(el), 'none');
   });
+  it('switches one style family at a time with setStyle', () => {
+    const set = new Set(['st-color__aaaaaa', 'st-color-scheme__bbbbbb', 'keep-me']);
+    const base = { add: (c) => set.add(c), remove: (c) => set.delete(c), contains: (c) => set.has(c) };
+    Object.defineProperty(base, 'length', { get: () => set.size });
+    const el = { classList: new Proxy(base, { get: (t, k) => (typeof k === 'string' && /^\d+$/.test(k) ? [...set][+k] : t[k]), has: (t, k) => (typeof k === 'string' && /^\d+$/.test(k) ? +k < set.size : k in t) }), style: { removeProperty() {} } };
+    window.setStyle(el, 'color', 'st-color__cccccc');
+    assert.ok(set.has('st-color__cccccc'));
+    assert.equal(set.has('st-color__aaaaaa'), false);
+    assert.ok(set.has('st-color-scheme__bbbbbb'));
+    assert.ok(set.has('keep-me'));
+    window.setStyle(el, 'color', '');
+    assert.equal(set.has('st-color__cccccc'), false);
+    assert.ok(set.has('st-color-scheme__bbbbbb'));
+  });
+  it('defines a class for every st-* name the code can set', () => {
+    const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+    const used = new Set();
+    for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js', 'modules/sync.js', 'modules/rep-sales.js', 'modules/factory.js', 'modules/formula-store.js', 'modules/prod-photos.js']) {
+      for (const m of readFileSync(new URL('../' + f, import.meta.url), 'utf8').matchAll(/st-[a-z-]+__[0-9a-f]{6}/g)) used.add(m[0]);
+    }
+    assert.ok(used.size > 20);
+    for (const c of used) assert.ok(css.includes('.' + c + ' {'), c);
+  });
   it('has a utility class for every display value the helper can set', () => {
     const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
     for (const v of ['none', 'block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'table', 'table-row', 'table-cell', 'contents', 'list-item', 'flow-root']) {
