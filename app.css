@@ -50,17 +50,18 @@
 --z-system: 99999;
 --z-toast: 2147483647;
   color-scheme: dark;
-  --nm-bg: #302B29;
-  --nm-hi: #3D3735;
-  --nm-lo: #211D1C;
-  --nm-line: rgba(0, 0, 0, 0.30);
+  --nm-canvas: #000000;
+  --nm-bg: #131112;
+  --nm-hi: #272324;
+  --nm-lo: #000000;
+  --nm-line: rgba(0, 0, 0, 0.55);
   --nm-skin: #F2B896;
   --nm-skin-dim: rgba(242, 184, 150, 0.12);
   --nm-skin-glow: rgba(242, 184, 150, 0.30);
   --nm-accent: #4ADE80;
   --nm-accent-ink: #0A2418;
   --nm-danger-ink: #2A0A0A;
-  --nm-scrim: rgba(8, 10, 14, 0.62);
+  --nm-scrim: rgba(0, 0, 0, 0.78);
   --nm-text: #E4E8EE;
   --nm-text-muted: #A3ADBB;
   --nm-danger: #f87171;
@@ -110,6 +111,7 @@
 --factory-std: #059669;
 --factory-asn: #7C3AED;
   color-scheme: light;
+  --nm-canvas: #EBE3DC;
   --nm-bg: #EBE3DC;
   --nm-hi: #FFFCF9;
   --nm-lo: #C9BBAF;
@@ -5004,7 +5006,7 @@ font-feature-settings: "tnum" 1;
 .auth-field { position: relative; }
 
 .auth-field input {
-  width: 100%; padding: 22px 46px 8px 46px; height: 58px; border: 0; color: #0f172a; font-family: var(--font-ui); font-size: 0.95rem; outline: none;
+  width: 100%; padding: 22px 46px 8px 46px; height: 58px; border: 0; color: var(--text-strong); font-family: var(--font-ui); font-size: 0.95rem; outline: none;
   transition: box-shadow 0.15s, background 0.15s;
 }
 
@@ -5036,7 +5038,7 @@ font-feature-settings: "tnum" 1;
 .auth-google:active { transform: scale(0.985); }
 .auth-google:disabled { cursor: not-allowed; opacity: 0.7; }
 .auth-help { margin: 16px 0 0; text-align: center; font-size: 0.76rem; line-height: 1.5; }
-.auth-help strong { color: #0f172a; }
+.auth-help strong { color: var(--text-strong); }
 .auth-secure { margin-top: auto; padding-top: 16px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.66rem; text-align: center; }
 .auth-secure svg { color: #10B981; flex-shrink: 0; }
 @media (max-height: 720px) { .auth-logo { width: 104px; height: 104px; margin-bottom: 10px; } .auth-hero { padding: 12px 24px 16px; min-height: 0; } .auth-sheet { padding-top: 20px; } }
@@ -5053,7 +5055,7 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .auth-screen .auth-logo img { width: 100%; height: auto; max-height: none; border: 0; border-radius: 0; object-fit: contain; display: block; background: #fff; }
 
 .auth-screen .auth-field input { border-radius: 14px !important; padding: 22px 46px 8px 46px !important;
-  height: 58px !important; color: #0f172a !important; font-size: 0.95rem !important; font-weight: 500 !important; width: 100% !important; box-sizing: border-box !important;
+  height: 58px !important; color: var(--text-strong); font-size: 0.95rem !important; font-weight: 500 !important; width: 100% !important; box-sizing: border-box !important;
 }
 
 .auth-screen .auth-field label {
@@ -5597,7 +5599,7 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 
 /* ---------- Canvas ---------- */
 button { border: 0; }
-html, body { background: var(--nm-bg); color: var(--text-main); }
+html, body { background: var(--nm-canvas); color: var(--text-main); }
 ::selection { background: var(--nm-skin-dim); color: var(--text-strong); }
 :focus-visible { outline: none; box-shadow: var(--nm-focus); }
 
@@ -5768,7 +5770,7 @@ tbody tr:hover td { background: var(--nm-skin-dim); }
 :is(.sidebar-nav-btn, .sidebar-settings-btn) { border-radius: 18px; }
 :is(.sidebar-nav-btn, .sidebar-settings-btn):hover { background: var(--nm-bg); box-shadow: var(--nm-raised-xs); color: var(--text-main); }
 .sidebar-nav-btn.active { background: var(--nm-bg); box-shadow: var(--nm-inset-sm); color: var(--nm-skin); }
-.standalone-screen { background: var(--nm-bg); }
+.standalone-screen { background: var(--nm-canvas); }
 
 /* ---------- Overlays, sheets, toasts ---------- */
 :is( .factory-overlay) {
@@ -5827,7 +5829,7 @@ tbody tr:hover td { background: var(--nm-skin-dim); }
 /* ---------- Sign-in screen (now follows the active theme) ---------- */
 .auth-screen {
   --accent: var(--nm-accent); --danger: var(--nm-danger); --text-main: var(--nm-text); --text-muted: var(--nm-text-muted);
-  background: var(--nm-bg);
+  background: var(--nm-canvas);
   color: var(--text-main);
 }
 .auth-logo { background: var(--nm-bg); padding: 10px; box-shadow: var(--nm-raised-lg); }

@@ -28,7 +28,7 @@ function createWindow() {
     minWidth: 420,
     minHeight: 640,
     title: 'Gull & Zubair',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#000000',
     autoHideMenuBar: true,
     icon: path.join(__dirname, 'build', 'icon.png'),
     show: false,
