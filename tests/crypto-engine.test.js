@@ -3,28 +3,16 @@ import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const MAGIC_V4 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x34]);
-const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);
 const SALT_LEN = 32;
 const IV_LEN = 12;
 const UID_HASH_LEN = 32;
 const PBKDF2_ITERS_V4 = 210000;
-const PBKDF2_ITERS_V2 = 100000;
 async function deriveKeyV4(email, password, uid, salt) {
   const enc = new TextEncoder();
   const ikm = enc.encode(email.toLowerCase().trim() + ':' + password + ':' + (uid || ''));
   const keyMaterial = await crypto.subtle.importKey('raw', ikm, 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS_V4, hash: 'SHA-512' },
-    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
-  );
-}
-async function deriveKeyV2(email, password, salt) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', enc.encode(email.toLowerCase().trim() + ':' + password), 'PBKDF2', false, ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS_V2, hash: 'SHA-256' },
     keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
   );
 }
@@ -55,50 +43,23 @@ const CryptoEngine = {
     const bytes = new Uint8Array(arrayBuffer);
     const magicLen = MAGIC_V4.length;
     const isV4 = bytes.length >= magicLen && MAGIC_V4.every((b, i) => bytes[i] === b);
-    const isV2 = !isV4 && bytes.length >= magicLen && MAGIC_V2.every((b, i) => bytes[i] === b);
-    if (!isV4 && !isV2) throw new Error('INVALID_FORMAT');
+    if (!isV4) throw new Error('INVALID_FORMAT');
     let offset = magicLen;
-    if (isV4) {
-      const storedUidHash = bytes.slice(offset, offset + UID_HASH_LEN); offset += UID_HASH_LEN;
-      const _uid = uid || '';
-      const actualUidHash = await _hashUID(_uid);
-      const uidMatch = storedUidHash.every((b, i) => b === actualUidHash[i]);
-      if (!uidMatch) throw new Error('WRONG_ACCOUNT');
-      const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
-      const iv   = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
-      const ciphertext = bytes.slice(offset);
-      const key = await deriveKeyV4(email, password, _uid, salt);
-      try {
-        const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-        return JSON.parse(new TextDecoder().decode(plaintext));
-      } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
-    } else {
-      const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
-      const iv   = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
-      const ciphertext = bytes.slice(offset);
-      const key = await deriveKeyV2(email, password, salt);
-      try {
-        const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-        return JSON.parse(new TextDecoder().decode(plaintext));
-      } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
-    }
+    const storedUidHash = bytes.slice(offset, offset + UID_HASH_LEN); offset += UID_HASH_LEN;
+    const _uid = uid || '';
+    const actualUidHash = await _hashUID(_uid);
+    const uidMatch = storedUidHash.every((b, i) => b === actualUidHash[i]);
+    if (!uidMatch) throw new Error('WRONG_ACCOUNT');
+    const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
+    const iv   = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
+    const ciphertext = bytes.slice(offset);
+    const key = await deriveKeyV4(email, password, _uid, salt);
+    try {
+      const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      return JSON.parse(new TextDecoder().decode(plaintext));
+    } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
   }
 };
-async function buildV2Blob(dataObj, email, password) {
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
-  const iv   = crypto.getRandomValues(new Uint8Array(IV_LEN));
-  const key  = await deriveKeyV2(email, password, salt);
-  const plaintext  = new TextEncoder().encode(JSON.stringify(dataObj));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
-  const ctBytes    = new Uint8Array(ciphertext);
-  const out = new Uint8Array(MAGIC_V2.length + SALT_LEN + IV_LEN + ctBytes.length);
-  let offset = 0;
-  out.set(MAGIC_V2, offset); offset += MAGIC_V2.length;
-  out.set(salt,     offset); offset += SALT_LEN;
-  out.set(iv,       offset); offset += IV_LEN;
-  out.set(ctBytes,  offset);
-  return out.buffer;
-}
 const EMAIL    = 'dealer@example.com';
 const PASSWORD = 'correct-horse-battery-staple';
 const UID      = 'uid-abc-123';
