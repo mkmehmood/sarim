@@ -7,7 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { resolveExpenseCategories, RECORD_STORES } from './link-graph.js';
+import { RECORD_STORES } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -1822,12 +1822,10 @@ _cleanUnitPools
         if (!cloud || !Array.isArray(cloud.categories)) return;
         const cloudTs = cloud.categories_timestamp || cloud.updated || 0;
         const localTs = (await sqliteStore.get('categories_timestamp')) || 0;
-        if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
-        const local = await sqliteStore.get('categories') || [];
-        const _ecRes = resolveExpenseCategories(local, cloud.categories, localTs, cloudTs);
-        if (_ecRes.changed) {
-          await sqliteStore.set('categories', _ecRes.value);
-          if (_ecRes.ts) await sqliteStore.set('categories_timestamp', _ecRes.ts);
+        if (cloudTs <= localTs) { recordSuccessfulConnection(); return; }
+        await sqliteStore.set('categories', cloud.categories.filter(v => typeof v === 'string' && v.trim()));
+        await sqliteStore.set('categories_timestamp', cloudTs);
+        {
           emitSyncUpdate({ categories: null});
           flashLivePulse();
         }
@@ -2964,10 +2962,10 @@ export async function _syncSettings(cloudData) {
     if (ecd && Array.isArray(ecd.categories)) {
       const _ecLocal   = await sqliteStore.get('categories');
       const _ecLocalTs = (await sqliteStore.get('categories_timestamp')) || 0;
-      const _ecRes = resolveExpenseCategories(_ecLocal, ecd.categories, _ecLocalTs, ecd.categories_timestamp || 0);
-      if (_ecRes.changed || !Array.isArray(_ecLocal)) {
-        await sqliteStore.set('categories', _ecRes.value);
-        if (_ecRes.ts) await sqliteStore.set('categories_timestamp', _ecRes.ts);
+      const _ecCloudTs = ecd.categories_timestamp || 0;
+      if (!Array.isArray(_ecLocal) || _ecCloudTs > _ecLocalTs) {
+        await sqliteStore.set('categories', ecd.categories.filter(v => typeof v === 'string' && v.trim()));
+        if (_ecCloudTs) await sqliteStore.set('categories_timestamp', _ecCloudTs);
       }
     }
   }

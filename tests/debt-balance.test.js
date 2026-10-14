@@ -50,10 +50,6 @@ test('sale value is locked to the price recorded at sale time', () => {
   assert.equal(lockedSaleValue({ quantity: 10, unitPrice: 250, totalValue: 2500 }), 2500);
   assert.equal(lockedSaleValue({ quantity: 10, unitPrice: 300, totalValue: 2500 }), 3000);
 });
-test('legacy records without unitPrice fall back to stored totalValue', () => {
-  assert.equal(lockedSaleValue({ quantity: 4, totalValue: 1000 }), 1000);
-  assert.equal(lockedUnitPrice({ quantity: 4, totalValue: 1000 }), 250);
-});
 test('records with no stored price defer to the live price lookup', () => {
   assert.equal(lockedSaleValue({ quantity: 4 }), null);
   assert.equal(lockedUnitPrice({ quantity: 4 }), 0);

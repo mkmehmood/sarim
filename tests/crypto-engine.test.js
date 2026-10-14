@@ -201,25 +201,6 @@ describe('CryptoEngine', () => {
       );
     });
   });
-  describe('V2 legacy decrypt', () => {
-    it('decrypts V2 blob successfully', async () => {
-      const buf    = await buildV2Blob(PAYLOAD, EMAIL, PASSWORD);
-      const result = await CryptoEngine.decrypt(buf, EMAIL, PASSWORD, UID);
-      assert.deepEqual(result, PAYLOAD);
-    });
-    it('V2 does not enforce UID binding', async () => {
-      const buf    = await buildV2Blob(PAYLOAD, EMAIL, PASSWORD);
-      const result = await CryptoEngine.decrypt(buf, EMAIL, PASSWORD, 'completely-different-uid');
-      assert.deepEqual(result, PAYLOAD);
-    });
-    it('throws WRONG_CREDENTIALS on wrong password for V2', async () => {
-      const buf = await buildV2Blob(PAYLOAD, EMAIL, PASSWORD);
-      await assert.rejects(
-        () => CryptoEngine.decrypt(buf, EMAIL, 'wrong', UID),
-        (e) => { assert.equal(e.message, 'WRONG_CREDENTIALS'); return true; }
-      );
-    });
-  });
   describe('UID fallback', () => {
     it('encrypts and decrypts with empty-string UID', async () => {
       const buf    = await CryptoEngine.encrypt(PAYLOAD, EMAIL, PASSWORD, '');

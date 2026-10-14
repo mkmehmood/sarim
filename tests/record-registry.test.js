@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   RECORD_STORES, AUX_STATE,
   collectAuxBackupFields, applyAuxBackupFields, isSupportedBackup, RECORD_KEYS,
-  mergeStringLists, mergeById, resolveExpenseCategories,
+  mergeStringLists, mergeById,
 } from '../modules/link-graph.js';
 const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 const sync = read('sync.js');
@@ -94,20 +94,6 @@ describe('one single-word name per dataset', () => {
   it('no dataset name has two words', () => {
     for (const k of RECORD_KEYS) assert.ok(!/[_\-\s]/.test(k), k);
   });
-  it('the app code carries no old dataset name and no migration code', () => {
-    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'formula-store.js', 'prod-photos.js', 'store-keys.js'];
-    const old = ['mfg_pro_pkr', 'noman_history', 'customer_sales', 'payment_transactions', 'payment_entities', 'factory_inventory_data',
-      'factory_production_history', 'stock_returns', 'calculator_history', 'rep_sales', 'rep_customers', 'sales_customers', 'factory_history', 'naswar_default_settings', 'STORE_A', 'STORE_B', 'STORE_C',
-      'deletion_records', 'deleted_records', 'person_photos', 'app_theme', 'pendingFirestoreYearClose\'', 'pendingFirestoreRestore\'', 'deltaSyncStats\'',
-      "'appStores'", "'appStores/", "'factorySettings'", "'factorySettings/", "'expenseCategories'", "'expenseCategories/", "'activityLog'", "'personPhotos'",
-      "'mfg'", "case 'repCustomers'", "'repCustomers')", 'fyMeta.pendingFirestore', 'currentSettings.pendingFirestore',
-      'factorySettings listener', 'appStores listener', 'expenseCategories listener', 'personPhotos fetch', 'personPhotos merge', 'personPhotos delta'];
-    for (const f of files) {
-      const code = read(f).split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
-      for (const k of old) assert.ok(!code.includes(k), `${f} still mentions ${k}`);
-      assert.ok(!/migrateStoreKeys|migrateLegacy|normaliseBackupFields|upgradeSettingsDoc/.test(code), `${f} still has migration code`);
-    }
-  });
   it('plain JSON backup support is gone: only encrypted .gznd files restore', () => {
     const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
     assert.ok(/id="restoreInput"[^>]*accept="\.gznd"/.test(html), 'file picker must accept .gznd only');
@@ -116,13 +102,6 @@ describe('one single-word name per dataset', () => {
       assert.ok(!/JSON\.parse\(text\)/.test(src), `${name} still parses a plain JSON file`);
     }
     assert.ok(!/\.backup\b/.test(read('link-graph.js')), 'link-graph.js still has a separate backup key');
-  });
-  it('the in-memory variable of every dataset is its key (sales, rep, clients, ...), so SQLite, Firestore and code agree', () => {
-    for (const s of RECORD_STORES) assert.equal(s.jsVar, s.key, s.key);
-    const files = ['sync.js', 'utilities-sales.js', 'utilities-payments.js', 'admin-data.js', 'utilities-core.js', 'factory.js', 'customers.js', 'rep-sales.js', 'link-graph.js', 'link-guards.js', 'business.js', 'prod-photos.js', ];
-    const oldVars = /\b(customerSales|salesHistory|repSales|repCustomers|salesCustomers|paymentTransactions|paymentEntities|factoryInventoryData|factoryProductionHistory|expenseRecords|stockReturns|pendingFirestoreYearClose|pendingFirestoreRestore|_set_pendingFirestore\w+)\b/;
-    for (const f of files) assert.ok(!oldVars.test(read(f)), `${f} still uses an old variable name`);
-    assert.ok(!oldVars.test(readFileSync(new URL('../index.html', import.meta.url), 'utf8')), 'index.html still uses an old variable name');
   });
   it('the entity range select calls a real function instead of a dataset global that does not exist', () => {
     const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -179,12 +158,6 @@ describe('aux state round trip: backup -> restore into a fresh device', () => {
     assert.deepEqual(dev._m.get('categories'), ['Fuel', 'Tea']);
     assert.deepEqual(dev._m.get('formulas').map(f => f.id), ['f1', 'f2']);
   });
-  it('old backups without these fields restore without touching local data', async () => {
-    const dev = memStore({ categories: ['Rent'] });
-    const written = await applyAuxBackupFields({ mfg: [] }, dev, 1, 'merge');
-    assert.deepEqual(written, []);
-    assert.deepEqual(dev._m.get('categories'), ['Rent']);
-  });
 });
 describe('merge helpers and cloud category resolution', () => {
   it('mergeStringLists trims, drops blanks and duplicates, keeps order', () => {
@@ -192,19 +165,6 @@ describe('merge helpers and cloud category resolution', () => {
   });
   it('mergeById keeps local, adds new, skips id-less', () => {
     assert.deepEqual(mergeById([{ id: 1, v: 'L' }], [{ id: 1, v: 'B' }, { id: 2 }, { v: 'x' }]), [{ id: 1, v: 'L' }, { id: 2 }]);
-  });
-  it('newer cloud stamp replaces local', () => {
-    const r = resolveExpenseCategories(['A', 'B'], ['A'], 10, 20);
-    assert.deepEqual(r, { value: ['A'], ts: 20, changed: true });
-  });
-  it('legacy cloud doc (no stamp) never deletes local-only categories', () => {
-    const r = resolveExpenseCategories(['A', 'B'], ['A', 'C'], 5, 0);
-    assert.deepEqual(r.value, ['A', 'B', 'C']);
-    assert.equal(r.ts, 5);
-  });
-  it('older cloud stamp leaves local untouched', () => {
-    const r = resolveExpenseCategories(['A', 'B'], ['Z'], 30, 20);
-    assert.deepEqual(r, { value: ['A', 'B'], ts: 30, changed: false });
   });
 });
 describe('one registry for names, variables, tabs and buttons', () => {

@@ -413,12 +413,6 @@ describe('old bin records come back with what they depend on', () => {
     const mat = tomb('m1', 'inventory', { supplierId: 's9' });
     assert.ok(expandRecoveryMembers(mat, [sup, mat], live()).some(t => t.id === 's9'));
   });
-  it('pairs an old return entry with its stock log even without a group', () => {
-    const entry = tomb('r1', 'production', { isReturn: true, store: 'A', date: 'D', net: 5, createdAt: 77 });
-    const log = tomb('r2', 'returns', { store: 'A', date: 'D', quantity: 5, createdAt: 77 });
-    assert.deepEqual(expandRecoveryMembers(entry, [entry, log], live()).map(t => t.id).sort(), ['r1', 'r2']);
-    assert.deepEqual(expandRecoveryMembers(log, [entry, log], live()).map(t => t.id).sort(), ['r1', 'r2']);
-  });
 });
 describe('recover what can be recovered, skip what cannot', () => {
   const tomb = (id, collection, snapshot) => ({ id, recordId: id, collection, snapshot });

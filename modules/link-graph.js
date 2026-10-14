@@ -973,17 +973,6 @@ export function mergeById(local, incoming) {
   return out;
 }
 
-export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0) {
-  const l = Array.isArray(local) ? local : [];
-  const c = Array.isArray(cloud) ? cloud : [];
-  if (cloudTs && cloudTs > (localTs || 0)) return { value: mergeStringLists(c, []), ts: cloudTs, changed: true };
-  if (!cloudTs) {
-    const union = mergeStringLists(l, c);
-    return { value: union, ts: localTs || 0, changed: union.length !== l.length };
-  }
-  return { value: l, ts: localTs, changed: false };
-}
-
 export async function collectAuxBackupFields(store) {
   const out = {};
   for (const s of AUX_STATE) {
