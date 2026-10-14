@@ -107,7 +107,6 @@ const _NOISE_RE = new RegExp([
   'deleted successfully|all records deleted|permanently deleted|recovered|restore complete|^(transferred|transfer updated)\\b'
 ].join('|'), 'i');
 
-
 const _EXPLAIN = [
   [/failed to save (production|data locally|data)/i, () => ['Could not save your data', 'The latest entry was NOT saved on this phone. Open the app, check the entry and save it again.']],
   [/failed to save (transaction|expense)/i, (m) => ['Could not save the ' + m[1].toLowerCase(), 'The ' + m[1].toLowerCase() + ' was NOT saved. Open the app, check the details and try again.']],

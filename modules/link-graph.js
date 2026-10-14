@@ -402,7 +402,6 @@ export function getSupplierCreditReconsumeIssue(snapshot, liveTxs, resolve) {
     : null;
 }
 
-// `ref` is a store key (its selected formula) or a formula id (a unit pool).
 export function resolveSelectedFormula(data, ref) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
   const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === ref);
@@ -734,11 +733,6 @@ export function getCashShortIssue(need, available, what) {
   return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
 }
 
-// ===== Intelligent save/delete planners for payment transactions =====
-// These pure functions are the single source of truth for "what does saving or
-// deleting this transaction mean" so every entry point (payment tab, entity
-// overlay, expense cascade, entity delete) classifies and blocks consistently.
-
 export function planTransferPairDelete(entries) {
   const list = (Array.isArray(entries) ? entries : []).filter(Boolean);
   if (!list.length) return { pairs: [], orphans: [], amount: 0, fromName: '?', toName: '?', block: 'Transfer not found — it may have already been removed.' };
@@ -822,8 +816,6 @@ export function getTxLinkIssue(tx, ctx = {}) {
   return null;
 }
 
-// Price per kg a customer (or rep) is charged, from their own unpaid credit sales:
-// total value / total kg. Returns 0 when there is nothing to base it on.
 export function weightedUnitPrice(items) {
   let qty = 0, val = 0;
   for (const it of Array.isArray(items) ? items : []) {
@@ -833,8 +825,6 @@ export function weightedUnitPrice(items) {
   return qty > 0 ? Math.round((val / qty) * 10000) / 10000 : 0;
 }
 
-// Value of goods handed back, never more than what is still owed (a credit cannot
-// push the balance below zero). `outstanding` < 0 means "unknown": no cap is applied.
 export function planGoodsCredit(qty, unitPrice, outstanding) {
   const raw = _r2(Math.max(0, _n(qty)) * Math.max(0, _n(unitPrice)));
   if (outstanding == null || _n(outstanding) < 0) return { value: raw, raw, capped: false };

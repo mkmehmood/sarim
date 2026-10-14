@@ -26,7 +26,6 @@ export async function getSelectedFormula(ref) {
   }, ref);
 }
 
-// formula id -> name
 export async function getFormulaNames() {
   const out = {};
   (await getFormulaStore()).forEach((f) => { out[String(f.id)] = f.name || 'Untitled'; });
@@ -44,7 +43,6 @@ function _feedWrites(list, now) {
   const f = feedsFromFormulas(list);
   return [['defaults', f.defaults], ['defaults_timestamp', now], ['costs', f.costs], ['costs_timestamp', now], ['adjustment', f.adjustment], ['adjustment_timestamp', now]];
 }
-
 
 function _afterChange() {
   notifyDataChange('all');

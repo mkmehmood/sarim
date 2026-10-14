@@ -4375,8 +4375,7 @@ if (window._syncUpdatesCleanupInterval) { clearInterval(window._syncUpdatesClean
 if (window._tombstoneCleanupInterval) { clearInterval(window._tombstoneCleanupInterval); window._tombstoneCleanupInterval = null; }
 if (window._perfMonitorInterval) { clearInterval(window._perfMonitorInterval); window._perfMonitorInterval = null; }
 if (typeof syncState !== 'undefined' && syncState.syncInterval) { clearInterval(syncState.syncInterval); syncState.syncInterval = null; }
-if (auth) {
-await auth.signOut();
+if (auth) await auth.signOut();
 _set_currentUser(null);
 SQLiteCrypto.clearSessionKey();
 await sqliteStore.clearUserData().catch(() => {});
@@ -4419,52 +4418,7 @@ if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }
 window._forceLogoutSignOut = false;
-showToast(' Signed out successfully', 'success');
-} else {
-_set_currentUser(null);
-SQLiteCrypto.clearSessionKey();
-await sqliteStore.clearUserData().catch(() => {});
-await OfflineAuth.clearCredentials().catch(() => {});
-try {
-const keysToRemove = ['_gznd_session_active','_gznd_session_start','_gznd_session_key_backup',
-'persistentLogin','_gznd_login_attempts','_gznd_login_lockout'];
-keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
-sessionStorage.clear();
-} catch(e) {}
-try {
-await sqliteStore.clearAll().catch(() => {});
-try {
-  if (navigator.storage && navigator.storage.getDirectory) {
-    const root = await navigator.storage.getDirectory();
-    const opfsFiles = [
-      'naswar_dealers.sqlite', 'naswar_dealers.sqlite.bak',
-      'gznd_auth.json', 'gznd_keystore.json',
-      'gznd_entropy.json', 'gznd_session.json'
-    ];
-    for (const f of opfsFiles) { await root.removeEntry(f).catch(() => {}); }
-  }
-} catch(_) {}
-try {
-  const lsCleanup = [
-    '_gznd_sqlite_db', '_gznd_sqlite_db_bak',
-    '_gznd_auth_data', '_gznd_keystore',
-    '_gznd_entropy', '_gznd_session_store'
-  ];
-  lsCleanup.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
-} catch(_) {}
-} catch(e) {}
-sqliteStore.clearUserPrefix();
-DeltaSync.clearAllTimestamps().catch(() => {});
-if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
-if (typeof _clearDeviceIdStorage === 'function') {
-  await _clearDeviceIdStorage().catch(() => {});
-}
-if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
-  await sqliteStore.setBatch(_savedAppMode).catch(() => {});
-}
-window._forceLogoutSignOut = false;
-showToast(' Signed out', 'success');
-}
+showToast(auth ? ' Signed out successfully' : ' Signed out', 'success');
 setTimeout(() => {
 createAuthOverlay();
 showAuthOverlay();

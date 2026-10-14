@@ -11,6 +11,11 @@ import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sal
 import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
+export async function runningBalanceHtml(bal) {
+const text = bal < -0.005 ? `${await formatCurrency(-bal)} CR` : await formatCurrency(Math.max(0, bal));
+return balanceAfterHtml(text, bal > 0.005 ? 'debt' : 'clear');
+}
+
 export { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking };
 
 export function selectCustomer(name) {
@@ -483,9 +488,7 @@ itemContent = `
   </div>
 </div>${panelPlaceholder}`;
 }
-const _bal = _runBal.get(t) || 0;
-const _balText = _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal));
-item.innerHTML = itemContent + balanceAfterHtml(_balText, _bal > 0.005 ? 'debt' : 'clear');
+item.innerHTML = itemContent + await runningBalanceHtml(_runBal.get(t) || 0);
 item.style.flexDirection = 'column';
 item.style.alignItems = 'stretch';
 _custFrag.appendChild(item);

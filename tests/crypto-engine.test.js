@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 import { readFileSync } from 'node:fs';
-// Tests the real CryptoEngine from modules/business.js (extracted, since that file needs a browser).
 const _src = readFileSync(new URL('../modules/business.js', import.meta.url), 'utf8');
 const _start = _src.indexOf('export const CryptoEngine = (() => {');
 const _end = _src.indexOf('\n})();', _start) + '\n})();'.length;

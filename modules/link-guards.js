@@ -619,10 +619,6 @@ export async function getBulkPaymentDeleteBlockReason(txs, what = 'Deleting thes
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), what);
 }
 
-// Unified single-transaction delete guard: merged records and transfer pairs are
-// classified by the pure planner, cash safety is checked against live balances.
-// Returns { block } — when plan.kind === 'transfer' the caller should delegate to
-// deletePaymentTransfer instead of deleting directly.
 export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
   if (!tx) return { block: null, plan: null };
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
@@ -638,8 +634,6 @@ export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
   return { block: null, plan };
 }
 
-// Entity delete guard: blocks when merged opening balances would be destroyed or
-// when removing the entity's IN payments would drive cash in hand negative.
 export async function getEntityDeleteBlockReason(entityId, opts = {}) {
   if (!entityId) return null;
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
@@ -656,8 +650,6 @@ export async function getEntityDeleteBlockReason(entityId, opts = {}) {
   return null;
 }
 
-// Expense delete guard: a linked payment that is a merged opening balance blocks
-// deletion; IN-type linked payments are checked against available cash.
 export async function getExpenseLinkedTxBlockReason(expenseId, opts = {}) {
   if (!expenseId) return null;
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
