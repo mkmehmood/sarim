@@ -475,15 +475,15 @@ export function _storeCodeToLabel(c) {
   return storeLabelFor(c);
 }
 
+async function loadCloseYearStores() {
+  const names = ['production', 'sales', 'rep', 'calculator', 'transactions', 'returns', 'expenses', 'factory'];
+  const out = {};
+  for (const n of names) out[n] = ensureArray(await sqliteStore.get(n));
+  return out;
+}
+
 export async function showCloseFinancialYearDialog() {
-  const production = ensureArray(await sqliteStore.get('production'));
-  const sales = ensureArray(await sqliteStore.get('sales'));
-  const rep = ensureArray(await sqliteStore.get('rep'));
-  const calculator = ensureArray(await sqliteStore.get('calculator'));
-  const transactions = ensureArray(await sqliteStore.get('transactions'));
-  const returns = ensureArray(await sqliteStore.get('returns'));
-  const expenses = ensureArray(await sqliteStore.get('expenses'));
-  const factory = ensureArray(await sqliteStore.get('factory'));
+  const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
 if (closeYearInProgress) {
 showToast('Close Financial Year is already in progress', 'warning');
 return;
@@ -921,14 +921,7 @@ if (errEl) errEl.style.display = 'none';
 }
 
 export async function verifyAndExecuteCloseYear() {
-  const production = ensureArray(await sqliteStore.get('production'));
-  const sales = ensureArray(await sqliteStore.get('sales'));
-  const rep = ensureArray(await sqliteStore.get('rep'));
-  const calculator = ensureArray(await sqliteStore.get('calculator'));
-  const transactions = ensureArray(await sqliteStore.get('transactions'));
-  const returns = ensureArray(await sqliteStore.get('returns'));
-  const expenses = ensureArray(await sqliteStore.get('expenses'));
-  const factory = ensureArray(await sqliteStore.get('factory'));
+  const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
 const confirmBtn = document.getElementById('close-year-confirm-btn');
 const inp = document.getElementById('close-year-confirm-input');
 const errEl = document.getElementById('close-year-pwd-error');
@@ -1025,14 +1018,7 @@ if (procSubtitle && procSubtitle.textContent.includes('will be compacted')) {
 
 export async function generateCloseYearSummary() {
   const entities = ensureArray(await sqliteStore.get('entities'));
-  const production = ensureArray(await sqliteStore.get('production'));
-  const sales = ensureArray(await sqliteStore.get('sales'));
-  const rep = ensureArray(await sqliteStore.get('rep'));
-  const calculator = ensureArray(await sqliteStore.get('calculator'));
-  const transactions = ensureArray(await sqliteStore.get('transactions'));
-  const returns = ensureArray(await sqliteStore.get('returns'));
-  const expenses = ensureArray(await sqliteStore.get('expenses'));
-  const factory = ensureArray(await sqliteStore.get('factory'));
+  const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
   const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
   const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
   const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};

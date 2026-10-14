@@ -4,12 +4,12 @@ import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
-import { _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
+import { runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
 import { confirmGuard } from './confirm-guard.js';
 import { getDefaultStoreKey } from './store-keys.js';
 export let repTransactionMode = 'sale';
@@ -1126,9 +1126,7 @@ itemContent = `
   </div>
 </div>${panelPlaceholder}`;
 }
-const _bal = _runBal.get(t) || 0;
-const _balText = _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal));
-item.innerHTML = itemContent + balanceAfterHtml(_balText, _bal > 0.005 ? 'debt' : 'clear');
+item.innerHTML = itemContent + await runningBalanceHtml(_runBal.get(t) || 0);
 _repFrag.appendChild(item);
 }
 list.replaceChildren(_repFrag);

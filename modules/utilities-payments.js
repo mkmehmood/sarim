@@ -4,7 +4,7 @@ import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
+import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _ensureSupplierInvoices, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
@@ -2465,23 +2465,9 @@ return da - db;
 });
 let remaining = amount;
 if (pendingMaterials.length > 0) {
-const materialsToSave = [];
-for (const mat of pendingMaterials) {
-if (remaining <= 0) break;
-if (remaining >= mat.totalPayable) {
-remaining -= mat.totalPayable;
-mat.totalPayable = 0;
-mat.paymentStatus = 'paid';
-mat.paidDate = date;
-mat.updatedAt = getTimestamp();
-} else {
-mat.totalPayable = parseFloat((mat.totalPayable - remaining).toFixed(2));
-remaining = 0;
-mat.updatedAt = getTimestamp();
-}
-ensureRecordIntegrity(mat, true);
-materialsToSave.push(mat);
-}
+const _alloc = allocatePaymentToMaterials(pendingMaterials, remaining, date);
+remaining = _alloc.remaining;
+const materialsToSave = _alloc.touched;
 if (materialsToSave.length > 0) {
 transaction.isPayable = true;
 transaction.materialId = materialsToSave[0].id;

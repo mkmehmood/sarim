@@ -2699,6 +2699,27 @@ export function balanceAfterHtml(text, tone = 'neutral', label = 'Balance after'
 }
 
 window.balanceAfterHtml = balanceAfterHtml;
+
+export function allocatePaymentToMaterials(materials, amount, date) {
+  let remaining = amount;
+  const touched = [];
+  for (const mat of materials) {
+    if (remaining <= 0) break;
+    if (remaining >= mat.totalPayable) {
+      remaining -= mat.totalPayable;
+      mat.totalPayable = 0;
+      mat.paymentStatus = 'paid';
+      mat.paidDate = date;
+    } else {
+      mat.totalPayable = parseFloat((mat.totalPayable - remaining).toFixed(2));
+      remaining = 0;
+    }
+    mat.updatedAt = getTimestamp();
+    ensureRecordIntegrity(mat, true);
+    touched.push(mat);
+  }
+  return { remaining, touched };
+}
 window._triggerFileDownload = _triggerFileDownload;
 window._readFileAsArrayBuffer = _readFileAsArrayBuffer;
 window.CryptoEngine = CryptoEngine;
