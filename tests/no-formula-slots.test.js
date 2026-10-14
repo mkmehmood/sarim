@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 
 const root = new URL('../', import.meta.url);
-const files = readdirSync(new URL('modules/', root)).filter(f => f.endsWith('.js') && f !== 'record-formula-id-migration.js').map(f => `modules/${f}`);
+const files = readdirSync(new URL('modules/', root)).filter(f => f.endsWith('.js')).map(f => `modules/${f}`);
 
 describe('units are pooled by formula id, with no fixed slots', () => {
   for (const f of files) {
