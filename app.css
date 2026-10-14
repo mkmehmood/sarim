@@ -72,8 +72,7 @@
 --noman-color: #67e8f9;
 --supply-zubair: #4ADE80;
 --supply-mahmood: #c084fc;
---factory-std: #4ADE80;
---factory-asn: #c084fc;
+--factory-formula: #4ADE80;
 --toggle-bg: rgba(30, 41, 59, 0.70);
 --toggle-active: #4ADE80;
 --toggle-knob: #ffffff;
@@ -195,8 +194,7 @@
 --noman-color: #0891B2;
 --supply-zubair: #059669;
 --supply-mahmood: #7C3AED;
---factory-std: #059669;
---factory-asn: #7C3AED;
+--factory-formula: #059669;
 --toggle-bg: rgba(203, 213, 225, 0.70);
 --toggle-active: #10B981;
 --toggle-knob: #ffffff;
@@ -2200,8 +2198,7 @@ font-weight: 800;
 color: var(--text-muted);
 }
 
-.factory-badge-std { color: var(--factory-std); }
-.factory-badge-asn { color: var(--factory-asn); }
+.factory-badge-formula { color: var(--factory-formula); }
 
 .factory-overlay {
 display: none;
@@ -3054,8 +3051,7 @@ body.dark-mode {
 --noman-color: #67e8f9;
 --supply-zubair: #4ADE80;
 --supply-mahmood: #c084fc;
---factory-std: #4ADE80;
---factory-asn: #c084fc;
+--factory-formula: #4ADE80;
 --toggle-opt-active-bg: rgba(74,222,128,0.16);
 --toggle-opt-active-border: rgba(74,222,128,0.38);
 --toggle-opt-active-color: #4ADE80;
@@ -4054,8 +4050,7 @@ border-radius: 0 !important;
 }
 
 .store-badge, .payment-badge, .seller-badge, .transaction-badge,
-.noran-badge, .noman-badge, .factory-badge, .factory-badge-std,
-.factory-badge-asn, .entity-type-badge, .supply-tag,
+.noran-badge, .noman-badge, .factory-badge, .factory-badge-formula, .entity-type-badge, .supply-tag,
 .units-available-indicator, .units-available-good,
 .units-available-warning, .units-available-danger,
 .received-indicator, .update-indicator,
