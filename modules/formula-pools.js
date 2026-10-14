@@ -33,3 +33,22 @@ export function computeUnitPools(factory, production) {
   Object.values(pools).forEach((t) => { t.available = Math.max(0, t.produced - t.consumed); });
   return pools;
 }
+
+// Units a formula's production entries have used are taken from its oldest
+// factory batches first. Returns, per batch id, how many of its units are used.
+export function usedUnitsByBatch(factory, production, formulaId) {
+  const when = (b) => { const t = new Date(`${b.date} ${b.time || ''}`).getTime(); return Number.isFinite(t) ? t : (b.timestamp || 0); };
+  const batches = _arr(factory)
+    .filter((b) => b && b.id && !b.deletedAt && b.formulaId === formulaId && b.units > 0)
+    .sort((a, b) => when(a) - when(b) || String(a.id).localeCompare(String(b.id)));
+  let left = _arr(production)
+    .filter((p) => p && !p.isReturn && !p.deletedAt && p.formulaId === formulaId)
+    .reduce((sum, p) => sum + (Number(p.formulaUnits) || 0), 0);
+  const used = new Map();
+  for (const b of batches) {
+    const take = Math.min(left, b.units);
+    used.set(b.id, take);
+    left -= take;
+  }
+  return used;
+}

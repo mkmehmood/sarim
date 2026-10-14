@@ -8,7 +8,7 @@ import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, 
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { getFormulaNames, getSelectedFormula } from './formula-store.js';
-import { computeUnitPools } from './formula-pools.js';
+import { computeUnitPools, usedUnitsByBatch } from './formula-pools.js';
 import { confirmGuard } from './confirm-guard.js';
 import { getDefaultStoreKey } from './store-keys.js';
 export let editingFactoryInventoryId;
@@ -778,10 +778,21 @@ const u = document.getElementById('factoryProductionUnits'); if (u) u.value = '1
 if (typeof calculateFactoryProduction === 'function') calculateFactoryProduction();
 }
 
+async function _usedUnitsOfBatch(rec) {
+const [factory, production] = await Promise.all([sqliteStore.get('factory'), sqliteStore.get('production')]);
+return usedUnitsByBatch(ensureArray(factory), ensureArray(production), rec.formulaId).get(rec.id) || 0;
+}
+
+function _usedBatchMessage(used, rec, action) {
+return `Cannot ${action}: ${fmtNum(used)} of this batch's ${fmtNum(rec.units || 0)} units are already used in production entries. Delete or reduce those production entries first.`;
+}
+
 export async function startEditFactoryEntry(id) {
 const hist = ensureArray(await sqliteStore.get('factory'));
 const rec = hist.find(h => h && String(h.id) === String(id));
 if (!rec || rec.isMerged) { showToast('This batch cannot be edited.', 'warning'); return; }
+const _usedEdit = await _usedUnitsOfBatch(rec);
+if (_usedEdit > 0) { window.notifyBlocking(_usedBatchMessage(_usedEdit, rec, 'edit'), 'warning', 'Action not allowed'); return; }
 if (typeof showTab === 'function') showTab('factory');
 const _ft = rec.formulaId;
 _set_currentFactoryEntryStore(rec.store);
@@ -828,6 +839,8 @@ return;
 let _edHistIdx = -1;
 if (_ed) {
 const o = _ed.original;
+const _usedSave = await _usedUnitsOfBatch(o);
+if (_usedSave > 0) throw new Error(_usedBatchMessage(_usedSave, o, 'update'));
 const oType = o.formulaId || (await getStorePool(o.store));
 const tr = await updateFormulaInventory();
 const avail = tr?.[oType]?.available || 0;
@@ -1121,6 +1134,8 @@ return ` • ${inv?.name || f.name || 'Material'}: ${fmtNum(f.quantity)} kg rest
 }).join('\n')
 : '';
 {
+const _feUsed = await _usedUnitsOfBatch(entry);
+if (_feUsed > 0) { window.notifyBlocking(_usedBatchMessage(_feUsed, entry, 'delete'), 'warning', 'Action not allowed'); return; }
 const _feTracking = await updateFormulaInventory();
 const _feAvail = _feTracking?.[_feFormulaKey]?.available || 0;
 if (_feAvail + 1e-9 < (entry.units || 0)) {
