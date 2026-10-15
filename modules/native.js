@@ -85,7 +85,10 @@ export async function saveBlobToDevice(blob, name) {
       const res = await plugin.saveToDownloads({ filename: safeName(name), mime, data: await blobToBase64(blob) });
       toast(`Saved to ${res.path || 'Downloads'}`, 'success', 4500);
       if (typeof window.showGlassConfirm === 'function') {
-        const open = await window.showGlassConfirm(`${safeName(name)}\nSaved in ${res.path || 'Downloads'}`, { title: 'File Saved', confirmText: 'Open', cancelText: 'Close' });
+        const _fn = safeName(name);
+        let _where = String(res.path || 'Downloads');
+        if (_where.endsWith('/' + _fn)) _where = _where.slice(0, -(_fn.length + 1));
+        const open = await window.showGlassConfirm(`${_fn}\nSaved in ${_where}`, { title: 'File Saved', confirmText: 'Open', cancelText: 'Close' });
         if (open) {
           try { await plugin.openFile({ uri: res.uri, mime }); } catch (e) { toast('No app found to open this file. Find it in your Downloads folder.', 'info', 4500); }
         }

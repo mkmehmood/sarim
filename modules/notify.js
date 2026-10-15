@@ -40,7 +40,12 @@ async function _showNative(title, body, tone) {
   if (!LocalNotifications) return;
   if (!(await _ensureNativePermission(LocalNotifications))) return;
   _seq = (_seq + 1) % 2147483000;
-  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: _SUMMARY[tone] || '', schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
+  const summary = _SUMMARY[tone] || '';
+  if (summary) {
+    const lines = String(body).split('\n');
+    if (lines.some((l) => l.trim() === summary)) body = lines.filter((l) => l.trim() !== summary).join('\n');
+  }
+  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: summary, schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
 }
 
 const _SUMMARY = { success: 'All done', warning: 'Needs your attention', error: 'The action could not be completed' };
