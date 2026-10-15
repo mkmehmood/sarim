@@ -3294,9 +3294,8 @@ const buildSaleRow = async (t, runBal) => {
     typeLabel = 'REP RETURN';
     {
       const _rrE = Number(t.expiredQty) || 0, _rrR = Number(t.returnedQty) || 0, _rrP = Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : '';
-      const _rrV = Number(t.returnValue) > 0 ? ` = ${fmtAmt(Number(t.returnValue))}` : '';
-      detailLabel = _rrE > 0 ? 'Return | Expired credit' : 'Return';
-      extraDetail = _rrE > 0 ? `\n${fmtAmt(_rrR)} kg | ${fmtAmt(_rrE)} kg${_rrP}${_rrV}` : `\n${fmtAmt(_rrR)} kg${_rrP}${_rrV}`;
+      detailLabel = '';
+      extraDetail = _rrE > 0 ? `Return ${fmtAmt(_rrR)} kg | Expired credit ${fmtAmt(_rrE)} kg${_rrP}` : `Return ${fmtAmt(_rrR)} kg${_rrP}`;
     }
     if (Number(t.returnValue) > 0 && !_rrSet.has(t.id)) { credit = Number(t.returnValue); }
     displayDate = formatDisplayDate(t.date);
@@ -3306,10 +3305,9 @@ const buildSaleRow = async (t, runBal) => {
     {
       const _cPay = collectionCollected(t), _cExp = Number(t.expiredValue) || 0;
       const _cHasPay = _cPay > 0 || !(Number(t.expiredQty) > 0), _cHasExp = _cExp > 0;
-      const _cExpTxt = _cHasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${fmtAmt(_cExp + (_cHasPay ? _cPay : 0))}` : fmtAmt(_cExp)) : '';
-      detailLabel = [_cHasPay ? 'Payment' : '', _cHasExp ? 'Expired credit' : ''].filter(Boolean).join(' | ');
-      extraDetail = '\n' + [_cHasPay ? fmtAmt(_cPay) : '', _cExpTxt].filter(Boolean).join(' | ');
-      if (t.allocations && t.allocations.length) extraDetail += `\nApplied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}`;
+      const _cExpTxt = _cHasExp ? `Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(_cExp)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : '';
+      detailLabel = '';
+      extraDetail = [_cHasPay ? `Payment ${fmtAmt(_cPay)}` : '', _cExpTxt].filter(Boolean).join(' | ');
       if (_cHasExp) credit += _cExp;
     }
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
@@ -3415,10 +3413,13 @@ if (normalSalesTxns.length > 0 || custHasPrior) {
     styles: { fontSize: 7.5, cellPadding: 2.5, lineWidth: 0.15, lineColor: [180,180,180], overflow: 'linebreak' },
     columnStyles: {
       0:{cellWidth:22,halign:'center'},1:{cellWidth:22,halign:'center',fontStyle:'bold'},
-      2:{cellWidth:52},3:{cellWidth:27,halign:'right',textColor:[220,53,69],fontStyle:'bold'},
-      4:{cellWidth:27,halign:'right',textColor:[40,167,69],fontStyle:'bold'},5:{cellWidth:26,halign:'center',fontStyle:'bold'}
+      2:{cellWidth:62},3:{cellWidth:24,halign:'right',textColor:[220,53,69],fontStyle:'bold'},
+      4:{cellWidth:24,halign:'right',textColor:[40,167,69],fontStyle:'bold'},5:{cellWidth:24,halign:'center',fontStyle:'bold'}
     },
     didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index === 2 && typeof data.cell.raw === 'string' && data.cell.raw.includes('Expired credit') && !data.cell.raw.includes('\n')) {
+        data.cell.text = [' '];
+      }
       const isOpeningRow = custHasPrior && data.row.index === 0;
       if (isOpeningRow) {
         data.cell.styles.fillColor = [220, 235, 255];
@@ -3442,6 +3443,30 @@ if (normalSalesTxns.length > 0 || custHasPrior) {
           else data.cell.styles.textColor=[220,53,69];
         }
       }
+    },
+    didDrawCell: function(data) {
+      if (data.section !== 'body' || data.column.index !== 2) return;
+      const raw = data.cell.raw;
+      if (typeof raw !== 'string' || raw.includes('\n')) return;
+      const idx = raw.indexOf('Expired credit');
+      if (idx < 0) return;
+      const left = raw.slice(0, idx), right = raw.slice(idx);
+      const avail = data.cell.width - 5;
+      let f = 7.5;
+      for (; f > 5; f -= 0.25) {
+        doc.setFontSize(f); doc.setFont(undefined, 'normal');
+        const wL = doc.getTextWidth(left);
+        doc.setFont(undefined, 'bold');
+        if (wL + doc.getTextWidth(right) <= avail) break;
+      }
+      const y = data.cell.y + data.cell.height / 2;
+      const x = data.cell.x + 2.5;
+      doc.setFontSize(f); doc.setFont(undefined, 'normal'); doc.setTextColor(40, 40, 40);
+      if (left) doc.text(left, x, y, { baseline: 'middle' });
+      const wLeft = left ? doc.getTextWidth(left) : 0;
+      doc.setFont(undefined, 'bold'); doc.setTextColor(160, 55, 20);
+      doc.text(right, x + wLeft, y, { baseline: 'middle' });
+      doc.setFont(undefined, 'normal'); doc.setFontSize(7.5); doc.setTextColor(80, 80, 80);
     },
     margin: { left: 14, right: 14 }
   });
