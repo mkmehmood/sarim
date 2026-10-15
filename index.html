@@ -3307,7 +3307,6 @@ async function deleteStore(index) {
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
-  if (typeof showToast === 'function') showToast('Store deleted', 'success');
   if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Store deleted', s.name, 'store-del-' + s.key).catch(function(){});
 }
 window.deleteStore = deleteStore;
@@ -3355,7 +3354,6 @@ async function saveStoreFromForm() {
   resetStoreForm();
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
-  if (typeof showToast === 'function') showToast(editIndex >= 0 ? 'Store updated' : 'Store added', 'success');
   if (typeof window.sendDeviceNotification === 'function') {
     var _nStore = (commitResult.stores || []).find(function(x) { return x.name === nameRaw; }) || {};
     window.sendDeviceNotification(editIndex >= 0 ? 'Store updated' : 'Store added', nameRaw + ' — sale price ' + (_nStore.salePrice > 0 ? _nStore.salePrice : 0) + '/kg', 'store-' + (_nStore.key || nameRaw)).catch(function(){});

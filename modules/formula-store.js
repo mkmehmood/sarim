@@ -349,7 +349,6 @@ if (!(await window.gcCommit({}))) return false;
     list.push({ id: _editingId, ...c, createdAt: now, updatedAt: now });
   }
   await _saveFormulaStore(list, _feedWrites(list, now));
-  showToast('Formula saved', 'success');
   sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `"${c.name}" was saved with ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}.`, 'formula-' + _editingId).catch(() => {});
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   return true;

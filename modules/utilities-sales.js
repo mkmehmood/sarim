@@ -4691,7 +4691,6 @@ if (data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos
       await sqliteStore.set('photodirty', dirtyKeys);
       await sqliteStore.set('photos_timestamp', nowMs);
       if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
-      showToast(`Restored ${restoredKeys.length} photo(s) from backup.`, 'info', 3000);
     }
   } catch(e) { console.warn('[restore] photos merge failed', e); }
 }

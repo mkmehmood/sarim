@@ -2567,7 +2567,6 @@ function _describeRemoteTx(key, r) {
 }
 
 function _pushTxNotification(item) {
-  showToast(item.body, 'info', 4500);
   sendDeviceNotification(item.title, item.body, 'tx-' + item.id, { key: item.id }).catch(() => {});
 }
 

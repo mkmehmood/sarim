@@ -835,7 +835,6 @@ return;
 }
 _toastQueue.push({ message, type, duration });
 _playNextToast();
-if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type);
 }
 
 window.showToast = showToast;
