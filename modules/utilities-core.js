@@ -1,6 +1,6 @@
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
-import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords } from './link-graph.js';
+import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords, collectionCollected } from './link-graph.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
@@ -3292,15 +3292,26 @@ const buildSaleRow = async (t, runBal) => {
     displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
   } else if (pt === 'REP_RETURN') {
     typeLabel = 'REP RETURN';
-    detailLabel = `Expired ${fmtAmt(t.expiredQty||0)} kg | Returned ${fmtAmt(t.returnedQty||0)} kg`;
-    if (Number(t.returnValue) > 0 && !_rrSet.has(t.id)) { credit = Number(t.returnValue); extraDetail = `\nCredited: ${fmtAmt(credit)} (not cash)`; }
+    {
+      const _rrE = Number(t.expiredQty) || 0, _rrR = Number(t.returnedQty) || 0, _rrP = Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : '';
+      const _rrV = Number(t.returnValue) > 0 ? ` = ${fmtAmt(Number(t.returnValue))}` : '';
+      detailLabel = _rrE > 0 ? 'Return | Expired credit' : 'Return';
+      extraDetail = _rrE > 0 ? `\n${fmtAmt(_rrR)} kg | ${fmtAmt(_rrE)} kg${_rrP}${_rrV}` : `\n${fmtAmt(_rrR)} kg${_rrP}${_rrV}`;
+    }
+    if (Number(t.returnValue) > 0 && !_rrSet.has(t.id)) { credit = Number(t.returnValue); }
     displayDate = formatDisplayDate(t.date);
   } else if (pt === 'COLLECTION') {
     credit = parseFloat(t.totalValue) || 0;
     typeLabel = 'COLLECTION';
-    detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : (credit > 0 || !(Number(t.expiredQty) > 0) ? 'Cash payment received' : 'Expired stock received');
-    if (Number(t.expiredQty) > 0) extraDetail = `\nExpired: ${fmtAmt(Number(t.expiredQty))} kg`;
-    if (Number(t.expiredValue) > 0) { credit += Number(t.expiredValue); extraDetail += `\nExpired credit: ${fmtAmt(Number(t.expiredValue))} (not cash)`; }
+    {
+      const _cPay = collectionCollected(t), _cExp = Number(t.expiredValue) || 0;
+      const _cHasPay = _cPay > 0 || !(Number(t.expiredQty) > 0), _cHasExp = _cExp > 0;
+      const _cExpTxt = _cHasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${fmtAmt(_cExp + (_cHasPay ? _cPay : 0))}` : fmtAmt(_cExp)) : '';
+      detailLabel = [_cHasPay ? 'Payment' : '', _cHasExp ? 'Expired credit' : ''].filter(Boolean).join(' | ');
+      extraDetail = '\n' + [_cHasPay ? fmtAmt(_cPay) : '', _cExpTxt].filter(Boolean).join(' | ');
+      if (t.allocations && t.allocations.length) extraDetail += `\nApplied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}`;
+      if (_cHasExp) credit += _cExp;
+    }
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {
     credit = parseFloat(t.totalValue) || 0;
