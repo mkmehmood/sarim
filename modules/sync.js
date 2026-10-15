@@ -3560,12 +3560,7 @@ export async function showSyncHealthPanel() {
     const panel = document.createElement('div');
     panel.id = 'sync-health-panel';
     panel.setAttribute('role', 'dialog');
-    panel.style.cssText = `
-      position:fixed;bottom:20px;right:20px;z-index:10300;
-      background:var(--glass-bg,#1e293b);border:1px solid var(--glass-border,#334155);
-      border-radius:16px;padding:20px 24px;min-width:280px;max-width:360px;
-      box-shadow:0 8px 32px rgba(0,0,0,.4);color:var(--text-main,#f1f5f9);font-size:.85rem;
-    `;
+    panel.classList.add('st-position__072a0d', 'st-background__39e777', 'st-border-bottom__6367e5', 'st-border-radius__89dd75', 'st-padding__969a91', 'st-box-shadow__0d193c', 'st-color__55e200', 'st-font-size__9bcd21', 'u-f08c07b');
     panel.innerHTML = `
       <div class="u-73c1bbd d-flex">
         <strong class="u-d50f65a">Sync Health</strong>

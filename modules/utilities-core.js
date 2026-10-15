@@ -4209,7 +4209,7 @@ export const SarimChart = (() => {
     if (!_bodyTip || !_bodyTip.isConnected) {
       _bodyTip = document.createElement('div');
       _bodyTip.className = 'sc-tooltip';
-      _bodyTip.style.cssText = 'display:none;position:fixed;pointer-events:none;z-index:10002;';
+      _bodyTip.classList.add('d-none', 'st-position__072a0d', 'st-pointer-events__8b1364', 'u-a7cc75a');
       document.body.appendChild(_bodyTip);
     }
     return _bodyTip;

@@ -252,7 +252,7 @@ let unlinkButton = existingSupplierSection.querySelector('.unlink-supplier-btn')
 if (!unlinkButton) {
 unlinkButton = document.createElement('button');
 unlinkButton.className = 'btn btn-danger unlink-supplier-btn';
-unlinkButton.style.cssText = 'width:100%;margin-top:10px;font-size:0.8rem;';
+unlinkButton.classList.add('u-16000cc', 'st-margin-top__d2c171', 'st-font-size__c95659');
 unlinkButton.innerHTML = ' Unlink Supplier & Reverse Transactions';
 unlinkButton.onclick = function(e) { e.preventDefault(); unlinkSupplierConfirmation(material); };
 existingSupplierSection.appendChild(unlinkButton);

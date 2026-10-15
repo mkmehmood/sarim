@@ -198,7 +198,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   window.setStyle(div, 'position', 'st-position__d461c9');
   const searchWrap = document.createElement('div');
   searchWrap.className = 'factory-mat-select';
-  searchWrap.style.cssText = 'position:relative;';
+  searchWrap.classList.add('st-position__d461c9');
   const searchInput = document.createElement('input');
   searchInput.type = 'text';
   searchInput.className = 'factory-mat-search-input';
@@ -207,10 +207,10 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   searchInput.dataset.matId = currentId;
   searchInput.dataset.matCost = String(currentCost);
   searchInput.autocomplete = 'off';
-  searchInput.style.cssText = 'width:100%;box-sizing:border-box;';
+  searchInput.classList.add('u-4c8551b');
   const dropdown = document.createElement('div');
   dropdown.className = 'factory-mat-dropdown hidden u-search-dropdown';
-  dropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:999;max-height:180px;overflow-y:auto;';
+  dropdown.classList.add('st-position__bb6a43', 'st-max-height__914b95', 'u-8f31856');
   dropdown.classList.add('has-overflow', 'scroll-y');
   const costInput = document.createElement('input');
   costInput.type = 'number';
@@ -218,7 +218,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   costInput.placeholder = 'Cost';
   costInput.value = currentCost;
   costInput.readOnly = true;
-  costInput.style.cssText = 'background:rgba(0,0,0,0.05);color:var(--text-muted);cursor:default;';
+  costInput.classList.add('st-background__e94d78', 'st-color__5872de', 'st-cursor__2a9295');
   const renderDropdown = (query) => {
     const q = (query || '').toLowerCase();
     const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;

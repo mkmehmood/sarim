@@ -65,6 +65,13 @@ describe('display helpers', () => {
       assert.ok(css.includes(`.d-${v} { display: ${v}; }`), v);
     }
   });
+  it('keeps cssText only for the one rule that needs !important', () => {
+    let count = 0;
+    for (const f of ['index.html', 'modules/admin-data.js', 'modules/factory.js', 'modules/formula-store.js', 'modules/sync.js', 'modules/utilities-core.js', 'modules/utilities-payments.js', 'modules/utilities-sales.js']) {
+      count += (readFileSync(new URL('../' + f, import.meta.url), 'utf8').match(/\.style\.cssText/g) || []).length;
+    }
+    assert.equal(count, 1);
+  });
   it('leaves no direct style.display writes in the app code', () => {
     for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js']) {
       const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8').replace(tag, '');

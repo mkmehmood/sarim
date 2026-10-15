@@ -51,7 +51,7 @@ if (!firebaseDB || !currentUser) {
 }
 const modal = document.createElement('div');
 modal.id = 'delta-stats-modal';
-modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);display:flex;align-items:center;justify-content:center;z-index:10300;padding:16px;';
+modal.classList.add('st-position__072a0d', 'st-background__7f65d7', 'd-flex', 'st-align-items__7c6197', 'st-padding__287f77', 'u-7ddd1b4');
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 modal.innerHTML = `<div class="u-ed43437 st-background__e02427" style="background: var(--glass)">
   <div class="u-e6c5b02 d-flex"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
@@ -1413,7 +1413,7 @@ export function _markRowSyncWarning(rowId, commitResult) {
     const noteEl = document.getElementById('cy-result-note-' + rowId);
     if (noteEl) {
       const failMsg = document.createElement('span');
-      failMsg.style.cssText = 'display:block;margin-top:3px;font-size:0.63rem;color:var(--warning);font-weight:600;';
+      failMsg.classList.add('d-block', 'st-margin-top__c00d39', 'st-font-size__d189b8', 'st-color__52df2b', 'st-font-weight__eed0f8');
       failMsg.textContent = ` Cloud sync incomplete — ${commitResult.batchesFailed}/${commitResult.batchesTotal} Firestore batch${commitResult.batchesFailed!==1?'es':''} failed. Local data is safe. Re-sync when online.`;
       noteEl.appendChild(failMsg);
     }

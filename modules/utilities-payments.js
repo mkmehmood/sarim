@@ -2661,7 +2661,7 @@ const categoryColor = getCategoryColor(expense.category);
 const categoryLabel = getCategoryLabel(expense.category);
 const formattedDate = formatExpenseDate(expense.date);
 const tr = document.createElement('tr');
-tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s;';
+tr.classList.add('st-border-bottom__78f854', 'st-transition__901d69');
 tr.onmouseover = function() { window.setStyle(this, 'background', 'st-background__ebfb68'); };
 tr.onmouseout = function() { window.setStyle(this, 'background', 'st-background__a8869d'); };
 tr.innerHTML = `
@@ -2999,7 +2999,7 @@ return;
 }
 function buildUnifiedRow(row) {
 const tr = document.createElement('tr');
-tr.style.cssText = 'border-bottom: 1px solid var(--glass-border); transition: background 0.2s; cursor: pointer;';
+tr.classList.add('st-border-bottom__78f854', 'st-transition__901d69', 'st-cursor__3b6a3a');
 tr.onmouseover = function() { window.setStyle(this, 'background', 'st-background__c95778'); };
 tr.onmouseout = function() { window.setStyle(this, 'background', row.type === 'entity' ? 'st-background__356c02' : 'st-background__a8869d'); };
 if (row.type === 'transaction') {

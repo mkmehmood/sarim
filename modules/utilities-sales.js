@@ -3960,7 +3960,7 @@ let decPassword = null;
 if (!decPassword) {
 decPassword = await new Promise((resolve) => {
 const modal = document.createElement('div');
-modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:10300;';
+modal.classList.add('st-position__072a0d', 'st-background__d03340', 'd-flex', 'st-align-items__7c6197', 'u-7ddd1b4');
 modal.innerHTML = `
 <div class="liquid-card u-33cbc37">
 <h3 class="u-454fb31">Enter Password to Decrypt</h3>
