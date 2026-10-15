@@ -41,6 +41,7 @@ const dialog = await import('../modules/dialog.js');
 const notify = await import('../modules/notify.js');
 Date.now = realNow;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+notify.setDialogHoldMs(5);
 const clickAction = (index) => {
   const overlay = overlays[0];
   overlay.listeners.click({ target: { closest: (sel) => (sel === '[data-act]' ? { dataset: { act: String(index) } } : null) } });
@@ -140,5 +141,43 @@ describe('toasts and fallbacks', () => {
     overlays.length = 0;
     docListeners.pointerdown({ target: { closest: () => null } });
     assert.equal(dialog.isDialogFlowActive(), false);
+  });
+});
+
+describe('one notification per action', () => {
+  it('drops the dialog notification when an explaining notification follows', async () => {
+    notify.setDialogHoldMs(150);
+    await wait(200);
+    shown.length = 0;
+    const p = dialog.showGlassConfirm('Save this sale?\nCustomer: Ali\nAmount: Rs 500', { title: 'Save Transaction?', confirmText: 'Save' });
+    clickAction(1);
+    await p;
+    await notify.sendDeviceNotification('Sale recorded', 'Ali \u2014 500', 'tx-1');
+    await wait(250);
+    assert.equal(shown.length, 1);
+    assert.equal(shown[0].title, 'Sale recorded');
+    notify.setDialogHoldMs(5);
+  });
+  it('drops the dialog notification when the explaining toast arrives', async () => {
+    notify.setDialogHoldMs(1800);
+    await wait(1900);
+    shown.length = 0;
+    const p = dialog.showGlassAlert('Insufficient cash in hand. Available: Rs 1,000 \u2014 Required: Rs 5,000', { tone: 'error', title: 'Low cash in hand' });
+    clickAction(0);
+    await p;
+    notify.notifyFromToast('Insufficient cash in hand. Available: Rs 1,000 \u2014 Required: Rs 5,000', 'error');
+    await wait(2000);
+    assert.equal(shown.length, 1);
+    assert.equal(shown[0].title, 'Not enough cash in hand');
+    notify.setDialogHoldMs(5);
+  });
+  it('still notifies for a dialog with no explaining notification', async () => {
+    shown.length = 0;
+    await wait(30);
+    const p = dialog.showGlassAlert('Merged opening balance records cannot be deleted', { tone: 'warning', title: 'Action not allowed' });
+    clickAction(0);
+    await p;
+    await wait(40);
+    assert.equal(shown.length, 1);
   });
 });

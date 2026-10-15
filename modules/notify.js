@@ -64,16 +64,32 @@ function _isDuplicate(title, text, tag) {
   return false;
 }
 
+// A dialog notification only repeats what the person just saw on screen. The
+// notification that explains the outcome (sale recorded, payment saved, ...) is
+// the useful one, so a dialog notification is held briefly and dropped when an
+// explaining notification arrives for the same action.
+let _dialogHoldMs = 4000;
+let _lastExplainAt = 0;
+let _heldDialogs = [];
+export function setDialogHoldMs(ms) { _dialogHoldMs = Math.max(0, Number(ms) || 0); }
+function _dropHeldDialogs() {
+  _lastExplainAt = Date.now();
+  _heldDialogs.forEach((h) => clearTimeout(h.timer));
+  _heldDialogs = [];
+}
+
 export async function sendDeviceNotification(title, body, tag, opts) {
   const text = String(body == null ? '' : body).replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
   if (!text) return;
   const fromToast = !!(opts && opts.fromToast);
-  if (!fromToast) {
+  const isDialog = !!(opts && opts.dialog);
+  if (!fromToast && !isDialog) {
     _lastExplicitAt = Date.now();
     _pendingMirrors.forEach(clearTimeout);
     _pendingMirrors = [];
   }
-  if (!(opts && opts.dialog) && _isDuplicate(title, text, tag)) return;
+  if (!isDialog && _isDuplicate(title, text, tag)) return;
+  if (!isDialog) _dropHeldDialogs();
   if (_isNative()) await _showNative(title, text, opts && opts.tone);
   else await _showWeb(title, text, tag || 'app-toast');
 }
@@ -183,7 +199,13 @@ export function notifyFromToast(message, type) {
 export function notifyFromDialog(note) {
   try {
     if (!note || !note.title || !note.body) return;
-    sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
+    if (Date.now() - _lastExplainAt < _dialogHoldMs) return;
+    const held = {};
+    held.timer = setTimeout(() => {
+      _heldDialogs = _heldDialogs.filter((h) => h !== held);
+      sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
+    }, _dialogHoldMs);
+    _heldDialogs.push(held);
   } catch (_) {}
 }
 window.notifyFromToast = notifyFromToast;
