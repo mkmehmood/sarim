@@ -5056,7 +5056,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   ))) return;
   const ok = await recoverRecord(id, collectionName);
   if (ok) {
-    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label + ' was restored from the recycle bin.', 'recover-' + id).catch(() => {});
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label + ' was restored from the recycle bin.', 'recover-' + id, { key: id, priority: 2 }).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();

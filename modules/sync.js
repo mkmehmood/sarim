@@ -243,7 +243,7 @@ function _notifyDeletion(key, r) {
       if (amt != null && amt !== '' && !isNaN(Number(amt))) parts.push(fmtAmt(amt));
       else if (r.net != null && !isNaN(Number(r.net))) parts.push(Math.abs(Number(r.net)) + ' kg');
     }
-    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
+    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now()), { key: r && r.id ? r.id : '' }).catch(() => {});
   } catch (_) {}
 }
 
@@ -2568,7 +2568,7 @@ function _describeRemoteTx(key, r) {
 
 function _pushTxNotification(item) {
   showToast(item.body, 'info', 4500);
-  sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {});
+  sendDeviceNotification(item.title, item.body, 'tx-' + item.id, { key: item.id }).catch(() => {});
 }
 
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
@@ -2633,7 +2633,7 @@ function _notifyLocalTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ ...item, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
 
@@ -2643,7 +2643,7 @@ function _notifyEditedTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ title: item.title + ' updated', body: 'Details were changed: ' + item.body, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
 

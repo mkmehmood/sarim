@@ -64,18 +64,90 @@ function _isDuplicate(title, text, tag) {
   return false;
 }
 
-// A dialog notification only repeats what the person just saw on screen. The
-// notification that explains the outcome (sale recorded, payment saved, ...) is
-// the useful one, so a dialog notification is held briefly and dropped when an
-// explaining notification arrives for the same action.
-let _dialogHoldMs = 4000;
-let _lastExplainAt = 0;
-let _heldDialogs = [];
-export function setDialogHoldMs(ms) { _dialogHoldMs = Math.max(0, Number(ms) || 0); }
-function _dropHeldDialogs() {
-  _lastExplainAt = Date.now();
-  _heldDialogs.forEach((h) => clearTimeout(h.timer));
-  _heldDialogs = [];
+// ---------------------------------------------------------------------------
+// One device notification per action.
+// Everything that wants to notify (explicit events, explained toasts, dialogs)
+// is queued for a short window and merged before anything is shown:
+//   - events with the same `key` (a record id) become one notification
+//   - dialogs and toasts for the same action add their details to that one
+//     notification instead of showing a second one
+//   - unrelated records stay separate (one notification per transaction)
+// ---------------------------------------------------------------------------
+const _WINDOW = { quietMs: 2500, maxMs: 8000 };
+let _queue = [];
+let _flushTimer = null;
+let _firstAt = 0;
+export function setNotificationWindow(quietMs, maxMs) {
+  _WINDOW.quietMs = Math.max(0, Number(quietMs) || 0);
+  _WINDOW.maxMs = Math.max(_WINDOW.quietMs, Number(maxMs) || 0);
+}
+
+const _CAPTION_LINES = new Set(['review before you continue', 'this action is permanent', 'needs your attention', 'the action could not be completed']);
+const _norm = (l) => String(l).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+function _mergeLines(bodies, { skipNoise = false } = {}) {
+  const out = [];
+  const seen = [];
+  bodies.forEach((body) => {
+    String(body == null ? '' : body).split('\n').forEach((raw) => {
+      const line = raw.trim();
+      if (!line) return;
+      if (skipNoise && (/^(confirmed|chosen):/i.test(line) || _CAPTION_LINES.has(_norm(line)))) return;
+      const n = _norm(line);
+      if (!n || seen.some((x) => x === n || x.includes(n) || n.includes(x))) return;
+      seen.push(n);
+      out.push(line);
+    });
+  });
+  return out.join('\n');
+}
+
+function _enqueue(entry) {
+  _queue.push(entry);
+  if (!_firstAt) _firstAt = Date.now();
+  clearTimeout(_flushTimer);
+  const wait = Math.max(0, Math.min(_WINDOW.quietMs, _firstAt + _WINDOW.maxMs - Date.now()));
+  _flushTimer = setTimeout(_flush, wait);
+}
+
+async function _emit(title, body, tag, tone) {
+  try {
+    if (_isNative()) await _showNative(title, body, tone);
+    else await _showWeb(title, body, tag || 'app-toast');
+  } catch (_) {}
+}
+
+export function _flush() {
+  clearTimeout(_flushTimer);
+  _flushTimer = null;
+  _firstAt = 0;
+  const q = _queue;
+  _queue = [];
+  if (!q.length) return;
+  const groups = [];
+  const byKey = new Map();
+  q.filter((e) => e.kind === 'event').forEach((e) => {
+    const g = e.key ? byKey.get(e.key) : null;
+    if (!g) {
+      const ng = { title: e.title, tag: e.tag, tone: e.tone, priority: e.priority, bodies: [e.body], details: [] };
+      groups.push(ng);
+      if (e.key) byKey.set(e.key, ng);
+      return;
+    }
+    if (e.priority > g.priority) { g.title = e.title; g.tag = e.tag; g.tone = e.tone || g.tone; g.priority = e.priority; g.bodies.unshift(e.body); }
+    else g.bodies.push(e.body);
+  });
+  const toasts = q.filter((e) => e.kind === 'toast');
+  toasts.forEach((e) => groups.push({ title: e.title, tag: e.tag, tone: e.tone, priority: 0, bodies: [e.body], details: [] }));
+  const dialogs = q.filter((e) => e.kind === 'dialog');
+  const anchor = groups.length ? groups[groups.length - 1] : null;
+  dialogs.forEach((d) => {
+    if (anchor) { anchor.details.push(d.body); if (!anchor.tone) anchor.tone = d.tone; }
+    else groups.push({ title: d.title, tag: d.tag, tone: d.tone, priority: 0, bodies: [d.body], details: [], standalone: true });
+  });
+  groups.forEach((g) => {
+    const body = g.standalone ? g.bodies[0] : _mergeLines([...g.bodies, ...g.details.map((d) => _mergeLines([d], { skipNoise: true }))]);
+    _emit(g.title, body, g.tag, g.tone);
+  });
 }
 
 export async function sendDeviceNotification(title, body, tag, opts) {
@@ -88,10 +160,16 @@ export async function sendDeviceNotification(title, body, tag, opts) {
     _pendingMirrors.forEach(clearTimeout);
     _pendingMirrors = [];
   }
-  if (!isDialog && _isDuplicate(title, text, tag)) return;
-  if (!isDialog) _dropHeldDialogs();
-  if (_isNative()) await _showNative(title, text, opts && opts.tone);
-  else await _showWeb(title, text, tag || 'app-toast');
+  const key = opts && opts.key != null ? String(opts.key) : '';
+  // keyed events are merged by record id, so two real transactions with the same text are never dropped
+  if (!isDialog && !key && _isDuplicate(title, text, tag)) return;
+  _enqueue({
+    kind: isDialog ? 'dialog' : (fromToast ? 'toast' : 'event'),
+    title, body: text, tag: tag || 'app-toast',
+    key,
+    priority: (opts && Number(opts.priority)) || 1,
+    tone: opts && opts.tone
+  });
 }
 
 export function primeNotificationPermission() {
@@ -199,13 +277,7 @@ export function notifyFromToast(message, type) {
 export function notifyFromDialog(note) {
   try {
     if (!note || !note.title || !note.body) return;
-    if (Date.now() - _lastExplainAt < _dialogHoldMs) return;
-    const held = {};
-    held.timer = setTimeout(() => {
-      _heldDialogs = _heldDialogs.filter((h) => h !== held);
-      sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
-    }, _dialogHoldMs);
-    _heldDialogs.push(held);
+    sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
   } catch (_) {}
 }
 window.notifyFromToast = notifyFromToast;
