@@ -4302,7 +4302,7 @@ const dot = approved
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
-      '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
+      '<button class="btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="--d-color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';--d-border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + '">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
       '<button class="btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="border-color: rgba(239,68,68,0.3)">Remove</button>'
     ].join('');
 return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">' +

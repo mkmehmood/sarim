@@ -159,7 +159,7 @@ phone = contact?.phone || customerSaleData?.customerPhone || '-';
 } catch (phoneError) {
 console.warn('Customer data operation failed.', _safeErr(phoneError));
 }
-const creditStyle = c.credit > 0 ? 'color:var(--warning); font-weight:700;' : 'color:var(--accent-emerald); font-weight:700;';
+const creditClass = c.credit > 0 ? 'st-color__52df2b st-font-weight__e3ec02' : 'st-color__a4c6ac st-font-weight__e3ec02';
 const row = document.createElement('tr');
 window.setStyle(row, 'border-bottom', 'st-border-bottom__78f854');
 const safeName = esc(c.name || 'Unknown');
@@ -168,7 +168,7 @@ row.innerHTML = `
 <td class="u-table-td">${displayDate}</td>
 <td class="u-0f0deda" onclick="event.stopPropagation(); openCustomerManagement('${safeNameForAttr}')">${safeName}</td>
 <td class="u-table-td">${phoneActionHTML(phone)}</td>
-<td class="text-right" style="padding: 8px 2px; text-align: right; font-size: 0.8rem; ${creditStyle}">${fmtAmt(safeValue(c.credit))}</td>`;
+<td class="text-right st-padding__40e4f4 st-font-size__c95659 ${creditClass}">${fmtAmt(safeValue(c.credit))}</td>`;
 return row;
 } catch (rowError) {
 console.warn('An unexpected error occurred.', _safeErr(rowError));
@@ -732,11 +732,11 @@ const isLong = msgStr.length > 48;
 const toast = document.createElement('div');
 toast.className = `liquid-toast toast-${type}`;
 toast.innerHTML = `
-<div class="toast-inner" style="${isLong ? 'white-space:normal;' : ''}">
+<div class="toast-inner${isLong ? ' u-78a068d' : ''}">
 <div class="toast-icon-wrap">
 <span class="toast-icon-glyph">${icons[type] || ''}</span>
 </div>
-<div class="toast-text" style="${isLong ? 'white-space:normal;max-width:260px;' : ''}">${esc(msgStr)}</div>
+<div class="toast-text${isLong ? ' u-295a847' : ''}">${esc(msgStr)}</div>
 <div class="toast-progress-bar"></div>
 </div>
 `;

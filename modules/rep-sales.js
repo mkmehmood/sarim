@@ -649,7 +649,7 @@ fillOpacity: 0.8
 .bindPopup(`
 <strong>${txn.customerName}</strong><br>
 <small>${txn.time}</small><br>
-<span style="color:${color}; font-weight:bold;">${typeStr}</span>: ${detailStr}
+<span class="dc-color st-font-weight__bff3d1" style="--d-color: ${color}">${typeStr}</span>: ${detailStr}
 `);
 marker.addTo(repMap);
 repMapMarkers.push(marker);
@@ -846,7 +846,7 @@ tr.innerHTML = `
 <td class="u-table-td">${displayDate}</td>
 <td class="u-0f0deda" onclick="event.stopPropagation(); openRepCustomerManagement('${safeNameForAttr}')">${esc(name)}</td>
 <td class="u-table-td">${phoneActionHTML(phone)}</td>
-<td class="text-right" style="padding: 8px 2px; text-align: right; font-size: 0.8rem; color: ${customerData.debt > 1 ? 'var(--warning)' : 'var(--accent-emerald)'}; font-weight: 700;">
+<td class="text-right st-padding__40e4f4 u-30489cb st-font-size__c95659 dc-color st-font-weight__e3ec02" style="--d-color: ${customerData.debt > 1 ? 'var(--warning)' : 'var(--accent-emerald)'}">
 ${fmtAmt(Math.max(0, customerData.debt))}
 </td>`;
 return tr;
@@ -1764,18 +1764,7 @@ typeColor = 'var(--accent)';
 qtyAmount = `${fmtNum(item.quantity)} kg - ${fmtAmt(item.totalValue)}`;
 }
 tableHTML += `
-<div style="
-display: flex;
-justify-content: space-between;
-align-items: center;
-padding: 12px;
-margin-bottom: 8px;
-background: var(--input-bg);
-border-radius: 10px;
-border: 1px solid var(--glass-border);
-transition: all 0.2s;
-${item.isSettled ? 'opacity:0.65;' : ''}
-">
+<div class="d-flex st-align-items__7c6197 st-padding__cc781b st-background__356c02 st-border-radius__e609a2 st-border-bottom__e54b2f st-transition__551558 u-25351ff${item.isSettled ? ' st-opacity__a697a8' : ''}">
 <div class="u-flex-1" >
 <div class="u-4e5b492 d-flex">
 <span class="u-8ed6849">${typeIcon}</span>
@@ -1783,7 +1772,7 @@ ${item.isSettled ? 'opacity:0.65;' : ''}
 ${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}
 ${item.isSettled ? `<span class="settled-badge"> Settled</span>` : ''}
 </div>
-<div style="font-size: 0.75rem; color: ${typeColor}; font-weight: 600;">
+<div class="st-font-size__8113a0 dc-color st-font-weight__eed0f8" style="--d-color: ${typeColor}">
 ${qtyAmount}
 </div>
 </div>

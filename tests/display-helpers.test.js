@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const tag = html.match(/<script>\(function\(\)\{var V=[\s\S]*?<\/script>/)[0];
 const source = tag.replace(/^<script>/, '').replace(/<\/script>$/, '');
@@ -71,6 +71,18 @@ describe('display helpers', () => {
       count += (readFileSync(new URL('../' + f, import.meta.url), 'utf8').match(/\.style\.cssText/g) || []).length;
     }
     assert.equal(count, 1);
+  });
+  it('keeps only custom properties in style attributes built at run time', () => {
+    const bad = [];
+    for (const f of ['index.html', ...readdirSync(new URL('../modules/', import.meta.url)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)]) {
+      const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+      for (const m of text.matchAll(/\sstyle="([^"]*)"/g)) {
+        if (!/\$\{|'\s*\+|\+\s*'/.test(m[1])) continue;
+        const props = m[1].split(';').map((x) => x.trim()).filter(Boolean).map((x) => x.split(':')[0].trim());
+        if (props.some((p) => !p.startsWith('--') && !p.includes('${'))) bad.push(f + ' ' + m[1].slice(0, 60));
+      }
+    }
+    assert.deepEqual(bad, []);
   });
   it('leaves no direct style.display writes in the app code', () => {
     for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js']) {

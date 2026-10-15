@@ -2044,7 +2044,7 @@ item.innerHTML = `
   </div>
   <div class="u-d94b2d8 d-flex">
     <div class="text-right" style="text-align:right;">
-      <span style="color:${badgeColor};padding:2px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;">${label}</span>
+      <span class="dc-color st-padding__fe9a05 st-border-radius__c290c5 st-font-size__c3e9d8 st-font-weight__e3ec02" style="--d-color: ${badgeColor}">${label}</span>
       <div class="${colorClass} u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')"
@@ -3957,9 +3957,9 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
     const safe = photoDataUrl.replace(/'/g, '&#39;');
-    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f d-block"><div class="u-578ba6d st-background__f4525e" style="inset: 0; background: rgba(0,0,0,0)" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
+    return `<div class="person-avatar-ring dc-width dc-height st-cursor__3b6a3a st-position__d461c9" style="--d-width: ${sz}px; --d-height: ${sz}px" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f d-block"><div class="u-578ba6d st-background__f4525e" style="inset: 0; background: rgba(0,0,0,0)" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
   }
-  return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
+  return `<div class="person-avatar-ring dc-width dc-height" style="--d-width: ${sz}px; --d-height: ${sz}px"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
 }
 
 (function() {
@@ -4259,7 +4259,7 @@ export const SarimChart = (() => {
       if (this.options?.plugins?.legend?.display === false) return '';
       return '<div class="sc-legend">' + datasets.map((ds, i) => {
         const c = override?.[i] || (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] || ds.backgroundColor[0] : (ds.backgroundColor || ds.borderColor || '#888'));
-        return `<div class="sc-legend-item"><span class="sc-legend-dot" style="background:${c}"></span><span>${_esc(ds.label||'')}</span></div>`;
+        return `<div class="sc-legend-item"><span class="sc-legend-dot dc-background" style="--d-background: ${c}"></span><span>${_esc(ds.label||'')}</span></div>`;
       }).join('') + '</div>';
     }
     _bar() {
@@ -4274,10 +4274,10 @@ export const SarimChart = (() => {
       if (!maxVal) maxVal = 1;
       let yTicks = '';
       for (let i = 4; i >= 0; i--)
-        yTicks += `<div class="sc-y-tick" style="bottom:${(i/4*100).toFixed(1)}%"><span>${_short(maxVal*i/4)}</span></div>`;
+        yTicks += `<div class="sc-y-tick dc-bottom" style="--d-bottom: ${(i/4*100).toFixed(1)}%"><span>${_short(maxVal*i/4)}</span></div>`;
       let gridLines = '';
       for (let i = 1; i <= 4; i++)
-        gridLines += `<div class="sc-grid-line" style="bottom:${(i/4*100).toFixed(1)}%"></div>`;
+        gridLines += `<div class="sc-grid-line dc-bottom" style="--d-bottom: ${(i/4*100).toFixed(1)}%"></div>`;
       const single = datasets.length === 1;
       const barsHtml = labels.map((lbl, i) => {
         let inner = '';
@@ -4287,18 +4287,18 @@ export const SarimChart = (() => {
           const segs = datasets.map(ds => {
             const v = +ds.data[i]||0, p = total>0?(v/total*100).toFixed(2):'0';
             const c = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
-            return `<div class="sc-seg" style="height:${p}%;background:${c}" data-tip="${_esc(`${ds.label||''}: ${_fmt(v)}`)}" tabindex="0"></div>`;
+            return `<div class="sc-seg dc-height dc-background" style="--d-height: ${p}%; --d-background: ${c}" data-tip="${_esc(`${ds.label||''}: ${_fmt(v)}`)}" tabindex="0"></div>`;
           }).join('');
-          inner = `<div class="sc-bar-fill sc-stacked" style="height:${ht}%">${segs}</div>`;
+          inner = `<div class="sc-bar-fill sc-stacked dc-height" style="--d-height: ${ht}%">${segs}</div>`;
         } else if (single) {
           const ds = datasets[0], v = +ds.data[i]||0, ht = (v/maxVal*100).toFixed(2);
           const c = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
-          inner = `<div class="sc-bar-fill" style="height:${ht}%;background:${c};border-top:2px solid ${ds.borderColor||c}" data-tip="${_esc(`${_esc(String(lbl))}: ${_fmt(v)}`)}" tabindex="0"></div>`;
+          inner = `<div class="sc-bar-fill dc-height dc-background dc-border-top" style="--d-height: ${ht}%; --d-background: ${c}; --d-border-top: 2px solid ${ds.borderColor||c}" data-tip="${_esc(`${_esc(String(lbl))}: ${_fmt(v)}`)}" tabindex="0"></div>`;
         } else {
           inner = '<div class="sc-bar-group">' + datasets.map(ds => {
             const v = +ds.data[i]||0, ht = (v/maxVal*100).toFixed(2);
             const c = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[i] : ds.backgroundColor;
-            return `<div class="sc-bar-fill" style="height:${ht}%;background:${c}" data-tip="${_esc(`${ds.label||''}: ${_fmt(v)}`)}" tabindex="0"></div>`;
+            return `<div class="sc-bar-fill dc-height dc-background" style="--d-height: ${ht}%; --d-background: ${c}" data-tip="${_esc(`${ds.label||''}: ${_fmt(v)}`)}" tabindex="0"></div>`;
           }).join('') + '</div>';
         }
         const s = String(lbl), short = s.length > 5 ? s.slice(0,4)+'…' : s;
@@ -4337,7 +4337,7 @@ export const SarimChart = (() => {
       }
       const leg = raw.map((v, i) => {
         const c = cols[i%cols.length], p = total>0?(v/total*100).toFixed(1):'0';
-        return `<div class="sc-pie-leg-row"><span class="sc-legend-dot" style="background:${c}"></span><span class="sc-pie-lbl">${_esc(labels[i]||'')}</span><span class="sc-pie-val">${_fmt(v)}</span><span class="sc-pie-pct">${p}%</span></div>`;
+        return `<div class="sc-pie-leg-row"><span class="sc-legend-dot dc-background" style="--d-background: ${c}"></span><span class="sc-pie-lbl">${_esc(labels[i]||'')}</span><span class="sc-pie-val">${_fmt(v)}</span><span class="sc-pie-pct">${p}%</span></div>`;
       }).join('');
       this.el.innerHTML = `${this._titleHtml()}
 <div class="sc-pie-row">

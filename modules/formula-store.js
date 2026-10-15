@@ -145,7 +145,7 @@ function _liveCost(ing, inventory) {
 }
 
 function _row(label, value, extra) {
-  return `<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;${extra || ''}"><span>${label}</span><span>${value}</span></div>`;
+  return `<div class="d-flex st-font-size__c95659 u-8c130fb${extra ? ' ' + extra : ''}"><span>${label}</span><span>${value}</span></div>`;
 }
 
 function _card(f, inventory, usedBy) {
@@ -155,11 +155,11 @@ function _card(f, inventory, usedBy) {
   const t = _totals(ings, addl, factor);
   let html = `<h4 class="u-c2d830a">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
   html += ings.length ? ings.map((i) => _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_num(i.cost, 0) * _num(i.quantity, 0)))).join('') : '<div class="u-text-muted">No ingredients.</div>';
-  if (addl > 0) html += _row(`Additional Cost (${addl} per unit)`, _money(addl), 'color:var(--danger);');
+  if (addl > 0) html += _row(`Additional Cost (${addl} per unit)`, _money(addl), 'st-color__497726');
   html += '<div class="u-0bee203"></div>';
   html += _row('Unit Weight', _fmt(t.weight) + ' kg');
   html += _row('Raw Material Cost per Unit', _money(t.raw));
-  html += _row('Total Cost per Unit', _money(t.perUnit), 'font-weight:700;');
+  html += _row('Total Cost per Unit', _money(t.perUnit), 'st-font-weight__e3ec02');
   html += _row('Cost per kg (Sales/Calc)', _money(t.perKg));
   html += `<div class="formula-store-edit-hint">${usedBy.length ? 'Used by ' + esc(usedBy.join(', ')) + ' · ' : ''}Tap to edit</div>`;
   return `<div class="formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;

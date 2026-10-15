@@ -3554,7 +3554,7 @@ ${currentProductionView === 'combined' ? `<span class="store-badge ${storeBadgeC
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}${mergedBadge}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
-<p style="color:${isOutSide ? 'var(--danger)' : 'var(--accent-emerald)'};font-size:0.75rem;font-style:italic;">${isOutSide ? `Stock Transfer Out &rarr; ${esc(peerLabel)}` : `Stock Transfer In &larr; ${esc(peerLabel)}`}</p>
+<p class="dc-color st-font-size__8113a0 st-font-style__e698a0" style="--d-color: ${isOutSide ? 'var(--danger)' : 'var(--accent-emerald)'}">${isOutSide ? `Stock Transfer Out &rarr; ${esc(peerLabel)}` : `Stock Transfer In &larr; ${esc(peerLabel)}`}</p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
 ${item.transferNote ? `<p><span>Note:</span> <span style="color:var(--text-muted);">${esc(item.transferNote)}</span></p>` : ''}
 ${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`)}

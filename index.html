@@ -3053,7 +3053,7 @@ async function renderStoreList() {
           <div class="u-65c72da">
             Key: <span class="u-1e86a25">${s.key}</span>
             &nbsp;·&nbsp;
-            <span style="color:${fTypeColor[s.formulaType]||'var(--accent)'};">${formulaNames[s.key] || 'No formula'}</span>
+            <span class="dc-color" style="--d-color: ${fTypeColor[s.formulaType]||'var(--accent)'}">${formulaNames[s.key] || 'No formula'}</span>
             ${isUsed ? '&nbsp;·&nbsp;<span style="color:var(--text-muted);">Has records</span>' : ''}
           </div>
           <div class="u-6ca7dd1">

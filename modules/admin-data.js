@@ -172,7 +172,7 @@ try {
   };
   const fmtVal = v => {
     if (v === null || v === undefined) return '<span class="u-d59bb54">null</span>';
-    if (typeof v === 'boolean') return `<span style="color:${v?'#30d158':'#ff453a'}">${v}</span>`;
+    if (typeof v === 'boolean') return `<span class="dc-color" style="--d-color: ${v?'#30d158':'#ff453a'}">${v}</span>`;
     if (typeof v === 'object') {
       if (Array.isArray(v)) return `<span class="u-182e628">Array(${v.length})</span>`;
       if (v.seconds !== undefined) return `<span class="u-d59bb54">${new Date(v.seconds*1000).toLocaleDateString()}</span>`;
@@ -186,9 +186,9 @@ try {
     return `<span class="u-e6f0554">${String(v).slice(0,30)}</span>`;
   };
   const badge = (txt, color) =>
-    `<span style="font-size:0.6rem;font-weight:700;padding:2px 7px;color:${color};letter-spacing:0.03em">${txt}</span>`;
+    `<span class="st-font-size__2f7bba st-font-weight__e3ec02 st-padding__8f0293 dc-color u-74119ac" style="--d-color: ${color}">${txt}</span>`;
   const pill = (txt, color) =>
-    `<span style="font-size:0.62rem;padding:2px 6px;color:${color};font-family:var(--font-mono)">${txt}</span>`;
+    `<span class="st-font-size__8303b5 st-padding__fe9a05 dc-color u-67130d4" style="--d-color: ${color}">${txt}</span>`;
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
   let html = `
@@ -211,9 +211,7 @@ try {
   <div class="u-d331926 d-flex">
     ${['Collections','Config Docs','Listeners','Summary'].map((t,i) =>
       `<button id="dbv-tab-${i}" onclick="dbvShowTab(${i})"
-        style="padding:5px 12px;border-radius:12px;border:none;cursor:pointer;font-size:0.75rem;font-weight:600;
-        background:${i===0?'var(--accent)':'rgba(128,128,128,0.12)'};
-        color:${i===0?'#fff':'var(--text-muted)'}">${t}</button>`
+        class="st-padding__44fff1 st-border-radius__cc1df6 st-border__2eda1d st-cursor__3b6a3a st-font-size__8113a0 st-font-weight__eed0f8 ${i===0?'st-background__36d305':'st-background__3bf978'} ${i===0?'st-color__729d2f':'st-color__5872de'}">${t}</button>`
     ).join('')}
   </div>
 
@@ -236,14 +234,14 @@ try {
       <div class="u-5934f86">live count</div>
     </div>
     <div class="u-095dddc st-background__fbd10c" style="background: rgba(128,128,128,0.08)">
-      <div style="font-size:1.3rem;font-weight:700;color:${_readColor}">${_reads.toLocaleString()}</div>
+      <div class="st-font-size__27e469 st-font-weight__e3ec02 dc-color" style="--d-color: ${_readColor}">${_reads.toLocaleString()}</div>
       <div class="u-ae471a4">Reads (24 h)</div>
-      <div style="font-size:0.58rem;color:${_readColor};margin-top:2px">${_readPct}% of 50 000</div>
+      <div class="st-font-size__a9e436 dc-color st-margin-top__7a21c6" style="--d-color: ${_readColor}">${_readPct}% of 50 000</div>
     </div>
     <div class="u-095dddc st-background__fbd10c" style="background: rgba(128,128,128,0.08)">
-      <div style="font-size:1.3rem;font-weight:700;color:${_writeColor}">${_writes.toLocaleString()}</div>
+      <div class="st-font-size__27e469 st-font-weight__e3ec02 dc-color" style="--d-color: ${_writeColor}">${_writes.toLocaleString()}</div>
       <div class="u-ae471a4">Writes (24 h)</div>
-      <div style="font-size:0.58rem;color:${_writeColor};margin-top:2px">${_writePct}% of 20 000</div>
+      <div class="st-font-size__a9e436 dc-color st-margin-top__7a21c6" style="--d-color: ${_writeColor}">${_writePct}% of 20 000</div>
     </div>
   </div>
   <div class="u-391e335 text-right">
@@ -260,7 +258,7 @@ try {
     const mismatch = !col.isPhotoStore && Math.abs(fsDocs - sqDocs) > 0;
     const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
     html += `
-<div style="margin-bottom:9px;padding:11px 13px;background:var(--input-bg);border-radius:14px;border:1px solid ${borderColor}">
+<div class="u-f1095b3 st-padding__0b5785 st-background__356c02 st-border-radius__a44260 dc-border" style="--d-border: 1px solid ${borderColor}">
   <div class="u-335e5cd d-flex">
     <div class="u-8b4ab7f">
       <div class="u-0e3398e d-flex">
@@ -278,7 +276,7 @@ try {
     </div>
     <div class="u-b62856e text-right">
       <div class="u-dd009f5">${fsDocs} FS</div>
-      <div style="font-size:0.72rem;color:${mismatch?'#ff453a':'var(--text-muted)'}">
+      <div class="st-font-size__569d78 dc-color" style="--d-color: ${mismatch?'#ff453a':'var(--text-muted)'}">
         ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="var(--warning)" fill-opacity="0.12" stroke="var(--warning)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="var(--warning)" fill-opacity=".85"/></svg>':''}
       </div>
     </div>
@@ -288,7 +286,7 @@ try {
     <span>↓ <b class="u-8da8d88">${uuidCol.downloaded||0}</b> down</span>
     <span>Syncs: <b class="u-e6f0554">${colStats.syncCount||0}</b></span>
     <span>Last: <b class="u-e6f0554">${lastSync}</b></span>
-    ${col.isPhotoStore ? `<span>Dirty keys: <b style="color:${sqliteCounts['_photos_dirty']>0?'#f59e0b':'var(--text)'}">${sqliteCounts['_photos_dirty']}</b></span>` : ''}
+    ${col.isPhotoStore ? `<span>Dirty keys: <b class="dc-color" style="--d-color:${sqliteCounts['_photos_dirty']>0?'#f59e0b':'var(--text)'}">${sqliteCounts['_photos_dirty']}</b></span>` : ''}
   </div>
 </div>`;
   });
@@ -328,7 +326,7 @@ try {
           ${doc.fsFields.map(k => {
             const present = k in data;
             return `<div style="font-size:0.62rem;display:flex;justify-content:space-between;gap:6px;padding:1px 0">
-              <span style="color:${present?'var(--text)':'#ff453a'};font-family:var(--font-mono);flex-shrink:0">${present?'':'<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-right:2px;"><path d="M10 4H26M10 32H26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="currentColor" fill-opacity=".85"/></svg>'}${k}</span>
+              <span class="u-4597eb5 dc-color" style="--d-color:${present?'var(--text)':'#ff453a'}">${present?'':'<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-right:2px;"><path d="M10 4H26M10 32H26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="currentColor" fill-opacity=".85"/></svg>'}${k}</span>
               <span>${present ? fmtVal(data[k]) : ''}</span>
             </div>`;
           }).join('')}
@@ -397,7 +395,7 @@ try {
             <td style="padding:3px 6px;color:var(--accent)">${c.fsName}</td>
             <td style="padding:3px 6px;color:var(--accent-cyan)">${c.sqliteKey}</td>
             <td style="padding:3px 6px;color:var(--text-muted)">${c.jsVar}</td>
-            <td style="padding:3px 6px;text-align:right;color:${ok?'var(--text)':'#ff453a'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
+            <td class="text-right st-padding__159b3a dc-color" style="--d-color:${ok?'var(--text)':'#ff453a'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
           </tr>`;
         }).join('')}
       </tbody>

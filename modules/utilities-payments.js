@@ -2673,15 +2673,7 @@ ${esc(expense.name)}${expense.isMerged ? _mergedBadgeHtml(expense, {inline:true}
 ${expense.description ? `<br><span class="u-fs-sm2 u-text-muted u-fw-400" >${esc(expense.description)}</span>` : ''}
 </td>
 <td class="u-74366ec">
-<span style="
-background: ${categoryColor}15;
-color: ${categoryColor};
-padding: 4px 8px;
-border-radius: 6px;
-font-size: 0.7rem;
-font-weight: 600;
-white-space: nowrap;
-">${esc(categoryLabel)}</span>
+<span class="dc-background dc-color st-padding__f26165 st-border-radius__0dc840 st-font-size__8e87b7 st-font-weight__eed0f8 u-1cd2eeb" style="--d-background: ${categoryColor}15; --d-color: ${categoryColor}">${esc(categoryLabel)}</span>
 </td>
 <td class="u-bd37878 text-right">
 ${fmtAmt(expense.amount)}
@@ -3009,13 +3001,13 @@ tr.innerHTML = `
 <td class="u-3abc27b" onclick="openExpenseEntityDetails('${esc(row.id)}')">
 ${esc(row.name)}
 <div class="u-8cdcd88 d-inline-block">
-<span style="color: ${row.typeLabel === 'EXPENSE' ? 'var(--warning)' : 'var(--accent)'}; padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700;">
+<span class="dc-color st-padding__fe9a05 st-border-radius__c290c5 st-font-size__dacecc st-font-weight__e3ec02" style="--d-color: ${row.typeLabel === 'EXPENSE' ? 'var(--warning)' : 'var(--accent)'}">
 ${row.typeLabel}
 </span>
 </div>
 </td>
 <td class="u-7fad896">${phoneActionHTML(row.contact)}</td>
-<td class="text-right" style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.color}; white-space: nowrap; font-size: 0.75rem;">
+<td class="text-right st-padding__c1dfff u-30489cb st-font-weight__e3ec02 dc-color u-1cd2eeb st-font-size__8113a0" style="--d-color: ${row.color}">
 ${row.amountStr}
 </td>`;
 } else {
@@ -3025,16 +3017,16 @@ tr.innerHTML = `
 <td class="u-7170cf4">
 ${row.dateStr}
 </td>
-<td style="padding: 8px 4px; font-weight: 700; font-size: 0.8rem; color: ${row.nameColor}; cursor:pointer;" onclick="openEntityDetailsOverlay('${esc(row.id)}')">
+<td class="st-padding__c1dfff st-font-weight__e3ec02 st-font-size__c95659 dc-color st-cursor__3b6a3a" style="--d-color: ${row.nameColor}" onclick="openEntityDetailsOverlay('${esc(row.id)}')">
 ${esc(row.name)}
 <div class="u-c31b4a3">
-<span style="color: ${row.amountColor}; padding: 1px 4px; border-radius: 3px; font-size: 0.55rem; font-weight: 600;">
+<span class="dc-color st-padding__25c666 st-border-radius__bec1f5 st-font-size__dacecc st-font-weight__eed0f8" style="--d-color: ${row.amountColor}">
 ${row.balanceLabel}
 </span>
 </div>
 </td>
 <td class="u-7fad896">${phoneActionHTML(row.contact)}</td>
-<td class="text-right" style="padding: 8px 4px; text-align: right; font-weight: 700; color: ${row.amountColor}; white-space: nowrap; font-size: 0.75rem;">
+<td class="text-right st-padding__c1dfff u-30489cb st-font-weight__e3ec02 dc-color u-1cd2eeb st-font-size__8113a0" style="--d-color: ${row.amountColor}">
 ${row.amountStr}
 </td>`;
 }
@@ -4915,7 +4907,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
       }[col] || '#9ca3af';
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
       return `<div class="u-b8ea487 d-flex st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
-        <div style="width:9px;height:9px;min-width:9px;border-radius:50%;background:${colDot};flex-shrink:0;"></div>
+        <div class="u-6b665db u-f2399ff u-cdfcec8 st-border-radius__9eaa9c dc-background u-b62856e" style="--d-background: ${colDot}"></div>
         <div class="u-8b4ab7f has-overflow" style="overflow: hidden">
           <div class="u-f3709bc d-flex">
             ${nameHtml}
@@ -6652,10 +6644,10 @@ list.innerHTML = '<div class="u-cca393b">No representatives added yet.</div>';
 return;
 }
 list.innerHTML = salesRepsList.map((rep, i) => `
-<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; background:var(--glass-raised); border:1px solid var(--glass-border); border-radius:9999px; ${i === 0 ? 'border-left:3px solid var(--accent);' : ''}">
+<div class="d-flex st-align-items__7c6197 st-padding__8d6c25 st-background__f38efd st-border-bottom__e54b2f st-border-radius__c8d49a u-4d20c0a${i === 0 ? ' st-border__ad358e' : ''}">
 <div class="u-2c42b11 d-flex">
 <span class="u-76ebb48 has-overflow" style="overflow: hidden">${esc(rep)}</span>
-<span style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}; flex-shrink:0;">${i === 0 ? ' Default' : `#${i + 1}`}</span>
+<span class="st-font-size__8303b5 st-font-weight__e3ec02 u-3d59ac9 u-fa74faf dc-color u-b62856e" style="--d-color: ${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
 <button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}" style="border-color: rgba(239,68,68,0.4)"></button>
 </div>
@@ -6692,7 +6684,7 @@ return;
 const TAB_COLORS = { factory: 'var(--accent-purple)', prod: 'var(--accent-emerald)', payments: 'var(--accent-cyan)', sales: 'var(--accent-gold)' };
 list.innerHTML = userRolesList.map((user, i) => {
 const tabs = Array.isArray(user.tabs) ? user.tabs : [];
-const tabBadges = tabs.map(t => `<span style="font-size:0.58rem;padding:2px 7px;border-radius:9999px;color:${TAB_COLORS[t]||'var(--accent)'};border:1px solid ${TAB_COLORS[t]||'var(--accent)'}55;font-weight:700;text-transform:uppercase;">${t}</span>`).join('');
+const tabBadges = tabs.map(t => `<span class="st-font-size__a9e436 st-padding__8f0293 st-border-radius__c8d49a dc-color dc-border st-font-weight__e3ec02 u-3d59ac9" style="--d-color: ${TAB_COLORS[t]||'var(--accent)'}; --d-border: 1px solid ${TAB_COLORS[t]||'var(--accent)'}55">${t}</span>`).join('');
 return `
 <div class="u-b3a0b25 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
 <div class="u-8b4ab7f">
@@ -7081,8 +7073,8 @@ let cardHtml = '<div class="u-296d231 st-background__f38efd st-border-bottom__e5
 cardHtml += '<div class="u-d42a404 d-flex">';
 cardHtml += '<div class="u-3eddfae" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span class="u-fe495ba">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span class="u-56e4c0c">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
 cardHtml += '<div class="u-b62856e text-right">';
-cardHtml += '<div style="font-size:0.8rem;font-weight:800;color:' + modeColor + ';white-space:nowrap;">' + modeLabel + '</div>';
-cardHtml += '<div style="font-size:0.6rem;color:' + onlineColor + ';margin-top:2px;">' + onlineDot + '</div>';
+cardHtml += '<div class="st-font-size__c95659 st-font-weight__2b9532 u-1cd2eeb dc-color" style="--d-color:' + modeColor + '">' + modeLabel + '</div>';
+cardHtml += '<div class="st-font-size__2f7bba st-margin-top__7a21c6 dc-color" style="--d-color:' + onlineColor + '">' + onlineDot + '</div>';
 cardHtml += '</div>';
 cardHtml += '</div>';
 const lastSeenStr = lastSeen ? new Date(lastSeen).toLocaleString() : 'Never';
@@ -7115,7 +7107,7 @@ const adminBord = isAdmin ? '2px solid rgba(0,122,255,0.55)' : '1px solid rgba(0
 const adminFw = isAdmin ? '800' : '600';
 const adminTick = isAdmin ? ' ' : '';
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'admin\')"';
-cardHtml += ' style="width:100%;padding:9px;background:' + adminBg + ';border:' + adminBord + ';border-radius:99px;color:#007aff;cursor:pointer;font-size:0.72rem;font-weight:' + adminFw + ';margin-bottom:10px;">' + adminTick + 'Admin Mode</button>';
+cardHtml += ' class="st-padding__9e953a st-border-radius__5f7dc3 st-color__88b379 st-cursor__3b6a3a st-font-size__569d78 u-6e48b0b dc-background dc-border dc-font-weight" style="--d-background:' + adminBg + ';--d-border:' + adminBord + ';--d-font-weight:' + adminFw + '">' + adminTick + 'Admin Mode</button>';
 if (salesRepsList.length > 0) {
 cardHtml += '<div class="u-788ba48">Sales Representatives</div>';
 cardHtml += '<div class="u-ab90486 d-grid">';
@@ -7132,7 +7124,7 @@ const repBord = (repLocked ? '2' : '1') + 'px solid rgba(' + c.bg + ',' + (repLo
 const repFw = repLocked ? '800' : '600';
 const repTick = repLocked ? ' ' : '';
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'rep\', \'' + rep + '\')"';
-cardHtml += ' class="has-overflow" style="padding:8px 5px;background:' + repBg + ';border:' + repBord + ';border-radius:99px;color:' + c.hex + ';cursor:pointer;font-size:0.68rem;font-weight:' + repFw + ';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+cardHtml += ' class="has-overflow st-padding__9c6be7 st-border-radius__5f7dc3 st-cursor__3b6a3a st-font-size__ce2d05 u-268adcd dc-background dc-border dc-color dc-font-weight" style="--d-background:' + repBg + ';--d-border:' + repBord + ';--d-color:' + c.hex + ';--d-font-weight:' + repFw + '">';
 cardHtml += repTick + rep + '</button>';
 }
 cardHtml += '</div>';
@@ -7151,7 +7143,7 @@ const lookupKey = '_devTabsCache';
 if (!window[lookupKey]) window[lookupKey] = {};
 window[lookupKey][device.deviceId + '_' + ui] = user.tabs || [];
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'userrole\', \'' + user.name + '\', (window._devTabsCache||{})[\'' + device.deviceId + '_' + ui + '\'])"';
-cardHtml += ' class="has-overflow" style="padding:8px 5px;background:' + userBg + ';border:' + userBord + ';border-radius:99px;color:#ffcc02;cursor:pointer;font-size:0.68rem;font-weight:' + userFw + ';text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+cardHtml += ' class="has-overflow st-padding__9c6be7 st-border-radius__5f7dc3 st-color__0d0827 st-cursor__3b6a3a st-font-size__ce2d05 u-268adcd dc-background dc-border dc-font-weight" style="--d-background:' + userBg + ';--d-border:' + userBord + ';--d-font-weight:' + userFw + '">';
 cardHtml += userTick + user.name + '</button>';
 }
 cardHtml += '</div>';
