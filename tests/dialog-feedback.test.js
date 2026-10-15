@@ -251,3 +251,105 @@ describe('device paths', () => {
     assert.deepEqual(haptic.notification, ['SUCCESS', 'SUCCESS']);
   });
 });
+
+const SEGMENT_CLASSES = ['toggle-opt', 'production-toggle-btn', 'metric-btn', 'formula-toggle-opt'];
+const makeEl = ({ classes = [], attrs = {}, id = '', disabled = false, inDialog = false } = {}) => {
+  const el = {
+    id, disabled,
+    classList: { contains: (c) => classes.includes(c) },
+    getAttribute: (n) => (n in attrs ? attrs[n] : null),
+    matches: (sel) => (sel === '#sidebar-btn-theme' ? id === 'sidebar-btn-theme'
+      : sel.split(',').map((x) => x.trim()).some((x) => (x.startsWith('.') ? classes.includes(x.slice(1)) : x === '#sidebar-btn-theme' && id === 'sidebar-btn-theme'))),
+    closest: (sel) => {
+      if (sel === '.dlg-overlay') return inDialog ? {} : null;
+      const wants = sel.split(',').map((x) => x.trim());
+      const hit = wants.some((x) => (x === '[aria-pressed]' ? 'aria-pressed' in attrs : x === '#sidebar-btn-theme' ? id === 'sidebar-btn-theme' : classes.includes(x.slice(1))));
+      return hit ? el : null;
+    }
+  };
+  return el;
+};
+
+describe('controlCue picks the right cue for app controls', () => {
+  it('segmented toggle options tick only when the choice changes', () => {
+    for (const c of SEGMENT_CLASSES) {
+      assert.equal(fb.controlCue(makeEl({ classes: [c] })), 'select', c);
+      assert.equal(fb.controlCue(makeEl({ classes: [c, 'active'] })), null, `${c} already active`);
+    }
+  });
+  it('status buttons and the sidebar theme switch always respond', () => {
+    assert.equal(fb.controlCue(makeEl({ classes: ['status-toggle-btn', 'paid'] })), 'select');
+    assert.equal(fb.controlCue(makeEl({ id: 'sidebar-btn-theme' })), 'select');
+  });
+  it('on/off buttons use aria-pressed to pick the on or off cue', () => {
+    assert.equal(fb.controlCue(makeEl({ attrs: { 'aria-pressed': 'false' } })), 'toggleOn');
+    assert.equal(fb.controlCue(makeEl({ attrs: { 'aria-pressed': 'true' } })), 'toggleOff');
+  });
+  it('ignores disabled controls, dialog contents, manual switches and ordinary buttons', () => {
+    assert.equal(fb.controlCue(makeEl({ classes: ['toggle-opt'], disabled: true })), null);
+    assert.equal(fb.controlCue(makeEl({ classes: ['toggle-opt'], attrs: { 'aria-disabled': 'true' } })), null);
+    assert.equal(fb.controlCue(makeEl({ classes: ['toggle-opt'], inDialog: true })), null);
+    assert.equal(fb.controlCue(makeEl({ classes: ['toggle-opt'], attrs: { 'data-feedback': 'manual' } })), null);
+    assert.equal(fb.controlCue(makeEl({ classes: ['btn'] })), null);
+    assert.equal(fb.controlCue(null), null);
+    assert.equal(fb.controlCue({}), null);
+  });
+});
+
+describe('inputCue for checkboxes and radios', () => {
+  const input = (o) => ({ tagName: 'INPUT', disabled: false, getAttribute: () => null, ...o });
+  it('checkbox on and off', () => {
+    assert.equal(fb.inputCue(input({ type: 'checkbox', checked: true })), 'toggleOn');
+    assert.equal(fb.inputCue(input({ type: 'checkbox', checked: false })), 'toggleOff');
+  });
+  it('radio selects', () => {
+    assert.equal(fb.inputCue(input({ type: 'radio', checked: true })), 'select');
+  });
+  it('ignores text inputs, disabled inputs and manual switches', () => {
+    assert.equal(fb.inputCue(input({ type: 'text' })), null);
+    assert.equal(fb.inputCue(input({ type: 'checkbox', checked: true, disabled: true })), null);
+    assert.equal(fb.inputCue(input({ type: 'checkbox', checked: true, getAttribute: () => 'manual' })), null);
+    assert.equal(fb.inputCue({ tagName: 'DIV' }), null);
+  });
+});
+
+describe('document listeners drive real feedback', () => {
+  beforeEach(reset);
+  it('a segmented toggle click taps and ticks', () => {
+    docListeners.click({ target: makeEl({ classes: ['toggle-opt'] }) });
+    assert.deepEqual(haptic.impact, ['LIGHT']);
+    assert.deepEqual(tones, [740]);
+  });
+  it('an already-active option stays quiet', () => {
+    docListeners.click({ target: makeEl({ classes: ['toggle-opt', 'active'] }) });
+    assert.equal(haptic.impact.length + tones.length, 0);
+  });
+  it('a checkbox turning on plays the on cue, off plays the off cue', async () => {
+    const box = { tagName: 'INPUT', type: 'checkbox', checked: true, disabled: false, getAttribute: () => null };
+    docListeners.change({ target: box });
+    assert.deepEqual(tones, [587, 880]);
+    assert.deepEqual(haptic.notification, ['SUCCESS']);
+    await wait(GAP);
+    tones.length = 0; haptic.impact.length = 0;
+    box.checked = false;
+    docListeners.change({ target: box });
+    assert.deepEqual(tones, [880, 587]);
+    assert.deepEqual(haptic.impact, ['LIGHT']);
+  });
+  it('an on/off button reads its pressed state', () => {
+    docListeners.click({ target: makeEl({ attrs: { 'aria-pressed': 'false' } }) });
+    assert.deepEqual(haptic.notification, ['SUCCESS']);
+  });
+  it('respects the vibration and sound switches', () => {
+    fb.setDialogFeedback({ haptics: false, sound: false });
+    docListeners.click({ target: makeEl({ classes: ['toggle-opt'] }) });
+    assert.equal(haptic.impact.length + vibrations.length + tones.length, 0);
+  });
+  it('the settings switches do not fire a second cue on top of their own', () => {
+    docListeners.change({ target: { tagName: 'INPUT', type: 'checkbox', checked: true, disabled: false, getAttribute: (n) => (n === 'data-feedback' ? 'manual' : null) } });
+    assert.equal(haptic.notification.length + tones.length, 0);
+  });
+  it('installing twice does not double up', () => {
+    assert.equal(fb.installControlFeedback({ addEventListener() { throw new Error('should not attach'); } }), false);
+  });
+});

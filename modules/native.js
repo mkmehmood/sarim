@@ -302,7 +302,7 @@ function installHaptics() {
   const { Haptics } = P();
   if (!Haptics) return;
   document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest ? e.target.closest('.btn, .tbl-action-btn, .toggle-opt') : null;
+    const t = e.target && e.target.closest ? e.target.closest('.btn, .tbl-action-btn') : null;
     if (t) { try { Haptics.impact({ style: 'LIGHT' }); } catch (_) {} }
   }, { passive: true });
 }

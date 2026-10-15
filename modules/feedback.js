@@ -189,6 +189,48 @@ export function toggleFeedback(channel, on) {
   return setDialogFeedback({ [channel]: !!on });
 }
 
+const OPTION_SELECTOR = '.toggle-opt, .production-toggle-btn, .metric-btn, .formula-toggle-opt, .status-toggle-btn, #sidebar-btn-theme';
+const SEGMENT_SELECTOR = '.toggle-opt, .production-toggle-btn, .metric-btn, .formula-toggle-opt';
+const CONTROL_SELECTOR = `${OPTION_SELECTOR}, [aria-pressed]`;
+
+export function controlCue(target) {
+  if (!target || typeof target.closest !== 'function') return null;
+  if (target.closest('.dlg-overlay')) return null;
+  const el = target.closest(CONTROL_SELECTOR);
+  if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true' || el.getAttribute('data-feedback') === 'manual') return null;
+  if (el.matches(OPTION_SELECTOR)) {
+    const current = el.classList.contains('active') || el.getAttribute('aria-pressed') === 'true';
+    if (current && el.matches(SEGMENT_SELECTOR)) return null;
+    return 'select';
+  }
+  return el.getAttribute('aria-pressed') === 'true' ? 'toggleOff' : 'toggleOn';
+}
+
+export function inputCue(el) {
+  if (!el || el.tagName !== 'INPUT' || el.disabled) return null;
+  if (typeof el.getAttribute === 'function' && el.getAttribute('data-feedback') === 'manual') return null;
+  if (el.type === 'checkbox') return el.checked ? 'toggleOn' : 'toggleOff';
+  if (el.type === 'radio') return 'select';
+  return null;
+}
+
+let controlsInstalled = false;
+
+export function installControlFeedback(doc) {
+  const d = doc || (typeof document !== 'undefined' ? document : null);
+  if (controlsInstalled || !d || typeof d.addEventListener !== 'function') return false;
+  controlsInstalled = true;
+  d.addEventListener('click', (e) => {
+    try { const kind = controlCue(e.target); if (kind) dialogFeedback(kind); } catch (_) {}
+  }, { capture: true, passive: true });
+  d.addEventListener('change', (e) => {
+    try { const kind = inputCue(e.target); if (kind) dialogFeedback(kind); } catch (_) {}
+  }, { capture: true, passive: true });
+  return true;
+}
+
+installControlFeedback();
+
 export function syncFeedbackToggles() {
   if (typeof document === 'undefined') return;
   const cur = getDialogFeedback();

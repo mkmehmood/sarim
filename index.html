@@ -1506,20 +1506,20 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Sound &amp; Haptics</h2>
   </div>
   <div class="screen-body">
-    <p class="settings-group-label">Dialogs</p>
+    <p class="settings-group-label">Feedback</p>
     <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
       <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Dialog sounds</p>
-        <p class="settings-list-item-desc">Short tones when a dialog opens or you answer it</p>
+        <p class="settings-list-item-title">Sounds</p>
+        <p class="settings-list-item-desc">Short tones for dialogs, switches and toggle buttons</p>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" checked onchange="toggleFeedback('sound',this.checked)"><span class="theme-toggle-track"></span></label>
+      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" data-feedback="manual" checked onchange="toggleFeedback('sound',this.checked)"><span class="theme-toggle-track"></span></label>
     </div>
     <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
       <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Dialog vibration</p>
-        <p class="settings-list-item-desc">Haptic feedback that matches the dialog type</p>
+        <p class="settings-list-item-title">Vibration</p>
+        <p class="settings-list-item-desc">Haptic feedback for dialogs, switches and toggle buttons</p>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
+      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" data-feedback="manual" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
     </div>
     <p class="settings-list-item-desc" style="padding:6px 4px;">These settings apply to this device only.</p>
   </div>
