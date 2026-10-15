@@ -23,7 +23,9 @@ const HAPTICS = {
   },
   cancel: { impact: 'LIGHT', vibe: 8 },
   select: { impact: 'LIGHT', vibe: 10 },
-  reject: { notify: 'ERROR', vibe: [30, 40, 30] }
+  reject: { notify: 'ERROR', vibe: [30, 40, 30] },
+  toggleOn: { notify: 'SUCCESS', vibe: [10, 30, 16] },
+  toggleOff: { impact: 'LIGHT', vibe: 8 }
 };
 
 const SOUNDS = {
@@ -43,7 +45,9 @@ const SOUNDS = {
   },
   cancel: [[392, 0.04]],
   select: [[740, 0.035]],
-  reject: [[165, 0.08], [165, 0.08]]
+  reject: [[165, 0.08], [165, 0.08]],
+  toggleOn: [[587, 0.05], [880, 0.08]],
+  toggleOff: [[880, 0.045], [587, 0.07]]
 };
 
 function load() {
@@ -86,25 +90,40 @@ export function soundFor(kind, tone) {
   return pick(SOUNDS, kind, tone);
 }
 
+let registeredHaptics = null;
+
 function nativeHaptics() {
   try {
     const cap = typeof window !== 'undefined' ? window.Capacitor : null;
-    return cap && cap.Plugins && cap.Plugins.Haptics ? cap.Plugins.Haptics : null;
+    if (!cap) return null;
+    if (cap.Plugins && cap.Plugins.Haptics) return cap.Plugins.Haptics;
+    if (registeredHaptics) return registeredHaptics;
+    const native = typeof cap.isNativePlatform === 'function' ? cap.isNativePlatform() : false;
+    if (native && typeof cap.registerPlugin === 'function') registeredHaptics = cap.registerPlugin('Haptics');
+    return registeredHaptics;
   } catch (_) { return null; }
+}
+
+function vibrateFallback(spec) {
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(spec.vibe);
+  } catch (_) {}
 }
 
 function playHaptic(spec) {
   if (!spec) return;
   const plugin = nativeHaptics();
-  try {
-    if (plugin) {
-      if (spec.notify && typeof plugin.notification === 'function') { plugin.notification({ type: spec.notify }); return; }
-      if (spec.impact && typeof plugin.impact === 'function') { plugin.impact({ style: spec.impact }); return; }
-    }
-  } catch (_) {}
-  try {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(spec.vibe);
-  } catch (_) {}
+  if (plugin) {
+    try {
+      let result = null;
+      if (spec.notify && typeof plugin.notification === 'function') result = plugin.notification({ type: spec.notify });
+      else if (spec.impact && typeof plugin.impact === 'function') result = plugin.impact({ style: spec.impact });
+      else { vibrateFallback(spec); return; }
+      if (result && typeof result.catch === 'function') result.catch(() => vibrateFallback(spec));
+      return;
+    } catch (_) {}
+  }
+  vibrateFallback(spec);
 }
 
 function getAudioContext() {
@@ -117,31 +136,32 @@ function getAudioContext() {
   return audioCtx;
 }
 
+function scheduleNotes(ctx, notes) {
+  let t = ctx.currentTime + 0.005;
+  notes.forEach(([freq, dur]) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.06, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+    t += dur + 0.03;
+  });
+}
+
 function playSound(notes) {
   if (!notes || !notes.length) return;
   if (typeof document !== 'undefined' && document.hidden) return;
   const ctx = getAudioContext();
   if (!ctx) return;
   try {
-    if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
-      const resumed = ctx.resume();
-      if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
-    }
-    let t = ctx.currentTime + 0.005;
-    notes.forEach(([freq, dur]) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.06, t + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + dur + 0.02);
-      t += dur + 0.03;
-    });
+    if (ctx.state === 'running' || typeof ctx.resume !== 'function') { scheduleNotes(ctx, notes); return; }
+    Promise.resolve(ctx.resume()).then(() => scheduleNotes(ctx, notes)).catch(() => {});
   } catch (_) {}
 }
 
@@ -158,6 +178,17 @@ export function dialogFeedback(kind, tone = 'primary') {
   } catch (_) {}
 }
 
+export function toggleFeedback(channel, on) {
+  try {
+    load();
+    if (channel !== 'sound' && channel !== 'haptics') return getDialogFeedback();
+    const kind = on ? 'toggleOn' : 'toggleOff';
+    if (channel === 'haptics' || state.haptics) playHaptic(hapticFor(kind));
+    if (channel === 'sound' || state.sound) playSound(soundFor(kind));
+  } catch (_) {}
+  return setDialogFeedback({ [channel]: !!on });
+}
+
 export function syncFeedbackToggles() {
   if (typeof document === 'undefined') return;
   const cur = getDialogFeedback();
@@ -171,5 +202,6 @@ if (typeof window !== 'undefined') {
   window.getDialogFeedback = getDialogFeedback;
   window.setDialogFeedback = setDialogFeedback;
   window.syncFeedbackToggles = syncFeedbackToggles;
+  window.toggleFeedback = toggleFeedback;
   window.testDialogFeedback = () => dialogFeedback('open', 'success');
 }

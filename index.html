@@ -755,6 +755,11 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
 
 input:checked + .theme-toggle-track { background: var(--accent); }
 input:checked + .theme-toggle-track::before { transform: translateX(22px); }
+.theme-toggle-switch { display: inline-block; flex: 0 0 48px; margin: 0; line-height: 0; }
+.theme-toggle-switch input { position: absolute; padding: 0; border: 0; }
+.theme-toggle-track:active::before { transform: scale(0.88); }
+input:checked + .theme-toggle-track:active::before { transform: translateX(22px) scale(0.88); }
+input:focus-visible + .theme-toggle-track { outline: 2px solid var(--accent); outline-offset: 2px; }
 #calcRangeInputs { position:absolute; left:0; right:0; top:0; height:36px; opacity:0; pointer-events:none; }
 #calcRangeInputs .cdp-wrap { position:absolute; left:0; top:0; width:100%; }
 </style></head>
@@ -1502,19 +1507,19 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
   <div class="screen-body">
     <p class="settings-group-label">Dialogs</p>
-    <div class="settings-list-item">
+    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
       <div class="settings-list-item-info">
         <p class="settings-list-item-title">Dialog sounds</p>
         <p class="settings-list-item-desc">Short tones when a dialog opens or you answer it</p>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" checked onchange="setDialogFeedback({sound:this.checked});if(this.checked)testDialogFeedback()"><span class="theme-toggle-track"></span></label>
+      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" checked onchange="toggleFeedback('sound',this.checked)"><span class="theme-toggle-track"></span></label>
     </div>
-    <div class="settings-list-item">
+    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
       <div class="settings-list-item-info">
         <p class="settings-list-item-title">Dialog vibration</p>
         <p class="settings-list-item-desc">Haptic feedback that matches the dialog type</p>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" checked onchange="setDialogFeedback({haptics:this.checked});if(this.checked)testDialogFeedback()"><span class="theme-toggle-track"></span></label>
+      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
     </div>
     <p class="settings-list-item-desc" style="padding:6px 4px;">These settings apply to this device only.</p>
   </div>
