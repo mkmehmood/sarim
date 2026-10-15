@@ -821,6 +821,11 @@ toast.addEventListener('click', dismiss, { once: true });
 const _TOAST_TYPES = ['success', 'warning', 'error', 'info'];
 export function showToast(message, type, duration = 3000) {
 if (!_TOAST_TYPES.includes(type)) { console.error('showToast needs a type of success, warning, error or info, got', type); return; }
+// Save, delete and update confirmations are sent as one merged device notification instead of an in-app toast.
+if (typeof window.isActionToast === 'function' && window.isActionToast(message, type)) {
+if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type, { action: true });
+return;
+}
 if (typeof window.isDialogFlowActive === 'function' && window.isDialogFlowActive()) {
 if (type === 'error' && typeof window.notifyBlocking === 'function') {
 const raise = () => { if (window.isDialogOpen()) setTimeout(raise, 250); else window.notifyBlocking(message, 'error', 'Something went wrong'); };

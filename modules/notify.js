@@ -77,6 +77,7 @@ const _WINDOW = { quietMs: 2500, maxMs: 8000 };
 let _queue = [];
 let _flushTimer = null;
 let _firstAt = 0;
+export function _resetNotifyStateForTests() { _lastExplicitAt = 0; _recent.clear(); _queue = []; clearTimeout(_flushTimer); _firstAt = 0; }
 export function setNotificationWindow(quietMs, maxMs) {
   _WINDOW.quietMs = Math.max(0, Number(quietMs) || 0);
   _WINDOW.maxMs = Math.max(_WINDOW.quietMs, Number(maxMs) || 0);
@@ -137,7 +138,11 @@ export function _flush() {
     else g.bodies.push(e.body);
   });
   const toasts = q.filter((e) => e.kind === 'toast');
-  toasts.forEach((e) => groups.push({ title: e.title, tag: e.tag, tone: e.tone, priority: 0, bodies: [e.body], details: [] }));
+  const eventAnchor = groups.length ? groups[groups.length - 1] : null;
+  toasts.forEach((e) => {
+    if (eventAnchor) { eventAnchor.details.push(e.body); if (!eventAnchor.tone) eventAnchor.tone = e.tone; }
+    else groups.push({ title: e.title, tag: e.tag, tone: e.tone, priority: 0, bodies: [e.body], details: [] });
+  });
   const dialogs = q.filter((e) => e.kind === 'dialog');
   const anchor = groups.length ? groups[groups.length - 1] : null;
   dialogs.forEach((d) => {
@@ -150,26 +155,28 @@ export function _flush() {
   });
 }
 
-export async function sendDeviceNotification(title, body, tag, opts) {
-  const text = String(body == null ? '' : body).replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
+// The one function every notification goes through.
+//   notifyAction({ title, body, key, tag, tone, priority, kind })
+//   kind: 'event' (default, the explaining notification), 'toast', 'dialog'
+export async function notifyAction(a) {
+  const title = a && a.title;
+  const text = String(a && a.body != null ? a.body : '').replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
   if (!text) return;
-  const fromToast = !!(opts && opts.fromToast);
-  const isDialog = !!(opts && opts.dialog);
-  if (!fromToast && !isDialog) {
+  const kind = a.kind === 'toast' || a.kind === 'dialog' ? a.kind : 'event';
+  if (kind === 'event') {
     _lastExplicitAt = Date.now();
     _pendingMirrors.forEach(clearTimeout);
     _pendingMirrors = [];
   }
-  const key = opts && opts.key != null ? String(opts.key) : '';
+  const key = a.key != null ? String(a.key) : '';
   // keyed events are merged by record id, so two real transactions with the same text are never dropped
-  if (!isDialog && !key && _isDuplicate(title, text, tag)) return;
-  _enqueue({
-    kind: isDialog ? 'dialog' : (fromToast ? 'toast' : 'event'),
-    title, body: text, tag: tag || 'app-toast',
-    key,
-    priority: (opts && Number(opts.priority)) || 1,
-    tone: opts && opts.tone
-  });
+  if (kind !== 'dialog' && !key && _isDuplicate(title, text, a.tag)) return;
+  _enqueue({ kind, title, body: text, tag: a.tag || 'app-toast', key, priority: Number(a.priority) || 1, tone: a.tone });
+}
+
+export function sendDeviceNotification(title, body, tag, opts) {
+  const o = opts || {};
+  return notifyAction({ title, body, tag, key: o.key, priority: o.priority, tone: o.tone, kind: o.dialog ? 'dialog' : (o.fromToast ? 'toast' : 'event') });
 }
 
 export function primeNotificationPermission() {
@@ -184,6 +191,7 @@ export function primeNotificationPermission() {
 }
 
 window.sendDeviceNotification = sendDeviceNotification;
+window.notifyAction = notifyAction;
 const _bootAt = Date.now();
 const _STARTUP_QUIET_MS = 25000;
 const _BURST_MAX = 4;
@@ -259,17 +267,33 @@ function _cleanToastText(message) {
   return t.length > 180 ? t.slice(0, 177) + '\u2026' : t;
 }
 
-export function notifyFromToast(message, type) {
+// Success toasts that confirm a save, delete or update are replaced by the merged
+// device notification. Everything else (copied, exported, errors, ...) is untouched.
+const _ACTION_RE = /\b(saved?|delet\w*|remov\w*|updat\w*|edit\w*|record\w*|added|add|creat\w*|restor\w*|recover\w*|transfer\w*|settl\w*|collect\w*|reconcil\w*|merg\w*|clos\w*|clear\w*|chang\w*|submitted|applied)\b/i;
+const _NOT_ACTION_RE = /saved to|saved as|copied|shared|downloaded|uploaded|exported|\bpdf\b|\bimage\b|loading|syncing|preparing|generating|opening|checking|connecting|welcome|offline|back online/i;
+export function isActionToast(message, type) {
+  if (type !== 'success') return false;
+  const t = _cleanToastText(message);
+  return t.length >= 4 && _ACTION_RE.test(t) && !_NOT_ACTION_RE.test(t);
+}
+function _genericActionNote(text) {
+  const title = /delet|remov|clear/i.test(text) ? 'Deleted' : /updat|edit|chang|apply|applied/i.test(text) ? 'Updated' : /restor|recover/i.test(text) ? 'Record recovered' : 'Saved';
+  return { title, body: text.replace(/\s*[!.]+$/, '') + '.' };
+}
+
+export function notifyFromToast(message, type, flags) {
   try {
     if (type !== 'success' && type !== 'warning' && type !== 'error') return;
     const text = _cleanToastText(message);
-    const note = _explainToast(text, type);
-    if (!note || !_passesGate(text, type)) return;
+    const isAction = !!(flags && flags.action) && type === 'success';
+    const note = _explainToast(text, type) || (isAction ? _genericActionNote(text) : null);
+    if (!note) return;
+    if (isAction) { if (text.length < 4) return; } else if (!_passesGate(text, type)) return;
     const timer = setTimeout(() => {
       _pendingMirrors = _pendingMirrors.filter((t) => t !== timer);
       if (type !== 'error' && Date.now() - _lastExplicitAt < 6000) return;
-      sendDeviceNotification(note.title, note.body, 'toast-' + type, { fromToast: true, tone: type }).catch(() => {});
-    }, 1200);
+      notifyAction({ title: note.title, body: note.body, tag: 'toast-' + type, kind: 'toast', tone: type }).catch(() => {});
+    }, isAction ? 600 : 1200);
     _pendingMirrors.push(timer);
   } catch (_) {}
 }
@@ -277,9 +301,10 @@ export function notifyFromToast(message, type) {
 export function notifyFromDialog(note) {
   try {
     if (!note || !note.title || !note.body) return;
-    sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
+    notifyAction({ title: note.title, body: note.body, tag: 'dialog-' + (++_dialogSeq), kind: 'dialog', tone: note.tone }).catch(() => {});
   } catch (_) {}
 }
 window.notifyFromToast = notifyFromToast;
+window.isActionToast = isActionToast;
 window.notifyFromDialog = notifyFromDialog;
 primeNotificationPermission();

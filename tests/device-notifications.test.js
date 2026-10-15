@@ -201,3 +201,34 @@ describe('one notification per action', () => {
     assert.equal(shown.length, 1);
   });
 });
+
+describe('save, delete and update toasts become one device notification', () => {
+  it('classifies which success toasts are replaced', () => {
+    assert.equal(notify.isActionToast('Transaction Saved Successfully', 'success'), true);
+    assert.equal(notify.isActionToast('Entity updated successfully', 'success'), true);
+    assert.equal(notify.isActionToast('Sale deleted', 'success'), true);
+    assert.equal(notify.isActionToast('Copied to clipboard', 'success'), false);
+    assert.equal(notify.isActionToast('Saved to Downloads/file.pdf', 'success'), false);
+    assert.equal(notify.isActionToast('Transaction failed to save', 'error'), false);
+    assert.equal(notify.isActionToast('Please select a customer', 'warning'), false);
+  });
+  it('sends one notification for an action toast that has no other notification', async () => {
+    await wait(100);
+    notify._resetNotifyStateForTests();
+    shown.length = 0;
+    notify.notifyFromToast('Entity updated successfully', 'success', { action: true });
+    await wait(750);
+    assert.equal(shown.length, 1);
+    assert.equal(shown[0].title, 'Updated');
+    assert.match(shown[0].body, /Entity updated successfully/);
+  });
+  it('adds nothing when the explaining notification already exists', async () => {
+    await wait(100);
+    shown.length = 0;
+    await notify.notifyAction({ title: 'Sale recorded', body: 'Ali \u2014 500', key: 'z1', tag: 'tx-z1' });
+    notify.notifyFromToast('Sale recorded successfully!', 'success', { action: true });
+    await wait(750);
+    assert.equal(shown.length, 1);
+    assert.equal(shown[0].title, 'Sale recorded');
+  });
+});
