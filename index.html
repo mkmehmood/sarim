@@ -1521,6 +1521,12 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" data-feedback="manual" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
     </div>
+    <div class="settings-list-item" onclick="runFeedbackTest()">
+      <div class="settings-list-item-info">
+        <p class="settings-list-item-title">Test sound &amp; vibration</p>
+        <p class="settings-list-item-desc" id="fb-status">Tap to check what this device can do</p>
+      </div>
+    </div>
     <p class="settings-list-item-desc" style="padding:6px 4px;">These settings apply to this device only.</p>
   </div>
 </div>

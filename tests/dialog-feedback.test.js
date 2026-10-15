@@ -97,7 +97,7 @@ describe('dialogFeedback output', () => {
   it('falls back to navigator.vibrate without the plugin', () => {
     window.Capacitor = null;
     fb.dialogFeedback('open', 'error');
-    assert.deepEqual(vibrations, [[30, 40, 30, 40, 30]]);
+    assert.deepEqual(vibrations, [fb.hapticFor('open', 'error').vibe]);
   });
   it('plays the tone sequence for the dialog type', () => {
     fb.dialogFeedback('open', 'success');
@@ -236,7 +236,7 @@ describe('device paths', () => {
     window.Capacitor = { Plugins: { Haptics: { impact: () => Promise.reject(new Error('unimplemented')), notification: () => Promise.reject(new Error('unimplemented')) } } };
     fb.dialogFeedback('open', 'error');
     await wait(5);
-    assert.deepEqual(vibrations, [[30, 40, 30, 40, 30]]);
+    assert.deepEqual(vibrations, [fb.hapticFor('open', 'error').vibe]);
   });
   it('registers the native plugin once when Capacitor does not expose it', () => {
     const registered = [];
@@ -351,5 +351,62 @@ describe('document listeners drive real feedback', () => {
   });
   it('installing twice does not double up', () => {
     assert.equal(fb.installControlFeedback({ addEventListener() { throw new Error('should not attach'); } }), false);
+  });
+});
+
+describe('device test reports what actually works', () => {
+  beforeEach(reset);
+  it('native plugin and audio are reported as working', async () => {
+    window.Capacitor = { Plugins: { Haptics: { notification: () => Promise.resolve(), impact: () => Promise.resolve() } } };
+    const r = await fb.testFeedback();
+    assert.deepEqual(r, { haptics: 'native', sound: 'played' });
+    assert.deepEqual(tones, [523, 784]);
+    assert.match(fb.describeFeedbackTest(r), /Vibration: working.*Sound: played/);
+  });
+  it('falls back to the browser vibrate and says so', async () => {
+    window.Capacitor = null;
+    assert.equal((await fb.testFeedback()).haptics, 'browser');
+  });
+  it('a refused vibrate call is reported as blocked', async () => {
+    window.Capacitor = null;
+    const keep = navigator.vibrate;
+    Object.defineProperty(globalThis, 'navigator', { value: { vibrate: () => false }, configurable: true });
+    assert.equal((await fb.testFeedback()).haptics, 'blocked');
+    Object.defineProperty(globalThis, 'navigator', { value: { vibrate: keep }, configurable: true });
+  });
+  it('a missing vibrate API is reported as unsupported', async () => {
+    window.Capacitor = null;
+    const keep = navigator.vibrate;
+    Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true });
+    assert.equal((await fb.testFeedback()).haptics, 'unsupported');
+    Object.defineProperty(globalThis, 'navigator', { value: { vibrate: keep }, configurable: true });
+  });
+  it('a failing native call falls through to the browser', async () => {
+    window.Capacitor = { Plugins: { Haptics: { notification: () => Promise.reject(new Error('x')), impact: () => Promise.reject(new Error('x')) } } };
+    assert.equal((await fb.testFeedback()).haptics, 'browser');
+  });
+  it('audio that cannot start is reported as blocked', async () => {
+    contexts[0].state = 'suspended';
+    const keep = contexts[0].resume;
+    contexts[0].resume = () => Promise.resolve();
+    assert.equal((await fb.testFeedback()).sound, 'blocked');
+    contexts[0].resume = keep;
+    contexts[0].state = 'running';
+  });
+  it('switched-off channels are reported as off and stay silent', async () => {
+    fb.setDialogFeedback({ sound: false, haptics: false });
+    const r = await fb.testFeedback();
+    assert.deepEqual(r, { haptics: 'off', sound: 'off' });
+    assert.equal(tones.length + haptic.notification.length + vibrations.length, 0);
+  });
+  it('every cue is long and strong enough to register on a phone', () => {
+    const kinds = ['open', 'confirm', 'cancel', 'select', 'reject', 'toggleOn', 'toggleOff'];
+    const toneList = ['primary', 'success', 'warning', 'danger', 'error'];
+    for (const k of kinds) for (const t of toneList) {
+      const spec = fb.hapticFor(k, t);
+      const parts = Array.isArray(spec.vibe) ? spec.vibe.filter((_, i) => i % 2 === 0) : [spec.vibe];
+      parts.forEach((ms) => assert.ok(ms >= 20, `${k}/${t} vibrates ${ms}ms`));
+      fb.soundFor(k, t).forEach(([hz, dur]) => { assert.ok(hz >= 300, `${k}/${t} ${hz}Hz`); assert.ok(dur >= 0.05, `${k}/${t} ${dur}s`); });
+    }
   });
 });
