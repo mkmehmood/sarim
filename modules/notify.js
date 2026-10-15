@@ -73,7 +73,8 @@ function _isDuplicate(title, text, tag) {
 //     notification instead of showing a second one
 //   - unrelated records stay separate (one notification per transaction)
 // ---------------------------------------------------------------------------
-const _WINDOW = { quietMs: 2500, maxMs: 8000 };
+const _WINDOW = { quietMs: 600, maxMs: 2000 };
+const _EVENT_QUIET_MS = 150; // a lone event has nothing to wait for, so it shows almost at once
 let _queue = [];
 let _flushTimer = null;
 let _firstAt = 0;
@@ -106,7 +107,9 @@ function _enqueue(entry) {
   _queue.push(entry);
   if (!_firstAt) _firstAt = Date.now();
   clearTimeout(_flushTimer);
-  const wait = Math.max(0, Math.min(_WINDOW.quietMs, _firstAt + _WINDOW.maxMs - Date.now()));
+  const eventsOnly = _queue.every((e) => e.kind === 'event');
+  const quiet = eventsOnly ? Math.min(_WINDOW.quietMs, _EVENT_QUIET_MS) : _WINDOW.quietMs;
+  const wait = Math.max(0, Math.min(quiet, _firstAt + _WINDOW.maxMs - Date.now()));
   _flushTimer = setTimeout(_flush, wait);
 }
 
@@ -293,7 +296,7 @@ export function notifyFromToast(message, type, flags) {
       _pendingMirrors = _pendingMirrors.filter((t) => t !== timer);
       if (type !== 'error' && Date.now() - _lastExplicitAt < 6000) return;
       notifyAction({ title: note.title, body: note.body, tag: 'toast-' + type, kind: 'toast', tone: type }).catch(() => {});
-    }, isAction ? 600 : 1200);
+    }, isAction ? 250 : 500);
     _pendingMirrors.push(timer);
   } catch (_) {}
 }
