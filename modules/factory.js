@@ -1041,11 +1041,11 @@ return `<div class="u-e665e23 d-flex">
 const breakdownId = `fh-breakdown-${entry.id}`;
 matsBreakdownHtml = `
 <div class="u-0d69e4b">
-<button onclick="(function(el){var p=document.getElementById('${breakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'':'';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${breakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'':'';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d">
 <span class="u-5056b09"></span>
 <span class="u-e2e3ece">Materials Breakdown</span>
 </button>
-<div id="${breakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${breakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Material</span>
 <span class="u-1e68903 d-flex">

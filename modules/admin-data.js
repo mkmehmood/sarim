@@ -53,7 +53,7 @@ const modal = document.createElement('div');
 modal.id = 'delta-stats-modal';
 modal.classList.add('st-position__072a0d', 'st-background__7f65d7', 'd-flex', 'st-align-items__7c6197', 'st-padding__287f77', 'u-7ddd1b4');
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-modal.innerHTML = `<div class="u-ed43437 st-background__e02427" style="background: var(--glass)">
+modal.innerHTML = `<div class="u-ed43437 st-background__e02427">
   <div class="u-e6c5b02 d-flex"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" ><path d="M6 9V27C6 29.5 11.5 31.5 18 31.5S30 29.5 30 27V9C30 11.5 24.5 13.5 18 13.5S6 11.5 6 9Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 9C6 6.5 11.5 4.5 18 4.5S30 6.5 30 9 24.5 13.5 18 13.5 6 11.5 6 9Z" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 18C6 20.5 11.5 22.5 18 22.5S30 20.5 30 18" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><circle cx="25" cy="27.2" r="1.2" fill="var(--accent-gold)"/><circle cx="21.5" cy="28" r="1.2" fill="var(--accent-gold)" opacity="0.6"/></svg></div>
   <div class="u-cf5ec96">Loading database structure…</div>
 </div>`;
@@ -192,7 +192,7 @@ try {
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
   let html = `
-<div id="dbv-root" class="u-7f49e10 has-overflow d-flex st-background__e02427" style="background: var(--glass); overflow: hidden">
+<div id="dbv-root" class="u-7f49e10 has-overflow d-flex st-background__e02427" style="overflow: hidden">
 
   <div class="u-05209d6 d-flex">
     <div class="u-1043921 d-flex">
@@ -205,7 +205,7 @@ try {
       </div>
     </div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      class="u-c74ce47 d-flex st-background__262df2 st-border-bottom__2eda1d" style="background: rgba(255,255,255,0.07); border: none"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+      class="u-c74ce47 d-flex st-background__262df2 st-border-bottom__2eda1d"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
   </div>
 
   <div class="u-d331926 d-flex">
@@ -228,17 +228,17 @@ try {
   const _msLeft     = firestoreStats.lastReset ? Math.max(0, 864e5 - (Date.now() - firestoreStats.lastReset)) : 0;
   const _resetNext  = _msLeft > 0 ? (Math.floor(_msLeft/3600000) + 'h ' + Math.floor((_msLeft%3600000)/60000) + 'm') : 'soon';
   html += `<div class="u-871c610 d-grid">
-    <div class="u-095dddc st-background__fbd10c" style="background: rgba(128,128,128,0.08)">
+    <div class="u-095dddc st-background__fbd10c">
       <div class="u-0952787">${totalFsDocs.toLocaleString()}</div>
       <div class="u-ae471a4">Firestore Docs</div>
       <div class="u-5934f86">live count</div>
     </div>
-    <div class="u-095dddc st-background__fbd10c" style="background: rgba(128,128,128,0.08)">
+    <div class="u-095dddc st-background__fbd10c">
       <div class="st-font-size__27e469 st-font-weight__e3ec02 dc-color" style="--d-color: ${_readColor}">${_reads.toLocaleString()}</div>
       <div class="u-ae471a4">Reads (24 h)</div>
       <div class="st-font-size__a9e436 dc-color st-margin-top__7a21c6" style="--d-color: ${_readColor}">${_readPct}% of 50 000</div>
     </div>
-    <div class="u-095dddc st-background__fbd10c" style="background: rgba(128,128,128,0.08)">
+    <div class="u-095dddc st-background__fbd10c">
       <div class="st-font-size__27e469 st-font-weight__e3ec02 dc-color" style="--d-color: ${_writeColor}">${_writes.toLocaleString()}</div>
       <div class="u-ae471a4">Writes (24 h)</div>
       <div class="st-font-size__a9e436 dc-color st-margin-top__7a21c6" style="--d-color: ${_writeColor}">${_writePct}% of 20 000</div>
@@ -296,7 +296,7 @@ try {
     const exists = doc.doc && doc.doc.exists;
     const data   = exists ? doc.doc.data() : null;
     html += `
-<div class="u-7619a9f st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+<div class="u-7619a9f st-background__356c02 st-border-bottom__e54b2f">
   <div class="u-3749291 d-flex">
     <div class="u-8b4ab7f">
       <div class="u-57e7f8a">${doc.path}</div>
@@ -356,13 +356,13 @@ try {
       fires: 'Any doc change; lockOnClose=' + c.lock,
     })),
   ];
-  html += `<div class="u-41505bd st-background__0fc677 st-border-bottom__52eec8" style="background: rgba(48,209,88,0.07); border: 1px solid rgba(48,209,88,0.2)">
+  html += `<div class="u-41505bd st-background__0fc677 st-border-bottom__52eec8">
     <div class="u-c36ae2f">● ${LISTENERS.length} Active Realtime Listeners</div>
     <div class="u-f1f33a6">All subscribed via <code>onSnapshot</code> in <code>subscribeToRealtime()</code>. Reconnect on network restore.</div>
   </div>`;
   LISTENERS.forEach(l => {
     html += `
-<div class="u-d7e5900 st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+<div class="u-d7e5900 st-background__356c02 st-border-bottom__e54b2f">
   <div class="u-350ad3a d-flex">
     ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2')}
     <span class="u-a28f127">${l.name}</span>
@@ -402,7 +402,7 @@ try {
     </table>
     </div>
   </div>`;
-  html += `<div class="u-8f42027 st-background__356c02" style="background: var(--input-bg)">
+  html += `<div class="u-8f42027 st-background__356c02">
     <div class="u-87be69b">Firestore Schema (users/{uid}/…)</div>
     <div class="u-ed97d82">
       <div><span class="u-e1a6e11">users/</span><span class="u-b68d496">{uid}</span></div>
@@ -452,12 +452,12 @@ try {
   modal.innerHTML = html;
 } catch (err) {
   console.error('[showDeltaSyncDetails] error:', err);
-  modal.innerHTML = `<div class="u-92d6a70 st-background__e02427" style="background: var(--glass)">
+  modal.innerHTML = `<div class="u-92d6a70 st-background__e02427">
     <div class="u-e6c5b02 d-flex"><svg width="32" height="32" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-57164d6"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="#f59e0b" fill-opacity="0.16" stroke="#f59e0b" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="#f59e0b"/></svg></div>
     <div class="u-5267c24">Failed to load database structure</div>
     <div class="u-bb2fbde text-xs">${err && err.message ? err.message : String(err)}</div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      class="u-f86db90 st-background__36d305 st-border-bottom__2eda1d" style="background: var(--accent); border: none">Close</button>
+      class="u-f86db90 st-background__36d305 st-border-bottom__2eda1d">Close</button>
   </div>`;
 }
 }
@@ -524,7 +524,7 @@ _cyBody.innerHTML = `
           oninput="validateCloseYearInput(this.value)"
           onkeydown="if(event.key==='Enter'&&!document.getElementById('close-year-confirm-btn').disabled){verifyAndExecuteCloseYear();}">
         <button type="button" id="cy-pwd-eye" tabindex="-1"
-          onclick="(function(b){const i=document.getElementById('close-year-confirm-input');i.type=i.type==='password'?'text':'password';b.querySelector('svg').style.opacity=i.type==='text'?'1':'0.40';})(this)">
+          onclick="(function(b){const i=document.getElementById('close-year-confirm-input');i.type=i.type==='password'?'text':'password';b.querySelector('svg').classList.toggle('dim-icon',i.type!=='text');})(this)">
           <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-c71e479"><path d="M2.5 18C6.5 10.8 12 7.8 18 7.8S29.5 10.8 33.5 18C29.5 25.2 24 28.2 18 28.2S6.5 25.2 2.5 18Z" fill="var(--accent)" fill-opacity="0.1" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="18" r="5.8" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" fill="var(--accent)"/></svg>
         </button>
       </div>
@@ -1164,7 +1164,8 @@ const liveUpdate = (rowId, afterText, accentColor, resultLabel, resultNote) => {
   const afterEl = document.getElementById('cy-val-' + rowId + '-after');
   if (afterEl) {
     afterEl.textContent = afterText;
-    afterEl.style.color = accentColor || 'var(--accent-emerald)';
+    afterEl.style.setProperty('--d-color', accentColor || 'var(--accent-emerald)');
+    afterEl.classList.add('dc-color');
   }
   const statusEl = document.getElementById('cy-status-' + rowId);
   if (statusEl) window.setDisplay(statusEl, 'inline');
@@ -1181,7 +1182,7 @@ const liveUpdate = (rowId, afterText, accentColor, resultLabel, resultNote) => {
     window.setStyle(detailEl, 'opacity', 'st-opacity__7ca58a');
     window.setStyle(detailEl, 'font-size', 'st-font-size__3d7932');
     window.setStyle(detailEl, 'max-height', 'st-max-height__8b8777');
-    detailEl.style.overflow = 'hidden';
+    detailEl.classList.add('overflow-hidden');
     detailEl.classList.add('has-overflow');
     window.setStyle(detailEl, 'transition', 'st-transition__9baacf');
   }
@@ -1313,7 +1314,7 @@ const sellersUsed       = [...new Set(sellerRetFinal.map(i=>i.returnedBy||'?'))]
 const completeSection = document.getElementById('close-year-complete');
 if (completeSection) {
   const syncFailedRows = ['prod','sales','calc','pay','factory','repsales','exp','ret']
-    .filter(id => { const el = document.getElementById('cy-row-' + id); return el && el.style.borderLeftColor && el.style.borderLeftColor.includes('warning') || (el && el.style.borderLeftColor === 'var(--warning)'); });
+    .filter(id => { const el = document.getElementById('cy-row-' + id); return el && el.classList.contains('cy-row-warn'); });
   const hasSyncWarnings = document.querySelectorAll('[id^="cy-status-"]') &&
     [...document.querySelectorAll('[id^="cy-status-"]')].some(el => el.textContent.includes('Sync Failed'));
   const _freshMergedCount = async () => {
@@ -1415,7 +1416,7 @@ export function _markRowSyncWarning(rowId, commitResult) {
       failMsg.textContent = ` Cloud sync incomplete — ${commitResult.batchesFailed}/${commitResult.batchesTotal} Firestore batch${commitResult.batchesFailed!==1?'es':''} failed. Local data is safe. Re-sync when online.`;
       noteEl.appendChild(failMsg);
     }
-    rowEl.style.borderLeftColor = 'var(--warning)';
+    rowEl.classList.add('cy-row-warn');
   } catch (e) {   }
 }
 

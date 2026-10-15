@@ -6335,6 +6335,17 @@ code, pre, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .st-border-radius__cc1df6 { border-radius: 12px; }
 .st-border__2eda1d { border: none; }
 .st-padding__159b3a { padding: 3px 6px; }
+.scroll-locked { overflow: hidden; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.flex-col { flex-direction: column; }
+.cy-row-warn { border-left-color: var(--warning); }
+.hv-highlight:hover { background: var(--highlight-bg); }
+.hv-dim:hover { background: rgba(0,0,0,0.18); }
+.hv-refresh:hover { background: var(--glass-hover); color: var(--text-main); }
+.hv-lift:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,122,255,0.3); }
+.hv-pop:hover { background: var(--glass-raised); }
+.dim-icon { opacity: 0.40; }
 }
 @layer overrides {
  [data-theme="light"] input:-webkit-autofill,

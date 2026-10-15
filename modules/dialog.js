@@ -34,9 +34,9 @@ export function isDialogFlowActive() {
 
 function lockPage() {
   if (lockState) return;
-  lockState = { body: document.body.style.overflow, html: document.documentElement.style.overflow, inert: [] };
-  document.body.style.overflow = 'hidden';
-  document.documentElement.style.overflow = 'hidden';
+  lockState = { body: document.body.classList.contains('scroll-locked'), html: document.documentElement.classList.contains('scroll-locked'), inert: [] };
+  document.body.classList.add('scroll-locked');
+  document.documentElement.classList.add('scroll-locked');
   Array.from(document.body.children).forEach((node) => {
     if (node.classList && node.classList.contains('dlg-overlay')) return;
     if (node.tagName === 'SCRIPT' || node.hasAttribute('inert')) return;
@@ -47,8 +47,8 @@ function lockPage() {
 
 function unlockPage() {
   if (!lockState) return;
-  document.body.style.overflow = lockState.body;
-  document.documentElement.style.overflow = lockState.html;
+  document.body.classList.toggle('scroll-locked', lockState.body);
+  document.documentElement.classList.toggle('scroll-locked', lockState.html);
   lockState.inert.forEach((node) => node.removeAttribute('inert'));
   lockState = null;
 }

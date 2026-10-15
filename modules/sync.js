@@ -3578,7 +3578,7 @@ export async function showSyncHealthPanel() {
         Last sync: ${results.valid[0]?.lastSync || 'Never'}
       </div>
       <button onclick="performOneClickSync();document.getElementById('sync-health-panel').remove()"
-        class="u-ca0f564 st-border-bottom__2eda1d st-background__830bed" style="border: none; background: #2563eb">
+        class="u-ca0f564 st-border-bottom__2eda1d st-background__830bed">
         Sync Now
       </button>
     `;
@@ -3749,7 +3749,7 @@ export function showAuthOverlay() {
 const existing = document.getElementById('auth-overlay');
 if (existing) existing.remove();
 createAuthOverlay();
-document.body.style.overflow = 'hidden';
+document.body.classList.add('scroll-locked');
 }
 
 export function hideAuthOverlay() {
@@ -3760,7 +3760,7 @@ setTimeout(() => {
   if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
 }, 230);
 }
-document.body.style.overflow = '';
+document.body.classList.remove('scroll-locked');
 }
 
 export const LoginRateLimiter = (() => {
@@ -4234,7 +4234,7 @@ if (!emailEl || !passEl || !msgEl) return;
 const email    = emailEl.value.trim();
 const password = passEl.value;
 const role     = _newAccountRole || 'user';
-const setMsg = (txt, color) => { if (msgEl) { msgEl.textContent = txt; msgEl.style.color = color || 'var(--text-muted)'; } };
+const setMsg = (txt, color) => { if (msgEl) { msgEl.textContent = txt; msgEl.style.setProperty('--d-color', color || 'var(--text-muted)'); msgEl.classList.add('dc-color'); } };
 if (!email)              { setMsg('Enter an email address.', 'var(--danger)'); return; }
 if (password.length < 8) { setMsg('Password must be at least 8 characters.', 'var(--danger)'); return; }
 if (!navigator.onLine)   { setMsg('Internet required to create accounts.', 'var(--danger)'); return; }
@@ -4297,22 +4297,22 @@ listEl.innerHTML = allAccounts.map(acct => {
 const isMe     = acct.uid === currentUser.uid;
 const approved = acct.approved !== false;
 const dot = approved
-  ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3" style="background: var(--accent-emerald)"></span>'
-  : '<span class="u-eca6a09 d-inline-block st-background__047b23" style="background: var(--danger)"></span>';
+  ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3"></span>'
+  : '<span class="u-eca6a09 d-inline-block st-background__047b23"></span>';
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
       '<button class="btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="--d-color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';--d-border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + '">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="border-color: rgba(239,68,68,0.3)">Remove</button>'
+      '<button class="btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
     ].join('');
-return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">' +
+return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f">' +
   '<div class="u-855cc88 d-flex">' + dot +
   '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow" style="overflow: hidden">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
   '<div class="u-28c8f7e d-flex">' +
   (acct.role === 'admin'
-    ? '<span class="u-e4e2d96 st-background__74ab11 st-border-bottom__cdd2cd" style="background: rgba(29,233,182,0.12); border: 1px solid rgba(29,233,182,0.3)">admin</span>'
-    : '<span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">user</span>') +
+    ? '<span class="u-e4e2d96 st-background__74ab11 st-border-bottom__cdd2cd">admin</span>'
+    : '<span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">user</span>') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
   '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';

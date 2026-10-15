@@ -454,7 +454,7 @@ html[data-bio="1"] .splash-brand { display: none; }
 </script><script src="vendor/leaflet/leaflet.js" defer></script><script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
-window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){window.setDisplay(existing, window.getDisplay(existing)==='none'?'block':'none');return;}var pop=document.createElement('div');pop.id=popId;pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-f7a3790');items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'u-1cd2eeb');d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);window.setDisplay(pop, 'none');};pop.appendChild(d);});window.setStyle(anchor, 'position', 'st-position__d461c9');anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)window.setDisplay(pop, 'none');}},true);};
+window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){window.setDisplay(existing, window.getDisplay(existing)==='none'?'block':'none');return;}var pop=document.createElement('div');pop.id=popId;pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-f7a3790');items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'u-1cd2eeb');d.classList.add('hv-pop');d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);window.setDisplay(pop, 'none');};pop.appendChild(d);});window.setStyle(anchor, 'position', 'st-position__d461c9');anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)window.setDisplay(pop, 'none');}},true);};
 
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
@@ -829,7 +829,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Store Manager</h2>
   </div>
   <div class="screen-body" id="store-manager-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" style="border: 1px solid var(--glass-border)">
+    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label" id="store-form-heading">New Store</p>
       <input type="hidden" id="store-edit-index" value="-1">
       <div class="grid-inputs u-mb-15">
@@ -853,12 +853,12 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <button class="btn btn-noman u-634a28b" onclick="(async()=>{await saveStoreFromForm()})()">
           <span id="store-save-btn-text">Add Store</span>
         </button>
-        <button class="btn u-d59bb54 d-none st-background__f38efd" id="store-cancel-edit-btn" style="background: var(--glass-raised)" onclick="resetStoreForm()">Cancel</button>
+        <button class="btn u-d59bb54 d-none st-background__f38efd" id="store-cancel-edit-btn" onclick="resetStoreForm()">Cancel</button>
       </div>
     </div>
     <p class="settings-group-label">Existing Stores</p>
     <div id="store-list-container"></div>
-    <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb" style="background: rgba(245,158,11,0.07); border: 1px solid var(--warning)">
+    <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb">
       <strong class="u-cab13eb">Note:</strong> A store's key is generated from its name when the store is created (ZUBAIR becomes <code>zubair</code>). It is permanent and links to all historical records, so renaming a store later is safe.
       Renaming a store updates its display name everywhere. Deleting is only allowed if the store has no production records.
       Changes sync to all connected devices automatically.
@@ -872,7 +872,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-body">
     <p class="settings-group-label">Backup</p>
     <div class="settings-list-item" onclick="triggerLocalBackup()">
-      <div class="settings-list-item-icon st-background__fbe8aa" style="background:rgba(29,233,182,0.1);">
+      <div class="settings-list-item-icon st-background__fbe8aa">
         <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 31V17.5M12.8 22.2L18 17 23.2 22.2" stroke="var(--accent-gold)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--accent-gold)"/></svg>
       </div>
       <div class="settings-list-item-info">
@@ -883,7 +883,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-group-label">Restore</p>
     <div class="settings-list-item" onclick="document.getElementById('restoreInput').click()">
-      <div class="settings-list-item-icon st-background__79f351" style="background:rgba(255,179,0,0.1);">
+      <div class="settings-list-item-icon st-background__79f351">
         <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--warning)" fill-opacity="0.14" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 17V31M12.8 25.8L18 31 23.2 25.8" stroke="var(--warning)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--warning)"/></svg>
       </div>
       <div class="settings-list-item-info">
@@ -903,7 +903,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="recycleBinStats" class="u-d8853f1"></div>
       <div class="u-611b408 d-flex">
         <div class="u-a8a9035">
-          <button id="recycleBinFilterBtn" class="store-selector u-a5ce510 d-flex st-border-bottom__e54b2f st-background__356c02" style="border: 1px solid var(--glass-border); background: var(--input-bg)" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button id="recycleBinFilterBtn" class="store-selector u-a5ce510 d-flex st-border-bottom__e54b2f st-background__356c02" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <select id="recycleBinFilter" class="d-none">
             <option value="all">All Tabs</option>
             <option value="tab_sales">Sales Tab</option>
@@ -920,7 +920,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         </button>
       </div>
     </div>
-    <div class="u-3e56df8 st-background__3b4003 st-border-bottom__81d82c" style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.18)">
+    <div class="u-3e56df8 st-background__3b4003 st-border-bottom__81d82c">
       Restore puts the record back to its original collection. Records expire after <strong class="u-786051d">90 days</strong>. Use <strong class="u-ddfd606">Delete Forever</strong> to erase a record immediately and permanently.
     </div>
     <div id="recycleBinList"></div>
@@ -931,7 +931,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Stock Transfer</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" style="border: 1px solid var(--glass-border)">
+    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Move Stock Between Stores</p>
       <div class="grid-inputs u-mb-15">
         <div class="field">
@@ -964,7 +964,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-group-label">Transfer History</p>
     <div id="stockTransferHistoryList"></div>
-    <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb" style="background: rgba(245,158,11,0.07); border: 1px solid var(--warning)">
+    <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb">
       <strong class="u-cab13eb">Note:</strong> A transfer is only allowed up to the stock currently available at the source store on the selected date.
       Transfers are recorded against both stores' stock history and sync to all connected devices automatically.
     </div>
@@ -975,7 +975,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Payment Transfer</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" style="border: 1px solid var(--glass-border)">
+    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Move Balance Between Entities</p>
       <div class="grid-inputs u-mb-15">
         <div class="field u-a8a9035">
@@ -989,7 +989,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             autocomplete="off"
             class="u-13f34eb"
           >
-          <div id="payment-transfer-from-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f" style="overflow-y:auto; background: var(--glass); border: 1px solid var(--glass-border)"></div>
+          <div id="payment-transfer-from-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f" style="overflow-y:auto"></div>
         </div>
         <div class="field u-a8a9035">
           <label>To Entity</label>
@@ -1002,7 +1002,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             autocomplete="off"
             class="u-13f34eb"
           >
-          <div id="payment-transfer-to-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f" style="overflow-y:auto; background: var(--glass); border: 1px solid var(--glass-border)"></div>
+          <div id="payment-transfer-to-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f" style="overflow-y:auto"></div>
         </div>
       </div>
       <div class="grid-inputs u-mb-15">
@@ -1019,9 +1019,9 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <label>Note (optional)</label>
         <div class="u-832bae1 d-flex">
           <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" class="u-634a28b">
-          <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" class="u-4f1eb22 d-flex st-border-bottom__e54b2f st-background__356c02" style="border: 1px solid var(--glass-border); background: var(--input-bg)">
+          <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" class="u-4f1eb22 d-flex st-border-bottom__e54b2f st-background__356c02">
             <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
-            <span id="payment-transfer-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d" style="background: var(--accent); border: 1.5px solid var(--card-bg,#111827)"></span>
+            <span id="payment-transfer-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d"></span>
           </button>
         </div>
         <input type="file" id="payment-transfer-photo-file" accept="image/*" class="d-none" onchange="handlePaymentTransferPhotoFile(event)">
@@ -1030,7 +1030,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-group-label">Transfer History</p>
     <div id="paymentTransferHistoryList"></div>
-    <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb" style="background: rgba(245,158,11,0.07); border: 1px solid var(--warning)">
+    <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb">
       <strong class="u-cab13eb">Note:</strong> A payment transfer records an OUT transaction against the source entity and an IN transaction against the destination entity.
       Both entities' balances update immediately and sync to all connected devices automatically.
     </div>
@@ -1241,7 +1241,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div class="u-39ae4db">
         <label class="u-6068d65 d-block">Role</label>
-        <div class="u-f67fe7f d-flex st-background__f38efd" style="background: var(--glass-raised)">
+        <div class="u-f67fe7f d-flex st-background__f38efd">
           <button id="acct-role-user" class="toggle-opt active u-44dfa2b" onclick="setNewAccountRole('user')">User</button>
           <button id="acct-role-admin" class="toggle-opt u-44dfa2b" onclick="setNewAccountRole('admin')">Admin</button>
         </div>
@@ -1274,7 +1274,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
 </div>
 <div id="close-financial-year-screen" class="standalone-screen d-none">
   <div class="screen-topbar">
-    <div class="u-9579e23 d-flex st-background__37084f st-border-bottom__948aa0" style="background: rgba(239,83,80,0.12); border: 1px solid rgba(239,83,80,0.25)">
+    <div class="u-9579e23 d-flex st-background__37084f st-border-bottom__948aa0">
       <svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--danger)" fill-opacity="0.12" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--danger)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="25" cy="25" r="6.2" fill="var(--danger)" fill-opacity="0.35" stroke="var(--danger)" stroke-width="1.6"/><path d="M22 25.2L24.2 27.4 28.2 22.8" stroke="var(--danger)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M9.5 22H15M9.5 27H13" stroke="var(--danger)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/></svg>
     </div>
     <div class="u-8b4ab7f">
@@ -1290,7 +1290,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
 <div id="db-structure-screen" class="standalone-screen d-none">
   <div class="screen-topbar">
     <h2 class="screen-title">Database Structure</h2>
-    <button onclick="loadDbStructureScreen()" title="Refresh" class="u-810e4c9 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)" onmouseover="this.style.background='var(--glass-hover)';this.style.color='var(--text-main)'" onmouseout="this.style.background='var(--glass-raised)';this.style.color='var(--text-muted)'">
+    <button onclick="loadDbStructureScreen()" title="Refresh" class="u-810e4c9 d-flex st-background__f38efd st-border-bottom__e54b2f hv-refresh">
       <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="ic-sync-arrows"><path d="M30.5 15.5A12.8 12.8 0 0 0 8.2 10" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M8 4.8V10.4H13.6" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M5.5 20.5A12.8 12.8 0 0 0 27.8 26" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M28 31.2V25.6H22.4" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g><circle cx="18" cy="18" r="3.6" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="1.2" fill="var(--accent-gold)"/></svg>
     </button>
   </div>
@@ -1345,7 +1345,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div class="u-81878d5">
-        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_entity');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_entity';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('entityPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');promptStatementShare('entity');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_entity');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_entity';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.classList.add('hv-pop');d.onclick=function(){var sel=document.getElementById('entityPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');promptStatementShare('entity');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div id="entityManagementHistoryList"></div>
@@ -1361,20 +1361,20 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006 d-flex">
       <div class="u-8124785">
-        <div id="entity-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="background: var(--input-bg); border: 2.5px solid var(--accent); overflow: hidden" onclick="previewPhotoClick('entity')">
+        <div id="entity-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="overflow: hidden" onclick="previewPhotoClick('entity')">
           <svg id="entity-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="entity-photo-img" src="" alt="" class="u-b19d6a5 d-none">
         </div>
-        <button onclick="document.getElementById('entity-photo-file').click()" class="u-9d02650 d-flex st-background__36d305 st-border-bottom__2eda1d" style="background: var(--accent); border: none" title="Upload photo">
+        <button onclick="document.getElementById('entity-photo-file').click()" class="u-9d02650 d-flex st-background__36d305 st-border-bottom__2eda1d" title="Upload photo">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 7V29M7 18H29" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         </button>
       </div>
       <div class="u-f17001c d-flex">
-        <button class="btn-theme u-5993783 d-flex st-border-bottom__89f1f8" style="border: 1px solid var(--accent)" onclick="openPhotoCapture('entity')">
+        <button class="btn-theme u-5993783 d-flex st-border-bottom__89f1f8" onclick="openPhotoCapture('entity')">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
           Camera
         </button>
-        <button class="btn-theme u-c771f94 d-none st-border-bottom__c643a7" id="entity-photo-clear-btn" style="border: 1px solid var(--danger,#ef4444)" onclick="clearPersonPhoto('entity')" title="Remove photo">✕</button>
+        <button class="btn-theme u-c771f94 d-none st-border-bottom__c643a7" id="entity-photo-clear-btn" onclick="clearPersonPhoto('entity')" title="Remove photo">✕</button>
       </div>
       <input type="file" id="entity-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'entity')">
     </div>
@@ -1418,7 +1418,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div class="u-81878d5">
-        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_expense');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_expense';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.classList.add('hv-pop');d.onclick=function(){var sel=document.getElementById('expenseOverlayRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');exportExpenseOverlayToPDF();};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div class="debt-panel u-debt-header liquid-card u-a0d4a03">
@@ -1460,7 +1460,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div class="u-81878d5">
-        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_cust');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_cust';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('customerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');promptStatementShare('customer');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_cust');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_cust';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.classList.add('hv-pop');d.onclick=function(){var sel=document.getElementById('customerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');promptStatementShare('customer');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div id="customerManagementHistoryList"></div>
@@ -1476,20 +1476,20 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006 d-flex">
       <div class="u-8124785">
-        <div id="cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="background: var(--input-bg); border: 2.5px solid var(--accent); overflow: hidden" onclick="previewPhotoClick('cust')">
+        <div id="cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="overflow: hidden" onclick="previewPhotoClick('cust')">
           <svg id="cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="cust-photo-img" src="" alt="" class="u-b19d6a5 d-none">
         </div>
-        <button onclick="document.getElementById('cust-photo-file').click()" class="u-9d02650 d-flex st-background__36d305 st-border-bottom__2eda1d" style="background: var(--accent); border: none" title="Upload photo">
+        <button onclick="document.getElementById('cust-photo-file').click()" class="u-9d02650 d-flex st-background__36d305 st-border-bottom__2eda1d" title="Upload photo">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 7V29M7 18H29" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         </button>
       </div>
       <div class="u-f17001c d-flex">
-        <button class="btn-theme u-5993783 d-flex st-border-bottom__89f1f8" style="border: 1px solid var(--accent)" onclick="openPhotoCapture('cust')">
+        <button class="btn-theme u-5993783 d-flex st-border-bottom__89f1f8" onclick="openPhotoCapture('cust')">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
           Camera
         </button>
-        <button class="btn-theme u-c771f94 d-none st-border-bottom__c643a7" id="cust-photo-clear-btn" style="border: 1px solid var(--danger,#ef4444)" onclick="clearPersonPhoto('cust')" title="Remove photo">✕</button>
+        <button class="btn-theme u-c771f94 d-none st-border-bottom__c643a7" id="cust-photo-clear-btn" onclick="clearPersonPhoto('cust')" title="Remove photo">✕</button>
       </div>
       <input type="file" id="cust-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'cust')">
     </div>
@@ -1513,7 +1513,7 @@ window._showLogoutConfirmDialog = async function() {
         <label>Address / Location</label>
         <div class="u-8150fe9 d-flex">
           <input class="u-flex-1" type="text" id="edit-cust-address" placeholder="Area, Shop #, etc.">
-          <button class="btn-theme u-df9f8bf st-border-bottom__89f1f8" onclick="fetchDeviceLocation()" title="Auto-Fetch Location" style="border: 1px solid var(--accent)">
+          <button class="btn-theme u-df9f8bf st-border-bottom__89f1f8" onclick="fetchDeviceLocation()" title="Auto-Fetch Location">
             <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" fill="var(--accent-gold)" fill-opacity="0.16" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4.1" fill="var(--accent)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="1.7"/><ellipse cx="18" cy="32.6" rx="8" ry="1.9" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity=".7"/></svg>
           </button>
         </div>
@@ -1546,7 +1546,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
       <div class="u-81878d5">
-        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_rep');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_rep';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var sel=document.getElementById('repCustomerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');promptStatementShare('rep');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button class="btn btn-noman btn-sm btn-pdf u-5647db8 d-flex" title="Export to PDF" onclick="(function(b){var p=document.getElementById('_epop_rep');if(p){window.setDisplay(p,window.getDisplay(p)==='none'?'block':'none');}else{var pop=document.createElement('div');pop.id='_epop_rep';pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-c8157a9');['Today','This Week','This Month','This Year','All Time'].forEach(function(l,i){var vals=['today','week','month','year','all'];var d=document.createElement('div');d.textContent=l;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f');d.classList.add('hv-pop');d.onclick=function(){var sel=document.getElementById('repCustomerPdfRange');if(sel){sel.value=vals[i];sel.dispatchEvent(new Event('change'));}window.setDisplay(pop,'none');promptStatementShare('rep');};pop.appendChild(d);});b.parentNode.appendChild(pop);document.addEventListener('click',function h(e){if(!b.parentNode.contains(e.target)){window.setDisplay(pop,'none');}},true);}})(this)"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
     </div>
     <div id="repCustomerManagementHistoryList"></div>
@@ -1562,20 +1562,20 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006 d-flex">
       <div class="u-8124785">
-        <div id="rep-cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="background: var(--input-bg); border: 2.5px solid var(--accent); overflow: hidden" onclick="previewPhotoClick('rep-cust')">
+        <div id="rep-cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="overflow: hidden" onclick="previewPhotoClick('rep-cust')">
           <svg id="rep-cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="rep-cust-photo-img" src="" alt="" class="u-b19d6a5 d-none">
         </div>
-        <button onclick="document.getElementById('rep-cust-photo-file').click()" class="u-9d02650 d-flex st-background__36d305 st-border-bottom__2eda1d" style="background: var(--accent); border: none" title="Upload photo">
+        <button onclick="document.getElementById('rep-cust-photo-file').click()" class="u-9d02650 d-flex st-background__36d305 st-border-bottom__2eda1d" title="Upload photo">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 7V29M7 18H29" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
         </button>
       </div>
       <div class="u-f17001c d-flex">
-        <button class="btn-theme u-5993783 d-flex st-border-bottom__89f1f8" style="border: 1px solid var(--accent)" onclick="openPhotoCapture('rep-cust')">
+        <button class="btn-theme u-5993783 d-flex st-border-bottom__89f1f8" onclick="openPhotoCapture('rep-cust')">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
           Camera
         </button>
-        <button class="btn-theme u-c771f94 d-none st-border-bottom__c643a7" id="rep-cust-photo-clear-btn" style="border: 1px solid var(--danger,#ef4444)" onclick="clearPersonPhoto('rep-cust')" title="Remove photo">✕</button>
+        <button class="btn-theme u-c771f94 d-none st-border-bottom__c643a7" id="rep-cust-photo-clear-btn" onclick="clearPersonPhoto('rep-cust')" title="Remove photo">✕</button>
       </div>
       <input type="file" id="rep-cust-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'rep-cust')">
     </div>
@@ -1599,7 +1599,7 @@ window._showLogoutConfirmDialog = async function() {
         <label>Address / Location</label>
         <div class="u-8150fe9 d-flex">
           <input class="u-flex-1" type="text" id="rep-edit-cust-address" placeholder="Area, Shop #, etc.">
-          <button class="btn-theme u-df9f8bf st-border-bottom__89f1f8" onclick="fetchRepDeviceLocation()" title="Auto-Fetch Location" style="border: 1px solid var(--accent)">
+          <button class="btn-theme u-df9f8bf st-border-bottom__89f1f8" onclick="fetchRepDeviceLocation()" title="Auto-Fetch Location">
             <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" fill="var(--accent-gold)" fill-opacity="0.16" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4.1" fill="var(--accent)" fill-opacity="0.5" stroke="var(--accent)" stroke-width="1.7"/><ellipse cx="18" cy="32.6" rx="8" ry="1.9" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity=".7"/></svg>
           </button>
         </div>
@@ -1616,22 +1616,22 @@ window._showLogoutConfirmDialog = async function() {
   <span></span>
   <span></span>
 </button>
-<span id="system-name-display" style="left: 50%; transform: translateX(-50%); pointer-events: none" class="shimmer-text u-39e031c st-transform__1b8ae7 st-pointer-events__8b1364">MAHMOOD KHAN</span>
+<span id="system-name-display" style="left: 50%" class="shimmer-text u-39e031c st-transform__1b8ae7 st-pointer-events__8b1364">MAHMOOD KHAN</span>
 </div>
-<div id="photo-lightbox-modal" class="u-5dc23f3 d-none st-background__c91ee5" style="inset: 0; background: rgba(0,0,0,0.96)">
+<div id="photo-lightbox-modal" class="u-5dc23f3 d-none st-background__c91ee5" style="inset: 0">
   <div id="photo-lightbox-inner" class="u-63b5e54 has-overflow d-flex" style="overflow: hidden">
     <img id="photo-lightbox-img" src="" alt="" class="u-091ed00 d-block">
   </div>
-  <div class="u-976b6bc d-flex st-pointer-events__8b1364" style="left: 0; pointer-events: none">
-    <div class="u-9062975 d-flex st-pointer-events__3177af" style="pointer-events: all">
-      <button onclick="_lbZoom(-1)" title="Zoom out" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826" style="background: rgba(255,255,255,0.13); border: 1.5px solid rgba(255,255,255,0.22)">−</button>
+  <div class="u-976b6bc d-flex st-pointer-events__8b1364" style="left: 0">
+    <div class="u-9062975 d-flex st-pointer-events__3177af">
+      <button onclick="_lbZoom(-1)" title="Zoom out" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826">−</button>
       <span id="photo-lb-zoom-label" class="u-11f44de">1×</span>
-      <button onclick="_lbZoom(1)" title="Zoom in" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826" style="background: rgba(255,255,255,0.13); border: 1.5px solid rgba(255,255,255,0.22)">+</button>
-      <button onclick="_lbResetZoom()" title="Reset zoom" class="u-558b50c st-background__1e9efa st-border-bottom__caacaa" style="background: rgba(255,255,255,0.10); border: 1.5px solid rgba(255,255,255,0.18)">RESET</button>
+      <button onclick="_lbZoom(1)" title="Zoom in" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826">+</button>
+      <button onclick="_lbResetZoom()" title="Reset zoom" class="u-558b50c st-background__1e9efa st-border-bottom__caacaa">RESET</button>
     </div>
-    <button onclick="closePhotoLightbox()" class="u-61d51c3 d-flex st-background__edf734 st-border-bottom__d9e826 st-pointer-events__3177af" style="background: rgba(255,255,255,0.13); border: 1.5px solid rgba(255,255,255,0.22); pointer-events: all">✕</button>
+    <button onclick="closePhotoLightbox()" class="u-61d51c3 d-flex st-background__edf734 st-border-bottom__d9e826 st-pointer-events__3177af">✕</button>
   </div>
-  <div class="u-7b1cb17 st-pointer-events__8b1364" style="left: 0; pointer-events: none">PINCH OR SCROLL TO ZOOM · DOUBLE-TAP TO RESET</div>
+  <div class="u-7b1cb17 st-pointer-events__8b1364" style="left: 0">PINCH OR SCROLL TO ZOOM · DOUBLE-TAP TO RESET</div>
 </div>
 <div id="photo-capture-modal" class="cam-modal d-none" role="dialog" aria-modal="true" aria-label="Camera">
   <div class="cam-top">
@@ -1700,7 +1700,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div id="rep-new-customer-phone-container" class="hidden u-a70476a">
 <div class="field u-2a0ca83">
 <label class="u-3b9712c">Mobile number</label>
-<input type="tel" id="rep-new-cust-phone" placeholder="03XX-XXXXXXX" class="u-74d5875 st-border-bottom__d088ee" style="border-color: var(--accent-emerald)">
+<input type="tel" id="rep-new-cust-phone" placeholder="03XX-XXXXXXX" class="u-74d5875 st-border-bottom__d088ee">
 </div>
 </div>
 <div id="rep-sale-inputs">
@@ -1722,7 +1722,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received" oninput="updateRepCollectionPreview()">
 </div>
 </div>
-<div id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f" style="background: rgba(37, 99, 235, 0.05); border: 1px solid var(--glass-border)">
+<div id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
 <div class="u-25351ff d-flex">
 <span class="u-cb45723">Current Debt:</span>
 <span id="rep-customer-current-credit" class="u-a5b525a">0.00</span>
@@ -1752,7 +1752,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <input type="date" id="admin-rep-date" onchange="handleAdminRepDateChange(this.value)">
 </div>
 </div>
-<div id="rep-map-container" class="u-d6af5d3 st-border-bottom__069ffd" style="border: 2px solid var(--glass-border)"></div>
+<div id="rep-map-container" class="u-d6af5d3 st-border-bottom__069ffd"></div>
 <div class="u-fc13188 text-right">
  Cash Sale |  Collection |  Credit Sale
 </div>
@@ -1789,8 +1789,8 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <input type="text" id="rep-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
 placeholder="Search customers..."
 oninput="renderRepCustomerTable()">
-<button class="btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF" style="border-color: var(--accent-emerald)"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
-<button class="btn-theme u-4ae4ad1 d-inline-flex st-border-bottom__38fcbe" onclick="openRepCustomerEditModal('')" title="Add New Customer" style="border-color: var(--accent)"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+<button class="btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn-theme u-4ae4ad1 d-inline-flex st-border-bottom__38fcbe" onclick="openRepCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
 <div class="u-7a02ed1 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
 <table class="u-table-full" >
@@ -1850,7 +1850,7 @@ No records found
 <div class="grid-inputs">
 <div class="field">
 <label>Net Production (kg)</label>
-<input type="number" id="net-wt" readonly class="u-540e04e st-background__44812c" style="background: rgba(37, 99, 235, 0.1)">
+<input type="number" id="net-wt" readonly class="u-540e04e st-background__44812c">
 <div id="dynamic-cost-display" class="u-7960f3f text-xs">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
@@ -1892,7 +1892,7 @@ Units of factory mixture consumed
 <span class="u-danger-bold" id="dynamic-cost-per-kg" >0.00/kg</span>
 </div>
 </div>
-<div class="result-box st-background__2cf90b" id="prod-profit-block" style="background:rgba(37, 99, 235, 0.05);">
+<div class="result-box st-background__2cf90b" id="prod-profit-block">
 <div class="u-787e284 d-flex">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Dynamic Cost Price:</span>
 <span class="u-danger-bold" id="factory-cost-price" >0.00/kg</span>
@@ -1973,7 +1973,7 @@ Insufficient formula units available! Please reduce formula units used.
 <div class="u-9085986 d-flex">
 <h3 class="u-text-accent u-2a0ca83">New Sale</h3>
 <div class="u-9062975 d-flex">
-<span id="new-sale-id-display" class="u-86af0e3 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">ID: —</span>
+<span id="new-sale-id-display" class="u-86af0e3 d-none st-background__f38efd st-border-bottom__e54b2f">ID: —</span>
 <div class="toggle-group u-2a0ca83">
 <button id="btn-cust-mode-sale" class="toggle-opt active" onclick="setSaleMode('sale')">Sale</button>
 <button id="btn-cust-mode-coll" class="toggle-opt" onclick="setSaleMode('collection')">Collection</button>
@@ -1991,7 +1991,7 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <div class="u-3054b9f d-flex">
 <div class="field u-e3a2c64">
 <label class="u-3b9712c">Mobile number</label>
-<input type="tel" id="new-cust-phone" placeholder="03XX-XXXXXXX" class="u-4c8551b st-border-bottom__d088ee" style="border-color: var(--accent-emerald)">
+<input type="tel" id="new-cust-phone" placeholder="03XX-XXXXXXX" class="u-4c8551b st-border-bottom__d088ee">
 </div>
 </div>
 </div>
@@ -2016,7 +2016,7 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <input type="number" id="cust-amount-collected" step="1" placeholder="Enter amount received" oninput="updateCollectionPreview()">
 </div>
 </div>
-<div id="customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f" style="background: rgba(37, 99, 235, 0.05); border: 1px solid var(--glass-border)">
+<div id="customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
 <div class="u-25351ff d-flex">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Current Credit:</span>
 <span id="customer-current-credit" class="u-b3cc95b">0.00</span>
@@ -2065,8 +2065,8 @@ Profit: <span id="cust-profit">0.00</span>
 <input type="text" id="customer-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
 oninput="filterCustomers()">
 <span id="customer-count" class="u-62e500b">0 customers</span>
-<button class="btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF" style="border-color: var(--accent)"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
-<button class="btn-theme u-2386b90 d-inline-flex st-border-bottom__d088ee" onclick="openCustomerEditModal('')" title="Add New Customer" style="border-color: var(--accent-emerald)"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+<button class="btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn-theme u-2386b90 d-inline-flex st-border-bottom__d088ee" onclick="openCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
 <div class="u-7a02ed1 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
 <table class="u-table-full" >
@@ -2170,12 +2170,12 @@ No records found
 <div class="grid-inputs">
 <div class="field">
 <label>Total Sold Qty</label>
-<input type="number" id="totalSold" readonly class="u-29f5481 st-background__44812c st-border-bottom__89f1f8" style="background: rgba(37, 99, 235, 0.1); border: 1px solid var(--accent)" onclick="handleTripleTap(this, 'sales')">
+<input type="number" id="totalSold" readonly class="u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
 </div>
 <div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
 <div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
-<div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb" style="background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning)">
+<div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb">
 <label class="u-5c10e65"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group u-0d69e4b">
 <button id="ret-store-zubair" class="toggle-opt" onclick="selectReturnStore('zubair', this)">ZUBAIR</button>
@@ -2185,7 +2185,7 @@ No records found
 * This will increase the store's stock level without creating a new production record.
 </div>
 </div>
-<div id="expiredSection" class="hidden u-78f55da st-background__4347c7 st-border-bottom__5358c6" style="background: rgba(220, 38, 38, 0.08); border: 1px solid var(--danger, #dc2626)">
+<div id="expiredSection" class="hidden u-78f55da st-background__4347c7 st-border-bottom__5358c6">
 <label class="u-7201e5b"> Expired Stock — Added to CHORA Raw Material:</label>
 <div class="u-field-hint u-a5595d1">
 * Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
@@ -2367,37 +2367,37 @@ Select a store...
 </div>
 <div id="factoryAvailStatsS1">
 <div class="u-f84a1f7 d-grid">
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-782b52c">Units</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Available</span>
 <span class="qty-val u-cef932c" id="factoryS1Units">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Used</span>
 <span class="qty-val u-065334d" id="factoryS1UsedUnits">0</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-dcef81b">Output</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Quantity</span>
 <span class="qty-val u-cef932c" id="factoryS1Output">0 kg</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Raw Used</span>
 <span class="qty-val u-065334d" id="factoryS1RawUsed">0 kg</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-fa369cd">Cost</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per Unit</span>
 <span class="cost-val u-cef932c" id="factoryS1UnitCost">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
 <span class="rev-val u-065334d" id="factoryS1TotalVal">0</span>
@@ -2407,13 +2407,13 @@ Select a store...
 <span class="cost-val u-065334d" id="factoryS1MatVal">0</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76" style="background: var(--glass-raised); border: 1px solid rgba(102,187,106,0.3)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76">
 <span class="u-3dafff5">Profit</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
 <span class="profit-val u-cef932c" id="factoryS1Profit">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per kg</span>
 <span class="profit-val u-065334d" id="factoryS1ProfitUnit">0</span>
@@ -2423,37 +2423,37 @@ Select a store...
 </div>
 <div id="factoryAvailStatsS2" class="hidden">
 <div class="u-f84a1f7 d-grid">
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-782b52c">Units</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Available</span>
 <span class="qty-val u-cef932c" id="factoryS2Units">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Used</span>
 <span class="qty-val u-065334d" id="factoryS2UsedUnits">0</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-dcef81b">Output</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Quantity</span>
 <span class="qty-val u-cef932c" id="factoryS2Output">0 kg</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Raw Used</span>
 <span class="qty-val u-065334d" id="factoryS2RawUsed">0 kg</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-fa369cd">Cost</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per Unit</span>
 <span class="cost-val u-cef932c" id="factoryS2UnitCost">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
 <span class="rev-val u-065334d" id="factoryS2TotalVal">0</span>
@@ -2463,13 +2463,13 @@ Select a store...
 <span class="cost-val u-065334d" id="factoryS2MatVal">0</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76" style="background: var(--glass-raised); border: 1px solid rgba(102,187,106,0.3)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76">
 <span class="u-3dafff5">Profit</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
 <span class="profit-val u-cef932c" id="factoryS2Profit">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per kg</span>
 <span class="profit-val u-065334d" id="factoryS2ProfitUnit">0</span>
@@ -2515,43 +2515,43 @@ Select a store...
 </div>
 </div>
 <div class="u-f84a1f7 d-grid">
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-782b52c">Units</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Available</span>
 <span class="qty-val u-cef932c" id="factorySumUnits">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Used</span>
 <span class="qty-val u-065334d" id="factorySumUsedUnits">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Avg Add. Cost/Day</span>
 <span class="cost-val u-065334d" id="factorySumCostPerDay">0</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-dcef81b">Output</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Quantity</span>
 <span class="qty-val u-cef932c" id="factorySumOutput">0 kg</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Raw Used</span>
 <span class="qty-val u-065334d" id="factorySumRawUsed">0 kg</span>
 </div>
 <div id="factorySumRawBreakdown"></div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-fa369cd">Cost</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per Unit</span>
 <span class="cost-val u-cef932c" id="factorySumUnitCost">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
 <span class="rev-val u-065334d" id="factorySumTotalCost">0</span>
@@ -2561,13 +2561,13 @@ Select a store...
 <span class="cost-val u-065334d" id="factorySumMatVal">0</span>
 </div>
 </div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76" style="background: var(--glass-raised); border: 1px solid rgba(102,187,106,0.3)">
+<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76">
 <span class="u-3dafff5">Profit</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
 <span class="profit-val u-cef932c" id="factorySumProfit">0</span>
 </div>
-<div class="u-94b9481 st-background__e78ba6" style="background: var(--glass-border)"></div>
+<div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per kg</span>
 <span class="profit-val u-065334d" id="factorySumProfitUnit">0</span>
@@ -2591,7 +2591,7 @@ Select a store...
 <div class="section-header u-row-between" >
 <div class="u-9efe017 d-flex">
 <h3 class="u-heading-main u-2a0ca83">Transaction Manager</h3>
-<span id="expense-id-display" class="u-ae6d1d0 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">ID: —</span>
+<span id="expense-id-display" class="u-ae6d1d0 d-none st-background__f38efd st-border-bottom__e54b2f">ID: —</span>
 </div>
 <button class="btn-theme u-1461725" onclick="clearExpenseForm()">
 Clear
@@ -2616,7 +2616,7 @@ placeholder="Search expenses or entities..."
 oninput="handleExpenseSearch()"
 autocomplete="off" class="u-13f34eb"
 >
-<div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f" style="overflow-y: auto; background: var(--glass); border: 1px solid var(--glass-border)"></div>
+<div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f" style="overflow-y: auto"></div>
 </div>
 </div>
 <div class="u-aa4c87b d-flex">
@@ -2639,9 +2639,9 @@ min="0" class="u-b58d92a"
     placeholder="Add details..."
     class="u-5d90a7b"
   >
-  <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" class="u-4f1eb22 d-flex st-border-bottom__e54b2f st-background__356c02" style="border: 1px solid var(--glass-border); background: var(--input-bg)">
+  <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" class="u-4f1eb22 d-flex st-border-bottom__e54b2f st-background__356c02">
     <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
-    <span id="expense-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d" style="background: var(--accent); border: 1.5px solid var(--card-bg,#111827)"></span>
+    <span id="expense-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d"></span>
   </button>
 </div>
 <input type="file" id="expense-photo-file" accept="image/*" class="d-none" onchange="handleExpensePhotoFile(event)">
@@ -2669,7 +2669,7 @@ Save Transaction
 <div class="section liquid-card net-cash-dashboard">
 <h3 class="u-6c6d4a4">ECONOMIC HEALTH DASHBOARD</h3>
 <div class="net-cash-value" id="netCashValue">0.00</div>
-<div class="formula-item u-e545590 st-background__44812c" style="background: rgba(37, 99, 235, 0.1)">
+<div class="formula-item u-e545590 st-background__44812c">
 <div class="u-row-between" >
 <span class="u-52f4743">Operating Cash Flow:</span>
 <span class="u-62f700e" id="operatingCashFlow">0.00</span>
@@ -2693,11 +2693,11 @@ Save Transaction
 <span>External Payments Received:</span>
 <span class="formula-value" id="cashDetailPaymentsIn">0.00</span>
 </div>
-<div class="formula-item u-a5580e3 st-background__10233b" style="background: rgba(220, 38, 38, 0.1)">
+<div class="formula-item u-a5580e3 st-background__10233b">
 <span>External Payments Made:</span>
 <span class="formula-value u-text-danger" id="cashDetailPaymentsOut">0.00</span>
 </div>
-<div class="formula-item u-a5580e3 st-background__10233b" style="background: rgba(220, 38, 38, 0.1)">
+<div class="formula-item u-a5580e3 st-background__10233b">
 <span>Operating Expenses:</span>
 <span class="formula-value u-text-danger" id="cashDetailOperatingExpenses">0.00</span>
 </div>
@@ -2747,19 +2747,19 @@ Save Transaction
 <span>Entity Payables (Payment Entities):</span>
 <span class="formula-value u-text-danger" id="entityPayables">0.00</span>
 </div>
-<div class="formula-item u-12d0cb9 st-background__54c931" style="background: rgba(220, 38, 38, 0.05)">
+<div class="formula-item u-12d0cb9 st-background__54c931">
 <span>TOTAL ACCOUNTS PAYABLE:</span>
 <span class="formula-value u-text-danger" id="formulaPayOut">0.00</span>
 </div>
-<div class="formula-item u-4b6f260 st-background__10233b" style="background: rgba(220, 38, 38, 0.1)">
+<div class="formula-item u-4b6f260 st-background__10233b">
 <span>TOTAL CURRENT LIABILITIES:</span>
 <span class="formula-value u-text-danger" id="currentLiabilitiesTotal">0.00</span>
 </div>
-<div class="formula-item u-bf0cd40 st-background__ca4057" style="background: rgba(5, 150, 105, 0.1)">
+<div class="formula-item u-bf0cd40 st-background__ca4057">
 <span>Net Working Capital:</span>
 <span class="formula-value" id="formulaPayIn">0.00</span>
 </div>
-<div class="formula-item u-4deed76 st-background__44812c" style="background: rgba(37, 99, 235, 0.1)">
+<div class="formula-item u-4deed76 st-background__44812c">
 <span>Total Enterprise Value:</span>
 <span class="formula-value" id="formulaFinal">0.00</span>
 </div>
@@ -2801,11 +2801,11 @@ Save Transaction
 <hr class="u-09601dc">
 <p><span>NET CASH:</span> <span class="profit-val u-8ed6849" id="cash-net-total">Rs 0</span></p>
 </div>
-<div class="card liquid-card st-background__f37fd9 st-border-bottom__a8412f" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%); border-color: rgba(245, 158, 11, 0.3);">
+<div class="card liquid-card st-background__f37fd9 st-border-bottom__a8412f">
 <h4 class="u-cab13eb">TOTAL OUTSTANDING CREDITS</h4>
 <p><span>Sales Tab Credits:</span> <span class="qty-val" id="credit-sales-tab">Rs 0</span></p>
 <p><span>Calculator Credits:</span> <span class="qty-val" id="credit-calculator">Rs 0</span></p>
-<hr class="u-09601dc st-border-bottom__d88a2f" style="border-color: rgba(245, 158, 11, 0.2)">
+<hr class="u-09601dc st-border-bottom__d88a2f">
 <p><span>TOTAL CREDITS:</span> <span class="cost-val u-1eee58e" id="credit-total">Rs 0</span></p>
 <div class="u-0b2e367 text-xs">
 <span class="update-indicator"></span> Credits awaiting collection
@@ -2818,7 +2818,7 @@ Save Transaction
 <h4 class="u-a75ad3e">Unified Records</h4>
 <input type="text" id="unified-search" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
 oninput="renderUnifiedTable()">
-<button class="btn-theme u-f5c3969 st-border-bottom__d088ee" onclick="exportUnifiedData()" title="Download PDF" style="border-color: var(--accent-emerald)"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn-theme u-f5c3969 st-border-bottom__d088ee" onclick="exportUnifiedData()" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 </div>
 <div class="u-f86c566 d-flex">
 <div class="u-1b8b20b">
@@ -2856,7 +2856,7 @@ No records found
 </tr>
 </tbody>
 <tfoot>
-<tr class="u-1426cf2 st-background__356c02" style="background: var(--input-bg)">
+<tr class="u-1426cf2 st-background__356c02">
 <td colspan="3" class="u-92a53e7 text-right">
 <span id="unified-table-footer-label">Total:</span>
 </td>
@@ -2867,19 +2867,19 @@ No records found
 </div>
 <div id="unified-summary" class="u-332a9ff d-none">
 <div class="u-d6dcd93 d-grid">
-<div class="u-707ca06 d-flex st-border__95bd9d" style="border-left: 3px solid var(--accent-emerald)">
+<div class="u-707ca06 d-flex st-border__95bd9d">
 <span class="u-text-muted" >Total Receivable</span>
 <span id="unified-receivables" class="u-32e441f">0.00</span>
 </div>
-<div class="u-707ca06 d-flex st-border__738b6c" style="border-left: 3px solid var(--warning)">
+<div class="u-707ca06 d-flex st-border__738b6c">
 <span class="u-text-muted" >Expenses</span>
 <span id="unified-expenses" class="u-f676bd6">0.00</span>
 </div>
-<div class="u-707ca06 d-flex st-border__ba3fd3" style="border-left: 3px solid var(--danger)">
+<div class="u-707ca06 d-flex st-border__ba3fd3">
 <span class="u-text-muted" >Supplies Payable</span>
 <span id="unified-supplier-payables" class="u-2f7ed13">0.00</span>
 </div>
-<div class="u-707ca06 d-flex st-border__28e30e" style="border-left: 3px solid var(--accent-purple)">
+<div class="u-707ca06 d-flex st-border__28e30e">
 <span class="u-text-muted" >Entity Payable</span>
 <span id="unified-entity-payables" class="u-af17e33">0.00</span>
 </div>
@@ -2904,7 +2904,7 @@ var _DOUBLE_BACK_MS = 2000;
 function _hideSidebar() {
   document.getElementById('sidebar-backdrop').classList.remove('open');
   document.getElementById('app-sidebar').classList.remove('open');
-  document.body.style.overflow = '';
+  document.body.classList.remove('scroll-locked');
 }
 function _hideScreen(id) {
   var el = document.getElementById(id);
@@ -2920,8 +2920,8 @@ function _hideScreen(id) {
       if (window.getDisplay(s) !== 'none') anyOpen = true;
     });
     if (!anyOpen) {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
+      document.body.classList.remove('scroll-locked');
+      document.documentElement.classList.remove('scroll-locked');
     }
   }, ANIM_MS);
 }
@@ -2952,7 +2952,7 @@ function openSidebar() {
   }
   document.getElementById('sidebar-backdrop').classList.add('open');
   document.getElementById('app-sidebar').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  document.body.classList.add('scroll-locked');
   var alreadyTracked = _navStack.some(function(x){ return x.type === 'sidebar'; });
   if (!alreadyTracked) {
     _navStack.push({ type: 'sidebar' });
@@ -2976,8 +2976,8 @@ function openStandaloneScreen(id) {
     el.classList.remove('screen-entering');
     el.removeEventListener('animationend', onEnterDone);
   }, { once: true });
-  document.body.style.overflow = 'hidden';
-  document.documentElement.style.overflow = 'hidden';
+  document.body.classList.add('scroll-locked');
+  document.documentElement.classList.add('scroll-locked');
   _navStack.push({ type: 'screen', id: id });
   history.pushState({ _pwa: 'nav' }, '');
 }
@@ -3045,7 +3045,7 @@ async function renderStoreList() {
     return `
     <div class="settings-list-item u-5c12a4f">
       <div class="u-2757ede d-flex">
-        <div class="u-c560d14 d-flex st-background__fbe8aa st-border-bottom__710d95" style="background: rgba(29,233,182,0.1); border: 1.5px solid var(--accent)">
+        <div class="u-c560d14 d-flex st-background__fbe8aa st-border-bottom__710d95">
           ${(s.name || '?').slice(0,2)}
         </div>
         <div class="u-8b4ab7f">
@@ -3061,7 +3061,7 @@ async function renderStoreList() {
           </div>
         </div>
         <div class="u-3141675 d-flex">
-          <button onclick="editStore(${i})" class="u-a3d5906 text-xs st-background__fbe8aa st-border-bottom__89f1f8" style="background: rgba(29,233,182,0.1); border: 1px solid var(--accent)">Edit</button>
+          <button onclick="editStore(${i})" class="u-a3d5906 text-xs st-background__fbe8aa st-border-bottom__89f1f8">Edit</button>
           ${!isBuiltin && !isUsed ? `<button onclick="deleteStore(${i})" style="background:rgba(239,68,68,0.1);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:5px 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">Delete</button>` : ''}
         </div>
       </div>

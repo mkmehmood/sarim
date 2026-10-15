@@ -84,6 +84,15 @@ describe('display helpers', () => {
     }
     assert.deepEqual(bad, []);
   });
+  it('writes inline styles from JS only for run-time geometry and timing', () => {
+    const allowed = new Set(['left', 'right', 'top', 'bottom', 'width', 'height', 'minHeight', 'transform', 'animationDuration', 'cssText']);
+    const found = new Set();
+    for (const f of ['index.html', ...readdirSync(new URL('../modules/', import.meta.url)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)]) {
+      const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+      for (const m of text.matchAll(/\.style\.([a-zA-Z]+)\s*=(?!=)/g)) found.add(m[1]);
+    }
+    assert.deepEqual([...found].filter((p) => !allowed.has(p)), []);
+  });
   it('leaves no direct style.display writes in the app code', () => {
     for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js']) {
       const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8').replace(tag, '');

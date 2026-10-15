@@ -16,8 +16,8 @@ globalThis.document = {
   activeElement: null,
   contains: () => false,
   querySelector: () => (overlays.length ? overlays[0] : null),
-  body: { style: {}, children: [], appendChild: (o) => overlays.push(o) },
-  documentElement: { style: {} },
+  body: { style: {}, children: [], classList: { add() {}, remove() {}, toggle() {}, contains: () => false }, appendChild: (o) => overlays.push(o) },
+  documentElement: { style: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false } },
   fonts: null,
   createElement: () => {
     const el = {

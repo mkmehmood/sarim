@@ -228,7 +228,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     if (!filtered.length) {
       dropdown.innerHTML = (customOpt || '<div class="u-search-empty">No materials found</div>');
     } else {
-      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610 st-background__356c02" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}" style="background: var(--input-bg)">${esc(i.name)}</div>`).join('') + customOpt;
+      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610 st-background__356c02" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}">${esc(i.name)}</div>`).join('') + customOpt;
     }
     dropdown.classList.remove('hidden');
     dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {
@@ -486,7 +486,7 @@ export async function openStoreFormulaPicker(btn) {
   if (pop) {
     pop.style.left = '0';
     window.setStyle(pop, 'max-height', 'st-max-height__936545');
-    pop.style.overflowY = 'auto';
+    pop.classList.add('overflow-y-auto');
     pop.classList.add('has-overflow', 'scroll-y');
   }
 }

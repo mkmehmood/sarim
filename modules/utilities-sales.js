@@ -345,16 +345,16 @@ _etFrag.appendChild(transactionCard);
 transactionsList.replaceChildren(_etFrag);
 }
 requestAnimationFrame(() => {
-document.body.style.overflow = 'hidden';
-document.documentElement.style.overflow = 'hidden';
+document.body.classList.add('scroll-locked');
+document.documentElement.classList.add('scroll-locked');
 window.setDisplay(document.getElementById('entityTransactionsOverlay'), 'flex');
 });
 }
 
 export function closeEntityTransactions() {
 requestAnimationFrame(() => {
-document.body.style.overflow = '';
-document.documentElement.style.overflow = '';
+document.body.classList.remove('scroll-locked');
+document.documentElement.classList.remove('scroll-locked');
 window.setDisplay(document.getElementById('entityTransactionsOverlay'), 'none');
 });
 }
@@ -1009,9 +1009,9 @@ const _econMode = typeof currentCashTrackerMode !== 'undefined' ? currentCashTra
 const netCashValueElement = document.getElementById('netCashValue');
 if (netCashValueElement) {
 netCashValueElement.textContent = `${fmtAmt(safeValue(indicators.cashInHand))}`;
-netCashValueElement.style.color = indicators.cashInHand < 0 ? 'var(--danger)' :
-indicators.cashInHand < 10000 ? 'var(--warning)' :
-'var(--accent-emerald)';
+window.setStyle(netCashValueElement, 'color', indicators.cashInHand < 0 ? 'st-color__497726' :
+indicators.cashInHand < 10000 ? 'st-color__52df2b' :
+'st-color__a4c6ac');
 }
 const operatingCashElement = document.getElementById('operatingCashFlow');
 if (operatingCashElement) {
@@ -1047,9 +1047,9 @@ if (currentLiabilitiesTotalEl) currentLiabilitiesTotalEl.textContent = `${fmtAmt
 const workingCapitalElement = document.getElementById('formulaPayIn');
 if (workingCapitalElement) {
 workingCapitalElement.textContent = `${fmtAmt(safeValue(indicators.workingCapital))}`;
-workingCapitalElement.style.color = indicators.workingCapital < 0 ? 'var(--danger)' :
-indicators.workingCapital < 50000 ? 'var(--warning)' :
-'var(--accent-emerald)';
+window.setStyle(workingCapitalElement, 'color', indicators.workingCapital < 0 ? 'st-color__497726' :
+indicators.workingCapital < 50000 ? 'st-color__52df2b' :
+'st-color__a4c6ac');
 }
 { const _el_formulaFinal = document.getElementById('formulaFinal'); if (_el_formulaFinal) _el_formulaFinal.textContent = `${fmtAmt(safeValue(indicators.totalEnterpriseValue))}`; }
 const currentRatioElement = document.getElementById('formulaCalcDisc');
@@ -1061,7 +1061,7 @@ window.setStyle(currentRatioElement, 'color', 'st-color__5872de');
 } else {
 const _cr = safeNumber(parseFloat(currentRatio), 0);
 currentRatioElement.textContent = _cr.toFixed(2);
-currentRatioElement.style.color = _cr < 1 ? 'var(--danger)' : _cr < 2 ? 'var(--warning)' : 'var(--accent-emerald)';
+window.setStyle(currentRatioElement, 'color', _cr < 1 ? 'st-color__497726' : _cr < 2 ? 'st-color__52df2b' : 'st-color__a4c6ac');
 }
 }
 const quickRatioElement = document.getElementById('quickRatio');
@@ -3966,11 +3966,11 @@ modal.innerHTML = `
 <h3 class="u-454fb31">Enter Password to Decrypt</h3>
 <p class="u-97b6268">This backup is encrypted with your account credentials.</p>
 <p class="u-ed7ce38">Account: <strong>${esc(currentUser.email)}</strong></p>
-<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">
+<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f st-background__356c02 st-border-bottom__e54b2f">
 <div id="dec-pwd-error" class="u-19cb4ec"></div>
 <div class="u-1e68903 d-flex">
-<button id="dec-pwd-ok" class="u-bc38067 st-background__36d305 st-border-bottom__2eda1d" style="background: var(--accent); border: none">Decrypt & Restore</button>
-<button id="dec-pwd-cancel" class="u-4a0b42c st-background__356c02 st-border-bottom__e54b2f" style="background: var(--input-bg); border: 1px solid var(--glass-border)">Cancel</button>
+<button id="dec-pwd-ok" class="u-bc38067 st-background__36d305 st-border-bottom__2eda1d">Decrypt & Restore</button>
+<button id="dec-pwd-cancel" class="u-4a0b42c st-background__356c02 st-border-bottom__e54b2f">Cancel</button>
 </div>
 </div>`;
 document.body.appendChild(modal);
@@ -5491,11 +5491,11 @@ if (_rawBreakdownEl) {
 </div>`).join('');
     _rawBreakdownEl.innerHTML = `
 <div class="u-0d69e4b">
-<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${_bId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'\u25b6':'\u25bc';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d">
 <span class="u-5056b09">&#x25b6;</span>
 <span class="u-e2e3ece">Materials Breakdown</span>
 </button>
-<div id="${_bId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${_bId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Material</span>
 <span class="u-1e68903 d-flex">
@@ -5840,11 +5840,11 @@ const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
 </div>`).join('');
 soldBreakdownHtml = `
 <div class="u-6b1f0d9">
-<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${soldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d">
 <span class="u-5056b09">▶</span>
 <span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${soldBreakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${soldBreakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Customer</span>
 <span class="u-e89dac7 text-right">Qty Sold</span>
@@ -5865,7 +5865,7 @@ ${soldBreakdownHtml}
 <div class="u-9cc1f8f">
 <p><span>Remaining:</span> <span class="profit-val u-7463f71">${fmtNum(safeValue(remainingQty))} kg</span></p>
 </div>
-<div class="u-1f16247 st-background__396ef7" style="background: rgba(37,99,235,0.03)">
+<div class="u-1f16247 st-background__396ef7">
 <p><span>Formula Units:</span> <span class="qty-val u-fw-700" >${fmtNum(safeValue(storeData.formulaUnits))}</span></p>
 <p><span>Formula Cost:</span> <span class="cost-val u-fw-700" >${fmtAmt(safeValue(storeData.formulaCost))}</span></p>
 </div>
@@ -5911,11 +5911,11 @@ const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
 </div>`).join('');
 combinedSoldBreakdownHtml = `
 <div class="u-6b1f0d9">
-<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d" style="background: none; border: none">
+<button onclick="(function(el){var p=document.getElementById('${combinedSoldBreakdownId}');var open=window.getDisplay(p)!=='none';window.setDisplay(p,open?'none':'block');el.querySelector('span').textContent=open?'▶':'▼';})(this)" class="u-f81db62 d-flex st-background__adc731 st-border-bottom__2eda1d">
 <span class="u-5056b09">▶</span>
 <span class="u-e2e3ece">Sold Breakdown</span>
 </button>
-<div id="${combinedSoldBreakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f" style="background: var(--glass-raised); border: 1px solid var(--glass-border)">
+<div id="${combinedSoldBreakdownId}" class="u-fdf6e25 d-none st-background__f38efd st-border-bottom__e54b2f">
 <div class="u-0ad85ea d-flex">
 <span class="u-2b7c172">Customer</span>
 <span class="u-e89dac7 text-right">Qty Sold</span>
@@ -6395,7 +6395,7 @@ let creditSection = '';
 if (!isOldDebtItem) {
 if (paymentType === 'CREDIT' && !creditReceived) {
 creditSection = `
-<div class="credit-checkbox-container u-b34d4f2 st-pointer-events__8b1364" style="pointer-events: none">
+<div class="credit-checkbox-container u-b34d4f2 st-pointer-events__8b1364">
 <input type="checkbox" class="credit-checkbox" disabled>
 <label class="credit-checkbox-label">Mark as Received</label>
 </div>

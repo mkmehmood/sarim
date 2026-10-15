@@ -1954,7 +1954,7 @@ const _safeEntityId = String(entity.id).replace(/'/g, "\\'");
 const _entPhotoKey = 'entity:' + String(entity.id);
 const _entPhoto = await getPersonPhoto(_entPhotoKey);
 const _entAvatarHTML = renderPersonAvatarHTML(_entPhoto, 44);
-_manageET.innerHTML = `<div class="u-1043921 d-flex">${_entAvatarHTML}<div class="u-69f8e5a"><div class="u-611b408 d-flex"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn u-686d0e1 d-inline-flex st-background__9c46e6 st-border-bottom__18ac6f" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25)" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
+_manageET.innerHTML = `<div class="u-1043921 d-flex">${_entAvatarHTML}<div class="u-69f8e5a"><div class="u-611b408 d-flex"><span class="u-fw-700">${esc(entity.name)}</span><button class="sidebar-settings-btn u-686d0e1 d-inline-flex st-background__9c46e6 st-border-bottom__18ac6f" onclick="editEntityBasicInfo('${_safeEntityId}')" title="Edit Entity"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button></div>${(phone || wallet) ? `<div style="font-size:0.75rem;color:var(--text-muted);font-weight:normal;margin-top:3px;">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
 }
 try {
 const _freshInv = await sqliteStore.get('inventory', []);
@@ -2032,7 +2032,7 @@ const safeExpenseId = _photoRefId ? String(_photoRefId).replace(/'/g, "\\'") : '
 const photoBadgeId = 'ph-badge-' + String(_photoRefId || t.id).replace(/[^a-z0-9]/gi, '');
 const item = document.createElement('div');
 item.className = `cust-history-item${t.isSettled ? ' is-settled-record' : ''}`;
-item.style.flexDirection = 'column';
+item.classList.add('flex-col');
 window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 item.innerHTML = `
 <div class="txn-card-row">
@@ -2048,7 +2048,7 @@ item.innerHTML = `
       <div class="${colorClass} u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>
     <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')"
-      class="u-129f796 d-none st-border-bottom__2eda1d st-background__c6ed62" style="border: none; background: rgba(99,102,241,0.15)">
+      class="u-129f796 d-none st-border-bottom__2eda1d st-background__c6ed62">
       <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
       Photo
     </button>
@@ -2075,7 +2075,7 @@ const items = document.querySelectorAll('#entityManagementHistoryList .cust-hist
 items.forEach(item => {
 const text = item.innerText.toLowerCase();
 if (!text.includes(term)) { window.setDisplay(item, 'none'); return; }
-window.setDisplay(item, item.style.flexDirection === 'column' ? 'flex' : 'flex');
+window.setDisplay(item, 'flex');
 });
 }
 
@@ -3957,7 +3957,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
     const safe = photoDataUrl.replace(/'/g, '&#39;');
-    return `<div class="person-avatar-ring dc-width dc-height st-cursor__3b6a3a st-position__d461c9" style="--d-width: ${sz}px; --d-height: ${sz}px" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f d-block"><div class="u-578ba6d st-background__f4525e" style="inset: 0; background: rgba(0,0,0,0)" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
+    return `<div class="person-avatar-ring dc-width dc-height st-cursor__3b6a3a st-position__d461c9" style="--d-width: ${sz}px; --d-height: ${sz}px" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" class="u-b53f32f d-block"><div class="u-578ba6d st-background__f4525e hv-dim" style="inset: 0"></div></div>`;
   }
   return `<div class="person-avatar-ring dc-width dc-height" style="--d-width: ${sz}px; --d-height: ${sz}px"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="12.5" r="6.2" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></div>`;
 }
@@ -4007,7 +4007,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
     window.setStyle(img, 'transform', 'st-transform__53b1e7');
     window.setStyle(img, 'transition', 'st-transition__2ed754');
     window.setDisplay(modal, 'flex');
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add('scroll-locked');
     const lbl = document.getElementById('photo-lb-zoom-label');
     if (lbl) lbl.textContent = '1×';
     _lbBindEvents(modal, img);
@@ -4018,7 +4018,7 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
       window.setDisplay(modal, 'none');
       _lbUnbindEvents(modal);
     }
-    document.body.style.overflow = '';
+    document.body.classList.remove('scroll-locked');
     _lbScale = 1; _lbTransX = 0; _lbTransY = 0;
   }; window.closePhotoLightbox = closePhotoLightbox;
   function _onWheel(e) {

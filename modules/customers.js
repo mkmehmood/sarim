@@ -350,7 +350,7 @@ ${_custAvatarHTML}
 <div class="u-69f8e5a">
 <div class="u-611b408 d-flex">
 <span>${esc(name)}</span>
-<button class="sidebar-settings-btn u-686d0e1 d-inline-flex st-background__9c46e6 st-border-bottom__18ac6f" style="background: rgba(29,233,182,0.07); border: 1px solid rgba(29,233,182,0.25)" onclick="openCustomerEditModal('${_custSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
+<button class="sidebar-settings-btn u-686d0e1 d-inline-flex st-background__9c46e6 st-border-bottom__18ac6f" onclick="openCustomerEditModal('${_custSafeName}')" title="Edit Contact Info"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 24.5L24 7L29 12L11.5 29.5L5 31Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M20.5 10.5L25.5 15.5" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.5 24.5L11.5 29.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3Q31 6 34 6Q31 6 31 9Q31 6 28 6Q31 6 31 3Z" fill="var(--accent-gold)"/></svg>Edit</button>
 </div>
 <div class="u-9e739fd">
 ${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` : ''}
@@ -392,7 +392,7 @@ const remaining = effectiveDue;
 btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
 statusClass = 'partial';
 }
-toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99 st-pointer-events__8b1364" style="pointer-events: none">${btnText}</span>`;
+toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
 } else if (isPartialPayment) {
 toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
@@ -400,7 +400,7 @@ toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
 } else {
 toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
 }
-const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8 u-b68d496 st-border-bottom__89f1f8 st-background__a8869d" style="border: 1px solid var(--accent); background: transparent" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
+const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8 u-b68d496 st-border-bottom__89f1f8 st-background__a8869d" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
 const deleteBtnHtml = t.isMerged ? '' : `${editBtnHtml}<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteTransactionFromOverlay('${esc(t.id)}')">⌫</button>`;
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;
@@ -459,7 +459,7 @@ itemContent = `
 const _bal = _runBal.get(t) || 0;
 const _balText = _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal));
 item.innerHTML = itemContent + balanceAfterHtml(_balText, _bal > 0.005 ? 'debt' : 'clear');
-item.style.flexDirection = 'column';
+item.classList.add('flex-col');
 window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 _custFrag.appendChild(item);
 }
