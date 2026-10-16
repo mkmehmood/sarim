@@ -93,6 +93,12 @@ describe('display helpers', () => {
     }
     assert.deepEqual([...found].filter((p) => !allowed.has(p)), []);
   });
+  it('declares the cascade layer order first and uses only those layers', () => {
+    const style = html.match(/<style id="spl[^>]*>([\s\S]*?)<\/style>/)[1];
+    assert.ok(style.trimStart().startsWith('@layer vendor, app, utilities, overrides;'));
+    const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+    for (const m of (style + css).matchAll(/@layer ([a-z-]+)\s*\{/g)) assert.ok(['vendor', 'app', 'utilities', 'overrides'].includes(m[1]), m[1]);
+  });
   it('leaves no direct style.display writes in the app code', () => {
     for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js']) {
       const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8').replace(tag, '');

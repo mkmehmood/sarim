@@ -62,7 +62,8 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/plus-jakarta-sans-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/playfair-display-latin-wght-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/manrope-latin-wght-normal.woff2">
-<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/jetbrains-mono-latin-wght-normal.woff2"><style id="splash-critical">@import url('vendor/leaflet/leaflet.css') layer(vendor);
+<link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/jetbrains-mono-latin-wght-normal.woff2"><style id="splash-critical">@layer vendor, app, utilities, overrides;
+@import url('vendor/leaflet/leaflet.css') layer(vendor);
 @font-face { font-family: 'Playfair Display'; font-style: normal; font-weight: 400 900; font-display: swap; src: url('fonts/playfair-display-latin-wght-normal.woff2') format('woff2'); }
 @font-face { font-family: 'Playfair Display'; font-style: italic; font-weight: 400 900; font-display: swap; src: url('fonts/playfair-display-latin-wght-italic.woff2') format('woff2'); }
 @font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 200 800; font-display: swap; src: url('fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2'); }
@@ -386,8 +387,10 @@ html[data-bio="1"] .splash-brand { display: none; }
   animation: none !important;
   opacity: 1 !important;
   display: flex !important;
-  pointer-events: auto !important;
-} }</style>
+} }
+
+@layer overrides{
+ #splash-screen.splash-locked{ pointer-events: auto; } }</style>
 <link rel="stylesheet" href="app.css">
 <link rel="modulepreload" href="modules/main.js"><script>(function(){var V=['none','block','inline','inline-block','flex','inline-flex','grid','inline-grid','table','table-row','table-cell','contents','list-item','flow-root'];window.setDisplay=function(el,value){V.forEach(function(v){el.classList.remove('d-'+v);});el.style.removeProperty('display');if(value)el.classList.add('d-'+value);};window.setStyle=function(el,prop,cls){var pre='st-'+prop+'__';Array.prototype.slice.call(el.classList).forEach(function(c){if(c.indexOf(pre)===0)el.classList.remove(c);});el.style.removeProperty(prop);if(cls)el.classList.add(cls);};window.getDisplay=function(el){for(var i=0;i<V.length;i++){if(el.classList.contains('d-'+V[i]))return V[i];}return el.style.display;};})();</script><script>
 (function() {
