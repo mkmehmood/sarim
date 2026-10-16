@@ -20,11 +20,10 @@ function build(data, selected) {
   const sqliteStore = { get: async (k) => data[k] };
   const getSelectedFormula = async () => selected || null;
   const ensureArray = (v) => Array.isArray(v) ? v : [];
-  const getStoreFormulaType = async (s) => ({ zubair: 'standard', mahmood: 'standard', asaan: 'asaan' })[s] || 'standard';
-  const formulaTypeFor = (s) => (s === 'asaan' ? 'asaan' : 'standard');
-  const getFormulaSlotLabels = async () => ({ standard: 'Standard', asaan: 'Asaan' });
+  const getStorePool = async (s) => ({ zubair: 'F1', mahmood: 'F1', asaan: 'F2' })[s] || '';
+  const getFormulaNames = async () => ({ F1: 'Standard', F2: 'Asaan' });
   const body = `${resolveLive}\n${grab('calculateDynamicCost')}\nreturn { calculateDynamicCost, resolveLiveCost };`;
-  return new Function('sqliteStore', 'ensureArray', 'getSelectedFormula', 'getStoreFormulaType', 'formulaTypeFor', 'getFormulaSlotLabels', body)(sqliteStore, ensureArray, getSelectedFormula, getStoreFormulaType, formulaTypeFor, getFormulaSlotLabels);
+  return new Function('sqliteStore', 'ensureArray', 'getSelectedFormula', 'getStorePool', 'getFormulaNames', body)(sqliteStore, ensureArray, getSelectedFormula, getStorePool, getFormulaNames);
 }
 const data = {
   inventory: [{ id: 'a', name: 'Tobacco', cost: 120 }, { id: 'b', name: 'Lime', cost: 0 }],
@@ -39,7 +38,7 @@ describe('production tab cost price', () => {
     assert.equal(c.costPerUnit, 10 * 120 + 2 * 50 + 30);
     assert.equal(c.totalFormulaCost, 2 * (10 * 120 + 2 * 50 + 30));
     assert.equal(c.dynamicCostPerKg, 0);
-    assert.equal(c.formulaStore, 'standard');
+    assert.equal(c.formulaId, 'F1');
     assert.equal(c.formulaMaterials.length, 2);
   });
   it('cost per kg is the total formula cost over the net weight once a weight exists', async () => {

@@ -1,16 +1,21 @@
 import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
 import { txEffectiveDate, txChronoCompare } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, currentRepProfile, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, sqliteStore, validateUUID } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLabel, refreshCustomerSales, updateCollectionPreview } from './utilities-sales.js';
-import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, safeValue } from './utilities-payments.js';
-import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, updateUnitsAvailableIndicator } from './factory.js';
+import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, reverseExpiredFromChora, safeValue } from './utilities-payments.js';
+import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, getReconciledRepReturnIds, updateUnitsAvailableIndicator } from './factory.js';
 import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
+export async function runningBalanceHtml(bal) {
+const text = bal < -0.005 ? `${await formatCurrency(-bal)} CR` : await formatCurrency(Math.max(0, bal));
+return balanceAfterHtml(text, bal > 0.005 ? 'debt' : 'clear');
+}
+
 export { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking };
 
 export function selectCustomer(name) {
@@ -44,9 +49,10 @@ return;
 }
 let totalCredit = 0;
 let totalQty = 0;
+const _rrDone = await getReconciledRepReturnIds();
 for (const s of matchedSales) {
 totalQty += (s.quantity || 0);
-totalCredit = round2(totalCredit + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
+totalCredit = round2(totalCredit + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
 }
 totalCredit = Math.max(0, totalCredit);
 const _setCust = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -93,6 +99,7 @@ console.warn('Registry refresh failed, using in-memory:', _safeErr(regError));
 const filterInput = document.getElementById('customer-filter');
 const filterValue = filterInput ? filterInput.value.toLowerCase() : '';
 const customerStats = {};
+const _rrDone = await getReconciledRepReturnIds();
 for (const sale of sales) {
 const name = sale.customerName;
 if (!name || name.trim() === '') continue;
@@ -102,7 +109,7 @@ if (!customerStats[name]) {
 customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
 }
 customerStats[name].quantity += (sale.quantity || 0);
-customerStats[name].credit = round2(customerStats[name].credit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0));
+customerStats[name].credit = round2(customerStats[name].credit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0, { reconciledReturnIds: _rrDone }));
 const saleDate = sale.date;
 if (saleDate) {
 const timestamp = new Date(saleDate).getTime();
@@ -225,7 +232,8 @@ const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true 
 if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
 }
 let totalDebt = 0;
-for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0));
+const _rrDone = await getReconciledRepReturnIds();
+for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
 totalDebt = Math.max(0, totalDebt);
 let msg = `Permanently delete customer "${name}"?`;
 if (txs.length > 0) {
@@ -300,7 +308,8 @@ historyTxns = sales.filter(s =>
 s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 }
-const _custDelta = async (t) => debtDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0);
+const _rrDone = await getReconciledRepReturnIds();
+const _custDelta = async (t) => debtDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone });
 const _runBal = new Map();
 let _runTotal = 0;
 const _ascTx = historyTxns.map((t, i) => ({ t, i })).sort((a, b) => txChronoCompare(a.t, b.t) || (a.i - b.i));
@@ -366,11 +375,14 @@ if (historyTxns.length === 0) {
 list.replaceChildren(Object.assign(document.createElement('div'), {className:'u-empty-state-sm',textContent:'No history found'}));
 return;
 }
+const _rrUsed = new Set();
+ensureArray(await sqliteStore.get('calculator')).forEach(h => { if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => _rrUsed.add(i)); });
 const _custFrag = document.createDocumentFragment();
 for (const t of historyTxns) {
 const isCredit = t.paymentType === 'CREDIT';
 const isPartialPayment = t.paymentType === 'PARTIAL_PAYMENT';
 const isCollection = t.paymentType === 'COLLECTION';
+const isRepReturn = t.isRepReturn === true;
 const item = document.createElement('div');
 item.className = `cust-history-item${t.isSettled ? ' is-settled-record' : ''}`;
 let statusClass = t.creditReceived ? 'paid' : 'pending';
@@ -393,6 +405,10 @@ btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
 statusClass = 'partial';
 }
 toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
+} else if (isRepReturn) {
+toggleBtnHtml = _rrUsed.has(t.id)
+? `<span class="status-toggle-btn paid u-77e4b99 st-pointer-events__8b1364">RECONCILED</span>`
+: `<span class="status-toggle-btn pending u-77e4b99 st-pointer-events__8b1364">PENDING RETURN</span>`;
 } else if (isPartialPayment) {
 toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
@@ -400,7 +416,7 @@ toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
 } else {
 toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
 }
-const editBtnHtml = (t.isMerged || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8 u-b68d496 st-border-bottom__89f1f8 st-background__a8869d" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
+const editBtnHtml = (t.isMerged || t.isRepReturn || t.transactionType === 'OLD_DEBT') ? '' : `<button class="btn btn-sm u-p-4-8 u-b68d496 st-border-bottom__89f1f8 st-background__a8869d" onclick="startEdit('sale','${esc(t.id)}')">✎</button>`;
 const deleteBtnHtml = t.isMerged ? '' : `${editBtnHtml}<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteTransactionFromOverlay('${esc(t.id)}')">⌫</button>`;
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;
@@ -409,14 +425,34 @@ const kebabBtn = t.isMerged
   : '';
 const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
 let itemContent = '';
-if (isPartialPayment || isCollection) {
+if (isRepReturn) {
+const _rrExp = Number(t.expiredQty) || 0, _rrRet = Number(t.returnedQty) || 0;
+itemContent = `
+<div class="txn-card-row">
+  <div class="cust-history-info">
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${_rrExp > 0 ? `<div style="font-size:0.7rem;color:var(--text-muted);">Return | <span style="color:#8B4513;">Expired credit</span></div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">${fmtNum(_rrRet)} kg | <span style="color:#8B4513;">${fmtNum(_rrExp)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''} = ${await formatCurrency(Number(t.returnValue) || 0)}</span></div>` : `<div style="font-size:0.7rem;color:var(--text-muted);">Return</div>
+    <div style="font-size:0.75rem;color:var(--accent-emerald);">${fmtNum(_rrRet)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}${Number(t.returnValue) > 0 ? ` = ${await formatCurrency(Number(t.returnValue))}` : ''}</div>`}
+    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+    ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
+  </div>
+</div>${panelPlaceholder}`;
+} else if (isPartialPayment || isCollection) {
+const _hasPay = isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0);
+const _hasExp = Number(t.expiredValue) > 0;
+const _expText = _hasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${await formatCurrency(Number(t.expiredValue) + (_hasPay ? collectionCollected(t) : 0))}${(Number(t.expiredQty) * Number(t.expiredUnitPrice)) - Number(t.expiredValue) > 0.5 ? ' (limited to balance owed)' : ''}` : await formatCurrency(Number(t.expiredValue))) : '';
 itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
     ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
-    <div class="u-dbdd85e">Payment: ${await formatCurrency(collectionCollected(t))}</div>
-    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    ${(_hasPay || _hasExp) ? `<div class="text-xs u-text-muted">${[_hasPay ? 'Payment' : '', _hasExp ? '<span class="u-expired-credit">Expired credit</span>' : ''].filter(Boolean).join(' | ')}</div>
+    <div class="u-dbdd85e">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? `<span class="u-expired-credit">${_expText}</span>` : ''].filter(Boolean).join(' | ')}</div>` : ''}
+    ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
   </div>
   <div class="u-d94b2d8 d-flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -456,9 +492,7 @@ itemContent = `
   </div>
 </div>${panelPlaceholder}`;
 }
-const _bal = _runBal.get(t) || 0;
-const _balText = _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal));
-item.innerHTML = itemContent + balanceAfterHtml(_balText, _bal > 0.005 ? 'debt' : 'clear');
+item.innerHTML = itemContent + await runningBalanceHtml(_runBal.get(t) || 0);
 item.classList.add('flex-col');
 window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 _custFrag.appendChild(item);
@@ -559,11 +593,22 @@ if (_txDate) _txMsg += `\nRecorded: ${_txDate}`;
 if (_txItem?.notes) _txMsg += `\nNote: ${_txItem.notes}`;
 _txMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance from the customer's history permanently.`;
 } else if (_txItem?.paymentType === 'COLLECTION') {
-_txTitle = 'Delete Bulk Collection';
-_txMsg = `Delete this bulk collection payment from ${_txCust || 'customer'}?`;
+_txTitle = 'Delete Collection';
+_txMsg = `Delete this collection from ${_txCust || 'customer'}?`;
 if (_txDate) _txMsg += `\nDate: ${_txDate}`;
-_txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
-_txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (collectionCollected(_txItem) > 0) _txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
+if (Number(_txItem.expiredQty) > 0) _txMsg += `\nExpired / Damage: ${fmtNum(Number(_txItem.expiredQty))} kg`;
+if (Number(_txItem.expiredValue) > 0) _txMsg += `\nExpired credit: ${fmtAmt(Number(_txItem.expiredValue))}`;
+if (collectionCollected(_txItem) > 0) _txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (Number(_txItem.expiredQty) > 0 && _txItem.expiredApplied !== false) _txMsg += `\n\n\u21a9 ${fmtNum(Number(_txItem.expiredQty))} kg will be removed from CHORA raw material.`;
+} else if (_txItem?.isRepReturn) {
+_txTitle = 'Delete Rep Return';
+_txMsg = `Delete this return logged for ${_txCust || 'the rep'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+_txMsg += `\nExpired / Damage: ${fmtNum(_txItem.expiredQty || 0)} kg`;
+_txMsg += `\nReturned: ${fmtNum(_txItem.returnedQty || 0)} kg`;
+if (Number(_txItem.returnValue) > 0) _txMsg += `\nBalance deducted: ${fmtAmt(Number(_txItem.returnValue))}`;
+_txMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator${Number(_txItem.returnValue) > 0 ? ' and the deduction will be added back to the rep\'s balance' : ''}. No stock has moved yet.`;
 } else if (_txItem?.paymentType === 'PARTIAL_PAYMENT') {
 _txTitle = 'Delete Partial Payment';
 _txMsg = `Delete this partial payment from ${_txCust || 'customer'}?`;
@@ -595,6 +640,9 @@ if (!item) { renderCustomerTransactions(currentManagingCustomer); return; }
 await detachChildPayment('customer', item, sales);
 const customerSalesFiltered = sales.filter(s => s.id !== id);
 await unifiedDelete('sales', customerSalesFiltered, id, { strict: true }, item);
+if (item.paymentType === 'COLLECTION' && Number(item.expiredQty) > 0 && item.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(item.expiredQty), item.date);
+}
 refreshAllCalculations();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
@@ -773,6 +821,11 @@ toast.addEventListener('click', dismiss, { once: true });
 const _TOAST_TYPES = ['success', 'warning', 'error', 'info'];
 export function showToast(message, type, duration = 3000) {
 if (!_TOAST_TYPES.includes(type)) { console.error('showToast needs a type of success, warning, error or info, got', type); return; }
+// Save, delete and update confirmations are sent as one merged device notification instead of an in-app toast.
+if (typeof window.isActionToast === 'function' && window.isActionToast(message, type)) {
+if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type, { action: true });
+return;
+}
 if (typeof window.isDialogFlowActive === 'function' && window.isDialogFlowActive()) {
 if (type === 'error' && typeof window.notifyBlocking === 'function') {
 const raise = () => { if (window.isDialogOpen()) setTimeout(raise, 250); else window.notifyBlocking(message, 'error', 'Something went wrong'); };
@@ -782,7 +835,6 @@ return;
 }
 _toastQueue.push({ message, type, duration });
 _playNextToast();
-if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type);
 }
 
 window.showToast = showToast;

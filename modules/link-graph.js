@@ -1,5 +1,4 @@
 export const GROUP_FIELD = '_deletionGroup';
-import { formulaTypeFor } from './store-keys.js';
 
 export const REF_FIELDS = {
   sales:       { scalar: ['relatedSaleId'], array: [] },
@@ -293,7 +292,7 @@ export function getUnitsShortIssue(label, requested, available) {
   return null;
 }
 
-const _txMatIds = (t) => {
+export const txMaterialIds = (t) => {
   const ids = new Set();
   if (t && t.materialId) ids.add(String(t.materialId));
   if (t && Array.isArray(t.materialIds)) t.materialIds.forEach(i => { if (i) ids.add(String(i)); });
@@ -304,12 +303,12 @@ const _stockValueFallback = (m) => _r2(m.totalValue || (m.purchaseCost && m.purc
 
 export function findPayableInTxs(txs, materialId, supplierId) {
   return (Array.isArray(txs) ? txs : []).filter(t => t && !t.deletedAt && t.isPayable === true && t.type === 'IN' &&
-    (supplierId == null || String(t.entityId) === String(supplierId)) && _txMatIds(t).has(String(materialId)));
+    (supplierId == null || String(t.entityId) === String(supplierId)) && txMaterialIds(t).has(String(materialId)));
 }
 
 export function isOrphanSupplierTx(t, inventory) {
   if (!t || t.isPayable !== true) return false;
-  const ids = _txMatIds(t);
+  const ids = txMaterialIds(t);
   if (ids.size === 0) return false;
   const inv = Array.isArray(inventory) ? inventory : [];
   return !inv.some(m => m && !m.deletedAt && ids.has(String(m.id)) && m.supplierId && String(m.supplierId) === String(t.entityId));
@@ -320,7 +319,7 @@ export function hasLiveSupplierInvoice(material, txs) {
 }
 
 export function materialOriginalPayable(material, inTxs) {
-  const direct = findPayableInTxs(inTxs, material && material.id).filter(t => _txMatIds(t).size === 1);
+  const direct = findPayableInTxs(inTxs, material && material.id).filter(t => txMaterialIds(t).size === 1);
   if (direct.length) return _r2(direct.reduce((s, t) => s + _n(t.amount), 0));
   return _stockValueFallback(material || {});
 }
@@ -403,15 +402,10 @@ export function getSupplierCreditReconsumeIssue(snapshot, liveTxs, resolve) {
     : null;
 }
 
-const _SLOTS = ['standard', 'asaan'];
-const _SLOT_LABEL = { standard: 'Standard', asaan: 'Asaan' };
-
-export function resolveSelectedFormula(data, storeKey) {
+export function resolveSelectedFormula(data, ref) {
   const list = (Array.isArray(data.list) ? data.list : []).filter(f => f && f.id);
-  const slots = data.slots || {};
-  const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === storeKey);
-  const type = _SLOTS.includes(storeKey) ? storeKey : ((st && st.formulaType) || formulaTypeFor(storeKey));
-  const formulaId = (st && st.formulaId) || slots[type] || null;
+  const st = (Array.isArray(data.stores) ? data.stores : []).find(s => s && s.key === ref);
+  const formulaId = st ? (st.formulaId || null) : (ref || null);
   const f = formulaId ? list.find(x => String(x.id) === String(formulaId)) : null;
   const inv = (Array.isArray(data.inventory) ? data.inventory : []).filter(i => i && !i.deletedAt);
   const resolve = (i) => {
@@ -428,11 +422,9 @@ export function resolveSelectedFormula(data, storeKey) {
     };
   };
   if (f) {
-    return { source: 'store', type, formulaId: f.id, name: f.name || _SLOT_LABEL[type], additionalCost: _n(f.additionalCost), ingredients: (Array.isArray(f.ingredients) ? f.ingredients : []).map(resolve) };
+    return { source: 'store', formulaId: f.id, name: f.name || 'Formula', additionalCost: _n(f.additionalCost), ingredients: (Array.isArray(f.ingredients) ? f.ingredients : []).map(resolve) };
   }
-  const feed = data.feed || {};
-  const costs = data.costs || {};
-  return { source: 'feed', type, formulaId: null, name: _SLOT_LABEL[type] || 'Formula', additionalCost: _n(costs[type] != null ? costs[type] : costs[storeKey]), ingredients: (Array.isArray(feed[type] || feed[storeKey]) ? (feed[type] || feed[storeKey]) : []).map(resolve) };
+  return { source: 'none', formulaId: null, name: '', additionalCost: 0, ingredients: [] };
 }
 
 const _SETTLE_FIELDS = ['creditReceivedDate', 'creditReceivedTime', 'creditReceivedManually'];
@@ -567,8 +559,9 @@ export function planGroupRecovery(members, blocked, requestedId) {
   return { restore, skipped, requestedSkipped };
 }
 
-export function getTransferPairRestoreIssue(snapshot, liveTxs, tombstones) {
+export function getTransferPairRestoreIssue(snapshot, liveTxs, tombstones, opts = {}) {
   if (!snapshot || snapshot.isTransfer !== true || !snapshot.transferPairId) return null;
+  if (opts && opts.pairInSet) return null;
   const pid = snapshot.transferPairId;
   const selfId = String(snapshot.id || '');
   const live = (Array.isArray(liveTxs) ? liveTxs : []).some(t => t && !t.deletedAt && t.transferPairId === pid && String(t.id) !== selfId);
@@ -628,32 +621,6 @@ export function planCalcRestore(entry, ctx) {
     problems.push(`no sale price is set for ${e.returnRep || 'the rep'} to re-create the stock transfer`);
   }
   return { block: problems.length ? `This calculator record cannot be recovered because ${problems.join('; ')}. Enter the calculation again.` : null };
-}
-
-export function findPartialConflicts(sales) {
-  const list = (Array.isArray(sales) ? sales : []).filter(s => s && !s.deletedAt);
-  const kids = new Map();
-  list.forEach(s => {
-    if (s.paymentType === 'PARTIAL_PAYMENT' && s.relatedSaleId) {
-      const k = String(s.relatedSaleId);
-      if (!kids.has(k)) kids.set(k, []);
-      kids.get(k).push(s);
-    }
-  });
-  const out = [];
-  list.forEach(p => {
-    const c = kids.get(String(p.id));
-    if (!c || p.paymentType !== 'CREDIT') return;
-    const childSum = _r2(c.reduce((t, x) => t + _n(x.totalValue), 0));
-    if (childSum <= 0) return;
-    const parentPaid = _n(p.partialPaymentReceived);
-    if (p.creditReceived) {
-      out.push({ id: p.id, customerName: p.customerName, kind: 'cash-counted-twice', amount: childSum, children: c.length });
-    } else if (parentPaid > 0) {
-      out.push({ id: p.id, customerName: p.customerName, kind: 'debt-reduced-twice', amount: _r2(Math.min(parentPaid, childSum)), children: c.length });
-    }
-  });
-  return out;
 }
 
 export function collectionCollected(rec) {
@@ -766,11 +733,6 @@ export function getCashShortIssue(need, available, what) {
   return `${what} would take ${_r2(n)} out of cash in hand, but only ${_r2(Math.max(0, _n(available)))} is available. Record the money in first.`;
 }
 
-// ===== Intelligent save/delete planners for payment transactions =====
-// These pure functions are the single source of truth for "what does saving or
-// deleting this transaction mean" so every entry point (payment tab, entity
-// overlay, expense cascade, entity delete) classifies and blocks consistently.
-
 export function planTransferPairDelete(entries) {
   const list = (Array.isArray(entries) ? entries : []).filter(Boolean);
   if (!list.length) return { pairs: [], orphans: [], amount: 0, fromName: '?', toName: '?', block: 'Transfer not found — it may have already been removed.' };
@@ -852,6 +814,26 @@ export function getTxLinkIssue(tx, ctx = {}) {
     if (missing.length === tx.materialIds.length) return 'None of the materials this supplier payment settles exist anymore.';
   }
   return null;
+}
+
+export function weightedUnitPrice(items) {
+  let qty = 0, val = 0;
+  for (const it of Array.isArray(items) ? items : []) {
+    const q = _n(it && it.quantity), v = _n(it && it.value);
+    if (q > 0 && v > 0) { qty += q; val += v; }
+  }
+  return qty > 0 ? Math.round((val / qty) * 10000) / 10000 : 0;
+}
+
+export function planGoodsCredit(qty, unitPrice, outstanding) {
+  const raw = _r2(Math.max(0, _n(qty)) * Math.max(0, _n(unitPrice)));
+  if (outstanding == null || _n(outstanding) < 0) return { value: raw, raw, capped: false };
+  const cap = _r2(Math.max(0, _n(outstanding)));
+  return raw > cap ? { value: cap, raw, capped: true } : { value: raw, raw, capped: false };
+}
+
+export function planBulkCashDrop(txs) {
+  return _r2((Array.isArray(txs) ? txs : [txs]).reduce((t, x) => t + getDeleteCashDrop(x), 0));
 }
 
 export function planEntityRename(entityId, newName, txs, materials) {
@@ -953,12 +935,6 @@ export const AUX_STATE = Object.freeze([
     firestore: { doc: 'formulas/config', field: 'formulas', tsField: 'formulas_timestamp' },
     kind: 'idList',
   },
-  {
-    sqlite: 'slots',
-    tsKey: 'slots_timestamp',
-    firestore: { doc: 'formulas/config', field: 'slots', tsField: 'slots_timestamp' },
-    kind: 'slots',
-  },
 ]);
 
 export function isSupportedBackup(data) {
@@ -987,30 +963,12 @@ export function mergeById(local, incoming) {
   return out;
 }
 
-export function mergeSlots(local, incoming) {
-  const l = local && typeof local === 'object' ? local : {};
-  const i = incoming && typeof incoming === 'object' ? incoming : {};
-  return { standard: l.standard || i.standard || null, asaan: l.asaan || i.asaan || null };
-}
-
-export function resolveExpenseCategories(local, cloud, localTs = 0, cloudTs = 0) {
-  const l = Array.isArray(local) ? local : [];
-  const c = Array.isArray(cloud) ? cloud : [];
-  if (cloudTs && cloudTs > (localTs || 0)) return { value: mergeStringLists(c, []), ts: cloudTs, changed: true };
-  if (!cloudTs) {
-    const union = mergeStringLists(l, c);
-    return { value: union, ts: localTs || 0, changed: union.length !== l.length };
-  }
-  return { value: l, ts: localTs, changed: false };
-}
-
 export async function collectAuxBackupFields(store) {
   const out = {};
   for (const s of AUX_STATE) {
     const v = await store.get(s.sqlite);
     if (s.kind === 'list')   out[s.sqlite] = Array.isArray(v) ? v : [];
     if (s.kind === 'idList') out[s.sqlite] = Array.isArray(v) ? v : [];
-    if (s.kind === 'slots')  out[s.sqlite] = v && typeof v === 'object' ? v : { standard: null, asaan: null };
   }
   out.photos = (await store.get('photos')) || {};
   out.photostamps = (await store.get('photostamps')) || {};
@@ -1034,15 +992,29 @@ export async function applyAuxBackupFields(data, store, ts = Date.now(), mode = 
       next = mode === 'replace' ? incoming.filter(r => r && r.id) : mergeById(local, incoming);
       if (JSON.stringify(next) === JSON.stringify(Array.isArray(local) ? local : [])) continue;
     } else {
-      if (typeof incoming !== 'object' || !(incoming.standard || incoming.asaan)) continue;
-      next = mode === 'replace'
-        ? { standard: incoming.standard || null, asaan: incoming.asaan || null }
-        : mergeSlots(local, incoming);
-      if (JSON.stringify(next) === JSON.stringify(local || null)) continue;
+      continue;
     }
     await store.set(s.sqlite, next);
     await store.set(s.tsKey, ts);
     written.push(s.sqlite);
   }
   return written;
+}
+
+export function dedupDeletionRecords(arr) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Map();
+  arr.forEach(r => {
+    if (!r) return;
+    const key = String(r.id || r.recordId || '');
+    if (!key) return;
+    const existing = seen.get(key);
+    if (!existing
+        || (!existing.displayName && r.displayName)
+        || (!existing.snapshot && r.snapshot)
+        || (r.syncedToCloud && !existing.syncedToCloud)) {
+      seen.set(key, r);
+    }
+  });
+  return Array.from(seen.values());
 }

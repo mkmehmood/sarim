@@ -1,19 +1,18 @@
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, getCalcRestoreBlockReason, auditLegacyPartialPayments, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getEntityDeleteBlockReason, getExpenseLinkedTxBlockReason } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, compareRecordVersions, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, isSyncing, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
+import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateTimestamp, validateUUID } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _ensureSupplierInvoices, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner } from './utilities-core.js';
-import { DeltaSync, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStoreFormulaType, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable,  revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
-import { collectAuxBackupFields, isSupportedBackup, RECORD_STORES } from './link-graph.js';
+import { collectAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formulaTypeFor } from './store-keys.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCompMode = 'all';
 window.currentCompMode = currentCompMode;
@@ -196,6 +195,59 @@ return sales.filter(sale =>
 );
 }
 
+export async function getPendingRepReturns(seller, toDate) {
+if (!seller || seller === 'COMBINED') return [];
+const calculator = ensureArray(await sqliteStore.get('calculator'));
+const sales = ensureArray(await sqliteStore.get('sales'));
+const used = new Set();
+calculator.forEach(entry => {
+  if (entry && Array.isArray(entry.linkedRepReturnIds)) entry.linkedRepReturnIds.forEach(id => used.add(id));
+});
+return sales.filter(r =>
+  r && r.isRepReturn === true && !r.deletedAt &&
+  r.currentRepProfile === 'admin' &&
+  r.customerName === seller &&
+  !used.has(r.id) &&
+  (!toDate || !r.date || r.date <= toDate)
+);
+}
+
+export async function applyRepReturnsToCalculator(seller, toDate) {
+const retEl = document.getElementById('returnedQuantity');
+const expEl = document.getElementById('expiredQuantity');
+const hint = document.getElementById('repReturnAutoHint');
+if (!retEl || !expEl || !seller || seller === 'COMBINED') return;
+const pending = await getPendingRepReturns(seller, toDate);
+const totalExp = round2(pending.reduce((t, r) => t + (Number(r.expiredQty) || 0), 0));
+const totalRet = round2(pending.reduce((t, r) => t + (Number(r.returnedQty) || 0), 0));
+const wasAuto = retEl.dataset.repReturnAuto === '1' || expEl.dataset.repReturnAuto === '1';
+if (pending.length === 0) {
+  if (wasAuto) {
+    retEl.value = ''; expEl.value = '';
+    delete retEl.dataset.repReturnAuto; delete expEl.dataset.repReturnAuto;
+    clearAutoFilledField(retEl); clearAutoFilledField(expEl);
+    window._returnStore = null;
+    if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
+    if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
+  }
+  if (hint) { hint.classList.add('hidden'); hint.textContent = ''; }
+  return;
+}
+retEl.value = totalRet > 0 ? totalRet.toFixed(2) : '';
+expEl.value = totalExp > 0 ? totalExp.toFixed(2) : '';
+retEl.dataset.repReturnAuto = '1';
+expEl.dataset.repReturnAuto = '1';
+styleAutoFilledField(retEl);
+styleAutoFilledField(expEl);
+if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
+if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
+if (hint) {
+  const storeNote = totalRet > 0 ? ' Select the store the returned stock goes back to below.' : '';
+  hint.textContent = `Auto-filled from ${pending.length} rep return${pending.length === 1 ? '' : 's'} logged in Sales (expired ${fmtNum(totalExp)} kg, returned ${fmtNum(totalRet)} kg).${storeNote}`;
+  hint.classList.remove('hidden');
+}
+}
+
 export function getCalcDateRange(pending) {
 const toEl = document.getElementById('sale-date');
 const fromEl = document.getElementById('sale-date-from');
@@ -332,10 +384,14 @@ if(recoveredField) {
 recoveredField.value = safeNumber(recoveredCash, 0).toFixed(2);
 styleAutoFilledField(recoveredField);
 }
+await applyRepReturnsToCalculator(seller, sel.to);
 calculateSales();
 if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
 
+export function clearAutoFilledField(field) {
+['background', 'color', 'font-weight', 'border'].forEach((prop) => window.setStyle(field, prop, null));
+}
 export function styleAutoFilledField(field) {
 window.setStyle(field, 'background', 'st-background__ca4057');
 window.setStyle(field, 'color', 'st-color__a4c6ac');
@@ -600,7 +656,7 @@ const ampm = hours >= 12 ? 'PM' : 'AM';
 hours = hours % 12;
 hours = hours ? hours : 12;
 const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
-const formulaStore = typeof getStoreFormulaType === 'function' ? await getStoreFormulaType(storeKey) : formulaTypeFor(storeKey);
+const formulaId = await getStorePool(storeKey);
 const salePrice = await getSalePriceForStore(storeKey);
 const costPerKg = await getCostPriceForStore(storeKey);
 const totalCost = quantity * costPerKg;
@@ -621,7 +677,7 @@ totalCost: totalCost,
 totalSale: totalSale,
 profit: profit,
 formulaUnits: 0,
-formulaStore: formulaStore,
+formulaId: formulaId,
 formulaCost: 0,
 paymentStatus: 'CASH',
 createdAt: retCreatedAt,
@@ -853,7 +909,6 @@ async function _awaitVisualReady() {
 
 document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   initSplashScreen();
-  setTimeout(() => { auditLegacyPartialPayments().catch(() => {}); }, 9000);
   const urlParams = new URLSearchParams(window.location.search);
   const _action = urlParams.get('action');
   if (_action) {
@@ -1593,8 +1648,6 @@ console.error('calculateNetCash error:', _safeErr(e));
 }
 try {
 if (typeof updateFactoryInventoryDisplay === 'function') {
-const _std = factoryUnitTracking?.standard || {};
-const _asn = factoryUnitTracking?.asaan || {};
 updateFactoryInventoryDisplay();
 }
 } catch (e) {
@@ -2395,23 +2448,9 @@ return da - db;
 });
 let remaining = amount;
 if (pendingMaterials.length > 0) {
-const materialsToSave = [];
-for (const mat of pendingMaterials) {
-if (remaining <= 0) break;
-if (remaining >= mat.totalPayable) {
-remaining -= mat.totalPayable;
-mat.totalPayable = 0;
-mat.paymentStatus = 'paid';
-mat.paidDate = date;
-mat.updatedAt = getTimestamp();
-} else {
-mat.totalPayable = parseFloat((mat.totalPayable - remaining).toFixed(2));
-remaining = 0;
-mat.updatedAt = getTimestamp();
-}
-ensureRecordIntegrity(mat, true);
-materialsToSave.push(mat);
-}
+const _alloc = allocatePaymentToMaterials(pendingMaterials, remaining, date);
+remaining = _alloc.remaining;
+const materialsToSave = _alloc.touched;
 if (materialsToSave.length > 0) {
 transaction.isPayable = true;
 transaction.materialId = materialsToSave[0].id;
@@ -4127,7 +4166,8 @@ async function _withRecycleLock(fn) {
 async function _getGroupBlockedMap(members) {
   const ids = new Set(members.map(m => String(m.recordId || m.id)));
   const ctx = { stockUsed: new Map(), unitsUsed: new Map(), inv: null,
-    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)) };
+    entityInSet: (id) => !!id && members.some(m => (m.collection || m.recordType) === 'entities' && String(m.recordId || m.id) === String(id)) ,
+    pairInSet: (pairId, selfId) => !!pairId && members.some(m => (m.collection || m.recordType) === 'transactions' && m.snapshot && String(m.snapshot.transferPairId || '') === String(pairId) && String(m.recordId || m.id) !== String(selfId)) };
   const blocked = new Map();
   for (const m of orderForRestore(members)) {
     const snap = m && m.snapshot;
@@ -4978,7 +5018,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   ))) return;
   const ok = await recoverRecord(id, collectionName);
   if (ok) {
-    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label + ' was restored from the recycle bin.', 'recover-' + id).catch(() => {});
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label + ' was restored from the recycle bin.', 'recover-' + id, { key: id, priority: 2 }).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();
@@ -6224,31 +6264,28 @@ defaults: {
 localKey: 'defaults',
 localVariable: 'factoryDefaultFormulas',
 type: 'object',
-defaultValue: { standard: [], asaan: [] },
-description: 'Recipe / formula definitions, Formula Store and store formula slots'
+defaultValue: {},
+description: 'Recipe / formula definitions by formula id'
 },
 costs: {
 localKey: 'costs',
 localVariable: 'factoryAdditionalCosts',
 type: 'object',
-defaultValue: { standard: 0, asaan: 0 },
+defaultValue: {},
 description: 'Overhead / extra costs per unit'
 },
 adjustment: {
 localKey: 'adjustment',
 localVariable: 'factoryCostAdjustmentFactor',
 type: 'object',
-defaultValue: { standard: 1, asaan: 1 },
+defaultValue: {},
 description: 'Cost-price multiplier for reporting'
 },
 tracking: {
 localKey: 'tracking',
 localVariable: 'factoryUnitTracking',
 type: 'object',
-defaultValue: {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-},
+defaultValue: {},
 description: 'Unit lifecycle: produced → consumed → available'
 },
 settings: {
@@ -6804,6 +6841,7 @@ export const _overlayStack = (() => {
     'db-structure-screen':         { closeFn: () => closeStandaloneScreen('db-structure-screen'),     contentSel: '.screen-body' },
     'logout-screen':               { closeFn: () => closeStandaloneScreen('logout-screen'),           contentSel: '.screen-body' },
     'device-display-screen':       { closeFn: () => closeStandaloneScreen('device-display-screen'),   contentSel: '.screen-body' },
+    'feedback-screen':             { closeFn: () => closeStandaloneScreen('feedback-screen'),         contentSel: '.screen-body' },
     'close-financial-year-screen': { closeFn: () => closeStandaloneScreen('close-financial-year-screen'), contentSel: '.screen-body' },
     'entity-details-screen':       { closeFn: () => closeStandaloneScreen('entity-details-screen'),          contentSel: '.screen-body' },
     'expense-details-screen':      { closeFn: () => closeStandaloneScreen('expense-details-screen'),         contentSel: '.screen-body' },
@@ -7772,7 +7810,7 @@ list.replaceChildren(fragment);
 
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 
-export async function deletePaymentTransfer(pairId, skipConfirm = false) {
+export async function deletePaymentTransfer(pairId, skipConfirm = false, opts = {}) {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
 const entries = transactions.filter(t => t.transferPairId === pairId);
 if (entries.length === 0) return;
@@ -7789,7 +7827,7 @@ try {
 let working = transactions.slice();
 for (const entry of entries) {
 working = working.filter(t => t.id !== entry.id);
-await unifiedDelete('transactions', working, entry.id, { strict: true }, entry);
+await unifiedDelete('transactions', working, entry.id, { strict: true }, opts.groupId ? stampGroup(entry, opts.groupId) : entry);
 }
 try {
 const _trfPh = (await sqliteStore.get('photos')) || {};
@@ -7827,6 +7865,8 @@ window.calculateComparisonData = calculateComparisonData;
 window.createReportHTML = createReportHTML;
 window._calcSaleDay = _calcSaleDay;
 window.getPendingRepDeliveries = getPendingRepDeliveries;
+window.getPendingRepReturns = getPendingRepReturns;
+window.applyRepReturnsToCalculator = applyRepReturnsToCalculator;
 window.getCalcDateRange = getCalcDateRange;
 window.getCalcCycleSelection = getCalcCycleSelection;
 window.calculateTotalSoldForRepresentative = calculateTotalSoldForRepresentative;
@@ -7837,6 +7877,7 @@ window.openCalcRangePicker = openCalcRangePicker;
 window.onCalcDateChange = onCalcDateChange;
 window.autoFillTotalSoldQuantity = autoFillTotalSoldQuantity;
 window.styleAutoFilledField = styleAutoFilledField;
+window.clearAutoFilledField = clearAutoFilledField;
 window.loadSalesData = loadSalesData;
 window.addToRange = addToRange;
 window.updateSalesCharts = updateSalesCharts;
@@ -7855,7 +7896,6 @@ window.setSalesSummaryMode = setSalesSummaryMode;
 window.setPerfOverviewMode = setPerfOverviewMode;
 window.setOverviewMode = setOverviewMode;
 window.deleteSalesEntry = deleteSalesEntry;
-window.auditLegacyPartialPayments = auditLegacyPartialPayments;
 window.revertSpecificSalesEntries = revertSpecificSalesEntries;
 window.toggleEntityViewMode = toggleEntityViewMode;
 window.calculateEntityBalances = calculateEntityBalances;

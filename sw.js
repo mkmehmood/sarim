@@ -15,6 +15,7 @@ const ASSETS_TO_CACHE = [
   './modules/factory.js',
   './modules/customers.js',
   './modules/dialog.js',
+  './modules/feedback.js',
   './modules/rep-sales.js',
   './modules/admin-data.js',
   './modules/custom-date-picker.js',
