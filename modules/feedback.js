@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'gznd_dialog_feedback';
 const MIN_GAP_MS = 60;
-const MIN_PULSE_MS = 20;
+const MIN_PULSE_MS = 30;
 const DOUBLE_PULSE_GAP_MS = 80;
 
 export const HAPTIC_LEVELS = [
@@ -16,7 +16,7 @@ export const SOUND_LEVELS = [
   { value: 'soft', label: 'Soft (Discreet)', desc: 'Quiet acoustic tick sound' },
   { value: 'crisp', label: 'Standard (Crisp)', desc: 'Crisp digital audio click' },
   { value: 'loud', label: 'Loud (Resonant)', desc: 'High-resonance tactile chime' },
-  { value: 'extreme', label: 'Extreme Boost (Maximum)', desc: '100% volume dual acoustic burst - clears freely & loudly' }
+  { value: 'extreme', label: 'Extreme Boost (Maximum)', desc: '100% volume acoustic burst - clears freely & loudly' }
 ];
 
 const DEFAULTS = { haptics: 'medium', sound: 'crisp' };
@@ -29,53 +29,53 @@ let lastAt = 0;
 
 const HAPTICS = {
   open: {
-    primary: { impact: 'LIGHT', vibe: 25 },
-    success: { notify: 'SUCCESS', vibe: [25, 45, 35] },
-    warning: { notify: 'WARNING', vibe: [35, 55, 35] },
-    danger: { notify: 'WARNING', vibe: [40, 55, 40] },
-    error: { notify: 'ERROR', vibe: [45, 50, 45, 50, 45] }
+    primary: { impact: 'LIGHT', vibe: 40 },
+    success: { notify: 'SUCCESS', vibe: [40, 50, 60] },
+    warning: { notify: 'WARNING', vibe: [50, 60, 50] },
+    danger: { notify: 'WARNING', vibe: [60, 60, 60] },
+    error: { notify: 'ERROR', vibe: [70, 60, 70, 60, 70] }
   },
   confirm: {
-    primary: { impact: 'LIGHT', vibe: 25 },
-    success: { impact: 'LIGHT', vibe: 25 },
-    warning: { impact: 'MEDIUM', vibe: 35 },
-    danger: { impact: 'HEAVY', vibe: 60 },
-    error: { impact: 'MEDIUM', vibe: 35 }
+    primary: { impact: 'LIGHT', vibe: 40 },
+    success: { impact: 'LIGHT', vibe: 40 },
+    warning: { impact: 'MEDIUM', vibe: 50 },
+    danger: { impact: 'HEAVY', vibe: 90 },
+    error: { impact: 'MEDIUM', vibe: 50 }
   },
-  cancel: { impact: 'LIGHT', vibe: 20 },
-  select: { impact: 'LIGHT', vibe: 22 },
-  reject: { notify: 'ERROR', vibe: [45, 50, 45] },
-  toggleOn: { notify: 'SUCCESS', vibe: [22, 40, 32] },
-  toggleOff: { impact: 'LIGHT', vibe: 20 }
+  cancel: { impact: 'LIGHT', vibe: 30 },
+  select: { impact: 'LIGHT', vibe: 35 },
+  reject: { notify: 'ERROR', vibe: [70, 60, 70] },
+  toggleOn: { notify: 'SUCCESS', vibe: [35, 50, 55] },
+  toggleOff: { impact: 'LIGHT', vibe: 30 }
 };
 
 const SOUNDS = {
   open: {
-    primary: [[660, 0.07]],
-    success: [[523, 0.09], [784, 0.12]],
-    warning: [[466, 0.09], [466, 0.09]],
-    danger: [[392, 0.1], [330, 0.14]],
-    error: [[392, 0.1], [311, 0.16]]
+    primary: [[660, 0.09]],
+    success: [[784, 0.11]],
+    warning: [[466, 0.11]],
+    danger: [[392, 0.12]],
+    error: [[330, 0.14]]
   },
   confirm: {
-    primary: [[880, 0.07]],
-    success: [[880, 0.07]],
-    warning: [[740, 0.07]],
-    danger: [[392, 0.09]],
-    error: [[740, 0.07]]
+    primary: [[880, 0.08]],
+    success: [[880, 0.08]],
+    warning: [[740, 0.08]],
+    danger: [[392, 0.1]],
+    error: [[740, 0.08]]
   },
-  cancel: [[494, 0.06]],
-  select: [[740, 0.05]],
-  reject: [[311, 0.09], [311, 0.09]],
-  toggleOn: [[587, 0.07], [880, 0.1]],
-  toggleOff: [[880, 0.06], [587, 0.09]]
+  cancel: [[494, 0.07]],
+  select: [[740, 0.06]],
+  reject: [[311, 0.12]],
+  toggleOn: [[880, 0.09]],
+  toggleOff: [[587, 0.09]]
 };
 
 const SOUND_PROFILES = {
-  soft: { gain: 0.1, wave: 'sine', partial: 0, bursts: 1 },
-  crisp: { gain: 0.28, wave: 'triangle', partial: 0, bursts: 1 },
-  loud: { gain: 0.5, wave: 'triangle', partial: 0.18, bursts: 1 },
-  extreme: { gain: 0.7, wave: 'triangle', partial: 0.25, bursts: 2 }
+  soft: { gain: 0.1, wave: 'sine', partial: 0 },
+  crisp: { gain: 0.28, wave: 'triangle', partial: 0 },
+  loud: { gain: 0.5, wave: 'triangle', partial: 0.18 },
+  extreme: { gain: 0.7, wave: 'triangle', partial: 0.25 }
 };
 
 const IMPACT_ORDER = ['LIGHT', 'MEDIUM', 'HEAVY'];
@@ -188,16 +188,40 @@ function nativeCall(plugin, spec) {
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function isIOS() {
+  try {
+    const cap = window.Capacitor;
+    return !!(cap && typeof cap.getPlatform === 'function' && cap.getPlatform() === 'ios');
+  } catch (_) { return false; }
+}
+
+async function playPulses(plugin, vibe) {
+  const parts = Array.isArray(vibe) ? vibe : [vibe];
+  for (let i = 0; i < parts.length; i += 2) {
+    const duration = parts[i];
+    await plugin.vibrate({ duration });
+    if (i + 1 < parts.length) await pause(duration + parts[i + 1]);
+  }
+}
+
+async function runNative(plugin, spec) {
+  if (typeof plugin.vibrate === 'function' && !isIOS()) {
+    await playPulses(plugin, spec.vibe);
+    return;
+  }
+  await nativeCall(plugin, spec);
+  if (spec.repeat === 2 && typeof plugin.impact === 'function') {
+    await pause(DOUBLE_PULSE_GAP_MS);
+    await plugin.impact({ style: 'HEAVY' });
+  }
+}
+
 async function runHaptic(spec) {
   if (!spec) return 'off';
   const plugin = nativeHaptics();
   if (plugin) {
     try {
-      await nativeCall(plugin, spec);
-      if (spec.repeat === 2 && typeof plugin.impact === 'function') {
-        await pause(DOUBLE_PULSE_GAP_MS);
-        await plugin.impact({ style: 'HEAVY' });
-      }
+      await runNative(plugin, spec);
       return 'native';
     } catch (_) {}
   }
@@ -235,14 +259,11 @@ function tone(ctx, freq, start, dur, peak, wave) {
 function scheduleNotes(ctx, notes, level) {
   const profile = SOUND_PROFILES[level] || SOUND_PROFILES.crisp;
   let t = ctx.currentTime + 0.005;
-  for (let burst = 0; burst < profile.bursts; burst += 1) {
-    notes.forEach(([freq, dur]) => {
-      tone(ctx, freq, t, dur, profile.gain, profile.wave);
-      if (profile.partial) tone(ctx, freq * 2, t, dur, profile.partial, profile.wave);
-      t += dur + 0.03;
-    });
-    t += 0.04;
-  }
+  notes.forEach(([freq, dur]) => {
+    tone(ctx, freq, t, dur, profile.gain, profile.wave);
+    if (profile.partial) tone(ctx, freq * 2, t, dur, profile.partial, profile.wave);
+    t += dur + 0.03;
+  });
 }
 
 function playSound(notes, level) {
@@ -288,8 +309,8 @@ export async function testSound() {
 
 const STATUS_TEXT = {
   haptics: {
-    native: 'Vibration is working on this device.',
-    browser: 'Vibration is working on this device.',
+    native: 'Vibration signal sent. If you felt nothing, check the phone\'s vibration and touch feedback settings, and Do Not Disturb.',
+    browser: 'Vibration signal sent. If you felt nothing, check the phone\'s vibration and touch feedback settings, and Do Not Disturb.',
     blocked: 'Vibration was blocked. Tap again, and check the phone\'s system vibration setting.',
     unsupported: 'This device or browser does not support vibration.',
     off: 'Haptic feedback is disabled.'

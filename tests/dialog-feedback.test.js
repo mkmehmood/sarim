@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-const haptic = { impact: [], notification: [] };
+const haptic = { impact: [], notification: [], vibrate: [] };
 const vibrations = [];
 const tones = [];
 const peaks = [];
@@ -22,7 +22,8 @@ class FakeAudioContext {
   resume() { return Promise.resolve().then(() => { this.state = 'running'; }); }
 }
 
-const nativePlugin = () => ({ impact: (o) => haptic.impact.push(o.style), notification: (o) => haptic.notification.push(o.type) });
+const nativePlugin = () => ({ vibrate: (o) => { haptic.vibrate.push(o.duration); }, impact: (o) => haptic.impact.push(o.style), notification: (o) => haptic.notification.push(o.type) });
+const legacyPlugin = () => ({ impact: (o) => haptic.impact.push(o.style), notification: (o) => haptic.notification.push(o.type) });
 
 globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
 globalThis.window = { matchMedia: () => ({ matches: true }), AudioContext: FakeAudioContext, Capacitor: { Plugins: { Haptics: nativePlugin() } } };
@@ -59,7 +60,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const GAP = 70;
 
 const reset = async () => {
-  haptic.impact.length = 0; haptic.notification.length = 0; vibrations.length = 0; tones.length = 0; peaks.length = 0;
+  haptic.impact.length = 0; haptic.notification.length = 0; haptic.vibrate.length = 0; vibrations.length = 0; tones.length = 0; peaks.length = 0;
   fb.setFeedbackLevels({ haptics: 'medium', sound: 'crisp' });
   window.Capacitor = { Plugins: { Haptics: nativePlugin() } };
   window.AudioContext = FakeAudioContext;
@@ -114,24 +115,24 @@ describe('scaleHaptic', () => {
     assert.deepEqual(fb.scaleHaptic(fb.hapticFor('open', 'success'), 'medium'), fb.hapticFor('open', 'success'));
   });
   it('light is a single subtle tick, even for notification cues', () => {
-    assert.deepEqual(fb.scaleHaptic(fb.hapticFor('open', 'error'), 'light'), { impact: 'LIGHT', vibe: 20 });
+    assert.deepEqual(fb.scaleHaptic(fb.hapticFor('open', 'error'), 'light'), { impact: 'LIGHT', vibe: 30 });
   });
   it('strong lengthens pulses and steps the impact up', () => {
-    assert.deepEqual(fb.scaleHaptic({ impact: 'LIGHT', vibe: 25 }, 'strong'), { impact: 'MEDIUM', vibe: 40 });
+    assert.deepEqual(fb.scaleHaptic({ impact: 'LIGHT', vibe: 40 }, 'strong'), { impact: 'MEDIUM', vibe: 64 });
     assert.equal(fb.scaleHaptic({ impact: 'MEDIUM', vibe: 35 }, 'strong').impact, 'HEAVY');
     assert.equal(fb.scaleHaptic({ impact: 'HEAVY', vibe: 60 }, 'strong').impact, 'HEAVY');
     assert.equal(fb.scaleHaptic(fb.hapticFor('open', 'error'), 'strong').notify, 'ERROR');
   });
   it('extreme repeats the pulse with a pause between', () => {
-    const out = fb.scaleHaptic({ impact: 'LIGHT', vibe: 25 }, 'extreme');
-    assert.deepEqual(out.vibe, [55, 80, 55]);
+    const out = fb.scaleHaptic({ impact: 'LIGHT', vibe: 40 }, 'extreme');
+    assert.deepEqual(out.vibe, [88, 80, 88]);
     assert.equal(out.impact, 'HEAVY');
     assert.equal(out.repeat, 2);
-    const pattern = fb.scaleHaptic({ notify: 'SUCCESS', vibe: [25, 45, 35] }, 'extreme');
-    assert.deepEqual(pattern.vibe, [55, 45, 77, 80, 55, 45, 77]);
+    const pattern = fb.scaleHaptic({ notify: 'SUCCESS', vibe: [40, 50, 60] }, 'extreme');
+    assert.deepEqual(pattern.vibe, [88, 50, 132, 80, 88, 50, 132]);
     assert.equal(pattern.notify, 'SUCCESS');
   });
-  it('every level is stronger than the one before and never below 20 ms', () => {
+  it('every level is stronger than the one before and never below 30 ms', () => {
     for (const k of KINDS) for (const t of TONES) {
       const base = fb.hapticFor(k, t);
       const light = fb.scaleHaptic(base, 'light');
@@ -143,7 +144,7 @@ describe('scaleHaptic', () => {
       assert.ok(total(strong.vibe) < total(extreme.vibe), `${k}/${t} strong<extreme`);
       for (const spec of [light, medium, strong, extreme]) {
         const pulses = Array.isArray(spec.vibe) ? spec.vibe.filter((_, i) => i % 2 === 0) : [spec.vibe];
-        pulses.forEach((ms) => assert.ok(ms >= 20, `${k}/${t} pulse ${ms}`));
+        pulses.forEach((ms) => assert.ok(ms >= 30, `${k}/${t} pulse ${ms}`));
       }
     }
   });
@@ -179,35 +180,53 @@ describe('normalizeLevel and persistence', () => {
 
 describe('haptics by level on the native plugin', () => {
   beforeEach(reset);
-  it('medium uses the notification cue for a success dialog', () => {
+  const none = () => haptic.vibrate.length + haptic.impact.length + haptic.notification.length + vibrations.length;
+  it('medium sends full-strength vibrate pulses, not weak waveform effects', async () => {
     fb.dialogFeedback('open', 'success');
-    assert.deepEqual(haptic.notification, ['SUCCESS']);
-    assert.equal(vibrations.length, 0);
+    assert.deepEqual(haptic.vibrate, [40]);
+    await wait(250);
+    assert.deepEqual(haptic.vibrate, [40, 60]);
+    assert.equal(haptic.impact.length + haptic.notification.length + vibrations.length, 0);
   });
-  it('light turns every cue into a subtle tap', () => {
+  it('light is a single short pulse for every cue', () => {
     fb.setFeedbackLevels({ haptics: 'light' });
     fb.dialogFeedback('open', 'error');
-    assert.deepEqual(haptic.impact, ['LIGHT']);
-    assert.equal(haptic.notification.length, 0);
+    assert.deepEqual(haptic.vibrate, [30]);
   });
-  it('strong steps a light confirm up to a medium tap', () => {
+  it('strong lengthens the pulse', () => {
     fb.setFeedbackLevels({ haptics: 'strong' });
     fb.dialogFeedback('confirm', 'primary');
-    assert.deepEqual(haptic.impact, ['MEDIUM']);
+    assert.deepEqual(haptic.vibrate, [64]);
   });
-  it('extreme fires a second heavy pulse right after the first', async () => {
+  it('extreme plays the pattern twice with a pause between', async () => {
     fb.setFeedbackLevels({ haptics: 'extreme' });
     fb.dialogFeedback('open', 'success');
-    assert.deepEqual(haptic.notification, ['SUCCESS']);
-    assert.equal(haptic.impact.length, 0);
-    await wait(150);
-    assert.deepEqual(haptic.impact, ['HEAVY']);
+    assert.deepEqual(haptic.vibrate, [88]);
+    await wait(900);
+    assert.deepEqual(haptic.vibrate, [88, 132, 88, 132]);
   });
   it('disabled stays still while sound keeps working', () => {
     fb.setFeedbackLevels({ haptics: 'off' });
     fb.dialogFeedback('open', 'warning');
-    assert.equal(haptic.notification.length + haptic.impact.length + vibrations.length, 0);
+    assert.equal(none(), 0);
     assert.ok(tones.length > 0);
+  });
+  it('an older plugin without vibrate falls back to its tap and notification effects', async () => {
+    window.Capacitor = { Plugins: { Haptics: legacyPlugin() } };
+    fb.dialogFeedback('open', 'success');
+    assert.deepEqual(haptic.notification, ['SUCCESS']);
+    assert.equal(haptic.vibrate.length, 0);
+    await wait(GAP);
+    fb.setFeedbackLevels({ haptics: 'extreme' });
+    fb.dialogFeedback('confirm', 'primary');
+    await wait(150);
+    assert.deepEqual(haptic.impact, ['HEAVY', 'HEAVY']);
+  });
+  it('on iOS the native tap and notification effects are used instead of a long vibrate', () => {
+    window.Capacitor = { Plugins: { Haptics: nativePlugin() }, getPlatform: () => 'ios' };
+    fb.dialogFeedback('open', 'success');
+    assert.deepEqual(haptic.notification, ['SUCCESS']);
+    assert.equal(haptic.vibrate.length, 0);
   });
 });
 
@@ -224,7 +243,7 @@ describe('haptics by level in the browser', () => {
     }
   });
   it('falls back to vibrate when the native call is rejected', async () => {
-    window.Capacitor = { Plugins: { Haptics: { impact: () => Promise.reject(new Error('x')), notification: () => Promise.reject(new Error('x')) } } };
+    window.Capacitor = { Plugins: { Haptics: { vibrate: () => Promise.reject(new Error('x')), impact: () => Promise.reject(new Error('x')), notification: () => Promise.reject(new Error('x')) } } };
     fb.dialogFeedback('open', 'error');
     await wait(5);
     assert.deepEqual(vibrations, [fb.hapticFor('open', 'error').vibe]);
@@ -232,11 +251,11 @@ describe('haptics by level in the browser', () => {
   it('registers the native plugin once when Capacitor does not expose it', () => {
     const registered = [];
     window.Capacitor = { Plugins: {}, isNativePlatform: () => true, registerPlugin: (name) => { registered.push(name); return nativePlugin(); } };
-    fb.dialogFeedback('open', 'success');
+    fb.dialogFeedback('open', 'primary');
     return wait(GAP).then(() => {
-      fb.dialogFeedback('open', 'success');
+      fb.dialogFeedback('open', 'primary');
       assert.deepEqual(registered, ['Haptics']);
-      assert.deepEqual(haptic.notification, ['SUCCESS', 'SUCCESS']);
+      assert.deepEqual(haptic.vibrate, [40, 40]);
     });
   });
   it('never throws when audio or haptics are unavailable', () => {
@@ -271,16 +290,24 @@ describe('sound by level', () => {
     assert.deepEqual(tones, [740, 1480]);
     assert.deepEqual(peaks, [0.5, 0.18]);
   });
-  it('extreme boost plays the cue twice as a dual burst', () => {
+  it('extreme boost is one loud burst, never a repeat', () => {
     fb.setFeedbackLevels({ sound: 'extreme' });
     fb.dialogFeedback('select');
-    assert.deepEqual(tones, [740, 1480, 740, 1480]);
+    assert.deepEqual(tones, [740, 1480]);
+    assert.deepEqual(peaks, [0.7, 0.25]);
+  });
+  it('every cue is a single note', () => {
+    for (const k of KINDS) for (const t of TONES) assert.equal(fb.soundFor(k, t).length, 1, `${k}/${t}`);
+  });
+  it('one tap makes one sound, even for dialogs that also have an open cue', () => {
+    fb.dialogFeedback('open', 'success');
+    assert.deepEqual(tones, [784]);
   });
   it('muted is silent while haptics keep working', () => {
     fb.setFeedbackLevels({ sound: 'off' });
     fb.dialogFeedback('open', 'warning');
     assert.equal(tones.length, 0);
-    assert.deepEqual(haptic.notification, ['WARNING']);
+    assert.deepEqual(haptic.vibrate, [50]);
   });
   it('stays silent while the page is hidden', () => {
     document.hidden = true;
@@ -292,12 +319,12 @@ describe('sound by level', () => {
     fb.dialogFeedback('open', 'success');
     assert.equal(tones.length, 0);
     await wait(5);
-    assert.deepEqual(tones, [523, 784]);
+    assert.deepEqual(tones, [784]);
   });
   it('ignores an identical cue fired twice in a burst', () => {
     fb.dialogFeedback('select');
     fb.dialogFeedback('select');
-    assert.equal(haptic.impact.length, 1);
+    assert.equal(haptic.vibrate.length, 1);
   });
   it('every note is pitched and long enough for a phone speaker', () => {
     for (const k of KINDS) for (const t of TONES) {
@@ -310,7 +337,7 @@ describe('device tests', () => {
   beforeEach(reset);
   it('native haptics are reported as working', async () => {
     assert.equal(await fb.testHaptics(), 'native');
-    assert.deepEqual(haptic.notification, ['SUCCESS']);
+    assert.deepEqual(haptic.vibrate, [40, 60]);
   });
   it('the browser vibrate fallback is reported', async () => {
     window.Capacitor = null;
@@ -332,7 +359,7 @@ describe('device tests', () => {
   });
   it('sound plays and audio that cannot start is reported as blocked', async () => {
     assert.equal(await fb.testSound(), 'played');
-    assert.deepEqual(tones, [523, 784]);
+    assert.deepEqual(tones, [784]);
     tones.length = 0;
     contexts[0].state = 'suspended';
     const keep = contexts[0].resume;
@@ -349,13 +376,13 @@ describe('device tests', () => {
   it('the test uses the chosen intensity', async () => {
     fb.setFeedbackLevels({ sound: 'extreme' });
     await fb.testSound();
-    assert.equal(tones.length, 8);
+    assert.deepEqual(tones, [784, 1568]);
   });
   it('previewFeedback writes a plain-language result next to the control', async () => {
     const els = { 'fb-haptics-status': { textContent: '' }, 'fb-sound-status': { textContent: '' } };
     document.getElementById = (id) => els[id] || null;
     assert.equal(await fb.previewFeedback('haptics'), 'native');
-    assert.match(els['fb-haptics-status'].textContent, /working/);
+    assert.match(els['fb-haptics-status'].textContent, /signal sent/);
     assert.equal(await fb.previewFeedback('sound'), 'played');
     assert.match(els['fb-sound-status'].textContent, /media volume/);
     fb.setFeedbackLevels({ sound: 'off' });
@@ -399,9 +426,9 @@ describe('settings dropdowns use the app popover', () => {
     assert.equal(fb.getFeedbackLevels().haptics, 'strong');
     assert.equal(els['fb-haptics-title'].textContent, 'Strong');
     assert.equal(els['fb-haptics-desc'].textContent, 'Heavy tactile vibration pulse');
-    assert.deepEqual(haptic.notification, ['SUCCESS']);
-    await wait(5);
-    assert.match(els['fb-haptics-status'].textContent, /working/);
+    assert.deepEqual(haptic.vibrate, [64]);
+    await wait(400);
+    assert.match(els['fb-haptics-status'].textContent, /signal sent/);
   });
   it('picking a sound level saves it and plays it at that level', () => {
     const { els, calls } = setup();
@@ -447,38 +474,40 @@ describe('dialogs trigger feedback', () => {
 
   it('opening a danger dialog warns, confirming it is heavy', async () => {
     const p = dialog.showGlassConfirm('Delete this record?', { title: 'Delete', danger: true, confirmText: 'Delete' });
-    assert.deepEqual(haptic.notification, ['WARNING']);
-    await wait(GAP);
+    assert.deepEqual(haptic.vibrate, [60]);
+    await wait(GAP + 300);
+    haptic.vibrate.length = 0;
     click(1);
     assert.equal(await p, true);
-    assert.deepEqual(haptic.impact, ['HEAVY']);
+    assert.deepEqual(haptic.vibrate, [90]);
   });
   it('cancelling gives the light cancel cue', async () => {
     const p = dialog.showGlassConfirm('Proceed?', { title: 'Confirm' });
     await wait(GAP);
-    haptic.impact.length = 0;
+    haptic.vibrate.length = 0;
     click(0);
     assert.equal(await p, false);
-    assert.deepEqual(haptic.impact, ['LIGHT']);
+    assert.deepEqual(haptic.vibrate, [30]);
   });
-  it('an error alert opens with the error cue', () => {
+  it('an error alert opens with the error cue', async () => {
     dialog.showGlassAlert('Something failed', { title: 'Error', tone: 'error' });
-    assert.deepEqual(haptic.notification, ['ERROR']);
+    assert.deepEqual(haptic.vibrate, [70]);
     overlays.length = 0;
+    await wait(600);
+    assert.deepEqual(haptic.vibrate, [70, 70, 70]);
   });
   it('replacing an open dialog plays only the new dialog open cue', async () => {
     dialog.showGlassConfirm('First?', { title: 'First' });
     await wait(GAP);
-    haptic.impact.length = 0;
+    haptic.vibrate.length = 0;
     dialog.showGlassConfirm('Second?', { title: 'Second' });
-    assert.equal(haptic.impact.length, 1);
+    assert.equal(haptic.vibrate.length, 1);
     overlays.length = 0;
   });
   it('dialogs follow the chosen intensity', async () => {
     fb.setFeedbackLevels({ haptics: 'light', sound: 'off' });
     dialog.showGlassAlert('Heads up', { title: 'Warning', tone: 'warning' });
-    assert.deepEqual(haptic.impact, ['LIGHT']);
-    assert.equal(haptic.notification.length, 0);
+    assert.deepEqual(haptic.vibrate, [30]);
     assert.equal(tones.length, 0);
     overlays.length = 0;
   });
@@ -548,39 +577,39 @@ describe('document listeners drive real feedback', () => {
   beforeEach(reset);
   it('a segmented toggle click taps and ticks', () => {
     docListeners.click({ target: makeEl({ classes: ['toggle-opt'] }) });
-    assert.deepEqual(haptic.impact, ['LIGHT']);
+    assert.deepEqual(haptic.vibrate, [35]);
     assert.deepEqual(tones, [740]);
   });
   it('an already-active option stays quiet', () => {
     docListeners.click({ target: makeEl({ classes: ['toggle-opt', 'active'] }) });
-    assert.equal(haptic.impact.length + tones.length, 0);
+    assert.equal(haptic.vibrate.length + tones.length, 0);
   });
   it('a checkbox turning on plays the on cue, off plays the off cue', async () => {
     const box = { tagName: 'INPUT', type: 'checkbox', checked: true, disabled: false, getAttribute: () => null };
     docListeners.change({ target: box });
-    assert.deepEqual(tones, [587, 880]);
-    assert.deepEqual(haptic.notification, ['SUCCESS']);
-    await wait(GAP);
-    tones.length = 0; haptic.impact.length = 0;
+    assert.deepEqual(tones, [880]);
+    assert.deepEqual(haptic.vibrate, [35]);
+    await wait(GAP + 200);
+    tones.length = 0; haptic.vibrate.length = 0;
     box.checked = false;
     docListeners.change({ target: box });
-    assert.deepEqual(tones, [880, 587]);
-    assert.deepEqual(haptic.impact, ['LIGHT']);
+    assert.deepEqual(tones, [587]);
+    assert.deepEqual(haptic.vibrate, [30]);
   });
   it('an on/off button reads its pressed state', () => {
     docListeners.click({ target: makeEl({ attrs: { 'aria-pressed': 'false' } }) });
-    assert.deepEqual(haptic.notification, ['SUCCESS']);
+    assert.deepEqual(haptic.vibrate, [35]);
   });
   it('toggles follow the chosen intensity and go quiet when disabled', async () => {
     fb.setFeedbackLevels({ haptics: 'strong', sound: 'loud' });
     docListeners.click({ target: makeEl({ classes: ['toggle-opt'] }) });
-    assert.deepEqual(haptic.impact, ['MEDIUM']);
+    assert.deepEqual(haptic.vibrate, [56]);
     assert.deepEqual(tones, [740, 1480]);
     await wait(GAP);
-    haptic.impact.length = 0; tones.length = 0;
+    haptic.vibrate.length = 0; tones.length = 0;
     fb.setFeedbackLevels({ haptics: 'off', sound: 'off' });
     docListeners.click({ target: makeEl({ classes: ['toggle-opt'] }) });
-    assert.equal(haptic.impact.length + vibrations.length + tones.length, 0);
+    assert.equal(haptic.vibrate.length + vibrations.length + tones.length, 0);
   });
   it('installing twice does not double up', () => {
     assert.equal(fb.installControlFeedback({ addEventListener() { throw new Error('should not attach'); } }), false);
