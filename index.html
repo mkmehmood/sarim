@@ -460,7 +460,48 @@ html[data-bio="1"] .splash-brand { display: none; }
 </script><script src="vendor/leaflet/leaflet.js" defer></script><script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
-window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){existing.style.display=existing.style.display==='none'?'block':'none';return;}var pop=document.createElement('div');pop.id=popId;pop.style.cssText='position:absolute;right:0;top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:140px;padding:6px 0;';items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);white-space:nowrap;';d.onmouseenter=function(){d.style.background='var(--glass-raised)';};d.onmouseleave=function(){d.style.background='';};d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);pop.style.display='none';};pop.appendChild(d);});anchor.style.position='relative';anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)pop.style.display='none';}},true);};
+window._mkPopover=function(anchor,popId,items,onSelect,opts){
+  opts=opts||{};
+  var existing=document.getElementById(popId);
+  if(existing){existing.style.display=existing.style.display==='none'?'block':'none';return;}
+  var pop=document.createElement('div');pop.id=popId;
+  pop.style.cssText='position:absolute;'+(opts.fullWidth?'left:0;right:0;max-height:60vh;overflow-y:auto;':'right:0;')+'top:calc(100% + 4px);background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;box-shadow:var(--shadow);z-index:9999;min-width:140px;padding:6px 0;';
+  var mark=function(v){
+    if(opts.selected===undefined)return;
+    Array.prototype.forEach.call(pop.children,function(row){
+      var on=row.dataset.val===String(v);
+      row.style.color=on?'var(--accent)':'var(--text-main)';
+      var c=row.querySelector('[data-check]');if(c)c.style.visibility=on?'visible':'hidden';
+    });
+  };
+  items.forEach(function(item){
+    var d=document.createElement('div');d.dataset.val=item.value;
+    if(item.desc){
+      d.style.cssText='padding:10px 16px;cursor:pointer;color:var(--text-main);display:flex;align-items:center;justify-content:space-between;gap:12px;';
+      var txt=document.createElement('div');
+      var t=document.createElement('div');t.textContent=item.label;t.style.cssText='font-size:0.86rem;font-weight:600;';
+      var sub=document.createElement('div');sub.textContent=item.desc;sub.style.cssText='font-size:0.7rem;color:var(--text-muted);font-weight:400;margin-top:2px;';
+      txt.appendChild(t);txt.appendChild(sub);d.appendChild(txt);
+      var chk=document.createElement('span');chk.setAttribute('data-check','');chk.textContent='\u2713';chk.style.cssText='visibility:hidden;font-weight:700;';d.appendChild(chk);
+    }else{
+      d.textContent=item.label;
+      d.style.cssText='padding:9px 16px;font-size:0.82rem;cursor:pointer;color:var(--text-main);white-space:nowrap;';
+    }
+    d.onmouseenter=function(){d.style.background='var(--glass-raised)';};
+    d.onmouseleave=function(){d.style.background='';};
+    d.onclick=function(){
+      var btn=anchor.querySelector('button');
+      if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}
+      onSelect(item.value,item.label,d);
+      mark(item.value);
+      pop.style.display='none';
+    };
+    pop.appendChild(d);
+  });
+  mark(opts.selected);
+  anchor.style.position='relative';anchor.appendChild(pop);
+  document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)pop.style.display='none';}},true);
+};
 
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
@@ -721,6 +762,22 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
   color: var(--text-secondary); flex-shrink: 0;
 }
 
+.fb-section { margin-bottom: 20px; }
+.fb-head { display: flex; align-items: flex-start; gap: 12px; margin: 0 2px 10px; }
+.fb-head-text { flex: 1; min-width: 0; }
+.fb-head-title { font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0 0 3px; }
+.fb-head-desc { font-size: 0.72rem; color: var(--text-muted); margin: 0; line-height: 1.35; }
+.fb-test-btn { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; padding: 10px 16px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); color: var(--accent); font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.fb-test-btn:active { transform: scale(0.96); }
+.fb-select-wrap { position: relative; }
+.fb-select { width: 100%; display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); color: var(--text-main); text-align: left; cursor: pointer; }
+.fb-select-icon { flex: 0 0 auto; color: var(--accent); }
+.fb-select-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fb-select-title, .fb-select-desc { display: block; }
+.fb-select-title { font-size: 0.95rem; font-weight: 600; color: var(--text-main); }
+.fb-select-desc { font-size: 0.74rem; color: var(--text-muted); }
+.fb-select-caret { flex: 0 0 auto; color: var(--accent); }
+.fb-status { font-size: 0.72rem; color: var(--text-muted); margin: 8px 4px 0; min-height: 1em; }
 .settings-group-label {
   font-size: 0.62rem; font-weight: 800; color: var(--text-secondary);
   text-transform: uppercase; letter-spacing: 0.1em;
@@ -1506,28 +1563,47 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Sound &amp; Haptics</h2>
   </div>
   <div class="screen-body">
-    <p class="settings-group-label">Feedback</p>
-    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
-      <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Sounds</p>
-        <p class="settings-list-item-desc">Short tones for dialogs, switches and toggle buttons</p>
+    <div class="fb-section">
+      <div class="fb-head">
+        <div class="fb-head-text">
+          <p class="fb-head-title">Haptic Feedback Intensity</p>
+          <p class="fb-head-desc">Hardware vibrator pulse strength and crisp tactile clicks</p>
+        </div>
+        <button type="button" class="fb-test-btn" onclick="previewFeedback('haptics')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V12m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.5a6 6 0 0 1-5-2.7L4.6 15a1.5 1.5 0 0 1 2.3-1.9L9 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Test</span>
+        </button>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" data-feedback="manual" checked onchange="toggleFeedback('sound',this.checked)"><span class="theme-toggle-track"></span></label>
-    </div>
-    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
-      <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Vibration</p>
-        <p class="settings-list-item-desc">Haptic feedback for dialogs, switches and toggle buttons</p>
+      <div id="fb-haptics-wrap" class="fb-select-wrap">
+        <button type="button" class="fb-select" onclick="openFeedbackLevelMenu('haptics')">
+          <svg class="fb-select-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="3" width="8" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 8v8M2 10v4M19.5 8v8M22 10v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="fb-select-text"><span class="fb-select-title" id="fb-haptics-title">Medium</span><span class="fb-select-desc" id="fb-haptics-desc">Balanced standard tactile click</span></div>
+          <svg class="fb-select-caret" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" data-feedback="manual" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
+      <p class="fb-status" id="fb-haptics-status"></p>
     </div>
-    <div class="settings-list-item" onclick="runFeedbackTest()">
-      <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Test sound &amp; vibration</p>
-        <p class="settings-list-item-desc" id="fb-status">Tap to check what this device can do</p>
+    <div class="fb-section">
+      <div class="fb-head">
+        <div class="fb-head-text">
+          <p class="fb-head-title">Sound Feedback Intensity</p>
+          <p class="fb-head-desc">Audible acoustic key click volume (Extreme Boost clears freely &amp; loudly)</p>
+        </div>
+        <button type="button" class="fb-test-btn" onclick="previewFeedback('sound')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>Play</span>
+        </button>
       </div>
+      <div id="fb-sound-wrap" class="fb-select-wrap">
+        <button type="button" class="fb-select" onclick="openFeedbackLevelMenu('sound')">
+          <svg class="fb-select-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="fb-select-text"><span class="fb-select-title" id="fb-sound-title">Standard (Crisp)</span><span class="fb-select-desc" id="fb-sound-desc">Crisp digital audio click</span></div>
+          <svg class="fb-select-caret" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <p class="fb-status" id="fb-sound-status"></p>
     </div>
-    <p class="settings-list-item-desc" style="padding:6px 4px;">These settings apply to this device only.</p>
+    <p class="settings-list-item-desc" style="padding:6px 4px;">These settings apply to this device only and cover dialogs, switches and toggle buttons.</p>
   </div>
 </div>
 <div id="close-financial-year-screen" class="standalone-screen" style="display:none">
@@ -3520,7 +3596,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var origOpenDevice = window.openStandaloneScreen;
   window.openStandaloneScreen = function(id) {
     origOpenDevice(id);
-    if (id === 'feedback-screen' && typeof window.syncFeedbackToggles === 'function') window.syncFeedbackToggles();
+    if (id === 'feedback-screen' && typeof window.syncFeedbackSettings === 'function') window.syncFeedbackSettings();
     if (id === 'device-display-screen') {
       setTimeout(function() {
         if (typeof loadDeviceList === 'function') loadDeviceList();
