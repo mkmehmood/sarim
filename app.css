@@ -1279,7 +1279,6 @@ backdrop-filter: var(--backdrop-blur);
 #tab-payments.hidden,
 #tab-rep.hidden {
 display: none !important;
-opacity: 0 !important;
 }
 
 #tab-rep #payment-summary-section,
@@ -1293,7 +1292,6 @@ opacity: 0 !important;
 #tab-factory #payment-summary-section,
 #tab-factory #payment-history-section {
 display: none !important;
-opacity: 0 !important;
 }
 
 hr {
@@ -2469,12 +2467,6 @@ background: white !important;
 font-size: 12pt;
 padding: 0;
 }
-.system-controls,
-.btn-theme,
-#splash-screen,
-.liquid-bg-element {
-display: none !important;
-}
 .section,
 .card,
 .liquid-card,
@@ -2483,9 +2475,6 @@ background: white !important;
 box-shadow: none !important;
 break-inside: avoid;
 page-break-inside: avoid;
-}
-th {
-background: #f5f5f5 !important;
 }
 a[href]::after {
 content: " (" attr(href) ")";
@@ -2766,7 +2755,6 @@ box-shadow: 0 2px 16px rgba(15, 23, 42, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06),
 
 [id^="tab-"].hidden {
 content-visibility: hidden;
-display: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2814,19 +2802,15 @@ transform: none !important;
 .liquid-toast.hiding { animation: toastSlideUp 0.24s cubic-bezier(0.4, 0, 1, 1) forwards !important; }
 
 [id^="tab-"]:not(.hidden) {
-opacity: 1 !important;
 transform: none !important;
 }
 
 [id^="tab-"].hidden {
-opacity: 0 !important;
 transform: none !important;
 }
 
 .liquid-toast.pre-show {
-opacity: 0 !important;
 transform: translateY(-14px) scale(0.93) !important;
-filter: none !important;
 }
 
 .system-controls {
@@ -2845,11 +2829,6 @@ input[type="date"]:focus,
 input[type="month"]:focus,
 input[type="week"]:focus {
 box-shadow: none !important;
-filter: none !important;
-}
-
-.toggle-opt {
-display: inline-flex !important;
 }
 
 .toggle-opt.active {
@@ -2865,10 +2844,6 @@ background-image: none !important;
 .toggle-group {
 background: transparent !important;
 background-image: none !important;
-}
-
-.metric-btn, .production-toggle-btn {
-display: inline-flex !important;
 }
 
 .metric-btn.active, .production-toggle-btn.active {
@@ -2898,8 +2873,6 @@ input[type="number"]:read-only,
 input[type="tel"]:read-only,
 input[type="password"]:read-only {
 background: transparent !important;
-opacity: 0.5 !important;
-filter: none !important;
 }
 
 .search-bar {
@@ -2914,7 +2887,6 @@ background-image: none !important;
 input[type="text"]:focus, input[type="number"]:focus, input[type="tel"]:focus, input[type="password"]:focus, input[type="email"]:focus, input[type="search"]:focus, select:focus, .search-bar:focus, .store-selector:focus, .sales-rep-metric-dropdown:focus {
 box-shadow: none !important;
 background: transparent !important;
-filter: none !important;
 }
 
 [data-theme="light"] input[type="text"], [data-theme="light"] input[type="number"], [data-theme="light"] input[type="tel"], [data-theme="light"] input[type="password"], [data-theme="light"] input[type="email"], [data-theme="light"] input[type="search"], [data-theme="light"] input[type="date"], [data-theme="light"] input[type="month"], [data-theme="light"] input[type="week"], [data-theme="light"] select, [data-theme="light"] textarea, [data-theme="light"] .search-bar, [data-theme="light"] .store-selector, [data-theme="light"] .sales-rep-metric-dropdown {
@@ -2923,17 +2895,11 @@ background: transparent !important;
 
 .btn-main,
 .btn-noman {
-display: inline-flex !important;
 background-image: none !important;
 }
 
 .btn-danger {
-display: inline-flex !important;
 background: var(--danger) !important;
-}
-
-.btn-sm {
-display: inline-flex !important;
 }
 
 .btn {
@@ -2941,7 +2907,6 @@ background-image: none !important;
 }
 
 .tbl-action-btn {
-display: inline-flex !important;
 background: transparent !important;
 }
 
@@ -2971,14 +2936,12 @@ background-image: none !important;
 
 .debt-panel { background: var(--glass-mid) !important; background-image: none !important; }
 .winner-cell { background: var(--warning-dim) !important; background-image: none !important; }
-thead { background: var(--glass-raised) !important; background-image: none !important; }
 [data-theme="light"] thead { background: rgba(16,185,129,0.07) !important; background-image: none !important; }
 .overview-card:hover { transform: none !important; box-shadow: none !important; }
 .liquid-card:hover { transform: none !important; }
 .liquid-card:active { transform: none !important; }
 .factory-history-item:hover { transform: none !important; }
 * { animation-duration: 0s !important; }
-.u-hidden { display: none !important; }
 .u-flex-1 { flex: 1; }
 .u-flex-2 { flex: 2; }
 .u-w-full { width: 100%; }
@@ -6325,3 +6288,47 @@ input[type="password"]:read-only { max-height: 38px; border-radius: 0; padding: 
  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .sidebar-nav-btn svg, .sidebar-settings-btn svg { transition: transform .18s ease; } }
  #cy-panel { border: none; border-radius: 0; max-height: none; padding: 0; } }
+@layer overrides {
+ #tab-prod.hidden,
+#tab-sales.hidden,
+#tab-calc.hidden,
+#tab-factory.hidden,
+#tab-payments.hidden,
+#tab-rep.hidden { opacity: 0; }
+ #tab-rep #payment-summary-section,
+#tab-rep #payment-history-section,
+#tab-prod #payment-summary-section,
+#tab-prod #payment-history-section,
+#tab-sales #payment-summary-section,
+#tab-sales #payment-history-section,
+#tab-calc #payment-summary-section,
+#tab-calc #payment-history-section,
+#tab-factory #payment-summary-section,
+#tab-factory #payment-history-section { opacity: 0; }
+ @media print {
+  .system-controls,
+.btn-theme,
+#splash-screen,
+.liquid-bg-element { display: none; }
+  th { background: #f5f5f5; } }
+ [id^="tab-"].hidden { display: none; }
+ [id^="tab-"]:not(.hidden) { opacity: 1; }
+ [id^="tab-"].hidden { opacity: 0; }
+ .liquid-toast.pre-show { opacity: 0; filter: none; }
+ input[type="date"]:focus,
+input[type="month"]:focus,
+input[type="week"]:focus { filter: none; }
+ .toggle-opt { display: inline-flex; }
+ .metric-btn, .production-toggle-btn { display: inline-flex; }
+ input[type="text"]:read-only,
+input[type="number"]:read-only,
+input[type="tel"]:read-only,
+input[type="password"]:read-only { opacity: 0.5; filter: none; }
+ input[type="text"]:focus, input[type="number"]:focus, input[type="tel"]:focus, input[type="password"]:focus, input[type="email"]:focus, input[type="search"]:focus, select:focus, .search-bar:focus, .store-selector:focus, .sales-rep-metric-dropdown:focus { filter: none; }
+ .btn-main,
+.btn-noman { display: inline-flex; }
+ .btn-danger { display: inline-flex; }
+ .btn-sm { display: inline-flex; }
+ .tbl-action-btn { display: inline-flex; }
+ thead { background: var(--glass-raised); background-image: none; }
+ .u-hidden { display: none; } }

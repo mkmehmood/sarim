@@ -385,12 +385,14 @@ html[data-bio="1"] .splash-brand { display: none; }
 
 #splash-screen.splash-locked {
   animation: none !important;
-  opacity: 1 !important;
   display: flex !important;
 } }
 
 @layer overrides{
- #splash-screen.splash-locked{ pointer-events: auto; } }</style>
+ #splash-screen.splash-locked{ pointer-events: auto; } }
+
+@layer overrides{
+ #splash-screen.splash-locked{ opacity: 1; } }</style>
 <link rel="stylesheet" href="app.css">
 <link rel="modulepreload" href="modules/main.js"><script>(function(){var V=['none','block','inline','inline-block','flex','inline-flex','grid','inline-grid','table','table-row','table-cell','contents','list-item','flow-root'];window.setDisplay=function(el,value){V.forEach(function(v){el.classList.remove('d-'+v);});el.style.removeProperty('display');if(value)el.classList.add('d-'+value);};window.setStyle=function(el,prop,cls){var pre='st-'+prop+'__';Array.prototype.slice.call(el.classList).forEach(function(c){if(c.indexOf(pre)===0)el.classList.remove(c);});el.style.removeProperty(prop);if(cls)el.classList.add(cls);};window.getDisplay=function(el){for(var i=0;i<V.length;i++){if(el.classList.contains('d-'+V[i]))return V[i];}return el.style.display;};})();</script><script>
 (function() {
