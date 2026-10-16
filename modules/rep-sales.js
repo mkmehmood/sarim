@@ -1,15 +1,15 @@
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales } from './link-guards.js';
-import { txEffectiveDate, txShowTime, txChronoCompare } from './tx-date.js';
+import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, balanceAfterHtml, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, safeToFixed, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateTimestamp, validateUUID } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
-import { _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
+import { runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
 import { confirmGuard } from './confirm-guard.js';
 import { getDefaultStoreKey } from './store-keys.js';
 export let repTransactionMode = 'sale';
@@ -464,7 +464,6 @@ emitSyncUpdate({ rep: null}).catch(e => {
 });
 }
 document.getElementById('rep-quantity').value = '';
-const savedCustomerName = name;
 document.getElementById('rep-amount-collected').value = '';
 if(repTransactionMode === 'sale') {
 const _custName = document.getElementById('rep-cust-name'); if (_custName) _custName.value = '';
@@ -1127,9 +1126,7 @@ itemContent = `
   </div>
 </div>${panelPlaceholder}`;
 }
-const _bal = _runBal.get(t) || 0;
-const _balText = _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal));
-item.innerHTML = itemContent + balanceAfterHtml(_balText, _bal > 0.005 ? 'debt' : 'clear');
+item.innerHTML = itemContent + await runningBalanceHtml(_runBal.get(t) || 0);
 _repFrag.appendChild(item);
 }
 list.replaceChildren(_repFrag);
@@ -1487,20 +1484,12 @@ const repOpeningBalance = repPriorTxns.reduce((bal, t) => {
   }
   return bal + (debit - credit);
 }, 0);
-const _repEffDate = (t) => {
-const pt = t.paymentType || 'CASH';
-if (t.transactionType === 'OLD_DEBT') return new Date(0);
-if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT' || (pt === 'CREDIT' && t.creditReceived)) {
-return new Date(t.creditReceivedDate || t.date || 0);
-}
-return new Date(t.supplyDate || t.date || 0);
-};
 transactions.sort((a, b) => {
 if (a.isMerged && !b.isMerged) return -1;
 if (!a.isMerged && b.isMerged) return 1;
 if (a.transactionType === 'OLD_DEBT' && b.transactionType !== 'OLD_DEBT') return -1;
 if (a.transactionType !== 'OLD_DEBT' && b.transactionType === 'OLD_DEBT') return 1;
-return _repEffDate(a) - _repEffDate(b);
+return ledgerEffectiveDate(a) - ledgerEffectiveDate(b);
 });
 const repContact = clients.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
 const phone = repContact?.phone || transactions.find(t => t.customerPhone)?.customerPhone || 'N/A';

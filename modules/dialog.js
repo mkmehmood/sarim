@@ -1,3 +1,4 @@
+import { dialogFeedback } from './feedback.js';
 const SVG = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 
 export const dialogIcons = {
@@ -157,9 +158,10 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     const dialog = overlay.firstElementChild;
     let settled = false;
     let guarding = false;
-    const finish = (value, immediate) => {
+    const finish = (value, immediate, kind) => {
       if (settled) return;
       settled = true;
+      if (kind) dialogFeedback(kind, tone);
       flowActive = true;
       document.removeEventListener('keydown', onKey, true);
       active = null;
@@ -183,7 +185,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        finish(dismissValue);
+        finish(dismissValue, false, 'cancel');
         return;
       }
       if (e.key !== 'Tab') return;
@@ -198,20 +200,21 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
       const btn = e.target.closest('[data-act]');
       if (btn && !btn.dataset.opt) {
         const act = actions[Number(btn.dataset.act)];
-        if (typeof act.guard !== 'function') { finish(act.value); return; }
+        const kind = act.variant === 'solid' ? 'confirm' : 'cancel';
+        if (typeof act.guard !== 'function') { finish(act.value, false, kind); return; }
         if (guarding) return;
         guarding = true;
         btn.disabled = true;
         Promise.resolve(act.guard(overlay)).then((res) => {
           guarding = false;
           btn.disabled = false;
-          if (res && res.ok) finish(res.value);
+          if (res && res.ok) finish(res.value, false, kind);
         }).catch(() => { guarding = false; btn.disabled = false; });
         return;
       }
       const opt = e.target.closest('[data-opt]');
-      if (opt && onBodyClick) { finish(onBodyClick(Number(opt.dataset.opt))); return; }
-      if (e.target === overlay && dismissOnBackdrop) finish(dismissValue);
+      if (opt && onBodyClick) { finish(onBodyClick(Number(opt.dataset.opt)), false, 'select'); return; }
+      if (e.target === overlay && dismissOnBackdrop) finish(dismissValue, false, 'cancel');
     });
     overlay.addEventListener('touchmove', (e) => {
       if (!e.target.closest('.dlg-body')) e.preventDefault();
@@ -222,6 +225,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
     active = { force: () => finish(dismissValue, true) };
     lockPage();
     document.body.appendChild(overlay);
+    dialogFeedback('open', tone);
     const chip = dialog.querySelector('.dlg-chip');
     const fitNotch = () => {
       dialog.style.setProperty('--nw', `${Math.ceil(chip.offsetWidth) + 10}px`);
@@ -273,7 +277,7 @@ export function showPasswordConfirm({ title = null, message = '', email = '', co
     const err = overlay.querySelector(`#${errId}`);
     const okBtn = overlay.querySelector('.dlg-btn--solid');
     const pwd = input ? input.value : '';
-    if (!pwd) { err.textContent = 'Please enter your password.'; if (input) input.focus(); return { ok: false }; }
+    if (!pwd) { err.textContent = 'Please enter your password.'; dialogFeedback('reject'); if (input) input.focus(); return { ok: false }; }
     err.textContent = '';
     const label = okBtn.textContent;
     okBtn.textContent = 'Verifying\u2026';
@@ -282,6 +286,7 @@ export function showPasswordConfirm({ title = null, message = '', email = '', co
     okBtn.textContent = label;
     if (!valid) {
       err.textContent = 'Incorrect password. Please try again.';
+      dialogFeedback('reject');
       if (input) { input.value = ''; input.focus(); }
       return { ok: false };
     }
@@ -322,7 +327,6 @@ export function showPasswordConfirm({ title = null, message = '', email = '', co
   }
   return result;
 }
-
 
 export function showGlassAlert(message, { title = null, tone, buttonText = 'OK', icon = null } = {}) {
   const t = ['success', 'warning', 'error'].includes(tone) ? tone : 'warning';

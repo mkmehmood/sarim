@@ -1,7 +1,7 @@
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID } from './business.js';
 import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToCloud, sanitizeForFirestore } from './sync.js';
 import { defaultSettings } from './utilities-core.js';
-import { DeltaSync, UUIDSyncRegistry, trackFirestoreWrite, verifyAccountPassword } from './utilities-sales.js';
+import { DeltaSync, UUIDSyncRegistry, getStorePool, trackFirestoreWrite, verifyAccountPassword } from './utilities-sales.js';
 import { refreshAllDisplays } from './utilities-payments.js';
 import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
@@ -139,8 +139,8 @@ try {
       fsFields:['type','triggeredAt','triggeredBy','fyCloseCount'],
       listener:'_handleYearCloseSignal' },
     { path:'formulas/config',       doc:factorySettingsDoc,   desc:'Factory formulas, costs, unit tracking',
-      sqlite:[['defaults','defaults'],['costs','costs'],['adjustment','adjustment'],['tracking','tracking'],['formulas','formulas'],['slots','slots']],
-      fsFields:['defaults','costs','adjustment','tracking','formulas','slots','defaults_timestamp','formulas_timestamp','slots_timestamp'],
+      sqlite:[['defaults','defaults'],['costs','costs'],['adjustment','adjustment'],['tracking','tracking'],['formulas','formulas']],
+      fsFields:['defaults','costs','adjustment','tracking','formulas','defaults_timestamp','formulas_timestamp'],
       listener:'_handleFactorySettingsSnapshot' },
     { path:'categories/list', doc:expenseCategoriesDoc, desc:'Expense category definitions',
       sqlite:[['categories','categories']],
@@ -473,15 +473,15 @@ export function _storeCodeToLabel(c) {
   return storeLabelFor(c);
 }
 
+async function loadCloseYearStores() {
+  const names = ['production', 'sales', 'rep', 'calculator', 'transactions', 'returns', 'expenses', 'factory'];
+  const out = {};
+  for (const n of names) out[n] = ensureArray(await sqliteStore.get(n));
+  return out;
+}
+
 export async function showCloseFinancialYearDialog() {
-  const production = ensureArray(await sqliteStore.get('production'));
-  const sales = ensureArray(await sqliteStore.get('sales'));
-  const rep = ensureArray(await sqliteStore.get('rep'));
-  const calculator = ensureArray(await sqliteStore.get('calculator'));
-  const transactions = ensureArray(await sqliteStore.get('transactions'));
-  const returns = ensureArray(await sqliteStore.get('returns'));
-  const expenses = ensureArray(await sqliteStore.get('expenses'));
-  const factory = ensureArray(await sqliteStore.get('factory'));
+  const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
 if (closeYearInProgress) {
 showToast('Close Financial Year is already in progress', 'warning');
 return;
@@ -565,14 +565,7 @@ if (errEl) window.setDisplay(errEl, 'none');
 }
 
 export async function verifyAndExecuteCloseYear() {
-  const production = ensureArray(await sqliteStore.get('production'));
-  const sales = ensureArray(await sqliteStore.get('sales'));
-  const rep = ensureArray(await sqliteStore.get('rep'));
-  const calculator = ensureArray(await sqliteStore.get('calculator'));
-  const transactions = ensureArray(await sqliteStore.get('transactions'));
-  const returns = ensureArray(await sqliteStore.get('returns'));
-  const expenses = ensureArray(await sqliteStore.get('expenses'));
-  const factory = ensureArray(await sqliteStore.get('factory'));
+  const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
 const confirmBtn = document.getElementById('close-year-confirm-btn');
 const inp = document.getElementById('close-year-confirm-input');
 const errEl = document.getElementById('close-year-pwd-error');
@@ -669,14 +662,7 @@ if (procSubtitle && procSubtitle.textContent.includes('will be compacted')) {
 
 export async function generateCloseYearSummary() {
   const entities = ensureArray(await sqliteStore.get('entities'));
-  const production = ensureArray(await sqliteStore.get('production'));
-  const sales = ensureArray(await sqliteStore.get('sales'));
-  const rep = ensureArray(await sqliteStore.get('rep'));
-  const calculator = ensureArray(await sqliteStore.get('calculator'));
-  const transactions = ensureArray(await sqliteStore.get('transactions'));
-  const returns = ensureArray(await sqliteStore.get('returns'));
-  const expenses = ensureArray(await sqliteStore.get('expenses'));
-  const factory = ensureArray(await sqliteStore.get('factory'));
+  const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
   const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
   const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
   const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
@@ -1481,7 +1467,7 @@ for (const [store, items] of Object.entries(storeGroups)) {
     totalSale:     totals.totalSale,
     profit:        totals.profit,
     formulaUnits:  totals.formulaUnits,
-    formulaStore:  items[0]?.formulaStore || 'standard',
+    formulaId:  items[0]?.formulaId || '',
     formulaCost:   totals.formulaCost,
     paymentStatus: 'CASH',
     mergedRecordCount: items.length,
@@ -1531,7 +1517,7 @@ for (const [, grp] of Object.entries(sellerReturnGroups)) {
     totalSale:     totalSale,
     profit:        totalProfit,
     formulaUnits:  0,
-    formulaStore:  'standard',
+    formulaId:  '',
     formulaCost:   0,
     paymentStatus: 'CASH',
     isReturn:      true,
@@ -1769,7 +1755,7 @@ for (const [seller, items] of Object.entries(repGroups)) {
     : (firstItem.unitPrice || 0);
   const avgCostPrice = mergedNetSold > 0
     ? parseFloat((sellerTotals.totalCost / mergedNetSold).toFixed(4))
-    : (firstItem.costPrice || (await calculateSalesCostPerKg('standard')) || 0);
+    : (firstItem.costPrice || (await calculateSalesCostPerKg(await getStorePool(getDefaultStoreKey()))) || 0);
   const returnStoreEntries = Object.entries(sellerTotals.returnsByStore);
   const primaryReturnStore = returnStoreEntries.length > 0
     ? returnStoreEntries.sort((a, b) => b[1] - a[1])[0][0]
@@ -1917,17 +1903,19 @@ if (nonMergedRecords.length === 0) {
 }
 const storeGroups = {};
 nonMergedRecords.forEach(item => {
-  const store = item.store || 'standard';
-  if (!storeGroups[store]) storeGroups[store] = [];
-  storeGroups[store].push(item);
+  const key = (item.formulaId || '') + '|' + (item.store || '');
+  if (!storeGroups[key]) storeGroups[key] = [];
+  storeGroups[key].push(item);
 });
 const nowDate = new Date();
 const nowISODate = nowDate.toISOString().split('T')[0];
 const mergeEpoch = nowDate.getTime();
 const nowTime = nowDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true});
 const mergedRecords = [];
-for (const [store, items] of Object.entries(storeGroups)) {
+for (const items of Object.values(storeGroups)) {
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+  const store = items[0].store || '';
+  const formulaId = items[0].formulaId;
   const totals = items.reduce((acc, item) => {
     acc.units += (item.units || 0);
     acc.totalCost += (item.totalCost || 0);
@@ -1946,6 +1934,7 @@ for (const [store, items] of Object.entries(storeGroups)) {
   const datesSorted = items.map(i => i.date).filter(Boolean).sort();
   const mergedRecord = ensureRecordIntegrity(_buildMergedBase(mergedId, mergeEpoch, nowISODate, nowTime, {
     store,
+    ...(formulaId ? { formulaId } : {}),
     units: totals.units,
     totalCost: totals.totalCost,
     materialsCost: totals.materialsCost,
@@ -2415,7 +2404,7 @@ await sqliteStore.set(collection.name, data);
 }
 const settingsKeys = [
 'defaults', 'costs',
-'adjustment', 'formulas', 'slots',
+'adjustment', 'formulas',
 'tracking', 'settings'
 ];
 for (const key of settingsKeys) {

@@ -17,14 +17,14 @@ const { keepLocal, fillFromCloud } = new Function(
   `${grab('_keepLocalSalePrices')}\n${grab('_fillStoresFromCloud')}\nreturn { keepLocal: _keepLocalSalePrices, fillFromCloud: _fillStoresFromCloud };`
 )();
 const cloud = [
-  { key: 'zubair', name: 'ZUBAIR', formulaType: 'standard', formulaId: 'f1', salePrice: 520 },
-  { key: 'mahmood', name: 'MAHMOOD', formulaType: 'standard', formulaId: 'f1', salePrice: 515 },
-  { key: 'asaan', name: 'ASAAN', formulaType: 'asaan', formulaId: 'f2', salePrice: 610 },
+  { key: 'zubair', name: 'ZUBAIR', formulaId: 'f1', salePrice: 520 },
+  { key: 'mahmood', name: 'MAHMOOD', formulaId: 'f1', salePrice: 515 },
+  { key: 'asaan', name: 'ASAAN', formulaId: 'f2', salePrice: 610 },
 ];
 const defaults = [
-  { key: 'zubair', name: 'ZUBAIR', formulaType: 'standard' },
-  { key: 'mahmood', name: 'MAHMOOD', formulaType: 'standard' },
-  { key: 'asaan', name: 'ASAAN', formulaType: 'asaan' },
+  { key: 'zubair', name: 'ZUBAIR' },
+  { key: 'mahmood', name: 'MAHMOOD' },
+  { key: 'asaan', name: 'ASAAN' },
 ];
 describe('store sync never replaces real cloud data with defaults', () => {
   it('first upload from a device holding default stores keeps cloud prices and formulas', () => {

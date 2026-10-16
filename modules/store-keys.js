@@ -1,10 +1,9 @@
-export const SLOT_KEYS = Object.freeze(['standard', 'asaan']);
 export const STORE_KEY_FIELDS = Object.freeze(['store', 'supplyStore', 'returnStore', 'transferPeerStore']);
 
 export const DEFAULT_STORES = Object.freeze([
-  Object.freeze({ key: 'zubair',  name: 'ZUBAIR',  formulaType: 'standard' }),
-  Object.freeze({ key: 'mahmood', name: 'MAHMOOD', formulaType: 'standard' }),
-  Object.freeze({ key: 'asaan',   name: 'ASAAN',   formulaType: 'asaan' }),
+  Object.freeze({ key: 'zubair',  name: 'ZUBAIR' }),
+  Object.freeze({ key: 'mahmood', name: 'MAHMOOD' }),
+  Object.freeze({ key: 'asaan',   name: 'ASAAN' }),
 ]);
 
 export const DEFAULT_STORE_KEYS = Object.freeze(DEFAULT_STORES.map(s => s.key));
@@ -18,8 +17,7 @@ export function slugifyStoreName(name) {
 
 export function makeStoreKey(name, taken = []) {
   const used = taken instanceof Set ? taken : new Set(taken);
-  let base = slugifyStoreName(name);
-  if (SLOT_KEYS.includes(base)) base += '_store';
+  const base = slugifyStoreName(name);
   let key = base;
   for (let n = 2; used.has(key); n++) key = `${base}_${n}`;
   return key;
@@ -36,10 +34,15 @@ export function storeLabelFor(key, list = _stores()) {
   return hit ? hit.name : key;
 }
 
-export function formulaTypeFor(key, list = _stores()) {
-  const hit = list.find(s => s.key === key);
-  if (hit && hit.formulaType) return hit.formulaType;
-  return SLOT_KEYS.includes(key) ? key : 'standard';
+export function formulaIdOf(store) {
+  return store && store.formulaId ? String(store.formulaId) : '';
+}
+
+export function buildUnitPools(stores) {
+  const storePool = {};
+  (stores || []).forEach(s => { if (s && s.key && formulaIdOf(s)) storePool[s.key] = formulaIdOf(s); });
+  const poolOf = (v) => (v == null || v === '') ? '' : (storePool[v] || String(v));
+  return { storePool, poolOf };
 }
 
 export const BUILTIN_BADGE_CLASSES = Object.freeze({ zubair: 'store-zubair', mahmood: 'store-mahmood', asaan: 'store-asaan' });

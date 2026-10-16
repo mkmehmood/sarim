@@ -7,7 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { resolveExpenseCategories, RECORD_STORES } from './link-graph.js';
+import { RECORD_STORES, dedupDeletionRecords } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -243,7 +243,7 @@ function _notifyDeletion(key, r) {
       if (amt != null && amt !== '' && !isNaN(Number(amt))) parts.push(fmtAmt(amt));
       else if (r.net != null && !isNaN(Number(r.net))) parts.push(Math.abs(Number(r.net)) + ' kg');
     }
-    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now())).catch(() => {});
+    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now()), { key: r && r.id ? r.id : '' }).catch(() => {});
   } catch (_) {}
 }
 
@@ -864,16 +864,13 @@ version: '2.0'
 });
 const factorySettingsRef = this.userRef.collection('formulas').doc('config');
 await factorySettingsRef.set({
-defaults: { standard: [], asaan: [] },
+defaults: {},
 defaults_timestamp: Date.now(),
-costs: { standard: 0, asaan: 0 },
+costs: {},
 costs_timestamp: Date.now(),
-adjustment: { standard: 1, asaan: 1 },
+adjustment: {},
 adjustment_timestamp: Date.now(),
-tracking: {
-standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }
-},
+tracking: {},
 tracking_timestamp: Date.now(),
 synced: this.timestamp
 });
@@ -1256,6 +1253,22 @@ _syncQueue.run(async () => {
 });
 }
 
+const _getMs = (rec) => {
+  if (!rec) return 0;
+  const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
+  if (typeof ts === 'number') return ts;
+  if (ts && typeof ts.toMillis === 'function') return ts.toMillis();
+  if (ts && typeof ts === 'object') {
+    if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+    if (typeof ts._seconds === 'number') return ts._seconds * 1000;
+  }
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts === 'string') {
+    try { const t = new Date(ts).getTime(); if (!isNaN(t)) return t; } catch (e) {}
+  }
+  return 0;
+};
+
 export function _updateArray(array, docData, collectionName) {
   if (docData._placeholder || docData.id === '_placeholder_') return array;
   if (!docData.id) {
@@ -1270,21 +1283,8 @@ export function _updateArray(array, docData, collectionName) {
         if (!UUIDSyncRegistry.shouldApplyCloud(docData, localRecord)) return array;
       }
     }
-    const _getMs_pre = (rec) => {
-      if (!rec) return 0;
-      const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
-      if (typeof ts === 'number') return ts;
-      if (ts && typeof ts.toMillis === 'function') return ts.toMillis();
-      if (ts && typeof ts === 'object') {
-        if (typeof ts.seconds === 'number') return ts.seconds * 1000;
-        if (typeof ts._seconds === 'number') return ts._seconds * 1000;
-      }
-      if (ts instanceof Date) return ts.getTime();
-      if (typeof ts === 'string') { try { const t = new Date(ts).getTime(); if (!isNaN(t)) return t; } catch (e) {} }
-      return 0;
-    };
-    const cloudMs = _getMs_pre(docData);
-    const localMs = _getMs_pre(localRecord);
+    const cloudMs = _getMs(docData);
+    const localMs = _getMs(localRecord);
     if (docData.isMerged === true && localRecord.isMerged !== true) {
     } else if (localRecord.isMerged === true && docData.isMerged !== true) {
       return array;
@@ -1292,21 +1292,6 @@ export function _updateArray(array, docData, collectionName) {
       return array;
     }
   }
-  const _getMs = (rec) => {
-    if (!rec) return 0;
-    const ts = rec.updatedAt || rec.timestamp || rec.createdAt || 0;
-    if (typeof ts === 'number') return ts;
-    if (ts && typeof ts.toMillis === 'function') return ts.toMillis();
-    if (ts && typeof ts === 'object') {
-      if (typeof ts.seconds === 'number') return ts.seconds * 1000;
-      if (typeof ts._seconds === 'number') return ts._seconds * 1000;
-    }
-    if (ts instanceof Date) return ts.getTime();
-    if (typeof ts === 'string') {
-      try { const t = new Date(ts).getTime(); if (!isNaN(t)) return t; } catch (e) {}
-    }
-    return 0;
-  };
   const existingIdx = array.findIndex(item => item && item.id === docData.id);
   if (existingIdx === -1) {
     array.push(docData);
@@ -1764,13 +1749,11 @@ export async function subscribeToRealtime() {
           { cloud: cfs.adjustment_timestamp, local: await sqliteStore.get('adjustment_timestamp') },
           { cloud: cfs.tracking_timestamp,          local: await sqliteStore.get('tracking_timestamp') },
           { cloud: cfs.formulas_timestamp,          local: await sqliteStore.get('formulas_timestamp') },
-          { cloud: cfs.slots_timestamp,          local: await sqliteStore.get('slots_timestamp') },
         ];
         let hasUpdates = checks.some(c => (c.cloud || 0) > (c.local || 0));
         if (!hasUpdates) return;
         const _applyFactorySetting = async (cloudObj, cloudTs, localTsKey, localKey, transform) => {
           if (!cloudObj || typeof cloudObj !== 'object') return;
-          if (!(('standard' in cloudObj) && ('asaan' in cloudObj))) return;
           const lt = (await sqliteStore.get(localTsKey)) || 0;
           if ((cloudTs || 0) > lt) {
             const val = transform(cloudObj);
@@ -1782,25 +1765,22 @@ export async function subscribeToRealtime() {
         const newFormulas = await _applyFactorySetting(
           cfs.defaults, cfs.defaults_timestamp,
           'defaults_timestamp', 'defaults',
-          o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] })
+          _cleanFeedLists
         );
         const newCosts = await _applyFactorySetting(
           cfs.costs, cfs.costs_timestamp,
           'costs_timestamp', 'costs',
-          o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 })
+          _cleanFeedCosts
         );
         const newFactor = await _applyFactorySetting(
           cfs.adjustment, cfs.adjustment_timestamp,
           'adjustment_timestamp', 'adjustment',
-          o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 })
+          _cleanFeedFactors
         );
         const newTracking = await _applyFactorySetting(
           cfs.tracking, cfs.tracking_timestamp,
           'tracking_timestamp', 'tracking',
-          o => ({
-            standard: o.standard || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-            asaan:    o.asaan    || { produced: 0, consumed: 0, available: 0, unitCostHistory: [] },
-          })
+_cleanUnitPools
         );
         await _applyFormulaStoreFromCloud(cfs);
         if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
@@ -1830,15 +1810,11 @@ export async function subscribeToRealtime() {
         if (!cloud || !Array.isArray(cloud.categories)) return;
         const cloudTs = cloud.categories_timestamp || cloud.updated || 0;
         const localTs = (await sqliteStore.get('categories_timestamp')) || 0;
-        if (cloudTs && localTs && cloudTs <= localTs) { recordSuccessfulConnection(); return; }
-        const local = await sqliteStore.get('categories') || [];
-        const _ecRes = resolveExpenseCategories(local, cloud.categories, localTs, cloudTs);
-        if (_ecRes.changed) {
-          await sqliteStore.set('categories', _ecRes.value);
-          if (_ecRes.ts) await sqliteStore.set('categories_timestamp', _ecRes.ts);
-          emitSyncUpdate({ categories: null});
-          flashLivePulse();
-        }
+        if (cloudTs <= localTs) { recordSuccessfulConnection(); return; }
+        await sqliteStore.set('categories', cloud.categories.filter(v => typeof v === 'string' && v.trim()));
+        await sqliteStore.set('categories_timestamp', cloudTs);
+        emitSyncUpdate({ categories: null});
+        flashLivePulse();
         recordSuccessfulConnection();
       } catch (error) {
         console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
@@ -1892,24 +1868,7 @@ export async function subscribeToRealtime() {
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(appStoresUnsub);
-    function _dedupDeletionRecords(arr) {
-      if (!Array.isArray(arr)) return [];
-      const seen = new Map();
-      arr.forEach(r => {
-        if (!r) return;
-        const key = String(r.id || r.recordId || '');
-        if (!key) return;
-        const existing = seen.get(key);
-        if (!existing
-            || (!existing.displayName && r.displayName)
-            || (!existing.snapshot && r.snapshot)
-            || (r.syncedToCloud && !existing.syncedToCloud)) {
-          seen.set(key, r);
-        }
-      });
-      return Array.from(seen.values());
-    }
-    window._dedupDeletionRecords = _dedupDeletionRecords;
+    window._dedupDeletionRecords = dedupDeletionRecords;
     const _handleDeletionsSnapshot = async (snapshot) => {
       try {
         if (snapshot.metadata.hasPendingWrites) return;
@@ -2005,7 +1964,7 @@ export async function subscribeToRealtime() {
           } catch (docError) { console.warn('Failed to save data locally.', _safeErr(docError)); }
         }
         if (hasChanges) {
-          deletionRecords = _dedupDeletionRecords(deletionRecords);
+          deletionRecords = dedupDeletionRecords(deletionRecords);
           await sqliteStore.set('deletions', deletionRecords);
           await sqliteStore.set('deleted', Array.from(deletedSet));
           emitSyncUpdate({ deletions: null});
@@ -2285,7 +2244,7 @@ function _fillStoresFromCloud(localStores, cloudStores) {
     if (!c) return l;
     const n = { ...l };
     if (!(l.salePrice > 0) && c.salePrice > 0) { n.salePrice = c.salePrice; changed = true; }
-    if (!l.formulaId && c.formulaId) { n.formulaId = c.formulaId; if (c.formulaType) n.formulaType = c.formulaType; changed = true; }
+    if (!l.formulaId && c.formulaId) { n.formulaId = c.formulaId; changed = true; }
     return n;
   });
   cloud.forEach((c) => {
@@ -2348,7 +2307,7 @@ export function sanitizeForFirestore(obj, depth = 0, seen = new WeakSet()) {
       if (sanitizedValue !== null && sanitizedValue !== undefined) {
         if (typeof sanitizedValue === 'object' && !Array.isArray(sanitizedValue)) {
           const isFactorySettings = ['defaults', 'costs', 'adjustment',
-            'tracking', 'standard', 'asaan', 'formulas', 'slots'].includes(cleanKey);
+            'tracking', 'formulas'].includes(cleanKey);
           if (Object.keys(sanitizedValue).length > 0 || isFactorySettings) sanitized[cleanKey] = sanitizedValue;
         } else {
           sanitized[cleanKey] = sanitizedValue;
@@ -2608,8 +2567,7 @@ function _describeRemoteTx(key, r) {
 }
 
 function _pushTxNotification(item) {
-  showToast(item.body, 'info', 4500);
-  sendDeviceNotification(item.title, item.body, 'tx-' + item.id).catch(() => {});
+  sendDeviceNotification(item.title, item.body, 'tx-' + item.id, { key: item.id }).catch(() => {});
 }
 
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
@@ -2674,7 +2632,7 @@ function _notifyLocalTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ ...item, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
 
@@ -2684,7 +2642,7 @@ function _notifyEditedTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ title: item.title + ' updated', body: 'Details were changed: ' + item.body, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now()).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
 
@@ -2699,15 +2657,13 @@ async function _applyFormulaStoreFromCloud(cloud) {
   if (Array.isArray(cloud.formulas) && (cloudList.length > 0 || (cloud.formulas_timestamp || 0) > localListTs) && (!localHas || (cloud.formulas_timestamp || 0) > localListTs)) {
     await sqliteStore.setBatch([['formulas', cloudList], ['formulas_timestamp', cloud.formulas_timestamp || Date.now()]]);
   }
-  const localSlots = await sqliteStore.get('slots');
-  const localSlotsTs = (await sqliteStore.get('slots_timestamp')) || 0;
-  const cs = cloud.slots;
-  const cloudHasSlots = !!(cs && typeof cs === 'object' && (cs.standard || cs.asaan));
-  const localHasSlots = !!(localSlots && (localSlots.standard || localSlots.asaan));
-  if (cloudHasSlots && (!localHasSlots || (cloud.slots_timestamp || 0) > localSlotsTs)) {
-    await sqliteStore.setBatch([['slots', { standard: cs.standard || null, asaan: cs.asaan || null }], ['slots_timestamp', cloud.slots_timestamp || Date.now()]]);
-  }
 }
+
+const _mapEntries = (o, fn) => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, fn(v)]));
+const _cleanFeedLists = (o) => _mapEntries(o, (v) => (Array.isArray(v) ? v : []));
+const _cleanFeedCosts = (o) => _mapEntries(o, (v) => parseFloat(v) || 0);
+const _cleanFeedFactors = (o) => _mapEntries(o, (v) => parseFloat(v) || 1);
+const _cleanUnitPools = (o) => _mapEntries(o, (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] }));
 
 export async function _mergeAndPersist(cloudData) {
   try {
@@ -2953,20 +2909,17 @@ export async function _syncSettings(cloudData) {
       const ts = getTimestamp();
       const _applyFs = async (obj, tsKey, dataKey, transform) => {
         if (!obj || typeof obj !== 'object') return;
-        if (!(('standard' in obj) && ('asaan' in obj))) return;
         return transform(obj);
       };
       const newFormulas = await _applyFs(fsData.defaults, 'defaults_timestamp', 'defaults',
-        o => ({ standard: Array.isArray(o.standard) ? o.standard : [], asaan: Array.isArray(o.asaan) ? o.asaan : [] }));
+        _cleanFeedLists);
       if (newFormulas) { await sqliteStore.setBatch([['defaults', newFormulas], ['defaults_timestamp', fsData.defaults_timestamp || ts]]); if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction(); }
-      const newCosts = await _applyFs(fsData.costs, null, null, o => ({ standard: parseFloat(o.standard) || 0, asaan: parseFloat(o.asaan) || 0 }));
+      const newCosts = await _applyFs(fsData.costs, null, null, _cleanFeedCosts);
       if (newCosts) { await sqliteStore.setBatch([['costs', newCosts], ['costs_timestamp', fsData.costs_timestamp || ts]]); }
-      const newFactor = await _applyFs(fsData.adjustment, null, null, o => ({ standard: parseFloat(o.standard) || 1, asaan: parseFloat(o.asaan) || 1 }));
+      const newFactor = await _applyFs(fsData.adjustment, null, null, _cleanFeedFactors);
       if (newFactor) { await sqliteStore.setBatch([['adjustment', newFactor], ['adjustment_timestamp', fsData.adjustment_timestamp || ts]]); }
-      if (fsData.tracking && ('standard' in fsData.tracking) && ('asaan' in fsData.tracking)) {
-        const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-        const newTracking = { standard: vt(fsData.tracking.standard), asaan: vt(fsData.tracking.asaan) };
-        await sqliteStore.setBatch([['tracking', newTracking], ['tracking_timestamp', fsData.tracking_timestamp || ts]]);
+      if (fsData.tracking && typeof fsData.tracking === 'object') {
+        await sqliteStore.setBatch([['tracking', _cleanUnitPools(fsData.tracking)], ['tracking_timestamp', fsData.tracking_timestamp || ts]]);
       }
       await _applyFormulaStoreFromCloud(fsData);
       if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
@@ -2977,10 +2930,10 @@ export async function _syncSettings(cloudData) {
     if (ecd && Array.isArray(ecd.categories)) {
       const _ecLocal   = await sqliteStore.get('categories');
       const _ecLocalTs = (await sqliteStore.get('categories_timestamp')) || 0;
-      const _ecRes = resolveExpenseCategories(_ecLocal, ecd.categories, _ecLocalTs, ecd.categories_timestamp || 0);
-      if (_ecRes.changed || !Array.isArray(_ecLocal)) {
-        await sqliteStore.set('categories', _ecRes.value);
-        if (_ecRes.ts) await sqliteStore.set('categories_timestamp', _ecRes.ts);
+      const _ecCloudTs = ecd.categories_timestamp || 0;
+      if (!Array.isArray(_ecLocal) || _ecCloudTs > _ecLocalTs) {
+        await sqliteStore.set('categories', ecd.categories.filter(v => typeof v === 'string' && v.trim()));
+        if (_ecCloudTs) await sqliteStore.set('categories_timestamp', _ecCloudTs);
       }
     }
   }
@@ -3111,31 +3064,28 @@ export async function _uploadChanges(userRef) {
   const localFactorTs  = await sqliteStore.get('adjustment_timestamp');
   const localUnitTs    = await sqliteStore.get('tracking_timestamp');
   const localStoreTs   = await sqliteStore.get('formulas_timestamp');
-  const localSlotsTs   = await sqliteStore.get('slots_timestamp');
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('formulas');
-  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs, localSlotsTs]
+  const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
   if (factorySettingsDirty) {
-    const [_fdf, _fac, _fcaf, _fut, _ffs, _ffsl] = await Promise.all([
+    const [_fdf, _fac, _fcaf, _fut, _ffs] = await Promise.all([
       sqliteStore.get('defaults'),
       sqliteStore.get('costs'),
       sqliteStore.get('adjustment'),
       sqliteStore.get('tracking'),
       sqliteStore.get('formulas'),
-      sqliteStore.get('slots'),
     ]);
     const _nowTs = Date.now();
     const fsPayload = {
-      defaults:                _fdf  || { standard: [], asaan: [] },
+      defaults:                _fdf  || {},
       defaults_timestamp:      localFormulaTs || _nowTs,
-      costs:                _fac  || { standard: 0, asaan: 0 },
+      costs:                _fac  || {},
       costs_timestamp:      localCostsTs   || _nowTs,
-      adjustment:          _fcaf || { standard: 1, asaan: 1 },
+      adjustment:          _fcaf || {},
       adjustment_timestamp:localFactorTs  || _nowTs,
-      tracking:                   _fut  || { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } },
+      tracking:                   _fut  || {},
       tracking_timestamp:         localUnitTs    || _nowTs,
       ...(Array.isArray(_ffs) && localStoreTs ? { formulas: _ffs, formulas_timestamp: localStoreTs } : {}),
-      ...(_ffsl && (_ffsl.standard || _ffsl.asaan) ? { slots: _ffsl, slots_timestamp: localSlotsTs || _nowTs } : {}),
     };
     configBatch.set(userRef.collection('formulas').doc('config'), sanitizeForFirestore(fsPayload), { merge: true });
     operationCount++;
@@ -3496,10 +3446,8 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     if (forceDownload && cloudData.factorySettings && cloudData.factorySettings.exists) {
       const fsData = cloudData.factorySettings.data();
       if (fsData && typeof fsData === 'object') {
-        if (fsData.tracking && ('standard' in fsData.tracking) && ('asaan' in fsData.tracking)) {
-          const vt = (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] });
-          const newTracking = { standard: vt(fsData.tracking.standard), asaan: vt(fsData.tracking.asaan) };
-          await sqliteStore.setBatch([['tracking', newTracking], ['tracking_timestamp', fsData.tracking_timestamp || Date.now()]]);
+        if (fsData.tracking && typeof fsData.tracking === 'object') {
+          await sqliteStore.setBatch([['tracking', _cleanUnitPools(fsData.tracking)], ['tracking_timestamp', fsData.tracking_timestamp || Date.now()]]);
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
         }
         await _applyFormulaStoreFromCloud(fsData);
@@ -3513,18 +3461,12 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     const _fac  = _settingsBatch.get('costs');
     const _fcaf = _settingsBatch.get('adjustment');
     const _fut  = _settingsBatch.get('tracking');
-    const _ensureBothStores = (obj, dflt) => {
-      if (!obj || typeof obj !== 'object') return dflt;
-      return {
-        standard: obj.standard !== undefined ? obj.standard : dflt.standard,
-        asaan:    obj.asaan    !== undefined ? obj.asaan    : dflt.asaan,
-      };
-    };
+    const _objOr = (obj) => (obj && typeof obj === 'object' && !Array.isArray(obj) ? obj : {});
     await sqliteStore.setBatch([
-      ['defaults',       _ensureBothStores(_fdf,  { standard: [], asaan: [] })],
-      ['costs',       _ensureBothStores(_fac,  { standard: 0,  asaan: 0  })],
-      ['adjustment', _ensureBothStores(_fcaf, { standard: 1,  asaan: 1  })],
-      ['tracking',          _ensureBothStores(_fut,  { standard: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] }, asaan: { produced: 0, consumed: 0, available: 0, unitCostHistory: [] } })],
+      ['defaults',   _objOr(_fdf)],
+      ['costs',      _objOr(_fac)],
+      ['adjustment', _objOr(_fcaf)],
+      ['tracking',   _objOr(_fut)],
       ['settings', defaultSettings],
       ['appMode', appMode],
       ['repProfile', currentRepProfile],
@@ -4397,8 +4339,7 @@ if (window._syncUpdatesCleanupInterval) { clearInterval(window._syncUpdatesClean
 if (window._tombstoneCleanupInterval) { clearInterval(window._tombstoneCleanupInterval); window._tombstoneCleanupInterval = null; }
 if (window._perfMonitorInterval) { clearInterval(window._perfMonitorInterval); window._perfMonitorInterval = null; }
 if (typeof syncState !== 'undefined' && syncState.syncInterval) { clearInterval(syncState.syncInterval); syncState.syncInterval = null; }
-if (auth) {
-await auth.signOut();
+if (auth) await auth.signOut();
 _set_currentUser(null);
 SQLiteCrypto.clearSessionKey();
 await sqliteStore.clearUserData().catch(() => {});
@@ -4441,52 +4382,7 @@ if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }
 window._forceLogoutSignOut = false;
-showToast(' Signed out successfully', 'success');
-} else {
-_set_currentUser(null);
-SQLiteCrypto.clearSessionKey();
-await sqliteStore.clearUserData().catch(() => {});
-await OfflineAuth.clearCredentials().catch(() => {});
-try {
-const keysToRemove = ['_gznd_session_active','_gznd_session_start','_gznd_session_key_backup',
-'persistentLogin','_gznd_login_attempts','_gznd_login_lockout'];
-keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
-sessionStorage.clear();
-} catch(e) {}
-try {
-await sqliteStore.clearAll().catch(() => {});
-try {
-  if (navigator.storage && navigator.storage.getDirectory) {
-    const root = await navigator.storage.getDirectory();
-    const opfsFiles = [
-      'naswar_dealers.sqlite', 'naswar_dealers.sqlite.bak',
-      'gznd_auth.json', 'gznd_keystore.json',
-      'gznd_entropy.json', 'gznd_session.json'
-    ];
-    for (const f of opfsFiles) { await root.removeEntry(f).catch(() => {}); }
-  }
-} catch(_) {}
-try {
-  const lsCleanup = [
-    '_gznd_sqlite_db', '_gznd_sqlite_db_bak',
-    '_gznd_auth_data', '_gznd_keystore',
-    '_gznd_entropy', '_gznd_session_store'
-  ];
-  lsCleanup.forEach(k => { try { localStorage.removeItem(k); } catch(_) {} });
-} catch(_) {}
-} catch(e) {}
-sqliteStore.clearUserPrefix();
-DeltaSync.clearAllTimestamps().catch(() => {});
-if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch(() => {});
-if (typeof _clearDeviceIdStorage === 'function') {
-  await _clearDeviceIdStorage().catch(() => {});
-}
-if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
-  await sqliteStore.setBatch(_savedAppMode).catch(() => {});
-}
-window._forceLogoutSignOut = false;
-showToast(' Signed out', 'success');
-}
+showToast(auth ? ' Signed out successfully' : ' Signed out', 'success');
 setTimeout(() => {
 createAuthOverlay();
 showAuthOverlay();

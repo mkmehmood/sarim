@@ -1,5 +1,5 @@
 import { APP_CONFIG } from './constants.js';
-import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, defaultSettings, loadUIState, triggerAutoSync } from './utilities-core.js';
+import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
 import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';
@@ -101,29 +101,17 @@ if (window.trustedTypes && window.trustedTypes.createPolicy) {
 }
 
 export const CryptoEngine = (() => {
-const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);
 const MAGIC_V4 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x34]);
 const SALT_LEN = 32;
 const IV_LEN = 12;
 const UID_HASH_LEN = 32;
 const PBKDF2_ITERS_V4 = 210000;
-const PBKDF2_ITERS_V2 = 100000;
 async function deriveKeyV4(email, password, uid, salt) {
   const enc = new TextEncoder();
   const ikm = enc.encode(email.toLowerCase().trim() + ':' + password + ':' + (uid || ''));
   const keyMaterial = await crypto.subtle.importKey('raw', ikm, 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS_V4, hash: 'SHA-512' },
-    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
-  );
-}
-async function deriveKeyV2(email, password, salt) {
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', enc.encode(email.toLowerCase().trim() + ':' + password), 'PBKDF2', false, ['deriveKey']
-  );
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERS_V2, hash: 'SHA-256' },
     keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
   );
 }
@@ -166,33 +154,21 @@ return {
     const bytes = new Uint8Array(arrayBuffer);
     const magicLen = MAGIC_V4.length;
     const isV4 = bytes.length >= magicLen && MAGIC_V4.every((b, i) => bytes[i] === b);
-    const isV2 = !isV4 && bytes.length >= magicLen && MAGIC_V2.every((b, i) => bytes[i] === b);
-    if (!isV4 && !isV2) throw new Error('INVALID_FORMAT');
+    if (!isV4) throw new Error('INVALID_FORMAT');
     let offset = magicLen;
-    if (isV4) {
-      const storedUidHash = bytes.slice(offset, offset + UID_HASH_LEN); offset += UID_HASH_LEN;
-      const _uid = uid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.email || '') : '');
-      const actualUidHash = await _hashUID(_uid);
-      const uidMatch = storedUidHash.every((b, i) => b === actualUidHash[i]);
-      if (!uidMatch) throw new Error('WRONG_ACCOUNT');
-      const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
-      const iv  = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
-      const ciphertext = bytes.slice(offset);
-      const key = await deriveKeyV4(email, password, _uid, salt);
-      try {
-        const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-        return JSON.parse(new TextDecoder().decode(plaintext));
-      } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
-    } else {
-      const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
-      const iv  = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
-      const ciphertext = bytes.slice(offset);
-      const key = await deriveKeyV2(email, password, salt);
-      try {
-        const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-        return JSON.parse(new TextDecoder().decode(plaintext));
-      } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
-    }
+    const storedUidHash = bytes.slice(offset, offset + UID_HASH_LEN); offset += UID_HASH_LEN;
+    const _uid = uid || (typeof currentUser !== 'undefined' && currentUser ? (currentUser.uid || currentUser.email || '') : '');
+    const actualUidHash = await _hashUID(_uid);
+    const uidMatch = storedUidHash.every((b, i) => b === actualUidHash[i]);
+    if (!uidMatch) throw new Error('WRONG_ACCOUNT');
+    const salt = bytes.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
+    const iv  = bytes.slice(offset, offset + IV_LEN);   offset += IV_LEN;
+    const ciphertext = bytes.slice(offset);
+    const key = await deriveKeyV4(email, password, _uid, salt);
+    try {
+      const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      return JSON.parse(new TextDecoder().decode(plaintext));
+    } catch(e) { throw new Error('WRONG_CREDENTIALS'); }
   },
   async hashCredentials(email, password, existingSaltHex) {
     let salt;
@@ -259,10 +235,7 @@ export const OfflineAuth = {
     const record = await _OPFSStore.read(this._FILE, this._LS);
     if (!record || !record.email) return false;
     if (record.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
-    if (!record.saltHex) {
-      console.warn('OfflineAuth: legacy credential record — re-authentication required');
-      return false;
-    }
+    if (!record.saltHex) return false;
     const { hash } = await CryptoEngine.hashCredentials(email, password, record.saltHex);
     return hash === record.hash;
   },
@@ -701,7 +674,7 @@ export const sqliteStore = (() => {
   };
   const _SETTINGS_KEYS = new Set([
     'defaults', 'costs',
-    'adjustment', 'formulas', 'slots',
+    'adjustment', 'formulas',
     'tracking', 'settings',
     'categories', 'reps', 'roles',
     'offline_operation_queue', 'offline_dead_letter_queue',
@@ -2726,6 +2699,27 @@ export function balanceAfterHtml(text, tone = 'neutral', label = 'Balance after'
 }
 
 window.balanceAfterHtml = balanceAfterHtml;
+
+export function allocatePaymentToMaterials(materials, amount, date) {
+  let remaining = amount;
+  const touched = [];
+  for (const mat of materials) {
+    if (remaining <= 0) break;
+    if (remaining >= mat.totalPayable) {
+      remaining -= mat.totalPayable;
+      mat.totalPayable = 0;
+      mat.paymentStatus = 'paid';
+      mat.paidDate = date;
+    } else {
+      mat.totalPayable = parseFloat((mat.totalPayable - remaining).toFixed(2));
+      remaining = 0;
+    }
+    mat.updatedAt = getTimestamp();
+    ensureRecordIntegrity(mat, true);
+    touched.push(mat);
+  }
+  return { remaining, touched };
+}
 window._triggerFileDownload = _triggerFileDownload;
 window._readFileAsArrayBuffer = _readFileAsArrayBuffer;
 window.CryptoEngine = CryptoEngine;
@@ -2812,3 +2806,12 @@ window.getRecordTimestamp = getRecordTimestamp;
 window.ensureRecordIntegrity = ensureRecordIntegrity;
 window.cleanupOldTombstones = cleanupOldTombstones;
 window.scheduleAutomaticCleanup = scheduleAutomaticCleanup;
+
+export function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}

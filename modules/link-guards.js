@@ -5,7 +5,7 @@ import {
   COLLECTION_TO_KEY, REF_FIELDS, resolveId, remapReferences, resolveOwnLinks,
   planChildDetach, planChildReattach, applyPatch, getEditLinkIssue,
   planExpenseCascade, newGroupId, stampGroup,
-  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
+  planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
   getTransferPairRestoreIssue, getSupplierCreditReconsumeIssue,
@@ -25,6 +25,8 @@ export async function findCalcLinkForSale(saleId) {
   const hist = await _calcHistory();
   const settled = hist.find(h => Array.isArray(h.linkedSalesIds) && h.linkedSalesIds.includes(saleId));
   if (settled) return { entry: settled, via: 'settled' };
+  const retLinked = hist.find(h => Array.isArray(h.linkedRepReturnIds) && h.linkedRepReturnIds.includes(saleId));
+  if (retLinked) return { entry: retLinked, via: 'settled' };
   const transfer = hist.find(h => h.transferSaleId === saleId);
   if (transfer) return { entry: transfer, via: 'transfer' };
   return null;
@@ -42,9 +44,7 @@ export async function findCalcLinkForReturn(rec) {
   const hist = await _calcHistory();
   const byId = hist.find(h => h.returnEntryId === rec.id);
   if (byId) return { entry: byId, via: 'return' };
-  const legacy = hist.find(h => !h.returnEntryId && h.returnStore && h.returnStore === rec.store &&
-    Number(h.returned) === Number(rec.net) && h.date === rec.date && (!rec.returnedBy || rec.returnedBy === h.seller));
-  return legacy ? { entry: legacy, via: 'return' } : null;
+  return null;
 }
 
 export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
@@ -65,6 +65,10 @@ export async function getSaleBlockReason(id, kind = 'customer', opts = {}) {
   if (!opts.ignoreChildren && rec.paymentType === 'COLLECTION') {
     const stacked = getCollectionRevertIssue(rec, all);
     if (stacked) return stacked;
+  }
+  if (!opts.forEdit && rec.paymentType === 'COLLECTION' && Number(rec.expiredQty) > 0) {
+    const choraIssue = await getExpiredDeleteBlockReason(rec);
+    if (choraIssue) return choraIssue;
   }
   if (!opts.forEdit && !opts.ignoreChildren) {
     const children = all.filter(s => s && s.id !== id && s.relatedSaleId === id);
@@ -91,12 +95,13 @@ export async function getTransferDeleteBlockReason(entry) {
 }
 
 export async function getExpiredDeleteBlockReason(entry) {
-  if (!entry || !(entry.expired > 0) || entry.expiredApplied === false) return null;
+  const qty = entry ? (entry.expired > 0 ? Number(entry.expired) : (Number(entry.expiredQty) || 0)) : 0;
+  if (!entry || !(qty > 0) || entry.expiredApplied === false) return null;
   const inv = ensureArray(await sqliteStore.get('inventory'));
   const chora = inv.find(m => m && m.name && m.name.toUpperCase() === 'CHORA');
   if (!chora) return null;
-  if ((chora.quantity || 0) + 0.0001 < entry.expired) {
-    return `Only ${chora.quantity || 0} kg of CHORA is left, but this record added ${entry.expired} kg. Part of it has already been used, so it cannot be removed.`;
+  if ((chora.quantity || 0) + 0.0001 < qty) {
+    return `Only ${chora.quantity || 0} kg of CHORA is left, but this record added ${qty} kg. Part of it has already been used, so it cannot be removed.`;
   }
   return null;
 }
@@ -200,7 +205,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     return issue;
   }
   if (collectionName === 'production' && !snapshot.isReturn && !snapshot.isTransfer && !snapshot.isMerged && Number(snapshot.formulaUnits) > 0) {
-    const ft = snapshot.formulaStore || 'standard';
+    const ft = snapshot.formulaId || '';
     const tracking = (await sqliteStore.get('tracking')) || {};
     const used = ctx && ctx.unitsUsed ? (ctx.unitsUsed.get(ft) || 0) : 0;
     const issue = getUnitsShortIssue(snapshot.formulaName || ft, Number(snapshot.formulaUnits) + used, (tracking[ft] && tracking[ft].available) || 0);
@@ -221,7 +226,7 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     const formulas = (await sqliteStore.get('defaults')) || {};
     const idMap = await _loadIdMap();
     const entry = { ...snapshot, materialsUsed: (snapshot.materialsUsed || []).map(m => ({ ...m, id: resolveId(m.id, idMap) })) };
-    const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaType || snapshot.store);
+    const { block, updates } = planMaterialDeduction(entry, inv, formulas, snapshot.formulaId || snapshot.store);
     if (block) return block;
     if (ctx && updates) updates.forEach(u => { const it = inv.find(i => i && i.id === u.id); if (it) it.quantity = u.quantity; });
     return null;
@@ -230,7 +235,8 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
     if (snapshot.isTransfer === true && snapshot.transferPairId) {
       const _liveTxs = ensureArray(await sqliteStore.get('transactions'));
       const _tombs = ensureArray(await sqliteStore.get('deletions'));
-      const _pairIssue = getTransferPairRestoreIssue(snapshot, _liveTxs, _tombs);
+      const _pairInSet = !!(ctx && typeof ctx.pairInSet === 'function' && ctx.pairInSet(String(snapshot.transferPairId), String(snapshot.id || '')));
+      const _pairIssue = getTransferPairRestoreIssue(snapshot, _liveTxs, _tombs, { pairInSet: _pairInSet });
       if (_pairIssue) return _pairIssue;
     }
     if (snapshot.isPayable === true && snapshot.type === 'OUT' && Array.isArray(snapshot.consumedCredits) && snapshot.consumedCredits.length) {
@@ -239,15 +245,20 @@ export async function getRecoverLinkBlockReason(collectionName, snapshot, ctx) {
       const _creditIssue = getSupplierCreditReconsumeIssue(snapshot, _liveForCredit, (x) => resolveId(x, _creditIdMap));
       if (_creditIssue) return _creditIssue;
     }
-    if (!(ctx && ctx.entityInSet && ctx.entityInSet(snapshot.entityId))) {
+    {
+      const inSet = (id) => !!(id && ctx && typeof ctx.entityInSet === 'function' && ctx.entityInSet(String(id)));
       const idMap = await _loadIdMap();
       const ents = ensureArray(await sqliteStore.get('entities'));
-      const liveEnt = (id) => id && ents.some(e => e && !e.deletedAt && String(e.id) === String(resolveId(id, idMap)));
+      const liveEnt = (id) => {
+        if (!id) return false;
+        if (inSet(id)) return true;
+        return ents.some(e => e && !e.deletedAt && String(e.id) === String(resolveId(id, idMap)));
+      };
       if (snapshot.entityId && !liveEnt(snapshot.entityId)) {
-        return `The ${snapshot.entityName ? `"${snapshot.entityName}"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
+        return `The ${snapshot.entityName ? `\"${snapshot.entityName}\"` : 'entity'} this payment belongs to no longer exists. Recover that entity first.`;
       }
       if (snapshot.isTransfer && snapshot.transferPeerEntityId && !liveEnt(snapshot.transferPeerEntityId)) {
-        return `The ${snapshot.transferPeerEntityName ? `"${snapshot.transferPeerEntityName}"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
+        return `The ${snapshot.transferPeerEntityName ? `\"${snapshot.transferPeerEntityName}\"` : 'other entity'} on the other side of this transfer no longer exists. Recover it first.`;
       }
     }
     const need = getRestoreCashNeed(snapshot);
@@ -293,7 +304,7 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
   if (collectionName === 'factory' && cleanRecord) {
     const inv = ensureArray(await sqliteStore.get('inventory'));
     const formulas = (await sqliteStore.get('defaults')) || {};
-    const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaType || cleanRecord.store);
+    const { updates } = planMaterialDeduction(cleanRecord, inv, formulas, cleanRecord.formulaId || cleanRecord.store);
     if (updates && updates.length) {
       const now = getTimestamp();
       for (const u of updates) {
@@ -339,6 +350,12 @@ export async function applyRecoveryLinks(collectionName, oldId, newId, cleanReco
     }
     cleanRecord.allocations = cleanRecord.allocations.map(a => ({ ...a, saleId: resolveId(a.saleId, idMap) }));
     if (ids.length) await unifiedSave(key, arr, null, ids);
+  }
+  if (cleanRecord && collectionName === 'sales' && cleanRecord.paymentType === 'COLLECTION' &&
+      Number(cleanRecord.expiredQty) > 0 && cleanRecord.expiredApplied !== false &&
+      typeof window !== 'undefined' && typeof window.processExpiredToChora === 'function') {
+    try { await window.processExpiredToChora(Number(cleanRecord.expiredQty), cleanRecord.date, cleanRecord.customerName); }
+    catch (e) { console.warn('[recover] CHORA re-add failed', e && e.message); }
   }
   if (cleanRecord && (collectionName === 'sales' || collectionName === 'rep')) {
     try { await ensureContactForRecoveredSale(collectionName, cleanRecord); }
@@ -525,28 +542,6 @@ export async function getCalcRestoreBlockReason(entry) {
   return planCalcRestore(entry, await loadCalcRestoreContext(entry)).block;
 }
 
-export async function auditLegacyPartialPayments(opts = {}) {
-  const customer = findPartialConflicts(ensureArray(await sqliteStore.get('sales')));
-  const rep = findPartialConflicts(ensureArray(await sqliteStore.get('rep')));
-  const all = [...customer.map(c => ({ ...c, where: 'customer' })), ...rep.map(c => ({ ...c, where: 'rep' }))];
-  const debt = all.filter(c => c.kind === 'debt-reduced-twice').reduce((t, c) => t + c.amount, 0);
-  const cash = all.filter(c => c.kind === 'cash-counted-twice').reduce((t, c) => t + c.amount, 0);
-  const report = { count: all.length, debtUnderstatedBy: Math.round(debt * 100) / 100, cashOverstatedBy: Math.round(cash * 100) / 100, items: all };
-  if (typeof window !== 'undefined') window._partialAudit = report;
-  if (all.length && !opts.silent) {
-    const today = new Date().toISOString().slice(0, 10);
-    if ((await sqliteStore.get('audit')) !== today) {
-      await sqliteStore.set('audit', today);
-      const names = [...new Set(all.map(c => c.customerName).filter(Boolean))].slice(0, 3).join(', ');
-      if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
-        window.window.notifyBlocking(`${all.length} old partly-paid sale${all.length !== 1 ? 's' : ''} (${names}) are counted twice: customer debt is understated by ${report.debtUnderstatedBy} and cash overstated by ${report.cashOverstatedBy}. Details: window._partialAudit`, 'warning', 'Warning');
-      }
-      console.table(all);
-    }
-  }
-  return report;
-}
-
 function _snapshotSales(list) { return list.map(x => ({ ref: x, copy: JSON.parse(JSON.stringify(x)) })); }
 
 function _restoreSales(snaps) {
@@ -618,10 +613,12 @@ export async function getPaymentDeleteBlockReason(tx) {
   return getCashShortIssue(drop, await window.getAvailableCashInHand(), 'Deleting this payment');
 }
 
-// Unified single-transaction delete guard: merged records and transfer pairs are
-// classified by the pure planner, cash safety is checked against live balances.
-// Returns { block } — when plan.kind === 'transfer' the caller should delegate to
-// deletePaymentTransfer instead of deleting directly.
+export async function getBulkPaymentDeleteBlockReason(txs, what = 'Deleting these payments') {
+  const drop = planBulkCashDrop(txs);
+  if (drop <= 0 || typeof window === 'undefined' || typeof window.getAvailableCashInHand !== 'function') return null;
+  return getCashShortIssue(drop, await window.getAvailableCashInHand(), what);
+}
+
 export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
   if (!tx) return { block: null, plan: null };
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
@@ -637,8 +634,6 @@ export async function getPaymentTxDeleteBlockReason(tx, opts = {}) {
   return { block: null, plan };
 }
 
-// Entity delete guard: blocks when merged opening balances would be destroyed or
-// when removing the entity's IN payments would drive cash in hand negative.
 export async function getEntityDeleteBlockReason(entityId, opts = {}) {
   if (!entityId) return null;
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));
@@ -655,8 +650,6 @@ export async function getEntityDeleteBlockReason(entityId, opts = {}) {
   return null;
 }
 
-// Expense delete guard: a linked payment that is a merged opening balance blocks
-// deletion; IN-type linked payments are checked against available cash.
 export async function getExpenseLinkedTxBlockReason(expenseId, opts = {}) {
   if (!expenseId) return null;
   const allTxs = opts.allTxs || ensureArray(await sqliteStore.get('transactions'));

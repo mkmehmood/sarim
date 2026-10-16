@@ -40,7 +40,12 @@ async function _showNative(title, body, tone) {
   if (!LocalNotifications) return;
   if (!(await _ensureNativePermission(LocalNotifications))) return;
   _seq = (_seq + 1) % 2147483000;
-  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: _SUMMARY[tone] || '', schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
+  const summary = _SUMMARY[tone] || '';
+  if (summary) {
+    const lines = String(body).split('\n');
+    if (lines.some((l) => l.trim() === summary)) body = lines.filter((l) => l.trim() !== summary).join('\n');
+  }
+  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: summary, schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
 }
 
 const _SUMMARY = { success: 'All done', warning: 'Needs your attention', error: 'The action could not be completed' };
@@ -59,18 +64,122 @@ function _isDuplicate(title, text, tag) {
   return false;
 }
 
-export async function sendDeviceNotification(title, body, tag, opts) {
-  const text = String(body == null ? '' : body).replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
+// ---------------------------------------------------------------------------
+// One device notification per action.
+// Everything that wants to notify (explicit events, explained toasts, dialogs)
+// is queued for a short window and merged before anything is shown:
+//   - events with the same `key` (a record id) become one notification
+//   - dialogs and toasts for the same action add their details to that one
+//     notification instead of showing a second one
+//   - unrelated records stay separate (one notification per transaction)
+// ---------------------------------------------------------------------------
+const _WINDOW = { quietMs: 600, maxMs: 2000 };
+const _EVENT_QUIET_MS = 150; // a lone event has nothing to wait for, so it shows almost at once
+let _queue = [];
+let _flushTimer = null;
+let _firstAt = 0;
+export function _resetNotifyStateForTests() { _lastExplicitAt = 0; _recent.clear(); _queue = []; clearTimeout(_flushTimer); _firstAt = 0; }
+export function setNotificationWindow(quietMs, maxMs) {
+  _WINDOW.quietMs = Math.max(0, Number(quietMs) || 0);
+  _WINDOW.maxMs = Math.max(_WINDOW.quietMs, Number(maxMs) || 0);
+}
+
+const _CAPTION_LINES = new Set(['review before you continue', 'this action is permanent', 'needs your attention', 'the action could not be completed']);
+const _norm = (l) => String(l).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+function _mergeLines(bodies, { skipNoise = false } = {}) {
+  const out = [];
+  const seen = [];
+  bodies.forEach((body) => {
+    String(body == null ? '' : body).split('\n').forEach((raw) => {
+      const line = raw.trim();
+      if (!line) return;
+      if (skipNoise && (/^(confirmed|chosen):/i.test(line) || _CAPTION_LINES.has(_norm(line)))) return;
+      const n = _norm(line);
+      if (!n || seen.some((x) => x === n || x.includes(n) || n.includes(x))) return;
+      seen.push(n);
+      out.push(line);
+    });
+  });
+  return out.join('\n');
+}
+
+function _enqueue(entry) {
+  _queue.push(entry);
+  if (!_firstAt) _firstAt = Date.now();
+  clearTimeout(_flushTimer);
+  const eventsOnly = _queue.every((e) => e.kind === 'event');
+  const quiet = eventsOnly ? Math.min(_WINDOW.quietMs, _EVENT_QUIET_MS) : _WINDOW.quietMs;
+  const wait = Math.max(0, Math.min(quiet, _firstAt + _WINDOW.maxMs - Date.now()));
+  _flushTimer = setTimeout(_flush, wait);
+}
+
+async function _emit(title, body, tag, tone) {
+  try {
+    if (_isNative()) await _showNative(title, body, tone);
+    else await _showWeb(title, body, tag || 'app-toast');
+  } catch (_) {}
+}
+
+export function _flush() {
+  clearTimeout(_flushTimer);
+  _flushTimer = null;
+  _firstAt = 0;
+  const q = _queue;
+  _queue = [];
+  if (!q.length) return;
+  const groups = [];
+  const byKey = new Map();
+  q.filter((e) => e.kind === 'event').forEach((e) => {
+    const g = e.key ? byKey.get(e.key) : null;
+    if (!g) {
+      const ng = { title: e.title, tag: e.tag, tone: e.tone, priority: e.priority, bodies: [e.body], details: [] };
+      groups.push(ng);
+      if (e.key) byKey.set(e.key, ng);
+      return;
+    }
+    if (e.priority > g.priority) { g.title = e.title; g.tag = e.tag; g.tone = e.tone || g.tone; g.priority = e.priority; g.bodies.unshift(e.body); }
+    else g.bodies.push(e.body);
+  });
+  const toasts = q.filter((e) => e.kind === 'toast');
+  const eventAnchor = groups.length ? groups[groups.length - 1] : null;
+  toasts.forEach((e) => {
+    if (eventAnchor) { eventAnchor.details.push(e.body); if (!eventAnchor.tone) eventAnchor.tone = e.tone; }
+    else groups.push({ title: e.title, tag: e.tag, tone: e.tone, priority: 0, bodies: [e.body], details: [] });
+  });
+  const dialogs = q.filter((e) => e.kind === 'dialog');
+  const anchor = groups.length ? groups[groups.length - 1] : null;
+  dialogs.forEach((d) => {
+    if (anchor) { anchor.details.push(d.body); if (!anchor.tone) anchor.tone = d.tone; }
+    else groups.push({ title: d.title, tag: d.tag, tone: d.tone, priority: 0, bodies: [d.body], details: [], standalone: true });
+  });
+  groups.forEach((g) => {
+    const body = g.standalone ? g.bodies[0] : _mergeLines([...g.bodies, ...g.details.map((d) => _mergeLines([d], { skipNoise: true }))]);
+    _emit(g.title, body, g.tag, g.tone);
+  });
+}
+
+// The one function every notification goes through.
+//   notifyAction({ title, body, key, tag, tone, priority, kind })
+//   kind: 'event' (default, the explaining notification), 'toast', 'dialog'
+export async function notifyAction(a) {
+  const title = a && a.title;
+  const text = String(a && a.body != null ? a.body : '').replace(/^[\s\u00A0]+|[\s\u00A0]+$/g, '');
   if (!text) return;
-  const fromToast = !!(opts && opts.fromToast);
-  if (!fromToast) {
+  const kind = a.kind === 'toast' || a.kind === 'dialog' ? a.kind : 'event';
+  if (kind === 'event') {
     _lastExplicitAt = Date.now();
     _pendingMirrors.forEach(clearTimeout);
     _pendingMirrors = [];
   }
-  if (!(opts && opts.dialog) && _isDuplicate(title, text, tag)) return;
-  if (_isNative()) await _showNative(title, text, opts && opts.tone);
-  else await _showWeb(title, text, tag || 'app-toast');
+  const key = a.key != null ? String(a.key) : '';
+  // keyed events are merged by record id, so two real transactions with the same text are never dropped
+  if (kind !== 'dialog' && !key && _isDuplicate(title, text, a.tag)) return;
+  _enqueue({ kind, title, body: text, tag: a.tag || 'app-toast', key, priority: Number(a.priority) || 1, tone: a.tone });
+}
+
+export function sendDeviceNotification(title, body, tag, opts) {
+  const o = opts || {};
+  return notifyAction({ title, body, tag, key: o.key, priority: o.priority, tone: o.tone, kind: o.dialog ? 'dialog' : (o.fromToast ? 'toast' : 'event') });
 }
 
 export function primeNotificationPermission() {
@@ -85,6 +194,7 @@ export function primeNotificationPermission() {
 }
 
 window.sendDeviceNotification = sendDeviceNotification;
+window.notifyAction = notifyAction;
 const _bootAt = Date.now();
 const _STARTUP_QUIET_MS = 25000;
 const _BURST_MAX = 4;
@@ -106,7 +216,6 @@ const _NOISE_RE = new RegExp([
   'refreshed|updated successfully!?$',
   'deleted successfully|all records deleted|permanently deleted|recovered|restore complete|^(transferred|transfer updated)\\b'
 ].join('|'), 'i');
-
 
 const _EXPLAIN = [
   [/failed to save (production|data locally|data)/i, () => ['Could not save your data', 'The latest entry was NOT saved on this phone. Open the app, check the entry and save it again.']],
@@ -161,17 +270,33 @@ function _cleanToastText(message) {
   return t.length > 180 ? t.slice(0, 177) + '\u2026' : t;
 }
 
-export function notifyFromToast(message, type) {
+// Success toasts that confirm a save, delete or update are replaced by the merged
+// device notification. Everything else (copied, exported, errors, ...) is untouched.
+const _ACTION_RE = /\b(saved?|delet\w*|remov\w*|updat\w*|edit\w*|record\w*|added|add|creat\w*|restor\w*|recover\w*|transfer\w*|settl\w*|collect\w*|reconcil\w*|merg\w*|clos\w*|clear\w*|chang\w*|submitted|applied)\b/i;
+const _NOT_ACTION_RE = /saved to|saved as|copied|shared|downloaded|uploaded|exported|\bpdf\b|\bimage\b|loading|syncing|preparing|generating|opening|checking|connecting|welcome|offline|back online/i;
+export function isActionToast(message, type) {
+  if (type !== 'success') return false;
+  const t = _cleanToastText(message);
+  return t.length >= 4 && _ACTION_RE.test(t) && !_NOT_ACTION_RE.test(t);
+}
+function _genericActionNote(text) {
+  const title = /delet|remov|clear/i.test(text) ? 'Deleted' : /updat|edit|chang|apply|applied/i.test(text) ? 'Updated' : /restor|recover/i.test(text) ? 'Record recovered' : 'Saved';
+  return { title, body: text.replace(/\s*[!.]+$/, '') + '.' };
+}
+
+export function notifyFromToast(message, type, flags) {
   try {
     if (type !== 'success' && type !== 'warning' && type !== 'error') return;
     const text = _cleanToastText(message);
-    const note = _explainToast(text, type);
-    if (!note || !_passesGate(text, type)) return;
+    const isAction = !!(flags && flags.action) && type === 'success';
+    const note = _explainToast(text, type) || (isAction ? _genericActionNote(text) : null);
+    if (!note) return;
+    if (isAction) { if (text.length < 4) return; } else if (!_passesGate(text, type)) return;
     const timer = setTimeout(() => {
       _pendingMirrors = _pendingMirrors.filter((t) => t !== timer);
       if (type !== 'error' && Date.now() - _lastExplicitAt < 6000) return;
-      sendDeviceNotification(note.title, note.body, 'toast-' + type, { fromToast: true, tone: type }).catch(() => {});
-    }, 1200);
+      notifyAction({ title: note.title, body: note.body, tag: 'toast-' + type, kind: 'toast', tone: type }).catch(() => {});
+    }, isAction ? 250 : 500);
     _pendingMirrors.push(timer);
   } catch (_) {}
 }
@@ -179,9 +304,10 @@ export function notifyFromToast(message, type) {
 export function notifyFromDialog(note) {
   try {
     if (!note || !note.title || !note.body) return;
-    sendDeviceNotification(note.title, note.body, 'dialog-' + (++_dialogSeq), { tone: note.tone, dialog: true }).catch(() => {});
+    notifyAction({ title: note.title, body: note.body, tag: 'dialog-' + (++_dialogSeq), kind: 'dialog', tone: note.tone }).catch(() => {});
   } catch (_) {}
 }
 window.notifyFromToast = notifyFromToast;
+window.isActionToast = isActionToast;
 window.notifyFromDialog = notifyFromDialog;
 primeNotificationPermission();

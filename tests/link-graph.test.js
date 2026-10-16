@@ -5,7 +5,7 @@ import {
   getEditLinkIssue, planExpenseCascade, stampGroup, newGroupId, orderForRestore, findGroupMembers,
   expandGroups, GROUP_FIELD, remapMaterialRefs, planMaterialDeduction, findReturnLogFor, getReturnStockDrop,
   getUnitsShortIssue, getStockOverdrawIssue, recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments, getTransferPairRestoreIssue,
-  resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planEntityRename, applyEntityRename, findPartialConflicts, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
+  resolveSelectedFormula, runExclusive, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, planCalcRestore, findParentTombstones, expandRecoveryMembers, planGroupRecovery, getPartialPaidIssue, isSettleableSale, planCreditToggle, planEditSettlement, applySettlement, findPayableInTxs, materialOriginalPayable, allocatePayments, planPayableAdjustment,
 } from '../modules/link-graph.js';
 describe('recovered-id remapping', () => {
   it('follows chains oldId -> newId -> newer', () => {
@@ -320,8 +320,9 @@ describe('new production card always shows the selected formula, freshly', () =>
     { id: 'F1', name: 'Premium', additionalCost: 7, ingredients: [{ id: 'sug', name: 'Sugar', cost: 1, quantity: 2 }, { id: 'fl', name: 'Flour', cost: 1, quantity: 4 }, { id: 'gone', name: 'Salt', cost: 3, quantity: 1 }] },
     { id: 'F2', name: 'Basic', additionalCost: 0, ingredients: [{ id: 'fl', name: 'Flour', quantity: 1 }] },
   ];
+  const stores = [{ key: 'zubair', formulaId: 'F1' }, { key: 'asaan', formulaId: 'F2' }, { key: 'bare' }];
   it('reads the formula from the formula store, with live names, costs and stock', () => {
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores: [], inventory: inv, feed: { standard: [{ id: 'old', name: 'Stale', quantity: 9 }] } }, 'zubair');
+    const r = resolveSelectedFormula({ list, stores, inventory: inv }, 'zubair');
     assert.equal(r.source, 'store');
     assert.equal(r.name, 'Premium');
     assert.equal(r.additionalCost, 7);
@@ -330,28 +331,27 @@ describe('new production card always shows the selected formula, freshly', () =>
     assert.equal(r.ingredients[2].missing, true);
     assert.equal(r.ingredients[1].stock, 3);
   });
-  it("uses the store's own selected formula before the slot's formula", () => {
-    const stores = [{ key: 'zubair', formulaType: 'standard', formulaId: 'F2' }];
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1' }, stores, inventory: inv }, 'zubair');
-    assert.equal(r.name, 'Basic');
+  it("uses the store's own selected formula", () => {
+    assert.equal(resolveSelectedFormula({ list, stores, inventory: inv }, 'asaan').name, 'Basic');
+  });
+  it('accepts a formula id (a unit pool) as well as a store key', () => {
+    assert.equal(resolveSelectedFormula({ list, stores, inventory: inv }, 'F2').name, 'Basic');
   });
   it('picks up an edited formula immediately (no stale copy kept anywhere)', () => {
-    const before = resolveSelectedFormula({ list, slots: { standard: 'F2' }, inventory: inv }, 'zubair');
+    const before = resolveSelectedFormula({ list, stores, inventory: inv }, 'asaan');
     const edited = list.map(f => f.id === 'F2' ? { ...f, ingredients: [{ id: 'fl', name: 'Flour', quantity: 6 }] } : f);
-    const after = resolveSelectedFormula({ list: edited, slots: { standard: 'F2' }, inventory: inv }, 'zubair');
+    const after = resolveSelectedFormula({ list: edited, stores, inventory: inv }, 'asaan');
     assert.equal(before.ingredients[0].quantity, 1);
     assert.equal(after.ingredients[0].quantity, 6);
   });
-  it('falls back to the derived feed only when the formula no longer exists', () => {
-    const r = resolveSelectedFormula({ list: [], slots: { standard: 'F1' }, inventory: inv, feed: { standard: [{ id: 'fl', name: 'Flour', quantity: 2 }] }, costs: { standard: 4 } }, 'zubair');
-    assert.equal(r.source, 'feed');
-    assert.equal(r.additionalCost, 4);
-    assert.equal(r.ingredients.length, 1);
-  });
-  it('maps the asaan slot and slot-key inputs correctly', () => {
-    const r = resolveSelectedFormula({ list, slots: { standard: 'F1', asaan: 'F2' }, inventory: inv }, 'asaan');
-    assert.equal(r.type, 'asaan'); assert.equal(r.name, 'Basic');
-    assert.equal(resolveSelectedFormula({ list, slots: { asaan: 'F2' }, inventory: inv }, 'asaan').name, 'Basic');
+  it('is empty for a store with no formula or a formula that no longer exists', () => {
+    for (const ref of ['bare', 'nope']) {
+      const r = resolveSelectedFormula({ list, stores, inventory: inv }, ref);
+      assert.equal(r.source, 'none');
+      assert.equal(r.ingredients.length, 0);
+      assert.equal(r.additionalCost, 0);
+    }
+    assert.equal(resolveSelectedFormula({ list: [], stores, inventory: inv }, 'zubair').source, 'none');
   });
 });
 describe('credit settlement keeps its date in step with its flag', () => {
@@ -413,7 +413,7 @@ describe('old bin records come back with what they depend on', () => {
     const mat = tomb('m1', 'inventory', { supplierId: 's9' });
     assert.ok(expandRecoveryMembers(mat, [sup, mat], live()).some(t => t.id === 's9'));
   });
-  it('pairs an old return entry with its stock log even without a group', () => {
+  it('pairs a return entry with its stock log even without a group', () => {
     const entry = tomb('r1', 'production', { isReturn: true, store: 'A', date: 'D', net: 5, createdAt: 77 });
     const log = tomb('r2', 'returns', { store: 'A', date: 'D', quantity: 5, createdAt: 77 });
     assert.deepEqual(expandRecoveryMembers(entry, [entry, log], live()).map(t => t.id).sort(), ['r1', 'r2']);
@@ -491,24 +491,6 @@ describe('calculator record restore preconditions', () => {
   it('ignores its own earlier claims and deleted competitors', () => {
     const r = planCalcRestore(entry, ctx({ history: [{ id: 'c1', linkedSalesIds: ['s1', 's2'] }, { id: 'old', deletedAt: 1, linkedSalesIds: ['s1'] }] }));
     assert.equal(r.block, null);
-  });
-});
-describe('legacy partly-paid sales are detected exactly', () => {
-  const parent = (id, extra = {}) => ({ id, paymentType: 'CREDIT', customerName: 'Ali', totalValue: 1000, creditReceived: false, ...extra });
-  const child = (id, rel, amt) => ({ id, paymentType: 'PARTIAL_PAYMENT', relatedSaleId: rel, totalValue: amt });
-  it('flags an unpaid sale whose payment is applied both ways', () => {
-    const r = findPartialConflicts([parent('p', { partialPaymentReceived: 300 }), child('k', 'p', 300)]);
-    assert.deepEqual(r.map(x => [x.kind, x.amount]), [['debt-reduced-twice', 300]]);
-  });
-  it('flags a paid sale whose payment records are counted again', () => {
-    const r = findPartialConflicts([parent('p', { creditReceived: true, partialPaymentReceived: 300 }), child('k', 'p', 300), child('k2', 'p', 100)]);
-    assert.deepEqual(r.map(x => [x.kind, x.amount, x.children]), [['cash-counted-twice', 400, 2]]);
-  });
-  it('leaves clean data alone', () => {
-    assert.deepEqual(findPartialConflicts([parent('p', { partialPaymentReceived: 300 })]), []);
-    assert.deepEqual(findPartialConflicts([parent('p'), child('k', 'p', 300)]), []);
-    assert.deepEqual(findPartialConflicts([parent('p', { partialPaymentReceived: 300 }), { ...child('k', 'p', 300), deletedAt: 1 }]), []);
-    assert.deepEqual(findPartialConflicts(null), []);
   });
 });
 describe('one save at a time', () => {
@@ -589,5 +571,27 @@ describe('transfer pair restore guard', () => {
   it('ignores non-transfer records', () => {
     assert.equal(getTransferPairRestoreIssue({ id: 'x' }, [], []), null);
     assert.equal(getTransferPairRestoreIssue(null, [], []), null);
+  });
+});
+describe('bulk delete cash drop', () => {
+  it('sums the cash removed by a whole delete batch, skipping transfers and payable invoices', () => {
+    const txs = [
+      { id: 'a', type: 'IN', amount: 300 },
+      { id: 'b', type: 'IN', amount: 200 },
+      { id: 'c', type: 'IN', amount: 900, isTransfer: true },
+      { id: 'd', type: 'IN', amount: 900, isPayable: true },
+      { id: 'e', type: 'OUT', amount: 900 },
+      { id: 'f', type: 'IN', amount: 900, isMerged: true },
+    ];
+    assert.equal(planBulkCashDrop(txs), 500);
+    assert.equal(planBulkCashDrop([]), 0);
+    assert.equal(planBulkCashDrop(txs[0]), 300);
+  });
+});
+describe('transfer pair restore: same recovery set', () => {
+  it('allows a half whose pair comes back in the same set, still blocks a truly orphaned half', () => {
+    const half = { id: 'T1', isTransfer: true, transferPairId: 'P' };
+    assert.equal(getTransferPairRestoreIssue(half, [], [], { pairInSet: true }), null);
+    assert.match(getTransferPairRestoreIssue(half, [], [], {}), /other side of this transfer was permanently deleted/);
   });
 });

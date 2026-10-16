@@ -809,6 +809,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="9.5" y="3" width="17" height="30" rx="4.6" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><rect x="12.8" y="7.2" width="10.4" height="17.5" rx="2" fill="var(--accent-gold)" fill-opacity="0.26" stroke="var(--accent-gold)" stroke-width="1.3" stroke-linejoin="round"/><path d="M15.5 29.4H20.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M16 5.2H20" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.5"/><path class="ic-sp" d="M18 12.8Q18 16 21.2 16Q18 16 18 19.2Q18 16 14.8 16Q18 16 18 12.8Z" fill="var(--accent-gold)"/><path class="ic-sp" d="M31 6.6Q31 9 33.4 9Q31 9 31 11.4Q31 9 28.6 9Q31 9 31 6.6Z" fill="var(--accent-gold)"/></svg>
       Device Display
     </button>
+    <button class="sidebar-settings-btn" onclick="closeSidebar();openStandaloneScreen('feedback-screen')">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Sound &amp; Haptics
+    </button>
     <button class="sidebar-settings-btn" onclick="closeSidebar();if(typeof window._showCloseFinancialYearDialog==='function'){window._showCloseFinancialYearDialog();}else if(typeof showCloseFinancialYearDialog==='function'){showCloseFinancialYearDialog();}else{showToast('Feature not available','warning')}">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--accent)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="25" cy="25" r="6.2" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.6"/><path d="M22 25.2L24.2 27.4 28.2 22.8" stroke="var(--accent-gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M9.5 22H15M9.5 27H13" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/></svg>
       Close Financial Year
@@ -1270,6 +1274,35 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div id="device-list-container" class="u-8ecc199">
       <div class="u-empty-state-sm">Loading devices...</div>
     </div>
+  </div>
+</div>
+<div id="feedback-screen" class="standalone-screen d-none">
+  <div class="screen-topbar">
+    <h2 class="screen-title">Sound &amp; Haptics</h2>
+  </div>
+  <div class="screen-body">
+    <p class="settings-group-label">Feedback</p>
+    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
+      <div class="settings-list-item-info">
+        <p class="settings-list-item-title">Sounds</p>
+        <p class="settings-list-item-desc">Short tones for dialogs, switches and toggle buttons</p>
+      </div>
+      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" data-feedback="manual" checked onchange="toggleFeedback('sound',this.checked)"><span class="theme-toggle-track"></span></label>
+    </div>
+    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
+      <div class="settings-list-item-info">
+        <p class="settings-list-item-title">Vibration</p>
+        <p class="settings-list-item-desc">Haptic feedback for dialogs, switches and toggle buttons</p>
+      </div>
+      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" data-feedback="manual" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
+    </div>
+    <div class="settings-list-item" onclick="runFeedbackTest()">
+      <div class="settings-list-item-info">
+        <p class="settings-list-item-title">Test sound &amp; vibration</p>
+        <p class="settings-list-item-desc" id="fb-status">Tap to check what this device can do</p>
+      </div>
+    </div>
+    <p class="settings-list-item-desc u-feedback-note">These settings apply to this device only.</p>
   </div>
 </div>
 <div id="close-financial-year-screen" class="standalone-screen d-none">
@@ -1998,22 +2031,34 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <datalist id="customer-list"></datalist>
 </div>
 </div>
-<div id="cust-sale-inputs">
-<div class="field u-mb-15" >
+<div class="field u-mb-15" id="cust-rep-field">
 <label>Sales Representative (For Calculator Link)</label>
 <div class="toggle-group" id="sales-rep-toggle-group">
 <button class="toggle-opt active" onclick="selectSalesRep(this,'NONE')">Direct</button>
 </div>
 <input type="hidden" id="sales-rep-value" value="NONE">
 </div>
+<div id="cust-sale-inputs">
 <div class="grid-inputs">
 <div class="field"><label>Quantity (kg)</label><input type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
 </div>
+<div id="cust-return-inputs" class="hidden">
+<div class="grid-inputs">
+<div class="field"><label>Expired / Damage Qty (kg)</label><input type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Returned Qty (kg)</label><input type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+</div>
+</div>
 <div id="cust-coll-inputs" class="hidden">
+<div class="grid-inputs">
 <div class="field">
-<label>Amount Collected (₨)</label>
-<input type="number" id="cust-amount-collected" step="1" placeholder="Enter amount received" oninput="updateCollectionPreview()">
+<label>Amount Received (₨)</label>
+<input type="number" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
+</div>
+<div class="field">
+<label>Expired / Damage Qty (kg)</label>
+<input type="number" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
+</div>
 </div>
 </div>
 <div id="customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
@@ -2175,6 +2220,7 @@ No records found
 <div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
 <div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
+<div id="repReturnAutoHint" class="hidden u-field-hint u-78f55da-hint"></div>
 <div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb">
 <label class="u-5c10e65"> Return Stock To Physical Inventory:</label>
 <div class="toggle-group u-0d69e4b">
@@ -2339,7 +2385,7 @@ No records found
 </div>
 <div class="field u-mb-15" id="factory-formula-field">
 <label>Formula</label>
-<input type="hidden" id="factory-formula-value" value="standard">
+<input type="hidden" id="factory-formula-value" value="">
 <div id="factoryFormulaToggle" class="formula-choice"></div>
 </div>
 <div class="grid-inputs">
@@ -2361,118 +2407,62 @@ Select a store...
 <div class="section-header">
 <h3 class="u-heading-main" >Units Available <span class="update-indicator" id="unitsUpdateIndicator"></span></h3>
 <div id="factory-avail-field">
-<input type="hidden" id="factory-avail-value" value="standard">
+<input type="hidden" id="factory-avail-value" value="">
 <div id="factoryAvailToggle" class="formula-choice"></div>
 </div>
 </div>
-<div id="factoryAvailStatsS1">
+<div id="factoryAvailStats">
 <div class="u-f84a1f7 d-grid">
 <div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-782b52c">Units</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Available</span>
-<span class="qty-val u-cef932c" id="factoryS1Units">0</span>
+<span class="qty-val u-cef932c" id="factoryAvailUnits">0</span>
 </div>
 <div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Used</span>
-<span class="qty-val u-065334d" id="factoryS1UsedUnits">0</span>
+<span class="qty-val u-065334d" id="factoryAvailUsedUnits">0</span>
 </div>
 </div>
 <div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-dcef81b">Output</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Quantity</span>
-<span class="qty-val u-cef932c" id="factoryS1Output">0 kg</span>
+<span class="qty-val u-cef932c" id="factoryAvailOutput">0 kg</span>
 </div>
 <div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Raw Used</span>
-<span class="qty-val u-065334d" id="factoryS1RawUsed">0 kg</span>
+<span class="qty-val u-065334d" id="factoryAvailRawUsed">0 kg</span>
 </div>
 </div>
 <div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
 <span class="u-fa369cd">Cost</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per Unit</span>
-<span class="cost-val u-cef932c" id="factoryS1UnitCost">0</span>
+<span class="cost-val u-cef932c" id="factoryAvailUnitCost">0</span>
 </div>
 <div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
-<span class="rev-val u-065334d" id="factoryS1TotalVal">0</span>
+<span class="rev-val u-065334d" id="factoryAvailTotalVal">0</span>
 </div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Materials</span>
-<span class="cost-val u-065334d" id="factoryS1MatVal">0</span>
+<span class="cost-val u-065334d" id="factoryAvailMatVal">0</span>
 </div>
 </div>
 <div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76">
 <span class="u-3dafff5">Profit</span>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Total</span>
-<span class="profit-val u-cef932c" id="factoryS1Profit">0</span>
+<span class="profit-val u-cef932c" id="factoryAvailProfit">0</span>
 </div>
 <div class="u-94b9481 st-background__e78ba6"></div>
 <div class="u-d8dc3f3 d-flex">
 <span class="u-d8853f1">Per kg</span>
-<span class="profit-val u-065334d" id="factoryS1ProfitUnit">0</span>
-</div>
-</div>
-</div>
-</div>
-<div id="factoryAvailStatsS2" class="hidden">
-<div class="u-f84a1f7 d-grid">
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
-<span class="u-782b52c">Units</span>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Available</span>
-<span class="qty-val u-cef932c" id="factoryS2Units">0</span>
-</div>
-<div class="u-94b9481 st-background__e78ba6"></div>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Used</span>
-<span class="qty-val u-065334d" id="factoryS2UsedUnits">0</span>
-</div>
-</div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
-<span class="u-dcef81b">Output</span>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Quantity</span>
-<span class="qty-val u-cef932c" id="factoryS2Output">0 kg</span>
-</div>
-<div class="u-94b9481 st-background__e78ba6"></div>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Raw Used</span>
-<span class="qty-val u-065334d" id="factoryS2RawUsed">0 kg</span>
-</div>
-</div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__e54b2f">
-<span class="u-fa369cd">Cost</span>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Per Unit</span>
-<span class="cost-val u-cef932c" id="factoryS2UnitCost">0</span>
-</div>
-<div class="u-94b9481 st-background__e78ba6"></div>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Total</span>
-<span class="rev-val u-065334d" id="factoryS2TotalVal">0</span>
-</div>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Materials</span>
-<span class="cost-val u-065334d" id="factoryS2MatVal">0</span>
-</div>
-</div>
-<div class="u-83981e8 d-flex st-background__f38efd st-border-bottom__3b8e76">
-<span class="u-3dafff5">Profit</span>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Total</span>
-<span class="profit-val u-cef932c" id="factoryS2Profit">0</span>
-</div>
-<div class="u-94b9481 st-background__e78ba6"></div>
-<div class="u-d8dc3f3 d-flex">
-<span class="u-d8853f1">Per kg</span>
-<span class="profit-val u-065334d" id="factoryS2ProfitUnit">0</span>
+<span class="profit-val u-065334d" id="factoryAvailProfitUnit">0</span>
 </div>
 </div>
 </div>
@@ -3038,7 +3028,6 @@ async function renderStoreList() {
     return;
   }
   const formulaNames = typeof getStoreFormulaNames === 'function' ? await getStoreFormulaNames() : {};
-  const fTypeColor = { standard: 'var(--accent)', asaan: 'var(--accent-purple,#a78bfa)' };
   container.innerHTML = stores.map((s, i) => {
     const isUsed = usedKeys.has(s.key);
     const isBuiltin = typeof window.isBuiltinStoreKey === 'function' ? window.isBuiltinStoreKey(s.key) : false;
@@ -3053,7 +3042,7 @@ async function renderStoreList() {
           <div class="u-65c72da">
             Key: <span class="u-1e86a25">${s.key}</span>
             &nbsp;·&nbsp;
-            <span class="dc-color" style="--d-color: ${fTypeColor[s.formulaType]||'var(--accent)'}">${formulaNames[s.key] || 'No formula'}</span>
+            <span class="u-text-accent">${formulaNames[s.key] || 'No formula'}</span>
             ${isUsed ? '&nbsp;·&nbsp;<span style="color:var(--text-muted);">Has records</span>' : ''}
           </div>
           <div class="u-6ca7dd1">
@@ -3087,7 +3076,7 @@ async function editStore(index) {
   document.getElementById('store-edit-index').value = String(index);
   document.getElementById('store-name-input').value = s.name;
   document.getElementById('store-sale-price-input').value = s.salePrice || 0;
-  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || (typeof getFormulaSlots === 'function' ? ((await getFormulaSlots())[s.formulaType || 'standard'] || '') : ''));
+  if (typeof setStoreFormulaSelection === 'function') await setStoreFormulaSelection(s.formulaId || '');
   document.getElementById('store-form-heading').textContent = 'Edit Store';
   document.getElementById('store-save-btn-text').textContent = 'Save Changes';
   const cancelBtn = document.getElementById('store-cancel-edit-btn');
@@ -3110,7 +3099,6 @@ async function deleteStore(index) {
   if (typeof triggerAutoSync === 'function') triggerAutoSync();
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
-  if (typeof showToast === 'function') showToast('Store deleted', 'success');
   if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Store deleted', s.name, 'store-del-' + s.key).catch(function(){});
 }
 window.deleteStore = deleteStore;
@@ -3141,7 +3129,7 @@ async function saveStoreFromForm() {
     const newKey = window.makeStoreKey(nameRaw, stores.map(function(st) { return st.key; }));
     const dup = stores.findIndex(st => st.name === nameRaw);
     if (dup >= 0) { if (typeof showToast === 'function') showToast('A store with this name already exists', 'warning'); return; }
-    stores.push({ key: newKey, name: nameRaw, formulaType: 'standard', formulaId, salePrice });
+    stores.push({ key: newKey, name: nameRaw, formulaId, salePrice });
   }
   if (typeof window.showGlassConfirm === 'function') {
     const _storeOk = await window.showGlassConfirm(
@@ -3158,7 +3146,6 @@ async function saveStoreFromForm() {
   resetStoreForm();
   await renderStoreList();
   if (typeof rebuildStoreUI === 'function') await rebuildStoreUI();
-  if (typeof showToast === 'function') showToast(editIndex >= 0 ? 'Store updated' : 'Store added', 'success');
   if (typeof window.sendDeviceNotification === 'function') {
     var _nStore = (commitResult.stores || []).find(function(x) { return x.name === nameRaw; }) || {};
     window.sendDeviceNotification(editIndex >= 0 ? 'Store updated' : 'Store added', nameRaw + ' — sale price ' + (_nStore.salePrice > 0 ? _nStore.salePrice : 0) + '/kg', 'store-' + (_nStore.key || nameRaw)).catch(function(){});
@@ -3287,6 +3274,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var origOpenDevice = window.openStandaloneScreen;
   window.openStandaloneScreen = function(id) {
     origOpenDevice(id);
+    if (id === 'feedback-screen' && typeof window.syncFeedbackToggles === 'function') window.syncFeedbackToggles();
     if (id === 'device-display-screen') {
       setTimeout(function() {
         if (typeof loadDeviceList === 'function') loadDeviceList();
