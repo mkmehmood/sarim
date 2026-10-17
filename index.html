@@ -1422,9 +1422,60 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-body">
     <div id="formulaStoreList"></div>
   </div>
+  <button type="button" class="formula-fab formula-fab--batch" onclick="openBatchMix()" aria-label="Batch calculator and correction">
+    <svg width="26" height="26" viewBox="0 0 36 36" fill="none"><rect x="8" y="5" width="20" height="26" rx="4" stroke="currentColor" stroke-width="2.6"/><path d="M12.5 11H23.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M12.5 17H14.5M17 17H19M21.5 17H23.5M12.5 22H14.5M17 22H19M21.5 22H23.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+  </button>
   <button type="button" class="formula-fab" onclick="openFormulaStoreEditor(null)" aria-label="Add formula">
     <svg width="26" height="26" viewBox="0 0 36 36" fill="none"><path d="M18 7V29M7 18H29" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
   </button>
+</div>
+<div id="batch-mix-screen" class="standalone-screen" style="display:none">
+  <div class="screen-topbar">
+    <h2 class="screen-title">Batch Calculator</h2>
+  </div>
+  <div class="screen-body">
+    <div class="field u-mb-15">
+      <label>Formula</label>
+      <input type="hidden" id="bm-formula-select" value="">
+      <button type="button" id="bm-formula-btn" class="store-selector bm-picker" onclick="openBatchMixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="u-field-hint-xs" id="bmFormulaInfo"></div>
+    </div>
+    <div class="formula-toggle bm-block" role="group">
+      <button type="button" class="formula-toggle-opt active" data-bm-tab="make" aria-pressed="true" onclick="setBatchMixTab('make')">Make Batch</button>
+      <button type="button" class="formula-toggle-opt" data-bm-tab="fix" aria-pressed="false" onclick="setBatchMixTab('fix')">Fix Mixture</button>
+    </div>
+    <div id="bmMakePanel">
+      <div class="formula-toggle bm-block" role="group">
+        <button type="button" class="formula-toggle-opt active" data-bm-mode="total" aria-pressed="true" onclick="setBatchMixMode('total')">Weight</button>
+        <button type="button" class="formula-toggle-opt" data-bm-mode="units" aria-pressed="false" onclick="setBatchMixMode('units')">Units</button>
+        <button type="button" class="formula-toggle-opt" data-bm-mode="ingredient" aria-pressed="false" onclick="setBatchMixMode('ingredient')">Ingredient</button>
+      </div>
+      <div class="field bm-block" id="bmIngWrap" hidden>
+        <label>Ingredient</label>
+        <select id="bm-ing-select" onchange="recomputeBatchMix()"></select>
+      </div>
+      <div class="field bm-block">
+        <label id="bmValueLabel">Total batch weight (kg)</label>
+        <input type="number" id="bm-value" inputmode="decimal" step="any" min="0" oninput="recomputeBatchMix()">
+      </div>
+      <div id="bmMakeResult"></div>
+    </div>
+    <div id="bmFixPanel" hidden>
+      <div class="grid-inputs bm-block">
+        <div class="field">
+          <label>Weight left in vessel (kg)</label>
+          <input type="number" id="bm-remaining" inputmode="decimal" step="any" min="0" placeholder="Optional" oninput="recomputeBatchMix()">
+        </div>
+        <div class="field">
+          <label>Vessel capacity (kg)</label>
+          <input type="number" id="bm-capacity" inputmode="decimal" step="any" min="0" placeholder="Optional" oninput="recomputeBatchMix()">
+        </div>
+      </div>
+      <div class="bm-section-title">Amount mixed originally</div>
+      <div id="bmFixRows"></div>
+      <div id="bmFixResult"></div>
+    </div>
+  </div>
 </div>
 <div id="formula-store-edit-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">

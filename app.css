@@ -6802,6 +6802,26 @@ code, pre, .mono, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 #formula-store-screen .screen-body { padding-bottom: 96px; }
 .formula-fab { position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 58px; height: 58px; border-radius: 50%; border: none; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3); cursor: pointer; z-index: 5; transition: transform 0.12s; }
 .formula-fab:active { transform: scale(0.92); }
+.formula-fab--batch { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); background: var(--accent-emerald, #059669); }
+#batch-mix-screen .screen-body { padding-bottom: 40px; }
+#batch-mix-screen [hidden] { display: none !important; }
+.bm-picker { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px; cursor: pointer; }
+.bm-block { margin-bottom: 12px; }
+.bm-section-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin: 4px 0 8px 0; }
+.bm-fix-row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.bm-fix-row label { font-size: 0.85rem; font-weight: 600; overflow-wrap: anywhere; }
+.bm-summary { background: rgba(37, 99, 235, 0.08); border-radius: 12px; padding: 10px; margin: 12px 0; }
+.bm-line { display: flex; justify-content: space-between; gap: 10px; font-size: 0.85rem; padding: 2px 0; }
+.bm-line-strong { font-weight: 800; }
+.bm-table-wrap { overflow-x: auto; }
+.bm-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.bm-table th, .bm-table td { padding: 8px 6px; border-bottom: 1px solid var(--glass-border); text-align: right; }
+.bm-table th:first-child, .bm-table td:first-child { text-align: left; }
+.bm-table th { color: var(--text-muted); font-weight: 700; }
+.bm-strong { font-weight: 800; color: var(--accent); }
+.bm-empty { padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+.bm-warn { background: rgba(220, 38, 38, 0.12); color: var(--danger); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; font-weight: 700; margin-top: 12px; }
+.bm-ok { background: rgba(5, 150, 105, 0.12); color: var(--accent-emerald, #059669); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; font-weight: 700; margin-top: 12px; }
 .ic-sp { transform-box: fill-box; transform-origin: center; }
 .ic-sync-arrows { transform-box: view-box; transform-origin: 50% 50%; }
 .ic-chev { flex-shrink: 0; }
