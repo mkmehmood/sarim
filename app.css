@@ -5628,6 +5628,14 @@ input:focus-visible + .theme-toggle-track { outline: 2px solid var(--accent); ou
 .text-right { text-align: right; }
 .text-xs { font-size: 0.7rem; }
 .d-none { display: none; }
+.d-inline { display: inline; }
+.d-inline-grid { display: inline-grid; }
+.d-table { display: table; }
+.d-table-row { display: table-row; }
+.d-table-cell { display: table-cell; }
+.d-contents { display: contents; }
+.d-list-item { display: list-item; }
+.d-flow-root { display: flow-root; }
 .d-block { display: block; }
 .d-inline-block { display: inline-block; }
 .d-flex { display: flex; }
