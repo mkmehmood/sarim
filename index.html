@@ -1454,7 +1454,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div class="field bm-block" id="bmIngWrap" hidden>
       <label>Ingredient</label>
-      <select id="bm-ing-select" onchange="recomputeBatchMix()"></select>
+      <input type="hidden" id="bm-ing-select" value="">
+      <button type="button" id="bm-ing-btn" class="store-selector bm-picker" onclick="openBatchMixIngredientPicker(this)"><span>Select ingredient</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
     <div class="field bm-block">
       <label id="bmValueLabel">Total batch weight (kg)</label>

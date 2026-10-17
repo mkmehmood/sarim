@@ -10,17 +10,29 @@ const _toKg = (v) => (_state.unit === 'g' ? v / 1000 : v);
 const _fmt = (kg) => fmtAmt(_toUnit(kg), _state.unit);
 const _label = (mode) => (mode === 'units' ? 'Number of units' : mode === 'ingredient' ? `Amount of that ingredient on hand (${_state.unit})` : `Total batch weight (${_state.unit})`);
 const _line = (label, value, cls) => `<div class="bm-line${cls ? ' ' + cls : ''}"><span>${label}</span><span>${value}</span></div>`;
+function _ingredients() {
+  return _state.formula ? formulaIngredients(_state.formula) : [];
+}
+function _setIngredient(id, skipRecompute) {
+  const ings = _ingredients();
+  const pick = ings.find((i) => i.id === String(id)) || ings[0] || null;
+  const input = el('bm-ing-select');
+  if (input) input.value = pick ? pick.id : '';
+  const btn = el('bm-ing-btn');
+  const sp = btn ? btn.querySelector('span') : null;
+  if (sp) sp.textContent = pick ? pick.name : 'Select ingredient';
+  if (!skipRecompute) recomputeBatchMix();
+}
 function _renderIngredients() {
   const f = _state.formula;
-  const ings = f ? formulaIngredients(f) : [];
-  const sel = el('bm-ing-select');
-  if (sel) {
-    const keep = sel.value;
-    sel.innerHTML = ings.map((i) => `<option value="${esc(i.id)}">${esc(i.name)} (${_fmt(i.quantity)} ${_state.unit} / unit)</option>`).join('');
-    if (keep && ings.some((i) => i.id === keep)) sel.value = keep;
-  }
+  const ings = _ingredients();
+  const input = el('bm-ing-select');
+  _setIngredient(input ? input.value : '', true);
   const info = el('bmFormulaInfo');
   if (info) info.textContent = f ? `1 unit = ${_fmt(unitWeight(f))} ${_state.unit} · ${ings.length} ingredient${ings.length === 1 ? '' : 's'}` : '';
+}
+export function openBatchMixIngredientPicker(btn) {
+  pickFormula(btn, '_pop_batchMixIng', _ingredients().map((i) => ({ id: i.id, name: `${i.name} (${_fmt(i.quantity)} ${_state.unit} / unit)` })), (v) => _setIngredient(v));
 }
 export function recomputeBatchMix() {
   const box = el('bmMakeResult');
@@ -123,8 +135,7 @@ export function editBatchMixSaved(id) {
   el('bm-value').value = rec.value || '';
   el('bm-save-name').value = rec.name || '';
   _renderIngredients();
-  const sel = el('bm-ing-select');
-  if (sel && rec.ingredientId) sel.value = rec.ingredientId;
+  if (rec.ingredientId) _setIngredient(rec.ingredientId, true);
   setBatchMixMode(rec.mode);
   setSaveButtons('bmSaveBtn', 'bmCancelBtn', true);
   const top = el('bm-formula-btn');
@@ -166,4 +177,4 @@ export async function openBatchMix(formulaId) {
   setBatchMixMode('total');
   if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen('batch-mix-screen');
 }
-Object.assign(window, { saveBatchMix, editBatchMixSaved, cancelBatchMixEdit, deleteBatchMixSaved, openBatchMix, openBatchMixFormulaPicker, setBatchMixMode, setBatchMixUnit, recomputeBatchMix });
+Object.assign(window, { saveBatchMix, editBatchMixSaved, cancelBatchMixEdit, deleteBatchMixSaved, openBatchMix, openBatchMixFormulaPicker, openBatchMixIngredientPicker, setBatchMixMode, setBatchMixUnit, recomputeBatchMix });
