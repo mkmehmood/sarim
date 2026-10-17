@@ -2,6 +2,7 @@ import { showToast } from './customers.js';
 import { getFormulaStore } from './formula-store.js';
 export const el = (id) => document.getElementById(id);
 export const fmtAmt = (v, unit) => String(unit === 'g' ? Math.round(v * 10) / 10 : Math.round(v * 1000) / 1000);
+export const round6 = (v) => Math.round((Number(v) || 0) * 1e6) / 1e6;
 export const fixed3 = (v) => (Math.round(v * 1000) / 1000).toFixed(3);
 export function convertValue(raw, from, to) {
   const n = parseFloat(raw);

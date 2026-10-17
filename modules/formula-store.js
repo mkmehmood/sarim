@@ -69,6 +69,16 @@ async function _saveFormulaStore(list, extraWrites) {
   await sqliteStore.setBatch([[STORE_KEY, list], [STORE_TS_KEY, now], ...(extraWrites || [])]);
   _afterChange();
 }
+export async function updateFormulaCalcs(formulaId, mutate) {
+  const list = await getFormulaStore();
+  const idx = list.findIndex((f) => String(f.id) === String(formulaId));
+  if (idx < 0) return { ok: false, error: 'This formula no longer exists' };
+  const res = mutate(ensureArray(list[idx].savedCalcs));
+  if (!res || res.ok === false) return { ok: false, error: (res && res.error) || 'failed' };
+  list[idx] = { ...list[idx], savedCalcs: res.list };
+  await _saveFormulaStore(list);
+  return { ok: true, formula: list[idx] };
+}
 
 function _totals(ingredients, additionalCost, factor) {
   let raw = 0;
@@ -478,4 +488,4 @@ export function refreshFormulaStoreScreens() {
   if (listScreen && listScreen.style.display !== 'none') renderFormulaStoreList();
 }
 
-Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });
+Object.assign(window, { openFormulaStore, renderFormulaStoreList, openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, updateFormulaCalcs, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });

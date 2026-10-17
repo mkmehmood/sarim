@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { planBatch, planCorrection, unitWeight } from '../modules/batch-calc.js';
+import { MAX_SAVED_CALCS, calcsOf, defaultCalcName, planBatch, planCorrection, removeCalc, unitWeight, upsertCalc } from '../modules/batch-calc.js';
 const formula = {
   id: 'f1',
   name: 'Basic',
@@ -103,5 +103,40 @@ describe('planCorrection', () => {
     assert.equal(planCorrection(shot, {}).ok, false);
     assert.equal(planCorrection(shot, { original: 10, used: 10 }).error, 'nothing-left');
     assert.equal(planCorrection(shot, { original: 10, used: 12 }).error, 'nothing-left');
+  });
+});
+describe('saved calculations', () => {
+  it('reads saved calculations from a formula and ignores junk', () => {
+    assert.deepEqual(calcsOf({ savedCalcs: [{ id: 'a' }, null, {}] }), [{ id: 'a' }]);
+    assert.deepEqual(calcsOf({}), []);
+    assert.deepEqual(calcsOf(null), []);
+  });
+  it('adds a new record at the top', () => {
+    const r = upsertCalc([{ id: 'a' }], { id: 'b' });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.list.map((c) => c.id), ['b', 'a']);
+  });
+  it('updates an existing record in place and keeps its created time', () => {
+    const r = upsertCalc([{ id: 'a', name: 'old', createdAt: 1 }, { id: 'b' }], { id: 'a', name: 'new', createdAt: 9, updatedAt: 9 });
+    assert.deepEqual(r.list.map((c) => c.id), ['a', 'b']);
+    assert.equal(r.list[0].name, 'new');
+    assert.equal(r.list[0].createdAt, 1);
+  });
+  it('refuses a new record past the limit but still allows updating', () => {
+    const full = Array.from({ length: MAX_SAVED_CALCS }, (_, i) => ({ id: 'c' + i }));
+    const add = upsertCalc(full, { id: 'new' });
+    assert.equal(add.ok, false);
+    assert.equal(add.error, 'limit');
+    assert.equal(add.list.length, MAX_SAVED_CALCS);
+    assert.equal(upsertCalc(full, { id: 'c3', name: 'x' }).ok, true);
+  });
+  it('removes a record by id', () => {
+    assert.deepEqual(removeCalc([{ id: 'a' }, { id: 'b' }], 'a'), [{ id: 'b' }]);
+    assert.deepEqual(removeCalc(null, 'a'), []);
+  });
+  it('names a record by kind, formula and day', () => {
+    const t = Date.UTC(2026, 9, 17, 12);
+    assert.equal(defaultCalcName({ name: 'Std' }, 'batch', t), 'Batch · Std · 2026-10-17');
+    assert.equal(defaultCalcName({ name: 'Std' }, 'fix', t), 'Correction · Std · 2026-10-17');
   });
 });

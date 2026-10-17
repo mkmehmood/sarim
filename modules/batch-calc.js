@@ -65,3 +65,25 @@ export function planCorrection(formula, opts) {
     addTotal,
   };
 }
+export const MAX_SAVED_CALCS = 40;
+export function calcsOf(formula) {
+  return Array.isArray(formula && formula.savedCalcs) ? formula.savedCalcs.filter((c) => c && c.id) : [];
+}
+export function upsertCalc(list, rec, max = MAX_SAVED_CALCS) {
+  const cur = Array.isArray(list) ? list.filter((c) => c && c.id) : [];
+  const idx = cur.findIndex((c) => String(c.id) === String(rec.id));
+  if (idx >= 0) {
+    const next = cur.slice();
+    next[idx] = { ...rec, createdAt: cur[idx].createdAt || rec.createdAt };
+    return { ok: true, list: next };
+  }
+  if (cur.length >= max) return { ok: false, error: 'limit', list: cur };
+  return { ok: true, list: [rec, ...cur] };
+}
+export function removeCalc(list, id) {
+  return (Array.isArray(list) ? list : []).filter((c) => c && String(c.id) !== String(id));
+}
+export function defaultCalcName(formula, kind, now) {
+  const day = new Date(now).toISOString().slice(0, 10);
+  return `${kind === 'fix' ? 'Correction' : 'Batch'} · ${(formula && formula.name) || 'Formula'} · ${day}`;
+}

@@ -11,6 +11,7 @@ import './utilities-payments.js';
 import './customers.js';
 import './formula-store.js';
 import './batch-common.js';
+import './batch-saved.js';
 import './batch-mix.js';
 import './batch-fix.js';
 let _factoryLoad = null;

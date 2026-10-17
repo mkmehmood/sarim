@@ -30,7 +30,7 @@ function load(initial = {}) {
   };
   const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function');
   const ctx = vm.createContext({ ...stubs, console, structuredClone, Promise, Number, String, Array, Math, Date, JSON });
-  vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, getFormulaStore, getFormulaNames, getStoreFormulaNames };', ctx);
+  vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, updateFormulaCalcs, getFormulaStore, getFormulaNames, getStoreFormulaNames };', ctx);
   return { api: ctx.api, data, writes, notes };
 }
 describe('commitStoresWithFormulas', () => {
@@ -83,5 +83,37 @@ describe('commitStoresWithFormulas', () => {
     const t = load({ ...base(), stores: DEFAULTS.map((s, i) => (i === 0 ? { ...s, formulaId: 'f2' } : s)) });
     assert.deepEqual(JSON.parse(JSON.stringify(await t.api.getStoreFormulaNames())), { zubair: 'Asn' });
     assert.deepEqual(JSON.parse(JSON.stringify(await t.api.getFormulaNames())), { f1: 'Std', f2: 'Asn' });
+  });
+});
+describe('updateFormulaCalcs', () => {
+  const base = () => ({
+    formulas: [
+      { id: 'f1', name: 'Std', ingredients: [{ id: 'm1', name: 'a', quantity: 1, cost: 2 }] },
+      { id: 'f2', name: 'Asn', ingredients: [], savedCalcs: [{ id: 'c0', kind: 'batch' }] },
+    ],
+  });
+  it('stores the saved calculations on that formula only and stamps the list for sync', async () => {
+    const { api, data, writes } = load(base());
+    const r = await api.updateFormulaCalcs('f1', (cur) => ({ ok: true, list: [{ id: 'c1', kind: 'fix' }, ...cur] }));
+    assert.equal(r.ok, true);
+    const f = data.get('formulas');
+    assert.deepEqual(f[0].savedCalcs, [{ id: 'c1', kind: 'fix' }]);
+    assert.deepEqual(f[1].savedCalcs, [{ id: 'c0', kind: 'batch' }]);
+    assert.equal(f[0].ingredients.length, 1);
+    assert.ok(writes.includes('formulas') && writes.includes('formulas_timestamp'));
+    assert.equal(data.has('stores'), false);
+  });
+  it('passes the existing list to the mutator and lets it refuse', async () => {
+    const { api, data } = load(base());
+    const r = await api.updateFormulaCalcs('f2', (cur) => { assert.equal(cur.length, 1); return { ok: false, error: 'limit' }; });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, 'limit');
+    assert.deepEqual(data.get('formulas')[1].savedCalcs, [{ id: 'c0', kind: 'batch' }]);
+  });
+  it('refuses a formula that no longer exists and writes nothing', async () => {
+    const { api, writes } = load(base());
+    const r = await api.updateFormulaCalcs('zzz', () => ({ ok: true, list: [] }));
+    assert.equal(r.ok, false);
+    assert.equal(writes.length, 0);
   });
 });

@@ -1461,6 +1461,17 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <input type="number" id="bm-value" inputmode="decimal" step="any" min="0" oninput="recomputeBatchMix()">
     </div>
     <div id="bmMakeResult"></div>
+    <div class="bs-bar" id="bmSaveBar" hidden>
+      <input type="text" id="bm-save-name" class="bs-name-input" maxlength="60" placeholder="Name (optional)">
+      <div class="bs-actions">
+        <button type="button" class="bs-btn bs-primary" id="bmSaveBtn" onclick="saveBatchMix()">Save</button>
+        <button type="button" class="bs-btn" id="bmCancelBtn" onclick="cancelBatchMixEdit()" hidden>Cancel</button>
+      </div>
+    </div>
+    <div class="bs-section" id="bmSavedWrap" hidden>
+      <div class="bs-title">Saved calculations <span id="bmSavedCount"></span></div>
+      <div id="bmSaved"></div>
+    </div>
   </div>
 </div>
 <div id="batch-fix-screen" class="standalone-screen" style="display:none">
@@ -1511,6 +1522,17 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <div class="bf-total bf-total-add"><span>Total to add</span><strong id="bfTotalAdd">0 g</strong></div>
         </div>
       </div>
+      <div class="bs-bar">
+        <input type="text" id="bf-save-name" class="bs-name-input" maxlength="60" placeholder="Name (optional)">
+        <div class="bs-actions">
+          <button type="button" class="bs-btn bs-primary" id="bfSaveBtn" onclick="saveBatchFix()">Save</button>
+          <button type="button" class="bs-btn" id="bfCancelBtn" onclick="cancelBatchFixEdit()" hidden>Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="bs-section" id="bfSavedWrap" hidden>
+      <div class="bs-title">Saved corrections <span id="bfSavedCount"></span></div>
+      <div id="bfSaved"></div>
     </div>
   </div>
 </div>
