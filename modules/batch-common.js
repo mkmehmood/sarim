@@ -1,8 +1,20 @@
 import { showToast } from './customers.js';
 import { getFormulaStore } from './formula-store.js';
 export const el = (id) => document.getElementById(id);
-export const trim1 = (v) => String(Math.round(v * 10) / 10);
+export const fmtAmt = (v, unit) => String(unit === 'g' ? Math.round(v * 10) / 10 : Math.round(v * 1000) / 1000);
 export const fixed3 = (v) => (Math.round(v * 1000) / 1000).toFixed(3);
+export function convertValue(raw, from, to) {
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n) || from === to) return raw;
+  return String(Math.round((to === 'g' ? n * 1000 : n / 1000) * 1e6) / 1e6);
+}
+export function markActive(selector, attr, value) {
+  document.querySelectorAll(selector).forEach((b) => {
+    const on = b.getAttribute(attr) === value;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
 export async function loadFormulas() {
   const list = await getFormulaStore();
   if (!list.length) { showToast('Add a formula in the Formula Store first', 'warning'); return null; }

@@ -1443,6 +1443,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <button type="button" id="bm-formula-btn" class="store-selector bm-picker" onclick="openBatchMixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="u-field-hint-xs" id="bmFormulaInfo"></div>
     </div>
+    <div class="formula-toggle bm-block bm-unit" role="group">
+      <button type="button" class="formula-toggle-opt" data-bm-unit="g" aria-pressed="false" onclick="setBatchMixUnit('g')">g</button>
+      <button type="button" class="formula-toggle-opt active" data-bm-unit="kg" aria-pressed="true" onclick="setBatchMixUnit('kg')">kg</button>
+    </div>
     <div class="formula-toggle bm-block" role="group">
       <button type="button" class="formula-toggle-opt active" data-bm-mode="total" aria-pressed="true" onclick="setBatchMixMode('total')">Weight</button>
       <button type="button" class="formula-toggle-opt" data-bm-mode="units" aria-pressed="false" onclick="setBatchMixMode('units')">Units</button>
@@ -1469,15 +1473,19 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <input type="hidden" id="bf-formula-select" value="">
       <button type="button" id="bf-formula-btn" class="store-selector bm-picker" onclick="openBatchFixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
+    <div class="formula-toggle bm-block bm-unit" role="group">
+      <button type="button" class="formula-toggle-opt active" data-bf-unit="g" aria-pressed="true" onclick="setBatchFixUnit('g')">g</button>
+      <button type="button" class="formula-toggle-opt" data-bf-unit="kg" aria-pressed="false" onclick="setBatchFixUnit('kg')">kg</button>
+    </div>
     <div class="bf-panel">
       <div class="bf-panel-title">Batch Correction</div>
       <div class="grid-inputs">
         <div class="field">
-          <label>Original Batch (g)</label>
+          <label>Original Batch (<span class="bf-u">g</span>)</label>
           <input type="number" id="bf-original" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
         </div>
         <div class="field">
-          <label>Used / Lost (g)</label>
+          <label>Used / Lost (<span class="bf-u">g</span>)</label>
           <input type="number" id="bf-used" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
         </div>
       </div>
@@ -1496,10 +1504,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <div class="bf-newtotal"><span>New total</span><strong id="bfNewTotal">0 g</strong></div>
         </div>
         <div class="bf-hint">Type a new amount in any Add box – all other ingredients update automatically to keep the formula ratio.</div>
-        <div class="bf-manual" id="bfManualBar" hidden>
-          <span>Adjusted manually. Others scaled to match.</span>
-          <button type="button" class="bf-min-btn" onclick="resetBatchFixMinimum()"><svg width="14" height="14" viewBox="0 0 36 36" fill="none"><path d="M28 13A11 11 0 1 0 29 20" stroke="currentColor" stroke-width="3.400" stroke-linecap="round"/><path d="M29 6V13H22" stroke="currentColor" stroke-width="3.400" stroke-linecap="round" stroke-linejoin="round"/></svg>Minimum</button>
-        </div>
         <div id="bfRows"></div>
         <div class="bf-totals">
           <div class="bf-total"><span>Total in remaining</span><strong id="bfTotalRemaining">0 g</strong></div>
