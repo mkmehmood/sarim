@@ -204,24 +204,65 @@ async function playPulses(plugin, vibe) {
   }
 }
 
-async function runNative(plugin, spec) {
-  if (typeof plugin.vibrate === 'function' && !isIOS()) {
-    await playPulses(plugin, spec.vibe);
-    return;
+let lastDiag = null;
+
+const rememberDiag = (info) => {
+  if (info && typeof info === 'object') lastDiag = info;
+};
+
+function feedbackHelper() {
+  try {
+    const cap = typeof window !== 'undefined' ? window.Capacitor : null;
+    const helper = cap && cap.Plugins && cap.Plugins.HapticFeedback;
+    return helper && typeof helper.perform === 'function' ? helper : null;
+  } catch (_) { return null; }
+}
+
+function viewKind(spec) {
+  if (spec.impact === 'HEAVY') return 'long';
+  if (spec.notify === 'SUCCESS') return 'confirm';
+  if (spec.notify) return 'reject';
+  if (spec.impact === 'MEDIUM') return 'tap';
+  return 'tick';
+}
+
+export function hapticBlocker(diag) {
+  if (!diag) return null;
+  if (diag.hasVibrator === false) return 'This phone reports no vibration motor, so vibration cannot work.';
+  if (diag.ringerMode === 'silent') return 'The phone is in silent mode, which blocks app vibration on many phones. Switch to vibrate or normal mode and try again.';
+  if (diag.touchFeedback === false) return 'Touch vibration is turned off in the phone settings (Sound & vibration, Touch feedback). Turn it on and try again.';
+  return null;
+}
+
+async function runNative(plugin, helper, spec) {
+  let helperDone = null;
+  if (helper) {
+    try {
+      const first = Array.isArray(spec.vibe) ? spec.vibe[0] : spec.vibe;
+      helperDone = Promise.resolve(helper.perform({ kind: viewKind(spec), duration: first })).then(rememberDiag, () => {});
+    } catch (_) {}
   }
-  await nativeCall(plugin, spec);
-  if (spec.repeat === 2 && typeof plugin.impact === 'function') {
-    await pause(DOUBLE_PULSE_GAP_MS);
-    await plugin.impact({ style: 'HEAVY' });
+  if (plugin) {
+    if (typeof plugin.vibrate === 'function' && !isIOS()) {
+      await playPulses(plugin, spec.vibe);
+    } else {
+      await nativeCall(plugin, spec);
+      if (spec.repeat === 2 && typeof plugin.impact === 'function') {
+        await pause(DOUBLE_PULSE_GAP_MS);
+        await plugin.impact({ style: 'HEAVY' });
+      }
+    }
   }
+  if (helperDone) await helperDone;
 }
 
 async function runHaptic(spec) {
   if (!spec) return 'off';
   const plugin = nativeHaptics();
-  if (plugin) {
+  const helper = isIOS() ? null : feedbackHelper();
+  if (plugin || helper) {
     try {
-      await runNative(plugin, spec);
+      await runNative(plugin, helper, spec);
       return 'native';
     } catch (_) {}
   }
@@ -323,9 +364,20 @@ const STATUS_TEXT = {
   }
 };
 
-export function describeResult(channel, result) {
+export function describeResult(channel, result, diag = lastDiag) {
+  if (channel === 'haptics' && (result === 'native' || result === 'browser')) {
+    const blocker = hapticBlocker(diag);
+    if (blocker) return blocker;
+  }
   const table = STATUS_TEXT[channel];
   return (table && table[result]) || 'The test could not run on this device.';
+}
+
+export async function refreshHapticDiagnostics() {
+  const helper = feedbackHelper();
+  if (!helper || typeof helper.status !== 'function') return null;
+  try { rememberDiag(await helper.status()); } catch (_) {}
+  return lastDiag;
 }
 
 export async function previewFeedback(channel) {
@@ -347,6 +399,11 @@ export function syncFeedbackSettings() {
     if (title && option) title.textContent = option.label;
     if (desc && option) desc.textContent = option.desc;
   });
+  refreshHapticDiagnostics().then(() => {
+    const message = hapticBlocker(lastDiag);
+    const out = document.getElementById('fb-haptics-status');
+    if (out && message) out.textContent = message;
+  }).catch(() => {});
 }
 
 export function openFeedbackLevelMenu(channel) {

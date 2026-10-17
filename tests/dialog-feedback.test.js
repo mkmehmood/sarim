@@ -615,3 +615,119 @@ describe('document listeners drive real feedback', () => {
     assert.equal(fb.installControlFeedback({ addEventListener() { throw new Error('should not attach'); } }), false);
   });
 });
+
+describe('Android helper for system touch haptics', () => {
+  const calls = [];
+  const helper = (info = { hasVibrator: true, touchFeedback: true, ringerMode: 'normal' }) => ({
+    perform: (o) => { calls.push(o); return Promise.resolve({ ...info }); },
+    status: () => Promise.resolve({ ...info })
+  });
+  const withHelper = (h = helper()) => { window.Capacitor = { Plugins: { Haptics: nativePlugin(), HapticFeedback: h } }; };
+  beforeEach(async () => { await wait(650); await reset(); calls.length = 0; });
+
+  it('runs alongside the plugin vibrate pulse for every cue', () => {
+    withHelper();
+    fb.dialogFeedback('open', 'success');
+    assert.equal(calls.length, 1);
+    assert.deepEqual(haptic.vibrate, [40]);
+    assert.equal(calls[0].duration, 40);
+  });
+  it('asks for the right system effect for each kind of cue', async () => {
+    withHelper();
+    const expect = [
+      [['open', 'success'], 'medium', 'confirm'],
+      [['open', 'error'], 'medium', 'reject'],
+      [['select'], 'medium', 'tick'],
+      [['confirm', 'warning'], 'medium', 'tap'],
+      [['confirm', 'danger'], 'medium', 'long'],
+      [['select'], 'extreme', 'long'],
+      [['open', 'error'], 'light', 'tick']
+    ];
+    for (const [args, level, kind] of expect) {
+      fb.setFeedbackLevels({ haptics: level });
+      calls.length = 0;
+      fb.dialogFeedback(...args);
+      assert.equal(calls[0].kind, kind, `${args.join('/')} at ${level}`);
+      await wait(GAP);
+    }
+  });
+  it('still works when only the helper is present', async () => {
+    window.Capacitor = { Plugins: { HapticFeedback: helper() } };
+    fb.dialogFeedback('open', 'primary');
+    assert.equal(calls.length, 1);
+    assert.equal(await fb.testHaptics(), 'native');
+    assert.equal(calls.length, 2);
+  });
+  it('a failing helper never blocks the plugin vibrate pulses', async () => {
+    window.Capacitor = { Plugins: { Haptics: nativePlugin(), HapticFeedback: { perform: () => Promise.reject(new Error('x')), status: () => Promise.reject(new Error('x')) } } };
+    fb.dialogFeedback('open', 'primary');
+    await wait(10);
+    assert.deepEqual(haptic.vibrate, [40]);
+    assert.equal(await fb.testHaptics(), 'native');
+  });
+  it('a helper that throws synchronously never blocks the pulses either', async () => {
+    window.Capacitor = { Plugins: { Haptics: nativePlugin(), HapticFeedback: { perform: () => { throw new Error('boom'); } } } };
+    fb.dialogFeedback('open', 'primary');
+    await wait(10);
+    assert.deepEqual(haptic.vibrate, [40]);
+  });
+  it('is not used on iOS', () => {
+    window.Capacitor = { getPlatform: () => 'ios', Plugins: { Haptics: nativePlugin(), HapticFeedback: helper() } };
+    fb.dialogFeedback('open', 'success');
+    assert.equal(calls.length, 0);
+  });
+  it('is not used when haptics are disabled', () => {
+    withHelper();
+    fb.setFeedbackLevels({ haptics: 'off' });
+    fb.dialogFeedback('open', 'success');
+    assert.equal(calls.length, 0);
+  });
+});
+
+describe('plain-language reasons when vibration is blocked', () => {
+  beforeEach(async () => { await wait(650); await reset(); });
+  it('names each blocker', () => {
+    assert.match(fb.hapticBlocker({ hasVibrator: false }), /no vibration motor/);
+    assert.match(fb.hapticBlocker({ hasVibrator: true, ringerMode: 'silent' }), /silent mode/);
+    assert.match(fb.hapticBlocker({ hasVibrator: true, ringerMode: 'normal', touchFeedback: false }), /Touch vibration is turned off/);
+    assert.equal(fb.hapticBlocker({ hasVibrator: true, ringerMode: 'vibrate', touchFeedback: true }), null);
+    assert.equal(fb.hapticBlocker(null), null);
+  });
+  it('the most basic blocker wins when several apply', () => {
+    assert.match(fb.hapticBlocker({ hasVibrator: false, ringerMode: 'silent', touchFeedback: false }), /no vibration motor/);
+    assert.match(fb.hapticBlocker({ hasVibrator: true, ringerMode: 'silent', touchFeedback: false }), /silent mode/);
+  });
+  it('describeResult prefers the blocker over a generic success message', () => {
+    assert.match(fb.describeResult('haptics', 'native', { hasVibrator: true, ringerMode: 'silent' }), /silent mode/);
+    assert.match(fb.describeResult('haptics', 'browser', { hasVibrator: true, ringerMode: 'normal', touchFeedback: true }), /signal sent/);
+    assert.match(fb.describeResult('haptics', 'unsupported', { hasVibrator: false }), /does not support vibration/);
+    assert.match(fb.describeResult('sound', 'played', { hasVibrator: false }), /media volume/);
+  });
+  it('the Test button shows the real reason on a silenced phone', async () => {
+    window.Capacitor = { Plugins: { Haptics: nativePlugin(), HapticFeedback: { perform: () => Promise.resolve({ hasVibrator: true, touchFeedback: true, ringerMode: 'silent' }), status: () => Promise.resolve({ hasVibrator: true, touchFeedback: true, ringerMode: 'silent' }) } } };
+    const els = { 'fb-haptics-status': { textContent: '' } };
+    document.getElementById = (id) => els[id] || null;
+    assert.equal(await fb.previewFeedback('haptics'), 'native');
+    assert.match(els['fb-haptics-status'].textContent, /silent mode/);
+  });
+  it('opening the screen warns up front, without pressing Test', async () => {
+    window.Capacitor = { Plugins: { HapticFeedback: { perform: () => Promise.resolve({}), status: () => Promise.resolve({ hasVibrator: true, touchFeedback: false, ringerMode: 'normal' }) } } };
+    const els = { 'fb-haptics-status': { textContent: '' }, 'fb-haptics-title': { textContent: '' }, 'fb-haptics-desc': { textContent: '' }, 'fb-sound-title': { textContent: '' }, 'fb-sound-desc': { textContent: '' } };
+    document.getElementById = (id) => els[id] || null;
+    fb.syncFeedbackSettings();
+    await wait(10);
+    assert.match(els['fb-haptics-status'].textContent, /Touch vibration is turned off/);
+  });
+  it('opening the screen on a healthy phone leaves the status line alone', async () => {
+    window.Capacitor = { Plugins: { HapticFeedback: { perform: () => Promise.resolve({}), status: () => Promise.resolve({ hasVibrator: true, touchFeedback: true, ringerMode: 'normal' }) } } };
+    const els = { 'fb-haptics-status': { textContent: 'keep' }, 'fb-haptics-title': { textContent: '' }, 'fb-haptics-desc': { textContent: '' }, 'fb-sound-title': { textContent: '' }, 'fb-sound-desc': { textContent: '' } };
+    document.getElementById = (id) => els[id] || null;
+    fb.syncFeedbackSettings();
+    await wait(10);
+    assert.equal(els['fb-haptics-status'].textContent, 'keep');
+  });
+  it('without the helper (browser) there is nothing to refresh', async () => {
+    window.Capacitor = null;
+    assert.equal(await fb.refreshHapticDiagnostics(), null);
+  });
+});
