@@ -192,7 +192,7 @@ try {
   let totalFsDocs = 0;
   COLLECTIONS.forEach(c => { totalFsDocs += c.snap.size || 0; });
   let html = `
-<div id="dbv-root" class="u-7f49e10 has-overflow d-flex st-background__e02427" style="overflow: hidden">
+<div id="dbv-root" class="u-7f49e10 has-overflow d-flex st-background__e02427 u-0da05dd">
 
   <div class="u-05209d6 d-flex">
     <div class="u-1043921 d-flex">
@@ -215,7 +215,7 @@ try {
     ).join('')}
   </div>
 
-  <div id="dbv-body" class="u-ee0901a has-overflow" style="overflow-y:auto">
+  <div id="dbv-body" class="u-ee0901a has-overflow u-86c6b8a">
 `;
   html += `<div id="dbv-pane-0">`;
   const _reads      = firestoreStats.reads  || 0;
@@ -277,7 +277,7 @@ try {
     <div class="u-b62856e text-right">
       <div class="u-dd009f5">${fsDocs} FS</div>
       <div class="st-font-size__569d78 dc-color" style="--d-color: ${mismatch?'#ff453a':'var(--text-muted)'}">
-        ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="var(--warning)" fill-opacity="0.12" stroke="var(--warning)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="var(--warning)" fill-opacity=".85"/></svg>':''}
+        ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="var(--warning)" fill-opacity="0.12" stroke="var(--warning)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="var(--warning)" fill-opacity=".85"/></svg>':''}
       </div>
     </div>
   </div>
@@ -312,8 +312,8 @@ try {
         <div class="u-0c93f7b">SQLite ↔ Firestore field mapping:</div>
         <div class="u-f96187d d-flex">
           ${doc.sqlite.map(([sk, fk]) =>
-            `<div style="font-size:0.61rem;font-family:var(--font-mono);background:rgba(0,122,255,0.08);padding:2px 7px;border-radius:8px">
-              <span style="color:var(--accent)">${sk}</span><span style="color:var(--text-muted)"> → </span><span style="color:var(--accent-cyan)">${fk}</span>
+            `<div class="u-67130d4 st-font-size__3b85a5 st-background__4b5b84 st-padding__8f0293 st-border-radius__28a50d">
+              <span class="st-color__a80552">${sk}</span><span class="st-color__5872de"> → </span><span class="st-color__0ae80b">${fk}</span>
             </div>`
           ).join('')}
         </div>
@@ -325,8 +325,8 @@ try {
         <div class="u-31c6720 d-grid">
           ${doc.fsFields.map(k => {
             const present = k in data;
-            return `<div style="font-size:0.62rem;display:flex;justify-content:space-between;gap:6px;padding:1px 0">
-              <span class="u-4597eb5 dc-color" style="--d-color:${present?'var(--text)':'#ff453a'}">${present?'':'<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-right:2px;"><path d="M10 4H26M10 32H26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="currentColor" fill-opacity=".85"/></svg>'}${k}</span>
+            return `<div class="u-28c1c75 d-flex st-font-size__8303b5 st-padding__dd8474">
+              <span class="u-4597eb5 dc-color" style="--d-color:${present?'var(--text)':'#ff453a'}">${present?'':'<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-9b5cd9b d-inline-block"><path d="M10 4H26M10 32H26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="currentColor" fill-opacity=".85"/></svg>'}${k}</span>
               <span>${present ? fmtVal(data[k]) : ''}</span>
             </div>`;
           }).join('')}
@@ -378,7 +378,7 @@ try {
   html += `<div id="dbv-pane-3" class="d-none">`;
   html += `<div class="u-5beb8fb">
     <div class="u-87be69b">Firestore → SQLite → JS Variable Map</div>
-    <div class="has-overflow" style="overflow-x:auto">
+    <div class="has-overflow u-987eb2a">
     <table class="u-90d65a5">
       <thead><tr class="u-c90a74f">
         <th class="u-db30752">Firestore</th>
@@ -391,11 +391,11 @@ try {
           const fs = c.snap.size || 0;
           const sq = sqliteCounts[c.sqliteKey] || 0;
           const ok = Math.abs(fs - sq) === 0;
-          return `<tr style="border-bottom:1px solid rgba(128,128,128,0.07)">
-            <td style="padding:3px 6px;color:var(--accent)">${c.fsName}</td>
-            <td style="padding:3px 6px;color:var(--accent-cyan)">${c.sqliteKey}</td>
-            <td style="padding:3px 6px;color:var(--text-muted)">${c.jsVar}</td>
-            <td class="text-right st-padding__159b3a dc-color" style="--d-color:${ok?'var(--text)':'#ff453a'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:-1px;margin-left:2px;"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
+          return `<tr class="st-border-bottom__f9e37c">
+            <td class="st-padding__159b3a st-color__a80552">${c.fsName}</td>
+            <td class="st-padding__159b3a st-color__0ae80b">${c.sqliteKey}</td>
+            <td class="st-padding__159b3a st-color__5872de">${c.jsVar}</td>
+            <td class="text-right st-padding__159b3a dc-color" style="--d-color:${ok?'var(--text)':'#ff453a'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -436,13 +436,13 @@ try {
     const fyCount = fy.fyCloseCount || 0;
     const fyDate  = fy.lastYearClosedDate ? new Date(fy.lastYearClosedDate).toLocaleDateString('en-PK',{day:'numeric',month:'short',year:'numeric'}) : '—';
     const fySignal = yearCloseSignalDoc.exists ? yearCloseSignalDoc.data() : null;
-    return `<div style="padding:10px 12px;background:rgba(128,128,128,0.06);border-radius:12px;font-size:0.7rem">
-      <div style="font-weight:700;color:var(--text);margin-bottom:5px">Financial Year Status</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;color:var(--text-muted)">
-        <div>Close count: <b style="color:var(--accent)">${fyCount}</b></div>
-        <div>Last closed: <b style="color:var(--text)">${fyDate}</b></div>
-        <div>Signal type: <b style="color:var(--text-muted)">${fySignal ? fySignal.type || '—' : '—'}</b></div>
-        <div>Signal age: <b style="color:var(--text)">${fySignal && fySignal.triggeredAt ? ago(fySignal.triggeredAt) : '—'}</b></div>
+    return `<div class="text-xs st-padding__2285bd st-background__2e1b32 st-border-radius__cc1df6 st-font-size__8e87b7">
+      <div class="u-3fc56fa st-font-weight__e3ec02 st-color__f045bb">Financial Year Status</div>
+      <div class="u-8effc0e d-grid st-color__5872de">
+        <div>Close count: <b class="st-color__a80552">${fyCount}</b></div>
+        <div>Last closed: <b class="st-color__f045bb">${fyDate}</b></div>
+        <div>Signal type: <b class="st-color__5872de">${fySignal ? fySignal.type || '—' : '—'}</b></div>
+        <div>Signal age: <b class="st-color__f045bb">${fySignal && fySignal.triggeredAt ? ago(fySignal.triggeredAt) : '—'}</b></div>
       </div>
     </div>`;
   })()}

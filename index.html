@@ -459,7 +459,47 @@ html[data-bio="1"] .splash-brand { display: none; }
 </script><script src="vendor/leaflet/leaflet.js" defer></script><script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
-window._mkPopover=function(anchor,popId,items,onSelect){var existing=document.getElementById(popId);if(existing){window.setDisplay(existing, window.getDisplay(existing)==='none'?'block':'none');return;}var pop=document.createElement('div');pop.id=popId;pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border-bottom__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-f7a3790');items.forEach(function(item){var d=document.createElement('div');d.textContent=item.label;d.dataset.val=item.value;d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'u-1cd2eeb');d.classList.add('hv-pop');d.onclick=function(){var btn=anchor.querySelector('button');if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}onSelect(item.value,item.label,d);window.setDisplay(pop, 'none');};pop.appendChild(d);});window.setStyle(anchor, 'position', 'st-position__d461c9');anchor.appendChild(pop);document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)window.setDisplay(pop, 'none');}},true);};
+window._mkPopover=function(anchor,popId,items,onSelect,opts){
+  opts=opts||{};
+  var existing=document.getElementById(popId);
+  if(existing){window.setDisplay(existing,window.getDisplay(existing)==='none'?'block':'none');return;}
+  var pop=document.createElement('div');pop.id=popId;
+  pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-5f74efd',opts.fullWidth?'st-max-height__590a94 u-f59246f':'u-49c91a4');
+  var mark=function(v){
+    if(opts.selected===undefined)return;
+    Array.prototype.forEach.call(pop.children,function(row){
+      var on=row.dataset.val===String(v);
+      window.setStyle(row,'color',on?'st-color__a80552':'st-color__5c5d8f');
+      var c=row.querySelector('[data-check]');if(c)window.setStyle(c,'visibility',on?'st-visibility__8a20bb':'st-visibility__e77555');
+    });
+  };
+  items.forEach(function(item){
+    var d=document.createElement('div');d.dataset.val=item.value;
+    if(item.desc){
+      d.classList.add('st-padding__8bfeea', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'd-flex', 'st-align-items__7c6197', 'u-4d20c0a');
+      var txt=document.createElement('div');
+      var t=document.createElement('div');t.textContent=item.label;t.classList.add('st-font-size__370c86', 'st-font-weight__eed0f8');
+      var sub=document.createElement('div');sub.textContent=item.desc;sub.classList.add('st-font-size__8e87b7', 'st-color__5872de', 'st-font-weight__7e3a94', 'st-margin-top__7a21c6');
+      txt.appendChild(t);txt.appendChild(sub);d.appendChild(txt);
+      var chk=document.createElement('span');chk.setAttribute('data-check','');chk.textContent='\u2713';chk.classList.add('st-visibility__e77555', 'st-font-weight__e3ec02');d.appendChild(chk);
+    }else{
+      d.textContent=item.label;
+      d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'u-1cd2eeb');
+    }
+    d.classList.add('hv-pop');
+    d.onclick=function(){
+      var btn=anchor.querySelector('button');
+      if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}
+      onSelect(item.value,item.label,d);
+      mark(item.value);
+      window.setDisplay(pop,'none');
+    };
+    pop.appendChild(d);
+  });
+  mark(opts.selected);
+  window.setStyle(anchor,'position','st-position__d461c9');anchor.appendChild(pop);
+  document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)window.setDisplay(pop,'none');}},true);
+};
 
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
@@ -923,7 +963,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             <option value="tab_payments">Payments Tab</option>
           </select>
         </div>
-        <button id="recycleBinEmptyBtn" onclick="(async()=>{await emptyRecycleBin()})()" style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border-radius:999px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.10);color:#ef4444;font-size:0.78rem;font-weight:600;">
+        <button class="d-flex st-align-items__7c6197 st-cursor__3b6a3a st-padding__b2e03a st-border-radius__a28678 st-border__250166 st-background__42ed8a st-color__b0eb59 st-font-size__ca0c64 st-font-weight__eed0f8 u-8150fe9" id="recycleBinEmptyBtn" onclick="(async()=>{await emptyRecycleBin()})()">
           <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>
           <span id="recycleBinEmptyBtnLabel">Empty Bin</span>
         </button>
@@ -998,7 +1038,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             autocomplete="off"
             class="u-13f34eb"
           >
-          <div id="payment-transfer-from-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f" style="overflow-y:auto"></div>
+          <div id="payment-transfer-from-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
         </div>
         <div class="field u-a8a9035">
           <label>To Entity</label>
@@ -1011,7 +1051,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             autocomplete="off"
             class="u-13f34eb"
           >
-          <div id="payment-transfer-to-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f" style="overflow-y:auto"></div>
+          <div id="payment-transfer-to-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
         </div>
       </div>
       <div class="grid-inputs u-mb-15">
@@ -1286,28 +1326,47 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Sound &amp; Haptics</h2>
   </div>
   <div class="screen-body">
-    <p class="settings-group-label">Feedback</p>
-    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
-      <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Sounds</p>
-        <p class="settings-list-item-desc">Short tones for dialogs, switches and toggle buttons</p>
+    <div class="fb-section">
+      <div class="fb-head">
+        <div class="fb-head-text">
+          <p class="fb-head-title">Haptic Feedback Intensity</p>
+          <p class="fb-head-desc">Hardware vibrator pulse strength and crisp tactile clicks</p>
+        </div>
+        <button type="button" class="fb-test-btn" onclick="previewFeedback('haptics')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V12m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.5a6 6 0 0 1-5-2.7L4.6 15a1.5 1.5 0 0 1 2.3-1.9L9 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Test</span>
+        </button>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-sound" data-feedback="manual" checked onchange="toggleFeedback('sound',this.checked)"><span class="theme-toggle-track"></span></label>
-    </div>
-    <div class="settings-list-item" onclick="if(!event.target.closest('label')){var i=this.querySelector('input');i.checked=!i.checked;i.dispatchEvent(new Event('change'))}">
-      <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Vibration</p>
-        <p class="settings-list-item-desc">Haptic feedback for dialogs, switches and toggle buttons</p>
+      <div id="fb-haptics-wrap" class="fb-select-wrap">
+        <button type="button" class="fb-select" onclick="openFeedbackLevelMenu('haptics')">
+          <svg class="fb-select-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="3" width="8" height="18" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 8v8M2 10v4M19.5 8v8M22 10v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="fb-select-text"><span class="fb-select-title" id="fb-haptics-title">Medium</span><span class="fb-select-desc" id="fb-haptics-desc">Balanced standard tactile click</span></div>
+          <svg class="fb-select-caret" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
       </div>
-      <label class="theme-toggle-switch"><input type="checkbox" id="fb-haptics" data-feedback="manual" checked onchange="toggleFeedback('haptics',this.checked)"><span class="theme-toggle-track"></span></label>
+      <p class="fb-status" id="fb-haptics-status"></p>
     </div>
-    <div class="settings-list-item" onclick="runFeedbackTest()">
-      <div class="settings-list-item-info">
-        <p class="settings-list-item-title">Test sound &amp; vibration</p>
-        <p class="settings-list-item-desc" id="fb-status">Tap to check what this device can do</p>
+    <div class="fb-section">
+      <div class="fb-head">
+        <div class="fb-head-text">
+          <p class="fb-head-title">Sound Feedback Intensity</p>
+          <p class="fb-head-desc">Audible acoustic key click volume (Extreme Boost clears freely &amp; loudly)</p>
+        </div>
+        <button type="button" class="fb-test-btn" onclick="previewFeedback('sound')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>Play</span>
+        </button>
       </div>
+      <div id="fb-sound-wrap" class="fb-select-wrap">
+        <button type="button" class="fb-select" onclick="openFeedbackLevelMenu('sound')">
+          <svg class="fb-select-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <div class="fb-select-text"><span class="fb-select-title" id="fb-sound-title">Standard (Crisp)</span><span class="fb-select-desc" id="fb-sound-desc">Crisp digital audio click</span></div>
+          <svg class="fb-select-caret" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <p class="fb-status" id="fb-sound-status"></p>
     </div>
-    <p class="settings-list-item-desc u-feedback-note">These settings apply to this device only.</p>
+    <p class="settings-list-item-desc u-feedback-note">These settings apply to this device only and cover dialogs, switches and toggle buttons.</p>
   </div>
 </div>
 <div id="close-financial-year-screen" class="standalone-screen d-none">
@@ -1399,7 +1458,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006 d-flex">
       <div class="u-8124785">
-        <div id="entity-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="overflow: hidden" onclick="previewPhotoClick('entity')">
+        <div id="entity-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21 u-0da05dd" onclick="previewPhotoClick('entity')">
           <svg id="entity-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="entity-photo-img" src="" alt="" class="u-b19d6a5 d-none">
         </div>
@@ -1514,7 +1573,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006 d-flex">
       <div class="u-8124785">
-        <div id="cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="overflow: hidden" onclick="previewPhotoClick('cust')">
+        <div id="cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21 u-0da05dd" onclick="previewPhotoClick('cust')">
           <svg id="cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="cust-photo-img" src="" alt="" class="u-b19d6a5 d-none">
         </div>
@@ -1600,7 +1659,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div class="u-8f6d006 d-flex">
       <div class="u-8124785">
-        <div id="rep-cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21" style="overflow: hidden" onclick="previewPhotoClick('rep-cust')">
+        <div id="rep-cust-photo-preview" class="u-c86c980 has-overflow d-flex st-background__356c02 st-border-bottom__9bad21 u-0da05dd" onclick="previewPhotoClick('rep-cust')">
           <svg id="rep-cust-photo-placeholder" width="38" height="38" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-bf1319f"><circle cx="18" cy="12.5" r="6.2" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.7"/><path d="M5.5 31.5C5.5 23.5 12 20.5 18 20.5S30.5 23.5 30.5 31.5Z" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
           <img id="rep-cust-photo-img" src="" alt="" class="u-b19d6a5 d-none">
         </div>
@@ -1654,13 +1713,13 @@ window._showLogoutConfirmDialog = async function() {
   <span></span>
   <span></span>
 </button>
-<span id="system-name-display" style="left: 50%" class="shimmer-text u-39e031c st-transform__1b8ae7 st-pointer-events__8b1364">MAHMOOD KHAN</span>
+<span id="system-name-display" class="shimmer-text u-39e031c st-transform__1b8ae7 st-pointer-events__8b1364 u-66682c1">MAHMOOD KHAN</span>
 </div>
-<div id="photo-lightbox-modal" class="u-5dc23f3 d-none st-background__c91ee5" style="inset: 0">
-  <div id="photo-lightbox-inner" class="u-63b5e54 has-overflow d-flex" style="overflow: hidden">
+<div id="photo-lightbox-modal" class="u-5dc23f3 d-none st-background__c91ee5 u-23fc511">
+  <div id="photo-lightbox-inner" class="u-63b5e54 has-overflow d-flex u-0da05dd">
     <img id="photo-lightbox-img" src="" alt="" class="u-091ed00 d-block">
   </div>
-  <div class="u-976b6bc d-flex st-pointer-events__8b1364" style="left: 0">
+  <div class="u-976b6bc d-flex st-pointer-events__8b1364 u-2febf94">
     <div class="u-9062975 d-flex st-pointer-events__3177af">
       <button onclick="_lbZoom(-1)" title="Zoom out" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826">−</button>
       <span id="photo-lb-zoom-label" class="u-11f44de">1×</span>
@@ -1669,7 +1728,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <button onclick="closePhotoLightbox()" class="u-61d51c3 d-flex st-background__edf734 st-border-bottom__d9e826 st-pointer-events__3177af">✕</button>
   </div>
-  <div class="u-7b1cb17 st-pointer-events__8b1364" style="left: 0">PINCH OR SCROLL TO ZOOM · DOUBLE-TAP TO RESET</div>
+  <div class="u-7b1cb17 st-pointer-events__8b1364 u-2febf94">PINCH OR SCROLL TO ZOOM · DOUBLE-TAP TO RESET</div>
 </div>
 <div id="photo-capture-modal" class="cam-modal d-none" role="dialog" aria-modal="true" aria-label="Camera">
   <div class="cam-top">
@@ -1830,7 +1889,7 @@ oninput="renderRepCustomerTable()">
 <button class="btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 <button class="btn-theme u-4ae4ad1 d-inline-flex st-border-bottom__38fcbe" onclick="openRepCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
-<div class="u-7a02ed1 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
+<div class="u-7a02ed1 has-overflow scroll-y scroll-x u-56db1ea">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
@@ -2118,7 +2177,7 @@ oninput="filterCustomers()">
 <button class="btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 <button class="btn-theme u-2386b90 d-inline-flex st-border-bottom__d088ee" onclick="openCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
-<div class="u-7a02ed1 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
+<div class="u-7a02ed1 has-overflow scroll-y scroll-x u-56db1ea">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
@@ -2477,7 +2536,7 @@ Select a store...
 <div class="section-header">
 <h3 class="u-heading-main" >Raw Material Inventory</h3>
 </div>
-<div class="u-53e2e10 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
+<div class="u-53e2e10 has-overflow scroll-y scroll-x u-56db1ea">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
@@ -2611,7 +2670,7 @@ placeholder="Search expenses or entities..."
 oninput="handleExpenseSearch()"
 autocomplete="off" class="u-13f34eb"
 >
-<div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f" style="overflow-y: auto"></div>
+<div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
 </div>
 </div>
 <div class="u-aa4c87b d-flex">
@@ -2833,7 +2892,7 @@ oninput="renderUnifiedTable()">
 </select>
 </div>
 </div>
-<div id="unified-table-container" class="u-53e2e10 has-overflow scroll-y scroll-x" style="overflow-x: auto; overflow-y: auto">
+<div id="unified-table-container" class="u-53e2e10 has-overflow scroll-y scroll-x u-56db1ea">
 <table class="u-table-full" >
 <thead class="u-thead-sticky" >
 <tr class="u-thead-bg" >
@@ -3048,7 +3107,7 @@ async function renderStoreList() {
             Key: <span class="u-1e86a25">${s.key}</span>
             &nbsp;·&nbsp;
             <span class="u-text-accent">${formulaNames[s.key] || 'No formula'}</span>
-            ${isUsed ? '&nbsp;·&nbsp;<span style="color:var(--text-muted);">Has records</span>' : ''}
+            ${isUsed ? '&nbsp;·&nbsp;<span class="st-color__5872de">Has records</span>' : ''}
           </div>
           <div class="u-6ca7dd1">
             Sale Price: ${(s.salePrice != null && s.salePrice > 0) ? s.salePrice : 0}/kg
@@ -3056,7 +3115,7 @@ async function renderStoreList() {
         </div>
         <div class="u-3141675 d-flex">
           <button onclick="editStore(${i})" class="u-a3d5906 text-xs st-background__fbe8aa st-border-bottom__89f1f8">Edit</button>
-          ${!isBuiltin && !isUsed ? `<button onclick="deleteStore(${i})" style="background:rgba(239,68,68,0.1);border:1px solid var(--danger);color:var(--danger);border-radius:8px;padding:5px 10px;font-size:0.7rem;font-weight:700;cursor:pointer;">Delete</button>` : ''}
+          ${!isBuiltin && !isUsed ? `<button onclick="deleteStore(${i})" class="text-xs st-background__474cf1 st-border-bottom__23471e st-color__497726 st-border-radius__28a50d st-padding__b2e03a st-font-size__8e87b7 st-font-weight__e3ec02 st-cursor__3b6a3a">Delete</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -3279,7 +3338,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var origOpenDevice = window.openStandaloneScreen;
   window.openStandaloneScreen = function(id) {
     origOpenDevice(id);
-    if (id === 'feedback-screen' && typeof window.syncFeedbackToggles === 'function') window.syncFeedbackToggles();
+    if (id === 'feedback-screen' && typeof window.syncFeedbackSettings === 'function') window.syncFeedbackSettings();
     if (id === 'device-display-screen') {
       setTimeout(function() {
         if (typeof loadDeviceList === 'function') loadDeviceList();

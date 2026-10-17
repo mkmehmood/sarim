@@ -3799,7 +3799,7 @@ ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(
 </div>
 <p class="dc-color st-font-size__8113a0 st-font-style__e698a0" style="--d-color: ${isOutSide ? 'var(--danger)' : 'var(--accent-emerald)'}">${isOutSide ? `Stock Transfer Out &rarr; ${esc(peerLabel)}` : `Stock Transfer In &larr; ${esc(peerLabel)}`}</p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
-${item.transferNote ? `<p><span>Note:</span> <span style="color:var(--text-muted);">${esc(item.transferNote)}</span></p>` : ''}
+${item.transferNote ? `<p><span>Note:</span> <span class="st-color__5872de">${esc(item.transferNote)}</span></p>` : ''}
 ${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`)}
 `;
 } else {
@@ -3812,13 +3812,13 @@ ${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>
 ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
 </div>
 ${item.isReturn ? `
-<p style="color:var(--accent-emerald);font-size:0.75rem;font-style:italic;">${item.isMerged ? 'Merged returns by' : 'Returned by'} ${esc(item.returnedBy || 'Representative')}</p>
+<p class="st-color__a4c6ac st-font-size__8113a0 st-font-style__e698a0">${item.isMerged ? 'Merged returns by' : 'Returned by'} ${esc(item.returnedBy || 'Representative')}</p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(safeValue(item.net))} kg</span></p>
 ${returnsByStoreHtml}
 ${item.isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`}
 ` : `
 ${item.grossWt ? `<p><span>Gross Weight:</span> <span class="qty-val">${fmtNum(safeValue(item.grossWt))} kg</span></p>` : ''}
-${item.contWt ? `<p><span>Container:</span> <span style="color:var(--text-muted);">${fmtNum(safeValue(item.contWt))} kg</span></p>` : ''}
+${item.contWt ? `<p><span>Container:</span> <span class="st-color__5872de">${fmtNum(safeValue(item.contWt))} kg</span></p>` : ''}
 <p><span>Net Weight:</span> <span class="qty-val">${fmtNum(safeValue(item.net))} kg</span></p>
 <p><span>Cost Price:</span> <span class="cost-val">${fmtNum(safeValue(item.cp))}/kg</span></p>
 <p><span>Sale Price:</span> <span class="rev-val">${fmtNum(safeValue(item.sp))}/kg</span></p>
@@ -5678,7 +5678,7 @@ if (_rawBreakdownEl) {
     const _bId = 'perf-sum-raw-breakdown';
     const _rowsHtml = _rawEntries.map(([name, data]) => `
 <div class="u-e665e23 d-flex">
-<span class="u-0990a82 has-overflow" style="overflow: hidden">${esc(name)}</span>
+<span class="u-0990a82 has-overflow u-0da05dd">${esc(name)}</span>
 <span class="u-ae6a320 d-flex">
 <span class="u-d59bb54 text-xs">${fmtNum(safeNumber(data.qty,0))} kg</span>
 <span class="cost-val u-6734184 text-right">${fmtAmt(data.cost)}</span>
@@ -5990,7 +5990,7 @@ if (soldBreakdownEntries.length > 0) {
 const soldBreakdownId = `sold-breakdown-${store}-${index}`;
 const soldRowsHtml = soldBreakdownEntries.map(([cust, qty]) => `
 <div class="u-dd56633 d-flex">
-<span class="u-ba8bce3 has-overflow text-xs" style="overflow: hidden">${esc(cust)}</span>
+<span class="u-ba8bce3 has-overflow text-xs u-0da05dd">${esc(cust)}</span>
 <span class="u-24324ab text-xs">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 soldBreakdownHtml = `
@@ -6049,7 +6049,7 @@ if (combinedSoldEntries.length > 0) {
 const combinedSoldBreakdownId = `sold-breakdown-combined`;
 const combinedSoldRowsHtml = combinedSoldEntries.map(([cust, qty]) => `
 <div class="u-dd56633 d-flex">
-<span class="u-ba8bce3 has-overflow text-xs" style="overflow: hidden">${esc(cust)}</span>
+<span class="u-ba8bce3 has-overflow text-xs u-0da05dd">${esc(cust)}</span>
 <span class="u-24324ab text-xs">${fmtNum(safeValue(qty))} kg</span>
 </div>`).join('');
 combinedSoldBreakdownHtml = `
@@ -6072,7 +6072,7 @@ combinedCard.className = `overview-card liquid-card highlight-card`;
 combinedCard.innerHTML = `
 <h4 class="u-b68d496">Total Combined</h4>
 <p><span>Fresh Production:</span> <span class="qty-val">${fmtNum(safeValue(totalCombined.production))} kg</span></p>
-${totalCombined.returns > 0 ? `<p><span>Total Returns:</span> <span style="color:#10b981; font-weight:800;">${fmtNum(safeValue(totalCombined.returns))} kg</span></p>` : ''}
+${totalCombined.returns > 0 ? `<p><span>Total Returns:</span> <span class="st-color__acd97a st-font-weight__2b9532">${fmtNum(safeValue(totalCombined.returns))} kg</span></p>` : ''}
 <p><span>Total Sold:</span> <span class="cost-val">${fmtNum(safeValue(totalCombined.sold))} kg</span></p>
 ${combinedSoldBreakdownHtml}
 <div class="u-9cc1f8f">
@@ -6571,8 +6571,8 @@ const _rrDone = _rrUsedIds.has(item.id);
 const _rrExp = safeValue(item.expiredQty), _rrRet = safeValue(item.returnedQty);
 card.innerHTML = `
 <div class="payment-badge ${_rrDone ? 'received' : 'collection'}">${_rrDone ? 'RECONCILED' : 'REP RETURN'}</div>
-<div class="customer-name" style="margin-top:12px;">${esc(item.customerName)} ${repBadge}</div>
-<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:5px;margin-bottom:2px;">
+<div class="customer-name st-margin-top__56f435">${esc(item.customerName)} ${repBadge}</div>
+<div class="u-7c633c9 d-flex st-align-items__7c6197 st-flex-wrap__62da06 st-margin-top__55cec0">
 <span class="u-fs-sm2 u-text-muted">${dateDisplay}</span>
 ${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : ''}
 </div>
@@ -6838,7 +6838,7 @@ ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(
 </div>
 <p><span class="u-b68d496">${escapeHtml(getStoreLabel(item.store))}</span> <span class="u-d59bb54"> &rarr; </span> <span class="u-3b9712c">${escapeHtml(getStoreLabel(item.transferPeerStore))}</span></p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
-${item.transferNote ? `<p><span>Note:</span> <span style="color:var(--text-muted);">${escapeHtml(item.transferNote)}</span></p>` : ''}
+${item.transferNote ? `<p><span>Note:</span> <span class="st-color__5872de">${escapeHtml(item.transferNote)}</span></p>` : ''}
 ${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)}
 `;
 fragment.appendChild(div);

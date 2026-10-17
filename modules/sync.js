@@ -3509,12 +3509,12 @@ export async function showSyncHealthPanel() {
       </div>
       <div class="u-16949d4">
         <span class="u-9470ace"> ${ok} collections OK</span>
-        ${pending ? `&nbsp;·&nbsp;<span style="color:#f59e0b"> ${pending} issues</span>` : ''}
+        ${pending ? `&nbsp;·&nbsp;<span class="st-color__6a6a23"> ${pending} issues</span>` : ''}
       </div>
       ${results.issues.map(s => `
-        <div style="padding:6px 10px;margin-top:4px;background:rgba(245,158,11,.1);border-radius:8px;font-size:.78rem">
+        <div class="st-padding__7aab68 st-margin-top__96ad60 st-background__0f26c3 st-border-radius__28a50d st-font-size__f63147">
           <strong>${s.collection}</strong> — never synced · ${s.localRecords} local records
-          ${s.hasPendingChanges ? ' · <span style="color:#f87171">pending changes</span>' : ''}
+          ${s.hasPendingChanges ? ' · <span class="st-color__e85027">pending changes</span>' : ''}
         </div>`).join('')}
       <div class="u-db7c8ab">
         Last sync: ${results.valid[0]?.lastSync || 'Never'}
@@ -3664,7 +3664,7 @@ ${_showGoogle ? `<div class="auth-divider"><span>or</span></div>
 </svg>
 <span>Continue with Google</span>
 </button>
-<div id="gsi-btn-container" style="display:none;"></div>` : ''}
+<div id="gsi-btn-container" class="d-none"></div>` : ''}
 <p class="auth-help">No account? <strong>Contact the administrator</strong> to have yours added.</p>
 <div class="auth-secure">
 <svg width="14" height="14" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M18 3.5L30 8V18C30 25.5 24.5 30.5 18 33C11.5 30.5 6 25.5 6 18V8Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M12.3 18.2L16.4 22.3 24 14.3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
@@ -4249,7 +4249,7 @@ const actions = isMe
     ].join('');
 return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f">' +
   '<div class="u-855cc88 d-flex">' + dot +
-  '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow" style="overflow: hidden">' +
+  '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow u-0da05dd">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em style=\"color:var(--text-muted);font-size:0.65rem;\">(you)</em>' : '') + '</div>' +
   '<div class="u-28c8f7e d-flex">' +
   (acct.role === 'admin'

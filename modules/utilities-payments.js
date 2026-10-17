@@ -540,9 +540,9 @@ const metrics = [
 document.getElementById('comparisonBody').innerHTML = metrics.map(m => {
 const cells = repNames.map(r => {
 const val = fmtAmt(safeValue((comp[r]||{})[m.key]));
-const style = m.key === 'cost' ? ' style="color:var(--danger)"' : m.key === 'coll' ? ' style="color:var(--accent)"' : '';
-const cls = m.cls ? ` class="${m.cls}"` : '';
-return `<td${cls}${style}>${val}</td>`;
+const colorCls = m.key === 'cost' ? 'st-color__497726' : m.key === 'coll' ? 'st-color__a80552' : '';
+const cls = (m.cls || colorCls) ? ` class="${[m.cls, colorCls].filter(Boolean).join(' ')}"` : '';
+return `<td${cls}>${val}</td>`;
 }).join('');
 const rowCls = m.winner ? ' class="winner-cell"' : '';
 return `<tr${rowCls}><td>${m.label}</td>${cells}</tr>`;
@@ -3129,7 +3129,7 @@ const percentage = totalExpenses > 0 ? (amount / totalExpenses * 100).toFixed(2)
 html += `
 <div class="u-5bb520e d-flex">
 <span class="u-text-main" >${name}:</span>
-<div class="text-right" style="text-align: right;">
+<div class="text-right">
 <span class="u-d2c10bd">${formatCurrency(amount)}</span>
 <span class="u-b51a44d">(${percentage}%)</span>
 </div>
@@ -3578,12 +3578,12 @@ item.innerHTML = `
 <span class="txn-label-badge txn-warning">EXPENSE</span>
 <div class="cost-val u-bb4c6c9">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
 </div>
-<button id="${_expPhotoBadgeId}" title="View photo" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()"
-  style="display:none;align-items:center;gap:3px;padding:3px 7px;border:none;border-radius:6px;cursor:pointer;font-size:0.62rem;font-weight:700;background:rgba(99,102,241,0.15);color:#818cf8;white-space:nowrap;">
+<button class="d-none st-align-items__7c6197 st-padding__dd269a st-border__2eda1d st-border-radius__0dc840 st-cursor__3b6a3a st-font-size__8303b5 st-font-weight__e3ec02 st-background__c6ed62 st-color__2a7210 u-45da04f" id="${_expPhotoBadgeId}" title="View photo" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()"
+ >
   <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
   Photo
 </button>
-${exp.isMerged ? '' : `<button class="btn btn-sm u-p-4-8" style="color:var(--accent);border:1px solid var(--accent);background:transparent;" onclick="startEdit('expense','${esc(exp.id)}')">✎</button><button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">⌫</button>`}
+${exp.isMerged ? '' : `<button class="btn btn-sm u-p-4-8 st-color__a80552 st-border-bottom__89f1f8 st-background__a8869d" onclick="startEdit('expense','${esc(exp.id)}')">✎</button><button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">⌫</button>`}
 </div>
 `;
 _expFrag.appendChild(item);
@@ -4942,7 +4942,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
       return `<div class="u-b8ea487 d-flex st-background__356c02 st-border-bottom__e54b2f">
         <div class="u-6b665db u-f2399ff u-cdfcec8 st-border-radius__9eaa9c dc-background u-b62856e" style="--d-background: ${colDot}"></div>
-        <div class="u-8b4ab7f has-overflow" style="overflow: hidden">
+        <div class="u-8b4ab7f has-overflow u-0da05dd">
           <div class="u-f3709bc d-flex">
             ${nameHtml}
             ${amountHtml}
@@ -4960,8 +4960,8 @@ export async function renderRecycleBin(filterCollection = 'all') {
         </div>
         <div class="u-d533703 d-flex">
           ${canRecover
-            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" style="display:inline-flex;align-items:center;gap:4px;padding:7px 13px;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:999px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
-            : `<span style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">—</span>`}
+            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" class="u-8f09525 d-inline-flex st-align-items__7c6197 st-padding__5905b7 st-background__a967b8 st-color__acd97a st-border-bottom__539edd st-border-radius__a28678 st-font-size__ca0c64 st-font-weight__e3ec02 st-cursor__3b6a3a"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
+            : `<span class="text-xs st-font-size__8e87b7 st-color__5872de st-padding__f26165">—</span>`}
           <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs d-inline-flex st-background__2d27c1 st-border-bottom__111288"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
@@ -6027,7 +6027,7 @@ html += `
 <div class="u-cf7d8a2 st-background__356c02 hv-highlight"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'supplier', '${safeId}')">
 <strong>${esc(supplier.name)}</strong>
-${supplier.phone ? `<span style="font-size: 0.7rem; color: var(--text-muted); margin-left: 8px;">${phoneActionHTML(supplier.phone)}</span>` : ''}
+${supplier.phone ? `<span class="u-8ce609a st-font-size__8e87b7 st-color__5872de">${phoneActionHTML(supplier.phone)}</span>` : ''}
 </div>`;
 });
 } else {
@@ -6669,7 +6669,7 @@ return;
 list.innerHTML = salesRepsList.map((rep, i) => `
 <div class="d-flex st-align-items__7c6197 st-padding__8d6c25 st-background__f38efd st-border-bottom__e54b2f st-border-radius__c8d49a u-4d20c0a${i === 0 ? ' st-border__ad358e' : ''}">
 <div class="u-2c42b11 d-flex">
-<span class="u-76ebb48 has-overflow" style="overflow: hidden">${esc(rep)}</span>
+<span class="u-76ebb48 has-overflow u-0da05dd">${esc(rep)}</span>
 <span class="st-font-size__8303b5 st-font-weight__e3ec02 u-3d59ac9 u-fa74faf dc-color u-b62856e" style="--d-color: ${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
 <button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}"></button>
@@ -6714,7 +6714,7 @@ return `
 <div class="u-5e4bab7 d-flex">
 <span class="u-555bcbe">${esc(user.name)}</span>
 </div>
-<div class="u-91a590f d-flex">${tabBadges || '<span style="font-size:0.65rem;color:var(--text-secondary);">No tabs assigned</span>'}</div>
+<div class="u-91a590f d-flex">${tabBadges || '<span class="st-font-size__c3e9d8 st-color__ce14cb">No tabs assigned</span>'}</div>
 </div>
 <button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}"></button>
 </div>`;
@@ -7781,7 +7781,7 @@ item.innerHTML = `
     ${t.description ? `<div class="u-fs-sm2 u-text-muted">${esc(t.description)}</div>` : ''}
   </div>
   <div class="u-d94b2d8 d-flex">
-    <div class="text-right" style="text-align:right;">
+    <div class="text-right">
       <span class="u-56e02ab">TRANSFER</span>
       <div class="cost-val u-bb4c6c9">${fmtAmt(t.amount)}</div>
     </div>

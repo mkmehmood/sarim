@@ -1119,7 +1119,7 @@ itemContent = `
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null)}${_mergedBadgeHtml(t, {inline:true})}</div>
     <div class="u-d8853f1">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_repDisplayUnitPrice)} = ${await formatCurrency(t.totalValue)}</div>
-    ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)}</div>` : ''}
+    ${hasPartialPayment ? `<div class="text-xs st-font-size__8e87b7 st-color__a4c6ac st-margin-top__7a21c6">Paid: ${await formatCurrency(partialPaid)}</div>` : ''}
   </div>
   <div class="u-d94b2d8 d-flex">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
@@ -1731,7 +1731,7 @@ return;
 let tableHTML = `
 <div class="section liquid-card u-c1e18cf">
 <h4 class="u-e2215b2">${esc(headerText)}</h4>
-<div class="u-7c8c142 has-overflow scroll-y" style="overflow-y: auto">
+<div class="u-7c8c142 has-overflow scroll-y u-86c6b8a">
 `;
 activityData.forEach(item => {
 let typeIcon = '';

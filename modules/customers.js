@@ -431,12 +431,12 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
-    ${_rrExp > 0 ? `<div style="font-size:0.7rem;color:var(--text-muted);">Return | <span style="color:#8B4513;">Expired credit</span></div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">${fmtNum(_rrRet)} kg | <span style="color:#8B4513;">${fmtNum(_rrExp)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''} = ${await formatCurrency(Number(t.returnValue) || 0)}</span></div>` : `<div style="font-size:0.7rem;color:var(--text-muted);">Return</div>
-    <div style="font-size:0.75rem;color:var(--accent-emerald);">${fmtNum(_rrRet)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}${Number(t.returnValue) > 0 ? ` = ${await formatCurrency(Number(t.returnValue))}` : ''}</div>`}
-    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
+    ${_rrExp > 0 ? `<div class="text-xs st-font-size__8e87b7 st-color__5872de">Return | <span class="st-color__44bbf8">Expired credit</span></div>
+    <div class="st-font-size__8113a0 st-color__a4c6ac">${fmtNum(_rrRet)} kg | <span class="st-color__44bbf8">${fmtNum(_rrExp)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''} = ${await formatCurrency(Number(t.returnValue) || 0)}</span></div>` : `<div class="text-xs st-font-size__8e87b7 st-color__5872de">Return</div>
+    <div class="st-font-size__8113a0 st-color__a4c6ac">${fmtNum(_rrRet)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}${Number(t.returnValue) > 0 ? ` = ${await formatCurrency(Number(t.returnValue))}` : ''}</div>`}
+    <div class="text-xs st-font-size__8e87b7 st-color__5872de st-margin-top__7a21c6">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
   </div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+  <div class="u-3141675 d-flex st-align-items__7c6197">
     ${toggleBtnHtml}${deleteBtnHtml}${kebabBtn}
   </div>
 </div>${panelPlaceholder}`;
@@ -448,7 +448,7 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     ${(_hasPay || _hasExp) ? `<div class="text-xs u-text-muted">${[_hasPay ? 'Payment' : '', _hasExp ? '<span class="u-expired-credit">Expired credit</span>' : ''].filter(Boolean).join(' | ')}</div>
     <div class="u-dbdd85e">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? `<span class="u-expired-credit">${_expText}</span>` : ''].filter(Boolean).join(' | ')}</div>` : ''}
     ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
@@ -466,7 +466,7 @@ itemContent = `
       ${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
     </div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div class="u-5d1cf22 text-xs">${esc(t.notes || 'Brought forward from previous records')}</div>
   </div>
@@ -482,9 +482,9 @@ itemContent = `
 <div class="txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;font-style:italic;">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-fs-sm2 u-text-muted">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_displayUnitPrice)} = ${await formatCurrency(_txValue)}</div>
-    ${hasPartialPayment ? `<div style="font-size:0.7rem;color:var(--accent-emerald);margin-top:2px;">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
+    ${hasPartialPayment ? `<div class="text-xs st-font-size__8e87b7 st-color__a4c6ac st-margin-top__7a21c6">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
     <div class="u-5d1cf22 text-xs">${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? `⇄ Stock transfer from ${esc(t.repTransferFrom || t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
   </div>
   <div class="u-d94b2d8 d-flex">
