@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
   './modules/customers.js',
   './modules/dialog.js',
   './modules/feedback.js',
+  './modules/geolocation-bridge.js',
   './modules/rep-sales.js',
   './modules/admin-data.js',
   './modules/custom-date-picker.js',

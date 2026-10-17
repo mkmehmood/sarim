@@ -1,3 +1,4 @@
+import { installGeolocationBridge, requestLocationPermission } from './geolocation-bridge.js';
 const Cap = window.Capacitor;
 export const isNative = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
 const P = () => (window.Capacitor && window.Capacitor.Plugins) || {};
@@ -226,57 +227,6 @@ function applyStatusBar() {
   } catch (_) {}
 }
 
-function geoErr(e) {
-  const msg = String((e && e.message) || e || '');
-  const denied = /denied|permission/i.test(msg);
-  return { code: denied ? 1 : (/timeout|timed out/i.test(msg) ? 3 : 2), message: msg || 'Location unavailable', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 };
-}
-
-async function ensureLocationPermission() {
-  const { Geolocation } = P();
-  try {
-    let st = await Geolocation.checkPermissions();
-    if (st.location !== 'granted' && st.coarseLocation !== 'granted') st = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
-    return st.location === 'granted' || st.coarseLocation === 'granted';
-  } catch (_) { return false; }
-}
-
-function installGeolocationBridge() {
-  const { Geolocation } = P();
-  if (!Geolocation) return;
-  const watches = new Map();
-  let nextId = 1;
-  const toPos = (p) => ({ coords: { latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy: p.coords.accuracy, altitude: p.coords.altitude, altitudeAccuracy: p.coords.altitudeAccuracy, heading: p.coords.heading, speed: p.coords.speed }, timestamp: p.timestamp });
-  const shim = {
-    getCurrentPosition(success, error, opts = {}) {
-      ensureLocationPermission().then(ok => {
-        if (!ok) { if (error) error(geoErr('Location permission denied')); return; }
-        return Geolocation.getCurrentPosition({ enableHighAccuracy: opts.enableHighAccuracy !== false, timeout: opts.timeout || 20000, maximumAge: opts.maximumAge || 0 })
-          .then(p => success(toPos(p)));
-      }).catch(e => { if (error) error(geoErr(e)); });
-    },
-    watchPosition(success, error, opts = {}) {
-      const id = nextId++;
-      ensureLocationPermission().then(ok => {
-        if (!ok) { if (error) error(geoErr('Location permission denied')); return; }
-        return Geolocation.watchPosition({ enableHighAccuracy: opts.enableHighAccuracy !== false, timeout: opts.timeout || 30000, maximumAge: opts.maximumAge || 0 }, (pos, err) => {
-          if (err) { if (error) error(geoErr(err)); return; }
-          if (pos) success(toPos(pos));
-        }).then(realId => { if (watches.has(id) && watches.get(id) === 'cancelled') Geolocation.clearWatch({ id: realId }); else watches.set(id, realId); });
-      }).catch(e => { if (error) error(geoErr(e)); });
-      watches.set(id, null);
-      return id;
-    },
-    clearWatch(id) {
-      const real = watches.get(id);
-      if (real === null || real === undefined) { watches.set(id, 'cancelled'); return; }
-      if (real !== 'cancelled') Geolocation.clearWatch({ id: real }).catch(() => {});
-      watches.delete(id);
-    }
-  };
-  try { Object.defineProperty(navigator, 'geolocation', { configurable: true, value: shim }); } catch (_) {}
-}
-
 async function requestStartupPermissions() {
   try {
     let asked = false;
@@ -295,7 +245,7 @@ async function requestStartupPermissions() {
   } catch (_) {}
   const { Camera } = P();
   try { if (Camera) await Camera.requestPermissions({ permissions: ['camera'] }); } catch (_) {}
-  await ensureLocationPermission();
+  await requestLocationPermission();
 }
 
 function installHaptics() {

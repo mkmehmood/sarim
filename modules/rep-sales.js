@@ -12,6 +12,7 @@ import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
 import { runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast } from './customers.js';
 import { confirmGuard } from './confirm-guard.js';
 import { getDefaultStoreKey } from './store-keys.js';
+import { geoErrorMessage } from './geolocation-bridge.js';
 export let repTransactionMode = 'sale';
 window.repTransactionMode = repTransactionMode;
 export function _set_repTransactionMode(v) { repTransactionMode = v; window.repTransactionMode = v; }
@@ -1410,10 +1411,7 @@ if (position.coords.accuracy <= GPS_ACCURACY_THRESHOLD) finish(position);
 if (settled) return;
 settled = true;
 if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-let msg = 'Location error.';
-if (error.code === error.PERMISSION_DENIED) msg = ' Permission denied. Check Phone Settings.';
-else if (error.code === error.POSITION_UNAVAILABLE) msg = ' Weak GPS signal. Go outside.';
-else if (error.code === error.TIMEOUT) msg = ' GPS timeout. Try again.';
+const msg = geoErrorMessage(error);
 statusDiv.textContent = msg;
 statusDiv.style.color = 'var(--danger)';
 if (btn) btn.disabled = false;
@@ -1421,7 +1419,16 @@ resolve();
 },
 gpsOptions
 );
-setTimeout(() => { if (!settled && best) finish(best); }, GPS_MAX_WAIT_MS);
+setTimeout(() => {
+if (settled) return;
+if (best) { finish(best); return; }
+settled = true;
+if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+statusDiv.textContent = geoErrorMessage({ code: 3 });
+statusDiv.style.color = 'var(--danger)';
+if (btn) btn.disabled = false;
+resolve();
+}, GPS_MAX_WAIT_MS);
 });
 }
 

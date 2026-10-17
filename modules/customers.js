@@ -11,6 +11,7 @@ import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sal
 import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
+import { geoErrorMessage } from './geolocation-bridge.js';
 export async function runningBalanceHtml(bal) {
 const text = bal < -0.005 ? `${await formatCurrency(-bal)} CR` : await formatCurrency(Math.max(0, bal));
 return balanceAfterHtml(text, bal > 0.005 ? 'debt' : 'clear');
@@ -1163,12 +1164,7 @@ if (position.coords.accuracy <= GPS_ACCURACY_THRESHOLD) finish(position);
 if (settled) return;
 settled = true;
 if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-let msg = "Location error.";
-switch(error.code) {
-case error.PERMISSION_DENIED: msg = " Permission denied. Check Phone Settings."; break;
-case error.POSITION_UNAVAILABLE: msg = " Weak GPS signal. Go outside."; break;
-case error.TIMEOUT: msg = " GPS timeout. Try again."; break;
-}
+const msg = geoErrorMessage(error);
 statusDiv.textContent = msg;
 statusDiv.style.color = "var(--danger)";
 if(btn) btn.disabled = false;
@@ -1176,7 +1172,16 @@ resolve();
 },
 gpsOptions
 );
-setTimeout(() => { if (!settled && best) finish(best); }, GPS_MAX_WAIT_MS);
+setTimeout(() => {
+if (settled) return;
+if (best) { finish(best); return; }
+settled = true;
+if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+statusDiv.textContent = geoErrorMessage({ code: 3 });
+statusDiv.style.color = 'var(--danger)';
+if (btn) btn.disabled = false;
+resolve();
+}, GPS_MAX_WAIT_MS);
 });
 }
 
