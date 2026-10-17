@@ -1422,16 +1422,19 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-body">
     <div id="formulaStoreList"></div>
   </div>
-  <button type="button" class="formula-fab formula-fab--batch" onclick="openBatchMix()" aria-label="Batch calculator and correction">
-    <svg width="26" height="26" viewBox="0 0 36 36" fill="none"><rect x="8" y="5" width="20" height="26" rx="4" stroke="currentColor" stroke-width="2.6"/><path d="M12.5 11H23.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M12.5 17H14.5M17 17H19M21.5 17H23.5M12.5 22H14.5M17 22H19M21.5 22H23.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
-  </button>
-  <button type="button" class="formula-fab" onclick="openFormulaStoreEditor(null)" aria-label="Add formula">
-    <svg width="26" height="26" viewBox="0 0 36 36" fill="none"><path d="M18 7V29M7 18H29" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-  </button>
+  <div class="formula-fab-dial" id="formulaFabDial">
+    <div class="formula-fab-backdrop" onclick="toggleFormulaFab(false)"></div>
+    <div class="formula-fab-menu">
+      <button type="button" class="formula-fab-item" onclick="formulaFabPick('fix')"><span class="formula-fab-label">Correction</span><span class="formula-fab-mini"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><path d="M28 13A11 11 0 1 0 29 20" stroke="currentColor" stroke-width="2.600" stroke-linecap="round"/><path d="M29 6V13H22" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <button type="button" class="formula-fab-item" onclick="formulaFabPick('batch')"><span class="formula-fab-label">Batching</span><span class="formula-fab-mini"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><rect x="8" y="5" width="20" height="26" rx="4" stroke="currentColor" stroke-width="2.600"/><path d="M12.500 11H23.500M12.500 17H14.500M17 17H19M21.500 17H23.500M12.500 22H14.500M17 22H19M21.500 22H23.500" stroke="currentColor" stroke-width="2.600" stroke-linecap="round"/></svg></span></button>
+      <button type="button" class="formula-fab-item" onclick="formulaFabPick('formula')"><span class="formula-fab-label">Formula</span><span class="formula-fab-mini"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><path d="M14 5H22M16 5V14L8 28C7 30 8.200 32 10.500 32H25.500C27.800 32 29 30 28 28L20 14V5" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+    <button type="button" class="formula-fab" onclick="toggleFormulaFab()" aria-label="Formula actions" aria-expanded="false" aria-haspopup="true"><svg width="26" height="26" viewBox="0 0 36 36" fill="none"><path d="M18 7V29M7 18H29" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+  </div>
 </div>
 <div id="batch-mix-screen" class="standalone-screen" style="display:none">
   <div class="screen-topbar">
-    <h2 class="screen-title">Batch Calculator</h2>
+    <h2 class="screen-title">Batching</h2>
   </div>
   <div class="screen-body">
     <div class="field u-mb-15">
@@ -1441,39 +1444,69 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="u-field-hint-xs" id="bmFormulaInfo"></div>
     </div>
     <div class="formula-toggle bm-block" role="group">
-      <button type="button" class="formula-toggle-opt active" data-bm-tab="make" aria-pressed="true" onclick="setBatchMixTab('make')">Make Batch</button>
-      <button type="button" class="formula-toggle-opt" data-bm-tab="fix" aria-pressed="false" onclick="setBatchMixTab('fix')">Fix Mixture</button>
+      <button type="button" class="formula-toggle-opt active" data-bm-mode="total" aria-pressed="true" onclick="setBatchMixMode('total')">Weight</button>
+      <button type="button" class="formula-toggle-opt" data-bm-mode="units" aria-pressed="false" onclick="setBatchMixMode('units')">Units</button>
+      <button type="button" class="formula-toggle-opt" data-bm-mode="ingredient" aria-pressed="false" onclick="setBatchMixMode('ingredient')">Ingredient</button>
     </div>
-    <div id="bmMakePanel">
-      <div class="formula-toggle bm-block" role="group">
-        <button type="button" class="formula-toggle-opt active" data-bm-mode="total" aria-pressed="true" onclick="setBatchMixMode('total')">Weight</button>
-        <button type="button" class="formula-toggle-opt" data-bm-mode="units" aria-pressed="false" onclick="setBatchMixMode('units')">Units</button>
-        <button type="button" class="formula-toggle-opt" data-bm-mode="ingredient" aria-pressed="false" onclick="setBatchMixMode('ingredient')">Ingredient</button>
-      </div>
-      <div class="field bm-block" id="bmIngWrap" hidden>
-        <label>Ingredient</label>
-        <select id="bm-ing-select" onchange="recomputeBatchMix()"></select>
-      </div>
-      <div class="field bm-block">
-        <label id="bmValueLabel">Total batch weight (kg)</label>
-        <input type="number" id="bm-value" inputmode="decimal" step="any" min="0" oninput="recomputeBatchMix()">
-      </div>
-      <div id="bmMakeResult"></div>
+    <div class="field bm-block" id="bmIngWrap" hidden>
+      <label>Ingredient</label>
+      <select id="bm-ing-select" onchange="recomputeBatchMix()"></select>
     </div>
-    <div id="bmFixPanel" hidden>
-      <div class="grid-inputs bm-block">
+    <div class="field bm-block">
+      <label id="bmValueLabel">Total batch weight (kg)</label>
+      <input type="number" id="bm-value" inputmode="decimal" step="any" min="0" oninput="recomputeBatchMix()">
+    </div>
+    <div id="bmMakeResult"></div>
+  </div>
+</div>
+<div id="batch-fix-screen" class="standalone-screen" style="display:none">
+  <div class="screen-topbar">
+    <h2 class="screen-title">Batch Correction</h2>
+  </div>
+  <div class="screen-body">
+    <div class="field u-mb-15">
+      <label>Formula</label>
+      <input type="hidden" id="bf-formula-select" value="">
+      <button type="button" id="bf-formula-btn" class="store-selector bm-picker" onclick="openBatchFixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="bf-panel">
+      <div class="bf-panel-title">Batch Correction</div>
+      <div class="grid-inputs">
         <div class="field">
-          <label>Weight left in vessel (kg)</label>
-          <input type="number" id="bm-remaining" inputmode="decimal" step="any" min="0" placeholder="Optional" oninput="recomputeBatchMix()">
+          <label>Original Batch (g)</label>
+          <input type="number" id="bf-original" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
         </div>
         <div class="field">
-          <label>Vessel capacity (kg)</label>
-          <input type="number" id="bm-capacity" inputmode="decimal" step="any" min="0" placeholder="Optional" oninput="recomputeBatchMix()">
+          <label>Used / Lost (g)</label>
+          <input type="number" id="bf-used" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
         </div>
       </div>
-      <div class="bm-section-title">Amount mixed originally</div>
-      <div id="bmFixRows"></div>
-      <div id="bmFixResult"></div>
+      <div class="bf-remaining"><span>Remaining Batch</span><span id="bfRemaining">0 g</span></div>
+      <details class="bf-actual">
+        <summary>Mixed differently than the formula?</summary>
+        <div class="u-field-hint-xs">Enter what was actually mixed. Leave empty to use the formula ratio.</div>
+        <div id="bfActualRows"></div>
+      </details>
+    </div>
+    <div class="bm-empty" id="bfEmpty">Select a formula</div>
+    <div id="bfBody" hidden>
+      <div class="bf-panel">
+        <div class="bf-head">
+          <div class="bf-panel-title">Required Additions</div>
+          <div class="bf-newtotal"><span>New total</span><strong id="bfNewTotal">0 g</strong></div>
+        </div>
+        <div class="bf-hint">Type a new amount in any Add box – all other ingredients update automatically to keep the formula ratio.</div>
+        <div class="bf-manual" id="bfManualBar" hidden>
+          <span>Adjusted manually. Others scaled to match.</span>
+          <button type="button" class="bf-min-btn" onclick="resetBatchFixMinimum()"><svg width="14" height="14" viewBox="0 0 36 36" fill="none"><path d="M28 13A11 11 0 1 0 29 20" stroke="currentColor" stroke-width="3.400" stroke-linecap="round"/><path d="M29 6V13H22" stroke="currentColor" stroke-width="3.400" stroke-linecap="round" stroke-linejoin="round"/></svg>Minimum</button>
+        </div>
+        <div id="bfRows"></div>
+        <div class="bf-totals">
+          <div class="bf-total"><span>Total in remaining</span><strong id="bfTotalRemaining">0 g</strong></div>
+          <div class="bf-total"><span>Total required</span><strong id="bfTotalRequired">0 g</strong></div>
+          <div class="bf-total bf-total-add"><span>Total to add</span><strong id="bfTotalAdd">0 g</strong></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

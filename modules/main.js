@@ -10,7 +10,9 @@ import './prod-photos.js';
 import './utilities-payments.js';
 import './customers.js';
 import './formula-store.js';
+import './batch-common.js';
 import './batch-mix.js';
+import './batch-fix.js';
 let _factoryLoad = null;
 let _repLoad = null;
 

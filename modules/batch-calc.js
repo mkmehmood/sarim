@@ -24,40 +24,44 @@ export function planBatch(formula, mode, value, ingredientId) {
   const rows = ings.map((i) => ({ id: i.id, name: i.name, perUnit: i.quantity, total: i.quantity * units }));
   return { units, unitWeight: uw, totalWeight: units * uw, rows };
 }
-export function planCorrection(formula, mixed, remaining, capacity) {
+export function planCorrection(formula, opts) {
+  const o = opts || {};
   const ings = formulaIngredients(formula);
   const uw = unitWeight(formula);
-  const amounts = new Map((mixed || []).map((m) => [String(m.id), num(m.amount)]));
-  const mixedTotal = ings.reduce((s, i) => s + (amounts.get(i.id) || 0), 0);
-  if (!ings.length || mixedTotal <= 0) return { ok: false, error: 'empty', rows: [] };
-  const left = num(remaining);
-  if (left > mixedTotal + EPS) return { ok: false, error: 'remaining-too-large', rows: [] };
-  const keep = left > 0 ? left / mixedTotal : 1;
-  const present = ings.map((i) => (amounts.get(i.id) || 0) * keep);
-  let scale = 0;
-  let driver = null;
-  ings.forEach((i, idx) => {
-    const s = present[idx] / i.quantity;
-    if (s > scale + EPS) { scale = s; driver = i; }
-  });
+  const original = num(o.original);
+  if (!ings.length || original <= 0) return { ok: false, error: 'empty', rows: [] };
+  const used = Math.max(0, parseFloat(o.used) || 0);
+  const remaining = original - used;
+  if (remaining <= EPS) return { ok: false, error: 'nothing-left', rows: [] };
+  const actual = o.actual || {};
+  const actualTotal = ings.reduce((sum, i) => sum + num(actual[i.id]), 0);
+  const present = ings.map((i) => (actualTotal > 0 ? (num(actual[i.id]) / actualTotal) * remaining : (i.quantity / uw) * remaining));
+  let minScale = 0;
+  ings.forEach((i, idx) => { minScale = Math.max(minScale, present[idx] / i.quantity); });
+  let scale = minScale;
+  let manualId = '';
+  const m = o.manual;
+  const k = m ? ings.findIndex((i) => i.id === String(m.id)) : -1;
+  if (k >= 0 && Number.isFinite(parseFloat(m.add))) {
+    scale = Math.max(minScale, (present[k] + Math.max(0, parseFloat(m.add))) / ings[k].quantity);
+    manualId = ings[k].id;
+  }
   const rows = ings.map((i, idx) => {
     const target = i.quantity * scale;
     const add = Math.max(0, target - present[idx]);
-    return { id: i.id, name: i.name, formulaQty: i.quantity, present: present[idx], target, add: add < EPS ? 0 : add };
+    return { id: i.id, name: i.name, present: present[idx], target, add: add < EPS ? 0 : add };
   });
-  const currentWeight = present.reduce((s, p) => s + p, 0);
-  const addTotal = rows.reduce((s, r) => s + r.add, 0);
-  const finalWeight = currentWeight + addTotal;
-  const cap = num(capacity);
+  const requiredTotal = rows.reduce((sum, r) => sum + r.target, 0);
+  const addTotal = rows.reduce((sum, r) => sum + r.add, 0);
   return {
     ok: true,
+    remaining,
     scale,
-    driver: driver ? driver.name : '',
+    minScale,
+    manualId,
+    adjusted: scale > minScale + EPS,
     rows,
-    currentWeight,
+    requiredTotal,
     addTotal,
-    finalWeight,
-    finalUnits: uw > 0 ? finalWeight / uw : 0,
-    exceedsCapacity: cap > 0 && finalWeight > cap + EPS,
   };
 }

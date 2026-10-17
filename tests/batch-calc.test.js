@@ -40,49 +40,68 @@ describe('planBatch', () => {
     assert.equal(planBatch({ ingredients: [] }, 'total', 10).rows.length, 0);
   });
 });
+const shot = {
+  id: 'f2',
+  name: 'Shot',
+  ingredients: [
+    { id: 'chem', name: 'Chemical', quantity: 1.68 },
+    { id: 'bar', name: 'Barlanza', quantity: 0.212 },
+    { id: 'pow', name: 'Powder', quantity: 0.704 },
+    { id: 'tam', name: 'Taman', quantity: 0.303 },
+    { id: 'lime', name: 'Lime', quantity: 0.101 },
+  ],
+};
 describe('planCorrection', () => {
-  it('adds the missing ingredient when one is short', () => {
-    const r = planCorrection(formula, [
-      { id: 'chem', amount: 16.8 }, { id: 'pow', amount: 5 }, { id: 'tam', amount: 3 }, { id: 'lime', amount: 3.2 },
-    ]);
+  it('computes the remaining batch from original minus used or lost', () => {
+    const r = planCorrection(shot, { original: 89.98, used: 15 });
     assert.equal(r.ok, true);
-    near(r.scale, 10);
-    near(r.rows[1].add, 2);
-    near(r.rows[0].add, 0);
-    near(r.finalWeight, 30);
-    near(r.finalUnits, 10);
+    near(r.remaining, 74.98);
+    near(r.rows.reduce((sum, x) => sum + x.present, 0), 74.98);
   });
-  it('dilutes by adding all the others when one is in excess', () => {
-    const r = planCorrection(formula, [
-      { id: 'chem', amount: 16.8 }, { id: 'pow', amount: 7 }, { id: 'tam', amount: 3 }, { id: 'lime', amount: 6.4 },
-    ]);
-    near(r.scale, 20);
-    assert.equal(r.driver, 'Lime');
-    near(r.rows[0].add, 16.8);
-    near(r.rows[1].add, 7);
-    near(r.rows[2].add, 3);
-    near(r.rows[3].add, 0);
+  it('needs nothing added by default when the remainder already follows the formula', () => {
+    const r = planCorrection(shot, { original: 90, used: 15 });
+    assert.equal(r.addTotal, 0);
+    assert.equal(r.adjusted, false);
   });
-  it('scales what is present when only part of the mixture is left', () => {
-    const r = planCorrection(formula, [
-      { id: 'chem', amount: 16.8 }, { id: 'pow', amount: 5 }, { id: 'tam', amount: 3 }, { id: 'lime', amount: 3.2 },
-    ], 14.5);
-    near(r.currentWeight, 14.5);
-    near(r.rows[0].present, 16.8 * 14.5 / 28);
-    near(r.rows.reduce((s, x) => s + x.present + x.add, 0), r.finalWeight);
+  it('scales every other ingredient when one add amount is typed', () => {
+    const r = planCorrection(shot, { original: 90, used: 15, manual: { id: 'chem', add: 5 } });
+    near(r.rows[0].add, 5);
+    assert.equal(r.adjusted, true);
+    assert.equal(r.manualId, 'chem');
+    const total = r.requiredTotal;
+    near(r.rows[0].target / total, 1.68 / unitWeight(shot));
+    near(r.rows[2].target / total, 0.704 / unitWeight(shot));
+    near(r.requiredTotal, r.remaining + r.addTotal);
   });
-  it('reports nothing to add when the mixture already matches', () => {
-    const r = planCorrection(formula, [
-      { id: 'chem', amount: 1.68 }, { id: 'pow', amount: 0.7 }, { id: 'tam', amount: 0.3 }, { id: 'lime', amount: 0.32 },
-    ]);
+  it('never goes below the minimum, even if a smaller add is typed', () => {
+    const r = planCorrection(shot, { original: 90, used: 15, manual: { id: 'chem', add: -3 } });
+    assert.equal(r.adjusted, false);
     assert.equal(r.addTotal, 0);
   });
-  it('rejects empty input and a remaining weight above the mixed total', () => {
-    assert.equal(planCorrection(formula, []).ok, false);
-    assert.equal(planCorrection(formula, [{ id: 'chem', amount: 1 }], 5).error, 'remaining-too-large');
+  it('uses the actual mixed amounts to work out what to add', () => {
+    const r = planCorrection(formula, {
+      original: 28,
+      used: 0,
+      actual: { chem: 16.8, pow: 5, tam: 3, lime: 3.2 },
+    });
+    near(r.minScale, 10);
+    near(r.rows[1].add, 2);
+    near(r.rows[0].add, 0);
+    near(r.requiredTotal, 30);
   });
-  it('flags a final weight above the vessel capacity', () => {
-    const r = planCorrection(formula, [{ id: 'chem', amount: 16.8 }], 0, 20);
-    assert.equal(r.exceedsCapacity, true);
+  it('dilutes with all the others when one ingredient is in excess', () => {
+    const r = planCorrection(formula, {
+      original: 33.2,
+      used: 0,
+      actual: { chem: 16.8, pow: 7, tam: 3, lime: 6.4 },
+    });
+    near(r.minScale, 20);
+    near(r.rows[0].add, 16.8);
+    near(r.rows[3].add, 0);
+  });
+  it('rejects empty input and a batch with nothing left', () => {
+    assert.equal(planCorrection(shot, {}).ok, false);
+    assert.equal(planCorrection(shot, { original: 10, used: 10 }).error, 'nothing-left');
+    assert.equal(planCorrection(shot, { original: 10, used: 12 }).error, 'nothing-left');
   });
 });
