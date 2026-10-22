@@ -734,6 +734,19 @@ if (last) { price = weightedUnitPrice([await toItem(last)]); if (price > 0) retu
 return (await getEffectiveSalePriceForCustomer(name, getDefaultStoreKey())) || 0;
 }
 
+export async function getRepGoodsCreditUnitPrice(repName, name, excludeId) {
+const key = String(name || '').trim().toLowerCase();
+if (!key) return 0;
+const rows = ensureArray(await sqliteStore.get('rep')).filter(r => r && !r.deletedAt && !r.isMerged && r.salesRep === repName && r.id !== excludeId
+  && String(r.customerName || '').trim().toLowerCase() === key && r.paymentType === 'CREDIT' && r.transactionType !== 'OLD_DEBT' && Number(r.quantity) > 0);
+const priceOf = (list) => weightedUnitPrice(list.map(r => ({ quantity: r.quantity, value: Number(r.totalValue) || 0 })));
+const unpaid = priceOf(rows.filter(r => !r.creditReceived));
+if (unpaid > 0) return unpaid;
+const newest = rows.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0))[0];
+const lastPrice = newest ? priceOf([newest]) : 0;
+return lastPrice > 0 ? lastPrice : ((await getSalePriceForStore(getDefaultStoreKey())) || 0);
+}
+
 export async function getCostPriceForStore(store, date) {
 if (!store) return 0;
 const realized = costPerKgFromIndex(buildCostIndex(ensureArray(await sqliteStore.get('production'))), store, date);

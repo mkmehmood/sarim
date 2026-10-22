@@ -442,7 +442,7 @@ info = `
     ${(_hasPay || _hasExp) ? `<div class="text-xs u-text-muted">${[_hasPay ? 'Payment' : '', _hasExp ? '<span class="u-expired-credit">Expired credit</span>' : ''].filter(Boolean).join(' | ')}</div>
     <div class="u-dbdd85e">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? `<span class="u-expired-credit">${_expText}</span>` : ''].filter(Boolean).join(' | ')}</div>` : ''}
     ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
-    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}</div>
 `;
 } else if (isOldDebt) {
 info = `
@@ -478,7 +478,6 @@ rAmt = Number(t.returnValue) || 0; rIn = true; rKind = 'in'; rCat = 'pay';
 const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
 rTitle = isPartialPayment ? 'Partial payment' : 'Collection';
 rSub = isPartialPayment ? 'Payment received' : (_pay > 0 ? (_expV > 0 ? 'Payment + expired credit' : 'Amount received') : 'Expired stock');
-if (t.allocations && t.allocations.length) rSub += ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}`;
 rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 rTitle = 'Old debt'; rSub = oldDebtNote(t.notes) || 'Previous balance';
@@ -706,6 +705,7 @@ _rMsg = `Delete this bulk collection from ${_rCust || 'customer'}${_rRep ? ` (Re
 if (_rDate) _rMsg += `\nDate: ${_rDate}`;
 _rMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_rItem))}`;
 _rMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding rep balance restored${(_rItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (Number(_rItem.expiredQty) > 0) _rMsg += `\nExpired / Damage: ${fmtNum(Number(_rItem.expiredQty))} kg${_rItem.expiredApplied !== false ? ' will be removed from CHORA raw material' : ''}.`;
 } else if (_rItem?.paymentType === 'PARTIAL_PAYMENT') {
 _rTitle = 'Delete Rep Partial Payment';
 _rMsg = `Delete this partial payment from ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;
@@ -735,6 +735,9 @@ if (!item) { renderRepCustomerTransactions(currentManagingRepCustomer); return; 
 await detachChildPayment('rep', item, rep);
 const repSalesFiltered = rep.filter(s => s.id !== id);
 await unifiedDelete('rep', repSalesFiltered, id, { strict: true }, item);
+if (item.paymentType === 'COLLECTION' && Number(item.expiredQty) > 0 && item.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(item.expiredQty), item.date);
+}
 renderRepCustomerTransactions(currentManagingRepCustomer);
 renderRepCustomerTable();
 notifyDataChange('rep');

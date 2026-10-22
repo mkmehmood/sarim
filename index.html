@@ -1679,9 +1679,15 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 </div>
 <div id="rep-coll-inputs" class="hidden">
+<div class="grid-inputs">
 <div class="field">
-<label>Amount Collected ()</label>
-<input type="number" id="rep-amount-collected" step="1" placeholder="Enter Cash Received" oninput="updateRepCollectionPreview()">
+<label>Amount Received (₨)</label>
+<input type="number" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
+</div>
+<div class="field">
+<label>Expired / Damage Qty (kg)</label>
+<input type="number" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
+</div>
 </div>
 </div>
 <div id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">

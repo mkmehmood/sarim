@@ -638,6 +638,12 @@ export function sortForCollection(list) {
   });
 }
 
+export function collectionEligible(list, collectionDate) {
+  const day = (s) => String(s.supplyDate || s.date || '');
+  const cut = String(collectionDate || '');
+  return list.filter(s => s.transactionType === 'OLD_DEBT' || !cut || !day(s) || day(s) <= cut);
+}
+
 export function planCollectionAllocation(amount, dues) {
   let left = _r2(Math.max(0, _n(amount)));
   const allocs = [];

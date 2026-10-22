@@ -5831,6 +5831,9 @@ const paymentAmount = transaction.totalValue || 0;
 await detachChildPayment('rep', transaction, rep);
 const repSalesFiltered = rep.filter(s => s.id !== id);
 await unifiedDelete('rep', repSalesFiltered, id, { strict: true }, transaction);
+if (wasCollection && Number(transaction.expiredQty) > 0 && transaction.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(transaction.expiredQty), transaction.date);
+}
 await refreshRepUI(true);
 if (currentManagingRepCustomer && typeof renderRepCustomerTransactions === 'function') {
 await renderRepCustomerTransactions(currentManagingRepCustomer);

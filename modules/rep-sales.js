@@ -1,17 +1,17 @@
 import { formatDayMonthYear } from './date-format.js';
-import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales } from './link-guards.js';
+import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smBarHtml } from './summary-card.js';
 import { hcCardHtml, hcChip } from './history-card.js';
 import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate, pinOpeningDays } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
-import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected } from './link-graph.js';
+import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected, planGoodsCredit } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, selectedCustomerFilter, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
-import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML } from './utilities-payments.js';
-import { getCostPriceForStore, getSalePriceForStore } from './factory.js';
+import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
+import { getCostPriceForStore, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory.js';
 import { periodTotals, periodQuantity } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
@@ -140,7 +140,7 @@ whenSettled().then(unlock);
 }
 
 function _resetRepForm() {
-['rep-cust-name', 'rep-quantity', 'rep-amount-collected', 'rep-new-cust-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+['rep-cust-name', 'rep-quantity', 'rep-amount-collected', 'rep-expired-qty', 'rep-new-cust-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 const pc = document.getElementById('rep-new-customer-phone-container'); if (pc) pc.classList.add('hidden');
 setRepMode('sale');
 }
@@ -162,6 +162,7 @@ set('rep-date', editDateValue(rec));
 set('rep-cust-name', rec.customerName || '');
 if (isColl) {
 set('rep-amount-collected', collectionCollected(rec));
+set('rep-expired-qty', Number(rec.expiredQty) > 0 ? rec.expiredQty : '');
 } else {
 set('rep-quantity', rec.quantity);
 window.selectRepPaymentType(document.getElementById(rec.paymentType === 'CASH' ? 'btn-rep-pay-cash' : 'btn-rep-pay-credit'), rec.paymentType === 'CASH' ? 'CASH' : 'CREDIT');
@@ -170,7 +171,7 @@ if (rec.customerPhone) {
 const pc = document.getElementById('rep-new-customer-phone-container'); if (pc) pc.classList.remove('hidden');
 set('rep-new-cust-phone', rec.customerPhone);
 }
-beginEditMode('repsale', rec, { buttonId: 'btn-save-rep-transaction', watchIds: ['rep-cust-name','rep-quantity','rep-amount-collected','rep-date','rep-new-cust-phone'], label: 'Update Transaction', anchorId: 'rep-cust-name', cancelFn: _resetRepForm });
+beginEditMode('repsale', rec, { buttonId: 'btn-save-rep-transaction', watchIds: ['rep-cust-name','rep-quantity','rep-amount-collected','rep-expired-qty','rep-date','rep-new-cust-phone'], label: 'Update Transaction', anchorId: 'rep-cust-name', cancelFn: _resetRepForm });
 }
 
 registerEditHandler('repsale', startEditRepSale);
@@ -228,16 +229,31 @@ updateRepCollectionPreview(debt);
 }
 }
 
+let _repPreviewSeq = 0;
 export function updateRepCollectionPreview(debtOverride) {
 if (repTransactionMode !== 'collection') return;
+const seq = ++_repPreviewSeq;
 const _credEl = document.getElementById('rep-customer-current-credit');
 const debt = (typeof debtOverride === 'number')
 ? debtOverride
 : parseFloat((_credEl?.innerText || '0').replace(/[^0-9.-]/g, '')) || 0;
 const inputAmt = parseFloat(document.getElementById('rep-amount-collected')?.value) || 0;
-const remaining = Math.max(0, debt - inputAmt);
+const expired = parseFloat(document.getElementById('rep-expired-qty')?.value) || 0;
+const paint = (remaining) => {
 const _repTV = document.getElementById('rep-total-value');
 if (_repTV) _repTV.innerText = '' + fmtAmt(safeNumber(remaining, 0));
+};
+paint(Math.max(0, debt - inputAmt));
+if (expired <= 0) return;
+(async () => {
+try {
+const who = (document.getElementById('rep-cust-name')?.value || '').trim();
+const unit = await getRepGoodsCreditUnitPrice(currentRepProfile, who);
+const plan = planGoodsCredit(expired, unit, Math.max(0, debt - inputAmt));
+if (seq !== _repPreviewSeq || repTransactionMode !== 'collection') return;
+paint(Math.max(0, round2(debt - inputAmt - plan.value)));
+} catch (_) {}
+})();
 }
 
 export async function calculateRepSalePreview() {
@@ -249,7 +265,7 @@ if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
 }
 
-export function saveRepTransaction(...a) { return confirmGuard('saveRepTransaction', () => _saveRepTransactionRaw(...a), { label: 'Rep Sale', late: true, fields: [['rep-date', 'Date'], ['rep-cust-name', 'Customer'], ['rep-quantity', 'Quantity'], ['rep-amount-collected', 'Collected']], editKinds: ['repsale'], share: { kind: 'rep' } }); }
+export function saveRepTransaction(...a) { return confirmGuard('saveRepTransaction', () => _saveRepTransactionRaw(...a), { label: 'Rep Sale', late: true, fields: [['rep-date', 'Date'], ['rep-cust-name', 'Customer'], ['rep-quantity', 'Quantity'], ['rep-amount-collected', 'Collected'], ['rep-expired-qty', 'Expired (kg)']], editKinds: ['repsale'], share: { kind: 'rep' } }); }
 
 async function _saveRepTransactionRaw() {
 const _ed = getEditCtx('repsale');
@@ -286,6 +302,7 @@ const timeString = now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-d
 const costPerKg = await getCostPriceForStore(getDefaultStoreKey(), date);
 const salePrice = await getSalePriceForStore(getDefaultStoreKey());
 let transactionRecord = {};
+let _expiredQty = 0, _expiredValue = 0, _expUnit = 0;
 if(repTransactionMode === 'sale') {
 const qty = readNum('rep-quantity');
 const payType = document.getElementById('rep-payment-value').value;
@@ -342,8 +359,14 @@ syncedAt: new Date().toISOString()
 transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 } else {
 const amount = readNum('rep-amount-collected');
-if(amount <= 0) {
-window.notifyBlocking("Enter Amount", 'warning', 'Warning');
+const expired = round2(readNum('rep-expired-qty'));
+if(amount < 0 || expired < 0) {
+window.notifyBlocking("Amount and expired quantity cannot be negative.", 'warning', 'Warning');
+restoreBtn();
+return;
+}
+if(amount <= 0 && expired <= 0) {
+window.notifyBlocking("Please enter an amount collected and/or an expired quantity.", 'warning', 'Warning');
 restoreBtn();
 return;
 }
@@ -357,13 +380,22 @@ for (const h of _repHistory) _repOutstanding = round2(_repOutstanding + debtDelt
 if (_ed && Array.isArray(_ed.original.allocations)) _repOutstanding = round2(_repOutstanding + _ed.original.allocations.reduce((t, a) => t + (Number(a.amount) || 0), 0));
 _repOutstanding = Math.max(0, _repOutstanding);
 } catch (_e) { _repOutstanding = -1; }
-if (_repOutstanding === 0 && !_ed) {
+if (amount > 0 && _repOutstanding === 0 && !_ed) {
 window.notifyBlocking(`${name} has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.`, 'error', 'Credit error');
 restoreBtn();
 return;
-} else if (_repOutstanding >= 0 && amount > _repOutstanding) {
+} else if (amount > 0 && _repOutstanding >= 0 && amount > _repOutstanding) {
 const _overAmt = amount - _repOutstanding;
 _gcWarn = { lines: [`Owes: ${fmtAmt ? fmtAmt(_repOutstanding) : _repOutstanding}`, `Collecting: ${fmtAmt ? fmtAmt(amount) : amount}`, `Overpayment: ${fmtAmt ? fmtAmt(_overAmt) : _overAmt}`], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
+}
+_expiredQty = expired;
+if (expired > 0) {
+_expUnit = await getRepGoodsCreditUnitPrice(currentRepProfile, name, _ed ? _ed.id : null);
+const _gp = planGoodsCredit(expired, _expUnit, _repOutstanding >= 0 ? Math.max(0, _repOutstanding - amount) : -1);
+_expiredValue = _gp.value;
+_gcWarn = { ...(_gcWarn || {}), notes: [`Expired ${fmtNum(expired)} kg will be added to CHORA raw material.`, _expiredValue > 0
+? `Expired goods credited: ${fmtAmt(_expiredValue)} (${fmtNum(expired)} kg × ${fmtAmt(_expUnit)}) will be deducted from ${name}'s balance${_gp.capped ? ' (limited to what is owed)' : ''}. This is not cash.`
+: `No balance is owed, so the expired goods are recorded without a credit.`] };
 }
 let collId = _ed ? _ed.id : generateUUID('sale');
 if (!validateUUID(collId)) {
@@ -391,6 +423,8 @@ timestamp: getTimestamp(),
 affectsInventory: false,
 syncedAt: new Date().toISOString()
 };
+if (expired > 0) transactionRecord.expiredQty = expired;
+if (_expiredValue > 0) { transactionRecord.expiredValue = _expiredValue; transactionRecord.expiredUnitPrice = _expUnit; }
 transactionRecord = ensureRecordIntegrity(transactionRecord, false);
 }
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - (transactionRecord.totalValue || 0)) > 0.001) {
@@ -416,6 +450,34 @@ _gcWarn = { lines: [`Unpaid balance: ${fmtAmt ? fmtAmt(_rcOwed) : _rcOwed}`, `Th
 }
 }
 if (!(await window.gcCommit(_gcWarn || {}))) { if (_repAlloc) _repAlloc.undo(); restoreBtn(); return; }
+const _origExp = _ed ? (Number(_ed.original.expiredQty) || 0) : 0;
+const _origApplied = (_origExp > 0 && _ed.original.expiredApplied !== false) ? _origExp : 0;
+const _expDelta = transactionRecord.paymentType === 'COLLECTION' ? round2(_expiredQty - _origApplied) : 0;
+let _choraAdded = 0, _choraRemoved = 0, _choraOk = true;
+const _undoChora = async () => {
+try {
+if (_choraAdded > 0) await reverseExpiredFromChora(_choraAdded, transactionRecord.date);
+else if (_choraRemoved > 0) await processExpiredToChora(_choraRemoved, transactionRecord.date, name);
+} catch (_) {}
+_choraAdded = 0; _choraRemoved = 0;
+};
+try {
+if (_expDelta > 0) {
+_choraOk = !!(await processExpiredToChora(_expDelta, transactionRecord.date, name));
+if (_choraOk) _choraAdded = _expDelta;
+} else if (_expDelta < 0) {
+const _choraBlock = await getExpiredDeleteBlockReason({ expired: -_expDelta, expiredApplied: true });
+if (_choraBlock) { if (_repAlloc) _repAlloc.undo(); window.notifyBlocking(_choraBlock, 'warning'); restoreBtn(); return; }
+await reverseExpiredFromChora(-_expDelta, transactionRecord.date);
+_choraRemoved = -_expDelta;
+}
+} catch (_choraErr) {
+await _undoChora();
+if (_repAlloc) _repAlloc.undo();
+window.notifyBlocking('Could not update CHORA raw material: ' + ((_choraErr && _choraErr.message) || 'unknown error'), 'error');
+restoreBtn(); return;
+}
+if (_expiredQty > 0) transactionRecord.expiredApplied = _expDelta > 0 ? _choraOk : true;
 if (_ed) {
 const o = _ed.original;
 stampEdit(transactionRecord, o);
@@ -432,7 +494,7 @@ rep.push(transactionRecord);
 try {
 if (_repAlloc && _repAlloc.changedIds.length) await unifiedSave('rep', rep, null, _repAlloc.changedIds);
 await unifiedSave('rep', rep, transactionRecord);
-} catch (_saveErr) { if (_repAlloc) _repAlloc.undo(); throw _saveErr; }
+} catch (_saveErr) { await _undoChora(); if (_repAlloc) _repAlloc.undo(); throw _saveErr; }
 void _gpsBgPromise.then(async coords => {
   if (!coords) return;
   try {
@@ -466,6 +528,8 @@ emitSyncUpdate({ rep: null}).catch(e => {
 }
 document.getElementById('rep-quantity').value = '';
 document.getElementById('rep-amount-collected').value = '';
+{ const _xe = document.getElementById('rep-expired-qty'); if (_xe) _xe.value = ''; }
+if (_expiredQty > 0 || _expDelta !== 0) { if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory(); }
 if(repTransactionMode === 'sale') {
 const _custName = document.getElementById('rep-cust-name'); if (_custName) _custName.value = '';
 const _custInfo = document.getElementById('rep-customer-info-display'); if (_custInfo) _custInfo.classList.add('hidden');
@@ -1070,16 +1134,19 @@ let info = '';
 let _price = 0;
 let rTitle = '', rSub = '', rAmt = 0, rIn = false, rKind = 'cash', rCat = 'cash';
 if (isPartialPayment || isCollection) {
-const _pay = collectionCollected(t);
+const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
+const _hasPay = isPartialPayment || _pay > 0 || !(Number(t.expiredQty) > 0);
+const _expText = _expV > 0 ? (Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${await formatCurrency(_expV)}` : await formatCurrency(_expV)) : '';
 info = `
     <div class="u-fs-sm2 u-text-muted">${_when}${_mergedBadgeHtml(t, {inline:true})}</div>
-    <div class="u-dbdd85e">Payment: ${await formatCurrency(_pay)}</div>
-    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : 'Bulk Payment'}${(t.allocations && t.allocations.length) ? ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : ''}</div>
+    ${_hasPay ? `<div class="u-dbdd85e">Payment: ${await formatCurrency(_pay)}</div>` : ''}
+    ${_expV > 0 ? `<div class="u-dbdd85e"><span class="u-expired-credit">Expired credit: ${_expText}</span></div>` : ''}
+    ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (_hasPay ? (_expV > 0 ? 'Payment + Expired Credit' : 'Bulk Payment') : 'Expired Stock')}</div>
 `;
 rTitle = isPartialPayment ? 'Partial payment' : 'Collection';
-rSub = isPartialPayment ? 'Payment received' : 'Bulk payment';
-if (t.allocations && t.allocations.length) rSub += ` · applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}`;
-rAmt = _pay; rIn = true; rKind = 'in'; rCat = 'pay';
+rSub = isPartialPayment ? 'Payment received' : (_hasPay ? (_expV > 0 ? 'Payment + expired credit' : 'Bulk payment') : 'Expired stock');
+rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
@@ -1374,7 +1441,7 @@ const repOpeningBalance = repPriorTxns.reduce((bal, t) => {
     debit = parseFloat(t.totalValue) || 0;
     credit = parseFloat(t.partialPaymentReceived) || 0;
   } else if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT') {
-    credit = parseFloat(t.totalValue) || 0;
+    credit = (parseFloat(t.totalValue) || 0) + (parseFloat(t.expiredValue) || 0);
   }
   return bal + (debit - credit);
 }, 0);
@@ -1456,9 +1523,10 @@ typeLabel = 'CREDIT\n(PAID)';
 detailLabel = `${fmtAmt(t.quantity||0)} kg × Rs ${fmtAmt(unitPrice)}`;
 displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
 } else if (pt === 'COLLECTION') {
-credit = parseFloat(t.totalValue) || 0;
+credit = (parseFloat(t.totalValue) || 0) + (parseFloat(t.expiredValue) || 0);
 typeLabel = 'COLLECTION';
-detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received, applied to ${t.allocations.length} sale${t.allocations.length === 1 ? '' : 's'}` : 'Cash payment received';
+detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received` : (collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0) ? 'Cash payment received' : '');
+if (Number(t.expiredValue) > 0) detailLabel += `${detailLabel ? ' | ' : ''}Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(Number(t.expiredValue))}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}`;
 displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
 } else if (pt === 'PARTIAL_PAYMENT') {
 credit = parseFloat(t.totalValue) || 0;
@@ -1613,7 +1681,7 @@ return hcCardHtml({
 tone, avatar: item.customerName, title: item.customerName,
 sub: `${esc(item.time || '')}${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`,
 chips: [repChip, item.isSettled ? hcChip('Settled', 'good') : ''],
-amount: fmtAmt(item.totalValue), tag, tagTone: isCollection ? 'good' : (isCredit ? 'warn' : ''),
+amount: fmtAmt(isCollection && !(Number(item.totalValue) > 0) && Number(item.expiredValue) > 0 ? item.expiredValue : item.totalValue), tag, tagTone: isCollection ? 'good' : (isCredit ? 'warn' : ''),
 metrics: (isCollection || isOldDebt) ? [] : [{ label: 'Quantity', value: `${fmtNum(item.quantity)} kg`, cls: 'qty-val' }]
 }, { className: `is-compact${item.isSettled ? ' is-settled-record' : ''}`, attrs: { 'data-date': item.date } });
 }).join('');

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, collectionPartialCash,
-  getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection, collectionCollected,
+  getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection, collectionCollected, collectionEligible,
 } from '../modules/link-graph.js';
 import { debtDelta } from '../modules/finance.js';
 const credit = (id, date, value) => ({ id, date, timestamp: Date.parse(date), paymentType: 'CREDIT', creditReceived: false, totalValue: value });
@@ -120,5 +120,31 @@ describe('old debt (opening balance)', () => {
     const o = od();
     applyCollectionAlloc(o, { amount: 120, full: false }, 'c1', {});
     assert.equal(debtDelta(o, 300), 180);
+  });
+});
+
+describe('collections only reach transactions on or before the collection date', () => {
+  const od = () => ({ id: 'od', date: '2025-12-31', timestamp: 1, paymentType: 'CREDIT', transactionType: 'OLD_DEBT', creditReceived: false, partialPaymentReceived: 0, totalValue: 300 });
+  const dues = (sales, date) => sortForCollection(collectionEligible(sales, date)).map(s => ({ id: s.id, due: debtDelta(s, s.totalValue) }));
+  it('skips sales dated after the collection and keeps same-day sales and old debt', () => {
+    const sales = [od(), credit('a', '2026-01-01', 100), credit('b', '2026-01-05', 100), credit('late', '2026-01-10', 100)];
+    assert.deepEqual(dues(sales, '2026-01-05').map(d => d.id), ['b', 'a', 'od']);
+  });
+  it('pays the latest earlier sales in full, then the remainder reaches old debt', () => {
+    const sales = [od(), credit('a', '2026-01-01', 100), credit('b', '2026-01-05', 100), credit('late', '2026-01-10', 100)];
+    const plan = planCollectionAllocation(250, dues(sales, '2026-01-06'));
+    assert.deepEqual(plan.allocs.map(x => [x.saleId, x.amount, x.full]), [['b', 100, true], ['a', 100, true], ['od', 50, false]]);
+    assert.equal(plan.leftover, 0);
+  });
+  it('a backdated collection leaves later sales unpaid and keeps any surplus as leftover', () => {
+    const sales = [credit('a', '2026-01-01', 100), credit('late', '2026-01-10', 100)];
+    const plan = planCollectionAllocation(500, dues(sales, '2026-01-02'));
+    assert.deepEqual(plan.allocs.map(x => x.saleId), ['a']);
+    assert.equal(plan.leftover, 400);
+  });
+  it('uses the supply date when a sale has one', () => {
+    const sales = [{ ...credit('s', '2026-02-20', 100), supplyDate: '2026-01-03' }];
+    assert.equal(collectionEligible(sales, '2026-01-05').length, 1);
+    assert.equal(collectionEligible(sales, '2026-01-02').length, 0);
   });
 });

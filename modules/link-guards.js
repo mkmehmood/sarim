@@ -7,7 +7,7 @@ import {
   planExpenseCascade, newGroupId, stampGroup,
   planExpenseNameRename, getDeleteCashDrop, getRestoreCashNeed, getCashShortIssue, planBulkCashDrop, planEntityRename, applyEntityRename, planCalcRestore, isSettleableSale, getPartialPaidIssue, remapMaterialRefs, planMaterialDeduction, getStockOverdrawIssue, getUnitsShortIssue, DELETE_ORIGIN_FIELD,
   recordRename, resolveRename, getOldDebtEditIssue, sumChildPayments,
-  planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection,
+  planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection, collectionEligible,
   getTransferPairRestoreIssue, getSupplierCreditReconsumeIssue,
   planPaymentTxDeletion, planEntityTxDeletion, getBatchCashIssue,
 } from './link-graph.js';
@@ -581,9 +581,10 @@ export async function applyCollectionToSales(opts) {
       if (sale && revertCollectionAlloc(sale, original.id)) changed.add(sale.id);
     }
   }
-  const candidates = sortForCollection(mine.filter(s =>
+  const collectionDate = (when && when.date) || record.date;
+  const candidates = sortForCollection(collectionEligible(mine.filter(s =>
     (s.paymentType === 'CREDIT' || s.transactionType === 'OLD_DEBT') && !s.creditReceived && !s.usedInCalcId &&
-    !(s.isRepTransfer || (s.isTransfer && s.transferFrom))));
+    !(s.isRepTransfer || (s.isTransfer && s.transferFrom))), collectionDate));
   const dues = [];
   for (const s of candidates) dues.push({ id: s.id, due: debtDelta(s, debtNeedsGross(s) ? await getGross(s) : 0) });
   const plan = planCollectionAllocation(amount, dues);
