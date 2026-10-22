@@ -10,10 +10,6 @@ export function formatDateKey(key) {
   return m && MONTHS[Number(m[2]) - 1] ? `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : '';
 }
 
-/**
- * Extra text a date search should match besides what is on screen, so typing the old style
- * (OCT 21 26, OCT 21) or the plain key (2026-10-21) still finds the row. Lower case.
- */
 export function dateSearchText(key) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(key || ''));
   const mon = m && MONTHS[Number(m[2]) - 1];
