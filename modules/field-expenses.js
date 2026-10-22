@@ -1,44 +1,109 @@
 import { openDialog } from './dialog.js';
-import { esc, fmtAmt } from './business.js';
-import { addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems } from './field-expense-items.js';
-
-let items = [];
+import { esc, fmtAmt, loadCollections } from './business.js';
+import { addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems, expenseItemsOfRecord, commissionItemsOfRecord } from './field-expense-items.js';
 
 const el = (id) => document.getElementById(id);
 const toast = (msg, type) => { if (typeof window.showToast === 'function') window.showToast(msg, type); };
 
 const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v.01M18 14v.01"/></svg>';
 
+const SEARCH = "handleUniversalSearch('fe-name','fe-results','expense-category')";
+
+const KINDS = {
+  expense: {
+    inputId: 'fieldExpenses',
+    title: 'Field Expenses',
+    eyebrow: 'Expenses',
+    caption: 'Search or type a category, tap it, add the amount and save. The field shows the total paid.',
+    placeholder: 'Search or type a category (e.g. Fuel)',
+    totalLabel: 'Total paid',
+    tag: 'Expense',
+    ofRecord: expenseItemsOfRecord,
+    recordKey: 'fieldExpenseItems'
+  },
+  commission: {
+    inputId: 'commissionPaid',
+    title: 'Commission Paid',
+    eyebrow: 'Commission',
+    caption: 'Search or type a category, tap it, add the amount and save. The field shows the total paid.',
+    placeholder: 'Search or type a category (e.g. Advance)',
+    totalLabel: 'Total paid',
+    tag: 'Commission',
+    ofRecord: commissionItemsOfRecord,
+    recordKey: 'commissionPaidItems'
+  }
+};
+
+const lists = { expense: [], commission: [] };
+let activeKind = 'expense';
+
 export function getFieldExpenseItems() {
-  return cleanExpenseItems(items);
+  return cleanExpenseItems(lists.expense);
 }
 
-function syncInput(recalculate) {
-  const input = el('fieldExpenses');
+export function getCommissionItems() {
+  return cleanExpenseItems(lists.commission);
+}
+
+function syncInput(kind, recalculate) {
+  const input = el(KINDS[kind].inputId);
   if (!input) return;
-  const total = expenseTotal(items);
+  const total = expenseTotal(lists[kind]);
   input.value = total > 0 ? String(total) : '';
   if (recalculate && typeof window.calculateSales === 'function') window.calculateSales();
 }
 
 export function resetFieldExpenses() {
-  items = [];
-  syncInput(false);
+  lists.expense = [];
+  syncInput('expense', false);
 }
 
-function listHtml() {
-  if (!items.length) return '<div class="fe-empty">No expenses added yet.</div>';
+export function resetCommissionPaid() {
+  lists.commission = [];
+  syncInput('commission', false);
+}
+
+function listHtml(kind) {
+  const items = lists[kind];
+  if (!items.length) return '<div class="fe-empty">Nothing added yet.</div>';
   const rows = items.map((it, i) => `<div class="fe-row"><span class="fe-name">${esc(it.name)}</span><span class="fe-amt cost-val">${esc(fmtAmt(it.amount))}</span><button type="button" class="fe-del" data-fe-del="${i}" aria-label="Remove ${esc(it.name)}">&times;</button></div>`).join('');
-  return `${rows}<div class="fe-total"><span>Total paid</span><b>${esc(fmtAmt(expenseTotal(items)))}</b></div>`;
+  return `${rows}<div class="fe-total"><span>${esc(KINDS[kind].totalLabel)}</span><b>${esc(fmtAmt(expenseTotal(items)))}</b></div>`;
 }
 
-export function openFieldExpensePopup() {
-  const body = `<div class="fe-form"><div class="dlg-field"><input id="fe-name" class="dlg-input" type="text" placeholder="Expense name (e.g. Fuel)" autocomplete="off" maxlength="60"></div><div class="dlg-field"><input id="fe-amount" class="dlg-input" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount"></div></div><div id="fe-list" class="fe-list">${listHtml()}</div>`;
+export async function expenseCategorySearchItems(query) {
+  const q = String(query || '').trim().toLowerCase();
+  const seen = new Map();
+  const add = (name, tag) => {
+    const key = String(name || '').trim().toLowerCase();
+    if (key && !seen.has(key)) seen.set(key, { value: String(name).trim(), tag });
+  };
+  const kind = KINDS[activeKind];
+  for (const it of lists[activeKind]) add(it.name, 'This entry');
+  try {
+    const { sales, rep } = await loadCollections('sales', 'rep');
+    const records = [...(Array.isArray(sales) ? sales : []), ...(Array.isArray(rep) ? rep : [])];
+    for (const rec of records) {
+      if (!rec || !Array.isArray(rec[kind.recordKey])) continue;
+      for (const it of kind.ofRecord(rec)) add(it.name, kind.tag);
+    }
+  } catch (e) { toast('Could not load saved categories.', 'warning'); }
+  return [...seen.values()].filter((it) => !q || it.value.toLowerCase().includes(q)).slice(0, 12);
+}
+
+export function expenseCategoryOnPick() {
+  const amount = document.getElementById('fe-amount');
+  if (amount) amount.focus();
+}
+
+function openPopup(kind) {
+  activeKind = kind;
+  const cfg = KINDS[kind];
+  const body = `<div class="fe-form"><div class="dlg-field"><input id="fe-name" class="dlg-input" type="text" placeholder="${esc(cfg.placeholder)}" autocomplete="off" maxlength="60" oninput="${SEARCH}" onfocus="${SEARCH}"><div id="fe-results" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div><div class="dlg-field"><input id="fe-amount" class="dlg-input" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount"></div></div><div id="fe-list" class="fe-list">${listHtml(kind)}</div>`;
   const shown = openDialog({
     tone: 'primary',
-    title: 'Field Expenses',
-    eyebrow: 'Expenses',
-    caption: 'Add each expense by name. The field shows the total paid.',
+    title: cfg.title,
+    eyebrow: cfg.eyebrow,
+    caption: cfg.caption,
     icon: ICON,
     body,
     actions: [
@@ -52,11 +117,12 @@ export function openFieldExpensePopup() {
           const amountEl = overlay.querySelector('#fe-amount');
           const label = nameEl.value.trim();
           const value = parseFloat(amountEl.value);
-          if (!label) { toast('Enter an expense name.', 'warning'); nameEl.focus(); return { ok: false }; }
+          if (!label) { toast('Search and select a category, or type a new one.', 'warning'); nameEl.focus(); return { ok: false }; }
           if (!(value > 0)) { toast('Enter an amount greater than zero.', 'warning'); amountEl.focus(); return { ok: false }; }
-          items = addExpenseItem(items, label, value);
-          syncInput(true);
-          overlay.querySelector('#fe-list').innerHTML = listHtml();
+          lists[kind] = addExpenseItem(lists[kind], label, value);
+          syncInput(kind, true);
+          overlay.querySelector('#fe-list').innerHTML = listHtml(kind);
+          overlay.querySelector('#fe-results').classList.add('hidden');
           nameEl.value = '';
           amountEl.value = '';
           toast(`${label} saved`, 'success');
@@ -73,9 +139,9 @@ export function openFieldExpensePopup() {
     overlay.addEventListener('click', (e) => {
       const del = e.target.closest('[data-fe-del]');
       if (!del) return;
-      items = removeExpenseItem(items, Number(del.dataset.feDel));
-      syncInput(true);
-      overlay.querySelector('#fe-list').innerHTML = listHtml();
+      lists[kind] = removeExpenseItem(lists[kind], Number(del.dataset.feDel));
+      syncInput(kind, true);
+      overlay.querySelector('#fe-list').innerHTML = listHtml(kind);
     });
     overlay.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || !e.target.closest('#fe-name, #fe-amount')) return;
@@ -88,4 +154,15 @@ export function openFieldExpensePopup() {
   return shown;
 }
 
+export function openFieldExpensePopup() {
+  return openPopup('expense');
+}
+
+export function openCommissionPaidPopup() {
+  return openPopup('commission');
+}
+
 window.openFieldExpensePopup = openFieldExpensePopup;
+window.openCommissionPaidPopup = openCommissionPaidPopup;
+window.expenseCategorySearchItems = expenseCategorySearchItems;
+window.expenseCategoryOnPick = expenseCategoryOnPick;

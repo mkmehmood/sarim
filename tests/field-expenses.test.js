@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems,
-  expenseItemsOfRecord, mergeExpenseItems, sortedExpenseEntries
+  expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries
 } from '../modules/field-expense-items.js';
 import { hcExpensesHtml } from '../modules/history-card.js';
 import { smExpensesHtml, smCalcHtml } from '../modules/summary-card.js';
@@ -118,5 +118,39 @@ describe('calculator tab wiring', () => {
     assert.match(src, /range\.fieldExpItems = mergeExpenseItems/);
     assert.match(src, /body: hcExpensesHtml\(sortedExpenseEntries\(data\.fieldExpItems\), fmtAmt\)/);
     assert.match(src, /smExpensesHtml\(sortedExpenseEntries\(data\.fieldExpItems\)/);
+  });
+});
+
+describe('commission paid pop-up', () => {
+  it('the Commission Paid field opens the same pop-up and cannot be typed into', () => {
+    const m = /<input[^>]*id="commissionPaid"[^>]*>/.exec(read('index.html'));
+    assert.ok(m, 'field exists');
+    assert.match(m[0], /readonly/);
+    assert.match(m[0], /onclick="openCommissionPaidPopup\(\)"/);
+  });
+
+  it('the name field uses universal search so a tapped category is reused', () => {
+    const src = read('modules/field-expenses.js');
+    assert.match(src, /handleUniversalSearch\('fe-name','fe-results','expense-category'\)/);
+    assert.match(src, /window\.openCommissionPaidPopup = openCommissionPaidPopup/);
+    const pay = read('modules/utilities-payments.js');
+    assert.match(pay, /case 'expense-category':/);
+    assert.match(pay, /type === 'expense-category'/);
+  });
+
+  it('commission items fall back to a single Commission line for older records', () => {
+    assert.deepEqual(commissionItemsOfRecord({ commissionPaidItems: [{ name: 'Advance', amount: 40 }] }), [{ name: 'Advance', amount: 40 }]);
+    assert.deepEqual(commissionItemsOfRecord({ commissionPaid: 300 }), [{ name: 'Commission', amount: 300 }]);
+    assert.deepEqual(commissionItemsOfRecord({ commissionPaid: 0 }), []);
+  });
+
+  it('saving stores commission items, clears them, and cards show a Commission breakdown', () => {
+    const sales = read('modules/utilities-sales.js');
+    assert.match(sales, /commissionPaidItems: getCommissionItems\(\)/);
+    assert.match(sales, /resetCommissionPaid\(\);/);
+    assert.ok(smExpensesHtml([['Advance', 40]], fmt, 'Commission breakdown').includes('Commission breakdown'));
+    assert.ok(hcExpensesHtml([['Advance', 40]], String, 'Commission breakdown').includes('Commission breakdown'));
+    const pay = read('modules/utilities-payments.js');
+    assert.match(pay, /range\.commissionItems = mergeExpenseItems/);
   });
 });

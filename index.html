@@ -2126,7 +2126,7 @@ oninput="filterCustomers()">
 <div class="u-heading-accent u-c0e2fdc">Commission</div>
 <div class="grid-inputs">
 <div class="field"><label>Commission / Unit</label><input type="number" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
-<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Collections &amp; Handover Cash</div>
 <div class="grid-inputs">

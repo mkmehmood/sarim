@@ -35,11 +35,11 @@ export function hcMetricsHtml(metrics) {
   }).join('')}</dl>`;
 }
 
-export function hcExpensesHtml(entries, amt) {
+export function hcExpensesHtml(entries, amt, title = 'Expenses breakdown') {
   const list = (entries || []).filter((e) => e && Number(e[1]) > 0);
   if (!list.length) return '';
   const rows = list.map(([name, value]) => `<div class="hc-mat"><span class="hc-mat-name">${esc(name)}</span><span class="hc-mat-val"><span class="cost-val">${amt(value)}</span></span></div>`).join('');
-  return `<details class="hc-more"><summary>Expenses breakdown</summary><div class="hc-mats">${rows}</div></details>`;
+  return `<details class="hc-more"><summary>${esc(title)}</summary><div class="hc-mats">${rows}</div></details>`;
 }
 
 export function hcInnerHtml(o) {

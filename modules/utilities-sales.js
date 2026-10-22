@@ -1,4 +1,4 @@
-import { getFieldExpenseItems, resetFieldExpenses } from './field-expenses.js';
+import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid } from './field-expenses.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
@@ -2934,6 +2934,7 @@ creditValue: Number(safeNumber(creditValue, 0).toFixed(2)),
 prevColl: Number(safeNumber(prev, 0).toFixed(2)),
 fieldExpenses: Number(safeNumber(fieldExp, 0).toFixed(2)),
 fieldExpenseItems: getFieldExpenseItems(),
+commissionPaidItems: getCommissionItems(),
 totalExpected: Number(safeNumber(totalExpected, 0).toFixed(2)),
 received: Number(safeNumber(rec, 0).toFixed(2)),
 commissionPerUnit: Number(safeNumber(commissionPerUnit, 0).toFixed(2)),
@@ -2985,7 +2986,7 @@ document.getElementById('prevCreditReceived').value = '';
 document.getElementById('receivedCash').value = '';
 resetFieldExpenses();
 document.getElementById('commissionPerUnit').value = '';
-document.getElementById('commissionPaid').value = '';
+resetCommissionPaid();
 window._returnStore = null;
 window._returnRep = null;
 { const _rr = document.getElementById('returnedQuantity'), _ee = document.getElementById('expiredQuantity'), _hh = document.getElementById('repReturnAutoHint');

@@ -39,6 +39,15 @@ export function expenseItemsOfRecord(rec) {
   return total > 0 ? [{ name: OTHER_EXPENSE_LABEL, amount: total }] : [];
 }
 
+export const COMMISSION_LABEL = 'Commission';
+
+export function commissionItemsOfRecord(rec) {
+  const items = cleanExpenseItems(rec && rec.commissionPaidItems);
+  if (items.length) return items;
+  const total = r2(rec && rec.commissionPaid);
+  return total > 0 ? [{ name: COMMISSION_LABEL, amount: total }] : [];
+}
+
 export function mergeExpenseItems(a, b) {
   let out = cleanExpenseItems(a);
   for (const it of cleanExpenseItems(b)) out = addExpenseItem(out, it.name, it.amount);

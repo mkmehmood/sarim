@@ -55,11 +55,11 @@ function soldBreakdownHtml(entries, fmt) {
   return `<details class="sm-more"><summary>Sold breakdown</summary><div class="sm-rows">${rows}</div></details>`;
 }
 
-export function smExpensesHtml(entries, fmt) {
+export function smExpensesHtml(entries, fmt, title = 'Expenses breakdown') {
   const list = (entries || []).filter((e) => e && Number(e[1]) > 0);
   if (!list.length) return '';
   const rows = list.map(([name, value]) => `<div class="sm-row"><span class="sm-row-name">${esc(name)}</span><span class="sm-row-val"><span class="cost-val">${fmt.amt(fmt.safe(value))}</span></span></div>`).join('');
-  return `<details class="sm-more"><summary>Expenses breakdown</summary><div class="sm-rows">${rows}</div></details>`;
+  return `<details class="sm-more"><summary>${esc(title)}</summary><div class="sm-rows">${rows}</div></details>`;
 }
 
 export function smProductionHtml(d, fmt) {
@@ -125,6 +125,6 @@ export function smCalcHtml(title, d, fmt, extra = {}) {
         { label: 'Commission paid', value: fmt.safe(d.commissionPaid) > 0 ? fmt.amt(fmt.safe(d.commissionPaid)) : '', cls: 'profit-val' }
       ] }
     ],
-    body: smExpensesHtml(d.fieldExpEntries, fmt)
+    body: smExpensesHtml(d.fieldExpEntries, fmt) + smExpensesHtml(d.commissionEntries, fmt, 'Commission breakdown')
   });
 }

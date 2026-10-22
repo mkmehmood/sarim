@@ -1,7 +1,7 @@
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
-import { expenseItemsOfRecord, mergeExpenseItems, sortedExpenseEntries } from './field-expense-items.js';
+import { expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries } from './field-expense-items.js';
 import { hcCard, hcCardHtml, hcChip, hcEmptyHtml, hcExpensesHtml } from './history-card.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
@@ -189,6 +189,7 @@ ${sxGrid(
 )}
 </section>
 ${smExpensesHtml(sortedExpenseEntries(data.fieldExpItems), { amt: fmtAmt, safe: safeValue })}
+${smExpensesHtml(sortedExpenseEntries(data.commissionItems), { amt: fmtAmt, safe: safeValue }, 'Commission breakdown')}
 </div>`;
 }
 let html = `<div class="card liquid-card ${highlightClass}"${dateAttr}>${badge}<h4>${esc(title)}${mergedBadge}</h4>
@@ -266,7 +267,7 @@ sections: [
 { label: 'Commission paid', value: safeValue(data.commissionPaid) > 0 ? fmtAmt(safeValue(data.commissionPaid)) : '', cls: 'profit-val' }
 ] }
 ],
-body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt),
+body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt) + hcExpensesHtml(sortedExpenseEntries(data.commissionItems), fmtAmt, 'Commission breakdown'),
 actions: isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`
 }, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate } });
 }
@@ -557,6 +558,7 @@ received: h.received,
 fieldExp: h.fieldExpenses,
 fieldExpItems: expenseItemsOfRecord(h),
 commissionPaid: h.commissionPaid,
+commissionItems: commissionItemsOfRecord(h),
 statusClass: h.statusClass,
 statusText: h.statusText,
 _rawDate: h.date
@@ -661,6 +663,7 @@ range.received += (h.received || 0);
 range.fieldExp = (range.fieldExp || 0) + (h.fieldExpenses || 0);
 range.fieldExpItems = mergeExpenseItems(range.fieldExpItems, expenseItemsOfRecord(h));
 range.commissionPaid = (range.commissionPaid || 0) + (h.commissionPaid || 0);
+range.commissionItems = mergeExpenseItems(range.commissionItems, commissionItemsOfRecord(h));
 }
 
 export function updateSalesCharts(comp) {
@@ -5892,7 +5895,7 @@ const input = document.getElementById(inputId);
 const resultsDiv = document.getElementById(resultsId);
 if (!input || !resultsDiv) return;
 const query = input.value || '';
-if ((!query || query.length < 1) && !String(dataSource).startsWith('ledger-')) {
+if ((!query || query.length < 1) && !String(dataSource).startsWith('ledger-') && dataSource !== 'expense-category') {
 resultsDiv.classList.add('hidden');
 return;
 }
@@ -5966,6 +5969,27 @@ const safeItem = String(it.value).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
 <div class="u-cf7d8a2 st-background__356c02 hv-highlight"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeItem}', 'ledger')">
+<strong>${esc(it.value)}</strong>${it.tag ? ` <span class="u-fs-sm2 u-text-muted">${esc(it.tag)}</span>` : ''}
+</div>`;
+});
+} else if (query) {
+html = `<div class="u-search-empty" >
+No match found. "${esc(query)}" will be created as new.
+</div>`;
+} else {
+resultsDiv.classList.add('hidden');
+return;
+}
+break;
+}
+case 'expense-category': {
+const catItems = typeof window.expenseCategorySearchItems === 'function' ? await window.expenseCategorySearchItems(query) : [];
+if (catItems.length > 0) {
+catItems.forEach(it => {
+const safeItem = String(it.value).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+html += `
+<div class="u-cf7d8a2 st-background__356c02 hv-highlight"
+onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeItem}', 'expense-category')">
 <strong>${esc(it.value)}</strong>${it.tag ? ` <span class="u-fs-sm2 u-text-muted">${esc(it.tag)}</span>` : ''}
 </div>`;
 });
@@ -6082,6 +6106,8 @@ if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 if (typeof openRepCustomerEditModal === 'function') openRepCustomerEditModal(value);
 } else if (type === 'ledger' && typeof window.dailyLedgerOnPick === 'function') {
 window.dailyLedgerOnPick(inputId, value);
+} else if (type === 'expense-category' && typeof window.expenseCategoryOnPick === 'function') {
+window.expenseCategoryOnPick(inputId);
 }
 }
 
