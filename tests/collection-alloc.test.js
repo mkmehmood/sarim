@@ -4,7 +4,7 @@ import {
   planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, collectionPartialCash,
   getCollectionRevertIssue, getCollectionReapplyIssue, sortForCollection, collectionCollected, collectionEligible,
 } from '../modules/link-graph.js';
-import { debtDelta } from '../modules/finance.js';
+import { debtDelta, collectionExpiredLeft } from '../modules/finance.js';
 const credit = (id, date, value) => ({ id, date, timestamp: Date.parse(date), paymentType: 'CREDIT', creditReceived: false, totalValue: value });
 const owed = (sales) => sales.reduce((t, s) => t + debtDelta(s, s.totalValue), 0);
 describe('collection allocation', () => {
@@ -146,5 +146,20 @@ describe('collections only reach transactions on or before the collection date',
     const sales = [{ ...credit('s', '2026-02-20', 100), supplyDate: '2026-01-03' }];
     assert.equal(collectionEligible(sales, '2026-01-05').length, 1);
     assert.equal(collectionEligible(sales, '2026-01-02').length, 0);
+  });
+});
+
+describe('expired credit on a collection is allocated like cash', () => {
+  it('cash and expired credit together clear the newest sales first', () => {
+    const sales = [credit('a', '2026-01-01', 100), credit('b', '2026-01-05', 100)];
+    const plan = planCollectionAllocation(60 + 80, sortForCollection(sales).map(s => ({ id: s.id, due: debtDelta(s, s.totalValue) })));
+    assert.deepEqual(plan.allocs.map(x => [x.saleId, x.amount, x.full]), [['b', 100, true], ['a', 40, false]]);
+  });
+  it('only the unallocated part of the credit still reduces the balance', () => {
+    assert.equal(collectionExpiredLeft({ expiredValue: 80 }), 80);
+    assert.equal(collectionExpiredLeft({ expiredValue: 80, expiredAllocated: 30 }), 50);
+    assert.equal(collectionExpiredLeft({ expiredValue: 80, expiredAllocated: 80 }), 0);
+    const rec = { paymentType: 'COLLECTION', totalValue: 10, expiredValue: 80, expiredAllocated: 30 };
+    assert.equal(debtDelta(rec, 0), -60);
   });
 });

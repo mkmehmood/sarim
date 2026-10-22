@@ -12,7 +12,7 @@ import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory.js';
-import { periodTotals, periodQuantity } from './finance.js';
+import { periodTotals, periodQuantity, collectionExpiredLeft } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
 import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast, fetchLocationInto } from './customers.js';
@@ -433,7 +433,7 @@ window.notifyBlocking('This payment is linked to a credit sale. Delete it and re
 let _repAlloc = null;
 if (transactionRecord.paymentType === 'COLLECTION' && !(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT')) {
 try {
-_repAlloc = await applyCollectionToSales({ kind: 'rep', arr: rep, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
+_repAlloc = await applyCollectionToSales({ kind: 'rep', arr: rep, record: transactionRecord, amount: parseFloat(transactionRecord.totalValue) || 0, expiredValue: _expiredValue, name: transactionRecord.customerName, repName: currentRepProfile, original: _ed ? _ed.original : null, when: { date: transactionRecord.date, time: timeString }, getGross: async (s) => parseFloat(s.totalValue) || 0 });
 } catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 'Warning'); restoreBtn(); return; }
 }
 const _linkIssue = _ed ? await getSaleEditLinkIssue('rep', _ed.original, transactionRecord) : null;
@@ -1441,7 +1441,7 @@ const repOpeningBalance = repPriorTxns.reduce((bal, t) => {
     debit = parseFloat(t.totalValue) || 0;
     credit = parseFloat(t.partialPaymentReceived) || 0;
   } else if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT') {
-    credit = (parseFloat(t.totalValue) || 0) + (parseFloat(t.expiredValue) || 0);
+    credit = (parseFloat(t.totalValue) || 0) + collectionExpiredLeft(t);
   }
   return bal + (debit - credit);
 }, 0);
@@ -1523,7 +1523,7 @@ typeLabel = 'CREDIT\n(PAID)';
 detailLabel = `${fmtAmt(t.quantity||0)} kg × Rs ${fmtAmt(unitPrice)}`;
 displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
 } else if (pt === 'COLLECTION') {
-credit = (parseFloat(t.totalValue) || 0) + (parseFloat(t.expiredValue) || 0);
+credit = (parseFloat(t.totalValue) || 0) + collectionExpiredLeft(t);
 typeLabel = 'COLLECTION';
 detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received` : (collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0) ? 'Cash payment received' : '');
 if (Number(t.expiredValue) > 0) detailLabel += `${detailLabel ? ' | ' : ''}Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(Number(t.expiredValue))}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}`;

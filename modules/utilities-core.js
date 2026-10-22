@@ -3,6 +3,7 @@ import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from 
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords, collectionCollected } from './link-graph.js';
+import { collectionExpiredLeft } from './finance.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
@@ -3250,7 +3251,7 @@ const buildSaleRow = async (t, runBal) => {
       const _cExpTxt = _cHasExp ? `Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(_cExp)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : '';
       detailLabel = '';
       extraDetail = [_cHasPay ? `Payment ${fmtAmt(_cPay)}` : '', _cExpTxt].filter(Boolean).join(' | ');
-      if (_cHasExp) credit += _cExp;
+      if (_cHasExp) credit += collectionExpiredLeft(t);
     }
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {

@@ -1679,9 +1679,9 @@ collRecord.time = o.time;
 if (!collRecord.gps && o.gps) collRecord.gps = o.gps;
 }
 let _alloc = null;
-if (!(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT') && (amount > 0 || _ed)) {
+if (!(_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT') && (amount > 0 || expiredValue > 0 || _ed)) {
 try {
-_alloc = await applyCollectionToSales({ kind: 'customer', arr: sales, record: collRecord, amount, name, original: _ed ? _ed.original : null, when: { date: collRecord.date, time: timeString }, getGross: getSaleTransactionValue });
+_alloc = await applyCollectionToSales({ kind: 'customer', arr: sales, record: collRecord, amount, expiredValue, name, original: _ed ? _ed.original : null, when: { date: collRecord.date, time: timeString }, getGross: getSaleTransactionValue });
 } catch (_allocErr) { window.notifyBlocking(_allocErr.message || 'Could not apply this collection to the sales.', 'warning', 'Warning'); restoreBtn(); return; }
 }
 const _origExp = _ed ? (Number(_ed.original.expiredQty) || 0) : 0;

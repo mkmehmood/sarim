@@ -565,7 +565,7 @@ export async function revertCollectionToSales(kind, collection, all) {
 }
 
 export async function applyCollectionToSales(opts) {
-  const { kind, arr, record, amount, name, repName, original, when, getGross } = opts;
+  const { kind, arr, record, amount, name, repName, original, when, getGross, expiredValue } = opts;
   const lname = String(name || '').trim().toLowerCase();
   const mine = arr.filter(s => s && !s.deletedAt && !s.isMerged && s.customerName && String(s.customerName).trim().toLowerCase() === lname &&
     (kind === 'rep' ? s.salesRep === repName : (s.currentRepProfile === 'admin' && (s.transactionType === 'OLD_DEBT' || !s.salesRep || s.salesRep === 'NONE'))));
@@ -587,7 +587,8 @@ export async function applyCollectionToSales(opts) {
     !(s.isRepTransfer || (s.isTransfer && s.transferFrom))), collectionDate));
   const dues = [];
   for (const s of candidates) dues.push({ id: s.id, due: debtDelta(s, debtNeedsGross(s) ? await getGross(s) : 0) });
-  const plan = planCollectionAllocation(amount, dues);
+  const credit = Math.max(0, Number(expiredValue) || 0);
+  const plan = planCollectionAllocation(amount + credit, dues);
   for (const a of plan.allocs) {
     const sale = candidates.find(s => s.id === a.saleId);
     applyCollectionAlloc(sale, a, record.id, when);
@@ -596,15 +597,19 @@ export async function applyCollectionToSales(opts) {
   const stamp = getTimestamp();
   const changedIds = [...changed];
   changedIds.forEach(id => { const s = arr.find(x => x && x.id === id); if (s) { s.updatedAt = stamp; ensureRecordIntegrity(s, true); } });
+  const allocated = plan.allocs.reduce((t, a) => t + a.amount, 0);
   if (plan.allocs.length) {
+    const cashPaid = Math.min(amount, allocated);
+    const cashLeft = Math.round((amount - cashPaid) * 100) / 100;
+    const creditPaid = Math.round((allocated - cashPaid) * 100) / 100;
     record.collectedAmount = amount;
     record.allocations = plan.allocs;
-    record.totalValue = plan.leftover;
-    record.profit = plan.leftover;
+    record.totalValue = cashLeft;
+    record.profit = cashLeft;
+    if (creditPaid > 0) record.expiredAllocated = creditPaid; else delete record.expiredAllocated;
   } else {
-    delete record.collectedAmount; delete record.allocations;
+    delete record.collectedAmount; delete record.allocations; delete record.expiredAllocated;
   }
-  const allocated = plan.allocs.reduce((t, a) => t + a.amount, 0);
   return { changedIds, allocated, paidCount: plan.allocs.filter(a => a.full).length, partialCount: plan.allocs.filter(a => !a.full).length, undo };
 }
 

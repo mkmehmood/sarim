@@ -48,6 +48,11 @@ export function debtNeedsGross(t) {
   return t.paymentType === 'CREDIT' && !(t.isMerged && typeof t.creditValue === 'number');
 }
 
+export function collectionExpiredLeft(t) {
+  if (!t) return 0;
+  return round2(Math.max(0, num(t.expiredValue, 0) - Math.max(0, num(t.expiredAllocated, 0))));
+}
+
 export function debtDelta(t, grossValue, opts) {
   if (!t) return 0;
   const partial = num(t.partialPaymentReceived, 0);
@@ -67,7 +72,7 @@ export function debtDelta(t, grossValue, opts) {
     return round2(Math.max(0, gross - partial));
   }
   if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') {
-    return round2(-(Math.max(0, num(t.totalValue, 0)) + Math.max(0, num(t.expiredValue, 0))));
+    return round2(-(Math.max(0, num(t.totalValue, 0)) + collectionExpiredLeft(t)));
   }
   return 0;
 }
