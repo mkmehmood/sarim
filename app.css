@@ -3111,7 +3111,6 @@ text-shadow: none;
 animation: none !important;
 }
 
-/* Light theme: soft elevation on surfaces (global reset above strips shadows) */
 [data-theme="light"] .section,
 [data-theme="light"] .card,
 [data-theme="light"] .liquid-card,
