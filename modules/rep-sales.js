@@ -2,7 +2,7 @@ import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales } from './link-guards.js';
 import { smBarHtml } from './summary-card.js';
 import { hcCardHtml, hcChip } from './history-card.js';
-import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate } from './tx-date.js';
+import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate, pinOpeningDays } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected } from './link-graph.js';
 import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -1110,7 +1110,7 @@ if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
 else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = rAmt; _credit = rAmt; }
 const _isSale = !isOldDebt && !isCollection && !isPartialPayment;
 _entries.push({
-  id: t.id, dkey: _dkey, rTitle, rSub, rIn, rKind, rCat,
+  id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), rTitle, rSub, rIn, rKind, rCat,
   tag: (t.isMerged || isCredit) ? toggleBtnHtml : '',
   amtText: await formatCurrency(rAmt),
   balText: _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal)),
@@ -1121,7 +1121,7 @@ _entries.push({
   row: { title: rTitle, amtText: await formatCurrency(rAmt), rIn, info, panelPlaceholder, kebabBtn, canEdit: !(t.isMerged || isOldDebt), canDelete: !t.isMerged, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) }
 });
 }
-await renderLedger('rep', { name, phone, entries: _entries, summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _gAll, _rAll, _nAll, 'rep'), money: formatCurrency });
+await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _gAll, _rAll, _nAll, 'rep'), money: formatCurrency });
 }
 
 export async function openRepCustomerEditModal(customerName) {

@@ -1,5 +1,5 @@
 import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
-import { txEffectiveDate, txDeviceDate, txDeviceCompare } from './tx-date.js';
+import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
 import { periodTotals, periodQuantity } from './finance.js';
@@ -504,9 +504,9 @@ const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
 const _canDelete = !t.isMerged;
 const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
 const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
-_entries.push({ id: t.id, dkey: _dkey, rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, sold: _isSale ? _txValue : 0, got: (isCollection || isPartialPayment) ? rAmt : 0, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
+_entries.push({ id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, sold: _isSale ? _txValue : 0, got: (isCollection || isPartialPayment) ? rAmt : 0, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
 }
-await renderLedger('cust', { name, phone, entries: _entries, summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
+await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
 }
 
 window.recordFirstSaleForCustomer = () => {
