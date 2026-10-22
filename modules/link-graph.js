@@ -631,10 +631,10 @@ export function collectionCollected(rec) {
 export function sortForCollection(list) {
   const day = (s) => String(s.supplyDate || s.date || '');
   return list.slice().sort((a, b) => {
-    const ao = a.transactionType === 'OLD_DEBT' ? 0 : 1, bo = b.transactionType === 'OLD_DEBT' ? 0 : 1;
+    const ao = a.transactionType === 'OLD_DEBT' ? 1 : 0, bo = b.transactionType === 'OLD_DEBT' ? 1 : 0;
     if (ao !== bo) return ao - bo;
-    if (day(a) !== day(b)) return day(a) < day(b) ? -1 : 1;
-    return _n(a.timestamp) - _n(b.timestamp);
+    if (day(a) !== day(b)) return day(a) < day(b) ? 1 : -1;
+    return _n(b.timestamp) - _n(a.timestamp);
   });
 }
 

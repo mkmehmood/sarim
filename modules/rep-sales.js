@@ -1083,7 +1083,6 @@ rAmt = _pay; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
-      ${_when}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
     </div>
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
@@ -1110,7 +1109,7 @@ if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
 else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = rAmt; _credit = rAmt; }
 const _isSale = !isOldDebt && !isCollection && !isPartialPayment;
 _entries.push({
-  id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), rTitle, rSub, rIn, rKind, rCat,
+  id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, rIn, rKind, rCat,
   tag: (t.isMerged || isCredit) ? toggleBtnHtml : '',
   amtText: await formatCurrency(rAmt),
   balText: _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal)),
@@ -1437,7 +1436,7 @@ debit = parseFloat(t.totalValue) || 0;
 credit = parseFloat(t.partialPaymentReceived) || 0;
 typeLabel = 'OLD DEBT';
 detailLabel = oldDebtNote(t.notes);
-displayDate = formatDisplayDate(t.date);
+displayDate = '';
 } else if (pt === 'CASH') {
 const val = t.totalValue || 0;
 debit = val; credit = val;

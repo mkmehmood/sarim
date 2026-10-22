@@ -447,10 +447,8 @@ info = `
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
-      ${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}
       <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
     </div>
-    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div class="u-5d1cf22 text-xs">${esc(oldDebtNote(t.notes))}</div>
 `;
@@ -504,7 +502,7 @@ const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
 const _canDelete = !t.isMerged;
 const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
 const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
-_entries.push({ id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, sold: _isSale ? _txValue : 0, got: (isCollection || isPartialPayment) ? rAmt : 0, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
+_entries.push({ id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, sold: _isSale ? _txValue : 0, got: (isCollection || isPartialPayment) ? rAmt : 0, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
 }
 await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
 }
@@ -607,7 +605,6 @@ if (_isOldDebt) {
 _txTitle = '\u26a0 Delete Old Debt Record';
 _txMsg = `Permanently delete an OLD DEBT record for ${_txCust || 'this customer'}.`;
 _txMsg += `\nBalance: ${fmtAmt(_txItem.totalValue||0)}`;
-if (_txDate) _txMsg += `\nRecorded: ${_txDate}`;
 if (_txItem?.notes) _txMsg += `\nNote: ${_txItem.notes}`;
 _txMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance from the customer's history permanently.`;
 } else if (_txItem?.paymentType === 'COLLECTION') {
@@ -701,7 +698,6 @@ if (_rIsOldDebt) {
 _rTitle = '\u26a0 Delete Old Debt Record';
 _rMsg = `Permanently delete an OLD DEBT record for ${_rCust || 'this customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}.`;
 _rMsg += `\nBalance: ${fmtAmt(_rItem.totalValue||0)}`;
-if (_rDate) _rMsg += `\nRecorded: ${_rDate}`;
 if (_rItem?.notes) _rMsg += `\nNote: ${_rItem.notes}`;
 _rMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance permanently.`;
 } else if (_rItem?.paymentType === 'COLLECTION') {

@@ -3213,7 +3213,7 @@ const buildSaleRow = async (t, runBal) => {
     credit = parseFloat(t.partialPaymentReceived) || 0;
     typeLabel = 'OLD DEBT';
     detailLabel = oldDebtNote(t.notes);
-    displayDate = formatDisplayDate(t.date);
+    displayDate = '';
   } else if (pt === 'CASH') {
     const val = await getSaleTransactionValue(t);
     debit = val; credit = val;

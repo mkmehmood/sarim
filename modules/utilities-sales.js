@@ -6244,12 +6244,12 @@ const supplyDateText = (item.supplyDate && item.supplyDate !== item.date) ? `Sup
 const repChips = [];
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') repChips.push(hcChip(item.salesRep.split(' ')[0], 'info'));
 if ((item.isRepTransfer && item.repTransferFrom) || (item.isTransfer && item.transferFrom)) repChips.push(hcChip(`From ${String(item.repTransferFrom || item.transferFrom).split(' ')[0]}`, 'info'));
-const baseSub = `${esc(dateDisplay)}${mergedBadge}${creatorHtml}`;
+const baseSub = `${isOldDebtItem ? '' : esc(dateDisplay)}${mergedBadge}${creatorHtml}`;
 let cardOpts;
 if (isOldDebtItem) {
 cardOpts = {
 tone: 'warn', avatar: item.customerName, title: item.customerName, titleClass: 'customer-name',
-sub: baseSub, chips: [hcChip('Old debt', 'warn'), supplyDateText ? hcChip(supplyDateText) : ''],
+sub: baseSub, chips: [hcChip('Old debt', 'warn')],
 amount: fmtAmt(safeValue(item.totalValue)), tag: 'Credit', tagTone: 'warn',
 metrics: [{ label: 'Previous balance', value: fmtAmt(safeValue(item.totalValue)), cls: 'rev-val', wide: true }],
 note: esc(oldDebtNote(item.notes)), actions: deleteBtnHtml

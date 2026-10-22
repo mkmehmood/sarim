@@ -25,9 +25,9 @@ describe('collection allocation', () => {
     assert.equal(plan.allocs[0].full, true);
     assert.equal(plan.leftover, 0);
   });
-  it('orders old debt first, then by date', () => {
-    const order = sortForCollection([credit('n', '2026-03-01', 1), { ...credit('o', '2026-05-01', 1), transactionType: 'OLD_DEBT' }, credit('m', '2026-02-01', 1)]).map(s => s.id);
-    assert.deepEqual(order, ['o', 'm', 'n']);
+  it('orders newest first, then older ones, with old debt last', () => {
+    const order = sortForCollection([credit('n', '2026-03-01', 1), { ...credit('o', '2026-05-01', 1), transactionType: 'OLD_DEBT' }, credit('m', '2026-02-01', 1), { ...credit('x', '2026-03-01', 1), timestamp: Date.parse('2026-03-01') + 5000 }]).map(s => s.id);
+    assert.deepEqual(order, ['x', 'n', 'm', 'o']);
   });
 });
 describe('applying a collection to sales keeps the balance exact', () => {
@@ -85,23 +85,36 @@ describe('applying a collection to sales keeps the balance exact', () => {
 });
 describe('old debt (opening balance)', () => {
   const od = () => ({ id: 'od', date: '2025-12-31', timestamp: 1, paymentType: 'CREDIT', transactionType: 'OLD_DEBT', creditReceived: false, partialPaymentReceived: 0, totalValue: 300 });
-  it('is paid first, keeps its date, and statement credit reaches the full total', () => {
-    const sales = [credit('a', '2026-01-01', 100), od()];
+  it('is paid last: newer sales are cleared first and the remainder reaches old debt, keeping its date', () => {
+    const sales = [od(), credit('a', '2026-01-01', 100), credit('b', '2026-01-05', 100)];
     const dues = sortForCollection(sales).map(s => ({ id: s.id, due: debtDelta(s, s.totalValue) }));
-    assert.equal(dues[0].id, 'od');
-    const plan = planCollectionAllocation(350, dues);
-    plan.allocs.forEach(a => applyCollectionAlloc(sales.find(s => s.id === a.saleId), a, 'c1', { date: '2026-02-01' }));
+    assert.deepEqual(dues.map(d => d.id), ['b', 'a', 'od']);
+    const plan = planCollectionAllocation(450, dues);
+    assert.deepEqual(plan.allocs.map(x => [x.saleId, x.amount, x.full]), [['b', 100, true], ['a', 100, true], ['od', 250, false]]);
+    plan.allocs.forEach(x => applyCollectionAlloc(sales.find(s => s.id === x.saleId), x, 'c1', { date: '2026-02-01' }));
+    const o = sales.find(s => s.id === 'od');
+    assert.equal(o.creditReceived, false);
+    assert.equal(o.partialPaymentReceived, 250);
+    assert.equal(o.date, '2025-12-31');
+    assert.equal(debtDelta(o, 300), 50);
+    sales.forEach(s => revertCollectionAlloc(s, 'c1'));
+    assert.equal(o.partialPaymentReceived, 0);
+    assert.equal(debtDelta(o, 300), 300);
+  });
+  it('a part collection smaller than the newest sale only touches the newest sale', () => {
+    const sales = [od(), credit('a', '2026-01-01', 100), credit('b', '2026-01-05', 100)];
+    const plan = planCollectionAllocation(60, sortForCollection(sales).map(s => ({ id: s.id, due: debtDelta(s, s.totalValue) })));
+    assert.deepEqual(plan.allocs.map(x => [x.saleId, x.amount, x.full]), [['b', 60, false]]);
+  });
+  it('a collection that covers everything fully clears old debt and keeps its own timestamp', () => {
+    const sales = [od(), credit('a', '2026-01-01', 100)];
+    const plan = planCollectionAllocation(400, sortForCollection(sales).map(s => ({ id: s.id, due: debtDelta(s, s.totalValue) })));
+    plan.allocs.forEach(x => applyCollectionAlloc(sales.find(s => s.id === x.saleId), x, 'c1', {}));
     const o = sales.find(s => s.id === 'od');
     assert.equal(o.creditReceived, true);
     assert.equal(o.partialPaymentReceived, 300);
-    assert.equal(o.date, '2025-12-31');
-    assert.equal(o.creditReceivedDate, undefined);
+    assert.equal(o.timestamp, 1);
     assert.equal(debtDelta(o, 300), 0);
-    assert.equal(sales.find(s => s.id === 'a').partialPaymentReceived, 50);
-    sales.forEach(s => revertCollectionAlloc(s, 'c1'));
-    assert.equal(o.creditReceived, false);
-    assert.equal(o.partialPaymentReceived, 0);
-    assert.equal(debtDelta(o, 300), 300);
   });
   it('a part payment on old debt reduces what is owed', () => {
     const o = od();
