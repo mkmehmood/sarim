@@ -30,4 +30,5 @@ window._lazyLoadRep = function (cb) {
 import './custom-date-picker.js';
 import './daily-ledger.js';
 import './phone-actions.js';
+import './field-expenses.js';
 import './settings-screen.js';

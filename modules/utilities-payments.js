@@ -1,7 +1,8 @@
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
-import { smCalcHtml, smBarHtml } from './summary-card.js';
-import { hcCard, hcCardHtml, hcChip, hcEmptyHtml } from './history-card.js';
+import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
+import { expenseItemsOfRecord, mergeExpenseItems, sortedExpenseEntries } from './field-expense-items.js';
+import { hcCard, hcCardHtml, hcChip, hcEmptyHtml, hcExpensesHtml } from './history-card.js';
 import { editDateValue } from './edit-date.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
@@ -187,6 +188,7 @@ ${sxGrid(
   (safeValue(data.commissionPaid) > 0 ? sxTile('Commission paid', fmtAmt(safeValue(data.commissionPaid)), 'good') : '')
 )}
 </section>
+${smExpensesHtml(sortedExpenseEntries(data.fieldExpItems), { amt: fmtAmt, safe: safeValue })}
 </div>`;
 }
 let html = `<div class="card liquid-card ${highlightClass}"${dateAttr}>${badge}<h4>${esc(title)}${mergedBadge}</h4>
@@ -264,6 +266,7 @@ sections: [
 { label: 'Commission paid', value: safeValue(data.commissionPaid) > 0 ? fmtAmt(safeValue(data.commissionPaid)) : '', cls: 'profit-val' }
 ] }
 ],
+body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt),
 actions: isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`
 }, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate } });
 }
@@ -552,6 +555,7 @@ collected: h.prevColl,
 expected: h.totalExpected,
 received: h.received,
 fieldExp: h.fieldExpenses,
+fieldExpItems: expenseItemsOfRecord(h),
 commissionPaid: h.commissionPaid,
 statusClass: h.statusClass,
 statusText: h.statusText,
@@ -655,6 +659,7 @@ range.revenue += h.revenue;
 range.expected += (h.totalExpected || 0);
 range.received += (h.received || 0);
 range.fieldExp = (range.fieldExp || 0) + (h.fieldExpenses || 0);
+range.fieldExpItems = mergeExpenseItems(range.fieldExpItems, expenseItemsOfRecord(h));
 range.commissionPaid = (range.commissionPaid || 0) + (h.commissionPaid || 0);
 }
 

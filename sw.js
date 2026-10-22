@@ -25,6 +25,8 @@ const ASSETS_TO_CACHE = [
   './modules/phone-format.js',
   './modules/date-format.js',
   './modules/phone-actions.js',
+  './modules/field-expenses.js',
+  './modules/field-expense-items.js',
   './modules/feedback.js',
   './modules/geolocation-bridge.js',
   './modules/rep-sales.js',

@@ -1,3 +1,4 @@
+import { getFieldExpenseItems, resetFieldExpenses } from './field-expenses.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
@@ -2932,6 +2933,7 @@ cashQty: Number(safeNumber(cashQty, 0).toFixed(2)),
 creditValue: Number(safeNumber(creditValue, 0).toFixed(2)),
 prevColl: Number(safeNumber(prev, 0).toFixed(2)),
 fieldExpenses: Number(safeNumber(fieldExp, 0).toFixed(2)),
+fieldExpenseItems: getFieldExpenseItems(),
 totalExpected: Number(safeNumber(totalExpected, 0).toFixed(2)),
 received: Number(safeNumber(rec, 0).toFixed(2)),
 commissionPerUnit: Number(safeNumber(commissionPerUnit, 0).toFixed(2)),
@@ -2981,7 +2983,7 @@ document.getElementById('sharedQty').value = '';
 document.getElementById('creditSales').value = '';
 document.getElementById('prevCreditReceived').value = '';
 document.getElementById('receivedCash').value = '';
-document.getElementById('fieldExpenses').value = '';
+resetFieldExpenses();
 document.getElementById('commissionPerUnit').value = '';
 document.getElementById('commissionPaid').value = '';
 window._returnStore = null;

@@ -2131,7 +2131,7 @@ oninput="filterCustomers()">
 <div class="u-heading-accent u-c0e2fdc">Collections &amp; Handover Cash</div>
 <div class="grid-inputs">
 <div class="field"><label>Recovered Credit</label><input type="number" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
-<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div class="field"><label>Physical Cash Received from Rep</label><input type="number" id="receivedCash" oninput="calculateSales()"></div>
 </div>
 <div class="result-box">Expected Cash: <span id="totalExpectedCash">0.00</span></div>
