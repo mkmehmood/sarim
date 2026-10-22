@@ -1,3 +1,4 @@
+import { formatDayMonthYear } from './date-format.js';
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID, loadCollections } from './business.js';
 import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToCloud, sanitizeForFirestore } from './sync.js';
 import { defaultSettings } from './utilities-core.js';
@@ -165,7 +166,7 @@ try {
     if (typeof v === 'boolean') return `<span class="dc-color" style="--d-color: ${v?'#30d158':'#ff453a'}">${v}</span>`;
     if (typeof v === 'object') {
       if (Array.isArray(v)) return `<span class="u-182e628">Array(${v.length})</span>`;
-      if (v.seconds !== undefined) return `<span class="u-d59bb54">${new Date(v.seconds*1000).toLocaleDateString()}</span>`;
+      if (v.seconds !== undefined) return `<span class="u-d59bb54">${formatDayMonthYear(new Date(v.seconds*1000))}</span>`;
       return `<span class="u-182e628">Object(${Object.keys(v).length})</span>`;
     }
     if (typeof v === 'string') {
@@ -424,7 +425,7 @@ try {
   ${(() => {
     const fy = settingsDoc.exists ? (settingsDoc.data().settings || {}) : {};
     const fyCount = fy.fyCloseCount || 0;
-    const fyDate  = fy.lastYearClosedDate ? new Date(fy.lastYearClosedDate).toLocaleDateString('en-PK',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    const fyDate  = fy.lastYearClosedDate ? formatDayMonthYear(new Date(fy.lastYearClosedDate)) : '—';
     const fySignal = yearCloseSignalDoc.exists ? yearCloseSignalDoc.data() : null;
     return `<div class="text-xs st-padding__2285bd st-background__2e1b32 st-border-radius__cc1df6 st-font-size__8e87b7">
       <div class="u-3fc56fa st-font-weight__e3ec02 st-color__f045bb">Financial Year Status</div>
@@ -1287,7 +1288,7 @@ if (completeSection) {
     .filter(id => { const el = document.getElementById('cy-status-' + id); return el && window.getDisplay(el) !== 'none'; }).length;
   const fyMeta2 = fyMeta || {};
   const closeCount = fyMeta2.fyCloseCount || 1;
-  const closedDateStr = fyMeta2.lastYearClosedDate || new Date().toLocaleDateString('en-PK', { day:'numeric', month:'short', year:'numeric' });
+  const closedDateStr = fyMeta2.lastYearClosedDate || formatDayMonthYear(new Date());
   const syncWarnBlock = hasSyncWarnings ? `
     <div class="cy-sync-warn">
       <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-a80ec05"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="var(--warning)" fill-opacity="0.16" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="var(--warning)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="var(--warning)"/></svg>

@@ -1805,7 +1805,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
   const ms  = record.mergedSummary || {};
   const dr  = ms.dateRange || {};
   const fmt = async (v) => (v != null && v !== '' && !isNaN(Number(v))) ? await formatCurrency(v) : '—';
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'}) : '—';
+  const fmtDate = (d) => d ? (formatDayMonthYear(new Date(d)) || '—') : '—';
   const row = (label, v, cls) =>
     `<div class="txn-preclose-row"><span class="txn-preclose-label">${label}</span><span class="txn-preclose-val${cls ? ' '+cls : ''}">${v}</span></div>`;
   const sec = (t) => `<div class="txn-preclose-section">${t}</div>`;
@@ -2630,7 +2630,7 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
   add('');
   add(`نام: ${_bidiValue(name)}`);
   if (phone && phone !== 'N/A') add(`فون: ${_ltr(phone)}`);
-  add(`تاریخ اجراء: ${_ltr(new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))}`);
+  add(`تاریخ اجراء: ${_ltr(formatDayMonthYear(new Date()))}`);
   let closing = '';
   (tables || []).forEach(t => {
     const headRaw = Array.isArray(t.head) && Array.isArray(t.head[0]) ? t.head[0].map(_stmtCellText) : [];
@@ -2796,7 +2796,7 @@ doc.setFont(undefined, 'normal'); doc.text(entity.wallet, pageW / 2 + 30, yPos);
 }
 doc.setFont(undefined, 'bold'); doc.text('Generated:', pageW / 2, yPos + 5);
 doc.setFont(undefined, 'normal');
-doc.text(now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), pageW / 2 + 22, yPos + 5);
+doc.text(formatDayMonthYear(now), pageW / 2 + 22, yPos + 5);
 yPos += 18;
 doc.setDrawColor(...headerColor); doc.setLineWidth(0.5);
 doc.line(14, yPos, pageW - 14, yPos);
@@ -3072,7 +3072,7 @@ for (let i = 1; i <= pageCount; i++) {
 doc.setPage(i);
 doc.setFontSize(7); doc.setTextColor(160);
 doc.text(
-`Generated on ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
+`Generated on ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
 pageW / 2, 291, { align: 'center' }
 );
 doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });
@@ -3193,7 +3193,7 @@ doc.setFont(undefined, 'bold'); doc.text('Address:', 14, yPos + 10);
 doc.setFont(undefined, 'normal'); doc.text(address.substring(0, 60), 36, yPos + 10);
 doc.setFont(undefined, 'bold'); doc.text('Generated:', pageW / 2, yPos);
 doc.setFont(undefined, 'normal');
-doc.text(now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), pageW / 2 + 22, yPos);
+doc.text(formatDayMonthYear(now), pageW / 2 + 22, yPos);
 yPos += 18;
 doc.setDrawColor(...hdrColor); doc.setLineWidth(0.5);
 doc.line(14, yPos, pageW - 14, yPos);
@@ -3431,7 +3431,7 @@ for (let i = 1; i <= pageCount; i++) {
 doc.setPage(i);
 doc.setFontSize(7); doc.setTextColor(160);
 doc.text(
-`Generated on ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
+`Generated on ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
 pageW / 2, 291, { align: 'center' }
 );
 doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });

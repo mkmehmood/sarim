@@ -1,3 +1,4 @@
+import { formatDayMonthYear } from './date-format.js';
 import { openDialog } from './dialog.js';
 
 const SVG_RANGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
@@ -17,7 +18,7 @@ export function rangeLabel(from, to) {
   if (!from && !to) return 'All Time';
   const fmt = (iso) => {
     const d = new Date(iso + 'T00:00:00');
-    return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return isNaN(d.getTime()) ? iso : formatDayMonthYear(d);
   };
   return `${fmt(from)} \u2013 ${fmt(to)}`;
 }

@@ -1,7 +1,7 @@
 import { esc, fmtAmt } from './business.js';
 import { openDialog } from './dialog.js';
 import { renderMarkupImage, warmMarkupImage } from './dialog-image.js';
-import { formatDateKey } from './date-format.js';
+import { formatDateKey, dateSearchText } from './date-format.js';
 import { BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 
 const CFG = {
@@ -82,7 +82,8 @@ export function applyCmFilters(kind) {
   list.classList.toggle('is-filtering', !!term || filter !== 'all');
   list.querySelectorAll('.cm-row').forEach((r) => {
     const okF = filter === 'all' || (filter === 'open' ? r.dataset.open === '1' : r.dataset.cat === filter);
-    const okT = !term || r.textContent.toLowerCase().includes(term);
+    const day = r.closest('.cm-day');
+    const okT = !term || r.textContent.toLowerCase().includes(term) || dateSearchText(day && day.dataset.day).includes(term);
     r.classList.toggle('d-none', !(okF && okT));
   });
   list.querySelectorAll('.cm-day').forEach((d) => d.classList.toggle('d-none', !d.querySelector('.cm-row:not(.d-none)')));

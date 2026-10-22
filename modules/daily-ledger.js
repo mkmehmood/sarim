@@ -1,3 +1,4 @@
+import { formatDayMonthYear } from './date-format.js';
 import { sqliteStore, esc, fmtAmt, generateUUID, localDateStr } from './business.js';
 import { openDialog, showGlassConfirm } from './dialog.js';
 import { triggerAutoSync, loadScript } from './utilities-core.js';
@@ -17,7 +18,7 @@ const toast = (msg, type) => { if (typeof window.showToast === 'function') windo
 const signed = (n) => `${n >= 0 ? '+ ' : '- '}${fmtAmt(Math.abs(n))}`;
 const shortDate = (d) => {
   const t = new Date(`${d}T00:00:00`);
-  return Number.isFinite(t.getTime()) ? t.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) : String(d || '');
+  return Number.isFinite(t.getTime()) ? formatDayMonthYear(t) : String(d || '');
 };
 async function load() {
   _rows = normalizeRows(await sqliteStore.get(KEY));
@@ -426,7 +427,7 @@ function drawPdf(jsPDF, st) {
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
     doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(160);
-    doc.text(`Generated on ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} | GULL AND ZUBAIR NASWAR DEALERS`, pageW / 2, 291, { align: 'center' });
+    doc.text(`Generated on ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} | GULL AND ZUBAIR NASWAR DEALERS`, pageW / 2, 291, { align: 'center' });
     doc.text(`Page ${i} of ${pages}`, pageW / 2, 287, { align: 'center' });
   }
   return doc;

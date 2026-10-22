@@ -1,3 +1,4 @@
+import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales } from './link-guards.js';
 import { smBarHtml } from './summary-card.js';
 import { hcCardHtml, hcChip } from './history-card.js';
@@ -1420,7 +1421,7 @@ doc.setFont(undefined, 'bold'); doc.text('Sales Rep:', 14, yPos + 10);
 doc.setFont(undefined, 'normal'); doc.text(currentRepProfile || 'N/A', 36, yPos + 10);
 doc.setFont(undefined, 'bold'); doc.text('Generated:', pageW / 2, yPos);
 doc.setFont(undefined, 'normal');
-doc.text(now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), pageW / 2 + 22, yPos);
+doc.text(formatDayMonthYear(now), pageW / 2 + 22, yPos);
 yPos += 18;
 doc.setDrawColor(...hdrColor); doc.setLineWidth(0.5);
 doc.line(14, yPos, pageW - 14, yPos);
@@ -1554,7 +1555,7 @@ for (let i = 1; i <= pageCount; i++) {
 doc.setPage(i);
 doc.setFontSize(7); doc.setTextColor(160);
 doc.text(
-`Generated on ${now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
+`Generated on ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
 pageW / 2, 291, { align: 'center' }
 );
 doc.text(`Page ${i} of ${pageCount}`, pageW / 2, 287, { align: 'center' });

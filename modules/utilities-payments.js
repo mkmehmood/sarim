@@ -3181,7 +3181,7 @@ doc.setFontSize(12); doc.setFont(undefined,'bold'); doc.setTextColor(50,50,50);
 const titleText = isEntities ? 'Payment Entities — Balances & Ledger' : 'Expenses — Transaction Records';
 doc.text(`${titleText} · ${periodName}`, pageW/2, 30, { align:'center' });
 doc.setFontSize(8); doc.setFont(undefined,'normal'); doc.setTextColor(120,120,120);
-doc.text(`Generated: ${now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})}`, pageW/2, 36, { align:'center' });
+doc.text(`Generated: ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})}`, pageW/2, 36, { align:'center' });
 doc.setDrawColor(...hdrColor); doc.setLineWidth(0.5);
 doc.line(14, 39, pageW - 14, 39);
 let yPos = 44;
@@ -3409,7 +3409,7 @@ for (let i = 1; i <= pageCount; i++) {
 doc.setPage(i);
 doc.setFontSize(7); doc.setTextColor(160);
 doc.text(
-`Generated on ${now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
+`Generated on ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
 pageW/2, 291, { align:'center' }
 );
 doc.text(`Page ${i} of ${pageCount}`, pageW/2, 287, { align:'center' });
@@ -3766,7 +3766,7 @@ doc.setFont(undefined,'normal'); doc.setTextColor(...hdrColor); doc.setFont(unde
 doc.text(fmtAmt(total), 138, 38);
 doc.setTextColor(80,80,80); doc.setFont(undefined,'normal');
 doc.setFont(undefined,'bold'); doc.text('Generated:', 14, 44);
-doc.setFont(undefined,'normal'); doc.text(now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) + ' at ' + now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true}), 42, 44);
+doc.setFont(undefined,'normal'); doc.text(formatDayMonthYear(now) + ' at ' + now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true}), 42, 44);
 doc.setDrawColor(...hdrColor); doc.setLineWidth(0.5);
 doc.line(14, 47, pageW - 14, 47);
 if (records.length > 0) {
@@ -3862,7 +3862,7 @@ for (let i = 1; i <= pageCount; i++) {
 doc.setPage(i);
 doc.setFontSize(7); doc.setTextColor(160);
 doc.text(
-`Generated on ${now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
+`Generated on ${formatDayMonthYear(now)} at ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
 pageW/2, 291, { align:'center' }
 );
 doc.text(`Page ${i} of ${pageCount}`, pageW/2, 287, { align:'center' });

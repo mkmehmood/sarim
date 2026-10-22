@@ -1,3 +1,4 @@
+import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
 import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
@@ -3110,7 +3111,7 @@ doc.setFontSize(12); doc.setFont(undefined,'bold'); doc.setTextColor(50,50,50);
 const titleText = type === 'rep' ? `My Customers — ${currentRepProfile || ''}` : 'All Customers — Complete List';
 doc.text(titleText, pageW/2, 30, { align:'center' });
 doc.setFontSize(8.5); doc.setFont(undefined,'normal'); doc.setTextColor(100,100,100);
-doc.text(`Generated: ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} at ${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})}`, pageW/2, 36, { align:'center' });
+doc.text(`Generated: ${formatDayMonthYear(new Date())} at ${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})}`, pageW/2, 36, { align:'center' });
 doc.setDrawColor(...hdrColor); doc.setLineWidth(0.5);
 doc.line(14, 39, pageW - 14, 39);
 const customerRows = [];
@@ -3195,7 +3196,7 @@ for (let i = 1; i <= pageCount; i++) {
 doc.setPage(i);
 doc.setFontSize(7); doc.setTextColor(160);
 doc.text(
-`Generated on ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} at ${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
+`Generated on ${formatDayMonthYear(new Date())} at ${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true})} | GULL AND ZUBAIR NASWAR DEALERS`,
 pageW/2, pageH - 5, { align:'center' }
 );
 doc.text(`Page ${i} of ${pageCount}`, pageW/2, pageH - 9, { align:'center' });
@@ -4127,7 +4128,7 @@ showToast('Decryption successful.', 'success', 2000);
 if (data && !isSupportedBackup(data)) { window.notifyBlocking('This backup file is not supported.', 'error', 'Unsupported file'); return; }
 if (data && data._meta && data._meta.isYearCloseBackup) {
 const snap = data._meta.fyCloseSnapshot || {};
-const closedDate = snap.lastYearClosedDate ? new Date(snap.lastYearClosedDate).toLocaleDateString() : 'unknown date';
+const closedDate = snap.lastYearClosedDate ? formatDayMonthYear(new Date(snap.lastYearClosedDate)) : 'unknown date';
 const _ycEstItems = [
   ...(data.production || []), ...(data.calculator || []),
   ...(data.sales || []), ...(data.rep || []),

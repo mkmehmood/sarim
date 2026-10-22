@@ -1,11 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { formatDayMonthYear } from '../modules/date-format.js';
 
 const src = readFileSync(new URL('../modules/stmt-range.js', import.meta.url), 'utf8')
-  .replace(/^import .*$/m, '')
+  .replace(/^import .*$/gm, '')
   .replace(/export (async )?function/g, '$1function');
-const api = new Function(`${src}\nreturn { isValidRange, rangeBounds, rangeLabel, todayIso };`)();
+const api = new Function('formatDayMonthYear', `${src}\nreturn { isValidRange, rangeBounds, rangeLabel, todayIso };`)(formatDayMonthYear);
 
 describe('statement date range', () => {
   it('accepts an ordered From/To pair and rejects the rest', () => {
@@ -28,7 +29,7 @@ describe('statement date range', () => {
   });
   it('labels a range with both dates', () => {
     const t = api.rangeLabel('2026-03-01', '2026-03-05');
-    assert.match(t, /Mar 1, 2026/);
-    assert.match(t, /Mar 5, 2026/);
+    assert.match(t, /01 MAR 2026/);
+    assert.match(t, /05 MAR 2026/);
   });
 });

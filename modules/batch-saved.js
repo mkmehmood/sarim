@@ -1,8 +1,9 @@
+import { formatDayMonthYear } from './date-format.js';
 import { esc, generateUUID } from './business.js';
 import { fixed3, fmtAmt, show, summaryRow } from './batch-common.js';
 const _when = (ts) => {
   const d = new Date(ts);
-  return Number.isFinite(d.getTime()) ? d.toLocaleString([], { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  return Number.isFinite(d.getTime()) ? `${formatDayMonthYear(d)} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
 };
 export const newCalcId = () => generateUUID('calc');
 function _headline(rec, f, u) {
