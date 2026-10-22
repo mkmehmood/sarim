@@ -3602,7 +3602,18 @@ let _camZoom = 1;
 let _camCaps = { min: 1, max: 4, hw: false };
 let _camRaf = 0;
 let _camPinch = null;
+let _camGrid = true;
+let _camBusy = false;
 const _camPointers = new Map();
+const CAM_ZOOM_STOPS = [1, 2, 3, 5, 8];
+const CAM_TITLES = {
+  prod: 'Product photo',
+  expense: 'Expense receipt',
+  paytransfer: 'Payment proof',
+  entity: 'Profile photo',
+  cust: 'Profile photo',
+  'rep-cust': 'Profile photo'
+};
 
 function _camEls() {
   return {
@@ -3611,18 +3622,19 @@ function _camEls() {
     view: document.getElementById('cam-view'),
     stage: document.getElementById('cam-stage'),
     badge: document.getElementById('cam-zoom-badge'),
-    range: document.getElementById('cam-zoom-range'),
     pills: document.getElementById('cam-pills'),
     torch: document.getElementById('torch-btn'),
-    flip: document.getElementById('cam-flip-btn')
+    flip: document.getElementById('cam-flip-btn'),
+    focus: document.getElementById('cam-focus'),
+    title: document.getElementById('cam-title'),
+    gridBtn: document.getElementById('cam-grid-btn')
   };
 }
 
 function _camLayout() {
   const { video, view, stage } = _camEls();
   if (!video || !view || !stage) return;
-  const vw = video.videoWidth || 3, vh = video.videoHeight || 4;
-  const ar = vw / vh;
+  const ar = (video.videoWidth || 3) / (video.videoHeight || 4);
   const W = stage.clientWidth, H = stage.clientHeight;
   if (!W || !H) return;
   let w = W, h = W / ar;
@@ -3634,39 +3646,51 @@ function _camLayout() {
 function _camRenderPills() {
   const { pills } = _camEls();
   if (!pills) return;
-  const max = _camCaps.max;
-  const opts = [1, 2, 3, 5, 8].filter(z => z >= _camCaps.min && z <= max + 0.001);
-  pills.innerHTML = opts.map(z => `<button type="button" class="cam-pill${Math.abs(_camZoom - z) < 0.06 ? ' on' : ''}" onclick="setCameraZoom(${z})">${z}×</button>`).join('');
+  const stops = CAM_ZOOM_STOPS.filter(z => z >= _camCaps.min - 0.001 && z <= _camCaps.max + 0.001);
+  pills.innerHTML = stops.length < 2 ? '' : stops.map(z => `<button type="button" class="cam-pill${Math.abs(_camZoom - z) < 0.06 ? ' on' : ''}" onclick="setCameraZoom(${z})">${z}×</button>`).join('');
 }
 
 function _camApplyZoom(z) {
-  const { video, badge, range } = _camEls();
+  const { video, badge, view } = _camEls();
   _camZoom = Math.min(_camCaps.max, Math.max(_camCaps.min, z));
-  if (range) range.value = String(_camZoom);
   if (badge) {
-    badge.textContent = _camZoom.toFixed(1).replace(/\.0$/, '.0') + '×';
+    badge.textContent = (Math.round(_camZoom * 10) / 10) + '×';
     badge.classList.add('show');
     clearTimeout(badge._t);
     badge._t = setTimeout(() => badge.classList.remove('show'), 1100);
   }
-  if (_camCaps.hw && _photoCaptureStream) {
-    const track = _photoCaptureStream.getVideoTracks()[0];
-    if (track && track.applyConstraints) {
-      cancelAnimationFrame(_camRaf);
-      _camRaf = requestAnimationFrame(() => { track.applyConstraints({ advanced: [{ zoom: _camZoom }] }).catch(() => {}); });
-    }
-    if (video) window.setStyle(video, 'transform', _camFacing === 'user' ? 'st-transform__ff7784' : '');
-  } else if (video) {
-    video.style.transform = `${_camFacing === 'user' ? 'scaleX(-1) ' : ''}scale(${_camZoom})`;
+  if (view) view.classList.toggle('is-front', _camFacing === 'user');
+  const track = _camCaps.hw && _photoCaptureStream ? _photoCaptureStream.getVideoTracks()[0] : null;
+  if (track && track.applyConstraints) {
+    cancelAnimationFrame(_camRaf);
+    _camRaf = requestAnimationFrame(() => { track.applyConstraints({ advanced: [{ zoom: _camZoom }] }).catch(() => {}); });
   }
+  if (video) video.style.setProperty('--cam-zoom', track ? '1' : String(_camZoom));
   _camRenderPills();
 }
 
 export function setCameraZoom(z) { _camApplyZoom(Number(z) || 1); }
 
-export function stepCameraZoom(dir) {
-  const step = _camCaps.max > 6 ? 0.5 : 0.25;
-  _camApplyZoom(_camZoom + dir * step * 2);
+export function toggleCameraGrid() {
+  const { view, gridBtn } = _camEls();
+  _camGrid = !_camGrid;
+  if (view) view.classList.toggle('grid-on', _camGrid);
+  if (gridBtn) { gridBtn.classList.toggle('on', _camGrid); gridBtn.setAttribute('aria-pressed', _camGrid ? 'true' : 'false'); }
+}
+
+function _camFocusAt(clientX, clientY) {
+  const { view, focus } = _camEls();
+  if (!view || !focus) return;
+  const r = view.getBoundingClientRect();
+  focus.style.setProperty('--cam-fx', (clientX - r.left) + 'px');
+  focus.style.setProperty('--cam-fy', (clientY - r.top) + 'px');
+  focus.classList.remove('go');
+  void focus.offsetWidth;
+  focus.classList.add('go');
+  const track = _photoCaptureStream && _photoCaptureStream.getVideoTracks()[0];
+  if (!track || !track.applyConstraints) return;
+  const pt = { x: Math.min(1, Math.max(0, (clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (clientY - r.top) / r.height)) };
+  track.applyConstraints({ advanced: [{ pointsOfInterest: [pt], focusMode: 'single-shot' }] }).catch(() => {});
 }
 
 function _camInstallGestures() {
@@ -3674,38 +3698,53 @@ function _camInstallGestures() {
   if (!view || view._camBound) return;
   view._camBound = true;
   const dist = () => { const p = [..._camPointers.values()]; return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); };
+  let tap = null;
+  let lastTap = 0;
   view.addEventListener('pointerdown', (e) => {
-    view.setPointerCapture && view.setPointerCapture(e.pointerId);
+    if (e.target.closest('button')) return;
+    if (view.setPointerCapture) view.setPointerCapture(e.pointerId);
     _camPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (_camPointers.size === 2) _camPinch = { d: dist(), z: _camZoom };
+    if (_camPointers.size === 2) { _camPinch = { d: dist(), z: _camZoom }; tap = null; }
+    else tap = { x: e.clientX, y: e.clientY, t: Date.now() };
   });
   view.addEventListener('pointermove', (e) => {
     if (!_camPointers.has(e.pointerId)) return;
     _camPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10) tap = null;
     if (_camPointers.size === 2 && _camPinch && _camPinch.d > 0) _camApplyZoom(_camPinch.z * (dist() / _camPinch.d));
   });
-  const end = (e) => { _camPointers.delete(e.pointerId); if (_camPointers.size < 2) _camPinch = null; };
+  const end = (e) => {
+    if (!_camPointers.has(e.pointerId)) return;
+    _camPointers.delete(e.pointerId);
+    if (_camPointers.size < 2) _camPinch = null;
+    if (_camPointers.size > 0) return;
+    const wasTap = tap && e.type === 'pointerup' && Date.now() - tap.t < 350;
+    tap = null;
+    if (!wasTap) return;
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      lastTap = 0;
+      _camApplyZoom(_camZoom > 1.4 ? _camCaps.min : Math.min(2, _camCaps.max));
+    } else {
+      lastTap = now;
+      _camFocusAt(e.clientX, e.clientY);
+    }
+  };
   view.addEventListener('pointerup', end);
   view.addEventListener('pointercancel', end);
-  let lastTap = 0;
-  view.addEventListener('pointerup', () => {
-    const now = Date.now();
-    if (now - lastTap < 280 && _camPointers.size === 0) _camApplyZoom(_camZoom > 1.4 ? 1 : Math.min(2, _camCaps.max));
-    lastTap = now;
-  });
   view.addEventListener('wheel', (e) => { e.preventDefault(); _camApplyZoom(_camZoom * (e.deltaY < 0 ? 1.08 : 0.93)); }, { passive: false });
   window.addEventListener('resize', _camLayout);
 }
 
 async function _camStart() {
-  const { video, torch, flip } = _camEls();
+  const { video, torch, flip, view } = _camEls();
   _camStopStream();
   _photoCaptureStream = await navigator.mediaDevices.getUserMedia({
     video: { facingMode: { ideal: _camFacing }, width: { ideal: 4096 }, height: { ideal: 4096 } },
     audio: false
   });
   video.srcObject = _photoCaptureStream;
-  window.setStyle(video, 'transform', _camFacing === 'user' ? 'st-transform__ff7784' : '');
+  if (view) view.classList.toggle('is-front', _camFacing === 'user');
   const track = _photoCaptureStream.getVideoTracks()[0];
   const caps = track && track.getCapabilities ? track.getCapabilities() : {};
   if (torch) window.setDisplay(torch, caps.torch ? 'flex' : 'none');
@@ -3715,34 +3754,38 @@ async function _camStart() {
   } else {
     _camCaps = { min: 1, max: 4, hw: false };
   }
-  const { range } = _camEls();
-  if (range) { range.min = String(_camCaps.min); range.max = String(_camCaps.max); }
-  _camZoom = _camCaps.min;
-  _camApplyZoom(_camZoom);
-  const ready = () => { _camLayout(); };
-  if (video.readyState >= 1) ready(); else video.addEventListener('loadedmetadata', ready, { once: true });
+  _camApplyZoom(_camCaps.min);
+  if (video.readyState >= 1) _camLayout(); else video.addEventListener('loadedmetadata', _camLayout, { once: true });
   setTimeout(_camLayout, 250);
 }
 
 function _camStopStream() {
-  if (_photoCaptureStream) {
-    try {
-      const track = _photoCaptureStream.getVideoTracks()[0];
-      if (track && track.applyConstraints && window._torchOn) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
-    } catch (_) {}
-    _photoCaptureStream.getTracks().forEach(t => t.stop());
-    _photoCaptureStream = null;
-  }
+  if (!_photoCaptureStream) return;
+  try {
+    const track = _photoCaptureStream.getVideoTracks()[0];
+    if (track && track.applyConstraints && window._torchOn) track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+  } catch (_) {}
+  _photoCaptureStream.getTracks().forEach(t => t.stop());
+  _photoCaptureStream = null;
+}
+
+function _camResetTorch() {
+  window._torchOn = false;
+  const { torch } = _camEls();
+  if (torch) torch.classList.remove('on');
 }
 
 export async function openPhotoCapture(prefix) {
   _photoCaptureTarget = prefix;
-  const { modal, video, torch } = _camEls();
+  const { modal, video, view, title, gridBtn } = _camEls();
   if (!modal || !video) return;
-  window.setDisplay(modal, 'flex');
+  _camBusy = false;
   _camFacing = 'environment';
-  window._torchOn = false;
-  if (torch) torch.classList.remove('on');
+  _camResetTorch();
+  if (title) title.textContent = CAM_TITLES[prefix] || 'Photo';
+  if (view) view.classList.toggle('grid-on', _camGrid);
+  if (gridBtn) { gridBtn.classList.toggle('on', _camGrid); gridBtn.setAttribute('aria-pressed', _camGrid ? 'true' : 'false'); }
+  window.setDisplay(modal, 'flex');
   _camInstallGestures();
   try {
     await _camStart();
@@ -3754,27 +3797,30 @@ export async function openPhotoCapture(prefix) {
 }
 
 export async function flipCamera() {
-  _camFacing = _camFacing === 'environment' ? 'user' : 'environment';
-  window._torchOn = false;
-  const { torch } = _camEls();
-  if (torch) torch.classList.remove('on');
-  try { await _camStart(); } catch (_) { _camFacing = _camFacing === 'environment' ? 'user' : 'environment'; showToast('Could not switch camera', 'warning'); try { await _camStart(); } catch (__) {} }
+  const previous = _camFacing;
+  _camFacing = previous === 'environment' ? 'user' : 'environment';
+  _camResetTorch();
+  try { await _camStart(); } catch (_) {
+    _camFacing = previous;
+    showToast('Could not switch camera', 'warning');
+    try { await _camStart(); } catch (__) {}
+  }
 }
 
 export function closePhotoCapture() {
-  const { modal, video } = _camEls();
+  const { modal, video, view } = _camEls();
   if (modal) window.setDisplay(modal, 'none');
   _camStopStream();
-  if (video) { video.srcObject = null; window.setStyle(video, 'transform', ''); }
+  if (video) { video.srcObject = null; video.style.removeProperty('--cam-zoom'); }
+  if (view) view.classList.remove('is-front');
   _camPointers.clear();
   _camPinch = null;
-  window._torchOn = false;
+  _camResetTorch();
   _photoCaptureTarget = null;
 }
 
 export async function toggleTorch() {
-  if (!_photoCaptureStream) return;
-  const track = _photoCaptureStream.getVideoTracks()[0];
+  const track = _photoCaptureStream && _photoCaptureStream.getVideoTracks()[0];
   if (!track) return;
   window._torchOn = !window._torchOn;
   try {
@@ -3787,12 +3833,20 @@ export async function toggleTorch() {
   }
 }
 
+function _camDeliver(target, dataUrl) {
+  if (target === 'expense') _applyExpensePendingPhoto(dataUrl);
+  else if (target === 'paytransfer') { if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(dataUrl); }
+  else if (target === 'prod') { if (typeof window.addProdPhotoDataUrl === 'function') window.addProdPhotoDataUrl(dataUrl); }
+  else applyPersonPhoto(target, dataUrl);
+}
+
 export function capturePhotoFromCamera() {
   const { video } = _camEls();
   const canvas = document.getElementById('photo-capture-canvas');
-  if (!video || !canvas || !_photoCaptureTarget) return;
-  const w = video.videoWidth || 1920;
-  const h = video.videoHeight || 1080;
+  if (_camBusy || !video || !canvas || !_photoCaptureTarget || !video.videoWidth) return;
+  _camBusy = true;
+  const w = video.videoWidth;
+  const h = video.videoHeight;
   const z = _camCaps.hw ? 1 : _camZoom;
   const sw = w / z, sh = h / z;
   canvas.width = w; canvas.height = h;
@@ -3807,16 +3861,9 @@ export function capturePhotoFromCamera() {
   const target = _photoCaptureTarget;
   setTimeout(() => {
     closePhotoCapture();
-    if (target === 'expense') {
-      _applyExpensePendingPhoto(dataUrl);
-    } else if (target === 'paytransfer') {
-      if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(dataUrl);
-    } else if (target === 'prod') {
-      if (typeof window.addProdPhotoDataUrl === 'function') window.addProdPhotoDataUrl(dataUrl);
-    } else {
-      applyPersonPhoto(target, dataUrl);
-    }
-  }, 120);
+    _camBusy = false;
+    _camDeliver(target, dataUrl);
+  }, 140);
 }
 
 export function openCameraGallery() {
@@ -3831,20 +3878,8 @@ export async function handleCameraGalleryFiles(event) {
   if (!files.length || !target) return;
   closePhotoCapture();
   try {
-    if (target === 'prod' && typeof window.addProdPhotos === 'function') {
-      await window.addProdPhotos(files);
-      return;
-    }
-    const dataUrl = await readFileAsDataUrl(files[0]);
-    if (target === 'expense') {
-      _applyExpensePendingPhoto(dataUrl);
-    } else if (target === 'paytransfer') {
-      if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(dataUrl);
-    } else if (target === 'prod') {
-      if (typeof window.addProdPhotoDataUrl === 'function') window.addProdPhotoDataUrl(dataUrl);
-    } else {
-      applyPersonPhoto(target, dataUrl);
-    }
+    if (target === 'prod' && typeof window.addProdPhotos === 'function') { await window.addProdPhotos(files); return; }
+    _camDeliver(target, await readFileAsDataUrl(files[0]));
   } catch (e) {
     showToast('Could not load the selected photo', 'warning');
   }
@@ -3886,182 +3921,176 @@ export function renderPersonAvatarHTML(photoDataUrl, size) {
 }
 
 (function() {
-  let _lbScale = 1, _lbMinScale = 1, _lbMaxScale = 6;
-  let _lbTransX = 0, _lbTransY = 0;
-  let _lbDragging = false, _lbLastX = 0, _lbLastY = 0;
-  let _lbPinchDist = 0, _lbPinchMidX = 0, _lbPinchMidY = 0;
-  let _lbLastTap = 0;
-  function _lbApply(animated) {
-    const img = document.getElementById('photo-lightbox-img');
+  const MIN_SCALE = 1, MAX_SCALE = 6, DISMISS_PX = 110;
+  const ptrs = new Map();
+  let s = 1, x = 0, y = 0;
+  let pinch = null, drag = null, lastTap = null;
+  const $ = (id) => document.getElementById(id);
+  const clampScale = (v) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, v));
+  function apply(animate) {
+    const img = $('photo-lightbox-img');
     if (!img) return;
-    window.setStyle(img, 'transition', animated ? 'st-transition__1d52c5' : 'st-transition__2ed754');
-    img.style.transform = `translate(${_lbTransX}px, ${_lbTransY}px) scale(${_lbScale})`;
-    window.setStyle(img, 'cursor', _lbScale > 1 ? 'st-cursor__dad798' : 'st-cursor__2a9295');
-    const lbl = document.getElementById('photo-lb-zoom-label');
-    if (lbl) lbl.textContent = _lbScale.toFixed(1).replace('.0','') + '×';
+    img.classList.toggle('animate', !!animate);
+    img.classList.toggle('zoomed', s > 1.001);
+    img.style.setProperty('--lb-s', String(s));
+    img.style.setProperty('--lb-x', x + 'px');
+    img.style.setProperty('--lb-y', y + 'px');
+    const label = $('photo-lb-zoom-label');
+    if (label) label.textContent = (Math.round(s * 10) / 10) + '×';
   }
-  function _lbClamp() {
-    const img = document.getElementById('photo-lightbox-img');
-    if (!img) return;
-    const iw = img.offsetWidth * _lbScale, ih = img.offsetHeight * _lbScale;
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const maxX = Math.max(0, (iw - vw) / 2);
-    const maxY = Math.max(0, (ih - vh) / 2);
-    _lbTransX = Math.max(-maxX, Math.min(maxX, _lbTransX));
-    _lbTransY = Math.max(-maxY, Math.min(maxY, _lbTransY));
+  function setDim(v) {
+    const modal = $('photo-lightbox-modal');
+    if (modal) modal.style.setProperty('--lb-dim', String(v));
   }
-  _lbZoom = function(dir) {
-    const step = 0.5;
-    _lbScale = Math.max(_lbMinScale, Math.min(_lbMaxScale, _lbScale + dir * step));
-    if (_lbScale === _lbMinScale) { _lbTransX = 0; _lbTransY = 0; }
-    _lbClamp();
-    _lbApply(true);
-  }; window._lbZoom = _lbZoom;
-  _lbResetZoom = function() {
-    _lbScale = 1; _lbTransX = 0; _lbTransY = 0;
-    _lbApply(true);
-  }; window._lbResetZoom = _lbResetZoom;
+  function clampPan() {
+    const stage = $('photo-lightbox-inner'), img = $('photo-lightbox-img');
+    if (!stage || !img) return;
+    const mx = Math.max(0, (img.offsetWidth * s - stage.clientWidth) / 2);
+    const my = Math.max(0, (img.offsetHeight * s - stage.clientHeight) / 2);
+    x = Math.min(mx, Math.max(-mx, x));
+    y = Math.min(my, Math.max(-my, y));
+  }
+  function rel(cx, cy) {
+    const r = $('photo-lightbox-inner').getBoundingClientRect();
+    return { x: cx - (r.left + r.width / 2), y: cy - (r.top + r.height / 2) };
+  }
+  function zoomTo(next, fx, fy, animate) {
+    next = clampScale(next);
+    const k = next / s;
+    x = fx - (fx - x) * k;
+    y = fy - (fy - y) * k;
+    s = next;
+    if (s <= MIN_SCALE + 0.001) { s = MIN_SCALE; x = 0; y = 0; } else clampPan();
+    apply(animate);
+  }
+  function touched() {
+    const modal = $('photo-lightbox-modal');
+    if (modal) modal.classList.add('touched');
+  }
+  _lbZoom = function(dir) { zoomTo(s + dir * 0.5, 0, 0, true); }; window._lbZoom = _lbZoom;
+  _lbResetZoom = function() { zoomTo(MIN_SCALE, 0, 0, true); }; window._lbResetZoom = _lbResetZoom;
+  const mid = () => { const p = [...ptrs.values()]; return { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) }; };
+  function seedDrag(p, onImg, moved) {
+    drag = { px: p.x, py: p.y, sx: x, sy: y, onImg, moved, t: Date.now() };
+  }
+  function onDown(e) {
+    const stage = $('photo-lightbox-inner');
+    touched();
+    if (stage.setPointerCapture) stage.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) {
+      const m = mid(), c = rel(m.x, m.y);
+      pinch = { d: m.d, s, x, y, mx: c.x, my: c.y };
+      drag = null;
+    } else if (ptrs.size === 1) {
+      seedDrag({ x: e.clientX, y: e.clientY }, e.target === $('photo-lightbox-img'), false);
+    }
+  }
+  function onMove(e) {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2 && pinch && pinch.d > 0) {
+      const m = mid(), c = rel(m.x, m.y);
+      const ns = clampScale(pinch.s * m.d / pinch.d);
+      const k = ns / pinch.s;
+      s = ns;
+      x = c.x - (pinch.mx - pinch.x) * k;
+      y = c.y - (pinch.my - pinch.y) * k;
+      if (s <= MIN_SCALE + 0.001) { x = 0; y = 0; } else clampPan();
+      apply(false);
+      return;
+    }
+    if (ptrs.size !== 1 || !drag) return;
+    const dx = e.clientX - drag.px, dy = e.clientY - drag.py;
+    if (!drag.moved && Math.hypot(dx, dy) > 6) { drag.moved = true; $('photo-lightbox-img').classList.add('dragging'); }
+    if (!drag.moved) return;
+    if (s > 1.001) {
+      x = drag.sx + dx; y = drag.sy + dy;
+      clampPan();
+    } else {
+      x = dx * 0.35; y = dy;
+      setDim(1 - Math.min(1, Math.abs(dy) / 420));
+    }
+    apply(false);
+  }
+  function onUp(e) {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId);
+    if (ptrs.size < 2) pinch = null;
+    if (ptrs.size === 1) { seedDrag([...ptrs.values()][0], true, true); return; }
+    if (ptrs.size > 0) return;
+    const img = $('photo-lightbox-img');
+    if (img) img.classList.remove('dragging');
+    const d = drag;
+    drag = null;
+    if (!d) return;
+    if (!d.moved) {
+      if (e.type !== 'pointerup') return;
+      if (!d.onImg) { closePhotoLightbox(); return; }
+      const now = Date.now();
+      if (lastTap && now - lastTap.t < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 32) {
+        lastTap = null;
+        if (s > 1.001) zoomTo(MIN_SCALE, 0, 0, true);
+        else { const c = rel(e.clientX, e.clientY); zoomTo(2.5, c.x, c.y, true); }
+      } else lastTap = { t: now, x: e.clientX, y: e.clientY };
+      return;
+    }
+    if (s <= 1.001) {
+      if (e.type === 'pointerup' && Math.abs(y) > DISMISS_PX) { closePhotoLightbox(); return; }
+      x = 0; y = 0;
+      setDim(1);
+      apply(true);
+    }
+  }
+  function onWheel(e) {
+    e.preventDefault();
+    touched();
+    const c = rel(e.clientX, e.clientY);
+    zoomTo(s * (e.deltaY < 0 ? 1.15 : 0.87), c.x, c.y, false);
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') closePhotoLightbox();
+    else if (e.key === '+' || e.key === '=') _lbZoom(1);
+    else if (e.key === '-') _lbZoom(-1);
+    else if (e.key === '0') _lbResetZoom();
+  }
+  function bindOnce(stage) {
+    if (stage._lbBound) return;
+    stage._lbBound = true;
+    stage.addEventListener('pointerdown', onDown);
+    stage.addEventListener('pointermove', onMove);
+    stage.addEventListener('pointerup', onUp);
+    stage.addEventListener('pointercancel', onUp);
+    stage.addEventListener('wheel', onWheel, { passive: false });
+  }
+  function reset() {
+    s = 1; x = 0; y = 0;
+    ptrs.clear(); pinch = null; drag = null; lastTap = null;
+  }
   openPhotoLightbox = function(src) {
-    const modal = document.getElementById('photo-lightbox-modal');
-    const img   = document.getElementById('photo-lightbox-img');
-    if (!modal || !img) return;
-    _lbScale = 1; _lbTransX = 0; _lbTransY = 0;
+    const modal = $('photo-lightbox-modal'), img = $('photo-lightbox-img'), stage = $('photo-lightbox-inner');
+    if (!modal || !img || !stage || !src) return;
+    reset();
     img.src = src;
-    window.setStyle(img, 'transform', 'st-transform__53b1e7');
-    window.setStyle(img, 'transition', 'st-transition__2ed754');
+    img.classList.remove('dragging');
+    setDim(1);
+    apply(false);
+    modal.classList.remove('touched');
+    bindOnce(stage);
     window.setDisplay(modal, 'flex');
     document.body.classList.add('scroll-locked');
-    const lbl = document.getElementById('photo-lb-zoom-label');
-    if (lbl) lbl.textContent = '1×';
-    _lbBindEvents(modal, img);
+    document.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey);
   }; window.openPhotoLightbox = openPhotoLightbox;
   closePhotoLightbox = function() {
-    const modal = document.getElementById('photo-lightbox-modal');
-    if (modal) {
-      window.setDisplay(modal, 'none');
-      _lbUnbindEvents(modal);
-    }
+    const modal = $('photo-lightbox-modal'), img = $('photo-lightbox-img');
+    if (modal) window.setDisplay(modal, 'none');
+    document.removeEventListener('keydown', onKey);
     document.body.classList.remove('scroll-locked');
-    _lbScale = 1; _lbTransX = 0; _lbTransY = 0;
+    reset();
+    setDim(1);
+    if (img) { img.removeAttribute('src'); apply(false); }
   }; window.closePhotoLightbox = closePhotoLightbox;
-  function _onWheel(e) {
-    e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    _lbScale = Math.max(_lbMinScale, Math.min(_lbMaxScale, _lbScale * factor));
-    if (_lbScale === _lbMinScale) { _lbTransX = 0; _lbTransY = 0; }
-    _lbClamp();
-    _lbApply(false);
-  }
-  function _onMouseDown(e) {
-    if (_lbScale <= 1) return;
-    _lbDragging = true;
-    _lbLastX = e.clientX; _lbLastY = e.clientY;
-    const img = document.getElementById('photo-lightbox-img');
-    if (img) window.setStyle(img, 'cursor', 'st-cursor__cf4aa2');
-  }
-  function _onMouseMove(e) {
-    if (!_lbDragging) return;
-    _lbTransX += e.clientX - _lbLastX;
-    _lbTransY += e.clientY - _lbLastY;
-    _lbLastX = e.clientX; _lbLastY = e.clientY;
-    _lbClamp();
-    _lbApply(false);
-  }
-  function _onMouseUp() {
-    _lbDragging = false;
-    const img = document.getElementById('photo-lightbox-img');
-    if (img) window.setStyle(img, 'cursor', _lbScale > 1 ? 'st-cursor__dad798' : 'st-cursor__2a9295');
-  }
-  function _pinchDist(t) {
-    return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  }
-  function _pinchMid(t) {
-    return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 };
-  }
-  function _onTouchStart(e) {
-    if (e.touches.length === 2) {
-      if (e.cancelable) e.preventDefault();
-      _lbPinchDist = _pinchDist(e.touches);
-      const m = _pinchMid(e.touches);
-      _lbPinchMidX = m.x; _lbPinchMidY = m.y;
-    } else if (e.touches.length === 1) {
-      const now = Date.now();
-      if (now - _lbLastTap < 280) {
-        _lbScale === 1 ? (_lbScale = 2.5) : (_lbScale = 1, _lbTransX = 0, _lbTransY = 0);
-        _lbClamp();
-        _lbApply(true);
-        _lbLastTap = 0;
-      } else {
-        _lbLastTap = now;
-        if (_lbScale > 1) {
-          _lbDragging = true;
-          _lbLastX = e.touches[0].clientX;
-          _lbLastY = e.touches[0].clientY;
-        }
-      }
-    }
-  }
-  function _onTouchMove(e) {
-    if (e.touches.length === 2) {
-      if (e.cancelable) e.preventDefault();
-      const newDist = _pinchDist(e.touches);
-      const delta = newDist / _lbPinchDist;
-      _lbPinchDist = newDist;
-      _lbScale = Math.max(_lbMinScale, Math.min(_lbMaxScale, _lbScale * delta));
-      if (_lbScale === _lbMinScale) { _lbTransX = 0; _lbTransY = 0; }
-      _lbClamp();
-      _lbApply(false);
-    } else if (e.touches.length === 1 && _lbDragging) {
-      if (e.cancelable) e.preventDefault();
-      _lbTransX += e.touches[0].clientX - _lbLastX;
-      _lbTransY += e.touches[0].clientY - _lbLastY;
-      _lbLastX = e.touches[0].clientX;
-      _lbLastY = e.touches[0].clientY;
-      _lbClamp();
-      _lbApply(false);
-    }
-  }
-  function _onTouchEnd(e) {
-    if (e.touches.length < 2) _lbPinchDist = 0;
-    if (e.touches.length === 0) _lbDragging = false;
-  }
-  function _onBackdropClick(e) {
-    if (e.target === document.getElementById('photo-lightbox-modal') ||
-        e.target === document.getElementById('photo-lightbox-inner')) {
-      closePhotoLightbox();
-    }
-  }
-  function _lbBindEvents(modal, img) {
-    modal.addEventListener('wheel',      _onWheel,      { passive: false });
-    modal.addEventListener('mousedown',  _onMouseDown);
-    modal.addEventListener('mousemove',  _onMouseMove);
-    modal.addEventListener('mouseup',    _onMouseUp);
-    modal.addEventListener('touchstart', _onTouchStart, { passive: false });
-    modal.addEventListener('touchmove',  _onTouchMove,  { passive: false });
-    modal.addEventListener('touchend',   _onTouchEnd);
-    modal.addEventListener('click',      _onBackdropClick);
-    window._lbKeyHandler = (e) => {
-      if (e.key === 'Escape') closePhotoLightbox();
-      if (e.key === '+' || e.key === '=') _lbZoom(1);
-      if (e.key === '-') _lbZoom(-1);
-      if (e.key === '0') _lbResetZoom();
-    };
-    document.addEventListener('keydown', window._lbKeyHandler);
-  }
-  function _lbUnbindEvents(modal) {
-    modal.removeEventListener('wheel',      _onWheel);
-    modal.removeEventListener('mousedown',  _onMouseDown);
-    modal.removeEventListener('mousemove',  _onMouseMove);
-    modal.removeEventListener('mouseup',    _onMouseUp);
-    modal.removeEventListener('touchstart', _onTouchStart);
-    modal.removeEventListener('touchmove',  _onTouchMove);
-    modal.removeEventListener('touchend',   _onTouchEnd);
-    modal.removeEventListener('click',      _onBackdropClick);
-    if (window._lbKeyHandler) {
-      document.removeEventListener('keydown', window._lbKeyHandler);
-      window._lbKeyHandler = null;
-    }
-  }
 })();
 
 export function previewPhotoClick(prefix) {
@@ -4465,7 +4494,7 @@ window.closePhotoCapture = closePhotoCapture;
 window.toggleTorch = toggleTorch;
 window.flipCamera = flipCamera;
 window.setCameraZoom = setCameraZoom;
-window.stepCameraZoom = stepCameraZoom;
+window.toggleCameraGrid = toggleCameraGrid;
 window.capturePhotoFromCamera = capturePhotoFromCamera;
 window.openCameraGallery = openCameraGallery;
 window.handleCameraGalleryFiles = handleCameraGalleryFiles;

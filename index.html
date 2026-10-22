@@ -1586,62 +1586,56 @@ window._showLogoutConfirmDialog = async function() {
 </button>
 <span id="system-name-display" class="shimmer-text u-39e031c st-transform__1b8ae7 st-pointer-events__8b1364 u-66682c1">MAHMOOD KHAN</span>
 </div>
-<div id="photo-lightbox-modal" class="u-5dc23f3 d-none st-background__c91ee5 u-23fc511">
-  <div id="photo-lightbox-inner" class="u-63b5e54 has-overflow d-flex u-0da05dd">
-    <img id="photo-lightbox-img" src="" alt="" class="u-091ed00 d-block">
+<div id="photo-lightbox-modal" class="lb-modal d-none" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lb-bar">
+    <span id="photo-lb-zoom-label" class="lb-zoom" aria-live="polite">1×</span>
+    <button type="button" class="lb-close" onclick="closePhotoLightbox()" aria-label="Close photo">
+      <svg width="20" height="20" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   </div>
-  <div class="u-976b6bc d-flex st-pointer-events__8b1364 u-2febf94">
-    <div class="u-9062975 d-flex st-pointer-events__3177af">
-      <button onclick="_lbZoom(-1)" title="Zoom out" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826">−</button>
-      <span id="photo-lb-zoom-label" class="u-11f44de">1×</span>
-      <button onclick="_lbZoom(1)" title="Zoom in" class="u-e8a8596 d-flex st-background__edf734 st-border-bottom__d9e826">+</button>
-      <button onclick="_lbResetZoom()" title="Reset zoom" class="u-558b50c st-background__1e9efa st-border-bottom__caacaa">RESET</button>
-    </div>
-    <button onclick="closePhotoLightbox()" class="u-61d51c3 d-flex st-background__edf734 st-border-bottom__d9e826 st-pointer-events__3177af">✕</button>
+  <div id="photo-lightbox-inner" class="lb-stage">
+    <img id="photo-lightbox-img" class="lb-img" alt="Photo" draggable="false">
   </div>
-  <div class="u-7b1cb17 st-pointer-events__8b1364 u-2febf94">PINCH OR SCROLL TO ZOOM · DOUBLE-TAP TO RESET</div>
+  <p class="lb-hint">Pinch or scroll to zoom · double-tap to zoom in or out · swipe down to close</p>
+  <div class="lb-dock" role="group" aria-label="Zoom controls">
+    <button type="button" onclick="_lbZoom(-1)" aria-label="Zoom out">−</button>
+    <button type="button" class="lb-fit" onclick="_lbResetZoom()" aria-label="Fit to screen">Fit</button>
+    <button type="button" onclick="_lbZoom(1)" aria-label="Zoom in">+</button>
+  </div>
 </div>
 <div id="photo-capture-modal" class="cam-modal d-none" role="dialog" aria-modal="true" aria-label="Camera">
-  <div class="cam-top">
-    <button type="button" class="cam-icon-btn" onclick="closePhotoCapture()" aria-label="Close camera">
-      <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+  <div class="cam-bar">
+    <button type="button" class="cam-btn" onclick="closePhotoCapture()" aria-label="Close camera">
+      <svg width="20" height="20" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M9 9L27 27M27 9L9 27" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <span class="cam-title">Photo</span>
-    <div class="cam-top-right">
-      <button type="button" id="torch-btn" class="cam-icon-btn" onclick="toggleTorch()" title="Flashlight" aria-label="Toggle flashlight">
-        <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><path d="M21.5 3L7.5 19.5H17L14.5 33L28.5 15.5H19Z" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>
-      </button>
-      <button type="button" id="cam-flip-btn" class="cam-icon-btn" onclick="flipCamera()" title="Switch camera" aria-label="Switch camera">
-        <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M12.5 19.5A5.7 5.7 0 0 1 22.5 16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M23.3 12V16.4H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M23.5 19.5A5.7 5.7 0 0 1 13.5 23" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12.7 27V22.6H17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-      </button>
-    </div>
+    <span id="cam-title" class="cam-title">Photo</span>
+    <button type="button" id="cam-grid-btn" class="cam-btn on" onclick="toggleCameraGrid()" aria-pressed="true" aria-label="Toggle grid">
+      <svg width="20" height="20" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="5" y="5" width="26" height="26" rx="4.5" stroke="currentColor" stroke-width="1.8"/><path d="M13.7 5V31M22.3 5V31M5 13.7H31M5 22.3H31" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
   </div>
   <div class="cam-stage" id="cam-stage">
-    <div class="cam-view" id="cam-view">
+    <div class="cam-view grid-on" id="cam-view">
       <video id="photo-capture-video" autoplay playsinline muted></video>
       <div class="cam-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-      <div class="cam-corner tl"></div><div class="cam-corner tr"></div><div class="cam-corner bl"></div><div class="cam-corner br"></div>
-      <div class="cam-zoom-badge" id="cam-zoom-badge">1.0×</div>
+      <div class="cam-focus" id="cam-focus" aria-hidden="true"></div>
+      <button type="button" id="torch-btn" class="cam-btn cam-torch" onclick="toggleTorch()" title="Flashlight" aria-label="Toggle flashlight">
+        <svg width="20" height="20" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M21.5 3L7.5 19.5H17L14.5 33L28.5 15.5H19Z" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      </button>
+      <div class="cam-zoom-badge" id="cam-zoom-badge">1×</div>
+      <div class="cam-pills" id="cam-pills"></div>
       <div class="cam-flash" id="cam-flash"></div>
     </div>
     <canvas id="photo-capture-canvas" class="d-none"></canvas>
   </div>
-  <div class="cam-bottom">
-    <div class="cam-zoom-row">
-      <button type="button" class="cam-step" onclick="stepCameraZoom(-1)" aria-label="Zoom out">−</button>
-      <input type="range" id="cam-zoom-range" class="cam-range" min="1" max="4" step="0.05" value="1" oninput="setCameraZoom(parseFloat(this.value))" aria-label="Zoom">
-      <button type="button" class="cam-step" onclick="stepCameraZoom(1)" aria-label="Zoom in">+</button>
-    </div>
-    <div class="cam-pills" id="cam-pills"></div>
-    <div class="cam-shutter-row">
-      <button type="button" class="cam-gallery" onclick="openCameraGallery()" aria-label="Choose from gallery">
-        <span class="cam-gallery-ico"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><rect x="4" y="5" width="28" height="26" rx="4.5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12.5" cy="13" r="2.8" fill="currentColor"/><path d="M4.8 27L13 18.5L20 25L25 20L31.2 26.5V27.8A3.2 3.2 0 0 1 28 31H8A3.2 3.2 0 0 1 4.8 27.8Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></span>
-        <span>Gallery</span>
-      </button>
-      <input type="file" id="cam-gallery-input" accept="image/*" multiple class="d-none" onchange="handleCameraGalleryFiles(event)">
-      <button type="button" class="cam-shutter" onclick="capturePhotoFromCamera()" aria-label="Capture photo"><span></span></button>
-      <span class="cam-spacer"></span>
-    </div>
+  <div class="cam-controls">
+    <button type="button" class="cam-btn cam-lg cam-sq cam-gallery" onclick="openCameraGallery()" aria-label="Choose from gallery">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="4" y="5" width="28" height="26" rx="4.5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12.5" cy="13" r="2.8" fill="currentColor"/><path d="M4.8 27L13 18.5L20 25L25 20L31.2 26.5V27.8A3.2 3.2 0 0 1 28 31H8A3.2 3.2 0 0 1 4.8 27.8Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    </button>
+    <input type="file" id="cam-gallery-input" accept="image/*" multiple class="d-none" onchange="handleCameraGalleryFiles(event)">
+    <button type="button" class="cam-shutter" onclick="capturePhotoFromCamera()" aria-label="Capture photo"><span></span></button>
+    <button type="button" id="cam-flip-btn" class="cam-btn cam-lg cam-flip" onclick="flipCamera()" title="Switch camera" aria-label="Switch camera">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M12.5 19.5A5.7 5.7 0 0 1 22.5 16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M23.3 12V16.4H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M23.5 19.5A5.7 5.7 0 0 1 13.5 23" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.7 27V22.6H17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
   </div>
 </div><input type="file" id="restoreInput" class="hidden" accept=".gznd" onchange="(async () => { await unifiedRestore(event) })()">
 <div id="tab-rep" class="hidden">
