@@ -3840,11 +3840,24 @@ function _camDeliver(target, dataUrl) {
   else applyPersonPhoto(target, dataUrl);
 }
 
-export function capturePhotoFromCamera() {
-  const { video } = _camEls();
-  const canvas = document.getElementById('photo-capture-canvas');
-  if (_camBusy || !video || !canvas || !_photoCaptureTarget || !video.videoWidth) return;
-  _camBusy = true;
+async function _camFullSensorStill(video) {
+  const track = _photoCaptureStream && _photoCaptureStream.getVideoTracks()[0];
+  if (!track || typeof ImageCapture !== 'function' || (!_camCaps.hw && _camZoom > 1.001)) return null;
+  try {
+    const ic = new ImageCapture(track);
+    const caps = await ic.getPhotoCapabilities();
+    const opts = {};
+    if (caps.imageWidth && caps.imageWidth.max) opts.imageWidth = caps.imageWidth.max;
+    if (caps.imageHeight && caps.imageHeight.max) opts.imageHeight = caps.imageHeight.max;
+    const dataUrl = await readFileAsDataUrl(await ic.takePhoto(opts));
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    const want = video.videoWidth / video.videoHeight;
+    const got = img.naturalWidth / img.naturalHeight;
+    return Math.abs(got - want) / want < 0.03 || Math.abs(1 / got - want) / want < 0.03 ? dataUrl : null;
+  } catch (_) { return null; }
+}
+
+function _camFrameStill(video, canvas) {
   const w = video.videoWidth;
   const h = video.videoHeight;
   const z = _camCaps.hw ? 1 : _camZoom;
@@ -3854,16 +3867,22 @@ export function capturePhotoFromCamera() {
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(video, (w - sw) / 2, (h - sh) / 2, sw, sh, 0, 0, w, h);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  return canvas.toDataURL('image/jpeg', 0.95);
+}
+
+export async function capturePhotoFromCamera() {
+  const { video } = _camEls();
+  const canvas = document.getElementById('photo-capture-canvas');
+  if (_camBusy || !video || !canvas || !_photoCaptureTarget || !video.videoWidth) return;
+  _camBusy = true;
+  const target = _photoCaptureTarget;
   const fl = document.getElementById('cam-flash');
   if (fl) { fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go'); }
   try { if (navigator.vibrate) navigator.vibrate(25); } catch (_) {}
-  const target = _photoCaptureTarget;
-  setTimeout(() => {
-    closePhotoCapture();
-    _camBusy = false;
-    _camDeliver(target, dataUrl);
-  }, 140);
+  const dataUrl = (await _camFullSensorStill(video)) || _camFrameStill(video, canvas);
+  closePhotoCapture();
+  _camBusy = false;
+  _camDeliver(target, dataUrl);
 }
 
 export function openCameraGallery() {
