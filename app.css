@@ -4384,7 +4384,7 @@ font-feature-settings: "tnum" 1;
 }
 
 .pp-clear {
-  flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--glass-border);
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--glass-border);
   background: transparent; color: var(--text-muted); font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0;
 }
 
@@ -6919,6 +6919,7 @@ button.dl-row-line { cursor: pointer; }
 .pf-chip {
   align-items: center; gap: 5px; padding: 5px 11px; border-radius: var(--radius-full);
   font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+  height: 28px; box-sizing: border-box; justify-content: center;
   color: var(--accent); background: var(--accent-dim); border: 1px solid transparent;
 }
 .pf-chip-danger { color: var(--danger); background: var(--danger-dim); }
