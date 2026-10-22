@@ -98,8 +98,10 @@ describe('calculator tab wiring', () => {
 
   it('the pop-up has a name field, an amount field and a Save button that keeps it open for more', () => {
     const src = read('modules/field-expenses.js');
-    assert.match(src, /id="fe-name"/);
-    assert.match(src, /id="fe-amount"/);
+    assert.match(src, /nameId: 'fe-name'/);
+    assert.match(src, /nameId: 'cp-name'/);
+    assert.match(src, /id="\$\{cfg\.nameId\}"/);
+    assert.match(src, /id="\$\{pre\}-amount"/);
     assert.match(src, /label: 'Save'/);
     assert.match(src, /return \{ ok: false \}/);
     assert.match(src, /window\.openFieldExpensePopup = openFieldExpensePopup/);
@@ -132,11 +134,12 @@ describe('commission paid pop-up', () => {
 
   it('the name field uses universal search so a tapped category is reused', () => {
     const src = read('modules/field-expenses.js');
-    assert.match(src, /handleUniversalSearch\('fe-name','fe-results','expense-category'\)/);
+    assert.match(src, /handleUniversalSearch\('\$\{cfg\.nameId\}','\$\{cfg\.resultsId\}','\$\{cfg\.source\}'\)/);
     assert.match(src, /window\.openCommissionPaidPopup = openCommissionPaidPopup/);
     const pay = read('modules/utilities-payments.js');
-    assert.match(pay, /case 'expense-category':/);
-    assert.match(pay, /type === 'expense-category'/);
+    assert.match(pay, /case 'field-expense-category':/);
+    assert.match(pay, /case 'commission-category':/);
+    assert.match(pay, /type === 'category-pick'/);
   });
 
   it('commission items fall back to a single Commission line for older records', () => {
@@ -166,10 +169,13 @@ describe('category lists are separate from app data and from each other', () => 
 
   it('search reads its own saved list per field, never sales or rep records', () => {
     const src = read('modules/field-expenses.js');
-    assert.match(src, /sqliteStore\.get\(CATEGORY_KEY\)/);
-    assert.match(src, /stored && stored\[kind\]/);
-    assert.match(src, /loadCategories\(activeKind\)/);
+    assert.match(src, /storeKey: 'field_expense_categories'/);
+    assert.match(src, /storeKey: 'commission_categories'/);
+    assert.match(src, /sqliteStore\.get\(KINDS\[kind\]\.storeKey\)/);
+    assert.match(src, /loadCategories\(kind\)/);
     assert.ok(!/loadCollections/.test(src), 'does not search sales or rep records');
-    assert.match(read('modules/business.js'), /'expense_categories'/);
+    const biz = read('modules/business.js');
+    assert.match(biz, /'field_expense_categories'/);
+    assert.match(biz, /'commission_categories'/);
   });
 });

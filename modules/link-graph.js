@@ -941,6 +941,18 @@ export const AUX_STATE = Object.freeze([
     firestore: { doc: 'daily_ledger/entries', field: 'daily_ledger', tsField: 'daily_ledger_timestamp' },
     kind: 'ledger',
   },
+  {
+    sqlite: 'field_expense_categories',
+    tsKey: 'field_expense_categories_timestamp',
+    firestore: { doc: 'field_expense_categories/list', field: 'field_expense_categories', tsField: 'field_expense_categories_timestamp' },
+    kind: 'list',
+  },
+  {
+    sqlite: 'commission_categories',
+    tsKey: 'commission_categories_timestamp',
+    firestore: { doc: 'commission_categories/list', field: 'commission_categories', tsField: 'commission_categories_timestamp' },
+    kind: 'list',
+  },
 ]);
 
 export function isSupportedBackup(data) {

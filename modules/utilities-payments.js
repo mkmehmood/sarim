@@ -5895,7 +5895,7 @@ const input = document.getElementById(inputId);
 const resultsDiv = document.getElementById(resultsId);
 if (!input || !resultsDiv) return;
 const query = input.value || '';
-if ((!query || query.length < 1) && !String(dataSource).startsWith('ledger-') && dataSource !== 'expense-category') {
+if ((!query || query.length < 1) && !String(dataSource).startsWith('ledger-') && dataSource !== 'field-expense-category' && dataSource !== 'commission-category') {
 resultsDiv.classList.add('hidden');
 return;
 }
@@ -5982,14 +5982,15 @@ return;
 }
 break;
 }
-case 'expense-category': {
-const catItems = typeof window.expenseCategorySearchItems === 'function' ? await window.expenseCategorySearchItems(query) : [];
+case 'field-expense-category':
+case 'commission-category': {
+const catItems = typeof window.expenseCategorySearchItems === 'function' ? await window.expenseCategorySearchItems(dataSource, query) : [];
 if (catItems.length > 0) {
 catItems.forEach(it => {
 const safeItem = String(it.value).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 html += `
 <div class="u-cf7d8a2 st-background__356c02 hv-highlight"
-onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeItem}', 'expense-category')">
+onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeItem}', 'category-pick')">
 <strong>${esc(it.value)}</strong>${it.tag ? ` <span class="u-fs-sm2 u-text-muted">${esc(it.tag)}</span>` : ''}
 </div>`;
 });
@@ -6106,7 +6107,7 @@ if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 if (typeof openRepCustomerEditModal === 'function') openRepCustomerEditModal(value);
 } else if (type === 'ledger' && typeof window.dailyLedgerOnPick === 'function') {
 window.dailyLedgerOnPick(inputId, value);
-} else if (type === 'expense-category' && typeof window.expenseCategoryOnPick === 'function') {
+} else if (type === 'category-pick' && typeof window.expenseCategoryOnPick === 'function') {
 window.expenseCategoryOnPick(inputId);
 }
 }
@@ -6137,7 +6138,9 @@ const searchables = [
 { input: 'dl-mode', results: 'dl-mode-results' },
 { input: 'dl-to-mode', results: 'dl-to-results' },
 { input: 'dl-party', results: 'dl-party-results' },
-{ input: 'dl-dlg-new', results: 'dl-dlg-results' }
+{ input: 'dl-dlg-new', results: 'dl-dlg-results' },
+{ input: 'fe-name', results: 'fe-results' },
+{ input: 'cp-name', results: 'cp-results' }
 ];
 searchables.forEach(item => {
 const input = document.getElementById(item.input);

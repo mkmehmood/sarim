@@ -1,5 +1,6 @@
 import { openDialog } from './dialog.js';
 import { esc, fmtAmt, sqliteStore } from './business.js';
+import { triggerAutoSync } from './utilities-core.js';
 import { addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems, addCategoryName, cleanCategoryNames } from './field-expense-items.js';
 
 const el = (id) => document.getElementById(id);
@@ -7,11 +8,13 @@ const toast = (msg, type) => { if (typeof window.showToast === 'function') windo
 
 const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v.01M18 14v.01"/></svg>';
 
-const SEARCH = "handleUniversalSearch('fe-name','fe-results','expense-category')";
-
 const KINDS = {
   expense: {
     inputId: 'fieldExpenses',
+    nameId: 'fe-name',
+    resultsId: 'fe-results',
+    source: 'field-expense-category',
+    storeKey: 'field_expense_categories',
     title: 'Field Expenses',
     eyebrow: 'Expenses',
     caption: 'Search or type a category, tap it, add the amount and save. The field shows the total paid.',
@@ -21,6 +24,10 @@ const KINDS = {
   },
   commission: {
     inputId: 'commissionPaid',
+    nameId: 'cp-name',
+    resultsId: 'cp-results',
+    source: 'commission-category',
+    storeKey: 'commission_categories',
     title: 'Commission Paid',
     eyebrow: 'Commission',
     caption: 'Search or type a category, tap it, add the amount and save. The field shows the total paid.',
@@ -31,7 +38,6 @@ const KINDS = {
 };
 
 const lists = { expense: [], commission: [] };
-let activeKind = 'expense';
 
 export function getFieldExpenseItems() {
   return cleanExpenseItems(lists.expense);
@@ -66,37 +72,44 @@ function listHtml(kind) {
   return `${rows}<div class="fe-total"><span>${esc(KINDS[kind].totalLabel)}</span><b>${esc(fmtAmt(expenseTotal(items)))}</b></div>`;
 }
 
-const CATEGORY_KEY = 'expense_categories';
-
 async function loadCategories(kind) {
   let stored = null;
-  try { stored = await sqliteStore.get(CATEGORY_KEY); } catch (e) { stored = null; }
-  return cleanCategoryNames(stored && stored[kind]);
+  try { stored = await sqliteStore.get(KINDS[kind].storeKey); } catch (e) { stored = null; }
+  return cleanCategoryNames(stored);
 }
 
 async function rememberCategory(kind, name) {
-  let stored = null;
-  try { stored = await sqliteStore.get(CATEGORY_KEY); } catch (e) { stored = null; }
-  const next = { expense: cleanCategoryNames(stored && stored.expense), commission: cleanCategoryNames(stored && stored.commission) };
-  next[kind] = addCategoryName(next[kind], name);
-  try { await sqliteStore.set(CATEGORY_KEY, next); } catch (e) { toast('Could not save the category.', 'warning'); }
+  const key = KINDS[kind].storeKey;
+  const current = await loadCategories(kind);
+  const next = addCategoryName(current, name);
+  if (next.length === current.length) return;
+  try {
+    await sqliteStore.setBatch([[key, next], [`${key}_timestamp`, Date.now()]]);
+    if (typeof triggerAutoSync === 'function') triggerAutoSync();
+  } catch (e) { toast('Could not save the category.', 'warning'); }
 }
 
-export async function expenseCategorySearchItems(query) {
+const kindOfSource = (source) => Object.keys(KINDS).find((k) => KINDS[k].source === source);
+
+export async function expenseCategorySearchItems(source, query) {
+  const kind = kindOfSource(source);
+  if (!kind) return [];
   const q = String(query || '').trim().toLowerCase();
-  const merged = lists[activeKind].reduce((acc, it) => addCategoryName(acc, it.name), await loadCategories(activeKind));
-  return merged.filter((name) => !q || name.toLowerCase().includes(q)).slice(0, 12).map((value) => ({ value, tag: KINDS[activeKind].tag }));
+  const merged = lists[kind].reduce((acc, it) => addCategoryName(acc, it.name), await loadCategories(kind));
+  return merged.filter((name) => !q || name.toLowerCase().includes(q)).slice(0, 12).map((value) => ({ value, tag: KINDS[kind].tag }));
 }
 
-export function expenseCategoryOnPick() {
-  const amount = document.getElementById('fe-amount');
+export function expenseCategoryOnPick(inputId) {
+  const kind = Object.keys(KINDS).find((k) => KINDS[k].nameId === inputId);
+  const amount = document.getElementById(kind ? `${KINDS[kind].nameId.slice(0, 2)}-amount` : '');
   if (amount) amount.focus();
 }
 
 function openPopup(kind) {
-  activeKind = kind;
   const cfg = KINDS[kind];
-  const body = `<div class="fe-form"><div class="dlg-field"><input id="fe-name" class="dlg-input" type="text" placeholder="${esc(cfg.placeholder)}" autocomplete="off" maxlength="60" oninput="${SEARCH}" onfocus="${SEARCH}"><div id="fe-results" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div><div class="dlg-field"><input id="fe-amount" class="dlg-input" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount"></div></div><div id="fe-list" class="fe-list">${listHtml(kind)}</div>`;
+  const pre = cfg.nameId.slice(0, 2);
+  const search = `handleUniversalSearch('${cfg.nameId}','${cfg.resultsId}','${cfg.source}')`;
+  const body = `<div class="fe-form"><div class="dlg-field"><input id="${cfg.nameId}" class="dlg-input" type="text" placeholder="${esc(cfg.placeholder)}" autocomplete="off" maxlength="60" oninput="${search}" onfocus="${search}"><div id="${cfg.resultsId}" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div><div class="dlg-field"><input id="${pre}-amount" class="dlg-input" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount"></div></div><div id="${pre}-list" class="fe-list">${listHtml(kind)}</div>`;
   const shown = openDialog({
     tone: 'primary',
     title: cfg.title,
@@ -111,8 +124,8 @@ function openPopup(kind) {
         variant: 'solid',
         value: true,
         guard: async (overlay) => {
-          const nameEl = overlay.querySelector('#fe-name');
-          const amountEl = overlay.querySelector('#fe-amount');
+          const nameEl = overlay.querySelector(`#${cfg.nameId}`);
+          const amountEl = overlay.querySelector(`#${pre}-amount`);
           const label = nameEl.value.trim();
           const value = parseFloat(amountEl.value);
           if (!label) { toast('Search and select a category, or type a new one.', 'warning'); nameEl.focus(); return { ok: false }; }
@@ -120,8 +133,8 @@ function openPopup(kind) {
           lists[kind] = addExpenseItem(lists[kind], label, value);
           await rememberCategory(kind, label);
           syncInput(kind, true);
-          overlay.querySelector('#fe-list').innerHTML = listHtml(kind);
-          overlay.querySelector('#fe-results').classList.add('hidden');
+          overlay.querySelector(`#${pre}-list`).innerHTML = listHtml(kind);
+          overlay.querySelector(`#${cfg.resultsId}`).classList.add('hidden');
           nameEl.value = '';
           amountEl.value = '';
           toast(`${label} saved`, 'success');
@@ -140,15 +153,15 @@ function openPopup(kind) {
       if (!del) return;
       lists[kind] = removeExpenseItem(lists[kind], Number(del.dataset.feDel));
       syncInput(kind, true);
-      overlay.querySelector('#fe-list').innerHTML = listHtml(kind);
+      overlay.querySelector(`#${pre}-list`).innerHTML = listHtml(kind);
     });
     overlay.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' || !e.target.closest('#fe-name, #fe-amount')) return;
+      if (e.key !== 'Enter' || !e.target.closest(`#${cfg.nameId}, #${pre}-amount`)) return;
       e.preventDefault();
       const save = overlay.querySelector('.dlg-btn--solid');
       if (save && !save.disabled) save.click();
     });
-    setTimeout(() => { const n = overlay.querySelector('#fe-name'); if (n) n.focus(); }, 80);
+    setTimeout(() => { const n = overlay.querySelector(`#${cfg.nameId}`); if (n) n.focus(); }, 80);
   }
   return shown;
 }

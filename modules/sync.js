@@ -7,7 +7,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs } from './link-graph.js';
+import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -1801,6 +1801,28 @@ _cleanUnitPools
       else { updateSignalUI('error'); scheduleListenerReconnect(); }
     });
     realtimeRefs.push(factorySettingsUnsub);
+    for (const catKey of CATEGORY_LIST_KEYS) {
+      const _handleCategoryListSnapshot = async (doc) => {
+        try {
+          if (!doc.exists || doc.metadata.hasPendingWrites || doc.metadata.fromCache) return;
+          trackFirestoreRead(1);
+          if (await _applyCategoryListFromCloud(catKey, doc.data())) { emitSyncUpdate({ [catKey]: null }); flashLivePulse(); }
+          recordSuccessfulConnection();
+        } catch (error) {
+          console.warn('[sync] local save error in snapshot handler:', _safeErr(error));
+        }
+      };
+      const categoryListUnsub = userRef.collection(catKey).doc('list').onSnapshot(async (doc) => {
+        if (isSyncing) { _enqueueSyncLocked(_handleCategoryListSnapshot, doc); return; }
+        await _handleCategoryListSnapshot(doc);
+      }, _e => {
+        const _ec = _e && _e.code;
+        console.warn('[sync] category list listener error:', catKey, _ec, _safeErr(_e));
+        if (_ec === 'permission-denied' || _ec === 'failed-precondition') { updateSignalUI('offline'); }
+        else { updateSignalUI('error'); scheduleListenerReconnect(); }
+      });
+      realtimeRefs.push(categoryListUnsub);
+    }
     const _handleDailyLedgerSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites || doc.metadata.fromCache) return;
@@ -2543,6 +2565,13 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     dailyLedgerSnap = await userRef.collection('daily_ledger').doc('entries').get();
     trackFirestoreRead(1);
   } catch(_dle) { console.warn('[downloadDeltas] daily ledger fetch error', _dle); }
+  const categoryListSnaps = {};
+  for (const catKey of CATEGORY_LIST_KEYS) {
+    try {
+      categoryListSnaps[catKey] = await userRef.collection(catKey).doc('list').get();
+      trackFirestoreRead(1);
+    } catch(_cle) { console.warn('[downloadDeltas] category list fetch error', catKey, _cle); }
+  }
   const extract = (snap) => snap
     ? snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => !d._placeholder)
     : [];
@@ -2552,6 +2581,7 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     expenseCategories: expenseCategoriesSnap,
     appStores: appStoresSnap,
     dailyLedger: dailyLedgerSnap,
+    categoryLists: categoryListSnaps,
     personPhotosSnap,
     data: {
       production:              extract(productionSnap),
@@ -2686,6 +2716,24 @@ async function _applyFormulaStoreFromCloud(cloud) {
     await sqliteStore.setBatch([['formulas', kept.list], ['formulas_timestamp', kept.changed ? Date.now() : (cloud.formulas_timestamp || Date.now())]]);
     if (kept.changed && typeof triggerAutoSync === 'function') triggerAutoSync();
   }
+}
+const CATEGORY_LIST_KEYS = ['field_expense_categories', 'commission_categories'];
+async function _applyCategoryListFromCloud(key, cloud) {
+  if (!cloud || typeof cloud !== 'object' || !Array.isArray(cloud[key])) return false;
+  const localRaw = await sqliteStore.get(key);
+  const local = mergeStringLists(localRaw, []);
+  const cloudList = mergeStringLists(cloud[key], []);
+  const lower = (list) => new Set(list.map(v => v.toLowerCase()));
+  const cloudHas = lower(cloudList);
+  const localHas = lower(local);
+  const next = [...cloudList, ...local.filter(v => !cloudHas.has(v.toLowerCase()))];
+  const localMissing = next.some(v => !localHas.has(v.toLowerCase()));
+  const cloudMissing = local.some(v => !cloudHas.has(v.toLowerCase()));
+  if (!localMissing && !cloudMissing) return false;
+  await sqliteStore.setBatch([[key, next], [`${key}_timestamp`, cloudMissing ? Date.now() : (cloud[`${key}_timestamp`] || Date.now())]]);
+  if (cloudMissing && typeof triggerAutoSync === 'function') triggerAutoSync();
+  window.dispatchEvent(new CustomEvent('category-list-synced', { detail: { key } }));
+  return localMissing;
 }
 async function _applyDailyLedgerFromCloud(cloud) {
   if (!cloud || typeof cloud !== 'object' || !Array.isArray(cloud.daily_ledger)) return false;
@@ -2880,7 +2928,7 @@ export async function _mergeAndPersist(cloudData) {
 }
 
 export async function _syncSettings(cloudData) {
-  const { settings: settingsSnap, factorySettings: factorySettingsSnap, expenseCategories: expCatSnap, appStores: appStoresSnap, dailyLedger: dailyLedgerSnap, personPhotosSnap } = cloudData;
+  const { settings: settingsSnap, factorySettings: factorySettingsSnap, expenseCategories: expCatSnap, appStores: appStoresSnap, dailyLedger: dailyLedgerSnap, categoryLists: categoryListSnaps, personPhotosSnap } = cloudData;
   if (settingsSnap && settingsSnap.exists) {
     const sd = settingsSnap.data();
     if (sd && sd.settings) {
@@ -2983,6 +3031,10 @@ export async function _syncSettings(cloudData) {
     }
   }
   if (dailyLedgerSnap && dailyLedgerSnap.exists) await _applyDailyLedgerFromCloud(dailyLedgerSnap.data());
+  for (const catKey of CATEGORY_LIST_KEYS) {
+    const catSnap = categoryListSnaps && categoryListSnaps[catKey];
+    if (catSnap && catSnap.exists) await _applyCategoryListFromCloud(catKey, catSnap.data());
+  }
   if (appStoresSnap && appStoresSnap.exists) {
     const asd = appStoresSnap.data();
     if (asd && Array.isArray(asd.stores)) {
@@ -3173,6 +3225,20 @@ export async function _uploadChanges(userRef) {
     operationCount++;
     collectionsUploaded.add('daily_ledger');
   }
+  for (const catKey of CATEGORY_LIST_KEYS) {
+    const localCatTs = await sqliteStore.get(`${catKey}_timestamp`);
+    const lastCatSync = await DeltaSync.getLastSyncTimestamp(catKey);
+    if (localCatTs && (!lastCatSync || localCatTs > lastCatSync)) {
+      const _cl = await sqliteStore.get(catKey);
+      configBatch.set(
+        userRef.collection(catKey).doc('list'),
+        sanitizeForFirestore({ [catKey]: Array.isArray(_cl) ? _cl : [], [`${catKey}_timestamp`]: localCatTs }),
+        { merge: true }
+      );
+      operationCount++;
+      collectionsUploaded.add(catKey);
+    }
+  }
   const localStoresTs = await sqliteStore.get('stores_timestamp');
   const lastStoresSync = await DeltaSync.getLastSyncTimestamp('stores');
   if (localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
@@ -3284,6 +3350,7 @@ export async function _uploadChanges(userRef) {
     + (collectionsUploaded.has('settings') ? 1 : 0)
     + (collectionsUploaded.has('categories') ? 1 : 0)
     + (collectionsUploaded.has('daily_ledger') ? 1 : 0)
+    + CATEGORY_LIST_KEYS.filter(k => collectionsUploaded.has(k)).length
     + (collectionsUploaded.has('stores') ? 1 : 0);
   const totalUploaded = totalItemsToWrite + configItemCount;
   if (totalUploaded > 0 && typeof emitSyncUpdate === 'function') {
