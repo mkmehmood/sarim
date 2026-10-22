@@ -1,6 +1,6 @@
 import { openDialog } from './dialog.js';
-import { esc, fmtAmt, loadCollections } from './business.js';
-import { addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems, expenseItemsOfRecord, commissionItemsOfRecord } from './field-expense-items.js';
+import { esc, fmtAmt, sqliteStore } from './business.js';
+import { addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems, addCategoryName, cleanCategoryNames } from './field-expense-items.js';
 
 const el = (id) => document.getElementById(id);
 const toast = (msg, type) => { if (typeof window.showToast === 'function') window.showToast(msg, type); };
@@ -17,9 +17,7 @@ const KINDS = {
     caption: 'Search or type a category, tap it, add the amount and save. The field shows the total paid.',
     placeholder: 'Search or type a category (e.g. Fuel)',
     totalLabel: 'Total paid',
-    tag: 'Expense',
-    ofRecord: expenseItemsOfRecord,
-    recordKey: 'fieldExpenseItems'
+    tag: 'Expense'
   },
   commission: {
     inputId: 'commissionPaid',
@@ -28,9 +26,7 @@ const KINDS = {
     caption: 'Search or type a category, tap it, add the amount and save. The field shows the total paid.',
     placeholder: 'Search or type a category (e.g. Advance)',
     totalLabel: 'Total paid',
-    tag: 'Commission',
-    ofRecord: commissionItemsOfRecord,
-    recordKey: 'commissionPaidItems'
+    tag: 'Commission'
   }
 };
 
@@ -70,24 +66,26 @@ function listHtml(kind) {
   return `${rows}<div class="fe-total"><span>${esc(KINDS[kind].totalLabel)}</span><b>${esc(fmtAmt(expenseTotal(items)))}</b></div>`;
 }
 
+const CATEGORY_KEY = 'expense_categories';
+
+async function loadCategories(kind) {
+  let stored = null;
+  try { stored = await sqliteStore.get(CATEGORY_KEY); } catch (e) { stored = null; }
+  return cleanCategoryNames(stored && stored[kind]);
+}
+
+async function rememberCategory(kind, name) {
+  let stored = null;
+  try { stored = await sqliteStore.get(CATEGORY_KEY); } catch (e) { stored = null; }
+  const next = { expense: cleanCategoryNames(stored && stored.expense), commission: cleanCategoryNames(stored && stored.commission) };
+  next[kind] = addCategoryName(next[kind], name);
+  try { await sqliteStore.set(CATEGORY_KEY, next); } catch (e) { toast('Could not save the category.', 'warning'); }
+}
+
 export async function expenseCategorySearchItems(query) {
   const q = String(query || '').trim().toLowerCase();
-  const seen = new Map();
-  const add = (name, tag) => {
-    const key = String(name || '').trim().toLowerCase();
-    if (key && !seen.has(key)) seen.set(key, { value: String(name).trim(), tag });
-  };
-  const kind = KINDS[activeKind];
-  for (const it of lists[activeKind]) add(it.name, 'This entry');
-  try {
-    const { sales, rep } = await loadCollections('sales', 'rep');
-    const records = [...(Array.isArray(sales) ? sales : []), ...(Array.isArray(rep) ? rep : [])];
-    for (const rec of records) {
-      if (!rec || !Array.isArray(rec[kind.recordKey])) continue;
-      for (const it of kind.ofRecord(rec)) add(it.name, kind.tag);
-    }
-  } catch (e) { toast('Could not load saved categories.', 'warning'); }
-  return [...seen.values()].filter((it) => !q || it.value.toLowerCase().includes(q)).slice(0, 12);
+  const merged = lists[activeKind].reduce((acc, it) => addCategoryName(acc, it.name), await loadCategories(activeKind));
+  return merged.filter((name) => !q || name.toLowerCase().includes(q)).slice(0, 12).map((value) => ({ value, tag: KINDS[activeKind].tag }));
 }
 
 export function expenseCategoryOnPick() {
@@ -120,6 +118,7 @@ function openPopup(kind) {
           if (!label) { toast('Search and select a category, or type a new one.', 'warning'); nameEl.focus(); return { ok: false }; }
           if (!(value > 0)) { toast('Enter an amount greater than zero.', 'warning'); amountEl.focus(); return { ok: false }; }
           lists[kind] = addExpenseItem(lists[kind], label, value);
+          await rememberCategory(kind, label);
           syncInput(kind, true);
           overlay.querySelector('#fe-list').innerHTML = listHtml(kind);
           overlay.querySelector('#fe-results').classList.add('hidden');

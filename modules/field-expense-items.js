@@ -39,6 +39,21 @@ export function expenseItemsOfRecord(rec) {
   return total > 0 ? [{ name: OTHER_EXPENSE_LABEL, amount: total }] : [];
 }
 
+export function cleanCategoryNames(list) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(list) ? list : []) {
+    const name = String(raw || '').trim();
+    const key = keyOf(name);
+    if (name && !seen.has(key)) { seen.add(key); out.push(name); }
+  }
+  return out;
+}
+
+export function addCategoryName(list, name) {
+  return cleanCategoryNames([...cleanCategoryNames(list), name]);
+}
+
 export const COMMISSION_LABEL = 'Commission';
 
 export function commissionItemsOfRecord(rec) {

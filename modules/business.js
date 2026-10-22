@@ -689,7 +689,7 @@ export const sqliteStore = (() => {
     'categories', 'reps', 'roles',
     'offline_operation_queue', 'offline_dead_letter_queue',
     'ui', 'theme', 'dbstats', 'session_start',
-    'stores', 'daily_ledger', 'perm_asked_v2', 'persistent_login', 'session_active',
+    'stores', 'daily_ledger', 'expense_categories', 'perm_asked_v2', 'persistent_login', 'session_active',
     'splashQuotePool', 'splashQuoteSeen',
   ]);
   function _rowType(key) {

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   addExpenseItem, removeExpenseItem, expenseTotal, cleanExpenseItems,
-  expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries
+  expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries,
+  addCategoryName, cleanCategoryNames
 } from '../modules/field-expense-items.js';
 import { hcExpensesHtml } from '../modules/history-card.js';
 import { smExpensesHtml, smCalcHtml } from '../modules/summary-card.js';
@@ -152,5 +153,23 @@ describe('commission paid pop-up', () => {
     assert.ok(hcExpensesHtml([['Advance', 40]], String, 'Commission breakdown').includes('Commission breakdown'));
     const pay = read('modules/utilities-payments.js');
     assert.match(pay, /range\.commissionItems = mergeExpenseItems/);
+  });
+});
+
+describe('category lists are separate from app data and from each other', () => {
+  it('keeps names unique regardless of case and drops blanks', () => {
+    assert.deepEqual(cleanCategoryNames([' Fuel ', 'fuel', '', null, 'Food']), ['Fuel', 'Food']);
+    assert.deepEqual(addCategoryName(['Fuel'], 'FUEL'), ['Fuel']);
+    assert.deepEqual(addCategoryName(['Fuel'], 'Food'), ['Fuel', 'Food']);
+    assert.deepEqual(addCategoryName(['Fuel'], ''), ['Fuel']);
+  });
+
+  it('search reads its own saved list per field, never sales or rep records', () => {
+    const src = read('modules/field-expenses.js');
+    assert.match(src, /sqliteStore\.get\(CATEGORY_KEY\)/);
+    assert.match(src, /stored && stored\[kind\]/);
+    assert.match(src, /loadCategories\(activeKind\)/);
+    assert.ok(!/loadCollections/.test(src), 'does not search sales or rep records');
+    assert.match(read('modules/business.js'), /'expense_categories'/);
   });
 });
