@@ -6182,7 +6182,7 @@ themeToggle.title = savedTheme === 'dark' ? "Switch to Light Mode" : "Switch to 
 }
 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 if (metaThemeColor) {
-metaThemeColor.setAttribute('content', savedTheme === 'light' ? '#ffffff' : '#000000');
+metaThemeColor.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
 }
 }
 

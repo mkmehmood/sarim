@@ -287,8 +287,8 @@ function applyStatusBar() {
   if (!StatusBar) return;
   const light = document.documentElement.getAttribute('data-theme') === 'light';
   try {
-    StatusBar.setStyle({ style: 'DARK' });
-    StatusBar.setBackgroundColor({ color: '#1D4ED8' });
+    StatusBar.setStyle({ style: light ? 'LIGHT' : 'DARK' });
+    StatusBar.setBackgroundColor({ color: getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() });
   } catch (_) {}
 }
 
