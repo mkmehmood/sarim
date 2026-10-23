@@ -1,0 +1,1225 @@
+import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
+import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
+import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
+import { periodTotals, periodQuantity } from './finance.js';
+import { unifiedDelete, unifiedSave } from './sync.js';
+import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
+import { renderLedger, applyCmFilters, resetLedgerFilter, menuButtonHtml } from './cm-ledger.js';
+import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLabel, refreshCustomerSales, updateCollectionPreview } from './utilities-sales.js';
+import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, reverseExpiredFromChora, safeValue } from './utilities-payments.js';
+import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, getReconciledRepReturnIds, updateUnitsAvailableIndicator } from './factory.js';
+import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
+import { confirmGuard } from './confirm-guard.js';
+import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
+import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
+import { getDefaultStoreKey } from './store-keys.js';
+import { geoErrorMessage } from './geolocation-bridge.js';
+export async function runningBalanceHtml(bal) {
+const text = bal < -0.005 ? `${await formatCurrency(-bal)} CR` : await formatCurrency(Math.max(0, bal));
+return balanceAfterHtml(text, bal > 0.005 ? 'debt' : 'clear');
+}
+
+export { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking };
+
+export function selectCustomer(name) {
+const input = document.getElementById('cust-name');
+const resultsDiv = document.getElementById('customer-search-results');
+if(input) {
+input.value = name;
+}
+if(resultsDiv) {
+resultsDiv.classList.add('hidden');
+}
+if(typeof calculateCustomerStatsForDisplay === 'function') {
+calculateCustomerStatsForDisplay(name);
+}
+}
+
+window._selectCustomerBase = selectCustomer;
+
+export async function calculateCustomerStatsForDisplay(name) {
+const { sales } = await loadCollections('sales');
+if (!name) return;
+const matchedSales = sales.filter(s =>
+s && s.currentRepProfile === 'admin' && s.customerName && s.customerName.toLowerCase() === name.toLowerCase()
+);
+if (matchedSales.length === 0) {
+document.getElementById('customer-info-display').classList.add('hidden');
+return;
+}
+let totalCredit = 0;
+let totalQty = 0;
+const _rrDone = await getReconciledRepReturnIds();
+for (const s of matchedSales) {
+totalQty += (s.quantity || 0);
+totalCredit = round2(totalCredit + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
+}
+totalCredit = Math.max(0, totalCredit);
+const _setCust = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+_setCust('customer-current-credit', await formatCurrency(totalCredit));
+_setCust('customer-total-quantity', fmtNum(safeNumber(totalQty, 0)) + ' kg');
+document.getElementById('customer-info-display').classList.remove('hidden');
+if (typeof custTransactionMode !== 'undefined' && custTransactionMode === 'collection' && typeof updateCollectionPreview === 'function') {
+updateCollectionPreview();
+}
+}
+
+export async function renderCustomersTable(page = 1) {
+const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
+const _rctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
+const sales = ensureArray(await sqliteStore.get('sales')).filter(_rctAlive);
+const customers = ensureArray(await sqliteStore.get('customers')).filter(_rctAlive);
+const tbody = document.getElementById('customers-table-body');
+if (!tbody) {
+return;
+}
+try {
+const freshSales = await sqliteStore.get('sales', []);
+if (Array.isArray(freshSales) && freshSales.length > 0) {
+sales.length = 0;
+freshSales.forEach(s => sales.push(s));
+}
+} catch (error) {
+console.error('UI refresh failed.', _safeErr(error));
+showToast('Failed to reload sales data: ' + (_safeErr(error).message || 'please reload the app'), 'error');
+}
+try {
+const freshSalesCustomers = await sqliteStore.get('customers', []);
+if (Array.isArray(freshSalesCustomers) && freshSalesCustomers.length > 0) {
+const regMap = new Map(freshSalesCustomers.map(c => [c.id, c]));
+if (Array.isArray(customers)) {
+customers.forEach(c => { if (c && c.id && !regMap.has(c.id)) regMap.set(c.id, c); });
+}
+const mergedSC = Array.from(regMap.values());
+await sqliteStore.set('customers', mergedSC);
+}
+} catch (regError) {
+console.warn('Registry refresh failed, using in-memory:', _safeErr(regError));
+}
+const filterInput = document.getElementById('customer-filter');
+const filterValue = filterInput ? filterInput.value.toLowerCase() : '';
+const customerStats = {};
+const _rrDone = await getReconciledRepReturnIds();
+for (const sale of sales) {
+const name = sale.customerName;
+if (!name || name.trim() === '') continue;
+if (sale.currentRepProfile !== 'admin') continue;
+const isRepLinked = sale.salesRep && sale.salesRep !== 'NONE';
+if (!customerStats[name]) {
+customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
+}
+customerStats[name].quantity += (sale.quantity || 0);
+customerStats[name].credit = round2(customerStats[name].credit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0, { reconciledReturnIds: _rrDone }));
+const saleDate = sale.date;
+if (saleDate) {
+const timestamp = new Date(saleDate).getTime();
+if (!isNaN(timestamp) && timestamp > customerStats[name].lastSaleDate) {
+customerStats[name].lastSaleDate = timestamp;
+}
+}
+}
+let sortedCustomers = Object.values(customerStats)
+.filter(c => c && c.name)
+.sort((a, b) => {
+if (b.credit !== a.credit) return b.credit - a.credit;
+return b.lastSaleDate - a.lastSaleDate;
+});
+if (Array.isArray(customers)) {
+const statsNames = new Set(sortedCustomers.map(c => c.name.toLowerCase()));
+customers.forEach(sc => {
+if (!sc || !sc.name || !sc.name.trim()) return;
+const lcName = sc.name.toLowerCase();
+if (statsNames.has(lcName)) return;
+sortedCustomers.push({ name: sc.name, credit: 0, quantity: 0, lastSaleDate: 0 });
+statsNames.add(lcName);
+});
+}
+if (filterValue) {
+sortedCustomers = sortedCustomers.filter(c => c && c.name && c.name.toLowerCase().includes(filterValue));
+}
+let totalOutstanding = 0;
+let totalGlobalQty = 0;
+sortedCustomers.forEach(c => {
+totalOutstanding += c.credit;
+totalGlobalQty += c.quantity;
+});
+const customerList = sortedCustomers;
+const totalItems = sortedCustomers.length;
+if (!customerList || !Array.isArray(customerList)) {
+tbody.innerHTML = rlEmptyHtml('Customer data is invalid', 'Reload the app and try again.');
+} else if (customerList.length === 0) {
+tbody.innerHTML = filterValue
+? rlEmptyHtml('No customers match your search', 'Try a different name.')
+: rlEmptyHtml('No customers yet', 'Tap the add button to create the first one.');
+} else {
+const phoneByName = new Map();
+customers.forEach(ct => { if (ct && ct.name && ct.phone) phoneByName.set(ct.name.toLowerCase(), ct.phone); });
+const saleBy = new Map();
+sales.forEach(s => { if (s && s.customerName && s.customerPhone && !saleBy.has(s.customerName)) saleBy.set(s.customerName, s.customerPhone); });
+const _rlPhotos = (await sqliteStore.get('photos')) || {};
+const buildCustomerRow = (c) => {
+if (!c || !c.name) return '';
+const phone = phoneByName.get(c.name.toLowerCase()) || saleBy.get(c.name) || '';
+const hasDate = c.lastSaleDate && !isNaN(c.lastSaleDate);
+const owes = c.credit > 0.005;
+return rlRowHtml({
+name: c.name,
+photo: rlPhoto(_rlPhotos, 'cust:' + c.name.toLowerCase()),
+tone: owes ? 'debt' : 'clear',
+details: [
+phone ? phoneActionHTML(phone) : '<span class="rl-muted">No phone</span>',
+c.quantity > 0 ? `<span class="rl-muted">${fmtNum(c.quantity)} kg sold</span>` : '',
+hasDate ? `<span class="rl-muted">Last sale ${esc(formatDisplayDate(new Date(c.lastSaleDate)))}</span>` : ''
+],
+amount: fmtAmt(safeValue(Math.max(0, c.credit))),
+tag: owes ? 'Owes' : 'Settled',
+onOpen: `openCustomerManagement('${rlJsArg(c.name)}')`
+});
+};
+tbody.innerHTML = customerList.map(buildCustomerRow).join('');
+}
+const _setCustH = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+_setCustH('customer-count', `${totalItems || 0} active`);
+_setCustH('customers-total-credit', `${fmtAmt(totalOutstanding)}`);
+_setCustH('customers-total-quantity', fmtNum(safeNumber(totalGlobalQty, 0)) + ' kg');
+}
+
+export let currentManagingCustomer = null;
+export let currentManagingRepCustomer = null;
+
+const _saleChipMode = { cust: 'amount', rep: 'amount' };
+export async function custPeriodRowHtml(totals, debt, qty, kind) {
+const debtTone = debt > 0.005 ? 'is-debt' : 'is-clear';
+const showQty = _saleChipMode[kind] === 'qty';
+const amountText = String(await formatCurrency(totals.totalSale));
+const qtyText = `${fmtNum(qty)} kg`;
+return `<div class="cust-period-row d-flex">
+<div class="cust-stat-chip is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="cust-stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="cust-stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
+<div class="cust-stat-chip is-collect"><span class="cust-stat-label">Collection</span><span class="cust-stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
+<div class="cust-stat-chip ${debtTone}"><span class="cust-stat-label">Current Debt</span><span class="cust-stat-value">${await formatCurrency(debt)}</span></div>
+</div>`;
+}
+
+let _cmEmptyName = '';
+export async function custSummaryHtml(totals, debt, qty, given, settled, n, kind = 'cust') {
+const tone = debt > 0.005 ? 'is-debt' : 'is-clear';
+const showQty = _saleChipMode[kind] === 'qty';
+const amountText = String(await formatCurrency(totals.totalSale));
+const qtyText = `${fmtNum(qty)} kg`;
+const pct = given > 0.005 ? Math.max(0, Math.min(100, Math.round(settled / given * 100))) : 0;
+let html = `<div class="cm-sum-label">Current debt</div><div class="cm-sum-debt ${tone}">${await formatCurrency(debt)}</div>`;
+if (n === 0) return html;
+html += `<div class="cust-period-row d-flex">
+<div class="cust-stat-chip is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="cust-stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="cust-stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
+<div class="cust-stat-chip is-collect"><span class="cust-stat-label">Collection</span><span class="cust-stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
+</div>`;
+if (n >= 3) html += `<div class="cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of credit given has been settled</div>`;
+return html;
+}
+window.toggleSaleChip = (chip) => {
+const kind = chip.dataset.kind;
+const showQty = _saleChipMode[kind] !== 'qty';
+_saleChipMode[kind] = showQty ? 'qty' : 'amount';
+chip.querySelector('.cust-stat-label').textContent = showQty ? 'Total Quantity' : 'Total Sale';
+chip.querySelector('.cust-stat-value').textContent = showQty ? chip.dataset.qty : chip.dataset.amount;
+};
+export async function openCustomerManagement(customerName) {
+currentManagingCustomer = customerName;
+resetLedgerFilter('cust');
+const _cmS = document.getElementById('cust-trans-search');
+if (_cmS) _cmS.value = '';
+const _setMCT = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+_setMCT('manageCustomerTitle', customerName);
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-management-screen');
+await renderCustomerTransactions(customerName);
+}
+
+export function closeCustomerManagement() {
+if (typeof window.closeCustomerTxnSheet === 'function') window.closeCustomerTxnSheet();
+if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-management-screen');
+currentManagingCustomer = null;
+setTimeout(async () => {
+try {
+await sqliteStore.get('sales', []);
+await sqliteStore.get('customers', []);
+} catch(e) {
+showToast('Customer data operation failed.', 'error');
+console.warn('closeCustomerManagement SQLite error', _safeErr(e));
+}
+if (typeof renderCustomersTable === 'function') renderCustomersTable();
+}, 100);
+}
+
+export async function deleteCurrentCustomer() {
+const { sales, customers } = await loadCollections('sales', 'customers');
+if (!currentManagingCustomer) return;
+const name = currentManagingCustomer;
+const txs = sales.filter(s =>
+s && s.customerName === name
+);
+for (const _t of txs) {
+const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true });
+if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
+}
+let totalDebt = 0;
+const _rrDone = await getReconciledRepReturnIds();
+for (const s of txs.filter(x => x.currentRepProfile === 'admin')) totalDebt = round2(totalDebt + debtDelta(s, debtNeedsGross(s) ? await getSaleTransactionValue(s) : 0, { reconciledReturnIds: _rrDone }));
+totalDebt = Math.max(0, totalDebt);
+let msg = `Permanently delete customer "${name}"?`;
+if (txs.length > 0) {
+msg += `\n\n This customer has ${txs.length} transaction record${txs.length !== 1 ? 's' : ''} on file.`;
+if (totalDebt > 0) msg += `\n Outstanding debt: ${fmtAmt(totalDebt)}`;
+msg += `\n\nAll sales history for this customer will be permanently deleted.`;
+}
+msg += `\n\nThis cannot be undone.`;
+if (!(await showGlassConfirm(msg, { title: 'Delete Customer', confirmText: 'Delete Permanently', danger: true }))) return;
+try {
+const _custGroup = newGroupId('cust');
+const contactIdx = customers.findIndex(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
+if (contactIdx !== -1) {
+const contactRecord = stampGroup(customers[contactIdx], _custGroup);
+const contactId = contactRecord.id;
+const filteredContacts = customers.filter((_, i) => i !== contactIdx);
+await unifiedDelete('customers', filteredContacts, contactId, { strict: true }, contactRecord);
+customers.splice(contactIdx, 1);
+}
+const txsToDelete = txs.slice();
+const idsToDelete = new Set(txsToDelete.map(t => t.id));
+let prunedSales = sales.filter(s => !idsToDelete.has(s.id));
+for (const tx of txsToDelete) {
+prunedSales = prunedSales.filter(s => s.id !== tx.id);
+await unifiedDelete('sales', prunedSales, tx.id, { strict: true }, stampGroup(tx, _custGroup));
+}
+notifyDataChange('sales');
+triggerAutoSync();
+closeCustomerManagement();
+} catch (e) {
+window.notifyBlocking('Failed to delete customer. Please try again.', 'error', 'Something went wrong');
+}
+}
+
+export async function renderCustomerTransactions(name) {
+const { customers, sales } = await loadCollections('customers', 'sales');
+const list = document.getElementById('customerManagementHistoryList');
+if (!list) return;
+let historyTxns = [];
+try {
+const dbSales = await sqliteStore.get('sales', []);
+if (Array.isArray(dbSales)) {
+const recordMap = new Map(dbSales.map(s => [s.id, s]));
+if (Array.isArray(sales)) {
+sales.forEach(s => {
+if (!recordMap.has(s.id)) {
+recordMap.set(s.id, s);
+}
+});
+}
+const normalizedSales = Array.from(recordMap.values()).map(s => {
+if (s && !s.currentRepProfile && (!s.salesRep || s.salesRep === 'NONE' || s.salesRep === 'ADMIN')) {
+return { ...s, currentRepProfile: 'admin' };
+}
+return s;
+});
+historyTxns = normalizedSales.filter(s =>
+s && s.currentRepProfile === 'admin' && s.customerName === name
+);
+} else {
+historyTxns = sales.filter(s =>
+s && s.currentRepProfile === 'admin' && s.customerName === name
+);
+}
+} catch (error) {
+console.error('Customer data operation failed.', _safeErr(error));
+showToast('Customer data operation failed.', 'error');
+historyTxns = sales.filter(s =>
+s && s.currentRepProfile === 'admin' && s.customerName === name
+);
+}
+const _rrDone = await getReconciledRepReturnIds();
+const _custDelta = async (t) => debtDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone });
+const _runBal = new Map();
+let _runTotal = 0;
+const _ascTx = historyTxns.map((t, i) => ({ t, i })).sort((a, b) => txDeviceCompare(a.t, b.t) || (a.i - b.i));
+const _deltaMap = new Map();
+let _gAll = 0, _rAll = 0;
+for (const { t } of _ascTx) {
+const _dl = await _custDelta(t);
+_deltaMap.set(t, _dl);
+if (_dl > 0) _gAll += _dl; else _rAll -= _dl;
+_runTotal = round2(_runTotal + _dl);
+_runBal.set(t, _runTotal);
+}
+const entity = (Array.isArray(customers) ? customers : []).find(e => e && e.name && e.name.toLowerCase() === name.toLowerCase());
+const phone = entity?.phone || historyTxns.find(t => t && t.customerPhone)?.customerPhone || '';
+const address = entity?.address || '';
+const _custRows = await Promise.all(historyTxns.map(async t => ({ t, value: await getSaleTransactionValue(t) })));
+const _custTotals = periodTotals(_custRows);
+const headerTitle = document.getElementById('manageCustomerTitle');
+const _custHeaderPhoto = await getPersonPhoto('cust:' + name.toLowerCase());
+const _custAvatarHTML = renderPersonAvatarHTML(_custHeaderPhoto, 42);
+const _custSafeName = esc(name).split("'").join("\\'");
+headerTitle.innerHTML = `
+<div class="u-1043921 d-flex">
+${_custAvatarHTML}
+<div class="u-69f8e5a">
+<div class="u-611b408 d-flex">
+<span>${esc(name)}</span>
+${menuButtonHtml('cust', _custSafeName)}
+</div>
+<div class="u-9e739fd">
+${phone ? phoneActionHTML(phone) : 'No Phone'} ${address ? `|  ${esc(address)}` : ''}
+</div>
+</div>
+</div>
+`;
+historyTxns.sort((a, b) => txDeviceCompare(b, a));
+const _nAll = historyTxns.length;
+_cmEmptyName = name;
+const _rrUsed = new Set();
+ensureArray(await sqliteStore.get('calculator')).forEach(h => { if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => _rrUsed.add(i)); });
+const _entries = [];
+for (const t of historyTxns) {
+const isCredit = t.paymentType === 'CREDIT';
+const isPartialPayment = t.paymentType === 'PARTIAL_PAYMENT';
+const isCollection = t.paymentType === 'COLLECTION';
+const isRepReturn = t.isRepReturn === true;
+let statusClass = t.creditReceived ? 'paid' : 'pending';
+let btnText = t.creditReceived ? 'PAID' : 'PENDING';
+let toggleBtnHtml = '';
+const partialPaid = t.partialPaymentReceived || 0;
+const _txValue = await getSaleTransactionValue(t);
+const effectiveDue = (t.isMerged && typeof t.creditValue === 'number') ? t.creditValue : (_txValue - partialPaid);
+const hasPartialPayment = isCredit && !t.creditReceived && partialPaid > 0 && !t.isMerged;
+const isOldDebt = t.transactionType === 'OLD_DEBT';
+if (t.isMerged) {
+const mergedSettled = t.creditReceived || (t.isMerged && effectiveDue <= 0.01);
+toggleBtnHtml = mergedSettled
+? `<span class="status-toggle-btn paid u-3b42672">SETTLED</span>`
+: `<span class="status-toggle-btn pending u-3b42672">PENDING</span>`;
+} else if(isCredit) {
+if (hasPartialPayment) {
+const remaining = effectiveDue;
+btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
+statusClass = 'partial';
+}
+toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
+} else if (isRepReturn) {
+toggleBtnHtml = _rrUsed.has(t.id)
+? `<span class="status-toggle-btn paid u-77e4b99 st-pointer-events__8b1364">RECONCILED</span>`
+: `<span class="status-toggle-btn pending u-77e4b99 st-pointer-events__8b1364">PENDING RETURN</span>`;
+} else if (isPartialPayment) {
+toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
+} else if (isCollection) {
+toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
+} else {
+toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
+}
+const safeId = String(t.id).replace(/'/g, "\\'");
+const panelId = `cp-${t.id}`;
+const kebabBtn = t.isMerged
+  ? `<button class="txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','sales','sale')">⋮</button>`
+  : '';
+const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
+let info = '';
+let _salePrice = 0;
+if (isRepReturn) {
+const _rrExp = Number(t.expiredQty) || 0, _rrRet = Number(t.returnedQty) || 0;
+info = `
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${_rrExp > 0 ? `<div class="text-xs st-font-size__8e87b7 st-color__5872de">Return | <span class="st-color__44bbf8">Expired credit</span></div>
+    <div class="st-font-size__8113a0 st-color__a4c6ac">${fmtNum(_rrRet)} kg | <span class="st-color__44bbf8">${fmtNum(_rrExp)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''} = ${await formatCurrency(Number(t.returnValue) || 0)}</span></div>` : `<div class="text-xs st-font-size__8e87b7 st-color__5872de">Return</div>
+    <div class="st-font-size__8113a0 st-color__a4c6ac">${fmtNum(_rrRet)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}${Number(t.returnValue) > 0 ? ` = ${await formatCurrency(Number(t.returnValue))}` : ''}</div>`}
+    <div class="text-xs st-font-size__8e87b7 st-color__5872de st-margin-top__7a21c6">${_rrUsed.has(t.id) ? 'Applied in Calculator reconciliation — balance settled there' : 'Waiting for Calculator reconciliation'}</div>
+`;
+} else if (isPartialPayment || isCollection) {
+const _hasPay = isPartialPayment || collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0);
+const _hasExp = Number(t.expiredValue) > 0;
+const _expText = _hasExp ? (Number(t.expiredUnitPrice) > 0 ? `${fmtNum(Number(t.expiredQty))} kg @${fmtAmt(Number(t.expiredUnitPrice))} = ${await formatCurrency(Number(t.expiredValue) + (_hasPay ? collectionCollected(t) : 0))}${(Number(t.expiredQty) * Number(t.expiredUnitPrice)) - Number(t.expiredValue) > 0.5 ? ' (limited to balance owed)' : ''}` : await formatCurrency(Number(t.expiredValue))) : '';
+info = `
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
+    ${(_hasPay || _hasExp) ? `<div class="text-xs u-text-muted">${[_hasPay ? 'Payment' : '', _hasExp ? '<span class="u-expired-credit">Expired credit</span>' : ''].filter(Boolean).join(' | ')}</div>
+    <div class="u-dbdd85e">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? `<span class="u-expired-credit">${_expText}</span>` : ''].filter(Boolean).join(' | ')}</div>` : ''}
+    ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}</div>
+`;
+} else if (isOldDebt) {
+info = `
+    <div class="u-fs-sm2 u-text-muted">
+      <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
+    </div>
+    <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
+    <div class="u-5d1cf22 text-xs">${esc(oldDebtNote(t.notes))}</div>
+`;
+} else {
+_salePrice = lockedUnitPrice(t) > 0
+  ? lockedUnitPrice(t)
+  : await getEffectiveSalePriceForCustomer(t.customerName, t.supplyStore || getDefaultStoreKey());
+info = `
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    ${(t.supplyDate && t.supplyDate !== t.date) ? `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">Supply Date: ${formatDisplayDate(t.supplyDate)}</div>` : ''}
+    <div class="u-fs-sm2 u-text-muted">${fmtNum(t.quantity)} kg @ ${await formatCurrency(_salePrice)} = ${await formatCurrency(_txValue)}</div>
+    ${hasPartialPayment ? `<div class="text-xs st-font-size__8e87b7 st-color__a4c6ac st-margin-top__7a21c6">Paid: ${await formatCurrency(partialPaid)} | Due: ${await formatCurrency(Math.max(0, _txValue - partialPaid))}</div>` : ''}
+    <div class="u-5d1cf22 text-xs">${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? `⇄ Stock transfer from ${esc(t.repTransferFrom || t.transferFrom || '')}` : getStoreLabel(t.supplyStore)}</div>
+`;
+}
+const _dkey = txDeviceDate(t) || 'undated';
+const _bal = _runBal.get(t) || 0;
+const _balText = _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal));
+const _balTone = _bal > 0.005 ? 'is-debt' : 'is-clear';
+let rTitle = '', rSub = '', rInv = null, rAmt = 0, rIn = false, rKind = 'cash', rCat = 'cash';
+if (isRepReturn) {
+const _e = Number(t.expiredQty) || 0, _r = Number(t.returnedQty) || 0;
+rTitle = _e > 0 ? 'Return · Expired credit' : 'Return';
+rSub = `${fmtNum(_r)} kg${Number(t.returnUnitPrice) > 0 ? ` @ ${fmtAmt(Number(t.returnUnitPrice))}` : ''}`;
+rAmt = Number(t.returnValue) || 0; rIn = true; rKind = 'in'; rCat = 'pay';
+} else if (isPartialPayment || isCollection) {
+const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
+rTitle = isPartialPayment ? 'Partial payment' : 'Collection';
+rSub = isPartialPayment ? 'Payment received' : (_pay > 0 ? (_expV > 0 ? 'Payment + expired credit' : 'Amount received') : 'Expired stock');
+rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
+} else if (isOldDebt) {
+rTitle = 'Old debt'; rSub = oldDebtNote(t.notes) || 'Previous balance';
+rAmt = Number(t.totalValue) || 0; rKind = 'cr'; rCat = 'credit';
+} else {
+rTitle = isCredit ? 'Credit sale' : 'Cash sale';
+rSub = `${fmtNum(t.quantity)} kg @ ${fmtAmt(_salePrice)} · ${(t.isRepTransfer || (t.isTransfer && t.transferFrom)) ? 'Stock transfer' : getStoreLabel(t.supplyStore)}`;
+rInv = `${fmtNum(t.quantity)} kg @ ${fmtAmt(_salePrice)}`;
+rAmt = _txValue; rKind = isCredit ? 'cr' : 'cash'; rCat = isCredit ? 'credit' : 'cash';
+}
+const _dl = _deltaMap.get(t) || 0;
+let _debit = 0, _credit = 0;
+if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
+else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = _txValue; _credit = _txValue; }
+const _balCell = Math.abs(_bal) < 0.01 ? 'SETTLED' : (_bal > 0 ? fmtAmt(_bal) : 'OVERPAID ' + fmtAmt(-_bal));
+const _dateObj = new Date(_dkey + 'T00:00:00');
+const _validDate = !isNaN(_dateObj.getTime());
+const _amtText = await formatCurrency(rAmt);
+const _isSale = !isOldDebt && !isCollection && !isPartialPayment && !isRepReturn;
+const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
+const _canDelete = !t.isMerged;
+const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
+const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
+_entries.push({ id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, sold: _isSale ? _txValue : 0, got: (isCollection || isPartialPayment) ? rAmt : 0, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
+}
+await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
+}
+
+window.recordFirstSaleForCustomer = () => {
+const n = _cmEmptyName;
+closeCustomerManagement();
+setTimeout(() => {
+selectCustomer(n);
+const input = document.getElementById('cust-name');
+if (input) { input.scrollIntoView({ block: 'center' }); input.focus(); }
+}, 150);
+};
+
+export async function toggleSingleTransactionStatus(id) {
+const sales = ensureArray(await sqliteStore.get('sales'));
+const record = sales.find(s => s.id === id);
+if (record?.isMerged) {
+window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 'Payment warning');
+return;
+}
+const _tgBlock = await getSettleToggleBlockReason(id, 'customer');
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning', 'Warning'); return; }
+const snapshot = [...sales];
+try {
+const idx = sales.findIndex(s => s.id === id);
+if (idx !== -1) {
+applySettlement(sales[idx], planCreditToggle(sales[idx], localDateStr(), new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })));
+sales[idx].updatedAt = getTimestamp();
+sales[idx] = ensureRecordIntegrity(sales[idx], true);
+await unifiedSave('sales', sales, sales[idx]);
+notifyDataChange('sales');
+triggerAutoSync();
+if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
+renderCustomerTransactions(currentManagingCustomer);
+refreshAllCalculations();
+}
+} catch (e) {
+sales.length = 0; sales.push(...snapshot);
+await sqliteStore.set('sales', sales).catch(() => {});
+showToast('Failed to update transaction status. Please try again.', 'error');
+}
+}
+
+export async function toggleRepTransactionStatus(id) {
+const rep = ensureArray(await sqliteStore.get('rep'));
+const record = rep.find(s => s.id === id);
+if (record?.isMerged) {
+window.notifyBlocking('Opening balance records cannot be toggled. Use Bulk Payment to settle.', 'warning', 'Payment warning');
+return;
+}
+const _tgBlock = await getSettleToggleBlockReason(id, 'rep');
+if (_tgBlock) { window.notifyBlocking(_tgBlock, 'warning', 'Warning'); return; }
+const snapshot = [...rep];
+try {
+const idx = rep.findIndex(s => s.id === id);
+if (idx !== -1) {
+applySettlement(rep[idx], planCreditToggle(rep[idx], localDateStr(), new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })));
+rep[idx].updatedAt = getTimestamp();
+rep[idx] = ensureRecordIntegrity(rep[idx], true);
+await unifiedSave('rep', rep, rep[idx]);
+notifyDataChange('rep');
+triggerAutoSync();
+if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
+renderRepCustomerTransactions(currentManagingRepCustomer);
+refreshAllCalculations();
+}
+} catch (e) {
+rep.length = 0; rep.push(...snapshot);
+await sqliteStore.set('rep', rep).catch(() => {});
+showToast('Failed to update transaction status. Please try again.', 'error');
+}
+}
+
+export async function deleteTransactionFromOverlay(id) {
+const { sales } = await loadCollections('sales');
+if (!id || !validateUUID(id)) {
+window.notifyBlocking('Invalid transaction ID', 'error', 'Something went wrong');
+return;
+}
+const _txItem = sales.find(s => s.id === id);
+if (_txItem?.isMerged) {
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed');
+return;
+}
+{
+const _blk = await getSaleBlockReason(id, 'customer');
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
+}
+const _isOldDebt = _txItem?.transactionType === 'OLD_DEBT';
+const _txType = _isOldDebt ? 'Old Debt Record' : _txItem ? (_txItem.paymentType === 'CREDIT' ? 'Credit Sale' : _txItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _txItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
+const _txDate = _txItem ? (_txItem.date || 'Unknown date') : '';
+const _txQty = _txItem ? ((_txItem.quantity || 0) > 0 ? `${_txItem.quantity} kg` : '') : '';
+const _txAmt = _txItem ? ((_txItem.totalValue || 0) > 0 ? ` — ${fmtAmt(_txItem.totalValue||0)}` : '') : '';
+const _txCust = _txItem ? (_txItem.customerName || '') : '';
+const _txStore = _txItem?.supplyStore && !_txItem.isRepTransfer ? getStoreLabel(_txItem.supplyStore) : '';
+const _partialPaid = _txItem?.partialPaymentReceived || 0;
+let _txMsg, _txTitle;
+if (_isOldDebt) {
+_txTitle = '\u26a0 Delete Old Debt Record';
+_txMsg = `Permanently delete an OLD DEBT record for ${_txCust || 'this customer'}.`;
+_txMsg += `\nBalance: ${fmtAmt(_txItem.totalValue||0)}`;
+if (_txItem?.notes) _txMsg += `\nNote: ${_txItem.notes}`;
+_txMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance from the customer's history permanently.`;
+} else if (_txItem?.paymentType === 'COLLECTION') {
+_txTitle = 'Delete Collection';
+_txMsg = `Delete this collection from ${_txCust || 'customer'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+if (collectionCollected(_txItem) > 0) _txMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_txItem))}`;
+if (Number(_txItem.expiredQty) > 0) _txMsg += `\nExpired / Damage: ${fmtNum(Number(_txItem.expiredQty))} kg`;
+if (Number(_txItem.expiredValue) > 0) _txMsg += `\nExpired credit: ${fmtAmt(Number(_txItem.expiredValue))}`;
+if (collectionCollected(_txItem) > 0) _txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (Number(_txItem.expiredQty) > 0 && _txItem.expiredApplied !== false) _txMsg += `\n\n\u21a9 ${fmtNum(Number(_txItem.expiredQty))} kg will be removed from CHORA raw material.`;
+} else if (_txItem?.isRepReturn) {
+_txTitle = 'Delete Rep Return';
+_txMsg = `Delete this return logged for ${_txCust || 'the rep'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+_txMsg += `\nExpired / Damage: ${fmtNum(_txItem.expiredQty || 0)} kg`;
+_txMsg += `\nReturned: ${fmtNum(_txItem.returnedQty || 0)} kg`;
+if (Number(_txItem.returnValue) > 0) _txMsg += `\nBalance deducted: ${fmtAmt(Number(_txItem.returnValue))}`;
+_txMsg += `\n\n\u21a9 These quantities will no longer feed the Calculator${Number(_txItem.returnValue) > 0 ? ' and the deduction will be added back to the rep\'s balance' : ''}. No stock has moved yet.`;
+} else if (_txItem?.paymentType === 'PARTIAL_PAYMENT') {
+_txTitle = 'Delete Partial Payment';
+_txMsg = `Delete this partial payment from ${_txCust || 'customer'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+_txMsg += `\nPayment Amount: ${fmtAmt(_txItem.totalValue||0)}`;
+_txMsg += `\n\n\u21a9 This will reverse the partial payment and restore the full pending credit balance.`;
+} else if (_txItem?.paymentType === 'CREDIT') {
+_txTitle = 'Delete Credit Sale';
+_txMsg = `Delete this credit sale for ${_txCust || 'customer'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+if (_txQty) _txMsg += `\nQty: ${_txQty}${_txAmt}`;
+if (_txStore) _txMsg += `\nStore: ${_txStore}`;
+if (_partialPaid > 0) _txMsg += `\n\n\u26a0 ${fmtAmt(_partialPaid)} partially collected. Deleting will erase both the sale and partial payment.`;
+else if (_txItem?.creditReceived) _txMsg += `\n\n\u26a0 This sale is already marked PAID. Deleting will remove the payment record.`;
+else _txMsg += `\n\n\u26a0 This credit sale is UNPAID. Deleting removes the outstanding balance.`;
+} else {
+_txTitle = 'Delete Cash Sale';
+_txMsg = `Delete this cash sale for ${_txCust || 'customer'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+if (_txQty) _txMsg += `\nQty: ${_txQty}${_txAmt}`;
+if (_txStore) _txMsg += `\nStore: ${_txStore}`;
+_txMsg += `\n\n\u21a9 ${fmtNum(_txItem?.quantity||0)} kg will be restored to inventory.`;
+}
+_txMsg += `\n\nThis cannot be undone.`;
+if (!(await showGlassConfirm(_txMsg, { title: _txTitle || `Delete ${_txType}`, confirmText: 'Delete', danger: true }))) return;
+try {
+const item = sales.find(s => s.id === id);
+if (!item) { renderCustomerTransactions(currentManagingCustomer); return; }
+await detachChildPayment('customer', item, sales);
+const customerSalesFiltered = sales.filter(s => s.id !== id);
+await unifiedDelete('sales', customerSalesFiltered, id, { strict: true }, item);
+if (item.paymentType === 'COLLECTION' && Number(item.expiredQty) > 0 && item.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(item.expiredQty), item.date);
+}
+refreshAllCalculations();
+if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
+if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
+renderCustomersTable();
+if (currentManagingCustomer) renderCustomerTransactions(currentManagingCustomer);
+notifyDataChange('sales');
+triggerAutoSync();
+} catch (e) {
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error', 'Something went wrong');
+}
+}
+
+export async function deleteRepTransactionFromOverlay(id) {
+const rep = ensureArray(await sqliteStore.get('rep'));
+if (!id || !validateUUID(id)) {
+window.notifyBlocking('Invalid transaction ID', 'error', 'Something went wrong');
+return;
+}
+const _rItem = rep.find(s => s.id === id);
+if (_rItem?.isMerged) {
+window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed');
+return;
+}
+{
+const _blk = await getSaleBlockReason(id, 'rep');
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
+}
+const _rIsOldDebt = _rItem?.transactionType === 'OLD_DEBT';
+const _rType = _rIsOldDebt ? 'Old Debt Record' : _rItem ? (_rItem.paymentType === 'CREDIT' ? 'Credit Sale' : _rItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _rItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
+const _rDate = _rItem ? (_rItem.date || 'Unknown date') : '';
+const _rQty = _rItem ? ((_rItem.quantity || 0) > 0 ? `${_rItem.quantity} kg` : '') : '';
+const _rAmt = _rItem ? ((_rItem.totalValue || 0) > 0 ? ` — ${fmtAmt(_rItem.totalValue||0)}` : '') : '';
+const _rCust = _rItem ? (_rItem.customerName || '') : '';
+const _rRep = _rItem?.salesRep || '';
+const _rPartialPaid = _rItem?.partialPaymentReceived || 0;
+let _rMsg, _rTitle;
+if (_rIsOldDebt) {
+_rTitle = '\u26a0 Delete Old Debt Record';
+_rMsg = `Permanently delete an OLD DEBT record for ${_rCust || 'this customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}.`;
+_rMsg += `\nBalance: ${fmtAmt(_rItem.totalValue||0)}`;
+if (_rItem?.notes) _rMsg += `\nNote: ${_rItem.notes}`;
+_rMsg += `\n\n\u26a0 Warning: This will remove the carried-forward balance permanently.`;
+} else if (_rItem?.paymentType === 'COLLECTION') {
+_rTitle = 'Delete Rep Collection';
+_rMsg = `Delete this bulk collection from ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;
+if (_rDate) _rMsg += `\nDate: ${_rDate}`;
+_rMsg += `\nAmount Collected: ${fmtAmt(collectionCollected(_rItem))}`;
+_rMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding rep balance restored${(_rItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
+if (Number(_rItem.expiredQty) > 0) _rMsg += `\nExpired / Damage: ${fmtNum(Number(_rItem.expiredQty))} kg${_rItem.expiredApplied !== false ? ' will be removed from CHORA raw material' : ''}.`;
+} else if (_rItem?.paymentType === 'PARTIAL_PAYMENT') {
+_rTitle = 'Delete Rep Partial Payment';
+_rMsg = `Delete this partial payment from ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;
+if (_rDate) _rMsg += `\nDate: ${_rDate}`;
+_rMsg += `\nPayment Amount: ${fmtAmt(_rItem.totalValue||0)}`;
+_rMsg += `\n\n\u21a9 This will reverse the partial payment and restore the full pending credit balance.`;
+} else if (_rItem?.paymentType === 'CREDIT') {
+_rTitle = 'Delete Rep Credit Sale';
+_rMsg = `Delete this credit sale for ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;
+if (_rDate) _rMsg += `\nDate: ${_rDate}`;
+if (_rQty) _rMsg += `\nQty: ${_rQty}${_rAmt}`;
+if (_rPartialPaid > 0) _rMsg += `\n\n\u26a0 ${fmtAmt(_rPartialPaid)} partially collected. Deleting will erase both the sale and partial payment.`;
+else if (_rItem?.creditReceived) _rMsg += `\n\n\u26a0 This rep sale is already marked PAID. Deleting removes the payment record.`;
+else _rMsg += `\n\n\u26a0 This rep credit sale is UNPAID. Deleting removes the outstanding balance.`;
+} else {
+_rTitle = 'Delete Rep Cash Sale';
+_rMsg = `Delete this cash sale for ${_rCust || 'customer'}${_rRep ? ` (Rep: ${_rRep})` : ''}?`;
+if (_rDate) _rMsg += `\nDate: ${_rDate}`;
+if (_rQty) _rMsg += `\nQty: ${_rQty}${_rAmt}`;
+_rMsg += `\n\n\u21a9 ${fmtNum(_rItem?.quantity||0)} kg will be restored to inventory.`;
+}
+_rMsg += `\n\nThis cannot be undone.`;
+if (!(await showGlassConfirm(_rMsg, { title: _rTitle || `Delete ${_rType}`, confirmText: 'Delete', danger: true }))) return;
+try {
+const item = rep.find(s => s.id === id);
+if (!item) { renderRepCustomerTransactions(currentManagingRepCustomer); return; }
+await detachChildPayment('rep', item, rep);
+const repSalesFiltered = rep.filter(s => s.id !== id);
+await unifiedDelete('rep', repSalesFiltered, id, { strict: true }, item);
+if (item.paymentType === 'COLLECTION' && Number(item.expiredQty) > 0 && item.expiredApplied !== false) {
+await reverseExpiredFromChora(Number(item.expiredQty), item.date);
+}
+renderRepCustomerTransactions(currentManagingRepCustomer);
+renderRepCustomerTable();
+notifyDataChange('rep');
+triggerAutoSync();
+} catch (e) {
+window.notifyBlocking('Failed to delete transaction. Please try again.', 'error', 'Something went wrong');
+}
+}
+
+export function filterCustomerManagementHistory() {
+applyCmFilters('cust');
+}
+
+export function filterRepCustomerManagementHistory() {
+applyCmFilters('rep');
+}
+
+export function refreshAllCalculations() {
+calculateCashTracker();
+calculateNetCash();
+calculatePaymentSummaries();
+refreshEntityBalances();
+updateUnitsAvailableIndicator();
+}
+
+export const toastContainer = document.createElement('div');
+toastContainer.className = 'toast-container';
+document.body.appendChild(toastContainer);
+
+export function _ensureToastOnTop() {
+  if (document.body.lastElementChild !== toastContainer) {
+    document.body.appendChild(toastContainer);
+  }
+}
+
+export const _toastQueue = [];
+export let _toastActive = false;
+
+export function _playNextToast() {
+if (_toastActive || _toastQueue.length === 0) return;
+_toastActive = true;
+const { message, type, duration } = _toastQueue.shift();
+const icons = {
+success: `<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle class="ic-ck-ring" pathLength="100" cx="18" cy="18" r="13.5" fill="var(--success)" fill-opacity="0.15" stroke="var(--success)" stroke-width="1.7"/><path class="ic-ck-tick" pathLength="100" d="M11 18.5L16 23.5 25.3 12.8" stroke="var(--accent-gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 2.9Q30.5 5.5 33.1 5.5Q30.5 5.5 30.5 8.1Q30.5 5.5 27.9 5.5Q30.5 5.5 30.5 2.9Z" fill="var(--accent-gold)"/></svg>`,
+warning: `<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16.3 5.6L2.8 29A2 2 0 0 0 4.5 32H31.5A2 2 0 0 0 33.2 29L19.7 5.6A2 2 0 0 0 16.3 5.6Z" fill="var(--warning)" fill-opacity="0.16" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 13.5V21.2" stroke="var(--warning)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="26.2" r="1.6" fill="var(--warning)"/></svg>`,
+error: `<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="13.5" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7"/><path d="M12.7 12.7L23.3 23.3M23.3 12.7L12.7 23.3" stroke="var(--danger)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+info: `<svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="13.5" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.7"/><circle cx="18" cy="11.7" r="1.7" fill="var(--accent-gold)"/><path d="M18 16.5V25" stroke="var(--accent-gold)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+};
+const msgStr = String(message);
+const isLong = msgStr.length > 48;
+const toast = document.createElement('div');
+toast.className = `liquid-toast toast-${type}`;
+toast.innerHTML = `
+<div class="toast-inner${isLong ? ' u-78a068d' : ''}">
+<div class="toast-icon-wrap">
+<span class="toast-icon-glyph">${icons[type] || ''}</span>
+</div>
+<div class="toast-text${isLong ? ' u-295a847' : ''}">${esc(msgStr)}</div>
+<div class="toast-progress-bar"></div>
+</div>
+`;
+toast.classList.add('pre-show');
+_ensureToastOnTop();
+toastContainer.appendChild(toast);
+requestAnimationFrame(() => {
+requestAnimationFrame(() => {
+toast.classList.remove('pre-show');
+toast.classList.add('show');
+const bar = toast.querySelector('.toast-progress-bar');
+if (bar) {
+bar.style.animationDuration = duration + 'ms';
+bar.classList.add('animating');
+}
+});
+});
+let removed = false;
+const dismiss = () => {
+if (removed) return;
+removed = true;
+toast.classList.add('hiding');
+window.setStyle(toast, 'pointer-events', 'st-pointer-events__8b1364');
+setTimeout(() => {
+if (toast.parentNode === toastContainer) toastContainer.removeChild(toast);
+_toastActive = false;
+_playNextToast();
+}, 350);
+};
+setTimeout(dismiss, duration);
+toast.addEventListener('click', dismiss, { once: true });
+}
+
+const _TOAST_TYPES = ['success', 'warning', 'error', 'info'];
+export function showToast(message, type, duration = 3000) {
+if (!_TOAST_TYPES.includes(type)) { console.error('showToast needs a type of success, warning, error or info, got', type); return; }
+if (typeof window.isActionToast === 'function' && window.isActionToast(message, type)) {
+if (typeof window.notifyFromToast === 'function') window.notifyFromToast(message, type, { action: true });
+return;
+}
+if (typeof window.isDialogFlowActive === 'function' && window.isDialogFlowActive()) {
+if (type === 'error' && typeof window.notifyBlocking === 'function') {
+const raise = () => { if (window.isDialogOpen()) setTimeout(raise, 250); else window.notifyBlocking(message, 'error', 'Something went wrong'); };
+raise();
+}
+return;
+}
+_toastQueue.push({ message, type, duration });
+_playNextToast();
+}
+
+window.showToast = showToast;
+
+if (typeof window._onShowGlassConfirmReady === 'function') {
+window._onShowGlassConfirmReady();
+}
+
+export async function filterCustomers() {
+renderCustomersTable();
+}
+
+export async function openCustomerEditModal(customerName) {
+customerName = customerName || '';
+const isAddMode = !customerName;
+const titleEl = document.getElementById('cust-edit-screen-title');
+const saveBtn = document.getElementById('cust-edit-save-btn');
+const nameInput = document.getElementById('edit-cust-name');
+const nameHint = document.getElementById('cust-name-hint');
+const nameLabel = document.getElementById('cust-name-label');
+if (titleEl) titleEl.textContent = isAddMode ? 'Add Customer' : 'Edit Customer';
+if (saveBtn) saveBtn.textContent = isAddMode ? 'Add Customer' : 'Update Customer';
+if (isAddMode) {
+nameInput.placeholder = 'Type name to search or add...';
+nameInput.oninput = function() {
+handleUniversalSearch('edit-cust-name', 'cust-add-search-results', 'customers');
+};
+if (nameLabel) nameLabel.textContent = 'Customer Name';
+if (nameHint) nameHint.textContent = 'Search existing customers or type a new name to add.';
+const searchResults = document.getElementById('cust-add-search-results');
+if (searchResults) searchResults.classList.add('hidden');
+} else {
+nameInput.placeholder = 'Customer name';
+nameInput.oninput = null;
+if (nameLabel) nameLabel.textContent = 'Customer Name';
+if (nameHint) nameHint.textContent = 'Editing the name will update all records for this customer';
+}
+const { sales, customers } = await loadCollections('sales', 'customers');
+nameInput.value = customerName;
+nameInput.dataset.originalName = customerName;
+if (!customerName) {
+document.getElementById('edit-cust-phone').value = '';
+document.getElementById('edit-cust-address').value = '';
+document.getElementById('edit-cust-old-debit').value = '';
+const editPriceInput = document.getElementById('edit-cust-custom-price');
+if (editPriceInput) editPriceInput.value = '';
+await loadPersonPhotoIntoEditor('cust', '');
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-edit-screen');
+return;
+}
+const contact = customers.find(c => c && c.name && c.name.toLowerCase() === customerName.toLowerCase());
+const saleRecord = sales.find(s =>
+s && s.customerName === customerName &&
+s.customerPhone
+);
+const existingOldDebtTx = sales.find(s =>
+s && s.customerName && s.customerName.toLowerCase() === customerName.toLowerCase() &&
+s.transactionType === 'OLD_DEBT'
+);
+const oldDebitValue = existingOldDebtTx ? (existingOldDebtTx.totalValue || 0) : (contact?.oldDebit || 0);
+document.getElementById('edit-cust-phone').value = contact?.phone || saleRecord?.customerPhone || '';
+document.getElementById('edit-cust-address').value = contact?.address || '';
+document.getElementById('edit-cust-old-debit').value = oldDebitValue;
+const editPriceInput = document.getElementById('edit-cust-custom-price');
+if (editPriceInput) {
+editPriceInput.value = (contact?.customSalePrice > 0) ? contact.customSalePrice : '';
+}
+await loadPersonPhotoIntoEditor('cust', 'cust:' + customerName.toLowerCase());
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('customer-edit-screen');
+}
+
+export function closeCustomerEditModal() {
+if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('customer-edit-screen');
+}
+
+export function saveCustomerDetails(...a) { return confirmGuard('saveCustomerDetails', () => _saveCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['edit-cust-name', 'Name'], ['edit-cust-phone', 'Phone'], ['edit-cust-address', 'Address'], ['edit-cust-old-debit', 'Old Debit'], ['edit-cust-custom-price', 'Custom Price']], isUpdate: () => !!(document.getElementById('edit-cust-name') || {}).dataset.originalName }); }
+
+async function _saveCustomerDetailsRaw() {
+const { sales, customers } = await loadCollections('sales', 'customers');
+const nameInput = document.getElementById('edit-cust-name');
+const name = nameInput.value.trim();
+const originalName = nameInput.dataset.originalName || name;
+const phone = document.getElementById('edit-cust-phone').value.trim();
+const address = document.getElementById('edit-cust-address').value.trim();
+const oldDebit = readNum('edit-cust-old-debit');
+const customSalePrice = readNum('edit-cust-custom-price');
+if (!name) { window.notifyBlocking('Customer name is required', 'error', 'Something went wrong'); return; }
+if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning', 'Warning'); return; }
+if (customSalePrice < 0) { window.notifyBlocking('Custom sale price cannot be negative.', 'warning', 'Warning'); return; }
+if (oldDebit > 0) {
+const _pcSales = ensureArray(await sqliteStore.get('sales'));
+const _pcTx = _pcSales.find(s => s && s.transactionType === 'OLD_DEBT' && s.customerName && (s.customerName === name || s.customerName.toLowerCase() === originalName.toLowerCase()));
+if (_pcTx && _pcTx.totalValue !== oldDebit) {
+const _pcChk = await getOldDebtChangeIssue(_pcTx, oldDebit);
+if (_pcChk.issue) { window.notifyBlocking(_pcChk.issue, 'warning', 'Warning'); return; }
+}
+}
+if (!(await window.gcCommit({}))) return;
+try {
+const nameChanged = name.toLowerCase() !== originalName.toLowerCase();
+const freshContacts = await sqliteStore.get('customers', []);
+if (Array.isArray(freshContacts)) {
+const m = new Map(freshContacts.map(c => [c.id, c]));
+if (Array.isArray(customers)) customers.forEach(c => { if (!m.has(c.id)) m.set(c.id, c); });
+const refreshedSC = Array.from(m.values());
+await sqliteStore.set('customers', refreshedSC);
+}
+let contact = customers.find(c => c && c.name && c.name.toLowerCase() === originalName.toLowerCase());
+if (!contact) contact = customers.find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
+const previousOldDebit = contact?.oldDebit || 0;
+if (contact) {
+if (!validateUUID(String(contact.id || ''))) { contact.id = generateUUID('cust'); }
+contact.name = name; contact.phone = phone; contact.address = address; contact.oldDebit = oldDebit; contact.customSalePrice = customSalePrice; contact.updatedAt = getTimestamp();
+ensureRecordIntegrity(contact, true);
+} else {
+contact = { id: generateUUID('cust'), name, phone, address, oldDebit, customSalePrice,
+createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
+customers.push(contact);
+}
+await unifiedSave('customers', customers, contact);
+notifyDataChange('sales');
+let salesArray = await sqliteStore.get('sales', []);
+if (!Array.isArray(salesArray)) salesArray = [];
+if (Array.isArray(sales) && sales.length > 0) {
+const mSales = new Map(salesArray.map(s => [s.id, s]));
+sales.forEach(s => { if (s && s.id && !mSales.has(s.id)) mSales.set(s.id, s); });
+salesArray = Array.from(mSales.values());
+}
+const renamedRecords = [];
+if (nameChanged) {
+await recordCustomerRename('sales', originalName, name);
+salesArray.forEach(s => {
+if (s && s.customerName && s.customerName.toLowerCase() === originalName.toLowerCase()) {
+s.customerName = name;
+renamedRecords.push(s);
+}
+});
+}
+const oldDebtIdx = salesArray.findIndex(s =>
+s && s.customerName === name &&
+s.transactionType === 'OLD_DEBT'
+);
+let oldDebtModified = false, oldDebtRecord = null, deletedOldDebtId = null;
+if (oldDebit > 0) {
+if (oldDebtIdx !== -1) {
+const tx = salesArray[oldDebtIdx];
+if (!validateUUID(String(tx.id || ''))) { tx.id = generateUUID('old_debt'); }
+const amountChanged = tx.totalValue !== oldDebit;
+let _odCollected = 0;
+if (amountChanged) {
+const _odChk = await getOldDebtChangeIssue(tx, oldDebit);
+if (_odChk.issue) { window.notifyBlocking(_odChk.issue, 'warning', 'Warning'); return; }
+_odCollected = _odChk.collected;
+}
+tx.totalValue = oldDebit; tx.customerPhone = phone; tx.timestamp = getTimestamp();
+tx.updatedAt = getTimestamp();
+tx.currentRepProfile = 'admin';
+if (amountChanged) { tx.partialPaymentReceived = _odCollected; tx.creditReceived = _odCollected >= oldDebit && oldDebit > 0; }
+if (!tx.time) tx.time = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true});
+ensureRecordIntegrity(tx, true);
+oldDebtModified = true; oldDebtRecord = tx;
+} else {
+const tx = { id: generateUUID('old_debt'), date: localDateStr(),
+customerName: name, customerPhone: phone, salesRep: 'ADMIN', quantity: 0,
+supplyStore: 'N/A', paymentType: 'CREDIT', transactionType: 'OLD_DEBT',
+currentRepProfile: 'admin',
+totalValue: oldDebit, creditReceived: false, partialPaymentReceived: 0,
+time: new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true}),
+timestamp: getTimestamp(), createdAt: getTimestamp(), updatedAt: getTimestamp(),
+notes: 'Previous balance' };
+salesArray.push(tx); oldDebtModified = true; oldDebtRecord = tx;
+}
+} else if (oldDebit === 0 && oldDebtIdx !== -1) {
+const _oldDebtRecordForDeletion = salesArray[oldDebtIdx];
+deletedOldDebtId = _oldDebtRecordForDeletion.id;
+salesArray.splice(oldDebtIdx, 1); oldDebtModified = true;
+if (deletedOldDebtId) { window._oldDebtRecordForDeletion = _oldDebtRecordForDeletion; }
+}
+let phoneUpdated = false;
+salesArray.forEach(s => { if (s && s.customerName === name && s.customerPhone !== phone) { s.customerPhone = phone; phoneUpdated = true; } });
+sales.length = 0; sales.push(...salesArray);
+if (nameChanged || oldDebtModified || phoneUpdated) {
+if (deletedOldDebtId) {
+const _deletedRecord = window._oldDebtRecordForDeletion || null;
+window._oldDebtRecordForDeletion = null;
+await unifiedDelete('sales', salesArray, deletedOldDebtId, { strict: true }, _deletedRecord);
+} else {
+await unifiedSave('sales', salesArray, oldDebtModified && !phoneUpdated && !nameChanged ? oldDebtRecord : null);
+}
+if (nameChanged && renamedRecords.length > 0) {
+await unifiedSave('sales', salesArray, null, renamedRecords.map(r => r.id));
+}
+}
+const message = nameChanged ? `Customer renamed to "${name}" and details updated`
+: oldDebit > 0 ? `Customer updated with old debt of ₨${fmtNum(oldDebit)}`
+: (oldDebit === 0 && previousOldDebit > 0) ? 'Customer updated and old debt cleared'
+: 'Customer details updated successfully';
+if (nameChanged) {
+const _oldPhoto = await getPersonPhoto('cust:' + originalName.toLowerCase());
+if (_oldPhoto) {
+const _photos = await sqliteStore.get('photos') || {};
+_photos['cust:' + name.toLowerCase()] = _oldPhoto;
+delete _photos['cust:' + originalName.toLowerCase()];
+await sqliteStore.set('photos', _photos);
+const _dk = (await sqliteStore.get('photodirty')) || [];
+const _newKey = 'cust:' + name.toLowerCase();
+const _oldKey = 'cust:' + originalName.toLowerCase();
+if (!_dk.includes(_newKey)) _dk.push(_newKey);
+if (!_dk.includes(_oldKey)) _dk.push(_oldKey);
+await sqliteStore.set('photodirty', _dk);
+await sqliteStore.set('photos_timestamp', Date.now());
+const _preview = document.getElementById('cust-photo-preview');
+if (_preview) _preview.dataset.pendingPhoto = undefined;
+} else {
+await savePersonPhoto('cust', 'cust:' + name.toLowerCase());
+}
+} else {
+await savePersonPhoto('cust', 'cust:' + name.toLowerCase());
+}
+showToast(message, 'success');
+closeCustomerEditModal();
+await new Promise(r => setTimeout(r, 350));
+if (nameChanged && currentManagingCustomer && currentManagingCustomer.toLowerCase() === originalName.toLowerCase()) {
+currentManagingCustomer = name;
+}
+const overlay = document.getElementById('customer-management-screen');
+if (overlay && window.getDisplay(overlay) !== 'none') await renderCustomerTransactions(currentManagingCustomer || name);
+if (typeof renderCustomersTable === 'function') renderCustomersTable();
+notifyDataChange('entities');
+triggerAutoSync();
+} catch (error) {
+window.notifyBlocking('Failed to save customer details. Please try again.', 'error', 'Something went wrong');
+}
+}
+
+export async function fetchDeviceLocation() {
+return fetchLocationInto('location-status', 'edit-cust-address', 'fetchDeviceLocation');
+}
+
+export async function fetchLocationInto(statusId, addressId, onclickName) {
+const statusDiv = document.getElementById(statusId);
+const addressInput = document.getElementById(addressId);
+const btn = document.querySelector(`button[onclick="${onclickName}()"]`);
+if (!navigator.geolocation) {
+statusDiv.textContent = "GPS not supported on this device.";
+window.setStyle(statusDiv, 'color', 'st-color__497726');
+return;
+}
+if(btn) btn.disabled = true;
+statusDiv.innerHTML = '<span class="update-indicator"></span> Pinpointing satellite location...';
+window.setStyle(statusDiv, 'color', 'st-color__a80552');
+addressInput.placeholder = "Fetching location...";
+const gpsOptions = { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 };
+const GPS_ACCURACY_THRESHOLD = 50;
+const GPS_MAX_WAIT_MS = 25000;
+await new Promise((resolve) => {
+let watchId = null;
+let best = null;
+let settled = false;
+const finish = async (position) => {
+if (settled) return;
+settled = true;
+if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+const lat = position.coords.latitude;
+const lon = position.coords.longitude;
+const accuracy = position.coords.accuracy;
+const coordsText = `${safeNumber(lat, 0).toFixed(6)}, ${safeNumber(lon, 0).toFixed(6)}`;
+statusDiv.textContent = `GPS Accuracy: ±${Math.round(accuracy)}m. Decoding name...`;
+try {
+const controller = new AbortController();
+const apiTimeout = setTimeout(() => controller.abort(), 10000);
+const response = await fetch(
+`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&extratags=1&namedetails=1`,
+{ signal: controller.signal }
+);
+clearTimeout(apiTimeout);
+if (!response.ok) throw new Error("Map API Error");
+const data = await response.json();
+if (data && data.address) {
+const addr = data.address;
+const placeName = addr.amenity || addr.shop || addr.building || addr.tourism || addr.historic || addr.leisure || addr.office || '';
+const localArea = addr.neighbourhood || addr.suburb || addr.hamlet || addr.village || addr.quarter || '';
+const road = addr.road || addr.pedestrian || addr.street || '';
+const city = addr.town || addr.city || addr.county || 'Bannu';
+let finalAddress = "";
+if (placeName) {
+finalAddress += placeName + ", ";
+}
+if (road) {
+finalAddress += road + ", ";
+} else if (!placeName) {
+finalAddress += "Near ";
+}
+if (localArea) {
+finalAddress += localArea + ", ";
+}
+finalAddress += city;
+if (finalAddress.trim() === "Bannu" || finalAddress.trim() === "Near Bannu") {
+const parts = data.display_name.split(', ');
+finalAddress = parts.slice(0, 3).join(', ');
+}
+addressInput.value = `${finalAddress} (${coordsText})`;
+statusDiv.textContent = ` Location Found: ${localArea || placeName || city}`;
+window.setStyle(statusDiv, 'color', 'st-color__a4c6ac');
+if(typeof showToast === 'function') showToast("Address updated successfully", "success");
+} else {
+throw new Error("Address not found");
+}
+} catch (error) {
+console.error('An unexpected error occurred.', _safeErr(error));
+showToast('Address lookup failed: ' + (_safeErr(error).message || 'GPS coordinates saved instead'), 'error');
+addressInput.value = `GPS: ${coordsText}`;
+statusDiv.textContent = "Address lookup failed. Saved GPS Coordinates.";
+window.setStyle(statusDiv, 'color', 'st-color__52df2b');
+} finally {
+if(btn) btn.disabled = false;
+resolve();
+}
+};
+watchId = navigator.geolocation.watchPosition(
+(position) => {
+if (!best || position.coords.accuracy < best.coords.accuracy) best = position;
+if (position.coords.accuracy <= GPS_ACCURACY_THRESHOLD) finish(position);
+},
+(error) => {
+if (settled) return;
+settled = true;
+if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+const msg = geoErrorMessage(error);
+statusDiv.textContent = msg;
+window.setStyle(statusDiv, 'color', 'st-color__497726');
+if(btn) btn.disabled = false;
+resolve();
+},
+gpsOptions
+);
+setTimeout(() => {
+if (settled) return;
+if (best) { finish(best); return; }
+settled = true;
+if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+statusDiv.textContent = geoErrorMessage({ code: 3 });
+window.setStyle(statusDiv, 'color', 'st-color__497726');
+if (btn) btn.disabled = false;
+resolve();
+}, GPS_MAX_WAIT_MS);
+});
+}
+
+window.selectCustomer = selectCustomer;
+window.calculateCustomerStatsForDisplay = calculateCustomerStatsForDisplay;
+window.renderCustomersTable = renderCustomersTable;
+window.currentManagingCustomer = currentManagingCustomer;
+window.currentManagingRepCustomer = currentManagingRepCustomer;
+window.openCustomerManagement = openCustomerManagement;
+window.closeCustomerManagement = closeCustomerManagement;
+window.deleteCurrentCustomer = deleteCurrentCustomer;
+window.renderCustomerTransactions = renderCustomerTransactions;
+window.toggleSingleTransactionStatus = toggleSingleTransactionStatus;
+window.toggleRepTransactionStatus = toggleRepTransactionStatus;
+window.deleteTransactionFromOverlay = deleteTransactionFromOverlay;
+window.deleteRepTransactionFromOverlay = deleteRepTransactionFromOverlay;
+window.filterCustomerManagementHistory = filterCustomerManagementHistory;
+window.filterRepCustomerManagementHistory = filterRepCustomerManagementHistory;
+window.refreshAllCalculations = refreshAllCalculations;
+window.toastContainer = toastContainer;
+window._ensureToastOnTop = _ensureToastOnTop;
+window._toastQueue = _toastQueue;
+window._toastActive = _toastActive;
+window._playNextToast = _playNextToast;
+window.showToast = showToast;
+window.showGlassConfirm = showGlassConfirm;
+window.filterCustomers = filterCustomers;
+window.openCustomerEditModal = openCustomerEditModal;
+window.closeCustomerEditModal = closeCustomerEditModal;
+window.saveCustomerDetails = saveCustomerDetails;
+window.fetchDeviceLocation = fetchDeviceLocation;
+export function _set_currentManagingRepCustomer(v) { currentManagingRepCustomer = v; }
