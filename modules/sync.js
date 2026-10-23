@@ -4528,8 +4528,8 @@ closeDataMenu();
 showAuthOverlay();
 };
 syncBtn.style.removeProperty('background');
-syncBtn.style.setProperty('background-color', '#ff9f0a', 'important');
-syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, #ff9f0a 0%, #ff375f 100%)', 'important');
+syncBtn.style.setProperty('background-color', 'var(--accent-orange)', 'important');
+syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, var(--accent-orange) 0%, var(--danger) 100%)', 'important');
 window.setStyle(syncBtn, 'color', 'st-color__729d2f');
 } else {
 syncBtn.innerHTML = ' SYNC DATA';
@@ -4537,8 +4537,8 @@ syncBtn.onclick = () => {
 performOneClickSync();
 };
 syncBtn.style.removeProperty('background');
-syncBtn.style.setProperty('background-color', '#2563eb', 'important');
-syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, #2563eb 0%, #059669 100%)', 'important');
+syncBtn.style.setProperty('background-color', 'var(--accent-blue)', 'important');
+syncBtn.style.setProperty('background-image', 'linear-gradient(135deg, var(--accent-blue) 0%, var(--success) 100%)', 'important');
 window.setStyle(syncBtn, 'color', 'st-color__729d2f');
 }
 }

@@ -1,3 +1,4 @@
+import { themeColor, themeVar } from './theme-tokens.js';
 import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid } from './field-expenses.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
@@ -3424,10 +3425,10 @@ data = data.slice(-12);
 }
 }
 const colors = {
-text: '#1e3a8a',
-grid: 'rgba(37, 99, 235, 0.1)'
+text: themeColor('--text-muted'),
+grid: themeColor('--text-main', 10)
 };
-const repChartColorsInd = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
+const repChartColorsInd = ['--accent-blue', '--success', '--warning', '--accent-purple', '--danger', '--accent-cyan'].map((t) => themeColor(t));
 const sellerColor = repChartColorsInd[salesRepsList.indexOf(seller) >= 0 ? salesRepsList.indexOf(seller) : 0];
 const chartElement = document.getElementById('indPerformanceChart');
 if (!chartElement) { return; }
@@ -3495,7 +3496,7 @@ const selectedDay = selectedDateObj.getDate();
 const _chartStores = await getAppStores();
 const stores = _chartStores.map(s => s.key);
 const storeLabels = _chartStores.map(s => s.name);
-const storeColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'].slice(0, _chartStores.length);
+const storeColors = ['--accent-blue', '--accent-purple', '--accent', '--warning', '--danger'].map((t) => themeColor(t)).slice(0, _chartStores.length);
 let data = [];
 let metricLabel = '';
 stores.forEach(store => {
@@ -3542,8 +3543,8 @@ case 'cost': metricLabel = 'Total Cost ()'; break;
 case 'profit': metricLabel = 'Net Profit ()'; break;
 }
 const colors = {
-text: '#1e3a8a',
-grid: 'rgba(37, 99, 235, 0.1)'
+text: themeColor('--text-muted'),
+grid: themeColor('--text-main', 10)
 };
 const storeChartElement = document.getElementById('storeComparisonChart');
 if (!storeChartElement) { return; }
@@ -5180,8 +5181,8 @@ const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
 const colors = {
-text: '#1e3a8a',
-grid: 'rgba(37, 99, 235, 0.1)'
+text: themeColor('--text-muted'),
+grid: themeColor('--text-main', 10)
 };
 if (currentMfgMode === 'week') {
 for(let i=6; i>=0; i--) {
@@ -5270,8 +5271,8 @@ labels: labels,
 datasets: [{
 label: 'Net Production (kg)',
 data: dataQty,
-backgroundColor: 'rgba(37, 99, 235, 0.6)',
-borderColor: '#2563eb',
+backgroundColor: themeColor('--accent-blue', 60),
+borderColor: themeColor('--accent-blue'),
 borderWidth: 1,
 borderRadius: 4
 }]
@@ -5304,7 +5305,7 @@ data: {
 labels: pieLabels,
 datasets: [{
 data: pieData,
-backgroundColor: ['#dc2626', '#2563eb'],
+backgroundColor: [themeColor('--danger'), themeColor('--accent-blue')],
 borderWidth: 0
 }]
 },
@@ -5834,8 +5835,8 @@ const selectedDay = selectedDateObj.getDate();
 let labels = [], cashData = [], creditData = [];
 let totalCash = 0, totalCredit = 0;
 const colors = {
-text: '#1e3a8a',
-grid: 'rgba(37, 99, 235, 0.1)'
+text: themeColor('--text-muted'),
+grid: themeColor('--text-main', 10)
 };
 if (currentCustomerChartMode === 'week') {
 for(let i=6; i>=0; i--) {
@@ -5979,16 +5980,16 @@ datasets: [
 {
 label: 'Cash Sales (Inc. Received Credits)',
 data: cashData,
-backgroundColor: 'rgba(5, 150, 105, 0.6)',
-borderColor: '#059669',
+backgroundColor: themeColor('--success', 60),
+borderColor: themeColor('--success'),
 borderWidth: 1,
 borderRadius: 4
 },
 {
 label: 'Pending Credits',
 data: creditData,
-backgroundColor: 'rgba(245, 158, 11, 0.6)',
-borderColor: '#f59e0b',
+backgroundColor: themeColor('--warning', 60),
+borderColor: themeColor('--warning'),
 borderWidth: 1,
 borderRadius: 4
 }
@@ -6030,7 +6031,7 @@ data: {
 labels: pieLabels,
 datasets: [{
 data: pieData,
-backgroundColor: ['#059669', '#f59e0b'],
+backgroundColor: [themeColor('--success'), themeColor('--warning')],
 borderWidth: 0
 }]
 },

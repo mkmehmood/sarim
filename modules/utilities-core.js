@@ -1,3 +1,4 @@
+import { themeColor } from './theme-tokens.js';
 import { promptStatementRange, rangeBounds, rangeLabel } from './stmt-range.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from './cm-ledger.js';
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
@@ -4266,7 +4267,7 @@ export const SarimChart = (() => {
     _color(ds, i) {
       const pick = (v) => (Array.isArray(v) ? (v[i] != null ? v[i] : v[0]) : v);
       const solid = pick(ds.borderColor);
-      return solid || pick(ds.backgroundColor) || '#4ade80';
+      return solid || pick(ds.backgroundColor) || themeColor('--accent');
     }
     _legendHtml(datasets) {
       if (this.options?.plugins?.legend?.display === false) return '';
@@ -4358,7 +4359,7 @@ export const SarimChart = (() => {
       const raw = (ds.data || []).map((v) => Math.max(0, +v || 0));
       const total = raw.reduce((a, b) => a + b, 0);
       if (total <= 0) return this._empty('Nothing recorded in this period');
-      const cols = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : ['#4ade80', '#67e8f9', '#f87171', '#fbbf24', '#c084fc', '#38bdf8'];
+      const cols = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : ['--accent', '--accent-cyan', '--danger', '--warning', '--accent-purple', '--accent-sky'].map((t) => themeColor(t));
       const col = (i) => cols[i % cols.length];
       const r = 44, C = 2 * Math.PI * r, gap = raw.filter((v) => v > 0).length > 1 ? 2.2 : 0;
       let off = 0, slices = '';

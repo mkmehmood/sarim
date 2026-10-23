@@ -1,3 +1,4 @@
+import { themeColor, themeVar } from './theme-tokens.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
@@ -671,12 +672,12 @@ if(!comp) return;
 const selectedMetric = document.getElementById('metricSelector').value;
 const metricLabel = document.getElementById('metricSelector').options[document.getElementById('metricSelector').selectedIndex].text;
 const colors = {
-text: '#1e3a8a',
-grid: 'rgba(37, 99, 235, 0.1)'
+text: themeColor('--text-muted'),
+grid: themeColor('--text-main', 10)
 };
 const perfChartElement = document.getElementById('performanceChart');
 if (!perfChartElement) { return; }
-const repChartColors = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
+const repChartColors = ['--accent-blue', '--success', '--warning', '--accent-purple', '--danger', '--accent-cyan'].map((t) => themeColor(t));
 const repNames = salesRepsList;
 const chartLabels = repNames.map(r => r.split(' ').map(w => w[0]+w.slice(1).toLowerCase()).join(' '));
 const chartData = repNames.map(r => (comp[r] || {})[selectedMetric] || 0);
@@ -721,7 +722,7 @@ data: {
 labels: pieLabels,
 datasets: [{
 data: pieData,
-backgroundColor: ['#059669', '#f59e0b', '#dc2626'],
+backgroundColor: [themeColor('--success'), themeColor('--warning'), themeColor('--danger')],
 borderWidth: 0,
 hoverOffset: 8
 }]
@@ -1492,7 +1493,7 @@ return {
 label: 'Payable',
 icon: '',
 colorClass: 'entity-balance-negative',
-badgeColor: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+badgeColor: 'linear-gradient(135deg, var(--danger) 0%, color-mix(in srgb, var(--danger) 75%, var(--black)) 100%)',
 sign: '+'
 };
 } else if (balance < -0.01) {
@@ -1500,7 +1501,7 @@ return {
 label: 'Receivable',
 icon: '',
 colorClass: 'entity-balance-positive',
-badgeColor: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+badgeColor: 'linear-gradient(135deg, var(--success) 0%, color-mix(in srgb, var(--success) 75%, var(--black)) 100%)',
 sign: ''
 };
 } else {
@@ -1508,7 +1509,7 @@ return {
 label: 'Settled',
 icon: '',
 colorClass: 'entity-balance-neutral',
-badgeColor: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+badgeColor: 'linear-gradient(135deg, var(--accent-blue) 0%, color-mix(in srgb, var(--accent-blue) 75%, var(--black)) 100%)',
 sign: ''
 };
 }
@@ -4899,10 +4900,10 @@ export async function renderRecycleBin(filterCollection = 'all') {
         ? `<span class="sync-status-badge sync-ok"> synced</span>`
         : `<span class="sync-status-badge sync-local"> local</span>`;
       const colDot = {
-        'sales':'#10b981','transactions':'#3b82f6','rep':'#8b5cf6',
-        'expenses':'#f59e0b','production':'#ec4899','factory':'#14b8a6',
-        'returns':'#f97316','daily_ledger':'#0ea5e9','formulas':'#a855f7','unknown':'#9ca3af'
-      }[col] || '#9ca3af';
+        'sales':'var(--accent)','transactions':'var(--accent-blue)','rep':'var(--accent-purple)',
+        'expenses':'var(--warning)','production':'var(--accent-pink)','factory':'var(--accent-teal)',
+        'returns':'var(--accent-orange)','daily_ledger':'var(--accent-sky)','formulas':'var(--accent-indigo)','unknown':'var(--text-secondary)'
+      }[col] || 'var(--text-secondary)';
       const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
       return `<div class="u-b8ea487 d-flex st-background__356c02 st-border-bottom__e54b2f">
         <div class="u-6b665db u-f2399ff u-cdfcec8 st-border-radius__9eaa9c dc-background u-b62856e" style="--d-background: ${colDot}"></div>
@@ -7044,13 +7045,13 @@ const modeLabel = deviceMode === 'admin'
 : deviceMode === 'factory'
 ? (assignedManager || 'FACTORY')
 : (assignedRep || 'REP');
-const modeColor = deviceMode === 'admin' ? '#007aff'
-: deviceMode === 'userrole' ? '#ffcc02'
-: deviceMode === 'production' ? '#69f0ae'
-: deviceMode === 'factory' ? '#ce93d8'
-: '#ff9f0a';
+const modeColor = deviceMode === 'admin' ? 'var(--accent-blue)'
+: deviceMode === 'userrole' ? 'var(--warning)'
+: deviceMode === 'production' ? 'var(--accent-mint)'
+: deviceMode === 'factory' ? 'var(--accent-purple)'
+: 'var(--accent-orange)';
 const modeIcon = '';
-const onlineColor = isOnline ? '#30d158' : '#ff453a';
+const onlineColor = isOnline ? 'var(--success)' : 'var(--danger)';
 const onlineDot = isOnline ? ' Online' : ' Offline';
 let deviceShard = 'N/A';
 if (device.deviceShard) {
@@ -7107,8 +7108,8 @@ cardHtml += '</div>';
 cardHtml += '<div class="u-3a66e13 st-background__64ff56 st-border-bottom__e54b2f">No commands sent yet</div>';
 }
 const isAdmin = deviceMode === 'admin';
-const adminBg = isAdmin ? 'rgba(0,122,255,0.18)' : 'rgba(0,122,255,0.08)';
-const adminBord = isAdmin ? '2px solid rgba(0,122,255,0.55)' : '1px solid rgba(0,122,255,0.25)';
+const adminBg = themeVar('--accent-blue', isAdmin ? 18 : 8);
+const adminBord = (isAdmin ? '2px solid ' : '1px solid ') + themeVar('--accent-blue', isAdmin ? 55 : 25);
 const adminFw = isAdmin ? '800' : '600';
 const adminTick = isAdmin ? ' ' : '';
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'admin\')"';
@@ -7117,19 +7118,18 @@ if (salesRepsList.length > 0) {
 cardHtml += '<div class="u-788ba48">Sales Representatives</div>';
 cardHtml += '<div class="u-ab90486 d-grid">';
 const repColors = [
-{bg:'48,209,88',hex:'#30d158'},{bg:'255,159,10',hex:'#ff9f0a'},
-{bg:'191,90,242',hex:'#bf5af2'},{bg:'255,69,58',hex:'#ff453a'},{bg:'90,200,250',hex:'#5ac8fa'}
+'--success', '--accent-orange', '--accent-purple', '--danger', '--accent-sky'
 ];
 for (let ri = 0; ri < salesRepsList.length; ri++) {
 const rep = salesRepsList[ri];
 const c = repColors[ri % repColors.length];
 const repLocked = deviceMode === 'rep' && assignedRep === rep;
-const repBg = 'rgba(' + c.bg + ',' + (repLocked ? '0.22' : '0.08') + ')';
-const repBord = (repLocked ? '2' : '1') + 'px solid rgba(' + c.bg + ',' + (repLocked ? '0.65' : '0.28') + ')';
+const repBg = themeVar(c, repLocked ? 22 : 8);
+const repBord = (repLocked ? '2' : '1') + 'px solid ' + themeVar(c, repLocked ? 65 : 28);
 const repFw = repLocked ? '800' : '600';
 const repTick = repLocked ? ' ' : '';
 cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'rep\', \'' + rep + '\')"';
-cardHtml += ' class="has-overflow st-padding__9c6be7 st-border-radius__5f7dc3 st-cursor__3b6a3a st-font-size__ce2d05 u-268adcd dc-background dc-border dc-color dc-font-weight" style="--d-background:' + repBg + ';--d-border:' + repBord + ';--d-color:' + c.hex + ';--d-font-weight:' + repFw + '">';
+cardHtml += ' class="has-overflow st-padding__9c6be7 st-border-radius__5f7dc3 st-cursor__3b6a3a st-font-size__ce2d05 u-268adcd dc-background dc-border dc-color dc-font-weight" style="--d-background:' + repBg + ';--d-border:' + repBord + ';--d-color:' + themeVar(c) + ';--d-font-weight:' + repFw + '">';
 cardHtml += repTick + rep + '</button>';
 }
 cardHtml += '</div>';
@@ -7140,8 +7140,8 @@ cardHtml += '<div class="u-ab90486 d-grid">';
 for (let ui = 0; ui < userRolesList.length; ui++) {
 const user = userRolesList[ui];
 const userLocked = deviceMode === 'userrole' && device.assignedManager === user.name;
-const userBg = 'rgba(255,204,2,' + (userLocked ? '0.22' : '0.08') + ')';
-const userBord = (userLocked ? '2' : '1') + 'px solid rgba(255,204,2,' + (userLocked ? '0.65' : '0.28') + ')';
+const userBg = themeVar('--warning', userLocked ? 22 : 8);
+const userBord = (userLocked ? '2' : '1') + 'px solid ' + themeVar('--warning', userLocked ? 65 : 28);
 const userFw = userLocked ? '800' : '600';
 const userTick = userLocked ? ' ' : '';
 const lookupKey = '_devTabsCache';

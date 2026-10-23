@@ -1,3 +1,4 @@
+import { themeColor } from './theme-tokens.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smBarHtml } from './summary-card.js';
@@ -690,22 +691,22 @@ if (txn.gps && txn.gps.lat && txn.gps.lng) {
 const lat = txn.gps.lat;
 const lng = txn.gps.lng;
 latLngs.push([lat, lng]);
-let color = '#3b82f6';
+let color = themeColor('--accent-blue');
 let typeStr = 'Cash Sale';
 let detailStr = `${fmtNum(txn.quantity)} kg`;
 if (txn.paymentType === 'COLLECTION') {
-color = '#10b981';
+color = themeColor('--accent');
 typeStr = 'Collection';
 detailStr = `${fmtAmt(txn.totalValue)}`;
 } else if (txn.paymentType === 'CREDIT') {
-color = '#f59e0b';
+color = themeColor('--warning');
 typeStr = 'Credit Sale';
 detailStr = `${fmtNum(txn.quantity)} kg (Credit)`;
 }
 const marker = L.circleMarker([lat, lng], {
 radius: 8,
 fillColor: color,
-color: '#fff',
+color: themeColor('--white'),
 weight: 2,
 opacity: 1,
 fillOpacity: 0.8
@@ -721,7 +722,7 @@ repMapMarkers.push(marker);
 });
 if (latLngs.length > 1) {
 repPolyline = L.polyline(latLngs, {
-color: '#2563eb',
+color: themeColor('--accent-blue'),
 weight: 3,
 opacity: 0.6,
 dashArray: '5, 10'

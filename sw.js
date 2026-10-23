@@ -24,6 +24,7 @@ const ASSETS_TO_CACHE = [
   './modules/dialog-image.js',
   './modules/phone-format.js',
   './modules/date-format.js',
+  './modules/theme-tokens.js',
   './modules/phone-actions.js',
   './modules/field-expenses.js',
   './modules/field-expense-items.js',

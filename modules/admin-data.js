@@ -1,3 +1,4 @@
+import { themeVar } from './theme-tokens.js';
 import { formatDayMonthYear } from './date-format.js';
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID, loadCollections } from './business.js';
 import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToCloud, sanitizeForFirestore } from './sync.js';
@@ -163,7 +164,7 @@ try {
   };
   const fmtVal = v => {
     if (v === null || v === undefined) return '<span class="u-d59bb54">null</span>';
-    if (typeof v === 'boolean') return `<span class="dc-color" style="--d-color: ${v?'#30d158':'#ff453a'}">${v}</span>`;
+    if (typeof v === 'boolean') return `<span class="dc-color" style="--d-color: ${v?'var(--success)':'var(--danger)'}">${v}</span>`;
     if (typeof v === 'object') {
       if (Array.isArray(v)) return `<span class="u-182e628">Array(${v.length})</span>`;
       if (v.seconds !== undefined) return `<span class="u-d59bb54">${formatDayMonthYear(new Date(v.seconds*1000))}</span>`;
@@ -213,8 +214,8 @@ try {
   const _writes     = firestoreStats.writes || 0;
   const _readPct    = Math.min(100, Math.round(_reads  / 500));
   const _writePct   = Math.min(100, Math.round(_writes / 200));
-  const _readColor  = _readPct  >= 80 ? '#ff453a' : _readPct  >= 50 ? '#f59e0b' : '#30d158';
-  const _writeColor = _writePct >= 80 ? '#ff453a' : _writePct >= 50 ? '#f59e0b' : '#007aff';
+  const _readColor  = _readPct  >= 80 ? 'var(--danger)' : _readPct  >= 50 ? 'var(--warning)' : 'var(--success)';
+  const _writeColor = _writePct >= 80 ? 'var(--danger)' : _writePct >= 50 ? 'var(--warning)' : 'var(--accent-blue)';
   const _resetAgo   = firestoreStats.lastReset ? ago(firestoreStats.lastReset) : 'unknown';
   const _msLeft     = firestoreStats.lastReset ? Math.max(0, 864e5 - (Date.now() - firestoreStats.lastReset)) : 0;
   const _resetNext  = _msLeft > 0 ? (Math.floor(_msLeft/3600000) + 'h ' + Math.floor((_msLeft%3600000)/60000) + 'm') : 'soon';
@@ -247,16 +248,16 @@ try {
     const lastSync = colStats.lastSync ? ago(colStats.lastSync) : 'never';
     const hasLiveListener = col.fsName !== 'deletions' && col.fsName !== 'photos';
     const mismatch = !col.isPhotoStore && Math.abs(fsDocs - sqDocs) > 0;
-    const borderColor = mismatch ? 'rgba(255,69,58,0.4)' : 'var(--glass-border)';
+    const borderColor = mismatch ? themeVar('--danger', 40) : 'var(--glass-border)';
     html += `
 <div class="u-f1095b3 st-padding__0b5785 st-background__356c02 st-border-radius__a44260 dc-border" style="--d-border: 1px solid ${borderColor}">
   <div class="u-335e5cd d-flex">
     <div class="u-8b4ab7f">
       <div class="u-0e3398e d-flex">
         <span class="u-4527bd8">${col.fsName}</span>
-        ${hasLiveListener ? badge('LIVE','#30d158') : badge('SNAPSHOT','#f59e0b')}
-        ${col.lock ? badge('LOCKED ON CLOSE','#888') : ''}
-        ${isDirty ? badge('PENDING','#f59e0b') : ''}
+        ${hasLiveListener ? badge('LIVE','var(--success)') : badge('SNAPSHOT','var(--warning)')}
+        ${col.lock ? badge('LOCKED ON CLOSE','var(--text-secondary)') : ''}
+        ${isDirty ? badge('PENDING','var(--warning)') : ''}
       </div>
       <div class="u-a39b897">${col.desc}</div>
       <div class="u-063dd15 d-flex">
@@ -267,7 +268,7 @@ try {
     </div>
     <div class="u-b62856e text-right">
       <div class="u-dd009f5">${fsDocs} FS</div>
-      <div class="st-font-size__569d78 dc-color" style="--d-color: ${mismatch?'#ff453a':'var(--text-muted)'}">
+      <div class="st-font-size__569d78 dc-color" style="--d-color: ${mismatch?'var(--danger)':'var(--text-muted)'}">
         ${sqDocs} local${mismatch?' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="var(--warning)" fill-opacity="0.12" stroke="var(--warning)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="var(--warning)" fill-opacity=".85"/></svg>':''}
       </div>
     </div>
@@ -277,7 +278,7 @@ try {
     <span>↓ <b class="u-8da8d88">${uuidCol.downloaded||0}</b> down</span>
     <span>Syncs: <b class="u-e6f0554">${colStats.syncCount||0}</b></span>
     <span>Last: <b class="u-e6f0554">${lastSync}</b></span>
-    ${col.isPhotoStore ? `<span>Dirty keys: <b class="dc-color" style="--d-color:${sqliteCounts['_photos_dirty']>0?'#f59e0b':'var(--text)'}">${sqliteCounts['_photos_dirty']}</b></span>` : ''}
+    ${col.isPhotoStore ? `<span>Dirty keys: <b class="dc-color" style="--d-color:${sqliteCounts['_photos_dirty']>0?'var(--warning)':'var(--text)'}">${sqliteCounts['_photos_dirty']}</b></span>` : ''}
   </div>
 </div>`;
   });
@@ -292,10 +293,10 @@ try {
     <div class="u-8b4ab7f">
       <div class="u-57e7f8a">${doc.path}</div>
       <div class="u-34951f5">${doc.desc}</div>
-      <div class="u-3b03f58">Listener: ${pill(doc.listener, '#30d158')}</div>
+      <div class="u-3b03f58">Listener: ${pill(doc.listener, 'var(--success)')}</div>
     </div>
     <div class="u-b62856e">
-      ${exists ? badge('EXISTS','#30d158') : badge('MISSING','#ff453a')}
+      ${exists ? badge('EXISTS','var(--success)') : badge('MISSING','var(--danger)')}
     </div>
   </div>`;
     if (doc.sqlite.length) {
@@ -317,7 +318,7 @@ try {
           ${doc.fsFields.map(k => {
             const present = k in data;
             return `<div class="u-28c1c75 d-flex st-font-size__8303b5 st-padding__dd8474">
-              <span class="u-4597eb5 dc-color" style="--d-color:${present?'var(--text)':'#ff453a'}">${present?'':'<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-9b5cd9b d-inline-block"><path d="M10 4H26M10 32H26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="currentColor" fill-opacity=".85"/></svg>'}${k}</span>
+              <span class="u-4597eb5 dc-color" style="--d-color:${present?'var(--text)':'var(--danger)'}">${present?'':'<svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-9b5cd9b d-inline-block"><path d="M10 4H26M10 32H26" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="currentColor" fill-opacity=".85"/></svg>'}${k}</span>
               <span>${present ? fmtVal(data[k]) : ''}</span>
             </div>`;
           }).join('')}
@@ -355,7 +356,7 @@ try {
     html += `
 <div class="u-d7e5900 st-background__356c02 st-border-bottom__e54b2f">
   <div class="u-350ad3a d-flex">
-    ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'#007aff':'#bf5af2')}
+    ${badge(l.type==='col'?'COLLECTION':'DOC', l.type==='col'?'var(--accent-blue)':'var(--accent-purple)')}
     <span class="u-a28f127">${l.name}</span>
   </div>
   <div class="u-b80e433">${l.purpose}</div>
@@ -386,7 +387,7 @@ try {
             <td class="st-padding__159b3a st-color__a80552">${c.fsName}</td>
             <td class="st-padding__159b3a st-color__0ae80b">${c.sqliteKey}</td>
             <td class="st-padding__159b3a st-color__5872de">${c.jsVar}</td>
-            <td class="text-right st-padding__159b3a dc-color" style="--d-color:${ok?'var(--text)':'#ff453a'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
+            <td class="text-right st-padding__159b3a dc-color" style="--d-color:${ok?'var(--text)':'var(--danger)'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
           </tr>`;
         }).join('')}
       </tbody>
