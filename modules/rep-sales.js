@@ -1146,7 +1146,7 @@ info = `
     <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (_hasPay ? (_expV > 0 ? 'Payment | Expired credit' : 'Bulk Payment') : 'Payment | Expired credit')}</div>
 `;
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
-rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${Number(t.expiredQty) > 0 ? `${fmtNum(Number(t.expiredQty))} kg` : fmtAmt(_expV)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Bulk payment');
+rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${Number(t.expiredQty) > 0 ? `${fmtNum(Number(t.expiredQty))} kg` : '0'}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Bulk payment');
 rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 info = `

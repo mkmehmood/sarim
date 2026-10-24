@@ -477,7 +477,7 @@ rAmt = Number(t.returnValue) || 0; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isPartialPayment || isCollection) {
 const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
-rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${Number(t.expiredQty) > 0 ? `${fmtNum(Number(t.expiredQty))} kg` : fmtAmt(_expV)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Amount received');
+rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${Number(t.expiredQty) > 0 ? `${fmtNum(Number(t.expiredQty))} kg` : '0'}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Amount received');
 rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 rTitle = 'Old debt'; rSub = oldDebtNote(t.notes) || 'Previous balance';
