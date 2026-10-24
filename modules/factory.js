@@ -561,9 +561,9 @@ if (existingSection) existingSection.classList.add('hidden');
 if (newSection) newSection.classList.add('hidden');
 if (supplierType === 'existing') { if (existingSection) existingSection.classList.remove('hidden'); }
 else if (supplierType === 'new') { if (newSection) newSection.classList.remove('hidden'); }
-document.querySelectorAll('#factorySupplierSeg .pf-seg-opt').forEach((btn) => {
+document.querySelectorAll('#factorySupplierSeg .toggle-opt').forEach((btn) => {
 const on = btn.getAttribute('data-supp') === supplierType;
-btn.classList.toggle('is-active', on);
+btn.classList.toggle('active', on);
 btn.setAttribute('aria-pressed', on ? 'true' : 'false');
 });
 }

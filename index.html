@@ -812,10 +812,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" id="dl-form-card">
       <p class="settings-group-label" id="dl-form-title">Add Entry</p>
-      <div class="formula-toggle u-mb-15" role="group">
-        <button type="button" class="formula-toggle-opt active" data-dl-type="IN" aria-pressed="true" onclick="dailyLedgerSetType('IN')">+ In</button>
-        <button type="button" class="formula-toggle-opt" data-dl-type="OUT" aria-pressed="false" onclick="dailyLedgerSetType('OUT')">- Out</button>
-        <button type="button" class="formula-toggle-opt" data-dl-type="TRANSFER" aria-pressed="false" onclick="dailyLedgerSetType('TRANSFER')">Transfer</button>
+      <div class="toggle-group u-mb-15" role="group">
+        <button type="button" class="toggle-opt active" data-dl-type="IN" aria-pressed="true" onclick="dailyLedgerSetType('IN')">+ In</button>
+        <button type="button" class="toggle-opt" data-dl-type="OUT" aria-pressed="false" onclick="dailyLedgerSetType('OUT')">- Out</button>
+        <button type="button" class="toggle-opt" data-dl-type="TRANSFER" aria-pressed="false" onclick="dailyLedgerSetType('TRANSFER')">Transfer</button>
       </div>
       <div class="grid-inputs u-mb-15">
         <div class="field">
@@ -925,10 +925,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <option value="existing">Select Existing Entity</option>
           <option value="new">Add New Supplier Entity</option>
         </select>
-        <div class="pf-seg" id="factorySupplierSeg" role="group" aria-label="Supplier">
-          <button type="button" class="pf-seg-opt is-active" data-supp="none" aria-pressed="true" onclick="setFactorySupplierType('none')">None</button>
-          <button type="button" class="pf-seg-opt" data-supp="existing" aria-pressed="false" onclick="setFactorySupplierType('existing')">Existing</button>
-          <button type="button" class="pf-seg-opt" data-supp="new" aria-pressed="false" onclick="setFactorySupplierType('new')">New</button>
+        <div class="toggle-group" id="factorySupplierSeg" role="group" aria-label="Supplier">
+          <button type="button" class="toggle-opt active" data-supp="none" aria-pressed="true" onclick="setFactorySupplierType('none')">None</button>
+          <button type="button" class="toggle-opt" data-supp="existing" aria-pressed="false" onclick="setFactorySupplierType('existing')">Existing</button>
+          <button type="button" class="toggle-opt" data-supp="new" aria-pressed="false" onclick="setFactorySupplierType('new')">New</button>
         </div>
         <div id="existingSupplierSection" class="hidden">
           <div class="field pf-field u-pos-relative">
@@ -987,14 +987,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <button type="button" id="bm-formula-btn" class="store-selector bm-picker" onclick="openBatchMixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="u-field-hint-xs" id="bmFormulaInfo"></div>
     </div>
-    <div class="formula-toggle u-mb-15 bm-unit" role="group">
-      <button type="button" class="formula-toggle-opt" data-bm-unit="g" aria-pressed="false" onclick="setBatchMixUnit('g')">g</button>
-      <button type="button" class="formula-toggle-opt active" data-bm-unit="kg" aria-pressed="true" onclick="setBatchMixUnit('kg')">kg</button>
+    <div class="toggle-group u-mb-15 bm-unit" role="group">
+      <button type="button" class="toggle-opt" data-bm-unit="g" aria-pressed="false" onclick="setBatchMixUnit('g')">g</button>
+      <button type="button" class="toggle-opt active" data-bm-unit="kg" aria-pressed="true" onclick="setBatchMixUnit('kg')">kg</button>
     </div>
-    <div class="formula-toggle u-mb-15" role="group">
-      <button type="button" class="formula-toggle-opt active" data-bm-mode="total" aria-pressed="true" onclick="setBatchMixMode('total')">Weight</button>
-      <button type="button" class="formula-toggle-opt" data-bm-mode="units" aria-pressed="false" onclick="setBatchMixMode('units')">Units</button>
-      <button type="button" class="formula-toggle-opt" data-bm-mode="ingredient" aria-pressed="false" onclick="setBatchMixMode('ingredient')">Ingredient</button>
+    <div class="toggle-group u-mb-15" role="group">
+      <button type="button" class="toggle-opt active" data-bm-mode="total" aria-pressed="true" onclick="setBatchMixMode('total')">Weight</button>
+      <button type="button" class="toggle-opt" data-bm-mode="units" aria-pressed="false" onclick="setBatchMixMode('units')">Units</button>
+      <button type="button" class="toggle-opt" data-bm-mode="ingredient" aria-pressed="false" onclick="setBatchMixMode('ingredient')">Ingredient</button>
     </div>
     <div class="field u-mb-15 d-none" id="bmIngWrap">
       <label>Ingredient</label>
@@ -1032,9 +1032,9 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <input type="hidden" id="bf-formula-select" value="">
       <button type="button" id="bf-formula-btn" class="store-selector bm-picker" onclick="openBatchFixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
-    <div class="formula-toggle u-mb-15 bm-unit" role="group">
-      <button type="button" class="formula-toggle-opt active" data-bf-unit="g" aria-pressed="true" onclick="setBatchFixUnit('g')">g</button>
-      <button type="button" class="formula-toggle-opt" data-bf-unit="kg" aria-pressed="false" onclick="setBatchFixUnit('kg')">kg</button>
+    <div class="toggle-group u-mb-15 bm-unit" role="group">
+      <button type="button" class="toggle-opt active" data-bf-unit="g" aria-pressed="true" onclick="setBatchFixUnit('g')">g</button>
+      <button type="button" class="toggle-opt" data-bf-unit="kg" aria-pressed="false" onclick="setBatchFixUnit('kg')">kg</button>
     </div>
     <div class="section liquid-card">
       <div class="section-header">
@@ -1776,9 +1776,9 @@ oninput="renderRepCustomerTable()">
 <div id="tab-prod">
 <header id="prod-tab-header" class="u-cfe00e0 d-flex">
 <h1 class="shimmer-text u-heading-bold">Manufacturing</h1>
-<div id="prod-toggle-container" class="production-toggle-container">
-<button class="production-toggle-btn" onclick="setProductionView('combined', event)">Combined</button>
-<button class="production-toggle-btn active" onclick="setProductionView('store', event)">Store Entry</button>
+<div id="prod-toggle-container" class="toggle-group u-mb-15">
+<button class="toggle-opt" onclick="setProductionView('combined', event)">Combined</button>
+<button class="toggle-opt active" onclick="setProductionView('store', event)">Store Entry</button>
 </div>
 </header>
 <div id="production-entry-section" class="section liquid-card">
@@ -1873,11 +1873,11 @@ Insufficient formula units available! Please reduce formula units used.
 <div id="combinedChart" class="section liquid-card chart-card u-11b271b">
 <div class="store-comparison-toggle">
 <label class="u-d98bf71 d-block">Compare Stores By:</label>
-<div class="comparison-metric-selector">
-<button class="metric-btn active" onclick="setStoreComparisonMetric('weight', event)">Weight (kg)</button>
-<button class="metric-btn" onclick="setStoreComparisonMetric('value', event)">Total Value</button>
-<button class="metric-btn" onclick="setStoreComparisonMetric('cost', event)">Total Cost</button>
-<button class="metric-btn" onclick="setStoreComparisonMetric('profit', event)">Net Profit</button>
+<div class="toggle-group u-mt-8">
+<button class="toggle-opt active" onclick="setStoreComparisonMetric('weight', event)">Weight (kg)</button>
+<button class="toggle-opt" onclick="setStoreComparisonMetric('value', event)">Total Value</button>
+<button class="toggle-opt" onclick="setStoreComparisonMetric('cost', event)">Total Cost</button>
+<button class="toggle-opt" onclick="setStoreComparisonMetric('profit', event)">Net Profit</button>
 </div>
 </div>
 <div class="chart-container u-4bb9003">

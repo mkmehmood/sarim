@@ -3476,7 +3476,7 @@ if (event) {
 event.preventDefault();
 }
 currentStoreComparisonMetric = metric; window.currentStoreComparisonMetric = currentStoreComparisonMetric;
-document.querySelectorAll('.metric-btn').forEach(btn => {
+document.querySelectorAll('.store-comparison-toggle .toggle-opt').forEach(btn => {
 btn.classList.remove('active');
 });
 if (event && event.target) {
@@ -5611,7 +5611,7 @@ refreshFactoryTab();
 
 export function setProductionView(view, event) {
 currentProductionView = view; window.currentProductionView = currentProductionView;
-document.querySelectorAll('.production-toggle-btn').forEach(btn => btn.classList.remove('active'));
+document.querySelectorAll('#prod-toggle-container .toggle-opt').forEach(btn => btn.classList.remove('active'));
 if (event && event.target) event.target.classList.add('active');
 const entrySection = document.getElementById('production-entry-section');
 const combinedOverview = document.getElementById('combinedOverview');

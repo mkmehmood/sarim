@@ -410,8 +410,8 @@ function unlockAudio() {
   } catch (_) {}
 }
 
-const OPTION_SELECTOR = '.toggle-opt, .production-toggle-btn, .metric-btn, .formula-toggle-opt, .status-toggle-btn, #sidebar-btn-theme';
-const SEGMENT_SELECTOR = '.toggle-opt, .production-toggle-btn, .metric-btn, .formula-toggle-opt';
+const OPTION_SELECTOR = '.toggle-opt, .status-toggle-btn, #sidebar-btn-theme';
+const SEGMENT_SELECTOR = '.toggle-opt';
 const CONTROL_SELECTOR = `${OPTION_SELECTOR}, [aria-pressed]`;
 
 export function controlCue(target) {

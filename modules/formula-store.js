@@ -404,13 +404,13 @@ function _renderChoice(hostId, items, active, onPick, emptyText) {
     return;
   }
   const group = document.createElement('div');
-  group.className = 'formula-toggle';
+  group.className = 'toggle-group';
   group.setAttribute('role', 'group');
   items.forEach((it) => {
     const on = it.value === String(active);
     const opt = document.createElement('button');
     opt.type = 'button';
-    opt.className = 'formula-toggle-opt' + (on ? ' active' : '');
+    opt.className = 'toggle-opt' + (on ? ' active' : '');
     opt.setAttribute('aria-pressed', on ? 'true' : 'false');
     opt.textContent = it.label;
     opt.addEventListener('click', () => onPick(it.value));

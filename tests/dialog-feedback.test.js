@@ -524,7 +524,7 @@ describe('dialogs trigger feedback', () => {
   });
 });
 
-const SEGMENT_CLASSES = ['toggle-opt', 'production-toggle-btn', 'metric-btn', 'formula-toggle-opt'];
+const SEGMENT_CLASSES = ['toggle-opt'];
 const makeEl = ({ classes = [], attrs = {}, id = '', disabled = false, inDialog = false } = {}) => {
   const el = {
     id, disabled,

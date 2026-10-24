@@ -5503,7 +5503,7 @@ if (el) { el.classList.add('hidden'); window.setDisplay(el, 'none'); }
 });
 const prodTab = document.getElementById('tab-prod');
 if (prodTab) { prodTab.classList.remove('hidden'); window.setDisplay(prodTab, ''); }
-const prodToggle = document.querySelector('.production-toggle-container');
+const prodToggle = document.getElementById('prod-toggle-container');
 if (prodToggle) window.setDisplay(prodToggle, 'none');
 ['combinedOverview', 'combinedChart', 'prod-analytics-section',
 'prod-history-header', 'prodHistoryList'].forEach(id => {
@@ -5567,7 +5567,7 @@ const el = document.getElementById('tab-' + t);
 if (el) { el.classList.add('hidden'); window.setDisplay(el, ''); }
 });
 if (assignedTabs.includes('prod')) {
-const prodToggle = document.querySelector('.production-toggle-container');
+const prodToggle = document.getElementById('prod-toggle-container');
 if (prodToggle) window.setDisplay(prodToggle, 'none');
 ['combinedOverview','combinedChart','prod-analytics-section',
 'prod-history-header','prodHistoryList'].forEach(id => {
