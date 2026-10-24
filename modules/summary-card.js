@@ -39,12 +39,12 @@ export function smInnerHtml(o) {
 }
 
 export function smCardHtml(o, className = '') {
-  return `<div class="sm-card${className ? ' ' + className : ''}">${smInnerHtml(o)}</div>`;
+  return `<div class="card sm-card${className ? ' ' + className : ''}">${smInnerHtml(o)}</div>`;
 }
 
 export function smCardEl(o, className = '') {
   const el = document.createElement('div');
-  el.className = `sm-card${className ? ' ' + className : ''}`;
+  el.className = `card sm-card${className ? ' ' + className : ''}`;
   el.innerHTML = smInnerHtml(o);
   return el;
 }

@@ -502,7 +502,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Settings</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Data &amp; Sync</p>
     <button id="sidebar-btn-sync" class="sidebar-settings-btn" onclick="performOneClickSync&&performOneClickSync().catch(function(e){console.error('Sync error:',(e&&e.message)||String(e)||'(unknown)')})">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="ic-sync-arrows"><path d="M30.5 15.5A12.8 12.8 0 0 0 8.2 10" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M8 4.8V10.4H13.6" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M5.5 20.5A12.8 12.8 0 0 0 27.8 26" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M28 31.2V25.6H22.4" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g><circle cx="18" cy="18" r="3.6" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="1.2" fill="var(--accent-gold)"/></svg>
@@ -521,7 +521,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       Database Structure
     </button>
     </div>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Appearance &amp; Device</p>
     <button id="sidebar-btn-theme" class="sidebar-settings-btn" onclick="(async()=>{await toggleDarkMode();})()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="7.2" fill="var(--accent-gold)" fill-opacity="0.15" stroke="var(--accent-gold)" stroke-width="1.7"/><path d="M18 10.8A7.2 7.2 0 0 1 18 25.2Z" fill="var(--accent-gold)" fill-opacity=".8"/><path d="M29.3 18L32.8 18" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M25.99 25.99L28.47 28.47" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 29.3L18 32.8" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M10.01 25.99L7.53 28.47" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.7 18L3.2 18" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M10.01 10.01L7.53 7.53" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 6.7L18 3.2" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M25.99 10.01L28.47 7.53" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
@@ -536,14 +536,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       Sound &amp; Haptics
     </button>
     </div>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Security</p>
     <button id="bio-toggle-btn" class="sidebar-settings-btn" onclick="toggleBiometricLock()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 24V17.5A10.5 10.5 0 0 1 28.5 17.5V21" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12.5 28.5V17.5A5.5 5.5 0 0 1 23.5 17.5V24.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 17.5V23.5C18 27 17 29.5 15.5 31.8" stroke="var(--accent-gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M23.5 28C23 29.6 22.4 30.7 21.6 31.8" stroke="var(--accent-gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M7.5 29.5V28" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/><path class="ic-sp" d="M30 4Q30 7 33 7Q30 7 30 10Q30 7 27 7Q30 7 30 4Z" fill="var(--accent-gold)"/></svg>
       <span id="bio-toggle-label">Fingerprint Lock</span>
     </button>
     </div>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Team &amp; Access</p>
     <button class="sidebar-settings-btn" onclick="openStandaloneScreen('sales-rep-screen');if(typeof loadManageRepsContent==='function')loadManageRepsContent()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23 21.2C29 21.2 33 24 33 29.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/><circle cx="24" cy="11" r="4.4" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.6"/><circle cx="12.5" cy="12" r="5.2" fill="var(--accent)" fill-opacity="0.22" stroke="var(--accent)" stroke-width="1.7"/><path d="M2.5 31C2.5 22.5 22.5 22.5 22.5 31Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path class="ic-sp" d="M30 2.9Q30 5.5 32.6 5.5Q30 5.5 30 8.1Q30 5.5 27.4 5.5Q30 5.5 30 2.9Z" fill="var(--accent-gold)"/></svg>
@@ -558,14 +558,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       App Accounts
     </button>
     </div>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Business</p>
     <button class="sidebar-settings-btn" id="sidebar-btn-stores" onclick="openStoreManagerScreen()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 16.5V31H29V16.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M4 13L7.5 5.5H28.5L32 13Z" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M4 13A4.67 4.67 0 0 0 13.33 13A4.67 4.67 0 0 0 22.67 13A4.67 4.67 0 0 0 32 13" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><rect x="14" y="21" width="8" height="10" rx="1.6" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="20" cy="26.2" r="0.9" fill="var(--accent-gold)"/></svg>
       Store Manager
     </button>
     </div>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Danger Zone</p>
     <button class="sidebar-settings-btn u-9cb6f55" onclick="if(typeof window._showCloseFinancialYearDialog==='function'){window._showCloseFinancialYearDialog();}else if(typeof showCloseFinancialYearDialog==='function'){showCloseFinancialYearDialog();}else{showToast('Feature not available','warning')}">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="var(--accent)" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="25" cy="25" r="6.2" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.6"/><path d="M22 25.2L24.2 27.4 28.2 22.8" stroke="var(--accent-gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M9.5 22H15M9.5 27H13" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/></svg>
@@ -579,7 +579,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Store Manager</h2>
   </div>
   <div class="screen-body" id="store-manager-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label" id="store-form-heading">New Store</p>
       <input type="hidden" id="store-edit-index" value="-1">
       <div class="grid-inputs u-mb-15">
@@ -621,7 +621,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
   <div class="screen-body">
     <p class="settings-group-label">Backup</p>
-    <div class="settings-list-item" onclick="triggerLocalBackup()">
+    <div class="card settings-list-item" onclick="triggerLocalBackup()">
       <div class="settings-list-item-icon st-background__fbe8aa">
         <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 31V17.5M12.8 22.2L18 17 23.2 22.2" stroke="var(--accent-gold)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--accent-gold)"/></svg>
       </div>
@@ -632,7 +632,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg class="settings-list-item-chevron" width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="currentColor" fill-opacity=".1"/><path d="M15 11.5L21.5 18L15 24.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <p class="settings-group-label">Restore</p>
-    <div class="settings-list-item" onclick="document.getElementById('restoreInput').click()">
+    <div class="card settings-list-item" onclick="document.getElementById('restoreInput').click()">
       <div class="settings-list-item-icon st-background__79f351">
         <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--warning)" fill-opacity="0.14" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 17V31M12.8 25.8L18 31 23.2 25.8" stroke="var(--warning)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--warning)"/></svg>
       </div>
@@ -683,7 +683,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Stock Transfer</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Move Stock Between Stores</p>
       <div class="grid-inputs u-mb-15">
         <div class="field">
@@ -727,7 +727,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Payment Transfer</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Move Balance Between Entities</p>
       <div class="grid-inputs u-mb-15">
         <div class="field u-a8a9035">
@@ -793,7 +793,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <h2 class="screen-title">Daily Ledger</h2>
   </div>
   <div class="screen-body">
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <div class="dl-hero-head">
         <p class="settings-group-label">Cash In Hand</p>
         <button type="button" class="btn btn-main u-mt-8 btn-sm btn-pdf dl-pdf-btn d-flex" id="dl-pdf-btn" title="Export to PDF" aria-label="Export Daily Ledger to PDF" onclick="(async()=>{await dailyLedgerExportPdf()})()"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
@@ -810,7 +810,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Total Cash Out</span><strong class="dl-amt-out" id="dl-sum-out">0</strong><span class="u-fs-sm2 u-text-muted" id="dl-cnt-out">0 entries</span></div>
       <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Net Balance</span><strong id="dl-sum-net">0</strong><span class="u-fs-sm2 u-text-muted" id="dl-net-tag">Surplus</span></div>
     </div>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" id="dl-form-card">
+    <div class="card u-d8ddece st-border-bottom__e54b2f" id="dl-form-card">
       <p class="settings-group-label" id="dl-form-title">Add Entry</p>
       <div class="toggle-group u-mb-15" role="group">
         <button type="button" class="toggle-opt active" data-dl-type="IN" aria-pressed="true" onclick="dailyLedgerSetType('IN')">+ In</button>
@@ -861,14 +861,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div id="dl-modes-block" class="d-none">
       <p class="settings-group-label">Payment Channels</p>
-      <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" id="dl-modes-card"></div>
+      <div class="card u-d8ddece st-border-bottom__e54b2f" id="dl-modes-card"></div>
     </div>
     <div id="dl-cats-block" class="d-none">
       <p class="settings-group-label">Category Summary</p>
-      <div class="liquid-card u-d8ddece st-border-bottom__e54b2f" id="dl-cats-card"></div>
+      <div class="card u-d8ddece st-border-bottom__e54b2f" id="dl-cats-card"></div>
     </div>
     <p class="settings-group-label" id="dl-history-label">Cashbook Log &amp; History</p>
-    <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
+    <div class="card u-d8ddece st-border-bottom__e54b2f">
       <div class="field u-mb-15">
         <input class="form-ctl" type="text" id="dl-search" placeholder="Search by party, category, mode, amount..." autocomplete="off" oninput="dailyLedgerSetQuery(this.value)">
       </div>
@@ -882,14 +882,14 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
   <div class="screen-body pf-body">
     <div class="pf">
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Material</h3>
         <div class="field pf-field">
           <label for="factoryMaterialName">Material name</label>
           <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><input class="form-ctl" type="text" id="factoryMaterialName" placeholder="e.g., Sugar" autocomplete="off"></div>
         </div>
       </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Purchase</h3>
         <div class="pf-row">
           <div class="field pf-field">
@@ -918,7 +918,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <div class="pf-sum-item"><span class="pf-sum-label">Total amount</span><span class="pf-sum-val is-total" id="factoryCalculatedAmount">0</span></div>
         </div>
       </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Supplier</h3>
         <select id="factoryMaterialSupplierType" class="form-ctl d-none">
           <option value="none">No Supplier Link</option>
@@ -1036,7 +1036,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <button type="button" class="toggle-opt active" data-bf-unit="g" aria-pressed="true" onclick="setBatchFixUnit('g')">g</button>
       <button type="button" class="toggle-opt" data-bf-unit="kg" aria-pressed="false" onclick="setBatchFixUnit('kg')">kg</button>
     </div>
-    <div class="section liquid-card">
+    <div class="card">
       <div class="section-header">
         <h3 class="u-ba60f64">Batch Correction</h3>
       </div>
@@ -1059,7 +1059,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div class="u-fs-sm2 u-text-muted u-mb-15" id="bfEmpty">Select a formula</div>
     <div id="bfBody" class="d-none">
-      <div class="section liquid-card">
+      <div class="card">
         <div class="section-header">
           <h3 class="u-ba60f64">Required Additions</h3>
           <div class="bf-newtotal"><span>New total</span><strong class="cost-val" id="bfNewTotal">0 g</strong></div>
@@ -1353,7 +1353,7 @@ window._showLogoutConfirmDialog = async function() {
   </div>
   <div class="screen-body pf-body">
     <div class="pf">
-    <section class="pf-identity">
+    <section class="card pf-identity">
       <div class="pf-avatar-col">
         <div class="pf-avatar">
           <div id="entity-photo-preview" class="pf-photo d-flex" onclick="previewPhotoClick('entity')">
@@ -1374,7 +1374,7 @@ window._showLogoutConfirmDialog = async function() {
         <div class="pf-hint">Person, shop or account you pay or receive money from.</div>
       </div>
     </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Contact and payment details</h3>
         <div class="field pf-field">
           <label>Phone number</label>
@@ -1411,7 +1411,7 @@ window._showLogoutConfirmDialog = async function() {
         <option value="all" selected>All Time</option>
       </select>
     </div>
-    <div class="debt-panel u-debt-header liquid-card u-a0d4a03">
+    <div class="card debt-panel u-debt-header u-a0d4a03">
       <h4 class="u-heading-accent">Quick Add Expense</h4>
       <div class="u-quick-row">
         <div class="field u-field-flex-1-min">
@@ -1457,7 +1457,7 @@ window._showLogoutConfirmDialog = async function() {
   </div>
   <div class="screen-body pf-body">
     <div class="pf">
-    <section class="pf-identity">
+    <section class="card pf-identity">
       <div class="pf-avatar-col">
         <div class="pf-avatar">
           <div id="cust-photo-preview" class="pf-photo d-flex" onclick="previewPhotoClick('cust')">
@@ -1479,7 +1479,7 @@ window._showLogoutConfirmDialog = async function() {
         <div id="cust-name-hint" class="pf-hint">Editing the name will update all records for this customer</div>
       </div>
     </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Contact</h3>
         <div class="field pf-field">
           <label>Phone number</label>
@@ -1491,7 +1491,7 @@ window._showLogoutConfirmDialog = async function() {
           <div id="location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Account</h3>
         <div class="field pf-field">
           <label>Previous balance (old debt)</label>
@@ -1535,7 +1535,7 @@ window._showLogoutConfirmDialog = async function() {
   </div>
   <div class="screen-body pf-body">
     <div class="pf">
-    <section class="pf-identity">
+    <section class="card pf-identity">
       <div class="pf-avatar-col">
         <div class="pf-avatar">
           <div id="rep-cust-photo-preview" class="pf-photo d-flex" onclick="previewPhotoClick('rep-cust')">
@@ -1557,7 +1557,7 @@ window._showLogoutConfirmDialog = async function() {
         <div id="rep-cust-name-hint" class="pf-hint">Editing the name will update all records for this customer</div>
       </div>
     </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Contact</h3>
         <div class="field pf-field">
           <label>Phone number</label>
@@ -1569,7 +1569,7 @@ window._showLogoutConfirmDialog = async function() {
           <div id="rep-location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
-      <section class="pf-section">
+      <section class="card pf-section">
         <h3 class="pf-section-title">Account</h3>
         <div class="field pf-field">
           <label>Previous balance (old debt)</label>
@@ -1650,7 +1650,7 @@ window._showLogoutConfirmDialog = async function() {
 <header class="u-497acf1 d-flex">
 <h1 class="shimmer-text u-heading-bold">Rep Sales</h1>
 </header>
-<div id="rep-new-transaction-card" class="section liquid-card">
+<div id="rep-new-transaction-card" class="card">
 <div class="section-header">
 <h3 class="u-ba60f64">New Transaction</h3>
 <div class="toggle-group">
@@ -1704,13 +1704,13 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <span id="rep-customer-current-credit" class="u-a5b525a">0.00</span>
 </div>
 </div>
-<div class="result-box u-row-between" >
+<div class="card result-box u-row-between" >
 <span id="rep-result-label">Transaction Value:</span>
 <span id="rep-total-value" class="u-beb85b5">0.00</span>
 </div>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-rep-transaction" onclick="(async () => { await saveRepTransaction() })()">Save Transaction</button></div>
 </div>
-<div id="admin-rep-controls" class="section liquid-card hidden">
+<div id="admin-rep-controls" class="card hidden">
 <div class="section-header">
 <h3 class="u-6153aab">Admin View</h3>
 </div>
@@ -1733,7 +1733,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
  Cash Sale |  Collection |  Credit Sale
 </div>
 </div>
-<div id="admin-rep-analytics" class="section liquid-card hidden">
+<div id="admin-rep-analytics" class="card hidden">
 <div class="section-header">
 <h3 class="u-heading-main" >Analytics</h3>
 <div class="toggle-group">
@@ -1748,13 +1748,13 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="sx-hero sx-tone-good"><span class="sx-hero-label">Money in</span><div class="sx-hero-value" id="rep-analytics-cash-in">0.00</div></div>
 <div id="rep-analytics-bar"></div>
 <div class="sx-grid sx-cols-3">
-<div class="sx-tile sx-tone-good"><span class="sx-tile-label">Collections</span><span class="sx-tile-value profit-val" id="rep-analytics-collections">0.00</span></div>
-<div class="sx-tile sx-tone-info"><span class="sx-tile-label">Cash sales</span><span class="sx-tile-value profit-val" id="rep-analytics-cash-sales">0.00</span></div>
-<div class="sx-tile sx-tone-warn"><span class="sx-tile-label">Credit sales</span><span class="sx-tile-value cost-val" id="rep-analytics-credit-sales">0.00</span></div>
+<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Collections</span><span class="sx-tile-value profit-val" id="rep-analytics-collections">0.00</span></div>
+<div class="card sx-tile sx-tone-info"><span class="sx-tile-label">Cash sales</span><span class="sx-tile-value profit-val" id="rep-analytics-cash-sales">0.00</span></div>
+<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Credit sales</span><span class="sx-tile-value cost-val" id="rep-analytics-credit-sales">0.00</span></div>
 </div>
 </div>
 </div>
-<div id="rep-customers-card" class="section liquid-card">
+<div id="rep-customers-card" class="card">
 <div class="section-header u-4053333">
 <h3 class="u-3b741c2">Customer List</h3>
 <input type="text" id="rep-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
@@ -1781,7 +1781,7 @@ oninput="renderRepCustomerTable()">
 <button class="toggle-opt active" onclick="setProductionView('store', event)">Store Entry</button>
 </div>
 </header>
-<div id="production-entry-section" class="section liquid-card">
+<div id="production-entry-section" class="card">
 <h3 class="u-text-accent" >New Entry</h3>
 <div id="unitsAvailableIndicator" class="production-unit-info">
 <span>Formula Units Available:</span>
@@ -1837,7 +1837,7 @@ Units of factory mixture consumed
 <span class="u-danger-bold" id="dynamic-cost-per-kg" >0.00/kg</span>
 </div>
 </div>
-<div class="result-box st-background__2cf90b" id="prod-profit-block">
+<div class="card result-box st-background__2cf90b" id="prod-profit-block">
 <div class="u-787e284 d-flex">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Dynamic Cost Price:</span>
 <span class="u-danger-bold" id="factory-cost-price" >0.00/kg</span>
@@ -1856,7 +1856,7 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-production" onclick="(async () => { await recordEntry() })()">Save Production</button></div>
 </div>
-<div id="combinedOverview" class="section liquid-card u-11b271b">
+<div id="combinedOverview" class="card u-11b271b">
 <h3 class="shimmer-text u-38c3ebd">All Stores Overview</h3>
 <div class="all-stores-toggle u-29b7980">
 <div class="toggle-group">
@@ -1870,7 +1870,7 @@ Insufficient formula units available! Please reduce formula units used.
 <div class="overview-report-grid" id="all-stores-grid">
 </div>
 </div>
-<div id="combinedChart" class="section liquid-card chart-card u-11b271b">
+<div id="combinedChart" class="card chart-card u-11b271b">
 <div class="store-comparison-toggle">
 <label class="u-d98bf71 d-block">Compare Stores By:</label>
 <div class="toggle-group u-mt-8">
@@ -1881,12 +1881,12 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 </div>
 <div class="chart-container u-4bb9003">
-<div class="chart-box">
+<div class="card chart-box">
 <div id="storeComparisonChart" class="sc-host"></div>
 </div>
 </div>
 </div>
-<div id="prod-analytics-section" class="section liquid-card chart-card">
+<div id="prod-analytics-section" class="card chart-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Analytics</h3>
 <div class="toggle-group">
@@ -1897,10 +1897,10 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 </div>
 <div class="chart-container">
-<div class="chart-box">
+<div class="card chart-box">
 <div id="mfgBarChart" class="sc-host"></div>
 </div>
-<div class="chart-box">
+<div class="card chart-box">
 <div id="mfgPieChart" class="sc-host"></div>
 </div>
 </div>
@@ -1914,7 +1914,7 @@ Insufficient formula units available! Please reduce formula units used.
 <header class="u-497acf1 d-flex">
 <h1 class="shimmer-text u-heading-bold">Sales</h1>
 </header>
-<div class="section liquid-card">
+<div class="card">
 <div class="u-9085986 d-flex">
 <h3 class="u-text-accent u-2a0ca83">New Sale</h3>
 <div class="u-9062975 d-flex">
@@ -2001,22 +2001,22 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 <input type="hidden" id="payment-type-value" value="CREDIT">
 </div>
-<div class="result-box" id="sale-result-cost">
+<div class="card result-box" id="sale-result-cost">
 Total Cost: <span id="cust-total-cost">0.00</span>
 </div>
-<div class="result-box" id="sale-result-value">
+<div class="card result-box" id="sale-result-value">
 Total Value: <span id="cust-total-value">0.00</span>
 </div>
-<div class="result-box" id="sale-result-profit">
+<div class="card result-box" id="sale-result-profit">
 Profit: <span id="cust-profit">0.00</span>
 </div>
 </div>
-<div class="result-box d-none" id="cust-coll-result">
+<div class="card result-box d-none" id="cust-coll-result">
 <span id="cust-coll-result-label">Balance After Collection:</span> <span id="cust-coll-balance">—</span>
 </div>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction" onclick="(async () => { await saveCustomerTransaction() })()">Save Transaction</button></div>
 </div>
-<div class="section liquid-card" id="customers-card">
+<div class="card" id="customers-card">
 <div class="section-header u-59e2099">
 <h3 class="u-3b741c2">CUSTOMERS</h3>
 <input type="text" id="customer-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
@@ -2032,7 +2032,7 @@ oninput="filterCustomers()">
 </div>
 
 </div>
-<div class="section liquid-card chart-card">
+<div class="card chart-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Analytics</h3>
 <div class="toggle-group">
@@ -2043,10 +2043,10 @@ oninput="filterCustomers()">
 </div>
 </div>
 <div class="chart-container">
-<div class="chart-box">
+<div class="card chart-box">
 <div id="custSalesChart" class="sc-host"></div>
 </div>
-<div class="chart-box">
+<div class="card chart-box">
 <div id="custPaymentChart" class="sc-host"></div>
 </div>
 </div>
@@ -2061,15 +2061,15 @@ oninput="filterCustomers()">
 <div class="toggle-opt" id="ss-all-btn" onclick="setSalesSummaryMode('all')">All Time</div>
 </div>
 </div>
-<div class="sx-card sx-card--accent" id="sales-summary-card">
+<div class="card sx-card sx-card--accent" id="sales-summary-card">
 <div class="sx-card-head"><h4 class="sx-card-title" id="sales-summary-title">Daily Sales</h4><span class="sx-chip sx-tone-good d-none" id="cust-active-margin"></span></div>
 <div class="sx-hero sx-tone-good"><span class="sx-hero-label">Total value</span><div class="sx-hero-value rev-val" id="cust-active-value">0.00</div></div>
 <div id="sales-split"></div>
 <div class="sx-grid sx-cols-2">
-<div class="sx-tile sx-tone-info"><span class="sx-tile-label">Quantity</span><span class="sx-tile-value qty-val" id="cust-active-qty">0.00 kg</span></div>
-<div class="sx-tile sx-tone-good"><span class="sx-tile-label">Net profit</span><span class="sx-tile-value profit-val" id="cust-active-profit">0.00</span></div>
-<div class="sx-tile sx-tone-good"><span class="sx-tile-label">Cash (incl. received)</span><span class="sx-tile-value" id="cust-active-cash">0.00</span></div>
-<div class="sx-tile sx-tone-warn"><span class="sx-tile-label">Pending credits</span><span class="sx-tile-value" id="cust-active-credit">0.00</span></div>
+<div class="card sx-tile sx-tone-info"><span class="sx-tile-label">Quantity</span><span class="sx-tile-value qty-val" id="cust-active-qty">0.00 kg</span></div>
+<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Net profit</span><span class="sx-tile-value profit-val" id="cust-active-profit">0.00</span></div>
+<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Cash (incl. received)</span><span class="sx-tile-value" id="cust-active-cash">0.00</span></div>
+<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Pending credits</span><span class="sx-tile-value" id="cust-active-credit">0.00</span></div>
 </div>
 </div>
 <div class="u-03ee4e9 d-flex">
@@ -2081,7 +2081,7 @@ oninput="filterCustomers()">
 <header class="u-497acf1 d-flex">
 <h1 class="shimmer-text u-heading-bold">Calculator</h1>
 </header>
-<div class="section liquid-card chart-card">
+<div class="card chart-card">
 <div class="grid-inputs u-de2de36">
 <div class="field u-33f2a66">
 <label>Sales Representative</label>
@@ -2142,11 +2142,11 @@ oninput="filterCustomers()">
 <div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" id="receivedCash" oninput="calculateSales()"></div>
 </div>
-<div class="result-box">Expected Cash: <span id="totalExpectedCash">0.00</span></div>
-<div class="result-box" id="discrepancyBox">Status: <span id="discrepancyStatus">OK</span></div>
-<div class="result-box">Gross Commission Earned: <span id="grossCommissionEarned">0.00</span></div>
-<div class="result-box">Commission Paid: <span id="commissionPaidDisplay">0.00</span></div>
-<div class="result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
+<div class="card result-box">Expected Cash: <span id="totalExpectedCash">0.00</span></div>
+<div class="card result-box" id="discrepancyBox">Status: <span id="discrepancyStatus">OK</span></div>
+<div class="card result-box">Gross Commission Earned: <span id="grossCommissionEarned">0.00</span></div>
+<div class="card result-box">Commission Paid: <span id="commissionPaidDisplay">0.00</span></div>
+<div class="card result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
 <button class="btn btn-main u-mt-8" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
 </div>
 <div id="combinedSection" class="hidden">
@@ -2172,11 +2172,11 @@ oninput="filterCustomers()">
 </div>
 </div>
 <div class="chart-container">
-<div class="chart-box">
+<div class="card chart-box">
 <p class="u-72cf481">COMPETITION</p>
 <div id="performanceChart" class="sc-host"></div>
 </div>
-<div class="chart-box">
+<div class="card chart-box">
 <p class="u-72cf481">MARKET COMPOSITION</p>
 <div id="compositionChart" class="sc-host"></div>
 </div>
@@ -2188,7 +2188,7 @@ oninput="filterCustomers()">
 </div>
 </div>
 <div id="individualChartSection" class="hidden">
-<div class="section liquid-card chart-card">
+<div class="card chart-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Performance Analytics for <span id="selectedSellerName">...</span></h3>
 <div class="toggle-group">
@@ -2213,7 +2213,7 @@ oninput="filterCustomers()">
 </div>
 </div>
 <div class="sales-rep-chart-container">
-<div class="sales-rep-chart-box">
+<div class="card sales-rep-chart-box">
 <div id="indPerformanceChart" class="sc-host"></div>
 </div>
 </div>
@@ -2246,13 +2246,13 @@ oninput="filterCustomers()">
 </div>
 </div>
 </div>
-<div class="debt-panel sx-card">
+<div class="card debt-panel sx-card">
 <div class="sx-card-head"><h4 class="sx-card-title"><span id="debtSellerName">...</span> · Market debt tracker</h4></div>
 <div class="sx-hero sx-tone-bad"><span class="sx-hero-label">Current market debt</span><div class="sx-hero-value" id="ltBalance">0.00</div></div>
 <div id="ltRecovery"></div>
 <div class="sx-grid sx-cols-2">
-<div class="sx-tile sx-tone-warn"><span class="sx-tile-label">Total credit issued</span><span class="sx-tile-value" id="ltCredit">0.00</span></div>
-<div class="sx-tile sx-tone-good"><span class="sx-tile-label">Cash recovered</span><span class="sx-tile-value" id="ltCollected">0.00</span></div>
+<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Total credit issued</span><span class="sx-tile-value" id="ltCredit">0.00</span></div>
+<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Cash recovered</span><span class="sx-tile-value" id="ltCollected">0.00</span></div>
 </div>
 </div>
 <div class="u-03ee4e9 d-flex">
@@ -2264,7 +2264,7 @@ oninput="filterCustomers()">
 <header id="factory-tab-header" class="u-cfe00e0 d-flex">
 <h1 class="shimmer-text u-heading-bold">Factory</h1>
 </header>
-<div id="factory-entry-section" class="section">
+<div id="factory-entry-section" class="card">
 <div class="section-header">
 <h3 class="u-text-accent" >New Production Entry</h3>
 <div class="u-8ae412c d-flex">
@@ -2292,7 +2292,7 @@ Select a store...
 </div>
 <button class="btn btn-main u-mt-8" id="btn-save-factory-production" onclick="(async () => { await saveFactoryProductionEntry() })()">Save Factory Production</button>
 </div>
-<div class="section liquid-card">
+<div class="card">
 <div class="section-header">
 <h3 class="u-heading-main" >Units Available <span class="update-indicator" id="unitsUpdateIndicator"></span></h3>
 <div id="factory-avail-field">
@@ -2357,7 +2357,7 @@ Select a store...
 </div>
 </div>
 </div>
-<div class="section liquid-card">
+<div class="card">
 <div class="section-header">
 <h3 class="u-heading-main" >Raw Material Inventory</h3>
 </div>
@@ -2372,7 +2372,7 @@ Select a store...
 </div>
 
 </div>
-<div class="section liquid-card">
+<div class="card">
 <div class="section-header">
 <h3 class="u-heading-main" >Performance Summary</h3>
 <div class="toggle-group">
@@ -2388,25 +2388,25 @@ Select a store...
 <hr class="sx-divider">
 <section class="sx-section"><header class="sx-section-head"><h4>Units</h4></header>
 <div class="sx-grid sx-cols-3">
-<div class="sx-tile sx-tone-good"><span class="sx-tile-label">Available</span><span class="sx-tile-value" id="factorySumUnits">0</span></div>
-<div class="sx-tile sx-tone-warn"><span class="sx-tile-label">Used</span><span class="sx-tile-value" id="factorySumUsedUnits">0</span></div>
-<div class="sx-tile sx-tone-bad"><span class="sx-tile-label">Cost / day</span><span class="sx-tile-value" id="factorySumCostPerDay">0</span><span class="sx-tile-sub">average extra</span></div>
+<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Available</span><span class="sx-tile-value" id="factorySumUnits">0</span></div>
+<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Used</span><span class="sx-tile-value" id="factorySumUsedUnits">0</span></div>
+<div class="card sx-tile sx-tone-bad"><span class="sx-tile-label">Cost / day</span><span class="sx-tile-value" id="factorySumCostPerDay">0</span><span class="sx-tile-sub">average extra</span></div>
 </div></section>
 <section class="sx-section"><header class="sx-section-head"><h4>Output</h4></header>
 <div class="sx-grid sx-cols-2">
-<div class="sx-tile sx-tone-good"><span class="sx-tile-label">Quantity</span><span class="sx-tile-value" id="factorySumOutput">0 kg</span></div>
-<div class="sx-tile sx-tone-info"><span class="sx-tile-label">Raw used</span><span class="sx-tile-value" id="factorySumRawUsed">0 kg</span></div>
+<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Quantity</span><span class="sx-tile-value" id="factorySumOutput">0 kg</span></div>
+<div class="card sx-tile sx-tone-info"><span class="sx-tile-label">Raw used</span><span class="sx-tile-value" id="factorySumRawUsed">0 kg</span></div>
 </div>
 <div id="factorySumRawBreakdown"></div></section>
 <section class="sx-section"><header class="sx-section-head"><h4>Cost</h4></header>
 <div class="sx-grid sx-cols-3">
-<div class="sx-tile sx-tone-bad"><span class="sx-tile-label">Per unit</span><span class="sx-tile-value" id="factorySumUnitCost">0</span></div>
-<div class="sx-tile sx-tone-warn"><span class="sx-tile-label">Total</span><span class="sx-tile-value" id="factorySumTotalCost">0</span></div>
-<div class="sx-tile sx-tone-bad"><span class="sx-tile-label">Materials</span><span class="sx-tile-value" id="factorySumMatVal">0</span></div>
+<div class="card sx-tile sx-tone-bad"><span class="sx-tile-label">Per unit</span><span class="sx-tile-value" id="factorySumUnitCost">0</span></div>
+<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Total</span><span class="sx-tile-value" id="factorySumTotalCost">0</span></div>
+<div class="card sx-tile sx-tone-bad"><span class="sx-tile-label">Materials</span><span class="sx-tile-value" id="factorySumMatVal">0</span></div>
 </div></section>
 </div>
 </div>
-<div class="section liquid-card">
+<div class="card">
 <div class="section-header">
 <h3 class="u-heading-main" >Recent Production Activity</h3>
 </div>
@@ -2418,7 +2418,7 @@ Select a store...
 <header class="u-497acf1 d-flex">
 <h1 class="shimmer-text u-heading-bold">Payments</h1>
 </header>
-<div class="section liquid-card">
+<div class="card">
 <div class="section-header u-row-between" >
 <div class="u-9efe017 d-flex">
 <h3 class="u-heading-main u-2a0ca83">Transaction Manager</h3>
@@ -2497,7 +2497,7 @@ Save Transaction
 </div>
 </div>
 </div>
-<div class="section liquid-card net-cash-dashboard">
+<div class="card net-cash-dashboard">
 <h3 class="u-6c6d4a4">ECONOMIC HEALTH DASHBOARD</h3>
 <div class="net-cash-value" id="netCashValue">0.00</div>
 <div class="formula-item u-e545590 st-background__44812c">
@@ -2609,7 +2609,7 @@ Save Transaction
 </div>
 </div>
 </div>
-<div class="section liquid-card">
+<div class="card">
 <div class="section-header">
 <h3 class="u-heading-main" >CASH IN HAND TRACKER</h3>
 <div class="toggle-group">
@@ -2621,7 +2621,7 @@ Save Transaction
 </div>
 </div>
 <div class="report-grid" class="report-grid-auto">
-<div class="card highlight-card liquid-card">
+<div class="card card-rows highlight-card">
 <h4>Net Cash Flow</h4>
 <p><span>Production Value:</span> <span class="rev-val" id="cash-prod-value">Rs 0</span></p>
 <p><span>Sales Tab Cash:</span> <span class="profit-val" id="cash-sales-cash">Rs 0</span></p>
@@ -2632,7 +2632,7 @@ Save Transaction
 <hr class="u-09601dc">
 <p><span>NET CASH:</span> <span class="profit-val u-8ed6849" id="cash-net-total">Rs 0</span></p>
 </div>
-<div class="card liquid-card st-background__f37fd9 st-border-bottom__a8412f">
+<div class="card card-rows st-background__f37fd9 st-border-bottom__a8412f">
 <h4 class="u-cab13eb">TOTAL OUTSTANDING CREDITS</h4>
 <p><span>Sales Tab Credits:</span> <span class="qty-val" id="credit-sales-tab">Rs 0</span></p>
 <p><span>Calculator Credits:</span> <span class="qty-val" id="credit-calculator">Rs 0</span></p>
@@ -2644,7 +2644,7 @@ Save Transaction
 </div>
 </div>
 </div>
-<div id="payments-unified-section" class="section liquid-card u-4c0544d">
+<div id="payments-unified-section" class="card u-4c0544d">
 <div class="u-467306a d-flex">
 <h4 class="u-a75ad3e">Unified Records</h4>
 <input type="text" id="unified-search" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
@@ -2854,7 +2854,7 @@ async function renderStoreList() {
     const isUsed = usedKeys.has(s.key);
     const isBuiltin = typeof window.isBuiltinStoreKey === 'function' ? window.isBuiltinStoreKey(s.key) : false;
     return `
-    <div class="settings-list-item u-5c12a4f">
+    <div class="card settings-list-item u-5c12a4f">
       <div class="u-2757ede d-flex">
         <div class="u-c560d14 d-flex st-background__fbe8aa st-border-bottom__710d95">
           ${(s.name || '?').slice(0,2)}

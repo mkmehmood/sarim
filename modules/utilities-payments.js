@@ -165,7 +165,7 @@ if (!isHistory) {
 const _m = sxMargin(data.profit, data.revenue);
 const _discTone = Math.abs(discrepancy) < 0.01 ? 'good' : (discrepancy < 0 ? 'bad' : 'warn');
 const _discLabel = Math.abs(discrepancy) < 0.01 ? 'Perfect match' : (discrepancy < 0 ? `Short ${fmtAmt(Math.abs(discrepancy))}` : `Over ${fmtAmt(discrepancy)}`);
-return `<div class="sx-card ${isHighlight ? 'sx-card--accent' : ''}"${dateAttr}>
+return `<div class="card sx-card ${isHighlight ? 'sx-card--accent' : ''}"${dateAttr}>
 <div class="sx-card-head"><h4 class="sx-card-title">${esc(title)}${mergedBadge}</h4>${badge}</div>
 ${sxHero('Revenue', fmtAmt(safeValue(data.revenue)), { chip: _m == null ? '' : `${_m}% margin`, chipTone: (_m || 0) >= 0 ? 'good' : 'bad', sub: `Profit ${fmtAmt(safeValue(data.profit))}` })}
 ${sxSplit([{ label: 'Cash', value: safeValue(data.cash), tone: 'good' }, { label: 'Credit', value: safeValue(data.cred), tone: 'warn' }], (v) => `${fmtNum(v)} kg`)}
@@ -193,7 +193,7 @@ ${smExpensesHtml(sortedExpenseEntries(data.fieldExpItems), { amt: fmtAmt, safe: 
 ${smExpensesHtml(sortedExpenseEntries(data.commissionItems), { amt: fmtAmt, safe: safeValue }, 'Commission breakdown')}
 </div>`;
 }
-let html = `<div class="card liquid-card ${highlightClass}"${dateAttr}>${badge}<h4>${esc(title)}${mergedBadge}</h4>
+let html = `<div class="card card-rows ${highlightClass}"${dateAttr}>${badge}<h4>${esc(title)}${mergedBadge}</h4>
 <p><span>Total Sold:</span> <span class="qty-val">${fmtNum(safeValue(data.sold))}</span></p>
 <p><span>Returned:</span> <span class="qty-val">${fmtNum(safeValue(data.ret))}</span></p>
 ${data.returnRep && safeValue(data.ret) > 0 ? `<p><span>Transferred to:</span> <span class="qty-val">${esc(data.returnRep)}</span></p>` : ''}
@@ -3547,7 +3547,7 @@ return;
 const _expFrag = document.createDocumentFragment();
 relatedExpenses.forEach(exp => {
 const item = document.createElement('div');
-item.className = 'cust-history-item';
+item.className = 'card cust-history-item';
 const _expPhotoBadgeId = 'ph-badge-exp-' + String(exp.id).replace(/[^a-z0-9]/gi, '');
 item.innerHTML = `
 <div class="cust-history-info">
@@ -5537,13 +5537,13 @@ const factoryTab = document.getElementById('tab-factory');
 if (factoryTab) { factoryTab.classList.remove('hidden'); window.setDisplay(factoryTab, ''); }
 const factorySettingsBtn = document.getElementById('factory-settings-btn');
 if (factorySettingsBtn) window.setDisplay(factorySettingsBtn, 'none');
-document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => {
+document.querySelectorAll('#tab-factory > .card').forEach(sec => {
 window.setDisplay(sec, 'none');
 });
 const entrySection = document.getElementById('factory-entry-section');
 if (entrySection) {
 window.setDisplay(entrySection, '');
-entrySection.classList.add('liquid-card');
+entrySection.classList.add('card');
 const costDisplay = document.getElementById('factoryTotalProductionCostDisplay');
 if (costDisplay) {
 const fieldDiv = costDisplay.closest('.field');
@@ -5578,7 +5578,7 @@ const el = document.getElementById(id); if (el) window.setDisplay(el, 'none');
 });
 const dynCostEl = document.getElementById('dynamic-cost-display');
 if (dynCostEl) window.setDisplay(dynCostEl, 'none');
-document.querySelectorAll('#tab-prod .section.liquid-card').forEach(sec => {
+document.querySelectorAll('#tab-prod > .card').forEach(sec => {
 if (sec.id !== 'production-entry-section') window.setDisplay(sec, 'none');
 });
 const ui = document.getElementById('unitsAvailableIndicator');
@@ -5589,11 +5589,11 @@ if (iuw) window.setDisplay(iuw, '');
 if (assignedTabs.includes('factory')) {
 const fsBtn = document.getElementById('factory-settings-btn');
 if (fsBtn) window.setDisplay(fsBtn, 'none');
-document.querySelectorAll('#tab-factory .section.liquid-card').forEach(sec => window.setDisplay(sec, 'none'));
+document.querySelectorAll('#tab-factory > .card').forEach(sec => window.setDisplay(sec, 'none'));
 const entry = document.getElementById('factory-entry-section');
 if (entry) {
 window.setDisplay(entry, '');
-entry.classList.add('liquid-card');
+entry.classList.add('card');
 const cd = document.getElementById('factoryTotalProductionCostDisplay');
 if (cd) { const f = cd.closest('.field'); if (f) window.setDisplay(f, 'none'); }
 const fd = document.getElementById('factoryFormulaDisplay');
@@ -5604,7 +5604,7 @@ if (assignedTabs.includes('sales')) {
 const sh = document.querySelector('#tab-sales header');
 if (sh) sh.querySelectorAll('button, .btn-theme').forEach(b => window.setDisplay(b, 'none'));
 let si = 0;
-document.querySelectorAll('#tab-sales .section.liquid-card').forEach(sec => {
+document.querySelectorAll('#tab-sales > .card').forEach(sec => {
 if (si === 0) { si++; return; }
 window.setDisplay(sec, 'none'); si++;
 });
@@ -5622,7 +5622,7 @@ if (assignedTabs.includes('payments')) {
 const eb = document.querySelector('#tab-payments header .btn-theme');
 if (eb) window.setDisplay(eb, 'none');
 let pi = 0;
-document.querySelectorAll('#tab-payments .section.liquid-card').forEach(sec => {
+document.querySelectorAll('#tab-payments > .card').forEach(sec => {
 if (pi === 0) { pi++; return; }
 window.setDisplay(sec, 'none'); pi++;
 });
@@ -7747,7 +7747,7 @@ return;
 const fragment = document.createDocumentFragment();
 transfers.forEach(t => {
 const item = document.createElement('div');
-item.className = 'cust-history-item';
+item.className = 'card cust-history-item';
 item.classList.add('flex-col');
 window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 const safeId = String(t.id).replace(/'/g, "\\'");

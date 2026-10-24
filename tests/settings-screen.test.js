@@ -93,7 +93,7 @@ describe('prepareSettingsScreen role gating', () => {
     const cards = g.map((btns) => { const set = new Set(); return { btns, classList: { toggle: (c, on) => { if (on) set.add(c); else set.delete(c); }, contains: (c) => set.has(c) }, querySelectorAll: () => btns }; });
     const all = cards.flatMap((c) => c.btns);
     globalThis.window = { appMode: mode, syncBiometricButton() { this.synced = true; } };
-    globalThis.document = { getElementById: () => ({ querySelectorAll: (sel) => (sel === '.liquid-card' ? cards : all) }) };
+    globalThis.document = { getElementById: () => ({ querySelectorAll: (sel) => (sel === '.card' ? cards : all) }) };
     const { prepareSettingsScreen } = await import('../modules/settings-screen.js');
     prepareSettingsScreen();
     return { all, cards, win: globalThis.window };
