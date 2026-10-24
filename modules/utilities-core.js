@@ -79,6 +79,13 @@ const themeToggle = document.getElementById('themeToggle');
 const currentTheme = html.getAttribute('data-theme') || 'dark';
 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 html.setAttribute('data-theme', newTheme);
+html.classList.add('theme-repaint');
+void html.offsetHeight;
+const themeBtn = document.getElementById('sidebar-btn-theme');
+if (themeBtn && typeof themeBtn.blur === 'function') themeBtn.blur();
+const endRepaint = () => html.classList.remove('theme-repaint');
+if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(endRepaint));
+else setTimeout(endRepaint, 50);
 if (newTheme === 'dark') {
 if (themeToggle) { themeToggle.innerHTML = ''; themeToggle.title = "Switch to Light Mode"; }
 await sqliteStore.set('theme', 'dark');
