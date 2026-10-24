@@ -88,14 +88,14 @@
     var prevBtn = document.createElement('button');
     prevBtn.type = 'button';
     prevBtn.className = 'cdp-nav';
-    prevBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M7 1.5L3 5L7 8.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    prevBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 10 10" fill="none"><path d="M7 1.5L3 5L7 8.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var title = document.createElement('button');
     title.type = 'button';
     title.className = 'cdp-title';
     var nextBtn = document.createElement('button');
     nextBtn.type = 'button';
     nextBtn.className = 'cdp-nav';
-    nextBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 1.5L7 5L3 8.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    nextBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 10 10" fill="none"><path d="M3 1.5L7 5L3 8.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     header.appendChild(prevBtn);
     header.appendChild(title);
     header.appendChild(nextBtn);
