@@ -658,10 +658,6 @@ backdrop-filter: var(--backdrop-blur);
 -webkit-backdrop-filter: var(--backdrop-blur);
 position: relative;
 overflow: hidden;
-transform: translateZ(0);
--webkit-transform: translateZ(0);
-backface-visibility: hidden;
--webkit-backface-visibility: hidden;
 }
 .liquid-card::before {
 display: none;
@@ -6271,9 +6267,8 @@ button.dl-row-line { cursor: pointer; }
 @media (max-width: 480px) {
   .dlg-actions .dlg-btn--ghost:only-child { flex: 1 1 auto; }
 }
-html.theme-repaint .liquid-card,
-html.theme-repaint .chart-box,
-html.theme-repaint .sales-rep-chart-box {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition-property: none;
 }
