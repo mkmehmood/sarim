@@ -94,7 +94,7 @@ export function applyCmFilters(kind) {
 
 window.setCmFilter = (kind, k) => {
   st(kind).filter = k;
-  document.querySelectorAll(`#${CFG[kind].filters} .cm-chip`).forEach((c) => c.classList.toggle('is-active', c.dataset.f === k));
+  document.querySelectorAll(`#${CFG[kind].filters} .toggle-opt`).forEach((c) => c.classList.toggle('active', c.dataset.f === k));
   applyCmFilters(kind);
 };
 window.toggleCmMonth = (btn) => {
@@ -212,12 +212,12 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
   list.innerHTML = html;
   if (filters && !comfortable) {
     const FL = Array.isArray(c.filterChips) ? c.filterChips : [['all', 'All'], ['credit', 'Credit'], ['cash', 'Cash'], ['pay', 'Payments'], ['open', 'Unpaid']];
-    filters.innerHTML = FL.map(([k, l]) => `<button type="button" class="cm-chip${state.filter === k ? ' is-active' : ''}" data-f="${k}" onclick="setCmFilter('${kind}','${k}')">${l}</button>`).join('');
+    filters.innerHTML = FL.map(([k, l]) => `<button type="button" class="toggle-opt${state.filter === k ? ' active' : ''}" data-f="${k}" onclick="setCmFilter('${kind}','${k}')">${l}</button>`).join('');
   }
   if (jump) {
     const show = many && months.length >= 3;
     jump.classList.toggle('d-none', !show);
-    jump.innerHTML = show ? months.map((M) => { const d = new Date(M.key + '-01T00:00:00'); return `<button type="button" class="cm-chip" onclick="jumpCmMonth('cm-m-${kind}-${esc(M.key)}')">${isNaN(d.getTime()) ? esc(M.key) : d.toLocaleDateString('en-US', { month: 'short' })} ${M.c}</button>`; }).join('') : '';
+    jump.innerHTML = show ? months.map((M) => { const d = new Date(M.key + '-01T00:00:00'); return `<button type="button" class="toggle-opt" onclick="jumpCmMonth('cm-m-${kind}-${esc(M.key)}')">${isNaN(d.getTime()) ? esc(M.key) : d.toLocaleDateString('en-US', { month: 'short' })} ${M.c}</button>`; }).join('') : '';
   }
   applyCmFilters(kind);
 }

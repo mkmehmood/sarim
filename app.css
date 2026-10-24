@@ -5494,8 +5494,7 @@ button.dl-row-line { cursor: pointer; }
 .cm-meter-label { margin-top: 5px; font-size: 0.7rem; color: var(--text-muted); }
 .cm-filters { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
 .cm-filters::-webkit-scrollbar { display: none; }
-.cm-chip { flex: none; height: 30px; padding: 0 13px; border-radius: 99px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted); font-size: 0.74rem; font-weight: 600; cursor: pointer; }
-.cm-chip.is-active { background: var(--accent-dim); border-color: var(--highlight-border); color: var(--accent); }
+.cm-filters .toggle-opt { flex: none; }
 .cm-month-head { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 1fr auto 14px; gap: 0 8px; align-items: center; width: 100%; margin-top: 6px; padding: 10px 4px; text-align: left; color: var(--text-main); background: var(--glass-frosted); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 0; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
 .cm-month-name { font-weight: 700; font-size: 0.9rem; }
 .cm-month-count { font-size: 0.72rem; color: var(--text-muted); }
@@ -5686,11 +5685,6 @@ button.dl-row-line { cursor: pointer; }
 .rl-empty-hint { margin-top: 4px; font-size: 0.76rem; color: var(--text-muted); }
 .rl-sortbar { align-items: center; gap: 8px; padding: 0 0 8px; flex-wrap: wrap; }
 .rl-sort-label { font-size: 0.74rem; color: var(--text-muted); margin-right: 2px; }
-.rl-sort-btn:not(._) {
-  font: inherit; font-size: 0.74rem; font-weight: 700; padding: 6px 12px; cursor: pointer;
-  color: var(--text-main); background: var(--soft-bg); border: 1px solid var(--glass-border-strong); border-radius: var(--radius-full);
-}
-.rl-sort-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .rl-totals { display: flex; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--glass-border-strong); }
 .rl-stat { flex: 1 1 0; min-width: 96px; display: flex; flex-direction: column; gap: 2px; padding: 12px 6px 2px; }
 .rl-stat + .rl-stat { padding-left: 14px; border-left: 1px solid var(--glass-border); }
