@@ -219,7 +219,7 @@ if (isHistory) {
 html += `
 <div class="${displayStatusClass} u-0948237">${displayStatusText}</div>`;
 if (!isMerged) {
-html += `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteSalesEntry('${id}')">Delete</button>`;
+html += `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${id}')">Delete</button>`;
 }
 }
 html += `</div>`;
@@ -269,7 +269,7 @@ sections: [
 ] }
 ],
 body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt) + hcExpensesHtml(sortedExpenseEntries(data.commissionItems), fmtAmt, 'Commission breakdown'),
-actions: isMerged ? '' : `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`
+actions: isMerged ? '' : `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`
 }, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate } });
 }
 
@@ -1730,7 +1730,7 @@ const isSettled = transaction.isSettled === true;
 const mergedBadge = isMerged ? _mergedBadgeHtml(transaction, {inline:true}) : '';
 const settledBadge = isSettled ? `<span class="settled-badge"> Settled</span>` : '';
 const creatorBadge = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(transaction) : '';
-const deleteButton = isMerged ? '' : actionRowHtml('payment', transaction.id, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransaction('${esc(transaction.id)}') })()">Delete</button>`);
+const deleteButton = isMerged ? '' : actionRowHtml('payment', transaction.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransaction('${esc(transaction.id)}') })()">Delete</button>`);
 const isIn = transaction.type === 'IN';
 const card = hcCard({
 tone: isIn ? 'good' : 'bad', avatar: entityName, title: entityName, titleClass: 'customer-name',
@@ -6652,7 +6652,7 @@ list.innerHTML = salesRepsList.map((rep, i) => `
 <span class="u-76ebb48 has-overflow u-0da05dd">${esc(rep)}</span>
 <span class="st-font-size__8303b5 st-font-weight__e3ec02 u-3d59ac9 u-fa74faf dc-color u-b62856e" style="--d-color: ${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}">${i === 0 ? ' Default' : `#${i + 1}`}</span>
 </div>
-<button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}"></button>
+<button class="btn btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}"></button>
 </div>
 `).join('');
 }
@@ -6696,7 +6696,7 @@ return `
 </div>
 <div class="u-91a590f d-flex">${tabBadges || '<span class="st-font-size__c3e9d8 st-color__ce14cb">No tabs assigned</span>'}</div>
 </div>
-<button class="btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}"></button>
+<button class="btn btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}"></button>
 </div>`;
 }).join('');
 }
@@ -7771,7 +7771,7 @@ item.innerHTML = `
     </button>
   </div>
 </div>
-${actionRowHtml('paytransfer', t.transferPairId, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>`)}
+${actionRowHtml('paytransfer', t.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>`)}
 `;
 fragment.appendChild(item);
 if (t.id) {

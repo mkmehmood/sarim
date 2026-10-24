@@ -600,8 +600,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         </div>
       </div>
       <div class="u-1e68903 d-flex btn-row btn-split">
-        <button class="btn btn-neg u-d59bb54 d-none st-background__f38efd" id="store-cancel-edit-btn" onclick="resetStoreForm()">Cancel</button>
-        <button class="btn btn-noman btn-pos u-634a28b" onclick="(async()=>{await saveStoreFromForm()})()">
+        <button class="btn btn-theme u-d59bb54 d-none st-background__f38efd" id="store-cancel-edit-btn" onclick="resetStoreForm()">Cancel</button>
+        <button class="btn btn-main u-mt-8 u-634a28b" onclick="(async()=>{await saveStoreFromForm()})()">
           <span id="store-save-btn-text">Add Store</span>
         </button>
       </div>
@@ -712,7 +712,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <input type="text" id="stock-transfer-note" placeholder="e.g. Balancing stock ahead of weekend rush" maxlength="120">
       </div>
       <div id="stockTransferAvailability" class="u-48fd985"></div>
-      <button class="btn btn-noman u-16000cc" id="btn-save-stock-transfer" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
+      <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-stock-transfer" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
     </div>
     <p class="settings-group-label">Transfer History</p>
     <div id="stockTransferHistoryList"></div>
@@ -778,7 +778,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         </div>
         <input type="file" id="payment-transfer-photo-file" accept="image/*" class="d-none" onchange="handlePaymentTransferPhotoFile(event)">
       </div>
-      <button class="btn btn-noman u-16000cc" id="btn-save-payment-transfer" onclick="(async()=>{await saveEntityTransfer()})()">Transfer Payment</button>
+      <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-payment-transfer" onclick="(async()=>{await saveEntityTransfer()})()">Transfer Payment</button>
     </div>
     <p class="settings-group-label">Transfer History</p>
     <div id="paymentTransferHistoryList"></div>
@@ -796,7 +796,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
       <div class="dl-hero-head">
         <p class="settings-group-label">Cash In Hand</p>
-        <button type="button" class="btn btn-noman btn-sm btn-pdf dl-pdf-btn d-flex" id="dl-pdf-btn" title="Export to PDF" aria-label="Export Daily Ledger to PDF" onclick="(async()=>{await dailyLedgerExportPdf()})()"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+        <button type="button" class="btn btn-main u-mt-8 btn-sm btn-pdf dl-pdf-btn d-flex" id="dl-pdf-btn" title="Export to PDF" aria-label="Export Daily Ledger to PDF" onclick="(async()=>{await dailyLedgerExportPdf()})()"><svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
       </div>
       <div class="dl-hero-amt" id="dl-hero-amt">0</div>
       <div class="dl-stats dl-stats-3">
@@ -855,8 +855,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         </div>
       </div>
       <div class="btn-split">
-        <button class="btn btn-neg u-16000cc d-none dl-cancel" id="btn-cancel-daily-ledger" onclick="dailyLedgerCancelEdit()">Cancel Edit</button>
-        <button class="btn btn-noman btn-pos u-16000cc" id="btn-save-daily-ledger" onclick="(async()=>{await dailyLedgerSave()})()">Add Cash In</button>
+        <button class="btn btn-theme u-16000cc d-none dl-cancel" id="btn-cancel-daily-ledger" onclick="dailyLedgerCancelEdit()">Cancel Edit</button>
+        <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-daily-ledger" onclick="(async()=>{await dailyLedgerSave()})()">Add Cash In</button>
       </div>
     </div>
     <div id="dl-modes-block" class="d-none">
@@ -1012,8 +1012,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <input type="text" id="bm-save-name" maxlength="60" placeholder="e.g. Morning batch">
       </div>
       <div class="btn-split">
-        <button type="button" class="btn btn-theme btn-neg u-81e32d3 d-none" id="bmCancelBtn" onclick="cancelBatchMixEdit()">Cancel Edit</button>
-        <button type="button" class="btn btn-noman btn-pos u-16000cc" id="bmSaveBtn" onclick="saveBatchMix()">Save Calculation</button>
+        <button type="button" class="btn btn-theme u-81e32d3 d-none" id="bmCancelBtn" onclick="cancelBatchMixEdit()">Cancel Edit</button>
+        <button type="button" class="btn btn-main u-mt-8 u-16000cc" id="bmSaveBtn" onclick="saveBatchMix()">Save Calculation</button>
       </div>
     </div>
     <div id="bmSavedWrap" class="d-none">
@@ -1079,8 +1079,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <input type="text" id="bf-save-name" maxlength="60" placeholder="e.g. Morning batch">
       </div>
       <div class="btn-split">
-        <button type="button" class="btn btn-theme btn-neg u-81e32d3 d-none" id="bfCancelBtn" onclick="cancelBatchFixEdit()">Cancel Edit</button>
-        <button type="button" class="btn btn-noman btn-pos u-16000cc" id="bfSaveBtn" onclick="saveBatchFix()">Save Correction</button>
+        <button type="button" class="btn btn-theme u-81e32d3 d-none" id="bfCancelBtn" onclick="cancelBatchFixEdit()">Cancel Edit</button>
+        <button type="button" class="btn btn-main u-mt-8 u-16000cc" id="bfSaveBtn" onclick="saveBatchFix()">Save Correction</button>
       </div>
     </div>
     </div>
@@ -1125,8 +1125,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="factory-summary-row"><span class="factory-summary-label">Cost per kg (Sales/Calc):</span><span class="cost-val" id="fsSummaryPerKg">0</span></div>
     </div>
     <div class="btn-split">
-      <button class="btn btn-danger btn-neg u-81e32d3 d-none" id="fs-delete-btn" onclick="deleteFormulaStoreEntry()">Delete Formula</button>
-      <button class="btn btn-noman btn-pos u-16000cc" onclick="(async()=>{await saveFormulaStoreEntry()})()">Save Formula</button>
+      <button class="btn btn-danger u-81e32d3 d-none" id="fs-delete-btn" onclick="deleteFormulaStoreEntry()">Delete Formula</button>
+      <button class="btn btn-main u-mt-8 u-16000cc" onclick="(async()=>{await saveFormulaStoreEntry()})()">Save Formula</button>
     </div>
   </div>
 </div>
@@ -1204,7 +1204,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="u-3e0b028">
       <div class="u-79e0958 d-flex">
         <label class="u-540eca8">Registered Accounts</label>
-        <button class="btn-theme u-f984b84 text-xs" onclick="loadAccountsList()">&#8635; Refresh</button>
+        <button class="btn btn-theme u-f984b84 text-xs" onclick="loadAccountsList()">&#8635; Refresh</button>
       </div>
       <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
     </div>
@@ -1214,7 +1214,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-topbar">
     <h2 class="screen-title">Connected Devices</h2>
     <div id="this-device-shard-badge" class="u-f5f1c4d d-none">This: —</div>
-    <button class="btn-theme u-d5d3d1b" onclick="refreshDeviceList()" title="Refresh">
+    <button class="btn btn-theme u-d5d3d1b" onclick="refreshDeviceList()" title="Refresh">
       <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="ic-sync-arrows"><path d="M30.5 15.5A12.8 12.8 0 0 0 8.2 10" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M8 4.8V10.4H13.6" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M5.5 20.5A12.8 12.8 0 0 0 27.8 26" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M28 31.2V25.6H22.4" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g><circle cx="18" cy="18" r="3.6" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="1.2" fill="var(--accent-gold)"/></svg>
     </button>
   </div>
@@ -1235,7 +1235,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <p class="fb-head-title">Haptic Feedback Intensity</p>
           <p class="fb-head-desc">Hardware vibrator pulse strength and crisp tactile clicks</p>
         </div>
-        <button type="button" class="fb-test-btn" onclick="previewFeedback('haptics')">
+        <button type="button" class="btn btn-theme" onclick="previewFeedback('haptics')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-1.5a1.5 1.5 0 0 1 3 0V12m0-1a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1-6 6h-.5a6 6 0 0 1-5-2.7L4.6 15a1.5 1.5 0 0 1 2.3-1.9L9 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Test</span>
         </button>
@@ -1255,7 +1255,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <p class="fb-head-title">Sound Feedback Intensity</p>
           <p class="fb-head-desc">Audible acoustic key click volume (Extreme Boost clears freely &amp; loudly)</p>
         </div>
-        <button type="button" class="fb-test-btn" onclick="previewFeedback('sound')">
+        <button type="button" class="btn btn-theme" onclick="previewFeedback('sound')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
           <span>Play</span>
         </button>
@@ -1422,7 +1422,7 @@ window._showLogoutConfirmDialog = async function() {
           <label>Description (optional)</label>
           <input class="u-w-full" type="text" id="quickExpenseDescription" placeholder="e.g. Monthly rent">
         </div>
-        <button class="btn btn-noman u-quick-btn" onclick="(async()=>{await saveQuickExpenseEntry()})()">Save Expense</button>
+        <button class="btn btn-main u-mt-8 u-quick-btn" onclick="(async()=>{await saveQuickExpenseEntry()})()">Save Expense</button>
       </div>
       <div class="u-field-hint">* Adds a new expense record under "<span class="u-text-warning u-fw-600" id="quickExpenseNameLabel"></span>" for today's date.</div>
     </div>
@@ -1760,8 +1760,8 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <input type="text" id="rep-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
 placeholder="Search customers..."
 oninput="renderRepCustomerTable()">
-<button class="btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
-<button class="btn-theme u-4ae4ad1 d-inline-flex st-border-bottom__38fcbe" onclick="openRepCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+<button class="btn btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn btn-theme u-4ae4ad1 d-inline-flex st-border-bottom__38fcbe" onclick="openRepCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
 <div id="rep-customers-table-body" class="rl-list rl-scroll"><div class="rl-empty"><div class="rl-empty-title">Loading customers</div></div></div>
 <div class="rl-totals">
@@ -2022,8 +2022,8 @@ Profit: <span id="cust-profit">0.00</span>
 <input type="text" id="customer-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
 oninput="filterCustomers()">
 <span id="customer-count" class="u-62e500b">0 customers</span>
-<button class="btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
-<button class="btn-theme u-2386b90 d-inline-flex st-border-bottom__d088ee" onclick="openCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+<button class="btn btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn btn-theme u-2386b90 d-inline-flex st-border-bottom__d088ee" onclick="openCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
 <div id="customers-table-body" class="rl-list rl-scroll"><div class="rl-empty"><div class="rl-empty-title">Loading customers</div></div></div>
 <div class="rl-totals">
@@ -2147,7 +2147,7 @@ oninput="filterCustomers()">
 <div class="result-box">Gross Commission Earned: <span id="grossCommissionEarned">0.00</span></div>
 <div class="result-box">Commission Paid: <span id="commissionPaidDisplay">0.00</span></div>
 <div class="result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
-<button class="btn btn-noman" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
+<button class="btn btn-main u-mt-8" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
 </div>
 <div id="combinedSection" class="hidden">
 <div class="section-header">
@@ -2290,7 +2290,7 @@ oninput="filterCustomers()">
 <div id="factoryFormulaDisplay" class="formula-display">
 Select a store...
 </div>
-<button class="btn btn-noman" id="btn-save-factory-production" onclick="(async () => { await saveFactoryProductionEntry() })()">Save Factory Production</button>
+<button class="btn btn-main u-mt-8" id="btn-save-factory-production" onclick="(async () => { await saveFactoryProductionEntry() })()">Save Factory Production</button>
 </div>
 <div class="section liquid-card">
 <div class="section-header">
@@ -2424,7 +2424,7 @@ Select a store...
 <h3 class="u-heading-main u-2a0ca83">Transaction Manager</h3>
 <span id="expense-id-display" class="u-ae6d1d0 d-none st-background__f38efd st-border-bottom__e54b2f">ID: —</span>
 </div>
-<button class="btn-theme u-1461725" onclick="clearExpenseForm()">
+<button class="btn btn-theme u-1461725" onclick="clearExpenseForm()">
 Clear
 </button>
 </div>
@@ -2649,7 +2649,7 @@ Save Transaction
 <h4 class="u-a75ad3e">Unified Records</h4>
 <input type="text" id="unified-search" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
 oninput="renderUnifiedTable()">
-<button class="btn-theme u-f5c3969 st-border-bottom__d088ee" onclick="exportUnifiedData()" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
+<button class="btn btn-theme u-f5c3969 st-border-bottom__d088ee" onclick="exportUnifiedData()" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 </div>
 <div class="u-f86c566 d-flex">
 <div class="u-1b8b20b">

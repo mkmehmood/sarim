@@ -121,7 +121,7 @@ window.openCustomerTxnSheet = (btn) => {
   const c = CFG[kind];
   const editCall = d.editCall || `startEdit('${c.edit}','${d.safeId}')`;
   const delCall = d.delCall || `${c.del}('${d.safeId}')`;
-  const actions = (d.canDelete ? `<button type="button" class="btn btn-danger btn-neg" onclick="closeCustomerTxnSheet();${delCall}">Delete</button>` : '') + (d.canEdit ? `<button type="button" class="btn btn-noman btn-pos" onclick="closeCustomerTxnSheet();${editCall}">Edit</button>` : '');
+  const actions = (d.canDelete ? `<button type="button" class="btn btn-danger" onclick="closeCustomerTxnSheet();${delCall}">Delete</button>` : '') + (d.canEdit ? `<button type="button" class="btn btn-main u-mt-8" onclick="closeCustomerTxnSheet();${editCall}">Edit</button>` : '');
   sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="cm-sheet-title">${esc(d.title)}</div><div class="cm-sheet-amt${d.rIn ? ' is-in' : ''}">${d.rIn ? '+ ' : ''}${d.amtText}</div></div><div class="cm-sheet-body"><div class="cust-history-info">${d.info}</div>${d.kebabBtn ? `<div class="cm-sheet-more">${d.kebabBtn}</div>` : ''}${d.panelPlaceholder}</div>${d.balHtml}${actions ? `<div class="cm-sheet-actions">${actions}</div>` : ''}`;
   back.classList.add('is-open');
   sheet.classList.add('is-open');

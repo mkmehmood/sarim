@@ -1094,7 +1094,7 @@ metrics: [
 { label: 'Raw materials used', value: `${fmtNum(safeNumber(entry.rawMaterialsUsed, 0))} kg`, cls: 'qty-val' }
 ],
 body: matsBreakdownHtml,
-actions: entry.isMerged ? '' : actionRowHtml('factory', entry.id, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="deleteFactoryEntry('${entry.id}')">Delete & Restore</button>`)
+actions: entry.isMerged ? '' : actionRowHtml('factory', entry.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteFactoryEntry('${entry.id}')">Delete & Restore</button>`)
 }, { attrs: { 'data-date': entry.date } });
 _fhFrag.appendChild(div);
 }

@@ -152,7 +152,7 @@ export function replaceRecord(arr, rec) {
 const _esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export function editButtonHtml(kind, id) {
-  return `<button class="tbl-action-btn edit" onclick="startEdit('${_esc(kind)}','${_esc(id)}')">Edit</button>`;
+  return `<button class="btn btn-theme btn-sm" onclick="startEdit('${_esc(kind)}','${_esc(id)}')">Edit</button>`;
 }
 
 export function actionRowHtml(kind, id, deleteHtml) {

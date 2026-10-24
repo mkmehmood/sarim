@@ -3685,7 +3685,7 @@ let mergedBadge = '';
 if (item.isMerged) {
 mergedBadge = _mergedBadgeHtml(item, {inline:true});
 }
-const delBtn = `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`;
+const delBtn = `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`;
 const prodSub = `${esc(dateDisplay)}${mergedBadge}${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>` : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`;
 const storeChip = currentProductionView === 'combined' ? hcChip(storeLabel, 'info') : '';
 let cardOpts;
@@ -4093,8 +4093,8 @@ modal.innerHTML = `
 <input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f st-background__356c02 st-border-bottom__e54b2f">
 <div id="dec-pwd-error" class="u-19cb4ec"></div>
 <div class="u-1e68903 d-flex btn-split">
-<button id="dec-pwd-cancel" class="btn-neg u-4a0b42c st-background__356c02 st-border-bottom__e54b2f">Cancel</button>
-<button id="dec-pwd-ok" class="btn-pos u-bc38067 st-background__36d305 st-border-bottom__2eda1d">Decrypt & Restore</button>
+<button id="dec-pwd-cancel" class="btn btn-theme">Cancel</button>
+<button id="dec-pwd-ok" class="btn btn-main">Decrypt & Restore</button>
 </div>
 </div>`;
 document.body.appendChild(modal);
@@ -6239,7 +6239,7 @@ if (item.isMerged) {
 mergedBadge = _mergedBadgeHtml(item, {inline:true});
 }
 const _cardDate = item.supplyDate || item.date;
-const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="settled-badge"> Settled</div>` : actionRowHtml('sale', item.id, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`);
+const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="settled-badge"> Settled</div>` : actionRowHtml('sale', item.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`);
 const creatorHtml = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : '';
 const supplyDateText = (item.supplyDate && item.supplyDate !== item.date) ? `Supply date ${formatDisplayDate(item.supplyDate)}` : '';
 const repChips = [];
@@ -6521,7 +6521,7 @@ ${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(
 <p><span class="u-b68d496">${escapeHtml(getStoreLabel(item.store))}</span> <span class="u-d59bb54"> &rarr; </span> <span class="u-3b9712c">${escapeHtml(getStoreLabel(item.transferPeerStore))}</span></p>
 <p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
 ${item.transferNote ? `<p><span>Note:</span> <span class="st-color__5872de">${escapeHtml(item.transferNote)}</span></p>` : ''}
-${actionRowHtml('stocktransfer', item.transferPairId, `<button class="tbl-action-btn danger u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)}
+${actionRowHtml('stocktransfer', item.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)}
 `;
 fragment.appendChild(div);
 });

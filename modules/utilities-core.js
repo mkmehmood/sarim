@@ -348,8 +348,8 @@ return `<div class="dl-queue-row" data-id="${esc(entry.id)}">
 ${errText ? `<span class="dl-queue-error">${errText}</span>` : ''}
 </div>
 <div class="dl-queue-actions">
-<button class="dl-btn dl-btn-retry" onclick="OfflineQueue.retryDeadLetter('${esc(entry.id)}')">Retry</button>
-<button class="dl-btn dl-btn-dismiss" onclick="OfflineQueue.dismissDeadLetter('${esc(entry.id)}')">Dismiss</button>
+<button class="btn btn-sm btn-main" onclick="OfflineQueue.retryDeadLetter('${esc(entry.id)}')">Retry</button>
+<button class="btn btn-sm btn-theme" onclick="OfflineQueue.dismissDeadLetter('${esc(entry.id)}')">Dismiss</button>
 </div>
 </div>`;
 }).join('');
@@ -361,8 +361,8 @@ modal.innerHTML = `
 <p class="dl-queue-subtitle">These operations exhausted all ${this.maxRetries} retry attempts. Retry to re-attempt upload, or dismiss to discard.</p>
 <div class="dl-queue-list">${rows}</div>
 <div class="dl-queue-footer">
-<button class="dl-btn dl-btn-export" onclick="OfflineQueue.exportDeadLetterQueue()" title="Save failed operations as JSON">Export JSON</button>
-<button class="dl-btn dl-btn-dismiss-all" onclick="OfflineQueue.dismissAllDeadLetters()">Dismiss all</button>
+<button class="btn btn-sm btn-theme" onclick="OfflineQueue.exportDeadLetterQueue()" title="Save failed operations as JSON">Export JSON</button>
+<button class="btn btn-sm btn-danger u-w-full" onclick="OfflineQueue.dismissAllDeadLetters()">Dismiss all</button>
 </div>
 </div>`;
 modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
@@ -1989,7 +1989,7 @@ const editCall = `startEdit('${t.isTransfer ? 'paytransfer' : 'payment'}','${esc
 const delCall = t.isTransfer
   ? `(async()=>{await deletePaymentTransfer('${esc(t.transferPairId)}');const _ent=(await sqliteStore.get('entities')||[]).find(e=>String(e.id)===String(currentEntityId));if(_ent)renderEntityOverlayContent(_ent);})()`
   : `deleteEntityTransaction('${esc(t.id)}')`;
-const photoBtn = hasPhoto ? `<button type="button" class="btn btn-sm btn-noman" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')">View photo</button>` : '';
+const photoBtn = hasPhoto ? `<button type="button" class="btn btn-sm btn-main u-mt-8" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeExpenseId}')">View photo</button>` : '';
 _entries.push({
   id: t.id, dkey: t.date || 'undated', rTitle: label, rSub, rIn: !isOut, rKind: isOut ? 'out' : 'in',
   rCat: t.isTransfer ? 'transfer' : (isOut ? 'out' : 'in'),

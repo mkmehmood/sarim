@@ -315,7 +315,7 @@ async function requestStartupPermissions() {
 
 function installHaptics() {
   document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest ? e.target.closest('.btn, .tbl-action-btn') : null;
+    const t = e.target && e.target.closest ? e.target.closest('.btn') : null;
     if (t) tapFeedback();
   }, { passive: true });
 }
