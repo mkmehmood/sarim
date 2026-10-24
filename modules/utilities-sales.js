@@ -4090,7 +4090,7 @@ modal.innerHTML = `
 <h3 class="u-454fb31">Enter Password to Decrypt</h3>
 <p class="u-97b6268">This backup is encrypted with your account credentials.</p>
 <p class="u-ed7ce38">Account: <strong>${esc(currentUser.email)}</strong></p>
-<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="u-b92dd6f st-background__356c02 st-border-bottom__e54b2f">
+<input type="password" id="dec-pwd-input" placeholder="Your account password" autocomplete="current-password" class="form-ctl u-b92dd6f st-background__356c02 st-border-bottom__e54b2f">
 <div id="dec-pwd-error" class="u-19cb4ec"></div>
 <div class="u-1e68903 d-flex btn-split">
 <button id="dec-pwd-cancel" class="btn btn-theme">Cancel</button>

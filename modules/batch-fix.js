@@ -17,13 +17,13 @@ function _syncUnitUi() {
   document.querySelectorAll('#batch-fix-screen .bf-u').forEach((e) => { e.textContent = _state.unit; });
 }
 function _fieldHtml(i, oninput) {
-  return `<div class="field"><label>${esc(i.name)} (<span class="bf-u">${_state.unit}</span>)</label><input type="number" inputmode="decimal" step="any" min="0" data-id="${esc(i.id)}" oninput="${oninput}"></div>`;
+  return `<div class="field"><label>${esc(i.name)} (<span class="bf-u">${_state.unit}</span>)</label><input class="form-ctl" type="number" inputmode="decimal" step="any" min="0" data-id="${esc(i.id)}" oninput="${oninput}"></div>`;
 }
 function _renderRows() {
   const ings = _state.formula ? formulaIngredients(_state.formula) : [];
   const rows = el('bfRows');
   if (rows) {
-    rows.innerHTML = ings.map((i) => `<div class="bf-card" data-id="${esc(i.id)}"><div class="bf-card-top"><div class="bf-name">${esc(i.name)}</div><label class="bf-add"><span class="bf-add-tag">Add</span><input type="number" inputmode="decimal" step="any" min="0" data-id="${esc(i.id)}" oninput="setBatchFixAdd(this)"><span class="bf-u">${_state.unit}</span></label></div><div class="bf-meta"><span>In remaining <b data-f="present"></b></span><span>Required <b data-f="target"></b></span></div></div>`).join('');
+    rows.innerHTML = ings.map((i) => `<div class="bf-card" data-id="${esc(i.id)}"><div class="bf-card-top"><div class="bf-name">${esc(i.name)}</div><label class="bf-add"><span class="bf-add-tag">Add</span><input class="form-ctl" type="number" inputmode="decimal" step="any" min="0" data-id="${esc(i.id)}" oninput="setBatchFixAdd(this)"><span class="bf-u">${_state.unit}</span></label></div><div class="bf-meta"><span>In remaining <b data-f="present"></b></span><span>Required <b data-f="target"></b></span></div></div>`).join('');
   }
   const actual = el('bfActualRows');
   if (actual) actual.innerHTML = ings.map((i) => _fieldHtml(i, 'resetBatchFixManual()')).join('');

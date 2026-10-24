@@ -167,9 +167,9 @@ function pickCategoryDialog({ type, amount, category, scope }) {
     return '';
   };
   const start = category || defaultCategory(type, scope);
-  const scopeSelect = isOut ? '<div class="dlg-field d-none" id="dl-dlg-scope-wrap"><select id="dl-dlg-scope" class="dlg-input"><option value="BUSINESS">New category is a Business Expense</option><option value="HOME">New category is a Home / Personal Expense</option></select></div>' : '';
+  const scopeSelect = isOut ? '<div class="dlg-field d-none" id="dl-dlg-scope-wrap"><select id="dl-dlg-scope" class="form-ctl dlg-input"><option value="BUSINESS">New category is a Business Expense</option><option value="HOME">New category is a Home / Personal Expense</option></select></div>' : '';
   const search = "handleUniversalSearch('dl-dlg-new','dl-dlg-results','ledger-category')";
-  const body = `<div class="dlg-field"><input type="text" id="dl-dlg-new" class="dlg-input" value="${esc(start)}" placeholder="Search or type a category" maxlength="60" autocomplete="off" oninput="${search}" onfocus="${search}"><div id="dl-dlg-results" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div>${scopeSelect}<div class="dlg-error" id="dl-dlg-err" role="alert" aria-live="polite"></div>`;
+  const body = `<div class="dlg-field"><input type="text" id="dl-dlg-new" class="form-ctl dlg-input" value="${esc(start)}" placeholder="Search or type a category" maxlength="60" autocomplete="off" oninput="${search}" onfocus="${search}"><div id="dl-dlg-results" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div>${scopeSelect}<div class="dlg-error" id="dl-dlg-err" role="alert" aria-live="polite"></div>`;
   const guard = async (overlay) => {
     const typed = overlay.querySelector('#dl-dlg-new').value.trim();
     const err = overlay.querySelector('#dl-dlg-err');
@@ -326,7 +326,7 @@ export async function restoreLedgerEntry(record) {
 }
 const money = (n) => `${n < 0 ? '-' : ''}${fmtAmt(Math.abs(n))}`;
 function pickPeriodDialog({ from, to }) {
-  const field = (id, label, value) => `<div class="dlg-field dl-period-field"><label class="dl-period-label" for="${id}">${label}</label><input type="date" id="${id}" class="dlg-input" value="${esc(value)}"></div>`;
+  const field = (id, label, value) => `<div class="dlg-field dl-period-field"><label class="dl-period-label" for="${id}">${label}</label><input type="date" id="${id}" class="form-ctl dlg-input" value="${esc(value)}"></div>`;
   const body = `${field('dl-pdf-from', 'From', from)}${field('dl-pdf-to', 'To', to)}<div class="dlg-error" id="dl-pdf-err" role="alert" aria-live="polite"></div>`;
   const guard = async (overlay) => {
     const fromValue = overlay.querySelector('#dl-pdf-from').value;

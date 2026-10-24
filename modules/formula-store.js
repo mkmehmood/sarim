@@ -154,7 +154,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   searchWrap.classList.add('st-position__d461c9');
   const searchInput = document.createElement('input');
   searchInput.type = 'text';
-  searchInput.className = 'factory-mat-search-input';
+  searchInput.className = 'form-ctl factory-mat-search-input';
   searchInput.placeholder = 'Search material…';
   searchInput.value = currentName;
   searchInput.dataset.matId = currentId;
@@ -167,7 +167,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   dropdown.classList.add('has-overflow', 'scroll-y');
   const costInput = document.createElement('input');
   costInput.type = 'number';
-  costInput.className = 'factory-mat-cost';
+  costInput.className = 'form-ctl factory-mat-cost';
   costInput.placeholder = 'Cost';
   costInput.value = currentCost;
   costInput.readOnly = true;
@@ -238,7 +238,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   searchWrap.appendChild(dropdown);
   const qtyInput = document.createElement('input');
   qtyInput.type = 'number';
-  qtyInput.className = 'factory-mat-qty';
+  qtyInput.className = 'form-ctl factory-mat-qty';
   qtyInput.placeholder = 'Qty (kg)';
   qtyInput.value = qtyVal;
   qtyInput.addEventListener('input', notify);

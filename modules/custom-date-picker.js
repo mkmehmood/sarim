@@ -307,7 +307,7 @@
     wrap.appendChild(input);
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'cdp-btn';
+    btn.className = 'form-ctl cdp-btn';
     if (input.id) btn.id = input.id + '__cdpBtn';
     var label = document.createElement('span');
     label.className = 'cdp-btn-label';

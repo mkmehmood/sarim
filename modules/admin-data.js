@@ -511,7 +511,7 @@ _cyBody.innerHTML = `
         </div>
       </div>
       <div id="cy-pwd-field">
-        <input type="password" id="close-year-confirm-input" placeholder="Account password"
+        <input class="form-ctl" type="password" id="close-year-confirm-input" placeholder="Account password"
           autocomplete="current-password"
           oninput="validateCloseYearInput(this.value)"
           onkeydown="if(event.key==='Enter'&&!document.getElementById('close-year-confirm-btn').disabled){verifyAndExecuteCloseYear();}">

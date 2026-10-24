@@ -109,7 +109,7 @@ function openPopup(kind) {
   const cfg = KINDS[kind];
   const pre = cfg.nameId.slice(0, 2);
   const search = `handleUniversalSearch('${cfg.nameId}','${cfg.resultsId}','${cfg.source}')`;
-  const body = `<div class="fe-form"><div class="dlg-field"><input id="${cfg.nameId}" class="dlg-input" type="text" placeholder="${esc(cfg.placeholder)}" autocomplete="off" maxlength="60" oninput="${search}" onfocus="${search}"><div id="${cfg.resultsId}" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div><div class="dlg-field"><input id="${pre}-amount" class="dlg-input" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount"></div></div><div id="${pre}-list" class="fe-list">${listHtml(kind)}</div>`;
+  const body = `<div class="fe-form"><div class="dlg-field"><input id="${cfg.nameId}" class="form-ctl dlg-input" type="text" placeholder="${esc(cfg.placeholder)}" autocomplete="off" maxlength="60" oninput="${search}" onfocus="${search}"><div id="${cfg.resultsId}" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div><div class="dlg-field"><input id="${pre}-amount" class="form-ctl dlg-input" type="number" inputmode="decimal" min="0" step="any" placeholder="Amount"></div></div><div id="${pre}-list" class="fe-list">${listHtml(kind)}</div>`;
   const shown = openDialog({
     tone: 'primary',
     title: cfg.title,

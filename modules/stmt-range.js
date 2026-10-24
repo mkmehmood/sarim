@@ -34,7 +34,7 @@ export async function promptStatementRange({ title = 'Statement Range', min = ''
   const today = todayIso();
   const from = ISO.test(min) ? min : today;
   const to = ISO.test(max) ? max : today;
-  const body = `<div class="dlg-range"><label class="dlg-range-field"><span class="dlg-range-label">From</span><input type="date" class="dlg-input dlg-range-input" data-range="from" value="${esc(from)}" max="${esc(today)}"></label><label class="dlg-range-field"><span class="dlg-range-label">To</span><input type="date" class="dlg-input dlg-range-input" data-range="to" value="${esc(to)}" max="${esc(today)}"></label></div><div class="dlg-error" data-range-error role="alert"></div>`;
+  const body = `<div class="dlg-range"><label class="dlg-range-field"><span class="dlg-range-label">From</span><input type="date" class="form-ctl dlg-input dlg-range-input" data-range="from" value="${esc(from)}" max="${esc(today)}"></label><label class="dlg-range-field"><span class="dlg-range-label">To</span><input type="date" class="form-ctl dlg-input dlg-range-input" data-range="to" value="${esc(to)}" max="${esc(today)}"></label></div><div class="dlg-error" data-range-error role="alert"></div>`;
   return openDialog({
     tone: 'primary',
     title,

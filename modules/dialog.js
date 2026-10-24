@@ -303,7 +303,7 @@ export function showPasswordConfirm({ title = null, message = '', email = '', co
   const shownTitle = requireTitle(title);
   const errId = `${inputId}_err`;
   const account = email ? `<p class="dlg-account">Account: <strong>${escapeHtml(email)}</strong></p>` : '';
-  const body = `${formatMessage(message)}${account}<div class="dlg-field"><input type="password" id="${inputId}" class="dlg-input" placeholder="Your account password" autocomplete="current-password" autocapitalize="none" spellcheck="false"><button type="button" class="dlg-eye" id="${inputId}_eye" aria-label="Show password">${dialogIcons.eye}</button></div><div class="dlg-error" id="${errId}" role="alert" aria-live="polite"></div>`;
+  const body = `${formatMessage(message)}${account}<div class="dlg-field"><input type="password" id="${inputId}" class="form-ctl dlg-input" placeholder="Your account password" autocomplete="current-password" autocapitalize="none" spellcheck="false"><button type="button" class="dlg-eye" id="${inputId}_eye" aria-label="Show password">${dialogIcons.eye}</button></div><div class="dlg-error" id="${errId}" role="alert" aria-live="polite"></div>`;
   const guard = async (overlay) => {
     const input = overlay.querySelector(`#${inputId}`);
     const err = overlay.querySelector(`#${errId}`);

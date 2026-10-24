@@ -585,17 +585,17 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="grid-inputs u-mb-15">
         <div class="field">
           <label>Store Name</label>
-          <input type="text" id="store-name-input" placeholder="e.g. KARACHI" maxlength="32" class="u-3d59ac9" oninput="this.value=this.value.toUpperCase()">
+          <input type="text" id="store-name-input" placeholder="e.g. KARACHI" maxlength="32" class="form-ctl u-3d59ac9" oninput="this.value=this.value.toUpperCase()">
         </div>
         <div class="field">
           <label>Formula</label>
           <input type="hidden" id="store-formula-select" value="">
-          <button type="button" id="store-formula-btn" class="store-selector u-e17a8ec d-flex" onclick="openStoreFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="store-formula-btn" class="form-ctl u-e17a8ec d-flex" onclick="openStoreFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="u-field-hint-xs">Picked from the Formula Store. Sets the cost formula used for this store</div>
         </div>
         <div class="field">
           <label>Sale Price (per kg)</label>
-          <input type="number" id="store-sale-price-input" step="0.01" min="0" value="0">
+          <input class="form-ctl" type="number" id="store-sale-price-input" step="0.01" min="0" value="0">
           <div class="u-field-hint-xs">Used for sales from this store when a customer has no custom sale price</div>
         </div>
       </div>
@@ -653,8 +653,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="recycleBinStats" class="u-d8853f1"></div>
       <div class="u-611b408 d-flex">
         <div class="u-a8a9035">
-          <button id="recycleBinFilterBtn" class="store-selector u-a5ce510 d-flex st-border-bottom__e54b2f st-background__356c02" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'},{value:'tab_ledger',label:'Daily Ledger'},{value:'tab_formulas',label:'Formula Store'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <select id="recycleBinFilter" class="d-none">
+          <button id="recycleBinFilterBtn" class="form-ctl u-a5ce510 d-flex st-border-bottom__e54b2f st-background__356c02" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'},{value:'tab_ledger',label:'Daily Ledger'},{value:'tab_formulas',label:'Formula Store'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <select id="recycleBinFilter" class="form-ctl d-none">
             <option value="all">All Tabs</option>
             <option value="tab_sales">Sales Tab</option>
             <option value="tab_rep">Rep Tab</option>
@@ -689,27 +689,27 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div class="field">
           <label>From Store</label>
           <input type="hidden" id="stock-transfer-from-value" value="">
-          <button type="button" id="stockTransferFromBtn" class="store-selector u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfFrom',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-from-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability();});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="stockTransferFromBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfFrom',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-from-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability();});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="field">
           <label>To Store</label>
           <input type="hidden" id="stock-transfer-to-value" value="">
-          <button type="button" id="stockTransferToBtn" class="store-selector u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfTo',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-to-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="stockTransferToBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfTo',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-to-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>
       <div class="grid-inputs u-mb-15">
         <div class="field">
           <label>Date</label>
-          <input type="date" id="stock-transfer-date" oninput="if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability()">
+          <input class="form-ctl" type="date" id="stock-transfer-date" oninput="if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability()">
         </div>
         <div class="field">
           <label>Quantity (kg)</label>
-          <input type="number" id="stock-transfer-qty" placeholder="0.00" step="0.01" min="0">
+          <input class="form-ctl" type="number" id="stock-transfer-qty" placeholder="0.00" step="0.01" min="0">
         </div>
       </div>
       <div class="field u-mb-15">
         <label>Note (optional)</label>
-        <input type="text" id="stock-transfer-note" placeholder="e.g. Balancing stock ahead of weekend rush" maxlength="120">
+        <input class="form-ctl" type="text" id="stock-transfer-note" placeholder="e.g. Balancing stock ahead of weekend rush" maxlength="120">
       </div>
       <div id="stockTransferAvailability" class="u-48fd985"></div>
       <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-stock-transfer" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
@@ -739,7 +739,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             placeholder="Search entity..."
             oninput="handleUniversalSearch('payment-transfer-from-search','payment-transfer-from-results','entities');document.getElementById('payment-transfer-from-value').value=''"
             autocomplete="off"
-            class="u-13f34eb"
+            class="form-ctl u-13f34eb"
           >
           <div id="payment-transfer-from-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
         </div>
@@ -752,7 +752,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             placeholder="Search entity..."
             oninput="handleUniversalSearch('payment-transfer-to-search','payment-transfer-to-results','entities');document.getElementById('payment-transfer-to-value').value=''"
             autocomplete="off"
-            class="u-13f34eb"
+            class="form-ctl u-13f34eb"
           >
           <div id="payment-transfer-to-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
         </div>
@@ -760,17 +760,17 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="grid-inputs u-mb-15">
         <div class="field">
           <label>Date</label>
-          <input type="date" id="payment-transfer-date">
+          <input class="form-ctl" type="date" id="payment-transfer-date">
         </div>
         <div class="field">
           <label>Amount</label>
-          <input type="number" id="payment-transfer-amount" placeholder="0.00" step="0.01" min="0">
+          <input class="form-ctl" type="number" id="payment-transfer-amount" placeholder="0.00" step="0.01" min="0">
         </div>
       </div>
       <div class="field u-mb-15">
         <label>Note (optional)</label>
         <div class="u-832bae1 d-flex">
-          <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" class="u-634a28b">
+          <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" class="form-ctl u-634a28b">
           <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" class="u-4f1eb22 d-flex st-border-bottom__e54b2f st-background__356c02">
             <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
             <span id="payment-transfer-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d"></span>
@@ -820,38 +820,38 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="grid-inputs u-mb-15">
         <div class="field">
           <label>Date</label>
-          <input type="date" id="dl-date">
+          <input class="form-ctl" type="date" id="dl-date">
         </div>
         <div class="field">
           <label>Amount</label>
-          <input type="text" inputmode="decimal" id="dl-amount" placeholder="0.00" autocomplete="off">
+          <input class="form-ctl" type="text" inputmode="decimal" id="dl-amount" placeholder="0.00" autocomplete="off">
         </div>
       </div>
       <div class="field u-a8a9035 u-mb-15">
         <label id="dl-from-label">Payment Channel / Mode</label>
-        <input type="text" id="dl-mode" placeholder="e.g. Cash, Bank Transfer, Easypaisa..." maxlength="40" autocomplete="off" oninput="handleUniversalSearch('dl-mode','dl-mode-results','ledger-mode')" onfocus="handleUniversalSearch('dl-mode','dl-mode-results','ledger-mode')">
+        <input class="form-ctl" type="text" id="dl-mode" placeholder="e.g. Cash, Bank Transfer, Easypaisa..." maxlength="40" autocomplete="off" oninput="handleUniversalSearch('dl-mode','dl-mode-results','ledger-mode')" onfocus="handleUniversalSearch('dl-mode','dl-mode-results','ledger-mode')">
         <div id="dl-mode-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
       </div>
       <div class="d-none" id="dl-to-wrap">
         <div class="field u-a8a9035 u-mb-15">
           <label>To Channel (Destination)</label>
-          <input type="text" id="dl-to-mode" placeholder="e.g. Bank Transfer, Easypaisa..." maxlength="40" autocomplete="off" oninput="handleUniversalSearch('dl-to-mode','dl-to-results','ledger-mode')" onfocus="handleUniversalSearch('dl-to-mode','dl-to-results','ledger-mode')">
+          <input class="form-ctl" type="text" id="dl-to-mode" placeholder="e.g. Bank Transfer, Easypaisa..." maxlength="40" autocomplete="off" oninput="handleUniversalSearch('dl-to-mode','dl-to-results','ledger-mode')" onfocus="handleUniversalSearch('dl-to-mode','dl-to-results','ledger-mode')">
           <div id="dl-to-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
         </div>
       </div>
       <div class="field u-a8a9035 u-mb-15" id="dl-party-wrap">
         <label>Party / Customer / Vendor (optional)</label>
-        <input type="text" id="dl-party" placeholder="e.g. Ali Store" maxlength="80" autocomplete="off" oninput="handleUniversalSearch('dl-party','dl-party-results','ledger-party')" onfocus="handleUniversalSearch('dl-party','dl-party-results','ledger-party')">
+        <input class="form-ctl" type="text" id="dl-party" placeholder="e.g. Ali Store" maxlength="80" autocomplete="off" oninput="handleUniversalSearch('dl-party','dl-party-results','ledger-party')" onfocus="handleUniversalSearch('dl-party','dl-party-results','ledger-party')">
         <div id="dl-party-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
       </div>
       <div class="grid-inputs u-mb-15">
         <div class="field">
           <label>Bill / Ref #</label>
-          <input type="text" id="dl-ref" placeholder="Optional" maxlength="40" autocomplete="off">
+          <input class="form-ctl" type="text" id="dl-ref" placeholder="Optional" maxlength="40" autocomplete="off">
         </div>
         <div class="field">
           <label>Remarks / Note</label>
-          <input type="text" id="dl-note" placeholder="Optional" maxlength="120">
+          <input class="form-ctl" type="text" id="dl-note" placeholder="Optional" maxlength="120">
         </div>
       </div>
       <div class="btn-split">
@@ -870,7 +870,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <p class="settings-group-label" id="dl-history-label">Cashbook Log &amp; History</p>
     <div class="liquid-card u-d8ddece st-border-bottom__e54b2f">
       <div class="field u-mb-15">
-        <input type="text" id="dl-search" placeholder="Search by party, category, mode, amount..." autocomplete="off" oninput="dailyLedgerSetQuery(this.value)">
+        <input class="form-ctl" type="text" id="dl-search" placeholder="Search by party, category, mode, amount..." autocomplete="off" oninput="dailyLedgerSetQuery(this.value)">
       </div>
     </div>
     <div id="dailyLedgerList"></div>
@@ -886,7 +886,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <h3 class="pf-section-title">Material</h3>
         <div class="field pf-field">
           <label for="factoryMaterialName">Material name</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><input type="text" id="factoryMaterialName" placeholder="e.g., Sugar" autocomplete="off"></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><input class="form-ctl" type="text" id="factoryMaterialName" placeholder="e.g., Sugar" autocomplete="off"></div>
         </div>
       </section>
       <section class="pf-section">
@@ -894,21 +894,21 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div class="pf-row">
           <div class="field pf-field">
             <label for="factoryMaterialUnitName">Unit name</label>
-            <div class="pf-control"><input type="text" id="factoryMaterialUnitName" placeholder="bag, box, carton" autocomplete="off"></div>
+            <div class="pf-control"><input class="form-ctl" type="text" id="factoryMaterialUnitName" placeholder="bag, box, carton" autocomplete="off"></div>
           </div>
           <div class="field pf-field">
             <label for="factoryMaterialQuantity">Units bought</label>
-            <div class="pf-control"><input type="number" id="factoryMaterialQuantity" placeholder="0" inputmode="decimal" min="0" step="any"></div>
+            <div class="pf-control"><input class="form-ctl" type="number" id="factoryMaterialQuantity" placeholder="0" inputmode="decimal" min="0" step="any"></div>
           </div>
         </div>
         <div class="pf-row">
           <div class="field pf-field">
             <label for="factoryMaterialConversionFactor">Weight per unit</label>
-            <div class="pf-control pf-has-suffix"><input type="number" id="factoryMaterialConversionFactor" placeholder="1" value="1" step="0.01" min="0" inputmode="decimal"><span class="pf-affix pf-affix-end">kg</span></div>
+            <div class="pf-control pf-has-suffix"><input class="form-ctl" type="number" id="factoryMaterialConversionFactor" placeholder="1" value="1" step="0.01" min="0" inputmode="decimal"><span class="pf-affix pf-affix-end">kg</span></div>
           </div>
           <div class="field pf-field">
             <label for="factoryMaterialCost">Cost per unit</label>
-            <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input type="number" id="factoryMaterialCost" placeholder="0.00" inputmode="decimal" min="0" step="any"></div>
+            <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="factoryMaterialCost" placeholder="0.00" inputmode="decimal" min="0" step="any"></div>
           </div>
         </div>
         <div class="pf-hint">Example: 1 bag = 60 kg, so enter 60 for weight per unit.</div>
@@ -920,7 +920,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </section>
       <section class="pf-section">
         <h3 class="pf-section-title">Supplier</h3>
-        <select id="factoryMaterialSupplierType" class="d-none">
+        <select id="factoryMaterialSupplierType" class="form-ctl d-none">
           <option value="none">No Supplier Link</option>
           <option value="existing">Select Existing Entity</option>
           <option value="new">Add New Supplier Entity</option>
@@ -933,7 +933,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div id="existingSupplierSection" class="hidden">
           <div class="field pf-field u-pos-relative">
             <label for="factoryExistingSupplier">Select supplier</label>
-            <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input type="text" id="factoryExistingSupplier" list="supplier-list" placeholder="Search or select supplier..." oninput="handleUniversalSearch('factoryExistingSupplier','factory-supplier-search-results','suppliers')" autocomplete="off"></div>
+            <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input class="form-ctl" type="text" id="factoryExistingSupplier" list="supplier-list" placeholder="Search or select supplier..." oninput="handleUniversalSearch('factoryExistingSupplier','factory-supplier-search-results','suppliers')" autocomplete="off"></div>
             <div id="factory-supplier-search-results" class="hidden u-search-dropdown"></div>
             <datalist id="supplier-list"></datalist>
           </div>
@@ -942,11 +942,11 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <div class="pf-row">
             <div class="field pf-field">
               <label for="factorySupplierName">Supplier name</label>
-              <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input type="text" id="factorySupplierName" placeholder="Company or person" autocomplete="off"></div>
+              <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input class="form-ctl" type="text" id="factorySupplierName" placeholder="Company or person" autocomplete="off"></div>
             </div>
             <div class="field pf-field">
               <label for="factorySupplierPhone">Phone</label>
-              <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></span><input type="tel" id="factorySupplierPhone" placeholder="Phone number" inputmode="tel"></div>
+              <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></span><input class="form-ctl" type="tel" id="factorySupplierPhone" placeholder="Phone number" inputmode="tel"></div>
             </div>
           </div>
           <label class="pf-check"><input type="checkbox" id="factorySupplierAutoEntity" checked disabled><span>Also add to Quick Entity Selection as a <strong>PAYEE</strong></span></label>
@@ -984,7 +984,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="field u-mb-15">
       <label>Formula</label>
       <input type="hidden" id="bm-formula-select" value="">
-      <button type="button" id="bm-formula-btn" class="store-selector bm-picker" onclick="openBatchMixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" id="bm-formula-btn" class="form-ctl bm-picker" onclick="openBatchMixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="u-field-hint-xs" id="bmFormulaInfo"></div>
     </div>
     <div class="toggle-group u-mb-15 bm-unit" role="group">
@@ -999,17 +999,17 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="field u-mb-15 d-none" id="bmIngWrap">
       <label>Ingredient</label>
       <input type="hidden" id="bm-ing-select" value="">
-      <button type="button" id="bm-ing-btn" class="store-selector bm-picker" onclick="openBatchMixIngredientPicker(this)"><span>Select ingredient</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" id="bm-ing-btn" class="form-ctl bm-picker" onclick="openBatchMixIngredientPicker(this)"><span>Select ingredient</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
     <div class="field u-mb-15">
       <label id="bmValueLabel">Total Batch Weight (kg)</label>
-      <input type="number" id="bm-value" inputmode="decimal" step="any" min="0" oninput="recomputeBatchMix()">
+      <input class="form-ctl" type="number" id="bm-value" inputmode="decimal" step="any" min="0" oninput="recomputeBatchMix()">
     </div>
     <div id="bmMakeResult"></div>
     <div id="bmSaveBar" class="u-mb-15 d-none">
       <div class="field u-mb-15">
         <label>Name (optional)</label>
-        <input type="text" id="bm-save-name" maxlength="60" placeholder="e.g. Morning batch">
+        <input class="form-ctl" type="text" id="bm-save-name" maxlength="60" placeholder="e.g. Morning batch">
       </div>
       <div class="btn-split">
         <button type="button" class="btn btn-theme u-81e32d3 d-none" id="bmCancelBtn" onclick="cancelBatchMixEdit()">Cancel Edit</button>
@@ -1030,7 +1030,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="field u-mb-15">
       <label>Formula</label>
       <input type="hidden" id="bf-formula-select" value="">
-      <button type="button" id="bf-formula-btn" class="store-selector bm-picker" onclick="openBatchFixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" id="bf-formula-btn" class="form-ctl bm-picker" onclick="openBatchFixFormulaPicker(this)"><span>Select formula</span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
     <div class="toggle-group u-mb-15 bm-unit" role="group">
       <button type="button" class="toggle-opt active" data-bf-unit="g" aria-pressed="true" onclick="setBatchFixUnit('g')">g</button>
@@ -1043,11 +1043,11 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="grid-inputs">
         <div class="field">
           <label>Original Batch (<span class="bf-u">g</span>)</label>
-          <input type="number" id="bf-original" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
+          <input class="form-ctl" type="number" id="bf-original" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
         </div>
         <div class="field">
           <label>Used / Lost (<span class="bf-u">g</span>)</label>
-          <input type="number" id="bf-used" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
+          <input class="form-ctl" type="number" id="bf-used" inputmode="decimal" step="any" min="0" oninput="resetBatchFixManual()">
         </div>
       </div>
       <div class="factory-summary-row"><span class="factory-summary-label">Remaining Batch</span><span class="cost-val" id="bfRemaining">0 g</span></div>
@@ -1070,13 +1070,13 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div class="factory-summary-row"><span class="factory-summary-label">Total Required</span><span class="qty-val" id="bfTotalRequired">0 g</span></div>
         <div class="field u-mt-8">
           <label>Total to Add (<span class="bf-u">g</span>)</label>
-          <input type="number" id="bfTotalAdd" class="bf-total-input" inputmode="decimal" step="any" min="0" oninput="setBatchFixTotal(this)">
+          <input type="number" id="bfTotalAdd" class="form-ctl bf-total-input" inputmode="decimal" step="any" min="0" oninput="setBatchFixTotal(this)">
         </div>
       </div>
       <div id="bfSaveBar" class="u-mb-15">
       <div class="field u-mb-15">
         <label>Name (optional)</label>
-        <input type="text" id="bf-save-name" maxlength="60" placeholder="e.g. Morning batch">
+        <input class="form-ctl" type="text" id="bf-save-name" maxlength="60" placeholder="e.g. Morning batch">
       </div>
       <div class="btn-split">
         <button type="button" class="btn btn-theme u-81e32d3 d-none" id="bfCancelBtn" onclick="cancelBatchFixEdit()">Cancel Edit</button>
@@ -1097,16 +1097,16 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-body" id="formula-store-edit-body">
     <div class="field u-mb-15">
       <label>Formula Name</label>
-      <input type="text" id="fs-edit-name" maxlength="60" placeholder="e.g. Premium Blend">
+      <input class="form-ctl" type="text" id="fs-edit-name" maxlength="60" placeholder="e.g. Premium Blend">
     </div>
     <div class="grid-inputs u-mb-15">
       <div class="field">
         <label>Additional Cost (Per Unit)</label>
-        <input type="number" id="fs-additional-cost" step="0.01" min="0" value="0" oninput="updateFormulaStoreSummary()">
+        <input class="form-ctl" type="number" id="fs-additional-cost" step="0.01" min="0" value="0" oninput="updateFormulaStoreSummary()">
       </div>
       <div class="field">
         <label>Cost Adjustment for Sales &amp; Calc (X)</label>
-        <input type="number" id="fs-cost-factor" step="0.01" min="1" value="1" oninput="updateFormulaStoreSummary()">
+        <input class="form-ctl" type="number" id="fs-cost-factor" step="0.01" min="1" value="1" oninput="updateFormulaStoreSummary()">
         <div class="u-field-hint-xs">Cost per kg = (Raw Material Cost + Additional Cost) / X</div>
       </div>
     </div>
@@ -1138,7 +1138,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="grid-inputs u-mb-20">
       <div class="field">
         <label>Representative Name</label>
-        <input type="text" id="new-rep-name-input" placeholder="sales representative name" oninput="this.value=this.value.toUpperCase()">
+        <input class="form-ctl" type="text" id="new-rep-name-input" placeholder="sales representative name" oninput="this.value=this.value.toUpperCase()">
       </div>
     </div>
     <div class="u-f553a9b d-flex">
@@ -1158,7 +1158,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="grid-inputs u-mb-15">
       <div class="field">
         <label>User Name</label>
-        <input type="text" id="new-userrole-name-input" placeholder="user name" oninput="this.value=this.value.toUpperCase()">
+        <input class="form-ctl" type="text" id="new-userrole-name-input" placeholder="user name" oninput="this.value=this.value.toUpperCase()">
       </div>
     </div>
     <div class="u-47e3b7d">
@@ -1188,8 +1188,8 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <div class="u-a0d4a03">
       <label class="u-5250855 d-block">Add New Account</label>
       <div class="grid-inputs u-39ae4db">
-        <div class="field"><label>Email</label><input type="email" id="acct-new-email" placeholder="user@example.com" autocomplete="off"></div>
-        <div class="field"><label>Password</label><input type="password" id="acct-new-password" placeholder="min 8 characters" autocomplete="new-password"></div>
+        <div class="field"><label>Email</label><input class="form-ctl" type="email" id="acct-new-email" placeholder="user@example.com" autocomplete="off"></div>
+        <div class="field"><label>Password</label><input class="form-ctl" type="password" id="acct-new-password" placeholder="min 8 characters" autocomplete="new-password"></div>
       </div>
       <div class="u-39ae4db">
         <label class="u-6068d65 d-block">Role</label>
@@ -1337,7 +1337,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div id="entityManagementSummary" class="cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
-      <input type="text" id="entity-trans-search" class="search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterEntityManagementHistory()">
+      <input type="text" id="entity-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterEntityManagementHistory()">
     </div>
     <div id="entityHistoryFilters" class="cm-filters d-none"></div>
     <div id="entityMonthJump" class="cm-filters cm-jump d-none"></div>
@@ -1370,7 +1370,7 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div class="pf-name field u-pos-relative">
         <label>Entity Name</label>
-        <input type="text" id="entityName" placeholder="Name" class="pf-name-input" autocomplete="off">
+        <input type="text" id="entityName" placeholder="Name" class="form-ctl pf-name-input" autocomplete="off">
         <div class="pf-hint">Person, shop or account you pay or receive money from.</div>
       </div>
     </section>
@@ -1378,11 +1378,11 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Contact and payment details</h3>
         <div class="field pf-field">
           <label>Phone number</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input type="tel" id="entityPhone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="entityPhone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
         </div>
         <div class="field pf-field">
           <label>Wallet / account details</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 11.5A3.5 3.5 0 0 1 8.5 8H27V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="11.5" width="26" height="19" rx="3.5" stroke="currentColor" stroke-width="2.2"/><circle cx="24.5" cy="21" r="1.8" fill="currentColor"/></svg></span><input type="text" id="entityWallet" placeholder="JazzCash, Easypaisa or bank account"></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 11.5A3.5 3.5 0 0 1 8.5 8H27V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="11.5" width="26" height="19" rx="3.5" stroke="currentColor" stroke-width="2.2"/><circle cx="24.5" cy="21" r="1.8" fill="currentColor"/></svg></span><input class="form-ctl" type="text" id="entityWallet" placeholder="JazzCash, Easypaisa or bank account"></div>
           <div class="pf-hint">Shown on the entity so you can send payments to the right place.</div>
         </div>
       </section>
@@ -1402,8 +1402,8 @@ window._showLogoutConfirmDialog = async function() {
   </div>
   <div class="screen-body">
     <div class="u-0931b17 d-flex">
-      <input type="text" id="expense-history-search" class="search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterExpenseManagementHistory()" autocomplete="off">
-      <select id="expenseOverlayRange" class="d-none" onchange="renderExpenseOverlayContent()">
+      <input type="text" id="expense-history-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterExpenseManagementHistory()" autocomplete="off">
+      <select id="expenseOverlayRange" class="form-ctl d-none" onchange="renderExpenseOverlayContent()">
         <option value="today">Today</option>
         <option value="week">This Week</option>
         <option value="month">This Month</option>
@@ -1416,11 +1416,11 @@ window._showLogoutConfirmDialog = async function() {
       <div class="u-quick-row">
         <div class="field u-field-flex-1-min">
           <label>Amount (Rs)</label>
-          <input class="u-w-full" type="number" id="quickExpenseAmount" placeholder="0.00">
+          <input class="form-ctl u-w-full" type="number" id="quickExpenseAmount" placeholder="0.00">
         </div>
         <div class="field u-field-flex-1-5b">
           <label>Description (optional)</label>
-          <input class="u-w-full" type="text" id="quickExpenseDescription" placeholder="e.g. Monthly rent">
+          <input class="form-ctl u-w-full" type="text" id="quickExpenseDescription" placeholder="e.g. Monthly rent">
         </div>
         <button class="btn btn-main u-mt-8 u-quick-btn" onclick="(async()=>{await saveQuickExpenseEntry()})()">Save Expense</button>
       </div>
@@ -1441,7 +1441,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div id="customerManagementSummary" class="cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
-      <input type="text" id="cust-trans-search" class="search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterCustomerManagementHistory()">
+      <input type="text" id="cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterCustomerManagementHistory()">
     </div>
     <div id="customerHistoryFilters" class="cm-filters d-none"></div>
     <div id="customerMonthJump" class="cm-filters cm-jump d-none"></div>
@@ -1474,7 +1474,7 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div class="pf-name field u-pos-relative">
         <label id="cust-name-label">Customer Name</label>
-        <input type="text" id="edit-cust-name" placeholder="Customer name" class="pf-name-input" autocomplete="off">
+        <input type="text" id="edit-cust-name" placeholder="Customer name" class="form-ctl pf-name-input" autocomplete="off">
         <div id="cust-add-search-results" class="hidden u-search-dropdown"></div>
         <div id="cust-name-hint" class="pf-hint">Editing the name will update all records for this customer</div>
       </div>
@@ -1483,11 +1483,11 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Contact</h3>
         <div class="field pf-field">
           <label>Phone number</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input type="tel" id="edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
         </div>
         <div class="field pf-field">
           <label>Address / location</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input type="text" id="edit-cust-address" placeholder="Area, shop no., etc."><button class="pf-locate d-flex" onclick="fetchDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="edit-cust-address" placeholder="Area, shop no., etc."><button class="pf-locate d-flex" onclick="fetchDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
           <div id="location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
@@ -1495,12 +1495,12 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Account</h3>
         <div class="field pf-field">
           <label>Previous balance (old debt)</label>
-          <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input type="number" id="edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
+          <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
           <div class="pf-hint">Added to the customer history as a debt entry.</div>
         </div>
         <div class="field pf-field">
           <label>Custom sale price</label>
-          <div class="pf-control pf-has-prefix pf-has-suffix"><span class="pf-affix">Rs</span><input type="number" id="edit-cust-custom-price" placeholder="Factory default" step="1" min="0" inputmode="decimal" class="u-67130d4"><span class="pf-affix pf-affix-end">/kg</span></div>
+          <div class="pf-control pf-has-prefix pf-has-suffix"><span class="pf-affix">Rs</span><input type="number" id="edit-cust-custom-price" placeholder="Factory default" step="1" min="0" inputmode="decimal" class="form-ctl u-67130d4"><span class="pf-affix pf-affix-end">/kg</span></div>
           <div class="pf-hint">Replaces the standard rate for this customer. Leave blank to use the standard rate.</div>
         </div>
       </section>
@@ -1519,7 +1519,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div id="repCustomerManagementSummary" class="cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
-      <input type="text" id="rep-cust-trans-search" class="search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterRepCustomerManagementHistory()">
+      <input type="text" id="rep-cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterRepCustomerManagementHistory()">
     </div>
     <div id="repCustomerHistoryFilters" class="cm-filters d-none"></div>
     <div id="repCustomerMonthJump" class="cm-filters cm-jump d-none"></div>
@@ -1552,7 +1552,7 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div class="pf-name field u-pos-relative">
         <label id="rep-cust-name-label">Customer Name</label>
-        <input type="text" id="rep-edit-cust-name" placeholder="Customer name" class="pf-name-input" autocomplete="off">
+        <input type="text" id="rep-edit-cust-name" placeholder="Customer name" class="form-ctl pf-name-input" autocomplete="off">
         <div id="rep-cust-add-search-results" class="hidden u-search-dropdown"></div>
         <div id="rep-cust-name-hint" class="pf-hint">Editing the name will update all records for this customer</div>
       </div>
@@ -1561,11 +1561,11 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Contact</h3>
         <div class="field pf-field">
           <label>Phone number</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input type="tel" id="rep-edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="rep-edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
         </div>
         <div class="field pf-field">
           <label>Address / location</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input type="text" id="rep-edit-cust-address" placeholder="Area, shop no., etc."><button class="pf-locate d-flex" onclick="fetchRepDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="rep-edit-cust-address" placeholder="Area, shop no., etc."><button class="pf-locate d-flex" onclick="fetchRepDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
           <div id="rep-location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
@@ -1573,7 +1573,7 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Account</h3>
         <div class="field pf-field">
           <label>Previous balance (old debt)</label>
-          <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input type="number" id="rep-edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
+          <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="rep-edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
           <div class="pf-hint">Added to the rep customer history as a debt entry.</div>
         </div>
       </section>
@@ -1659,10 +1659,10 @@ window._showLogoutConfirmDialog = async function() {
 </div>
 </div>
 <div class="grid-inputs">
-<div class="field"><label>Date</label><input type="date" id="rep-date" onchange="renderRepHistory()"></div>
+<div class="field"><label>Date</label><input class="form-ctl" type="date" id="rep-date" onchange="renderRepHistory()"></div>
 <div class="field u-pos-relative" >
 <label>Customer Name</label>
-<input type="text" id="rep-cust-name" placeholder="Search customer..."
+<input class="form-ctl" type="text" id="rep-cust-name" placeholder="Search customer..."
 oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', 'clients'); handleCustomerInput(this.value, 'rep')" autocomplete="off">
 <div id="rep-customer-search-results" class="hidden u-search-dropdown" ></div>
 </div>
@@ -1670,12 +1670,12 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div id="rep-new-customer-phone-container" class="hidden u-a70476a">
 <div class="field u-2a0ca83">
 <label class="u-3b9712c">Mobile number</label>
-<input type="tel" id="rep-new-cust-phone" placeholder="03XX-XXXXXXX" class="u-74d5875 st-border-bottom__d088ee">
+<input type="tel" id="rep-new-cust-phone" placeholder="03XX-XXXXXXX" class="form-ctl u-74d5875 st-border-bottom__d088ee">
 </div>
 </div>
 <div id="rep-sale-inputs">
 <div class="grid-inputs">
-<div class="field"><label>Quantity (kg)</label><input type="number" id="rep-quantity" step="0.001" oninput="calculateRepSalePreview()"></div>
+<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="rep-quantity" step="0.001" oninput="calculateRepSalePreview()"></div>
 <div class="field">
 <label>Payment Type</label>
 <div class="toggle-group">
@@ -1690,11 +1690,11 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="grid-inputs">
 <div class="field">
 <label>Amount Received (₨)</label>
-<input type="number" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
+<input class="form-ctl" type="number" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
 </div>
 <div class="field">
 <label>Expired / Damage Qty (kg)</label>
-<input type="number" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
+<input class="form-ctl" type="number" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
 </div>
 </div>
 </div>
@@ -1718,14 +1718,14 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="field">
 <label class="u-b68d496">View For:</label>
 <div class="u-a8a9035">
-<button id="adminRepSelectorBtn" class="store-selector u-e17a8ec d-flex" onclick="(function(b){var sel=document.getElementById('admin-rep-selector');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_adminRep',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;adminSwitchRepProfile(v);});})( this)"><span>— </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="admin-rep-selector" class="d-none">
+<button id="adminRepSelectorBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){var sel=document.getElementById('admin-rep-selector');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_adminRep',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;adminSwitchRepProfile(v);});})( this)"><span>— </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="admin-rep-selector" class="form-ctl d-none">
 </select>
 </div>
 </div>
 <div class="field">
 <label>Select Date</label>
-<input type="date" id="admin-rep-date" onchange="handleAdminRepDateChange(this.value)">
+<input class="form-ctl" type="date" id="admin-rep-date" onchange="handleAdminRepDateChange(this.value)">
 </div>
 </div>
 <div id="rep-map-container" class="u-d6af5d3 st-border-bottom__069ffd"></div>
@@ -1757,7 +1757,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div id="rep-customers-card" class="section liquid-card">
 <div class="section-header u-4053333">
 <h3 class="u-3b741c2">Customer List</h3>
-<input type="text" id="rep-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
+<input type="text" id="rep-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
 placeholder="Search customers..."
 oninput="renderRepCustomerTable()">
 <button class="btn btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
@@ -1788,14 +1788,14 @@ oninput="renderRepCustomerTable()">
 <span id="currentUnitsAvailable" class="units-available-good">Calculating...</span>
 </div>
 <div class="grid-inputs">
-<div class="field"><label>Select Date</label><input type="date" id="sys-date" onchange="refreshUI(); setOverviewMode(currentOverviewMode);"></div>
-<div class="field"><label>Gross Weight (kg)</label><input type="number" id="gross-wt" step="0.001" oninput="calcNet()"></div>
-<div class="field"><label>Container Weight (kg)</label><input type="number" id="cont-wt" step="0.001" oninput="calcNet()"></div>
+<div class="field"><label>Select Date</label><input class="form-ctl" type="date" id="sys-date" onchange="refreshUI(); setOverviewMode(currentOverviewMode);"></div>
+<div class="field"><label>Gross Weight (kg)</label><input class="form-ctl" type="number" id="gross-wt" step="0.001" oninput="calcNet()"></div>
+<div class="field"><label>Container Weight (kg)</label><input class="form-ctl" type="number" id="cont-wt" step="0.001" oninput="calcNet()"></div>
 </div>
 <div class="grid-inputs">
 <div class="field">
 <label>Net Production (kg)</label>
-<input type="number" id="net-wt" readonly class="u-540e04e st-background__44812c">
+<input type="number" id="net-wt" readonly class="form-ctl u-540e04e st-background__44812c">
 <div id="dynamic-cost-display" class="u-7960f3f text-xs">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
@@ -1809,7 +1809,7 @@ Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</s
 <div class="grid-inputs">
 <div class="field">
 <label>Formula Units Used</label>
-<input type="number" id="formula-units" step="0.001" min="0" value="1" oninput="calculateDynamicProductionCost()">
+<input class="form-ctl" type="number" id="formula-units" step="0.001" min="0" value="1" oninput="calculateDynamicProductionCost()">
 <div class="u-field-hint-xs" >
 Units of factory mixture consumed
 </div>
@@ -1926,17 +1926,17 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 </div>
 <div class="grid-inputs">
-<div class="field"><label>Date</label><input type="date" id="cust-date" onchange="refreshCustomerSales(); setSalesSummaryMode(currentSalesSummaryMode || 'day'); if(typeof custTransactionMode==='undefined'||custTransactionMode==='sale'){calculateCustomerSale();} var _epd=document.getElementById('expenseDate'); if(_epd&&!_epd.value){_epd.value=this.value; if(typeof calculateNetCash==='function')calculateNetCash();}"></div>
+<div class="field"><label>Date</label><input class="form-ctl" type="date" id="cust-date" onchange="refreshCustomerSales(); setSalesSummaryMode(currentSalesSummaryMode || 'day'); if(typeof custTransactionMode==='undefined'||custTransactionMode==='sale'){calculateCustomerSale();} var _epd=document.getElementById('expenseDate'); if(_epd&&!_epd.value){_epd.value=this.value; if(typeof calculateNetCash==='function')calculateNetCash();}"></div>
 <div class="field u-pos-relative" >
 <label>Customer Name</label>
-<input type="text" id="cust-name" list="customer-list" placeholder="Search or type new..."
+<input class="form-ctl" type="text" id="cust-name" list="customer-list" placeholder="Search or type new..."
 oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customers'); handleCustomerInput(this.value, 'admin')" autocomplete="off">
 <div id="customer-search-results" class="hidden u-search-dropdown" ></div>
 <div id="new-customer-phone-container" class="hidden u-a70476a">
 <div class="u-3054b9f d-flex">
 <div class="field u-e3a2c64">
 <label class="u-3b9712c">Mobile number</label>
-<input type="tel" id="new-cust-phone" placeholder="03XX-XXXXXXX" class="u-4c8551b st-border-bottom__d088ee">
+<input type="tel" id="new-cust-phone" placeholder="03XX-XXXXXXX" class="form-ctl u-4c8551b st-border-bottom__d088ee">
 </div>
 </div>
 </div>
@@ -1952,24 +1952,24 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 <div id="cust-sale-inputs">
 <div class="grid-inputs">
-<div class="field"><label>Quantity (kg)</label><input type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
+<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
 </div>
 <div id="cust-return-inputs" class="hidden">
 <div class="grid-inputs">
-<div class="field"><label>Expired / Damage Qty (kg)</label><input type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
-<div class="field"><label>Returned Qty (kg)</label><input type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Expired / Damage Qty (kg)</label><input class="form-ctl" type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Returned Qty (kg)</label><input class="form-ctl" type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
 </div>
 </div>
 <div id="cust-coll-inputs" class="hidden">
 <div class="grid-inputs">
 <div class="field">
 <label>Amount Received (₨)</label>
-<input type="number" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
+<input class="form-ctl" type="number" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
 </div>
 <div class="field">
 <label>Expired / Damage Qty (kg)</label>
-<input type="number" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
+<input class="form-ctl" type="number" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
 </div>
 </div>
 </div>
@@ -2019,7 +2019,7 @@ Profit: <span id="cust-profit">0.00</span>
 <div class="section liquid-card" id="customers-card">
 <div class="section-header u-59e2099">
 <h3 class="u-3b741c2">CUSTOMERS</h3>
-<input type="text" id="customer-filter" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
+<input type="text" id="customer-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
 oninput="filterCustomers()">
 <span id="customer-count" class="u-62e500b">0 customers</span>
 <button class="btn btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
@@ -2086,8 +2086,8 @@ oninput="filterCustomers()">
 <div class="field u-33f2a66">
 <label>Sales Representative</label>
 <div class="u-a8a9035">
-<button id="sellerSelectBtn" class="store-selector u-e17a8ec d-flex" onclick="(function(b){var sel=document.getElementById('sellerSelect');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_seller',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;(async()=>{await loadSalesData();})();});})( this)"><span>COMPARISON </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="sellerSelect" class="d-none">
+<button id="sellerSelectBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){var sel=document.getElementById('sellerSelect');var opts=Array.from(sel.options).map(function(o){return{value:o.value,label:o.text};});window._mkPopover(b.parentNode,'_pop_seller',opts,function(v,l){sel.value=v;var _bs=b.querySelector('span');if(_bs)_bs.textContent=l;(async()=>{await loadSalesData();})();});})( this)"><span>COMPARISON </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="sellerSelect" class="form-ctl d-none">
 <option value="COMBINED">COMPARISON</option>
 </select>
 </div>
@@ -2096,8 +2096,8 @@ oninput="filterCustomers()">
 <div class="u-a8a9035">
 <button type="button" id="calcRangeBtn" class="cdp-btn" onclick="openCalcRangePicker()"><span class="cdp-btn-label u-ac4a300" id="calcRangeLabel">Select dates</span><span class="cdp-btn-icon"><svg width="14" height="14" viewBox="0 0 36 36" fill="none"><rect x="4" y="7" width="28" height="25" rx="4.5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M4.85 11.5A3.6 3.6 0 0 1 8.4 8H27.6A3.6 3.6 0 0 1 31.2 11.5V15H4.85Z" fill="currentColor" fill-opacity=".3"/><path d="M11 3.8V10M25 3.8V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="12" cy="20" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="18" cy="20" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="24" cy="20" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="12" cy="25.5" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="18" cy="25.5" r="1.5" fill="currentColor" opacity="0.8"/><circle cx="24" cy="25.5" r="1.5" fill="currentColor" opacity="0.8"/></svg></span></button>
 <div id="calcRangeInputs" aria-hidden="true">
-<input type="date" id="sale-date-from" onchange="onCalcDateChange('from')">
-<input type="date" id="sale-date" onchange="onCalcDateChange('to')">
+<input class="form-ctl" type="date" id="sale-date-from" onchange="onCalcDateChange('from')">
+<input class="form-ctl" type="date" id="sale-date" onchange="onCalcDateChange('to')">
 </div>
 </div>
 </div>
@@ -2107,11 +2107,11 @@ oninput="filterCustomers()">
 <div class="grid-inputs">
 <div class="field">
 <label>Total Sold Qty</label>
-<input type="number" id="totalSold" readonly class="u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
+<input type="number" id="totalSold" readonly class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
 </div>
-<div class="field"><label>Returned Qty</label><input type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
-<div class="field"><label>Expired / Damage Qty</label><input type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
-<div class="field"><label>Shared (Deduction)</label><input type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Returned Qty</label><input class="form-ctl" type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
+<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl" type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
+<div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
 <div id="repReturnAutoHint" class="hidden u-field-hint u-78f55da-hint"></div>
 <div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb">
 <label class="u-5c10e65"> Return Stock To Physical Inventory:</label>
@@ -2129,18 +2129,18 @@ oninput="filterCustomers()">
 * Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
 </div>
 </div>
-<div class="field"><label>Credit Sales Qty</label><input type="number" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+<div class="field"><label>Credit Sales Qty</label><input class="form-ctl" type="number" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Commission</div>
 <div class="grid-inputs">
-<div class="field"><label>Commission / Unit</label><input type="number" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
-<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Commission / Unit</label><input class="form-ctl" type="number" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Collections &amp; Handover Cash</div>
 <div class="grid-inputs">
-<div class="field"><label>Recovered Credit</label><input type="number" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
-<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
-<div class="field"><label>Physical Cash Received from Rep</label><input type="number" id="receivedCash" oninput="calculateSales()"></div>
+<div class="field"><label>Recovered Credit</label><input class="form-ctl" type="number" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" id="receivedCash" oninput="calculateSales()"></div>
 </div>
 <div class="result-box">Expected Cash: <span id="totalExpectedCash">0.00</span></div>
 <div class="result-box" id="discrepancyBox">Status: <span id="discrepancyStatus">OK</span></div>
@@ -2163,8 +2163,8 @@ oninput="filterCustomers()">
 <div class="field u-5beb8fb">
 <label>View Chart For:</label>
 <div class="u-a8a9035">
-<button id="metricSelectorBtn" class="store-selector u-e17a8ec d-flex" onclick="window._mkPopover(this.parentNode,'_pop_metric',[{value:'prof',label:'Net Profit (Value)'},{value:'rev',label:'Gross Revenue (Value)'},{value:'sold',label:'Quantity Sold'}],function(v,l){document.getElementById('metricSelector').value=v;document.getElementById('metricSelectorBtn').querySelector('span').textContent=l;(async()=>{await loadSalesData(currentCompMode);})();})"><span>Net Profit (Value) </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="metricSelector" class="d-none">
+<button id="metricSelectorBtn" class="form-ctl u-e17a8ec d-flex" onclick="window._mkPopover(this.parentNode,'_pop_metric',[{value:'prof',label:'Net Profit (Value)'},{value:'rev',label:'Gross Revenue (Value)'},{value:'sold',label:'Quantity Sold'}],function(v,l){document.getElementById('metricSelector').value=v;document.getElementById('metricSelectorBtn').querySelector('span').textContent=l;(async()=>{await loadSalesData(currentCompMode);})();})"><span>Net Profit (Value) </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="metricSelector" class="form-ctl d-none">
 <option value="prof">Net Profit (Value)</option>
 <option value="rev">Gross Revenue (Value)</option>
 <option value="sold">Quantity Sold</option>
@@ -2201,8 +2201,8 @@ oninput="filterCustomers()">
 <div class="sales-rep-metric-selector">
 <label class="u-b2b7f30">Select Metric:</label>
 <div class="u-a8a9035">
-<button id="indMetricSelectorBtn" class="sales-rep-metric-dropdown store-selector u-e17a8ec d-flex" onclick="window._mkPopover(this.parentNode,'_pop_indMetric',[{value:'weight',label:'Weight (kg)'},{value:'value',label:'Total Value'},{value:'cost',label:'Total Cost'},{value:'profit',label:'Net Profit'},{value:'cash',label:'Cash Sales'},{value:'credit',label:'Credit Sales'}],function(v,l){document.getElementById('indMetricSelector').value=v;document.getElementById('indMetricSelectorBtn').querySelector('span').textContent=l;setIndChartMetric(v);})"><span>Weight (kg) </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="indMetricSelector" class="d-none">
+<button id="indMetricSelectorBtn" class="form-ctl u-e17a8ec d-flex" onclick="window._mkPopover(this.parentNode,'_pop_indMetric',[{value:'weight',label:'Weight (kg)'},{value:'value',label:'Total Value'},{value:'cost',label:'Total Cost'},{value:'profit',label:'Net Profit'},{value:'cash',label:'Cash Sales'},{value:'credit',label:'Credit Sales'}],function(v,l){document.getElementById('indMetricSelector').value=v;document.getElementById('indMetricSelectorBtn').querySelector('span').textContent=l;setIndChartMetric(v);})"><span>Weight (kg) </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="indMetricSelector" class="form-ctl d-none">
 <option value="weight">Weight (kg)</option>
 <option value="value">Total Value ()</option>
 <option value="cost">Total Cost ()</option>
@@ -2269,7 +2269,7 @@ oninput="filterCustomers()">
 <h3 class="u-text-accent" >New Production Entry</h3>
 <div class="u-8ae412c d-flex">
 <label class="u-bcef30c text-xs">Date</label>
-<input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" class="u-8da625c">
+<input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" class="form-ctl u-8da625c">
 </div>
 </div>
 <div class="field u-mb-15" id="factory-formula-field">
@@ -2280,7 +2280,7 @@ oninput="filterCustomers()">
 <div class="grid-inputs">
 <div class="field">
 <label>Units to Produce</label>
-<input type="number" id="factoryProductionUnits" value="1" min="1" oninput="calculateFactoryProduction()">
+<input class="form-ctl" type="number" id="factoryProductionUnits" value="1" min="1" oninput="calculateFactoryProduction()">
 </div>
 <div class="field">
 <label>Total Cost</label>
@@ -2434,7 +2434,7 @@ Clear
 <label class="u-label-sm" >Date</label>
 <input
 type="date"
-id="expenseDate" class="u-13f34eb"
+id="expenseDate" class="form-ctl u-13f34eb"
 onchange="setCashTrackerMode(currentCashTrackerMode || 'day'); calculateNetCash();"
 >
 </div>
@@ -2445,7 +2445,7 @@ type="text"
 id="expenseName"
 placeholder="Search expenses or entities..."
 oninput="handleExpenseSearch()"
-autocomplete="off" class="u-13f34eb"
+autocomplete="off" class="form-ctl u-13f34eb"
 >
 <div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
 </div>
@@ -2458,7 +2458,7 @@ type="number"
 id="expenseAmount"
 placeholder="0"
 step="0.01"
-min="0" class="u-b58d92a"
+min="0" class="form-ctl u-b58d92a"
 >
 </div>
 <div class="u-befb117">
@@ -2468,7 +2468,7 @@ min="0" class="u-b58d92a"
     type="text"
     id="expenseDescription"
     placeholder="Add details..."
-    class="u-5d90a7b"
+    class="form-ctl u-5d90a7b"
   >
   <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" class="u-4f1eb22 d-flex st-border-bottom__e54b2f st-background__356c02">
     <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
@@ -2647,21 +2647,21 @@ Save Transaction
 <div id="payments-unified-section" class="section liquid-card u-4c0544d">
 <div class="u-467306a d-flex">
 <h4 class="u-a75ad3e">Unified Records</h4>
-<input type="text" id="unified-search" class="search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
+<input type="text" id="unified-search" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
 oninput="renderUnifiedTable()">
 <button class="btn btn-theme u-f5c3969 st-border-bottom__d088ee" onclick="exportUnifiedData()" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 </div>
 <div class="u-f86c566 d-flex">
 <div class="u-1b8b20b">
-<button id="unifiedViewModeBtn" class="store-selector u-dc0751c d-flex" onclick="window._mkPopover(this.parentNode,'_pop_uniView',[{value:'entities',label:'Entities & Balances'},{value:'transactions',label:'Expenses'}],function(v,l){document.getElementById('unifiedViewMode').value=v;document.getElementById('unifiedViewModeBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>Entities &amp; Balances </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="unifiedViewMode" class="d-none">
+<button id="unifiedViewModeBtn" class="form-ctl u-dc0751c d-flex" onclick="window._mkPopover(this.parentNode,'_pop_uniView',[{value:'entities',label:'Entities & Balances'},{value:'transactions',label:'Expenses'}],function(v,l){document.getElementById('unifiedViewMode').value=v;document.getElementById('unifiedViewModeBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>Entities &amp; Balances </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="unifiedViewMode" class="form-ctl d-none">
 <option value="entities" selected>Entities & Balances</option>
 <option value="transactions">Expenses</option>
 </select>
 </div>
 <div class="u-6130581">
-<button id="unifiedPeriodFilterBtn" class="store-selector u-dc0751c d-flex" onclick="window._mkPopover(this.parentNode,'_pop_uniPeriod',[{value:'today',label:'Today'},{value:'week',label:'This Week'},{value:'month',label:'This Month'},{value:'all',label:'All Time'}],function(v,l){document.getElementById('unifiedPeriodFilter').value=v;document.getElementById('unifiedPeriodFilterBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>This Month </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="unifiedPeriodFilter" class="d-none">
+<button id="unifiedPeriodFilterBtn" class="form-ctl u-dc0751c d-flex" onclick="window._mkPopover(this.parentNode,'_pop_uniPeriod',[{value:'today',label:'Today'},{value:'week',label:'This Week'},{value:'month',label:'This Month'},{value:'all',label:'All Time'}],function(v,l){document.getElementById('unifiedPeriodFilter').value=v;document.getElementById('unifiedPeriodFilterBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>This Month </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<select id="unifiedPeriodFilter" class="form-ctl d-none">
 <option value="today">Today</option>
 <option value="week">This Week</option>
 <option value="month" selected>This Month</option>
