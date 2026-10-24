@@ -5851,7 +5851,7 @@ button.dl-row-line { cursor: pointer; }
 .pf-sum-label { font-size: 0.64rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
 .pf-sum-val { font-size: 0.95rem; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .pf-sum-val.is-total { color: var(--accent-emerald); }
-.pf-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: var(--radius-base); background: var(--input-bg); border: 1px solid var(--glass-border); }
+.pf-seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc((100% - 8px) / 3), 1fr)); gap: 4px; padding: 4px; border-radius: var(--radius-base); background: var(--input-bg); border: 1px solid var(--glass-border); }
 .pf-seg-opt {
   height: 38px; margin: 0; border: 0; border-radius: calc(var(--radius-base) - 4px); background: transparent;
   color: var(--text-muted); font-size: 0.82rem; font-weight: 700; cursor: pointer;
