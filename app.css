@@ -401,9 +401,10 @@ html[data-bio="1"] .splash-brand { display: none; } }
 --success: #4ADE80;
 --input-bg: #000000;
 --card-hover: #000000;
---shadow: 0 2px 10px rgba(0, 0, 0, 0.45), 0 14px 32px -16px color-mix(in srgb, var(--accent-cyan) 30%, transparent);
+--shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 18px 38px -14px color-mix(in srgb, var(--accent-cyan) 38%, transparent);
 --shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.5), 0 20px 42px -14px color-mix(in srgb, var(--accent-cyan) 38%, transparent);
---card-glow: 15%;
+--tint-pct: 4%;
+--card-glow: var(--glow-pct);
 --backdrop-blur: none;
 --highlight-bg: rgba(74, 222, 128, 0.10);
 --highlight-border: rgba(74, 222, 128, 0.28);
@@ -500,8 +501,8 @@ color-scheme: dark;
 --success: #059669;
 --input-bg: #FFFFFF;
 --card-hover: #FFFFFF;
---shadow: 0 1px 2px rgba(0, 0, 0, 0.07), 0 4px 12px rgba(0, 0, 0, 0.09), 0 12px 28px rgba(0, 0, 0, 0.07);
---shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.08), 0 10px 24px rgba(0, 0, 0, 0.13), 0 24px 48px rgba(0, 0, 0, 0.10);
+--shadow: 0 2px 6px rgba(16, 35, 28, 0.07), 0 16px 34px -12px rgba(16, 35, 28, 0.20), 0 0 28px -10px color-mix(in srgb, var(--accent-cyan) 34%, transparent);
+--shadow-lg: 0 3px 8px rgba(16, 35, 28, 0.09), 0 22px 42px -12px rgba(16, 35, 28, 0.24), 0 0 34px -8px color-mix(in srgb, var(--accent-cyan) 42%, transparent);
 --backdrop-blur: none;
 --highlight-bg: rgba(16, 185, 129, 0.08);
 --highlight-border: rgba(16, 185, 129, 0.26);
@@ -543,17 +544,18 @@ color-scheme: dark;
 --av-bg-a: 0.13;
 --av-fg-s: 70%;
 --av-fg-l: 32%;
---card-glow: 11%;
+--card-glow: var(--glow-pct);
+--tint-pct: 7%;
 color-scheme: light;
 }
 :root,
 [data-theme="light"],
 .invp-root {
 --hover-bg: color-mix(in srgb, var(--text-main) 5%, transparent);
---soft-card: radial-gradient(130% 80% at 0% 0%, color-mix(in srgb, var(--accent-cyan) var(--card-glow), transparent) 0%, transparent 62%), linear-gradient(180deg, var(--glass) 0%, var(--surface-2) 100%);
+--soft-card: radial-gradient(130% 80% at 0% 0%, color-mix(in srgb, var(--accent-cyan) var(--card-glow), transparent) 0%, transparent 62%), linear-gradient(180deg, var(--glass) 0%, color-mix(in srgb, var(--accent-cyan) 4%, var(--surface-2)) 100%);
 --panel-bg: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 4%, transparent));
---soft-bg: linear-gradient(180deg, color-mix(in srgb, var(--text-main) 6%, transparent), color-mix(in srgb, var(--text-main) 2%, transparent));
---well-bg: color-mix(in srgb, var(--text-main) 4%, transparent);
+--soft-bg: linear-gradient(180deg, color-mix(in srgb, var(--accent) var(--tint-pct), var(--glass)), color-mix(in srgb, var(--accent) 2%, var(--glass)));
+--well-bg: color-mix(in srgb, var(--accent) var(--tint-pct), var(--glass));
 --well-bg-focus: color-mix(in srgb, var(--accent) 8%, transparent);
 --well-line: color-mix(in srgb, var(--text-main) 14%, transparent);
 --dt-card-top: var(--glass);
@@ -1690,7 +1692,7 @@ font-weight: 400;
 }
 .factory-history-item {
 padding: 15px;
-background: var(--soft-bg);
+background: var(--soft-card);
 border-radius: 14px;
 backdrop-filter: var(--backdrop-blur);
 }
@@ -2240,7 +2242,7 @@ color: var(--text-muted);
 .cust-history-item {
 display: flex;
 justify-content: space-between;
-background: var(--soft-bg);
+background: var(--soft-card);
 padding: 12px;
 margin-bottom: 10px;
 }
@@ -3673,7 +3675,7 @@ code, pre, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .bs-details { margin: 8px 0; font-size: 0.85rem; }
 .bs-details summary, .bf-actual summary { cursor: pointer; font-weight: 700; color: var(--accent); padding: 6px 0; }
 .bf-actual { margin-top: 10px; font-size: 0.85rem; }
-.bf-card { padding: 10px 12px; background: var(--soft-bg); border: 1px solid var(--glass-border); border-radius: 14px; margin-bottom: 10px; backdrop-filter: var(--backdrop-blur); }
+.bf-card { padding: 10px 12px; background: var(--soft-card); border: 1px solid var(--glass-border); border-radius: 14px; margin-bottom: 10px; backdrop-filter: var(--backdrop-blur); }
 .bf-card:hover { background: var(--card-hover); }
 .bf-card-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .bf-name { padding-bottom: 8px; }
@@ -5574,7 +5576,7 @@ button.dl-row-line { cursor: pointer; }
 .cm-month.is-collapsed .cm-chev { transform: rotate(-90deg); }
 .cm-month.is-collapsed .cm-month-body { display: none; }
 .cm-list.is-filtering .cm-month.is-collapsed .cm-month-body { display: block; }
-.cm-day { margin: 8px 0; padding: 0 12px; border-radius: var(--radius-base); background: var(--soft-bg); border: 1px solid var(--glass-border); }
+.cm-day { margin: 8px 0; padding: 0 12px; border-radius: var(--radius-base); background: var(--soft-card); border: 1px solid var(--glass-border); }
 .cm-row { display: grid; grid-template-columns: 38px 1fr auto; gap: 0 10px; align-items: center; width: 100%; padding: 11px 0; text-align: left; color: inherit; background: none; border: 0; cursor: pointer; }
 .cm-row + .cm-row { border-top: 1px solid var(--glass-border); }
 .cm-date { text-align: center; line-height: 1.05; }
