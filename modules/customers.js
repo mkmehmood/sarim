@@ -442,7 +442,7 @@ info = `
     ${(_hasPay || _hasExp) ? `<div class="text-xs u-text-muted">${[_hasPay ? 'Payment' : '', _hasExp ? '<span class="u-expired-credit">Expired credit</span>' : ''].filter(Boolean).join(' | ')}</div>
     <div class="u-dbdd85e">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? `<span class="u-expired-credit">${_expText}</span>` : ''].filter(Boolean).join(' | ')}</div>` : ''}
     ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
-    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment + Expired Credit' : 'Amount Received') : 'Expired Stock')}</div>
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment | Expired credit' : 'Amount Received') : 'Payment | Expired credit')}</div>
 `;
 } else if (isOldDebt) {
 info = `
@@ -471,13 +471,13 @@ const _balTone = _bal > 0.005 ? 'is-debt' : 'is-clear';
 let rTitle = '', rSub = '', rInv = null, rAmt = 0, rIn = false, rKind = 'cash', rCat = 'cash';
 if (isRepReturn) {
 const _e = Number(t.expiredQty) || 0, _r = Number(t.returnedQty) || 0;
-rTitle = _e > 0 ? 'Return · Expired credit' : 'Return';
-rSub = `${fmtNum(_r)} kg${Number(t.returnUnitPrice) > 0 ? ` @ ${fmtAmt(Number(t.returnUnitPrice))}` : ''}`;
+rTitle = _e > 0 ? 'Return | Expired credit' : 'Return';
+rSub = _e > 0 ? `${fmtNum(_r)} kg | ${fmtNum(_e)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}` : `${fmtNum(_r)} kg${Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : ''}`;
 rAmt = Number(t.returnValue) || 0; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isPartialPayment || isCollection) {
 const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
-rTitle = isPartialPayment ? 'Partial payment' : 'Collection';
-rSub = isPartialPayment ? 'Payment received' : (_pay > 0 ? (_expV > 0 ? 'Payment + expired credit' : 'Amount received') : 'Expired stock');
+rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
+rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${Number(t.expiredQty) > 0 ? `${fmtNum(Number(t.expiredQty))} kg` : fmtAmt(_expV)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Amount received');
 rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 rTitle = 'Old debt'; rSub = oldDebtNote(t.notes) || 'Previous balance';
