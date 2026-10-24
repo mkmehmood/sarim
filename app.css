@@ -5697,7 +5697,7 @@ button.dl-row-line { cursor: pointer; }
 .pf-footer {
   position: sticky; bottom: 0; z-index: 2; display: flex; gap: 10px;
   width: calc(100% + 32px); margin: 16px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: var(--glass-frosted); border-top: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--text-main) 5%, transparent), color-mix(in srgb, var(--text-main) 1.5%, transparent)), var(--glass-frosted); border-top: 1px solid var(--glass-border);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 .pf-footer > * { max-width: 528px; }
@@ -6324,16 +6324,6 @@ button.dl-row-line { cursor: pointer; }
   .dlg-actions .dlg-btn--ghost:only-child { flex: 1 1 auto; }
 }
 
-h3.u-text-accent { display: flex; align-items: center; gap: 10px; }
-h3.u-text-accent::before {
-  content: '';
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2303170b' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E") center / 16px no-repeat, linear-gradient(135deg, var(--accent-cyan), var(--accent-lime));
-  box-shadow: 0 6px 14px -4px color-mix(in srgb, var(--accent-cyan) 50%, transparent);
-}
 .form-foot {
   margin: 18px -20px -20px;
   padding: 16px 20px 20px;
