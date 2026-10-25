@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { periodTotals, periodQuantity } from '../modules/finance.js';
+import { periodTotals, periodQuantity, soldQuantity } from '../modules/finance.js';
 describe('periodTotals', () => {
   it('sums sales and collections plus returns', () => {
     const rows = [
@@ -38,5 +38,17 @@ describe('periodQuantity', () => {
   });
   it('handles empty input', () => {
     assert.equal(periodQuantity(), 0);
+  });
+});
+
+describe('soldQuantity', () => {
+  it('counts only real sales and ignores collections, returns and opening balances', () => {
+    assert.equal(soldQuantity({ quantity: 12.5 }), 12.5);
+    assert.equal(soldQuantity({ quantity: 5, paymentType: 'COLLECTION' }), 0);
+    assert.equal(soldQuantity({ quantity: 5, paymentType: 'PARTIAL_PAYMENT' }), 0);
+    assert.equal(soldQuantity({ quantity: 5, isRepReturn: true }), 0);
+    assert.equal(soldQuantity({ quantity: 5, isMerged: true }), 0);
+    assert.equal(soldQuantity({ quantity: 5, transactionType: 'OLD_DEBT' }), 0);
+    assert.equal(soldQuantity(null), 0);
   });
 });
