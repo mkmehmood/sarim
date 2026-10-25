@@ -45,6 +45,13 @@ describe('shared form control class', () => {
     assert.deepEqual(missing, []);
   });
 
+  it('every date-picker button carries form-ctl', () => {
+    for (const file of files) {
+      const bad = [...read(file).matchAll(/class=\\?"([^"\\]*(?<![\w-])cdp-btn(?![\w-])[^"\\]*)/g)].filter((m) => !/\bform-ctl\b/.test(m[1]));
+      assert.deepEqual(bad.map((m) => m[1]), [], `${file} has a cdp-btn without form-ctl`);
+    }
+  });
+
   it('legacy per-control picker classes are gone from markup', () => {
     for (const file of files) {
       assert.ok(
