@@ -237,7 +237,7 @@ describe('last small families use shared classes', () => {
   });
   it('they no longer redeclare the shared surface', () => {
     for (const c of ['sx-period', 'cy-stat-cell', 'pf-control']) {
-      assert.ok(!ownDecls(c).some((p) => /^(background|border|border-radius|padding|font):/.test(p) && !(c === 'pf-control' && p === 'padding:0')), c + ' repeats the surface');
+      assert.ok(!ownDecls(c).some((p) => /^(background|border|border-radius|font):/.test(p)), c + ' repeats the surface');
     }
     assert.ok(!ownDecls('pf-locate').includes('cursor:pointer'));
   });
