@@ -2320,7 +2320,7 @@ animation: none !important;
 @media (hover: hover) and (pointer: fine) {
 .card:hover { box-shadow: var(--shadow-lg) !important; }
 }
-#sys-header, #app-sidebar { box-shadow: var(--shadow-header) !important; }
+#sys-header { box-shadow: var(--shadow-header) !important; }
 .card:hover, .btn:hover, button:hover, .toggle-opt:hover, .entity-chip:hover, .btn-theme:hover, .btn-theme:active, .btn:active, button:active, .card:active {
 transform: none !important;
 }
