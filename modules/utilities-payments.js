@@ -1223,8 +1223,8 @@ const _mEl = document.getElementById('cust-active-margin');
 if (_mEl) { const m = sxMargin(s.profit, s.v); _mEl.textContent = m == null ? '' : `${m}% margin`; _mEl.classList.toggle('d-none', m == null); }
 const card = document.getElementById('sales-summary-card');
 if (card) {
-if (mode === 'all') card.classList.add('all-times-summary');
-else card.classList.remove('all-times-summary');
+if (mode === 'all') card.classList.add('is-highlight');
+else card.classList.remove('is-highlight');
 }
 const refDate = (document.getElementById('cust-date') || {}).value || localDateStr();
 _filterHistoryByPeriod('#custHistoryList', refDate, mode);
@@ -1770,12 +1770,6 @@ card.classList.add('active');
 setTimeout(() => {
 card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }, 100);
-}
-});
-document.querySelectorAll('.entity-chip').forEach(chip => {
-chip.classList.remove('active');
-if (String(chip.dataset.id) === String(id)) {
-chip.classList.add('active');
 }
 });
 }

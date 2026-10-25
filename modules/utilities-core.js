@@ -1999,7 +1999,7 @@ const photoBtn = hasPhoto ? `<button type="button" class="btn btn-sm btn-main u-
 _entries.push({
   id: t.id, dkey: t.date || 'undated', rTitle: label, rSub, rIn: !isOut, rKind: isOut ? 'out' : 'in',
   rCat: t.isTransfer ? 'transfer' : (isOut ? 'out' : 'in'),
-  tag: t.isTransfer ? '<span class="status-toggle-btn txn-warning">TRANSFER</span>' : '',
+  tag: t.isTransfer ? '<span class="badge status-badge txn-warning">TRANSFER</span>' : '',
   amtText: fmtAmt(amt),
   balText: _balText(_bal), balTone: _bal > 0.005 ? 'is-debt' : 'is-clear',
   unpaid: false,

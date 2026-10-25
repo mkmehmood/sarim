@@ -34,7 +34,7 @@ const RECEIPT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 const MENU_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>';
 
 export function menuButtonHtml(kind, safeName) {
-  return `<button type="button" class="cm-menu-btn" aria-haspopup="menu" aria-label="More actions" title="More actions" onclick="toggleCmMenu(this,'${kind}','${safeName}')">${MENU_ICON}</button>`;
+  return `<button type="button" class="btn cm-menu-btn" aria-haspopup="menu" aria-label="More actions" title="More actions" onclick="toggleCmMenu(this,'${kind}','${safeName}')">${MENU_ICON}</button>`;
 }
 
 function closeCmMenu() {
@@ -195,7 +195,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     state.days.set(D.key, { rows: chrono, closing: latest.bal, opening: latest.bal - net, sold: D.sold, got: D.got });
     const L = lbl(kind);
     const summary = D.items.length > 1 ? `${countLabel(D.items.length, D.q)} \u00b7 ${L.a} ${await money(D.sold)} \u00b7 ${L.b} ${await money(D.got)}` : '';
-    return `<div class="card cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${c.noInvoice ? '' : `<button type="button" class="cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
+    return `<div class="card cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${c.noInvoice ? '' : `<button type="button" class="btn cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
   };
   let html = '';
   const many = n > 40;

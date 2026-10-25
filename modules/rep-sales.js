@@ -1115,14 +1115,14 @@ let toggleBtnHtml = '';
 if (t.isMerged) {
 const mergedSettled = t.creditReceived || effectiveDue <= 0.01;
 toggleBtnHtml = mergedSettled
-? `<span class="status-toggle-btn paid u-3b42672">SETTLED</span>`
-: `<span class="status-toggle-btn pending u-3b42672">PENDING</span>`;
+? `<span class="badge status-badge paid u-3b42672">SETTLED</span>`
+: `<span class="badge status-badge pending u-3b42672">PENDING</span>`;
 } else if (isCredit) {
 if (hasPartialPayment) {
 btnText = `PARTIAL (${await formatCurrency(effectiveDue)} due)`;
 statusClass = 'partial';
 }
-toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
+toggleBtnHtml = `<span class="badge status-badge ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
 }
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `rp-${t.id}`;

@@ -410,7 +410,7 @@ function unlockAudio() {
   } catch (_) {}
 }
 
-const OPTION_SELECTOR = '.toggle-opt, .status-toggle-btn, #sidebar-btn-theme';
+const OPTION_SELECTOR = '.toggle-opt, .status-badge, #sidebar-btn-theme';
 const SEGMENT_SELECTOR = '.toggle-opt';
 const CONTROL_SELECTOR = `${OPTION_SELECTOR}, [aria-pressed]`;
 

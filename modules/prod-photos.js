@@ -183,7 +183,7 @@ function _updateShareBar() {
     bar.className = 'pp-sharebar';
     document.body.appendChild(bar);
   }
-  bar.innerHTML = `<span><b>${_selected.size}</b> entr${_selected.size === 1 ? 'y' : 'ies'} selected</span><div><button type="button" class="pp-bar-clear" onclick="clearProdPhotoSelection()">Clear</button><button type="button" class="pp-bar-share" onclick="shareProdPhotos()">Share on WhatsApp</button></div>`;
+  bar.innerHTML = `<span><b>${_selected.size}</b> entr${_selected.size === 1 ? 'y' : 'ies'} selected</span><div><button type="button" class="btn pp-bar-clear" onclick="clearProdPhotoSelection()">Clear</button><button type="button" class="btn pp-bar-share" onclick="shareProdPhotos()">Share on WhatsApp</button></div>`;
 }
 
 export function toggleProdPhotoSelect(id, on) {

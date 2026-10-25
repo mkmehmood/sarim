@@ -549,7 +549,7 @@ describe('controlCue picks the right cue for app controls', () => {
     }
   });
   it('status buttons and the sidebar theme switch always respond', () => {
-    assert.equal(fb.controlCue(makeEl({ classes: ['status-toggle-btn', 'paid'] })), 'select');
+    assert.equal(fb.controlCue(makeEl({ classes: ['status-badge', 'paid'] })), 'select');
     assert.equal(fb.controlCue(makeEl({ id: 'sidebar-btn-theme' })), 'select');
   });
   it('on/off buttons use aria-pressed to pick the on or off cue', () => {

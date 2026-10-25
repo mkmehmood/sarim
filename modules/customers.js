@@ -395,25 +395,25 @@ const isOldDebt = t.transactionType === 'OLD_DEBT';
 if (t.isMerged) {
 const mergedSettled = t.creditReceived || (t.isMerged && effectiveDue <= 0.01);
 toggleBtnHtml = mergedSettled
-? `<span class="status-toggle-btn paid u-3b42672">SETTLED</span>`
-: `<span class="status-toggle-btn pending u-3b42672">PENDING</span>`;
+? `<span class="badge status-badge paid u-3b42672">SETTLED</span>`
+: `<span class="badge status-badge pending u-3b42672">PENDING</span>`;
 } else if(isCredit) {
 if (hasPartialPayment) {
 const remaining = effectiveDue;
 btnText = `PARTIAL (${await formatCurrency(remaining)} due)`;
 statusClass = 'partial';
 }
-toggleBtnHtml = `<span class="status-toggle-btn ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
+toggleBtnHtml = `<span class="badge status-badge ${statusClass} u-77e4b99 st-pointer-events__8b1364">${btnText}</span>`;
 } else if (isRepReturn) {
 toggleBtnHtml = _rrUsed.has(t.id)
-? `<span class="status-toggle-btn paid u-77e4b99 st-pointer-events__8b1364">RECONCILED</span>`
-: `<span class="status-toggle-btn pending u-77e4b99 st-pointer-events__8b1364">PENDING RETURN</span>`;
+? `<span class="badge status-badge paid u-77e4b99 st-pointer-events__8b1364">RECONCILED</span>`
+: `<span class="badge status-badge pending u-77e4b99 st-pointer-events__8b1364">PENDING RETURN</span>`;
 } else if (isPartialPayment) {
-toggleBtnHtml = `<span class="status-toggle-btn txn-warning">PARTIAL PAYMENT</span>`;
+toggleBtnHtml = `<span class="badge status-badge txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
-toggleBtnHtml = `<span class="status-toggle-btn txn-collect">COLLECTION</span>`;
+toggleBtnHtml = `<span class="badge status-badge txn-collect">COLLECTION</span>`;
 } else {
-toggleBtnHtml = `<span class="status-toggle-btn txn-cash">CASH SALE</span>`;
+toggleBtnHtml = `<span class="badge status-badge txn-cash">CASH SALE</span>`;
 }
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;

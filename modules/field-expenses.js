@@ -68,7 +68,7 @@ export function resetCommissionPaid() {
 function listHtml(kind) {
   const items = lists[kind];
   if (!items.length) return '<div class="fe-empty">Nothing added yet.</div>';
-  const rows = items.map((it, i) => `<div class="fe-row"><span class="fe-name">${esc(it.name)}</span><span class="fe-amt cost-val">${esc(fmtAmt(it.amount))}</span><button type="button" class="fe-del" data-fe-del="${i}" aria-label="Remove ${esc(it.name)}">&times;</button></div>`).join('');
+  const rows = items.map((it, i) => `<div class="fe-row"><span class="fe-name">${esc(it.name)}</span><span class="fe-amt cost-val">${esc(fmtAmt(it.amount))}</span><button type="button" class="btn fe-del" data-fe-del="${i}" aria-label="Remove ${esc(it.name)}">&times;</button></div>`).join('');
   return `${rows}<div class="fe-total"><span>${esc(KINDS[kind].totalLabel)}</span><b>${esc(fmtAmt(expenseTotal(items)))}</b></div>`;
 }
 
