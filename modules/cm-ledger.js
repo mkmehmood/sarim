@@ -186,7 +186,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     const ok = !isNaN(dateObj.getTime());
     const dnum = ok ? dateObj.getDate() : '';
     const dwk = ok ? dateObj.toLocaleDateString('en-US', { weekday: 'short' }) : '';
-    return `<button type="button" class="cm-row cm-${e.rKind}${e.isSettled ? ' is-settled-record' : ''}" data-kind="${kind}" data-txid="${esc(e.id)}" data-cat="${e.rCat}" data-open="${e.unpaid ? 1 : 0}" onclick="openCustomerTxnSheet(this)"><span class="cm-date">${first && !e.noDate ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${esc(e.rTitle)}${e.tag ? ' ' + e.tag : ''}</span><span class="cm-sub">${esc(e.rSub)}</span></span><span class="cm-amt"><b class="${e.rIn ? 'is-in' : ''}">${e.rIn ? '+ ' : ''}${e.amtText}</b><span class="${e.balTone}">${e.balText}</span></span></button>`;
+    return `<button type="button" class="row cm-row cm-${e.rKind}${e.isSettled ? ' is-settled-record' : ''}" data-kind="${kind}" data-txid="${esc(e.id)}" data-cat="${e.rCat}" data-open="${e.unpaid ? 1 : 0}" onclick="openCustomerTxnSheet(this)"><span class="cm-date">${first && !e.noDate ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${esc(e.rTitle)}${e.tag ? ' ' + e.tag : ''}</span><span class="cm-sub">${esc(e.rSub)}</span></span><span class="cm-amt"><b class="${e.rIn ? 'is-in' : ''}">${e.rIn ? '+ ' : ''}${e.amtText}</b><span class="${e.balTone}">${e.balText}</span></span></button>`;
   };
   const dayHtml = async (D) => {
     const chrono = D.items.slice().reverse();

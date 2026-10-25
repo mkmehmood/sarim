@@ -103,3 +103,20 @@ describe('shared overlay surface', () => {
     assert.ok(!/\.factory-overlay-card\s*\{/.test(readFileSync(new URL('app.css', root), 'utf8')));
   });
 });
+
+describe('shared list row', () => {
+  it('one .row rule and one sibling divider', () => {
+    let rows = 0, divider = 0;
+    sheet.walkRules((r) => { if (r.selector.trim() === '.row') rows++; if (r.selector.trim() === '.row + .row') divider++; });
+    assert.equal(rows, 1);
+    assert.equal(divider, 1);
+  });
+  it('cm-row and rl-row carry .row and keep layout only', () => {
+    assert.ok(/class="row cm-row/.test(src) && /class="row rl-row/.test(src));
+    for (const c of ['cm-row', 'rl-row']) {
+      const props = ownDecls(c);
+      assert.ok(!props.some((p) => /^(background|border|border-bottom|color|text-align):/.test(p)), `${c} repeats row styling`);
+    }
+    assert.ok(!/\.cm-row \+ \.cm-row|\.rl-row:last-child/.test(readFileSync(new URL('app.css', root), 'utf8')));
+  });
+});

@@ -1163,6 +1163,15 @@ position: relative;
 .btn-theme:hover {
 background: var(--card-hover);
 }
+.row {
+align-items: center;
+padding: 11px 0;
+background: none;
+border: 0;
+color: inherit;
+text-align: left;
+}
+.row + .row { border-top: 1px solid var(--glass-border); }
 .overlay {
 background: var(--soft-card);
 border: 1px solid var(--glass-border);
@@ -5119,8 +5128,7 @@ button.dl-row-line { cursor: pointer; }
 .cm-month.is-collapsed .cm-month-body { display: none; }
 .cm-list.is-filtering .cm-month.is-collapsed .cm-month-body { display: block; }
 .cm-day { margin: 8px 0; padding: 0 12px; }
-.cm-row { display: grid; grid-template-columns: 38px 1fr auto; gap: 0 10px; align-items: center; width: 100%; padding: 11px 0; text-align: left; color: inherit; background: none; border: 0; cursor: pointer; }
-.cm-row + .cm-row { border-top: 1px solid var(--glass-border); }
+.cm-row { display: grid; grid-template-columns: 38px 1fr auto; gap: 0 10px; align-items: center; width: 100%; cursor: pointer; }
 .cm-date { text-align: center; line-height: 1.05; }
 .cm-date b { display: block; font-family: var(--font-num); font-size: 1.05rem; font-weight: 800; }
 .cm-date span { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); }
@@ -5256,9 +5264,8 @@ button.dl-row-line { cursor: pointer; }
 .rl-scroll { max-height: 460px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; }
 .rl-row {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
-  padding: 12px 6px; border-bottom: 1px solid var(--glass-border);
+  padding-inline: 6px;
 }
-.rl-row:last-child { border-bottom: 0; }
 .rl-row.is-open { cursor: pointer; border-radius: var(--radius-base); }
 .rl-row.is-open:active { background: var(--accent-dim); }
 @media (hover: hover) { .rl-row.is-open:hover { background: var(--accent-dim); } }

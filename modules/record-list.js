@@ -41,7 +41,7 @@ export function rlRowHtml(opts) {
   const open = opts.onOpen
     ? ` role="button" tabindex="0" onclick="if(!event.target.closest('a,button'))${opts.onOpen}" onkeydown="if(event.key==='Enter'&&!event.target.closest('a,button')){event.preventDefault();${opts.onOpen}}"`
     : '';
-  return `<div class="rl-row is-${tone}${opts.onOpen ? ' is-open' : ''}"${open}>`
+  return `<div class="row rl-row is-${tone}${opts.onOpen ? ' is-open' : ''}"${open}>`
     + avatar
     + `<div class="rl-main"><div class="rl-name-line"><span class="rl-name">${esc(opts.name || '')}</span>${badges}</div>`
     + (details ? `<div class="rl-details">${details}</div>` : '')
