@@ -193,7 +193,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     state.days.set(D.key, { rows: chrono, closing: latest.bal, opening: latest.bal - net, sold: D.sold, got: D.got });
     const L = lbl(kind);
     const summary = D.items.length > 1 ? `${D.items.length} entries \u00b7 ${L.a} ${await money(D.sold)} \u00b7 ${L.b} ${await money(D.got)}` : '';
-    return `<div class="card cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${c.noInvoice ? '' : `<button type="button" class="cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
+    return `<div class="cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${c.noInvoice ? '' : `<button type="button" class="cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
   };
   let html = '';
   const many = n > 40;

@@ -330,7 +330,7 @@ _entRun.set(t, _entTotal);
 const sortedTransactions = [...entityTransactions].sort((a, b) => b.timestamp - a.timestamp);
 sortedTransactions.forEach(transaction => {
 const transactionCard = document.createElement('div');
-transactionCard.className = 'card';
+transactionCard.className = 'liquid-card';
 window.setStyle(transactionCard, 'padding', 'st-padding__4092fd');
 window.setStyle(transactionCard, 'position', 'st-position__d461c9');
 const badgeClass = transaction.type === 'IN' ? 'transaction-in' : 'transaction-out';
@@ -2027,7 +2027,7 @@ window.setStyle(warningDiv, 'margin-top', 'st-margin-top__8a77e5');
 window.setStyle(warningDiv, 'padding', 'st-padding__492c8f');
 window.setStyle(warningDiv, 'border-radius', 'st-border-radius__0dc840');
 window.setDisplay(warningDiv, 'none');
-const salesSection = document.querySelector('#tab-sales > .card');
+const salesSection = document.querySelector('#tab-sales .section.liquid-card');
 const calculateButton = salesSection.querySelector('.btn-main');
 salesSection.insertBefore(warningDiv, calculateButton);
 return warningDiv;
@@ -4086,7 +4086,7 @@ decPassword = await new Promise((resolve) => {
 const modal = document.createElement('div');
 modal.classList.add('st-position__072a0d', 'st-background__d03340', 'd-flex', 'st-align-items__7c6197', 'u-7ddd1b4');
 modal.innerHTML = `
-<div class="card u-33cbc37">
+<div class="liquid-card u-33cbc37">
 <h3 class="u-454fb31">Enter Password to Decrypt</h3>
 <p class="u-97b6268">This backup is encrypted with your account credentials.</p>
 <p class="u-ed7ce38">Account: <strong>${esc(currentUser.email)}</strong></p>
@@ -5747,7 +5747,7 @@ const soldBreakdownEntries = Object.entries(soldByCustomer).sort((a, b) => b[1] 
 const soldBreakdownHtml = sxBreakdown('Sold by customer', soldBreakdownEntries.map(([cust, qty]) => ({ name: cust, value: `${fmtNum(safeValue(qty))} kg` })), `${soldBreakdownEntries.length}`);
 const _margin = sxMargin(storeData.profit, storeData.value);
 const card = document.createElement('div');
-card.className = 'card sx-card';
+card.className = 'sx-card';
 card.innerHTML = `
 <div class="sx-card-head"><h4 class="sx-card-title"><span class="store-badge ${storeColors[index]}">${esc(storeNames[index])}</span></h4><span class="sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
 ${sxHero('Remaining stock', `${fmtNum(safeValue(remainingQty))}<small>kg</small>`, { sub: `${fmtNum(safeValue(totalIn))} kg in · ${fmtNum(safeValue(soldQty))} kg sold`, chip: totalIn > 0 ? `${Math.max(0, Math.round((remainingQty / totalIn) * 100))}% left` : '', chipTone: remainingQty > 0 ? 'good' : 'warn' })}
@@ -5785,7 +5785,7 @@ const combinedSoldEntries = Object.entries(allStoresSoldByCustomer).sort((a, b) 
 const combinedSoldBreakdownHtml = sxBreakdown('Sold by customer', combinedSoldEntries.map(([cust, qty]) => ({ name: cust, value: `${fmtNum(safeValue(qty))} kg` })), `${combinedSoldEntries.length}`);
 const _cMargin = sxMargin(totalCombined.profit, totalCombined.value);
 const combinedCard = document.createElement('div');
-combinedCard.className = 'card sx-card sx-card--accent sx-card--total';
+combinedCard.className = 'sx-card sx-card--accent sx-card--total';
 combinedCard.innerHTML = `
 <div class="sx-card-head"><h4 class="sx-card-title">Total combined</h4><span class="sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
 ${sxHero('Net profit', fmtAmt(safeValue(totalCombined.profit)), { chip: _cMargin == null ? '' : `${_cMargin}% margin`, chipTone: (_cMargin || 0) >= 0 ? 'good' : 'bad', sub: `on ${fmtAmt(safeValue(totalCombined.value))} total value` })}
@@ -6512,7 +6512,7 @@ return;
 const fragment = document.createDocumentFragment();
 transfers.forEach(item => {
 const div = document.createElement('div');
-div.className = 'card card-rows';
+div.className = 'card liquid-card';
 div.innerHTML = `
 <div class="u-edba70e d-flex">
 <span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(item.date, item.time)}</span>

@@ -21,7 +21,7 @@ describe('history card', () => {
   });
   it('keeps the .card hook and data attributes the filters rely on', () => {
     const html = hcCardHtml({ title: 'x', tone: 'bad' }, { attrs: { 'data-date': '2026-10-20', 'data-customer': 'ali' }, className: 'highlight-card' });
-    assert.ok(/class="card hc-card is-bad highlight-card is-open"/.test(html));
+    assert.ok(/class="card liquid-card hc-card is-bad highlight-card is-open"/.test(html));
     assert.ok(html.includes('data-date="2026-10-20"') && html.includes('data-customer="ali"'));
   });
   it('renders chips and empty states', () => {

@@ -354,7 +354,7 @@ ${errText ? `<span class="dl-queue-error">${errText}</span>` : ''}
 </div>`;
 }).join('');
 modal.innerHTML = `
-<div class="card dl-queue-card">
+<div class="dl-queue-card">
 <div class="dl-queue-header">
 <h3 class="dl-queue-title"> Failed Uploads</h3>
 </div>
