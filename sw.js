@@ -76,30 +76,74 @@ const NOMINATIM_ORIGIN = 'https://nominatim.openstreetmap.org';
 const OSM_TILE_ORIGIN = 'https://tile.openstreetmap.org';
 const OFFLINE_TILE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
+const PRECACHE_CONCURRENCY = 4;
+const PRECACHE_ATTEMPTS    = 4;
+const PRECACHE_STALL_MS    = 45000;
+
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+function fetchOnce(req, opts, timeoutMs) {
+  var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  var o = Object.assign({}, opts || {});
+  if (ctrl) o.signal = ctrl.signal;
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () {
+      if (ctrl) ctrl.abort();
+      reject(new Error('SW timeout after ' + timeoutMs + 'ms'));
+    }, timeoutMs);
+    fetch(req, o).then(
+      function (res) { clearTimeout(timer); resolve(res); },
+      function (err) { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 async function precacheOne(cache, url, opts) {
+  var name = typeof url === 'string' ? url : url.url;
   try {
-    const fresh = Object.assign({}, opts || {}, { cache: 'reload' });
-    const req = typeof url === 'string' ? new Request(url, fresh) : url;
-    let res;
-    try {
-      res = await fetch(req, fresh);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-    } catch (e) {
-      res = await fetch(req, fresh);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+    var fresh = Object.assign({}, opts || {}, { cache: 'reload' });
+    var req = typeof url === 'string' ? new Request(url, fresh) : url;
+    var lastErr;
+    for (var attempt = 0; attempt < PRECACHE_ATTEMPTS; attempt++) {
+      try {
+        var res = await fetchOnce(req, fresh, PRECACHE_STALL_MS);
+        if (res.ok) {
+          await cache.put(req, res);
+          return { url: name, ok: true };
+        }
+        lastErr = new Error('HTTP ' + res.status);
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
+      } catch (e) {
+        lastErr = e;
+      }
+      if (attempt < PRECACHE_ATTEMPTS - 1) await sleep(Math.min(8000, 750 * Math.pow(2, attempt)));
     }
-    await cache.put(req, res);
-    return { url: typeof url === 'string' ? url : url.url, ok: true };
+    throw lastErr || new Error('precache failed');
   } catch (e) {
-    return { url: typeof url === 'string' ? url : url.url, ok: false, error: (e && e.message) || String(e) };
+    return { url: name, ok: false, error: (e && e.message) || String(e) };
   }
+}
+
+async function precacheAll(cache, urls) {
+  var results = new Array(urls.length);
+  var next = 0;
+  async function worker() {
+    while (next < urls.length) {
+      var i = next++;
+      results[i] = await precacheOne(cache, urls[i]);
+    }
+  }
+  var workers = [];
+  for (var w = 0; w < Math.min(PRECACHE_CONCURRENCY, urls.length); w++) workers.push(worker());
+  await Promise.all(workers);
+  return results;
 }
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) =>
-        Promise.all(ASSETS_TO_CACHE.map((url) => precacheOne(cache, url)))
+        precacheAll(cache, ASSETS_TO_CACHE)
           .then((results) => {
             const failed = results.filter((r) => !r.ok);
             if (failed.length) {
@@ -355,24 +399,34 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'offline-queue-sync') event.waitUntil(doBackgroundSync());
 });
 
-const NETWORK_TIMEOUT_MS  = 4000;
-const NAVIGATE_TIMEOUT_MS = 3000;
-const LOCAL_TIMEOUT_MS    = 30000;
-const API_TIMEOUT_MS      = 8000;
+const NETWORK_TIMEOUT_MS  = 20000;
+const NAVIGATE_TIMEOUT_MS = 20000;
+const LOCAL_TIMEOUT_MS    = 90000;
+const API_TIMEOUT_MS      = 45000;
 
 function fetchWithTimeout(request, timeout, opts) {
-  return new Promise(function (resolve, reject) {
-    var timer = setTimeout(function () { reject(new Error('SW timeout after ' + timeout + 'ms')); }, timeout);
-    fetch(request, opts || {})
-      .then(function (res) { clearTimeout(timer); resolve(res); })
-      .catch(function (err) { clearTimeout(timer); reject(err); });
-  });
+  return fetchOnce(request, opts, timeout);
 }
 
+function isSlowConnection() {
+  try {
+    var c = self.navigator && self.navigator.connection;
+    if (!c) return false;
+    return !!c.saveData || c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g';
+  } catch (e) { return false; }
+}
+
+var _revalidating = Object.create(null);
+
 function revalidateInBackground(cache, request, opts) {
+  if (isSlowConnection()) return;
+  var key = request.url;
+  if (_revalidating[key]) return;
+  _revalidating[key] = true;
   fetchWithTimeout(request, NETWORK_TIMEOUT_MS, opts)
-    .then(function (res) { if (res && res.ok) cache.put(request, res); })
-    .catch(function () {});
+    .then(function (res) { if (res && res.ok) return cache.put(request, res); })
+    .catch(function () {})
+    .then(function () { delete _revalidating[key]; });
 }
 
 function versionedCacheResponse(event, timeoutMs) {
@@ -447,9 +501,10 @@ self.addEventListener('fetch', function (event) {
                   '<!doctype html><html><head><meta charset=utf-8><title>Offline</title>' +
                   '<meta name=viewport content="width=device-width,initial-scale=1">' +
                   '<link rel=stylesheet href="' + cssHref + '"></head><body class="offline-page">' +
-                  '<h1>You\'re Offline</h1>' +
-                  '<p>Open the app once with internet to enable full offline access.</p>' +
-                  '<button onclick="location.reload()">Try Again</button></body></html>',
+                  '<h1>Slow or no connection</h1>' +
+                  '<p>The app could not load in time. It will retry automatically when your connection improves.</p>' +
+                  '<button onclick="location.reload()">Try Again</button>' +
+                  '<script>addEventListener("online",function(){location.reload()});setTimeout(function(){location.reload()},15000)</script></body></html>',
                   { headers: { 'Content-Type': 'text/html' } }
                 );
               });

@@ -6,7 +6,8 @@ import { computeBuildKey, replaceOrThrow } from '../build-key.js';
 
 const SW = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 
-function makeSw({ host = 'app.test', failing = [], preCaches = {} } = {}) {
+function makeSw({ host = 'app.test', failing = [], flaky = [], preCaches = {} } = {}) {
+  const seen = new Set();
   const listeners = {};
   const stores = new Map(Object.entries(preCaches).map(([n, o]) => [n, new Map(Object.entries(o))]));
   const fetchLog = [];
@@ -31,9 +32,10 @@ function makeSw({ host = 'app.test', failing = [], preCaches = {} } = {}) {
       const url = typeof req === 'string' ? req : req.url;
       fetchLog.push({ url, cache: req.cache });
       if (failing.some(f => url.endsWith(f))) return new Res('', { status: 404 });
+      if (flaky.some(f => url.endsWith(f)) && !seen.has(url)) { seen.add(url); throw new TypeError('network slow'); }
       return new Res('network:' + url);
     },
-    Request: Req, Response: Res, URL, setTimeout, clearTimeout, console: { warn() {}, log() {}, error() {} }, atob, TextDecoder, navigator: {}, Promise,
+    Request: Req, Response: Res, URL, AbortController, setTimeout, clearTimeout, console: { warn() {}, log() {}, error() {} }, atob, TextDecoder, navigator: {}, Promise,
   };
   vm.runInNewContext(SW, ctx);
   const dispatch = async (type, ev = {}) => {
@@ -74,6 +76,16 @@ describe('service worker install', () => {
     assert.equal(sw.skipped(), 1);
     await sw.dispatch('message', { data: { type: 'OTHER' } });
     assert.equal(sw.skipped(), 1);
+  });
+});
+
+describe('service worker on slow networks', () => {
+  it('retries a flaky file instead of failing the whole install', async () => {
+    const sw = makeSw({ flaky: ['/modules/main.js', '/app.css'] });
+    await sw.dispatch('install');
+    const cn = [...sw.stores.keys()][0];
+    assert.ok(sw.stores.get(cn).has('https://app.test/modules/main.js'));
+    assert.ok(sw.stores.get(cn).has('https://app.test/app.css'));
   });
 });
 
