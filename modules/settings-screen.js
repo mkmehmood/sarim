@@ -3,11 +3,11 @@ export function prepareSettingsScreen() {
   const screen = document.getElementById('settings-screen');
   if (!screen) return;
   const admin = (window.appMode || 'admin') === 'admin';
-  screen.querySelectorAll('.sidebar-settings-btn').forEach((b) => {
+  screen.querySelectorAll('.sidebar-item').forEach((b) => {
     b.classList.toggle('d-none', !admin && !ALWAYS_VISIBLE.has(b.id));
   });
   screen.querySelectorAll('.liquid-card').forEach((card) => {
-    const anyShown = Array.from(card.querySelectorAll('.sidebar-settings-btn')).some((b) => !b.classList.contains('d-none'));
+    const anyShown = Array.from(card.querySelectorAll('.sidebar-item')).some((b) => !b.classList.contains('d-none'));
     card.classList.toggle('d-none', !anyShown);
   });
   if (typeof window.syncBiometricButton === 'function') window.syncBiometricButton();

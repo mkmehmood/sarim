@@ -4864,7 +4864,7 @@ if (selectedTab) {
 selectedTab.classList.remove('hidden');
 void selectedTab.offsetHeight;
 }
-const tabButtons = document.querySelectorAll('.sidebar-nav-btn');
+const tabButtons = document.querySelectorAll('[id^="snav-"]');
 tabButtons.forEach((btn) => {
 const onclickVal = btn.getAttribute('onclick') || '';
 btn.classList.toggle('active', onclickVal.includes("'" + tab + "'") || onclickVal.includes('"' + tab + '"'));

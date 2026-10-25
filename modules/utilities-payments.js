@@ -5465,7 +5465,7 @@ el.textContent = (window._assignedManagerName || 'User').toUpperCase();
 }
 
 export function lockToRepMode() {
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 if (btn.id !== 'snav-rep') window.setDisplay(btn, 'none');
 });
 const cloudMenuBtn = document.getElementById('cloudMenuBtn');
@@ -5489,7 +5489,7 @@ if (typeof refreshRepUI === 'function') refreshRepUI();
 }
 
 export function lockToProductionMode() {
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 if (btn.id !== 'snav-prod') window.setDisplay(btn, 'none');
 });
 const cloudMenuBtn = document.getElementById('cloudMenuBtn');
@@ -5521,7 +5521,7 @@ if (dynCost) window.setDisplay(dynCost, 'none');
 }
 
 export function lockToFactoryMode() {
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 if (btn.id !== 'snav-factory') window.setDisplay(btn, 'none');
 });
 const cloudMenuBtn = document.getElementById('cloudMenuBtn');
@@ -5684,7 +5684,7 @@ if (tab === 'rep' || !adminTabs.includes(tab)) {
 if (typeof originalShowTab === 'function') originalShowTab(tab);
 }
 };
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 window.setDisplay(btn, 'none');
 });
 } else if (appMode === 'userrole') {
@@ -5706,9 +5706,9 @@ if (_us) window.setDisplay(_us, 'none');
 }
 };
 if (allowedTabs.length <= 1) {
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => { window.setDisplay(btn, 'none'); });
+document.querySelectorAll('[id^="snav-"]').forEach(btn => { window.setDisplay(btn, 'none'); });
 } else {
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 const tid = btn.id.replace('snav-', '');
 window.setDisplay(btn, (allowedTabs.includes(tid)) ? '' : 'none');
 });
@@ -5723,7 +5723,7 @@ return;
 }
 if (typeof originalShowTabProd === 'function') originalShowTabProd(tab);
 };
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 window.setDisplay(btn, 'none');
 });
 } else if (appMode === 'factory') {
@@ -5735,7 +5735,7 @@ return;
 }
 if (typeof originalShowTabFactory === 'function') originalShowTabFactory(tab);
 };
-document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+document.querySelectorAll('[id^="snav-"]').forEach(btn => {
 window.setDisplay(btn, 'none');
 });
 }
