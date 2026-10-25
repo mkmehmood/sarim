@@ -1,13 +1,9 @@
 import { fmtNum } from './finance.js';
 
-const ICONS = {
-  ok: '<path d="M5 12.5l4.2 4.2L19 7" />',
-  low: '<path d="M12 8v5M12 16.6v.1" /><path d="M10.3 4.3L2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" />',
-  short: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />',
-};
-
 const n = (v) => (Number.isFinite(v) ? v : 0);
 const kg = (v) => `${fmtNum(n(v))} kg`;
+const pct = (part, whole) => (whole > 0 ? Math.min(100, Math.max(0, (part / whole) * 100)) : 0);
+const round1 = (v) => Math.round(v * 10) / 10;
 
 export function inventoryNoteState({ available, quantity }) {
   const have = n(available);
@@ -21,34 +17,34 @@ export function inventoryNoteModel({ available, quantity, production, returns, s
   const have = n(available);
   const want = n(quantity);
   const tone = inventoryNoteState({ available: have, quantity: want });
-  let title;
-  let detail;
-  if (tone === 'short') {
-    title = 'Not enough stock';
-    detail = `You need ${kg(want)} but only ${kg(Math.max(have, 0))} is in stock. Short by ${kg(want - have)}.`;
-  } else if (tone === 'low') {
-    title = `${kg(have)} in stock`;
-    detail = `Running low: ${kg(have - want)} will be left after this sale.`;
-  } else {
-    title = `${kg(have)} in stock`;
-    detail = want > 0 ? `${kg(have - want)} will be left after this sale.` : 'Available for this date and supply.';
-  }
+  const total = Math.max(n(production) + n(returns), 0);
+  const left = Math.max(have - want, 0);
+  let pill;
+  if (tone === 'short') pill = `Short by ${kg(want - have)}`;
+  else if (tone === 'low') pill = `Only ${kg(left)} left`;
+  else pill = want > 0 ? `${kg(left)} left` : 'Ready to sell';
+  const keys = [['sold', 'Sold', kg(sold)]];
+  if (want > 0) keys.push(['sale', 'This sale', kg(want)]);
+  keys.push(['left', 'Left', kg(left)]);
   return {
     tone,
-    title,
-    detail,
-    stats: [
-      ['Produced', kg(production)],
-      ['Returned', kg(returns)],
-      ['Sold', kg(sold)],
-    ],
+    stock: kg(Math.max(have, 0)),
+    pill,
+    soldPct: round1(pct(n(sold), total)),
+    salePct: round1(pct(Math.min(want, Math.max(have, 0)), total)),
+    hasBar: total > 0,
+    keys,
+    summary: `${kg(Math.max(have, 0))} in stock. ${pill}.`,
   };
 }
 
-export function inventoryNoteHtml(model) {
-  const stats = model.stats
-    .map(([label, value]) => `<span class="inv-stat"><span class="inv-stat-label">${label}</span><span class="inv-stat-value">${value}</span></span>`)
+export function inventoryNoteHtml(m) {
+  const [num, unit] = m.stock.split(' ');
+  const bar = m.hasBar
+    ? `<span class="inv-bar" role="img" aria-label="${m.summary}"><i class="inv-seg is-sold" style="--w: ${m.soldPct}%"></i><i class="inv-seg is-sale" style="--w: ${m.salePct}%"></i></span>`
+    : '';
+  const keys = m.keys
+    .map(([kind, label, value]) => `<span class="inv-key is-${kind}"><span class="inv-dot"></span>${label} <b>${value}</b></span>`)
     .join('');
-  return `<span class="inv-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${ICONS[model.tone]}</svg></span>`
-    + `<span class="inv-body"><span class="inv-title">${model.title}</span><span class="inv-detail">${model.detail}</span><span class="inv-stats">${stats}</span></span>`;
+  return `<span class="inv-head"><span class="inv-main"><span class="inv-label">In stock</span><span class="inv-figure">${num}<small>${unit}</small></span></span><span class="inv-pill">${m.pill}</span></span>${bar}<span class="inv-legend">${keys}</span>`;
 }
