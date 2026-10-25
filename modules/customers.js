@@ -195,9 +195,9 @@ const showQty = _saleChipMode[kind] === 'qty';
 const amountText = String(await formatCurrency(totals.totalSale));
 const qtyText = `${fmtNum(qty)} kg`;
 return `<div class="cust-period-row d-flex">
-<div class="cust-stat-chip is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="cust-stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="cust-stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
-<div class="cust-stat-chip is-collect"><span class="cust-stat-label">Collection</span><span class="cust-stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
-<div class="cust-stat-chip ${debtTone}"><span class="cust-stat-label">Current Debt</span><span class="cust-stat-value">${await formatCurrency(debt)}</span></div>
+<div class="stat is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
+<div class="stat is-collect"><span class="stat-label">Collection</span><span class="stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
+<div class="stat ${debtTone}"><span class="stat-label">Current Debt</span><span class="stat-value">${await formatCurrency(debt)}</span></div>
 </div>`;
 }
 
@@ -211,8 +211,8 @@ const pct = given > 0.005 ? Math.max(0, Math.min(100, Math.round(settled / given
 let html = `<div class="cm-sum-label">Current debt</div><div class="cm-sum-debt ${tone}">${await formatCurrency(debt)}</div>`;
 if (n === 0) return html;
 html += `<div class="cust-period-row d-flex">
-<div class="cust-stat-chip is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="cust-stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="cust-stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
-<div class="cust-stat-chip is-collect"><span class="cust-stat-label">Collection</span><span class="cust-stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
+<div class="stat is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
+<div class="stat is-collect"><span class="stat-label">Collection</span><span class="stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
 </div>`;
 if (n >= 3) html += `<div class="cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of credit given has been settled</div>`;
 return html;
@@ -221,8 +221,8 @@ window.toggleSaleChip = (chip) => {
 const kind = chip.dataset.kind;
 const showQty = _saleChipMode[kind] !== 'qty';
 _saleChipMode[kind] = showQty ? 'qty' : 'amount';
-chip.querySelector('.cust-stat-label').textContent = showQty ? 'Total Quantity' : 'Total Sale';
-chip.querySelector('.cust-stat-value').textContent = showQty ? chip.dataset.qty : chip.dataset.amount;
+chip.querySelector('.stat-label').textContent = showQty ? 'Total Quantity' : 'Total Sale';
+chip.querySelector('.stat-value').textContent = showQty ? chip.dataset.qty : chip.dataset.amount;
 };
 export async function openCustomerManagement(customerName) {
 currentManagingCustomer = customerName;

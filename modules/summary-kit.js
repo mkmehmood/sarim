@@ -3,9 +3,9 @@ const _esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&':
 
 export function sxTile(label, value, tone = 'plain', opts = {}) {
   const id = opts.id ? ` id="${_esc(opts.id)}"` : '';
-  const wide = opts.wide ? ' sx-tile--wide' : '';
-  const sub = opts.sub ? `<span class="sx-tile-sub">${_esc(opts.sub)}</span>` : '';
-  return `<div class="card sx-tile sx-tone-${tone}${wide}"><span class="sx-tile-label">${_esc(label)}</span><span class="sx-tile-value"${id}>${value}</span>${sub}</div>`;
+  const wide = opts.wide ? ' stat--wide' : '';
+  const sub = opts.sub ? `<span class="stat-sub">${_esc(opts.sub)}</span>` : '';
+  return `<div class="card stat sx-tone-${tone}${wide}"><span class="stat-label">${_esc(label)}</span><span class="stat-value"${id}>${value}</span>${sub}</div>`;
 }
 
 export function sxGrid(tilesHtml, cols = 2) {

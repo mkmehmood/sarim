@@ -1757,9 +1757,9 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="sx-hero sx-tone-good"><span class="sx-hero-label">Money in</span><div class="sx-hero-value" id="rep-analytics-cash-in">0.00</div></div>
 <div id="rep-analytics-bar"></div>
 <div class="sx-grid sx-cols-3">
-<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Collections</span><span class="sx-tile-value profit-val" id="rep-analytics-collections">0.00</span></div>
-<div class="card sx-tile sx-tone-info"><span class="sx-tile-label">Cash sales</span><span class="sx-tile-value profit-val" id="rep-analytics-cash-sales">0.00</span></div>
-<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Credit sales</span><span class="sx-tile-value cost-val" id="rep-analytics-credit-sales">0.00</span></div>
+<div class="card stat sx-tone-good"><span class="stat-label">Collections</span><span class="stat-value profit-val" id="rep-analytics-collections">0.00</span></div>
+<div class="card stat sx-tone-info"><span class="stat-label">Cash sales</span><span class="stat-value profit-val" id="rep-analytics-cash-sales">0.00</span></div>
+<div class="card stat sx-tone-warn"><span class="stat-label">Credit sales</span><span class="stat-value cost-val" id="rep-analytics-credit-sales">0.00</span></div>
 </div>
 </div>
 </div>
@@ -2079,10 +2079,10 @@ oninput="filterCustomers()">
 <div class="sx-hero sx-tone-good"><span class="sx-hero-label">Total value</span><div class="sx-hero-value rev-val" id="cust-active-value">0.00</div></div>
 <div id="sales-split"></div>
 <div class="sx-grid sx-cols-2">
-<div class="card sx-tile sx-tone-info"><span class="sx-tile-label">Quantity</span><span class="sx-tile-value qty-val" id="cust-active-qty">0.00 kg</span></div>
-<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Net profit</span><span class="sx-tile-value profit-val" id="cust-active-profit">0.00</span></div>
-<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Cash (incl. received)</span><span class="sx-tile-value" id="cust-active-cash">0.00</span></div>
-<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Pending credits</span><span class="sx-tile-value" id="cust-active-credit">0.00</span></div>
+<div class="card stat sx-tone-info"><span class="stat-label">Quantity</span><span class="stat-value qty-val" id="cust-active-qty">0.00 kg</span></div>
+<div class="card stat sx-tone-good"><span class="stat-label">Net profit</span><span class="stat-value profit-val" id="cust-active-profit">0.00</span></div>
+<div class="card stat sx-tone-good"><span class="stat-label">Cash (incl. received)</span><span class="stat-value" id="cust-active-cash">0.00</span></div>
+<div class="card stat sx-tone-warn"><span class="stat-label">Pending credits</span><span class="stat-value" id="cust-active-credit">0.00</span></div>
 </div>
 </div>
 <div class="u-03ee4e9 d-flex">
@@ -2264,8 +2264,8 @@ oninput="filterCustomers()">
 <div class="sx-hero sx-tone-bad"><span class="sx-hero-label">Current market debt</span><div class="sx-hero-value" id="ltBalance">0.00</div></div>
 <div id="ltRecovery"></div>
 <div class="sx-grid sx-cols-2">
-<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Total credit issued</span><span class="sx-tile-value" id="ltCredit">0.00</span></div>
-<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Cash recovered</span><span class="sx-tile-value" id="ltCollected">0.00</span></div>
+<div class="card stat sx-tone-warn"><span class="stat-label">Total credit issued</span><span class="stat-value" id="ltCredit">0.00</span></div>
+<div class="card stat sx-tone-good"><span class="stat-label">Cash recovered</span><span class="stat-value" id="ltCollected">0.00</span></div>
 </div>
 </div>
 <div class="u-03ee4e9 d-flex">
@@ -2403,21 +2403,21 @@ Select a store...
 <hr class="sx-divider">
 <section class="sx-section"><header class="sx-section-head"><h4>Units</h4></header>
 <div class="sx-grid sx-cols-3">
-<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Available</span><span class="sx-tile-value" id="factorySumUnits">0</span></div>
-<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Used</span><span class="sx-tile-value" id="factorySumUsedUnits">0</span></div>
-<div class="card sx-tile sx-tone-bad"><span class="sx-tile-label">Cost / day</span><span class="sx-tile-value" id="factorySumCostPerDay">0</span><span class="sx-tile-sub">average extra</span></div>
+<div class="card stat sx-tone-good"><span class="stat-label">Available</span><span class="stat-value" id="factorySumUnits">0</span></div>
+<div class="card stat sx-tone-warn"><span class="stat-label">Used</span><span class="stat-value" id="factorySumUsedUnits">0</span></div>
+<div class="card stat sx-tone-bad"><span class="stat-label">Cost / day</span><span class="stat-value" id="factorySumCostPerDay">0</span><span class="stat-sub">average extra</span></div>
 </div></section>
 <section class="sx-section"><header class="sx-section-head"><h4>Output</h4></header>
 <div class="sx-grid sx-cols-2">
-<div class="card sx-tile sx-tone-good"><span class="sx-tile-label">Quantity</span><span class="sx-tile-value" id="factorySumOutput">0 kg</span></div>
-<div class="card sx-tile sx-tone-info"><span class="sx-tile-label">Raw used</span><span class="sx-tile-value" id="factorySumRawUsed">0 kg</span></div>
+<div class="card stat sx-tone-good"><span class="stat-label">Quantity</span><span class="stat-value" id="factorySumOutput">0 kg</span></div>
+<div class="card stat sx-tone-info"><span class="stat-label">Raw used</span><span class="stat-value" id="factorySumRawUsed">0 kg</span></div>
 </div>
 <div id="factorySumRawBreakdown"></div></section>
 <section class="sx-section"><header class="sx-section-head"><h4>Cost</h4></header>
 <div class="sx-grid sx-cols-3">
-<div class="card sx-tile sx-tone-bad"><span class="sx-tile-label">Per unit</span><span class="sx-tile-value" id="factorySumUnitCost">0</span></div>
-<div class="card sx-tile sx-tone-warn"><span class="sx-tile-label">Total</span><span class="sx-tile-value" id="factorySumTotalCost">0</span></div>
-<div class="card sx-tile sx-tone-bad"><span class="sx-tile-label">Materials</span><span class="sx-tile-value" id="factorySumMatVal">0</span></div>
+<div class="card stat sx-tone-bad"><span class="stat-label">Per unit</span><span class="stat-value" id="factorySumUnitCost">0</span></div>
+<div class="card stat sx-tone-warn"><span class="stat-label">Total</span><span class="stat-value" id="factorySumTotalCost">0</span></div>
+<div class="card stat sx-tone-bad"><span class="stat-label">Materials</span><span class="stat-value" id="factorySumMatVal">0</span></div>
 </div></section>
 </div>
 </div>

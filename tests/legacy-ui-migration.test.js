@@ -137,3 +137,18 @@ describe('shared title', () => {
     assert.ok(!/overview-title/.test(readFileSync(new URL('app.css', root), 'utf8')));
   });
 });
+
+describe('shared stat tile', () => {
+  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  it('one .stat rule with label, value and sub, declared after .card', () => {
+    assert.equal((cssText.match(/^\.stat \{/gm) || []).length, 1);
+    for (const c of ['.stat-label', '.stat-value', '.stat-sub']) assert.ok(cssText.includes(c + ' {') || cssText.includes(c + ':not'), c);
+    assert.ok(cssText.lastIndexOf('\n.card {') < cssText.indexOf('\n.stat {'), '.stat must come after every .card rule');
+  });
+  it('legacy tile names are gone and tiles carry .stat', () => {
+    for (const n of ['sx-tile', 'cust-stat-chip', 'cust-stat-label', 'cust-stat-value']) {
+      assert.ok(!src.includes(n) && !new RegExp('\\.' + n + '(?![\\w-])').test(cssText), n + ' remains');
+    }
+    assert.ok(/class="card stat hc-metric/.test(src));
+  });
+});

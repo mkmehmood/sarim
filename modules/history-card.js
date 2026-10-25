@@ -31,7 +31,7 @@ export function hcMetricsHtml(metrics) {
   if (!list.length) return '';
   return `<dl class="hc-metrics">${list.map((m) => {
     const cls = VALUE_CLASSES.has(m.cls) ? ` ${m.cls}` : '';
-    return `<div class="card hc-metric${m.wide ? ' is-wide' : ''}"><dt>${esc(m.label)}</dt><dd class="${cls.trim()}">${m.value}</dd></div>`;
+    return `<div class="card stat hc-metric${m.wide ? ' is-wide' : ''}"><dt>${esc(m.label)}</dt><dd class="${cls.trim()}">${m.value}</dd></div>`;
   }).join('')}</dl>`;
 }
 

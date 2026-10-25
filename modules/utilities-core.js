@@ -2018,7 +2018,7 @@ const tone = balance > 0.005 ? 'is-debt' : 'is-clear';
 const value = settled ? 'Settled' : fmtAmt(Math.abs(balance));
 let html = `<div class="cm-sum-label">${label}</div><div class="cm-sum-debt ${tone}">${value}</div>`;
 if (n === 0) return html;
-html += `<div class="cust-period-row d-flex"><div class="cust-stat-chip is-collect"><span class="cust-stat-label">Total In</span><span class="cust-stat-value">${fmtAmt(totalIn)}</span></div><div class="cust-stat-chip is-out"><span class="cust-stat-label">Total Out</span><span class="cust-stat-value">${fmtAmt(totalOut)}</span></div></div>`;
+html += `<div class="cust-period-row d-flex"><div class="stat is-collect"><span class="stat-label">Total In</span><span class="stat-value">${fmtAmt(totalIn)}</span></div><div class="stat is-out"><span class="stat-label">Total Out</span><span class="stat-value">${fmtAmt(totalOut)}</span></div></div>`;
 return html;
 }
 
