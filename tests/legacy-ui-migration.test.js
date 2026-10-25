@@ -152,3 +152,21 @@ describe('shared stat tile', () => {
     assert.ok(/class="card stat hc-metric/.test(src));
   });
 });
+
+describe('settings pickers reuse the settings list item', () => {
+  const htmlText = readFileSync(new URL('index.html', root), 'utf8');
+  it('fb-select buttons carry card and settings-list-item', () => {
+    const tags = [...htmlText.matchAll(/<button[^>]*class="([^"]*\bfb-select\b[^"]*)"/g)].map((m) => m[1].split(/\s+/));
+    assert.ok(tags.length >= 2);
+    for (const t of tags) assert.ok(t.includes('card') && t.includes('settings-list-item'), t.join(' '));
+  });
+  it('fb-select no longer redeclares the surface or the text styles', () => {
+    assert.ok(!ownDecls('fb-select').some((p) => /^(background|border|border-radius|padding|display|gap|cursor):/.test(p)));
+    assert.ok(!/fb-select-(text|title|desc)/.test(htmlText));
+  });
+  it('every select and picker button still uses form-ctl', () => {
+    const selects = [...src.matchAll(/<select\b[^>]*>/g)].map((m) => m[0]);
+    assert.ok(selects.length > 0 && selects.every((t) => /form-ctl/.test(t)));
+    assert.ok(/class="form-ctl bm-picker"/.test(src));
+  });
+});
