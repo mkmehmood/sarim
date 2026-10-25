@@ -73,23 +73,29 @@ export let closePhotoLightbox;
 window.closePhotoLightbox = closePhotoLightbox;
 export function _set_closePhotoLightbox(v) { closePhotoLightbox = v; window.closePhotoLightbox = v; }
 
+const nextPaint = () => new Promise(resolve => {
+if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+else setTimeout(resolve, 32);
+});
+
 export async function toggleDarkMode() {
 const html = document.documentElement;
 const themeToggle = document.getElementById('themeToggle');
 const currentTheme = html.getAttribute('data-theme') || 'dark';
 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+html.classList.add('theme-switching');
 html.setAttribute('data-theme', newTheme);
-if (newTheme === 'dark') {
-if (themeToggle) { themeToggle.innerHTML = ''; themeToggle.title = "Switch to Light Mode"; }
-await sqliteStore.set('theme', 'dark');
-} else {
-if (themeToggle) { themeToggle.innerHTML = ''; themeToggle.title = "Switch to Dark Mode"; }
-await sqliteStore.set('theme', 'light');
-}
+void html.offsetHeight;
+const themeBtn = document.getElementById('sidebar-btn-theme');
+if (themeBtn && typeof themeBtn.blur === 'function') themeBtn.blur();
+if (themeToggle) themeToggle.title = newTheme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 if (metaThemeColor) {
-metaThemeColor.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
+metaThemeColor.setAttribute('content', getComputedStyle(html).getPropertyValue('--bg').trim());
 }
+await nextPaint();
+html.classList.remove('theme-switching');
+await sqliteStore.set('theme', newTheme);
 if (mfgBarChart) mfgBarChart.update();
 if (mfgPieChart) mfgPieChart.update();
 if (custSalesChart) custSalesChart.update();

@@ -1143,10 +1143,10 @@ info = `
     ${_hasPay ? `<div class="u-dbdd85e">Payment: ${await formatCurrency(_pay)}</div>` : ''}
     ${_expV > 0 ? `<div class="u-dbdd85e"><span class="u-expired-credit">Expired credit: ${_expText}</span></div>` : ''}
     ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
-    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (_hasPay ? (_expV > 0 ? 'Payment + Expired Credit' : 'Bulk Payment') : 'Expired Stock')}</div>
+    <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (_hasPay ? (_expV > 0 ? 'Payment | Expired credit' : 'Bulk Payment') : 'Payment | Expired credit')}</div>
 `;
-rTitle = isPartialPayment ? 'Partial payment' : 'Collection';
-rSub = isPartialPayment ? 'Payment received' : (_hasPay ? (_expV > 0 ? 'Payment + expired credit' : 'Bulk payment') : 'Expired stock');
+rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
+rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${fmtNum(Number(t.expiredQty) || 0)} kg${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Bulk payment');
 rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 info = `

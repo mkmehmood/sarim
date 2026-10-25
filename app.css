@@ -671,10 +671,6 @@ box-shadow: var(--shadow);
 backdrop-filter: var(--backdrop-blur);
 -webkit-backdrop-filter: var(--backdrop-blur);
 overflow: hidden;
-transform: translateZ(0);
--webkit-transform: translateZ(0);
-backface-visibility: hidden;
--webkit-backface-visibility: hidden;
 }
 .card :where(.card) { margin-bottom: 0; border-radius: 14px; box-shadow: none; min-height: 0; height: auto; }
 .card-rows { display: flex; flex-direction: column; padding: 15px; }
@@ -3819,9 +3815,15 @@ box-shadow: var(--shadow-lg);
   text-transform: uppercase; letter-spacing: 0.05em;
   text-align: left;
 }
-.sidebar-item:hover {
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-item:hover {
+    background: var(--glass-raised); color: var(--text-main);
+  }
+}
+.sidebar-item:active {
   background: var(--glass-raised); color: var(--text-main);
 }
+.sidebar-item:focus, .sidebar-item:focus-visible { outline: none; }
 .sidebar-item.active {
   background: color-mix(in srgb, var(--accent-mint) 12%, transparent); color: var(--accent);
 }
@@ -5966,4 +5968,9 @@ button.dl-row-line { cursor: pointer; }
   border-top: 1px solid var(--glass-border);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   background: linear-gradient(180deg, color-mix(in srgb, var(--text-main) 5%, transparent), color-mix(in srgb, var(--text-main) 1.5%, transparent));
+}
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition-property: none;
 }
