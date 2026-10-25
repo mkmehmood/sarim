@@ -1310,15 +1310,15 @@ if (completeSection) {
       </div>
     </div>
     <div class="cy-stat-grid">
-      <div class="cy-stat-cell">
+      <div class="panel cy-stat-cell">
         <div class="cy-stat-val">${collectionsCompacted}</div>
         <div class="cy-stat-label">Collections</div>
       </div>
-      <div class="cy-stat-cell">
+      <div class="panel cy-stat-cell">
         <div class="cy-stat-val">${totalMergedRecords}</div>
         <div class="cy-stat-label">Merged Rec.</div>
       </div>
-      <div class="cy-stat-cell">
+      <div class="panel cy-stat-cell">
         <div class="cy-stat-val u-3b9712c"></div>
         <div class="cy-stat-label">Backup Safe</div>
       </div>

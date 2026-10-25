@@ -222,3 +222,23 @@ describe('generated utility classes stay referenced', () => {
     assert.deepEqual(unused, []);
   });
 });
+
+describe('last small families use shared classes', () => {
+  const tagged = (cls, shared) => {
+    const bad = [];
+    for (const m of src.matchAll(/class=\\?"([^"\\]*)\\?"/g)) { const t = m[1].split(/\s+/); if (t.includes(cls) && !t.includes(shared)) bad.push(m[1]); }
+    return bad;
+  };
+  it('sx-period is a badge, cy-stat-cell a panel, pf-control a form-ctl, pf-locate a btn', () => {
+    assert.deepEqual(tagged('sx-period', 'badge-tint'), []);
+    assert.deepEqual(tagged('cy-stat-cell', 'panel'), []);
+    assert.deepEqual(tagged('pf-control', 'form-ctl'), []);
+    assert.deepEqual(tagged('pf-locate', 'btn'), []);
+  });
+  it('they no longer redeclare the shared surface', () => {
+    for (const c of ['sx-period', 'cy-stat-cell', 'pf-control']) {
+      assert.ok(!ownDecls(c).some((p) => /^(background|border|border-radius|padding|font):/.test(p) && !(c === 'pf-control' && p === 'padding:0')), c + ' repeats the surface');
+    }
+    assert.ok(!ownDecls('pf-locate').includes('cursor:pointer'));
+  });
+});

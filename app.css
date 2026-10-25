@@ -869,9 +869,6 @@ height: 100%;
 }
 .cy-stat-cell {
   flex: 1;
-  background: var(--glass-raised);
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
   padding: 10px 8px 8px;
   text-align: center;
   display: flex;
@@ -4811,9 +4808,7 @@ button.dl-row-line { cursor: pointer; }
 .pf-status:empty { display: none; }
 .pf-field { margin: 0; }
 .pf-control {
-  display: flex; align-items: stretch; min-width: 0; overflow: hidden;
-  background: var(--well-bg); border: 1px solid var(--glass-border-strong);
-  border-radius: var(--radius-base);
+  display: flex; align-items: stretch; min-width: 0; overflow: hidden; height: auto; min-height: 44px; padding: 0;
 }
 .pf-control input {
   flex: 1; min-width: 0; width: 100%; box-sizing: border-box; border: 0; border-radius: 0; padding: 12px; font-size: 0.95rem;
@@ -4828,9 +4823,10 @@ button.dl-row-line { cursor: pointer; }
 .pf-has-prefix input { padding-left: 8px; }
 .pf-has-suffix input { padding-right: 4px; }
 .pf-locate {
-  flex-shrink: 0; width: 44px; padding: 0; align-items: center; justify-content: center; cursor: pointer;
+  flex-shrink: 0; width: 44px; padding: 0; align-items: center; justify-content: center;
   border: 0; border-left: 1px solid var(--glass-border-strong); background: var(--accent-dim); color: var(--accent);
 }
+.pf-control .pf-locate { border-radius: 0; }
 .pf-locate:disabled { opacity: 0.5; cursor: progress; }
 .pf-control:focus-within, .pf-body .pf-name-input:focus {
   border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); outline: none;
@@ -5023,7 +5019,7 @@ border-left: 3px solid var(--stat-c, var(--glass-border-strong));
 .sx-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sx-card-title { display: flex; align-items: center; gap: 8px; margin: 0; font: 700 0.95rem var(--font-ui); color: var(--text-main); letter-spacing: 0.01em; }
 .sx-card-title .sx-dot { width: 10px; height: 10px; }
-.sx-period { font: 600 0.66rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); padding: 4px 9px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border); }
+.sx-period { letter-spacing: 0.08em; text-transform: uppercase; }
 .sx-hero { display: flex; flex-direction: column; gap: 2px; }
 .sx-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sx-hero-label { font: 600 0.68rem var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }

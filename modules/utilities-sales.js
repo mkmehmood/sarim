@@ -5741,7 +5741,7 @@ const _margin = sxMargin(storeData.profit, storeData.value);
 const card = document.createElement('div');
 card.className = 'card sx-card';
 card.innerHTML = `
-<div class="sx-card-head"><h4 class="sx-card-title"><span class="badge store-badge ${storeColors[index]}">${esc(storeNames[index])}</span></h4><span class="sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
+<div class="sx-card-head"><h4 class="sx-card-title"><span class="badge store-badge ${storeColors[index]}">${esc(storeNames[index])}</span></h4><span class="badge badge-tint sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
 ${sxHero('Remaining stock', `${fmtNum(safeValue(remainingQty))}<small>kg</small>`, { sub: `${fmtNum(safeValue(totalIn))} kg in · ${fmtNum(safeValue(soldQty))} kg sold`, chip: totalIn > 0 ? `${Math.max(0, Math.round((remainingQty / totalIn) * 100))}% left` : '', chipTone: remainingQty > 0 ? 'good' : 'warn' })}
 ${sxSplit([{ label: 'Sold', value: soldQty, tone: 'warn' }, { label: 'Remaining', value: Math.max(0, remainingQty), tone: 'good' }], (v) => `${fmtNum(safeValue(v))} kg`)}
 ${sxGrid(
@@ -5779,7 +5779,7 @@ const _cMargin = sxMargin(totalCombined.profit, totalCombined.value);
 const combinedCard = document.createElement('div');
 combinedCard.className = 'card sx-card sx-card--accent sx-card--total';
 combinedCard.innerHTML = `
-<div class="sx-card-head"><h4 class="sx-card-title">Total combined</h4><span class="sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
+<div class="sx-card-head"><h4 class="sx-card-title">Total combined</h4><span class="badge badge-tint sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
 ${sxHero('Net profit', fmtAmt(safeValue(totalCombined.profit)), { chip: _cMargin == null ? '' : `${_cMargin}% margin`, chipTone: (_cMargin || 0) >= 0 ? 'good' : 'bad', sub: `on ${fmtAmt(safeValue(totalCombined.value))} total value` })}
 ${sxSplit([{ label: 'Cost', value: totalCombined.cost, tone: 'bad' }, { label: 'Profit', value: Math.max(0, totalCombined.profit), tone: 'good' }], (v) => fmtAmt(safeValue(v)))}
 ${sxGrid(

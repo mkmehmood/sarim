@@ -895,7 +895,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <h3 class="pf-section-title">Material</h3>
         <div class="field pf-field">
           <label for="factoryMaterialName">Material name</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><input class="form-ctl" type="text" id="factoryMaterialName" placeholder="e.g., Sugar" autocomplete="off"></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><input class="form-ctl" type="text" id="factoryMaterialName" placeholder="e.g., Sugar" autocomplete="off"></div>
         </div>
       </section>
       <section class="card pf-section">
@@ -903,21 +903,21 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div class="pf-row">
           <div class="field pf-field">
             <label for="factoryMaterialUnitName">Unit name</label>
-            <div class="pf-control"><input class="form-ctl" type="text" id="factoryMaterialUnitName" placeholder="bag, box, carton" autocomplete="off"></div>
+            <div class="form-ctl pf-control"><input class="form-ctl" type="text" id="factoryMaterialUnitName" placeholder="bag, box, carton" autocomplete="off"></div>
           </div>
           <div class="field pf-field">
             <label for="factoryMaterialQuantity">Units bought</label>
-            <div class="pf-control"><input class="form-ctl" type="number" id="factoryMaterialQuantity" placeholder="0" inputmode="decimal" min="0" step="any"></div>
+            <div class="form-ctl pf-control"><input class="form-ctl" type="number" id="factoryMaterialQuantity" placeholder="0" inputmode="decimal" min="0" step="any"></div>
           </div>
         </div>
         <div class="pf-row">
           <div class="field pf-field">
             <label for="factoryMaterialConversionFactor">Weight per unit</label>
-            <div class="pf-control pf-has-suffix"><input class="form-ctl" type="number" id="factoryMaterialConversionFactor" placeholder="1" value="1" step="0.01" min="0" inputmode="decimal"><span class="pf-affix pf-affix-end">kg</span></div>
+            <div class="form-ctl pf-control pf-has-suffix"><input class="form-ctl" type="number" id="factoryMaterialConversionFactor" placeholder="1" value="1" step="0.01" min="0" inputmode="decimal"><span class="pf-affix pf-affix-end">kg</span></div>
           </div>
           <div class="field pf-field">
             <label for="factoryMaterialCost">Cost per unit</label>
-            <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="factoryMaterialCost" placeholder="0.00" inputmode="decimal" min="0" step="any"></div>
+            <div class="form-ctl pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="factoryMaterialCost" placeholder="0.00" inputmode="decimal" min="0" step="any"></div>
           </div>
         </div>
         <div class="pf-hint">Example: 1 bag = 60 kg, so enter 60 for weight per unit.</div>
@@ -942,7 +942,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div id="existingSupplierSection" class="hidden">
           <div class="field pf-field u-pos-relative">
             <label for="factoryExistingSupplier">Select supplier</label>
-            <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input class="form-ctl" type="text" id="factoryExistingSupplier" list="supplier-list" placeholder="Search or select supplier..." oninput="handleUniversalSearch('factoryExistingSupplier','factory-supplier-search-results','suppliers')" autocomplete="off"></div>
+            <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input class="form-ctl" type="text" id="factoryExistingSupplier" list="supplier-list" placeholder="Search or select supplier..." oninput="handleUniversalSearch('factoryExistingSupplier','factory-supplier-search-results','suppliers')" autocomplete="off"></div>
             <div id="factory-supplier-search-results" class="hidden u-search-dropdown"></div>
             <datalist id="supplier-list"></datalist>
           </div>
@@ -951,11 +951,11 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
           <div class="pf-row">
             <div class="field pf-field">
               <label for="factorySupplierName">Supplier name</label>
-              <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input class="form-ctl" type="text" id="factorySupplierName" placeholder="Company or person" autocomplete="off"></div>
+              <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></span><input class="form-ctl" type="text" id="factorySupplierName" placeholder="Company or person" autocomplete="off"></div>
             </div>
             <div class="field pf-field">
               <label for="factorySupplierPhone">Phone</label>
-              <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></span><input class="form-ctl" type="tel" id="factorySupplierPhone" placeholder="Phone number" inputmode="tel"></div>
+              <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></span><input class="form-ctl" type="tel" id="factorySupplierPhone" placeholder="Phone number" inputmode="tel"></div>
             </div>
           </div>
           <label class="pf-check"><input type="checkbox" id="factorySupplierAutoEntity" checked disabled><span>Also add to Quick Entity Selection as a <strong>PAYEE</strong></span></label>
@@ -1387,11 +1387,11 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Contact and payment details</h3>
         <div class="field pf-field">
           <label>Phone number</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="entityPhone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="entityPhone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
         </div>
         <div class="field pf-field">
           <label>Wallet / account details</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 11.5A3.5 3.5 0 0 1 8.5 8H27V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="11.5" width="26" height="19" rx="3.5" stroke="currentColor" stroke-width="2.2"/><circle cx="24.5" cy="21" r="1.8" fill="currentColor"/></svg></span><input class="form-ctl" type="text" id="entityWallet" placeholder="JazzCash, Easypaisa or bank account"></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 11.5A3.5 3.5 0 0 1 8.5 8H27V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="11.5" width="26" height="19" rx="3.5" stroke="currentColor" stroke-width="2.2"/><circle cx="24.5" cy="21" r="1.8" fill="currentColor"/></svg></span><input class="form-ctl" type="text" id="entityWallet" placeholder="JazzCash, Easypaisa or bank account"></div>
           <div class="pf-hint">Shown on the entity so you can send payments to the right place.</div>
         </div>
       </section>
@@ -1492,11 +1492,11 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Contact</h3>
         <div class="field pf-field">
           <label>Phone number</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
         </div>
         <div class="field pf-field">
           <label>Address / location</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="edit-cust-address" placeholder="Area, shop no., etc."><button class="pf-locate d-flex" onclick="fetchDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="edit-cust-address" placeholder="Area, shop no., etc."><button class="btn pf-locate d-flex" onclick="fetchDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
           <div id="location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
@@ -1504,12 +1504,12 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Account</h3>
         <div class="field pf-field">
           <label>Previous balance (old debt)</label>
-          <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
+          <div class="form-ctl pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
           <div class="pf-hint">Added to the customer history as a debt entry.</div>
         </div>
         <div class="field pf-field">
           <label>Custom sale price</label>
-          <div class="pf-control pf-has-prefix pf-has-suffix"><span class="pf-affix">Rs</span><input type="number" id="edit-cust-custom-price" placeholder="Factory default" step="1" min="0" inputmode="decimal" class="form-ctl u-67130d4"><span class="pf-affix pf-affix-end">/kg</span></div>
+          <div class="form-ctl pf-control pf-has-prefix pf-has-suffix"><span class="pf-affix">Rs</span><input type="number" id="edit-cust-custom-price" placeholder="Factory default" step="1" min="0" inputmode="decimal" class="form-ctl u-67130d4"><span class="pf-affix pf-affix-end">/kg</span></div>
           <div class="pf-hint">Replaces the standard rate for this customer. Leave blank to use the standard rate.</div>
         </div>
       </section>
@@ -1570,11 +1570,11 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Contact</h3>
         <div class="field pf-field">
           <label>Phone number</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="rep-edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 4.5H15L17.5 12L13.5 14.5C15.2 18.2 17.8 20.8 21.5 22.5L24 18.5L31.5 21V27C31.5 28.7 30.2 30 28.5 30C16.1 29.3 6.7 19.9 6 7.5C6 5.8 7.3 4.5 9 4.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><input class="form-ctl" type="tel" id="rep-edit-cust-phone" placeholder="03XX-XXXXXXX" inputmode="tel"></div>
         </div>
         <div class="field pf-field">
           <label>Address / location</label>
-          <div class="pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="rep-edit-cust-address" placeholder="Area, shop no., etc."><button class="pf-locate d-flex" onclick="fetchRepDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="rep-edit-cust-address" placeholder="Area, shop no., etc."><button class="btn pf-locate d-flex" onclick="fetchRepDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
           <div id="rep-location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
@@ -1582,7 +1582,7 @@ window._showLogoutConfirmDialog = async function() {
         <h3 class="pf-section-title">Account</h3>
         <div class="field pf-field">
           <label>Previous balance (old debt)</label>
-          <div class="pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="rep-edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
+          <div class="form-ctl pf-control pf-has-prefix"><span class="pf-affix">Rs</span><input class="form-ctl" type="number" id="rep-edit-cust-old-debit" placeholder="0" step="0.01" min="0" inputmode="decimal"></div>
           <div class="pf-hint">Added to the rep customer history as a debt entry.</div>
         </div>
       </section>
