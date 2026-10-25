@@ -161,7 +161,7 @@ export function actionRowHtml(kind, id, deleteHtml) {
 }
 
 export function markEditedBadge(rec) {
-  return rec && rec.isEdited ? '<span class="edited-badge">edited</span>' : '';
+  return rec && rec.isEdited ? '<span class="badge edited-badge">edited</span>' : '';
 }
 
 window.startEdit = startEdit;

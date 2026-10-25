@@ -339,7 +339,7 @@ const amountClass = transaction.type === 'IN' ? 'profit-val' : 'cost-val';
 const safeAmount = parseFloat(transaction.amount) || 0;
 const etCreatorBadge = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(transaction) : '';
 transactionCard.innerHTML = `
-<span class="transaction-badge ${badgeClass} u-ea94052">${badgeText}</span>
+<span class="badge transaction-badge ${badgeClass} u-ea94052">${badgeText}</span>
 <div class="u-16949d4">
 <span class="u-fs-sm2 u-text-muted">${transaction.date ? formatDisplayDateTime(transaction.date, transaction.time || null) : 'N/A'}</span>
 </div>
@@ -3686,7 +3686,7 @@ if (item.isMerged) {
 mergedBadge = _mergedBadgeHtml(item, {inline:true});
 }
 const delBtn = `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`;
-const prodSub = `${esc(dateDisplay)}${mergedBadge}${item.managedBy ? `<span class="managed-by-badge">${esc(item.managedBy)}</span>` : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`;
+const prodSub = `${esc(dateDisplay)}${mergedBadge}${item.managedBy ? `<span class="badge managed-by-badge">${esc(item.managedBy)}</span>` : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`;
 const storeChip = currentProductionView === 'combined' ? hcChip(storeLabel, 'info') : '';
 let cardOpts;
 if (item.isTransfer) {
@@ -5749,7 +5749,7 @@ const _margin = sxMargin(storeData.profit, storeData.value);
 const card = document.createElement('div');
 card.className = 'card sx-card';
 card.innerHTML = `
-<div class="sx-card-head"><h4 class="sx-card-title"><span class="store-badge ${storeColors[index]}">${esc(storeNames[index])}</span></h4><span class="sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
+<div class="sx-card-head"><h4 class="sx-card-title"><span class="badge store-badge ${storeColors[index]}">${esc(storeNames[index])}</span></h4><span class="sx-period">${mode === 'all' ? 'All time' : _cap(mode)}</span></div>
 ${sxHero('Remaining stock', `${fmtNum(safeValue(remainingQty))}<small>kg</small>`, { sub: `${fmtNum(safeValue(totalIn))} kg in · ${fmtNum(safeValue(soldQty))} kg sold`, chip: totalIn > 0 ? `${Math.max(0, Math.round((remainingQty / totalIn) * 100))}% left` : '', chipTone: remainingQty > 0 ? 'good' : 'warn' })}
 ${sxSplit([{ label: 'Sold', value: soldQty, tone: 'warn' }, { label: 'Remaining', value: Math.max(0, remainingQty), tone: 'good' }], (v) => `${fmtNum(safeValue(v))} kg`)}
 ${sxGrid(
@@ -6229,17 +6229,17 @@ const _unitRate = safeValue(item.quantity) > 0 ? safeValue(item.totalValue) / sa
 const _partialIn = (paymentType === 'CREDIT' && !creditReceived) ? safeValue(item.partialPaymentReceived) : 0;
 let repBadge = '';
 if (item.salesRep && item.salesRep !== 'NONE' && item.salesRep !== 'ADMIN') {
-repBadge = `<span class="sales-rep-badge"> ${esc(item.salesRep.split(' ')[0])}</span>`;
+repBadge = `<span class="badge sales-rep-badge"> ${esc(item.salesRep.split(' ')[0])}</span>`;
 }
 if ((item.isRepTransfer && item.repTransferFrom) || (item.isTransfer && item.transferFrom)) {
-repBadge += `<span class="sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.repTransferFrom || item.transferFrom).split(' ')[0])}</span>`;
+repBadge += `<span class="badge sales-rep-badge" title="Product transfer"> ⇄ from ${esc(String(item.repTransferFrom || item.transferFrom).split(' ')[0])}</span>`;
 }
 let mergedBadge = '';
 if (item.isMerged) {
 mergedBadge = _mergedBadgeHtml(item, {inline:true});
 }
 const _cardDate = item.supplyDate || item.date;
-const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="settled-badge"> Settled</div>` : actionRowHtml('sale', item.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`);
+const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="badge settled-badge"> Settled</div>` : actionRowHtml('sale', item.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`);
 const creatorHtml = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : '';
 const supplyDateText = (item.supplyDate && item.supplyDate !== item.date) ? `Supply date ${formatDisplayDate(item.supplyDate)}` : '';
 const repChips = [];

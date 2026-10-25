@@ -1151,7 +1151,7 @@ rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
-      <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
+      <span class="badge old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}
     </div>
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div class="u-5d1cf22 text-xs">${esc(oldDebtNote(t.notes))}</div>

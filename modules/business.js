@@ -2552,16 +2552,16 @@ return true;
 export function _mergedBadgeHtml(record, opts = {}) {
 if (!record || !record.isMerged) return '';
 if (opts.inline) {
-  return ` <span class="merged-badge merged-badge--inline">MERGED</span>`;
+  return ` <span class="badge merged-badge merged-badge--inline">MERGED</span>`;
 }
-return `<span class="merged-badge">MERGED</span>`;
+return `<span class="badge merged-badge">MERGED</span>`;
 }
 
 export function _creatorBadgeHtml(record) {
 if (!record || !record.createdBy) return '';
 const name = String(record.createdBy).trim();
 if (!name) return '';
-return `<span class="creator-badge" title="Created by ${esc(name)}">${esc(name)}</span>`;
+return `<span class="badge creator-badge" title="Created by ${esc(name)}">${esc(name)}</span>`;
 }
 
 export function compareTimestamps(timestamp1, timestamp2) {

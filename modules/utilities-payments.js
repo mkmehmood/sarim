@@ -157,7 +157,7 @@ discText = `OVER: ${fmtAmt(discrepancy)}`;
 }
 const displayStatusText = data.statusText || discText;
 const displayStatusClass = data.statusClass || (Math.abs(discrepancy) < 0.01 ? 'result-box discrepancy-ok' : 'result-box discrepancy-alert');
-const badge = sellerName ? `<span class="seller-badge ${salesRepsList.indexOf(sellerName) === 0 ? 'noran-badge' : 'noman-badge'}">${sellerName.split(' ')[0]}</span>` : '';
+const badge = sellerName ? `<span class="badge seller-badge ${salesRepsList.indexOf(sellerName) === 0 ? 'noran-badge' : 'noman-badge'}">${sellerName.split(' ')[0]}</span>` : '';
 const mergedBadge = isMerged ? _mergedBadgeHtml({ isMerged: true, mergedRecordCount: data.mergedRecordCount, mergedSummary: data.mergedSummary }, {inline:true}) : '';
 const highlightClass = isHighlight ? 'highlight-card' : '';
 const dateAttr = (isHistory && data._rawDate) ? ` data-date="${data._rawDate}"` : '';
@@ -1728,7 +1728,7 @@ const entityType = entity ? entity.type : (transaction.entityType || 'Unknown');
 const isMerged = transaction.isMerged === true;
 const isSettled = transaction.isSettled === true;
 const mergedBadge = isMerged ? _mergedBadgeHtml(transaction, {inline:true}) : '';
-const settledBadge = isSettled ? `<span class="settled-badge"> Settled</span>` : '';
+const settledBadge = isSettled ? `<span class="badge settled-badge"> Settled</span>` : '';
 const creatorBadge = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(transaction) : '';
 const deleteButton = isMerged ? '' : actionRowHtml('payment', transaction.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransaction('${esc(transaction.id)}') })()">Delete</button>`);
 const isIn = transaction.type === 'IN';
@@ -3528,8 +3528,8 @@ if (statsEl) {
 statsEl.innerHTML = `
 <span class="u-a5b525a">Total: ${fmtAmt(filteredTotal)}</span>
 <span class="u-d2c7c73 d-inline-flex">
-<span class="txn-stat-badge txn-warning">${count} record${count !== 1 ? 's' : ''}</span>
-<span class="txn-stat-badge txn-out">All-Time: ${fmtAmt(allTimeTotal)}</span>
+<span class="badge txn-stat-badge txn-warning">${count} record${count !== 1 ? 's' : ''}</span>
+<span class="badge txn-stat-badge txn-out">All-Time: ${fmtAmt(allTimeTotal)}</span>
 </span>`;
 }
 const list = document.getElementById('expenseManagementHistoryList');
@@ -3550,7 +3550,7 @@ item.innerHTML = `
 </div>
 <div class="u-d94b2d8 d-flex">
 <div class="u-1d673f2 text-right">
-<span class="txn-label-badge txn-warning">EXPENSE</span>
+<span class="badge txn-label-badge txn-warning">EXPENSE</span>
 <div class="cost-val u-bb4c6c9">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
 </div>
 <button class="d-none st-align-items__7c6197 st-padding__dd269a st-border__2eda1d st-border-radius__0dc840 st-cursor__3b6a3a st-font-size__8303b5 st-font-weight__e3ec02 st-background__c6ed62 st-color__2a7210 u-45da04f" id="${_expPhotoBadgeId}" title="View photo" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()"
@@ -4867,13 +4867,13 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const _rbManagedBy = _snap.managedBy || rec.managedBy || null;
       const _rbSalesRep  = _snap.salesRep  || rec.salesRep  || null;
       const _rbCreatorBadge = _rbCreatedBy
-        ? `<span class="creator-badge">${esc(_rbCreatedBy)}</span>`
+        ? `<span class="badge creator-badge">${esc(_rbCreatedBy)}</span>`
         : '';
       const _rbManagedBadge = _rbManagedBy
-        ? `<span class="managed-by-badge">${esc(_rbManagedBy)}</span>`
+        ? `<span class="badge managed-by-badge">${esc(_rbManagedBy)}</span>`
         : '';
       const _rbRepBadge = (_rbSalesRep && !_rbCreatedBy)
-        ? `<span class="sales-rep-badge">${esc(_rbSalesRep.split(' ')[0])}</span>`
+        ? `<span class="badge sales-rep-badge">${esc(_rbSalesRep.split(' ')[0])}</span>`
         : '';
       const _rbBadgesHtml = [_rbManagedBadge, _rbCreatorBadge, _rbRepBadge].filter(Boolean).join('');
       const _rbDeletedByRaw = rec.deleted_by || null;
@@ -4890,14 +4890,14 @@ export async function renderRecycleBin(filterCollection = 'all') {
         ? `<span class="u-dd009f5">${esc(displayAmount)}</span>`
         : '';
       const syncBadge = rec.syncedToCloud
-        ? `<span class="sync-status-badge sync-ok"> synced</span>`
-        : `<span class="sync-status-badge sync-local"> local</span>`;
+        ? `<span class="badge sync-status-badge sync-ok"> synced</span>`
+        : `<span class="badge sync-status-badge sync-local"> local</span>`;
       const colDot = {
         'sales':'var(--accent)','transactions':'var(--accent-blue)','rep':'var(--accent-purple)',
         'expenses':'var(--warning)','production':'var(--accent-pink)','factory':'var(--accent-teal)',
         'returns':'var(--accent-orange)','daily_ledger':'var(--accent-sky)','formulas':'var(--accent-indigo)','unknown':'var(--text-secondary)'
       }[col] || 'var(--text-secondary)';
-      const typeTag = `<span class="type-tag-badge">${esc(typeLabel)}</span>`;
+      const typeTag = `<span class="badge type-tag-badge">${esc(typeLabel)}</span>`;
       return `<div class="u-b8ea487 d-flex st-background__356c02 st-border-bottom__e54b2f">
         <div class="u-6b665db u-f2399ff u-cdfcec8 st-border-radius__9eaa9c dc-background u-b62856e" style="--d-background: ${colDot}"></div>
         <div class="u-8b4ab7f has-overflow u-0da05dd">

@@ -82,7 +82,7 @@ function rowHtml(t) {
   const home = isHomeRow(t);
   const cls = t.type === 'IN' ? 'dl-amt-in' : isOut ? 'dl-amt-out' : 'dl-amt-trf';
   const sign = isT ? '&#8646; ' : isOut ? '- ' : '+ ';
-  const tag = isOut ? `<span class="dl-tag ${home ? 'dl-tag-home' : 'dl-tag-biz'}">${home ? 'Home' : 'Biz'}</span>` : '';
+  const tag = isOut ? `<span class="badge dl-tag ${home ? 'dl-tag-home' : 'dl-tag-biz'}">${home ? 'Home' : 'Biz'}</span>` : '';
   const sub = isT ? `${esc(t.mode)} &rarr; ${esc(t.toMode)}` : `${t.party ? `${esc(t.party)} &bull; ` : ''}${esc(t.mode)}`;
   const bal = st ? `<div class="dl-bal-line">Balance: ${fmtAmt(st.before)} &rarr; ${fmtAmt(st.after)}</div>` : '';
   const rows = [detailRow('Type', TYPE_LABEL[t.type]), isT ? detailRow('From', esc(t.mode)) + detailRow('To', esc(t.toMode)) : detailRow('Category', esc(t.category)) + detailRow('Mode', esc(t.mode))];

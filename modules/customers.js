@@ -447,7 +447,7 @@ info = `
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
-      <span class="old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
+      <span class="badge old-debt-badge">OLD DEBT</span>${_mergedBadgeHtml(t, {inline:true})}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}
     </div>
     <div class="u-200c327">Previous Balance: ${await formatCurrency(t.totalValue)}</div>
     <div class="u-5d1cf22 text-xs">${esc(oldDebtNote(t.notes))}</div>

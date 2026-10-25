@@ -508,7 +508,7 @@ let supplierLine;
 if (item.supplierName) {
 const remainingPayable = item.totalPayable || 0;
 const isFullyPaid = item.paymentStatus === 'paid' || remainingPayable <= 0;
-supplierLine = `<span class="supplier-name-badge">${esc(item.supplierName)}</span>` + (isFullyPaid ? '<span class="rl-muted">Paid</span>' : `<span class="rl-owed">Owed ${fmtNum(safeNumber(remainingPayable, 0))}</span>`);
+supplierLine = `<span class="badge supplier-name-badge">${esc(item.supplierName)}</span>` + (isFullyPaid ? '<span class="rl-muted">Paid</span>' : `<span class="rl-owed">Owed ${fmtNum(safeNumber(remainingPayable, 0))}</span>`);
 } else {
 supplierLine = '<span class="rl-muted">No supplier linked</span>';
 }
@@ -1082,7 +1082,7 @@ return `<div class="hc-mat"><span class="hc-mat-name">${matName}</span><span cla
 }).join('');
 matsBreakdownHtml = `<details class="hc-more"><summary>Materials breakdown</summary><div class="hc-mats">${matRows}</div></details>`;
 }
-const factorySub = `${dateStr}${entry.managedBy ? `<span class="managed-by-badge">${esc(entry.managedBy)}</span>` : ''}${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}${_mergedBadgeHtml(entry)}`;
+const factorySub = `${dateStr}${entry.managedBy ? `<span class="badge managed-by-badge">${esc(entry.managedBy)}</span>` : ''}${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}${_mergedBadgeHtml(entry)}`;
 const div = hcCard({
 tone: 'info', icon: 'factory', title: formulaLabel, titleHtml: formulaLabel,
 sub: factorySub,
@@ -1251,7 +1251,7 @@ let indicatorClass = 'units-available-good';
 if (available < 10) indicatorClass = 'units-available-warning';
 if (available <= 0) indicatorClass = 'units-available-danger';
 const _uaiLabel = (await getFormulaNames())[formulaId] || '';
-if (indicator) { indicator.className = `units-available-indicator ${indicatorClass}`; indicator.textContent = `${fmtNum(available || 0)} units available${_uaiLabel ? ' · ' + _uaiLabel : ''}`; }
+if (indicator) { indicator.className = `badge units-available-indicator ${indicatorClass}`; indicator.textContent = `${fmtNum(available || 0)} units available${_uaiLabel ? ' · ' + _uaiLabel : ''}`; }
 const requestedUnits = parseFloat(document.getElementById('formula-units')?.value) || 0;
 if (warning) {
 if (requestedUnits > available) warning.classList.remove('hidden');

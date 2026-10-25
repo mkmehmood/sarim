@@ -1191,13 +1191,22 @@ position: relative;
 .btn-theme:hover {
 background: var(--card-hover);
 }
+.badge {
+display: inline-flex;
+align-items: center;
+gap: 4px;
+padding: 2px 8px;
+border-radius: 999px;
+font-size: 0.65rem;
+font-weight: 700;
+letter-spacing: 0.04em;
+line-height: 1.3;
+white-space: nowrap;
+}
 .store-badge {
 position: absolute;
 top: 12px;
 right: 12px;
-padding: 3px 8px;
-font-size: 0.625rem;
-font-weight: 700;
 text-transform: uppercase;
 color: var(--text-muted);
 }
@@ -1369,8 +1378,6 @@ border-top: 1px solid var(--glass-border);
 margin: 10px 0;
 }
 .seller-badge {
-padding: 2px 6px;
-font-size: 0.64rem;
 position: absolute;
 top: 12px;
 right: 12px;
@@ -1386,9 +1393,6 @@ margin-bottom: 5px;
 position: absolute;
 top: 12px;
 right: 12px;
-padding: 3px 8px;
-font-size: 0.64rem;
-font-weight: 800;
 text-transform: uppercase;
 color: var(--text-muted);
 }
@@ -1484,11 +1488,7 @@ margin-bottom: 12px;
 .noran-badge { color: var(--noran-color); }
 .noman-badge { color: var(--noman-color); }
 .received-indicator {
-display: inline-block;
-padding: 3px 6px;
 color: var(--accent-emerald);
-font-size: 0.65rem;
-font-weight: 400;
 margin-left: 5px;
 }
 .daily-performance-overview {
@@ -1541,7 +1541,7 @@ font-size: 0.875rem;
 font-weight: 600;
 letter-spacing: -0.01em;
 }
-.toggle-opt, .badge {
+.toggle-opt {
 font-weight: 500;
 letter-spacing: 0.01em;
 }
@@ -1558,10 +1558,6 @@ margin-bottom: 15px;
 letter-spacing: -0.04em;
 }
 .supply-tag {
-display: inline-block;
-padding: 3px 8px;
-font-size: 0.65rem;
-font-weight: 400;
 margin-top: 5px;
 }
 .supply-tag.store-zubair { color: var(--supply-zubair); }
@@ -1615,10 +1611,7 @@ padding: 15px;
 background: var(--card-hover);
 }
 .factory-badge {
-font-size: 0.7rem;
-padding: 2px 8px;
 text-transform: uppercase;
-font-weight: 800;
 }
 .factory-badge-formula { color: var(--factory-formula); }
 .factory-overlay-card {
@@ -1730,10 +1723,6 @@ text-align: center;
 margin: 5px 0;
 }
 .units-available-indicator {
-display: inline-block;
-padding: 4px 8px;
-font-size: 0.7rem;
-font-weight: 800;
 margin-left: 10px;
 backdrop-filter: var(--backdrop-blur);
 }
@@ -2032,9 +2021,6 @@ margin: 0;
 line-height: 1.2;
 }
 .entity-type-badge {
-padding: 3px 8px;
-font-size: 0.65rem;
-font-weight: 800;
 text-transform: uppercase;
 min-width: 60px;
 text-align: center;
@@ -2058,9 +2044,6 @@ color: var(--danger);
 color: var(--text-main);
 }
 .transaction-badge {
-padding: 3px 8px;
-font-size: 0.64rem;
-font-weight: 800;
 text-transform: uppercase;
 color: var(--text-muted);
 }
@@ -2397,14 +2380,6 @@ animation: none !important;
 }
 #cy-panel { backdrop-filter: var(--backdrop-blur); -webkit-backdrop-filter: var(--backdrop-blur); }
 .settled-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 999px;
-  font-size: 0.60rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  padding: 2px 8px;
   text-transform: uppercase;
   margin-left: 6px;
   vertical-align: middle;
@@ -2418,25 +2393,15 @@ order: 999;
   transform: none !important;
 }
 .creator-badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 2px 7px;
   text-transform: none;
   margin-left: 6px;
   vertical-align: middle;
-  white-space: nowrap;
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--accent);
 }
 .old-debt-badge {
-  font-size: 0.65rem;
-  font-weight: 600;
   margin-left: 6px;
   color: var(--warning);
 }
@@ -2460,45 +2425,15 @@ order: 999;
   color: var(--accent-emerald);
 }
 .merged-badge {
-  display: inline-block;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 1px 5px;
-  border-radius: 3px;
   margin-top: 3px;
   color: var(--accent-purple);
 }
 .merged-badge--inline {
-  font-size: 0.65rem;
-  padding: 2px 6px;
   margin-top: 0;
   margin-left: 6px;
 }
 .managed-by-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 9px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  border-radius: 999px;
   color: var(--accent-purple);
-}
-.txn-stat-badge {
-display: inline-flex;
-align-items: center;
-font-size: 0.7rem;
-font-weight: 700;
-padding: 2px 8px;
-}
-.txn-label-badge {
-display: inline-flex;
-align-items: center;
-font-size: 0.65rem;
-font-weight: 700;
-padding: 2px 6px;
 }
 .txn-in { color: var(--accent-emerald); }
 .txn-out { color: var(--danger); }
@@ -2507,17 +2442,10 @@ padding: 2px 6px;
 .status-badge.txn-collect { color: var(--accent-emerald); }
 .status-badge.txn-cash { color: var(--accent); }
 .sales-rep-badge {
-display: inline-flex;
-align-items: center;
-font-size: 0.62rem;
-font-weight: 700;
 color: var(--text-strong);
 }
 .supplier-name-badge {
-display: inline-block;
 color: var(--accent);
-font-size: 0.65rem;
-font-weight: 600;
 margin-bottom: 3px;
 }
 .formula-item--highlight {
@@ -2915,19 +2843,10 @@ padding-bottom: 20px;
 #db-structure-screen #dbv-body {
   padding: 0;
 }
-.sync-status-badge {
-font-size: 0.62rem;
-padding: 2px 6px;
-white-space: nowrap;
-font-weight: 600;
-}
 .sync-ok { color: var(--accent-emerald); }
 .sync-local { color: var(--danger); }
 .type-tag-badge {
-font-size: 0.62rem;
 color: var(--text-muted);
-padding: 2px 7px;
-white-space: nowrap;
 }
 .cdp-wrap {
   position: relative;
@@ -3156,13 +3075,9 @@ font-feature-settings: "tnum" 1;
 }
 .edit-mode-banner button:active { opacity: 0.8; }
 .edited-badge {
-  font-size: 0.62rem;
-  padding: 1px 6px;
-  border-radius: 6px;
   background: color-mix(in srgb, var(--text-main) 8%, transparent);
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 .edit-mode-banner .emb-icon, .edit-mode-banner button { color: var(--warning-ink); }
 .pp-price-row { display: flex; align-items: center; gap: 8px; }
@@ -5034,12 +4949,11 @@ body, input:not(._), select:not(._), textarea, button:not(._), .btn, .btn-sm, .b
 .formula-display, .formula-unit-display { border-radius: 14px; }
 .production-unit-info { border-radius: 14px; }
 .warning-message { border-radius: 14px; }
-.store-badge, .payment-badge, .seller-badge, .transaction-badge,
-.noran-badge, .noman-badge, .factory-badge, .factory-badge-formula, .entity-type-badge, .supply-tag,
-.units-available-indicator, .units-available-good,
-.units-available-warning, .units-available-danger,
-.received-indicator, .update-indicator,
-.offline-queue-badge { border-radius: 999px; }
+.factory-badge-formula,
+.units-available-good,
+.units-available-warning,
+.units-available-danger,
+.update-indicator { border-radius: 999px; }
 #tab-rep > header:first-child,
 #tab-prod > header:first-child,
 #tab-sales > header:first-child,
@@ -5134,16 +5048,7 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
   .u-fs-md2 { font-size: 0.9rem; }
   .u-field-hint { font-size: 0.68rem; }
   .u-field-hint-xs { font-size: 0.58rem; }
-  .u-field-hint-xxs { font-size: 0.62rem; }
-  .store-badge,
-  .payment-badge,
-  .seller-badge,
-  .noran-badge,
-  .noman-badge,
-  .entity-type-badge,
-  .supply-tag,
-  .factory-badge,
-  .transaction-badge { font-size: 0.60rem; padding: 2px 7px; } }
+  .u-field-hint-xxs { font-size: 0.62rem; } }
 #db-structure-screen #dbv-root { max-height: none; }
 #db-structure-screen #dbv-body { max-height: none; }
 #offline-banner { padding: 0; margin: 0; border-radius: 50%; border: none; }
@@ -5191,12 +5096,11 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .dl-stat strong { font-size: 0.9rem; font-weight: 700; color: var(--text-main); overflow-wrap: anywhere; }
 .dl-stat-btn { border: none; font-family: inherit; text-align: left; cursor: pointer; }
 .dl-amt-trf { color: var(--accent-gold); }
-.dl-badge { font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
 .dl-amount { font-size: 0.9rem; margin-top: 2px; }
 .dl-item { align-items: stretch; }
 .dl-details > summary { list-style: none; cursor: pointer; }
 .dl-details > summary::-webkit-details-marker { display: none; }
-.dl-tag { font-size: 0.65rem; font-weight: 700; margin-left: 6px; }
+.dl-tag { margin-left: 6px; }
 .dl-tag-home { color: var(--accent-gold); }
 .dl-tag-biz { color: var(--danger); }
 .dl-bal-line { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
