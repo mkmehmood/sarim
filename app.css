@@ -676,7 +676,7 @@ transform: translateZ(0);
 backface-visibility: hidden;
 -webkit-backface-visibility: hidden;
 }
-.card :where(.card) { margin-bottom: 0; border-radius: 14px; box-shadow: none; }
+.card :where(.card) { margin-bottom: 0; border-radius: 14px; box-shadow: none; min-height: 0; height: auto; }
 .card-rows { display: flex; flex-direction: column; padding: 15px; }
 .card::before {
 display: none;
@@ -1229,8 +1229,8 @@ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 gap: 12px;
 margin-bottom: 20px;
 }
-#prodHistoryList .card:not(.return-card):not(.transfer-card):not(.hc-card),
-#historyList .card:not(.hc-card) {
+#prodHistoryList .card:not(.return-card):not(.transfer-card):not(.hc-card):not(.hc-metric),
+#historyList .card:not(.hc-card):not(.hc-metric) {
 min-height: 180px;
 }
 .card.highlight-card {
