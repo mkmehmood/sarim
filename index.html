@@ -1341,7 +1341,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div id="entityHistoryFilters" class="cm-filters d-none"></div>
     <div id="entityMonthJump" class="cm-filters cm-jump d-none"></div>
-    <div id="entityManagementHistoryList"></div>
+    <div id="entityManagementHistoryList" class="history-list"></div>
     <div class="u-be796b5">
       <button class="btn btn-danger btn-sm u-16000cc" onclick="deleteCurrentEntity()">Delete Entity</button>
     </div>
@@ -1426,7 +1426,7 @@ window._showLogoutConfirmDialog = async function() {
       </div>
       <div class="u-field-hint">* Adds a new expense record under "<span class="u-text-warning u-fw-600" id="quickExpenseNameLabel"></span>" for today's date.</div>
     </div>
-    <div id="expenseManagementHistoryList"></div>
+    <div id="expenseManagementHistoryList" class="history-list"></div>
     <div class="u-be796b5">
       <button class="btn btn-danger btn-sm u-16000cc" onclick="deleteAllExpensesByName()">Delete All Expenses</button>
     </div>
@@ -1445,7 +1445,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div id="customerHistoryFilters" class="cm-filters d-none"></div>
     <div id="customerMonthJump" class="cm-filters cm-jump d-none"></div>
-    <div id="customerManagementHistoryList"></div>
+    <div id="customerManagementHistoryList" class="history-list"></div>
     <div class="u-be796b5">
       <button class="btn btn-danger btn-sm u-16000cc" onclick="(async()=>{await deleteCurrentCustomer()})()">Delete Customer</button>
     </div>
@@ -1523,7 +1523,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
     <div id="repCustomerHistoryFilters" class="cm-filters d-none"></div>
     <div id="repCustomerMonthJump" class="cm-filters cm-jump d-none"></div>
-    <div id="repCustomerManagementHistoryList"></div>
+    <div id="repCustomerManagementHistoryList" class="history-list"></div>
     <div class="u-be796b5">
       <button class="btn btn-danger btn-sm u-16000cc" onclick="(async()=>{await deleteCurrentRepCustomer()})()">Delete Customer</button>
     </div>
@@ -1773,7 +1773,7 @@ oninput="renderRepCustomerTable()">
 </div>
 
 </div>
-<div id="repHistoryList" class="report-grid"></div>
+<div id="repHistoryList" class="history-list report-grid"></div>
 </div>
 <div id="tab-prod">
 <header id="prod-tab-header" class="u-cfe00e0 d-flex">
@@ -1910,7 +1910,7 @@ Insufficient formula units available! Please reduce formula units used.
 <div id="prod-history-header" class="u-03ee4e9 d-flex">
 <span class="u-9daf5c8">Production History</span>
 </div>
-<div id="prodHistoryList" class="report-grid"></div>
+<div id="prodHistoryList" class="history-list report-grid"></div>
 </div>
 <div id="tab-sales" class="hidden">
 <header class="u-497acf1 d-flex">
@@ -2079,7 +2079,7 @@ oninput="filterCustomers()">
 <div class="u-03ee4e9 d-flex">
 <span class="u-9daf5c8">Sales History</span>
 </div>
-<div id="custHistoryList" class="u-20b2a6c d-flex"></div>
+<div id="custHistoryList" class="history-list u-20b2a6c d-flex"></div>
 </div>
 <div id="tab-calc" class="hidden">
 <header class="u-497acf1 d-flex">
@@ -2262,7 +2262,7 @@ oninput="filterCustomers()">
 <div class="u-03ee4e9 d-flex">
 <span class="u-9daf5c8">Calculator History</span>
 </div>
-<div id="historyList" class="report-grid"></div>
+<div id="historyList" class="history-list report-grid"></div>
 </div>
 <div id="tab-factory" class="hidden">
 <header id="factory-tab-header" class="u-cfe00e0 d-flex">
@@ -2416,7 +2416,7 @@ Select a store...
 <div class="section-header">
 <h3 class="u-heading-main" >Recent Production Activity</h3>
 </div>
-<div id="factoryHistoryList">
+<div id="factoryHistoryList" class="history-list">
 </div>
 </div>
 </div>
@@ -2706,7 +2706,7 @@ oninput="renderUnifiedTable()">
 <div id="payment-history-section" class="u-bf70b63 d-flex">
 <span class="u-9daf5c8">Payment History</span>
 </div>
-<div id="paymentHistoryList" class="report-grid"></div>
+<div id="paymentHistoryList" class="history-list report-grid"></div>
 </div>
 <div id="offline-banner" role="status" aria-live="polite">
 <span id="network-status-dot" class="net-dot net-dot-online" aria-hidden="true"></span>

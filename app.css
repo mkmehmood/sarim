@@ -1614,9 +1614,6 @@ padding: 15px;
 .factory-history-item:hover {
 background: var(--card-hover);
 }
-.factory-history-item:last-child {
-margin-bottom: 0;
-}
 .factory-badge {
 font-size: 0.7rem;
 padding: 2px 8px;
@@ -2073,7 +2070,6 @@ color: var(--text-muted);
 display: flex;
 justify-content: space-between;
 padding: 12px;
-margin-bottom: 10px;
 }
 .cust-history-item:hover {
 background: var(--card-hover);
@@ -5423,7 +5419,6 @@ input.search-bar {
 input.search-bar:focus {
   border-color: var(--accent);
 }
-.hc-list { display: flex; flex-direction: column; }
 .hc-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2px 4px 8px; }
 .hc-list-title { font-size: 0.95rem; font-weight: 800; color: var(--text-strong); }
 .hc-list-count { font-size: 0.74rem; color: var(--text-muted); }
@@ -5709,8 +5704,9 @@ input.search-bar:focus {
 .hc-card > .hc-body { display: none; }
 .hc-card.is-open { padding: 8px 10px 10px; }
 .hc-card.is-open > .hc-body { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
-#prodHistoryList, #custHistoryList, #factoryHistoryList, #paymentHistoryList, #historyList, #repHistoryList { display: flex; flex-direction: column; gap: 12px; }
-.hc-list { gap: 12px; }
+:root { --history-gap: 6px; }
+.history-list, .hc-list { display: flex; flex-direction: column; gap: var(--history-gap); }
+.history-list > .card, .hc-list > .card { margin-bottom: 0; }
 .hc-seller { font-weight: 700; color: var(--accent); }
 .invp-capture-host { position: fixed; left: -10000px; top: 0; pointer-events: none; }
 .invp-root {
