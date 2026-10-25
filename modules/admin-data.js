@@ -371,23 +371,23 @@ try {
   html += `<div class="u-5beb8fb">
     <div class="u-87be69b">Firestore → SQLite → JS Variable Map</div>
     <div class="has-overflow u-987eb2a">
-    <table class="u-90d65a5">
-      <thead><tr class="u-c90a74f">
-        <th class="u-db30752">Firestore</th>
-        <th class="u-db30752">SQLite Key</th>
-        <th class="u-db30752">JS Variable</th>
-        <th class="u-1982257 text-right">FS / Local</th>
+    <table class="table">
+      <thead><tr>
+        <th>Firestore</th>
+        <th>SQLite Key</th>
+        <th>JS Variable</th>
+        <th class="text-right">FS / Local</th>
       </tr></thead>
       <tbody>
         ${COLLECTIONS.map(c => {
           const fs = c.snap.size || 0;
           const sq = sqliteCounts[c.sqliteKey] || 0;
           const ok = Math.abs(fs - sq) === 0;
-          return `<tr class="st-border-bottom__f9e37c">
-            <td class="st-padding__159b3a st-color__a80552">${c.fsName}</td>
-            <td class="st-padding__159b3a st-color__0ae80b">${c.sqliteKey}</td>
-            <td class="st-padding__159b3a st-color__5872de">${c.jsVar}</td>
-            <td class="text-right st-padding__159b3a dc-color" style="--d-color:${ok?'var(--text)':'var(--danger)'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
+          return `<tr>
+            <td>${c.fsName}</td>
+            <td>${c.sqliteKey}</td>
+            <td>${c.jsVar}</td>
+            <td class="text-right dc-color" style="--d-color:${ok?'var(--text)':'var(--danger)'}">${fs} / ${sq}${ok?'':' <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-cd4b436 d-inline-block"><path d="M10 4H26M10 32H26" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12 4C12 12.5 18 14 18 18S12 23.5 12 32M24 4C24 12.5 18 14 18 18S24 23.5 24 32" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/><path d="M14.2 30L18 23.5 21.8 30Z" fill="#f59e0b" fill-opacity=".85"/></svg>'}</td>
           </tr>`;
         }).join('')}
       </tbody>
