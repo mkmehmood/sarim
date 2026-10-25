@@ -932,9 +932,7 @@ height: 100%;
   width: calc(100% - 28px);
   margin: 12px 14px 14px;
   padding: 13px 16px;
-  border: none;
   font-weight: 800;
-  cursor: pointer;
   font-size: 0.88rem;
   letter-spacing: 0.01em;
   position: relative;
@@ -1643,12 +1641,10 @@ justify-content: center;
 width: 26px;
 height: 26px;
 padding: 0;
-border: none;
 background: color-mix(in srgb, var(--danger) 12%, transparent);
 color: var(--danger);
 font-size: 1rem;
 font-weight: 700;
-cursor: pointer;
 line-height: 1;
 transition: background 0.15s;
 flex-shrink: 0;
@@ -2735,8 +2731,6 @@ padding-bottom: 20px;
 }
 .txn-kebab-btn {
   background: none;
-  border: none;
-  cursor: pointer;
   padding: 4px 7px;
   color: var(--text-muted);
   font-size: 1.05rem;
@@ -3067,7 +3061,7 @@ font-feature-settings: "tnum" 1;
 .pp-price-row { display: flex; align-items: center; gap: 8px; }
 .pp-icon-btn {
   flex-shrink: 0; width: 36px; height: 36px; border: 1px solid var(--glass-border);
-  background: var(--soft-bg); color: var(--accent); cursor: pointer; display: flex; align-items: center;
+  background: var(--soft-bg); color: var(--accent); display: flex; align-items: center;
   justify-content: center; padding: 0; position: relative;
 }
 .pp-dot {
@@ -3080,7 +3074,7 @@ font-feature-settings: "tnum" 1;
 }
 .pp-clear {
   flex-shrink: 0; width: 36px; height: 36px; border: 1px solid var(--glass-border);
-  background: transparent; color: var(--text-muted); font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0;
+  background: transparent; color: var(--text-muted); font-size: 1.1rem; line-height: 1; padding: 0;
 }
 .pp-strip { flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 6px; }
 .pp-strip-img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--glass); cursor: pointer; }
@@ -3200,8 +3194,7 @@ font-feature-settings: "tnum" 1;
 }
 .lb-close {
   width: 44px; height: 44px; padding: 0; border: 1px solid color-mix(in srgb, var(--white) 14%, transparent); background: color-mix(in srgb, color-mix(in srgb, var(--white) 8%, var(--black)) 72%, transparent);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: inherit; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; pointer-events: auto;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); color: inherit; display: flex; align-items: center; justify-content: center; pointer-events: auto;
 }
 .lb-close:active { background: color-mix(in srgb, var(--white) 18%, transparent); }
 .lb-stage {
@@ -3514,10 +3507,8 @@ code, pre, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
   display: grid;
   place-items: center;
   padding: 0;
-  border: 0;
   background: transparent;
   color: var(--dt-faint);
-  cursor: pointer;
   transform: translateY(-50%);
 }
 .dlg-eye svg { width: 20px; height: 20px; }
@@ -3655,9 +3646,9 @@ box-shadow: var(--shadow-lg);
 }
 .screen-back-btn {
   width: 36px; height: 36px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  border: none; background: transparent;
-  color: var(--text-main); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; background: transparent;
+  color: var(--text-main);
+  padding: 0;
 }
 .screen-back-btn:hover { background: var(--glass-raised); }
 .sidebar-section-label {
@@ -3694,9 +3685,8 @@ box-shadow: var(--shadow-lg);
   height: 1px; background: var(--glass-border); margin: 6px 0;
 }
 .sidebar-hamburger {
-  width: 36px; height: 36px; border: none;
+  width: 36px; height: 36px;
   background: transparent;
-  cursor: pointer;
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 5px; padding: 0;
 }
@@ -5182,13 +5172,13 @@ button.dl-row-line { cursor: pointer; }
 }
 .pf-photo-img { width: 100%; height: 100%; object-fit: cover; }
 .pf-photo-add:not(._) {
-  position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; padding: 0; border: 0; box-shadow: 0 0 0 3px var(--glass-frosted); cursor: pointer;
+  position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; padding: 0; box-shadow: 0 0 0 3px var(--glass-frosted);
   background: var(--accent); color: var(--white); align-items: center; justify-content: center;
 }
 .pf-photo-actions { gap: 6px; align-items: center; justify-content: center; min-height: 30px; }
 .pf-chip:not(._) {
   align-items: center; gap: 5px; padding: 5px 11px;
-  font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+  font: inherit; font-size: 0.72rem; font-weight: 700;
   height: 28px; box-sizing: border-box; justify-content: center;
   color: var(--accent); background: var(--accent-dim); border: 1px solid transparent;
 }

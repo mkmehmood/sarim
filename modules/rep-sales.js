@@ -1127,7 +1127,7 @@ toggleBtnHtml = `<span class="badge status-badge ${statusClass} u-77e4b99 st-poi
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `rp-${t.id}`;
 const kebabBtn = t.isMerged
-  ? `<button class="txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','rep','sale')">⋮</button>`
+  ? `<button class="btn txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','rep','sale')">⋮</button>`
   : '';
 const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
 const _when = formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null);

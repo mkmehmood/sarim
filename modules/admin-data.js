@@ -1324,7 +1324,7 @@ if (completeSection) {
       </div>
     </div>
     ${syncWarnBlock}
-    <button class="cy-continue-btn" onclick="closeCloseYearDialog();if(typeof refreshAllDisplays==='function')refreshAllDisplays();">
+    <button class="btn cy-continue-btn" onclick="closeCloseYearDialog();if(typeof refreshAllDisplays==='function')refreshAllDisplays();">
       Continue to App →
     </button>
   </div>`;

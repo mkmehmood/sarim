@@ -52,7 +52,7 @@ describe('sidebar footer', () => {
 });
 describe('settings screen back', () => {
   it('has a back arrow that closes only the settings screen', async () => {
-    assert.match(settings, /class="screen-back-btn"[^>]*onclick="closeSettingsScreen\(\)"/);
+    assert.match(settings, /class="(?:btn )?screen-back-btn"[^>]*onclick="closeSettingsScreen\(\)"/);
     const calls = [];
     globalThis.window = { closeStandaloneScreen: (id) => calls.push(id) };
     const { closeSettingsScreen } = await import('../modules/settings-screen.js');

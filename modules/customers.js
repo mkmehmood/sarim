@@ -418,7 +418,7 @@ toggleBtnHtml = `<span class="badge status-badge txn-cash">CASH SALE</span>`;
 const safeId = String(t.id).replace(/'/g, "\\'");
 const panelId = `cp-${t.id}`;
 const kebabBtn = t.isMerged
-  ? `<button class="txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','sales','sale')">⋮</button>`
+  ? `<button class="btn txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','sales','sale')">⋮</button>`
   : '';
 const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
 let info = '';

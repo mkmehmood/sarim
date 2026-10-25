@@ -244,7 +244,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   qtyInput.addEventListener('input', notify);
   const delBtn = document.createElement('button');
   delBtn.type = 'button';
-  delBtn.className = 'factory-row-del-btn';
+  delBtn.className = 'btn factory-row-del-btn';
   delBtn.innerHTML = '&times;';
   delBtn.title = 'Remove row';
   delBtn.onclick = () => {

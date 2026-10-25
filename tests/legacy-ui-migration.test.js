@@ -65,3 +65,23 @@ describe('remaining legacy UI migrated to shared classes', () => {
     assert.ok(!/#unified-search|#customers-card \.search-bar|#rep-customers-card \.search-bar/.test(css));
   });
 });
+
+describe('remaining icon and chip buttons use the shared .btn base', () => {
+  const NAMES = ['pf-chip', 'pf-photo-add', 'txn-kebab-btn', 'pp-icon-btn', 'pp-clear', 'lb-close', 'screen-back-btn', 'sidebar-hamburger', 'dlg-eye', 'cy-continue-btn'];
+  it('every such <button> carries btn', () => {
+    const bad = [];
+    for (const m of src.matchAll(/<button\b[^>]*?class=\\?"([^"\\]*)\\?"/g)) {
+      const t = m[1].split(/\s+/);
+      if (NAMES.some((n) => t.includes(n)) && !t.includes('btn')) bad.push(m[1]);
+    }
+    assert.deepEqual(bad, []);
+    assert.ok(src.includes("className = 'btn factory-row-del-btn'"));
+  });
+  it('their rules do not repeat the cursor or border resets', () => {
+    for (const n of [...NAMES, 'factory-row-del-btn']) {
+      const props = ownDecls(n);
+      assert.ok(!props.includes('cursor:pointer'), `${n} repeats cursor`);
+      assert.ok(!props.some((p) => /^border:(none|0)$/.test(p)), `${n} repeats border reset`);
+    }
+  });
+});
