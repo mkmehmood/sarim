@@ -35,6 +35,29 @@ describe('shared table class', () => {
     assert.deepEqual(offenders, [], 'style tables with the .table class, not bare element selectors');
   });
 
+  it('every record list (rl-list) lives inside a .table', () => {
+    const html = read('index.html').replace(/<script\b[\s\S]*?<\/script>/g, '');
+    const stack = [];
+    const orphans = [];
+    let lists = 0;
+    for (const m of html.matchAll(/<div\b([^>]*)>|<\/div>/g)) {
+      if (m[0] === '</div>') { stack.pop(); continue; }
+      const cls = (/class="([^"]*)"/.exec(m[1])?.[1] ?? '').split(/\s+/);
+      if (cls.includes('rl-list')) {
+        lists++;
+        if (!stack.some((c) => c.includes('table'))) orphans.push((/id="([^"]*)"/.exec(m[1])?.[1] ?? '(no id)'));
+      }
+      stack.push(cls);
+    }
+    assert.ok(lists >= 4, 'the four record lists are present');
+    assert.deepEqual(orphans, [], 'wrap the list and its totals in a .table');
+  });
+
+  it('record lists carry no container-specific wrappers', () => {
+    assert.ok(!/\brl-wrap\b|\brl-totals-bar\b/.test(read('index.html') + css), 'rl-wrap / rl-totals-bar are replaced by .table');
+    assert.ok(!/#unified-table-container/.test(css), 'no id-specific table container rules');
+  });
+
   it('css defines the table surface once', () => {
     const surfaces = [...css.matchAll(/^\.table \{([^}]*)\}/gm)];
     assert.equal(surfaces.length, 1, 'exactly one .table rule defines the surface');

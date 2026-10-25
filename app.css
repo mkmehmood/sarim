@@ -1275,7 +1275,6 @@ color: var(--accent);
 width: 100%;
 margin-top: 0;
 font-size: 0.8125rem;
-display: table;
 border-collapse: separate;
 border-spacing: 0;
 overflow: hidden;
@@ -2581,12 +2580,6 @@ overscroll-behavior: contain;
 touch-action: pan-y;
 scroll-padding-top: 4px;
 }
-#unified-table-container {
--webkit-overflow-scrolling: touch;
-overscroll-behavior: contain;
-scroll-padding-top: 4px;
-}
-#unified-table-container { touch-action: pan-x pan-y; }
 #recycleBinList {
 scroll-padding-bottom: 16px;
 }
@@ -5105,7 +5098,7 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .btn { border-radius: 999px; }
 .card { backdrop-filter: var(--backdrop-blur); -webkit-backdrop-filter: var(--backdrop-blur); }
 @media (max-height: 700px) {
-  #unified-table-container { max-height: 340px; } }
+  .table .rl-scroll { max-height: 340px; } }
 .system-controls { padding-left: 14px; padding-right: 14px; }
 @media screen and (max-width: 449px) {
   html { font-size: clamp(11px, 3.12vw, 14px); }
@@ -5375,7 +5368,7 @@ button.dl-row-line { cursor: pointer; }
 @media (prefers-reduced-motion: no-preference) {
   .pf-control, .pf-photo, .pf-body .pf-name-input { transition: border-color 0.15s, box-shadow 0.15s; }
 }
-.rl-list { display: flex; flex-direction: column; }
+.rl-list { display: flex; flex-direction: column; padding: 0 14px; }
 .rl-scroll { max-height: 460px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; }
 .rl-row {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
@@ -5420,14 +5413,13 @@ button.dl-row-line { cursor: pointer; }
 .rl-empty-hint { margin-top: 4px; font-size: 0.76rem; color: var(--text-muted); }
 .rl-sortbar { align-items: center; gap: 8px; padding: 0 0 8px; flex-wrap: wrap; }
 .rl-sort-label { font-size: 0.74rem; color: var(--text-muted); margin-right: 2px; }
-.rl-totals { display: flex; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--glass-border-strong); }
+.rl-totals { display: flex; flex-wrap: wrap; margin-top: 0; padding: 0 14px 8px; border-top: 1px solid var(--glass-border-strong); }
 .rl-stat { flex: 1 1 0; min-width: 96px; display: flex; flex-direction: column; gap: 2px; padding: 12px 6px 2px; }
 .rl-stat + .rl-stat { padding-left: 14px; border-left: 1px solid var(--glass-border); }
 .rl-stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
 .rl-stat-value { font-size: 1.02rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-main); }
 .rl-stat.is-debt .rl-stat-value { color: var(--danger); }
 .rl-stat.is-credit .rl-stat-value { color: var(--accent-emerald); }
-.rl-totals-bar { margin-top: 6px; }
 @media (max-width: 360px) { .rl-av { width: 36px; height: 36px; font-size: 0.74rem; } .rl-stat { min-width: 80px; } }
 #customers-card .search-bar, #rep-customers-card .search-bar, #unified-search {
   border: 1px solid var(--glass-border-strong); border-radius: var(--radius-full); padding: 8px 14px;
