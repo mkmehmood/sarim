@@ -54,7 +54,7 @@ export function hcInnerHtml(o) {
     return m ? `<details class="hc-more"${s.open ? ' open' : ''}><summary>${esc(s.title)}</summary>${m}</details>` : '';
   }).join('');
   return `<div class="hc-head" role="button" tabindex="0" aria-expanded="false">${lead}`
-    + `<div class="hc-title-wrap"><div class="hc-title${o.titleClass ? ' ' + o.titleClass : ''}">${title}</div>${o.sub ? `<div class="hc-sub">${o.sub}</div>` : ''}</div>`
+    + `<div class="hc-title-wrap"><div class="title title-sm hc-title${o.titleClass ? ' ' + o.titleClass : ''}">${title}</div>${o.sub ? `<div class="hc-sub">${o.sub}</div>` : ''}</div>`
     + ((o.amount != null && o.amount !== '') || o.tag
       ? `<div class="hc-end">${o.amount != null && o.amount !== '' ? `<div class="hc-amt">${o.amount}</div>` : ''}${o.tag ? `<div class="hc-tag${o.tagTone ? ' is-' + o.tagTone : ''}">${esc(o.tag)}</div>` : ''}</div>`
       : '')

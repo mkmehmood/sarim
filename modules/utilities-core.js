@@ -362,7 +362,7 @@ ${errText ? `<span class="dl-queue-error">${errText}</span>` : ''}
 modal.innerHTML = `
 <div class="card dl-queue-card">
 <div class="dl-queue-header">
-<h3 class="dl-queue-title"> Failed Uploads</h3>
+<h3 class="title title-sm dl-queue-title"> Failed Uploads</h3>
 </div>
 <p class="dl-queue-subtitle">These operations exhausted all ${this.maxRetries} retry attempts. Retry to re-attempt upload, or dismiss to discard.</p>
 <div class="dl-queue-list">${rows}</div>

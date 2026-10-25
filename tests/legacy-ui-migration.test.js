@@ -120,3 +120,20 @@ describe('shared list row', () => {
     assert.ok(!/\.cm-row \+ \.cm-row|\.rl-row:last-child/.test(readFileSync(new URL('app.css', root), 'utf8')));
   });
 });
+
+describe('shared title', () => {
+  it('one .title rule with size modifiers', () => {
+    let n = 0;
+    sheet.walkRules((r) => { if (r.selector.trim() === '.title') n++; });
+    assert.equal(n, 1);
+    assert.ok(/\.title-sm \{/.test(readFileSync(new URL('app.css', root), 'utf8')) && /\.title-md \{/.test(readFileSync(new URL('app.css', root), 'utf8')));
+  });
+  it('card, sheet, queue and dialog titles carry .title and do not repeat its weight', () => {
+    for (const c of ['hc-title', 'cm-sheet-title', 'dl-queue-title', 'dlg-title']) {
+      const re = new RegExp('class=\\\\?"(?:[^"\\\\]* )?title(?: [^"\\\\]*)? ' + c + '|class=\\\\?"title ' + c);
+      assert.ok(re.test(src), c + ' markup carries title');
+      assert.ok(!ownDecls(c).some((p) => /^(font-weight|letter-spacing):/.test(p)), c + ' repeats title weight');
+    }
+    assert.ok(!/overview-title/.test(readFileSync(new URL('app.css', root), 'utf8')));
+  });
+});
