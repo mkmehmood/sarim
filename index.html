@@ -197,11 +197,13 @@ function _showUpdateDialog(reg) {
     if (waiting) {
       waiting.postMessage({ type: 'SKIP_WAITING' });
       setTimeout(function() {
+        if (!window._swReloading && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }, 4000);
+      setTimeout(function() {
         if (window._swReloading) return;
         window._swReloading = true;
-        sessionStorage.setItem('_swJustUpdated', '1');
         window.location.reload();
-      }, 5000);
+      }, 20000);
     } else {
       sessionStorage.setItem('_swJustUpdated', '1');
       window.location.reload();

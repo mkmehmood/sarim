@@ -19,3 +19,15 @@ describe('sale inventory notice placement', () => {
     assert.match(body, /anchor\.parentNode\.insertBefore\(warningDiv, anchor\)/);
   });
 });
+
+describe('camera screen colours', () => {
+  const CSS = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+  const camRules = CSS.split('\n').filter(l => /^\s*\.cam-|^\s+(width: \d+px; height: \d+px; padding: 5px|min-width: 40px)/.test(l) || /^\.cam-/.test(l));
+  it('uses fixed white (not the theme text colour) on the always-black camera screen', () => {
+    const start = CSS.indexOf('.cam-modal {');
+    const end = CSS.indexOf('@keyframes camFocus');
+    assert.ok(start > 0 && end > start);
+    assert.doesNotMatch(CSS.slice(start, end), /var\(--text-main\)/);
+    assert.ok(camRules.length > 0);
+  });
+});

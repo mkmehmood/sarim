@@ -3124,7 +3124,7 @@ font-feature-settings: "tnum" 1;
 .cam-title { text-align: center; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.05em; opacity: 0.92; }
 .cam-btn {
   width: 44px; height: 44px; padding: 0; border: 1px solid color-mix(in srgb, var(--white) 16%, transparent); background: color-mix(in srgb, var(--white) 9%, transparent);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--text-main); display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--white); display: flex; align-items: center; justify-content: center;
 }
 .cam-btn.on { color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); border-color: var(--warning); }
 .cam-btn.cam-lg { width: 54px; height: 54px; }
@@ -3155,7 +3155,7 @@ font-feature-settings: "tnum" 1;
 }
 .cam-pills:empty { display: none; }
 .cam-pill {
-  min-width: 40px; height: 34px; padding: 0 10px; border-radius: 999px; border: none; background: transparent; color: var(--text-main);
+  min-width: 40px; height: 34px; padding: 0 10px; border-radius: 999px; border: none; background: transparent; color: var(--white);
   font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; transition: background 0.15s, color 0.15s;
 }
 .cam-pill.on { background: var(--accent, var(--accent-mint)); color: var(--on-accent-dark); }
@@ -3168,10 +3168,10 @@ font-feature-settings: "tnum" 1;
 .cam-gallery { justify-self: start; }
 .cam-flip { justify-self: end; }
 .cam-shutter {
-  width: 80px; height: 80px; padding: 5px; border-radius: 50%; border: 4px solid var(--text-main); background: transparent; cursor: pointer;
+  width: 80px; height: 80px; padding: 5px; border-radius: 50%; border: 4px solid var(--white); background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.cam-shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--text-main); }
+.cam-shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--white); }
 .cam-shutter:active span { transform: scale(0.88); background: var(--accent, var(--accent-mint)); }
 @keyframes camFocus {
   0% { opacity: 0; transform: scale(1.35); }
