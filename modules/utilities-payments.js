@@ -156,7 +156,7 @@ discClass = 'profit-val';
 discText = `OVER: ${fmtAmt(discrepancy)}`;
 }
 const displayStatusText = data.statusText || discText;
-const displayStatusClass = data.statusClass || (Math.abs(discrepancy) < 0.01 ? 'result-box discrepancy-ok' : 'result-box discrepancy-alert');
+const displayStatusClass = data.statusClass || (Math.abs(discrepancy) < 0.01 ? 'result-box callout discrepancy-ok' : 'result-box callout discrepancy-alert');
 const badge = sellerName ? `<span class="badge seller-badge ${salesRepsList.indexOf(sellerName) === 0 ? 'noran-badge' : 'noman-badge'}">${sellerName.split(' ')[0]}</span>` : '';
 const mergedBadge = isMerged ? _mergedBadgeHtml({ isMerged: true, mergedRecordCount: data.mergedRecordCount, mergedSummary: data.mergedSummary }, {inline:true}) : '';
 const highlightClass = isHighlight ? 'highlight-card' : '';

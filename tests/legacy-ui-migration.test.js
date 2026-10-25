@@ -184,7 +184,7 @@ describe('daily ledger summary tiles use .stat', () => {
 describe('shared panel and callout', () => {
   const cssText = readFileSync(new URL('app.css', root), 'utf8');
   const PANELS = ['cm-summary', 'hc-more', 'dl-queue-row', 'formula-unit-display', 'production-unit-info'];
-  const CALLOUTS = ['txn-preclose-panel', 'warning-message', 'cost-display', 'cy-result-card', 'formula-display'];
+  const CALLOUTS = ['txn-preclose-panel', 'warning-message', 'cost-display', 'cy-result-card', 'formula-display', 'edit-mode-banner', 'discrepancy-alert', 'discrepancy-ok'];
   it('one .panel and one .callout rule', () => {
     assert.equal((cssText.match(/^\.panel \{/gm) || []).length, 1);
     assert.equal((cssText.match(/^\.callout \{/gm) || []).length, 1);

@@ -1769,7 +1769,7 @@ for (const [seller, items] of Object.entries(repGroups)) {
     totalExpected: sellerTotals.totalExpected,
     received:      sellerTotals.received,
     statusText:    'OPENING BALANCE',
-    statusClass:   'result-box discrepancy-ok',
+    statusClass:   'result-box callout discrepancy-ok',
     linkedSalesIds:    [],
     linkedRepSalesIds: [],
     mergedRecordCount: items.length,

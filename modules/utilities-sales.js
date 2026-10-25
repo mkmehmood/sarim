@@ -2134,13 +2134,13 @@ const diff = rec - expected;
 const box = document.getElementById('discrepancyBox');
 const _discEl = document.getElementById('discrepancyStatus');
 if(Math.abs(diff) < 0.01) {
-if (box) box.className = 'result-box discrepancy-ok';
+if (box) box.className = 'result-box callout discrepancy-ok';
 if (_discEl) _discEl.innerText = "PERFECT MATCH ";
 } else if(diff < -0.01) {
-if (box) box.className = 'result-box discrepancy-alert';
+if (box) box.className = 'result-box callout discrepancy-alert';
 if (_discEl) _discEl.innerText = `SHORT: ${fmtAmt(Math.abs(diff))}`;
 } else {
-if (box) box.className = 'result-box discrepancy-ok';
+if (box) box.className = 'result-box callout discrepancy-ok';
 if (_discEl) _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 }
 const grossCommission = commissionPerUnit * netSold;
@@ -2152,7 +2152,7 @@ const payableBox = document.getElementById('commissionPayableBox');
 if (grossEl) grossEl.textContent = fmtAmt(safeValue(grossCommission));
 if (paidEl) paidEl.textContent = fmtAmt(safeValue(commissionPaid));
 if (payableEl) payableEl.textContent = fmtAmt(safeValue(commissionPayable));
-if (payableBox) payableBox.className = commissionPayable > 0.01 ? 'result-box discrepancy-alert' : 'result-box discrepancy-ok';
+if (payableBox) payableBox.className = commissionPayable > 0.01 ? 'result-box callout discrepancy-alert' : 'result-box callout discrepancy-ok';
 }
 
 export const firebaseConfig = {
@@ -2850,14 +2850,14 @@ const diff = rec - totalExpected;
 const grossCommission = commissionPerUnit * netSold;
 const commissionPayable = Math.max(0, grossCommission - commissionPaid);
 let statusText = "PERFECT MATCH ";
-let statusClass = "result-box discrepancy-ok";
+let statusClass = "result-box callout discrepancy-ok";
 if (Math.abs(diff) > 0.01) {
 if (diff < 0) {
 statusText = `SHORT: ${fmtAmt(safeNumber(Math.abs(diff), 0))}`;
-statusClass = "result-box discrepancy-alert";
+statusClass = "result-box callout discrepancy-alert";
 } else {
 statusText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
-statusClass = "result-box discrepancy-ok";
+statusClass = "result-box callout discrepancy-ok";
 }
 }
 if (!(await window.gcCommit({}))) return;
