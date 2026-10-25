@@ -764,10 +764,10 @@ const previewRow = (id, label, key, recCount, details, mergeNote, accent, hasDat
       '<div class="cy-row-icon">' + (CY_ICONS[id]||'') + '</div>' +
       '<span class="cy-row-label">' + label + '</span>' +
       (hasData
-        ? '<span class="cy-pill cy-pill-count">' + recCount + ' rec</span>' +
+        ? '<span class="badge badge-tint is-warn">' + recCount + ' rec</span>' +
           '<span class="cy-arrow">→</span>' +
-          '<span id="cy-val-' + id + '-after" class="cy-pill cy-pill-after">' + mergeNote + '</span>'
-        : '<span class="cy-pill cy-pill-skip">skipped</span>'
+          '<span id="cy-val-' + id + '-after" class="badge badge-tint cy-pill-after">' + mergeNote + '</span>'
+        : '<span class="badge badge-tint cy-pill-skip">skipped</span>'
       ) +
       '<span id="cy-status-' + id + '" class="cy-status-badge ok"></span>' +
     '</div>' +

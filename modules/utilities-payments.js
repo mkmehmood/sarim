@@ -181,7 +181,7 @@ ${sxSplit([{ label: 'Out', value: creditVal, tone: 'bad' }, { label: 'Recovered'
 ${sxGrid(sxTile('Net debt', fmtAmt(balance), balance > 0 ? 'bad' : 'good', { wide: true }))}
 </section>
 <hr class="sx-divider">
-<section class="sx-section"><header class="sx-section-head"><h4>Cash handover</h4><span class="sx-chip sx-tone-${_discTone}">${_discLabel}</span></header>
+<section class="sx-section"><header class="sx-section-head"><h4>Cash handover</h4><span class="badge badge-tint sx-chip sx-tone-${_discTone}">${_discLabel}</span></header>
 ${sxGrid(
   sxTile('Expected', fmtAmt(expected), 'info') +
   sxTile('Received', fmtNum(safeNumber(received, 0)), 'good') +

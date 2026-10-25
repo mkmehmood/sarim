@@ -13,7 +13,7 @@ export function sxGrid(tilesHtml, cols = 2) {
 }
 
 export function sxHero(label, value, opts = {}) {
-  const chip = opts.chip ? `<span class="sx-chip sx-tone-${opts.chipTone || 'good'}">${_esc(opts.chip)}</span>` : '';
+  const chip = opts.chip ? `<span class="badge badge-tint sx-chip sx-tone-${opts.chipTone || 'good'}">${_esc(opts.chip)}</span>` : '';
   const sub = opts.sub ? `<span class="sx-hero-sub">${_esc(opts.sub)}</span>` : '';
   const id = opts.id ? ` id="${_esc(opts.id)}"` : '';
   return `<div class="sx-hero"><div class="sx-hero-top"><span class="sx-hero-label">${_esc(label)}</span>${chip}</div><div class="sx-hero-value"${id}>${value}</div>${sub}</div>`;

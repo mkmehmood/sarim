@@ -21,7 +21,7 @@ export function hcIcon(kind) {
 }
 
 export function hcChip(text, tone) {
-  return text ? `<span class="hc-chip${tone ? ' is-' + tone : ''}">${esc(text)}</span>` : '';
+  return text ? `<span class="badge badge-tint${tone ? ' is-' + tone : ''}">${esc(text)}</span>` : '';
 }
 
 const VALUE_CLASSES = new Set(['qty-val', 'cost-val', 'rev-val', 'profit-val', 'balance-pos', 'balance-neg']);

@@ -46,3 +46,21 @@ describe('shared badge class', () => {
     assert.deepEqual(stray, []);
   });
 });
+
+describe('tinted badge (status pills)', () => {
+  const css = read('app.css');
+  it('defines one tint rule driven by --tone', () => {
+    assert.equal((css.match(/^\.badge-tint \{/gm) || []).length, 1);
+    for (const t of ['good', 'bad', 'warn', 'info']) assert.ok(css.includes(`.badge-tint.is-${t}`), t);
+  });
+  it('hc-chip, sx-chip and cy-pill shapes are gone and markup uses badge-tint', () => {
+    assert.ok(!/\.hc-chip(?![\w-])/.test(css) && !/\.cy-pill(?![\w-])(?!-)/.test(css));
+    assert.ok(!/^\.sx-chip \{[^}]*padding/m.test(css));
+    const bad = [];
+    for (const m of src.matchAll(/class=\\?"([^"\\]*)\\?"/g)) {
+      const t = m[1].split(/\s+/);
+      if (t.some((c) => ['sx-chip', 'cy-pill-after', 'cy-pill-skip'].includes(c)) && !(t.includes('badge') && t.includes('badge-tint'))) bad.push(m[1]);
+    }
+    assert.deepEqual(bad, []);
+  });
+});
