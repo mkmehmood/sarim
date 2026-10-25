@@ -32,14 +32,13 @@ export function inventoryTileModel({ available, quantity, production, returns, s
   };
 }
 
-const CHEVRON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>';
 
 export function inventoryTileHtml(m) {
   const stats = m.stats
     .map(([label, value]) => `<span class="stock-stat"><span class="stock-stat-label">${label}</span><span class="stock-stat-value">${value}</span></span>`)
     .join('');
-  return `<span class="stock-top"><span class="stock-dot"></span><span class="stock-label">In stock</span><span class="stock-more">Details${CHEVRON}</span></span>`
-    + `<span class="stock-main"><span class="stock-figure">${m.figure}<small>kg</small></span><span class="stock-note">${m.note}</span></span>`
-    + `<span class="stock-gauge" role="img" aria-label="${m.summary}"><i style="--used: ${m.used}%"></i></span>`
-    + `<span class="stock-detail">${stats}</span>`;
+  return `<span class="stock-row"><span class="stock-dot"></span><span class="stock-text">In Stock: <span class="stock-figure">${m.figure} kg</span></span><span class="stock-note">${m.note}</span><span class="stock-chev" aria-hidden="true">${CHEVRON}</span></span>`
+    + `<span class="stock-detail">${stats}</span>`
+    + `<span class="stock-rail" role="img" aria-label="${m.summary}"><i style="--used: ${m.used}%"></i></span>`;
 }

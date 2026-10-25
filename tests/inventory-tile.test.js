@@ -53,7 +53,7 @@ describe('stock tile model', () => {
 
   it('renders the tile with only a custom property in its style attributes', () => {
     const html = inventoryTileHtml(tile(23, 10));
-    assert.match(html, /stock-figure">23<small>kg<\/small>/);
+    assert.match(html, /In Stock: <span class="stock-figure">23 kg<\/span>/);
     assert.match(html, /stock-note">13 kg left<\/span>/);
     assert.match(html, /aria-label="23 kg in stock\. 13 kg left\."/);
     assert.deepEqual([...html.matchAll(/stock-stat-label">([^<]+)</g)].map(x => x[1]), ['Produced', 'Returned', 'Sold']);
@@ -73,5 +73,22 @@ describe('stock tile wiring', () => {
     assert.match(SALES, /inventoryTileHtml\(_tile\)/);
     assert.match(SALES, /className = 'stock-tile d-none'/);
     assert.doesNotMatch(SALES, /createInventoryWarningElement/);
+  });
+});
+
+describe('camera shutter', () => {
+  const CSS = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+  const cam = CSS.slice(CSS.indexOf('.cam-modal {'), CSS.indexOf('@keyframes camFocus'));
+
+  it('uses fixed colours on the always-black camera screen so it works in both themes', () => {
+    assert.doesNotMatch(cam, /var\(--text-main\)/);
+    assert.doesNotMatch(cam, /var\(--accent[,)]/);
+    assert.match(cam, /\.cam-shutter \{[^}]*border: 4px solid var\(--white\)/);
+    assert.match(cam, /\.cam-shutter span \{[^}]*background: var\(--white\)/);
+  });
+
+  it('gives the shutter a pressed state and a keyboard focus ring', () => {
+    assert.match(cam, /\.cam-shutter:active span/);
+    assert.match(cam, /\.cam-shutter:focus-visible/);
   });
 });
