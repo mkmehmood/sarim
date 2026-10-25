@@ -2028,8 +2028,10 @@ window.setStyle(warningDiv, 'padding', 'st-padding__492c8f');
 window.setStyle(warningDiv, 'border-radius', 'st-border-radius__0dc840');
 window.setDisplay(warningDiv, 'none');
 const salesSection = document.querySelector('#tab-sales > .card');
-const calculateButton = salesSection.querySelector('.btn-main');
-salesSection.insertBefore(warningDiv, calculateButton);
+const calculateButton = salesSection.querySelector('#btn-save-cust-transaction') || salesSection.querySelector('.btn-main');
+const anchor = (calculateButton && calculateButton.closest('.form-foot')) || calculateButton;
+if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(warningDiv, anchor);
+else salesSection.appendChild(warningDiv);
 return warningDiv;
 }
 
