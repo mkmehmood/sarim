@@ -47,8 +47,8 @@ describe('stock tile model', () => {
     assert.equal(inventoryTone(9.9, 10), 'short');
   });
 
-  it('explains the stock figure in the detail line', () => {
-    assert.equal(tile(23, 0).detail, '83 produced + 0 returned \u2212\u00a060 sold');
+  it('lists produced, returned and sold so the stock figure can be checked', () => {
+    assert.deepEqual(tile(23, 0).stats, [['Produced', '83 kg'], ['Returned', '0 kg'], ['Sold', '60 kg']]);
   });
 
   it('renders the tile with only a custom property in its style attributes', () => {
@@ -56,6 +56,7 @@ describe('stock tile model', () => {
     assert.match(html, /stock-figure">23<small>kg<\/small>/);
     assert.match(html, /stock-note">13 kg left<\/span>/);
     assert.match(html, /aria-label="23 kg in stock\. 13 kg left\."/);
+    assert.deepEqual([...html.matchAll(/stock-stat-label">([^<]+)</g)].map(x => x[1]), ['Produced', 'Returned', 'Sold']);
     for (const m of html.matchAll(/style="([^"]*)"/g)) assert.match(m[1], /^--used: [\d.]+%$/);
   });
 });
@@ -64,8 +65,8 @@ describe('stock tile wiring', () => {
   const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const SALES = readFileSync(new URL('../modules/utilities-sales.js', import.meta.url), 'utf8');
 
-  it('sits next to the Quantity field in the sale form and starts hidden', () => {
-    assert.match(HTML, /id="cust-quantity"[^>]*><\/div>\s*<button type="button" class="stock-tile d-none" id="inventory-warning"/);
+  it('sits directly above the Save Transaction button and starts hidden', () => {
+    assert.match(HTML, /<button type="button" class="stock-tile d-none" id="inventory-warning"[^>]*><\/button>\s*<button class="btn btn-main" id="btn-save-cust-transaction"/);
   });
 
   it('is filled by the sale calculator and hidden when there is no date', () => {

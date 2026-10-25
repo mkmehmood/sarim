@@ -2,7 +2,6 @@ import { fmtNum } from './finance.js';
 
 const n = (v) => (Number.isFinite(v) ? v : 0);
 const kg = (v) => `${fmtNum(n(v))} kg`;
-const MINUS = '\u2212';
 
 export function inventoryTone(available, quantity) {
   const have = n(available);
@@ -28,17 +27,19 @@ export function inventoryTileModel({ available, quantity, production, returns, s
     figure: fmtNum(Math.max(have, 0)),
     note,
     used: Math.round(used * 10) / 10,
-    detail: `${fmtNum(n(production))} produced + ${fmtNum(n(returns))} returned ${MINUS}\u00a0${fmtNum(n(sold))} sold`,
+    stats: [['Produced', kg(production)], ['Returned', kg(returns)], ['Sold', kg(sold)]],
     summary: `${kg(Math.max(have, 0))} in stock. ${note}.`,
   };
 }
 
-const INFO = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8v.1" /></svg>';
+const CHEVRON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6" /></svg>';
 
 export function inventoryTileHtml(m) {
-  return `<span class="stock-top"><span class="stock-dot"></span><span class="stock-label">In stock</span><span class="stock-info" aria-hidden="true">${INFO}</span></span>`
-    + `<span class="stock-figure">${m.figure}<small>kg</small></span>`
+  const stats = m.stats
+    .map(([label, value]) => `<span class="stock-stat"><span class="stock-stat-label">${label}</span><span class="stock-stat-value">${value}</span></span>`)
+    .join('');
+  return `<span class="stock-top"><span class="stock-dot"></span><span class="stock-label">In stock</span><span class="stock-more">Details${CHEVRON}</span></span>`
+    + `<span class="stock-main"><span class="stock-figure">${m.figure}<small>kg</small></span><span class="stock-note">${m.note}</span></span>`
     + `<span class="stock-gauge" role="img" aria-label="${m.summary}"><i style="--used: ${m.used}%"></i></span>`
-    + `<span class="stock-note">${m.note}</span>`
-    + `<span class="stock-detail">${m.detail}</span>`;
+    + `<span class="stock-detail">${stats}</span>`;
 }

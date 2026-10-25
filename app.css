@@ -1250,27 +1250,34 @@ font-size: 0.85rem;
 }
 .stock-tile {
   --stock-tone: var(--success);
-  display: flex; flex-direction: column; align-items: stretch; align-self: end; gap: 6px; min-width: 0;
-  margin: 0; padding: 10px 12px 11px; font: inherit; color: var(--text-main); text-align: left; cursor: pointer;
-  border: 1px solid var(--glass-border); border-radius: var(--radius-base);
+  display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; min-width: 0; box-sizing: border-box;
+  margin: 0 0 14px; padding: 14px 16px 16px; font: inherit; color: var(--text-main); text-align: left; cursor: pointer;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--text-main) 4%, transparent);
   -webkit-tap-highlight-color: transparent;
 }
 .stock-tile.d-none { display: none; }
 .stock-tile.is-low { --stock-tone: var(--warning); }
 .stock-tile.is-short { --stock-tone: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
-.stock-top { display: flex; align-items: center; gap: 6px; }
-.stock-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--stock-tone); box-shadow: 0 0 0 3px color-mix(in srgb, var(--stock-tone) 22%, transparent); }
-.stock-label { flex: 1; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.62; }
-.stock-info { display: flex; opacity: 0.45; }
-.stock-tile.is-open .stock-info { opacity: 0.9; }
-.stock-figure { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-.stock-figure small { margin-left: 4px; font-family: inherit; font-size: 0.78rem; font-weight: 600; opacity: 0.55; }
-.stock-gauge { display: block; height: 5px; border-radius: var(--radius-full); overflow: hidden; background: color-mix(in srgb, var(--text-main) 12%, transparent); }
-.stock-gauge i { display: block; width: var(--used, 0%); height: 100%; border-radius: inherit; background: var(--stock-tone); }
-.stock-note { font-size: 0.74rem; font-weight: 800; line-height: 1.2; color: var(--stock-tone); }
+.stock-top { display: flex; align-items: center; gap: 8px; }
+.stock-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--stock-tone); box-shadow: 0 0 0 4px color-mix(in srgb, var(--stock-tone) 22%, transparent); }
+.stock-label { flex: 1; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.62; }
+.stock-more { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; font-weight: 700; opacity: 0.55; }
+.stock-more svg { transition: transform 0.2s ease; }
+.stock-tile.is-open .stock-more { opacity: 0.95; }
+.stock-tile.is-open .stock-more svg { transform: rotate(180deg); }
+.stock-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.stock-figure { font-family: var(--font-display); font-size: 2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.stock-figure small { margin-left: 5px; font-family: inherit; font-size: 0.9rem; font-weight: 600; opacity: 0.55; }
+.stock-note { font-size: 0.86rem; font-weight: 800; line-height: 1.2; text-align: right; color: var(--stock-tone); }
+.stock-gauge { display: block; height: 7px; border-radius: var(--radius-full); overflow: hidden; background: color-mix(in srgb, var(--text-main) 12%, transparent); }
+.stock-gauge i { display: block; width: var(--used, 0%); height: 100%; border-radius: inherit; background: var(--stock-tone); transition: width 0.25s ease; }
 .stock-tile:not(.is-open) .stock-detail { display: none; }
-.stock-detail { padding-top: 6px; border-top: 1px dashed var(--glass-border-strong); font-size: 0.68rem; line-height: 1.35; font-variant-numeric: tabular-nums; opacity: 0.7; }
+.stock-detail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 12px; border-top: 1px dashed var(--glass-border-strong); }
+.stock-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stock-stat-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; }
+.stock-stat-value { font-size: 0.9rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .stock-gauge i, .stock-more svg { transition: none; } }
 .discrepancy-alert {
 border-left: 4px solid var(--danger);
 background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 10%, transparent) 0%, color-mix(in srgb, var(--danger) 5%, transparent) 100%);

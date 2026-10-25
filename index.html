@@ -1960,7 +1960,6 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <div id="cust-sale-inputs">
 <div class="grid-inputs">
 <div class="field"><label>Quantity (kg)</label><input type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
-<button type="button" class="stock-tile d-none" id="inventory-warning" aria-expanded="false" aria-live="polite" onclick="toggleStockTile(this)"></button>
 </div>
 </div>
 <div id="cust-return-inputs" class="hidden">
@@ -2022,6 +2021,7 @@ Profit: <span id="cust-profit">0.00</span>
 <div class="result-box d-none" id="cust-coll-result">
 <span id="cust-coll-result-label">Balance After Collection:</span> <span id="cust-coll-balance">—</span>
 </div>
+<button type="button" class="stock-tile d-none" id="inventory-warning" aria-expanded="false" aria-live="polite" onclick="toggleStockTile(this)"></button>
 <button class="btn btn-main" id="btn-save-cust-transaction" onclick="(async () => { await saveCustomerTransaction() })()">Save Transaction</button>
 </div>
 <div class="section liquid-card" id="customers-card">
