@@ -81,7 +81,7 @@
     var minDt = parseISO(input.getAttribute('min'));
     var maxDt = parseISO(input.getAttribute('max'));
     var pop = document.createElement('div');
-    pop.className = 'cdp-popover';
+    pop.className = 'overlay cdp-popover';
     pop.setAttribute('role', 'dialog');
     var header = document.createElement('div');
     header.className = 'cdp-header';

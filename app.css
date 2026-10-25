@@ -1163,6 +1163,13 @@ position: relative;
 .btn-theme:hover {
 background: var(--card-hover);
 }
+.overlay {
+background: var(--soft-card);
+border: 1px solid var(--glass-border);
+box-shadow: var(--shadow-lg);
+backdrop-filter: blur(22px);
+-webkit-backdrop-filter: blur(22px);
+}
 .badge {
 display: inline-flex;
 align-items: center;
@@ -1625,23 +1632,6 @@ background: var(--card-hover);
 text-transform: uppercase;
 }
 .factory-badge-formula { color: var(--factory-formula); }
-.factory-overlay-card {
-background: var(--soft-card);
-backdrop-filter: var(--backdrop-blur);
--webkit-backdrop-filter: var(--backdrop-blur);
-border: 1px solid var(--glass-border);
-padding: 20px;
-width: 95%;
-max-width: 650px;
-max-height: 90vh;
-overflow: hidden;
-overscroll-behavior: contain;
-box-shadow: var(--shadow);
-margin: 10px;
-touch-action: pan-y;
-display: flex;
-flex-direction: column;
-}
 .factory-formula-grid {
 display: grid;
 grid-template-columns: 1.8fr 0.8fr 0.8fr 28px;
@@ -2888,14 +2878,9 @@ color: var(--text-muted);
   z-index: var(--z-dialog, 10300);
   width: 250px;
   max-width: calc(100vw - 24px);
-  background: var(--soft-card);
-  border: 1px solid var(--glass-border);
   border-radius: 14px;
-  box-shadow: var(--shadow);
   padding: 10px;
   box-sizing: border-box;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 .cdp-header {
   display: flex;
@@ -5162,7 +5147,7 @@ button.dl-row-line { cursor: pointer; }
 .cm-empty p { margin: 0 0 16px; font-size: 0.82rem; }
 .cm-sheet-backdrop { position: fixed; inset: 0; z-index: 10250; background: color-mix(in srgb, var(--black) 70%, transparent); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
 .cm-sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
-.cm-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10251; max-width: 560px; max-height: 82vh; margin: 0 auto; padding: 8px 18px calc(18px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 24px 24px 0 0; background: var(--soft-card); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid var(--glass-border); transform: translateY(105%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 -18px 48px -14px color-mix(in srgb, var(--accent-cyan) 38%, transparent), 0 -4px 18px rgba(0, 0, 0, 0.28); }
+.cm-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10251; max-width: 560px; max-height: 82vh; margin: 0 auto; padding: 8px 18px calc(18px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 24px 24px 0 0; transform: translateY(105%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); box-shadow: 0 -18px 48px -14px color-mix(in srgb, var(--accent-cyan) 38%, transparent), 0 -4px 18px rgba(0, 0, 0, 0.28); }
 .cm-sheet.is-open { transform: none; }
 .cm-sheet-grab { width: 38px; height: 4px; margin: 0 auto 12px; border-radius: 99px; background: var(--glass-border); }
 .cm-sheet-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
@@ -5177,7 +5162,7 @@ button.dl-row-line { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .cm-sheet, .cm-sheet-backdrop, .cm-chev { transition: none; } }
 .cm-menu-btn { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; margin-left: auto; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted); }
 .cm-menu-btn:hover, .cm-menu-btn:focus-visible { color: var(--accent); border-color: var(--highlight-border); outline: none; }
-.cm-menu { position: fixed; z-index: 10260; min-width: 176px; padding: 6px; border-radius: 14px; background: var(--soft-card); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border: 1px solid var(--glass-border); box-shadow: var(--shadow-lg); }
+.cm-menu { position: fixed; z-index: 10260; min-width: 176px; padding: 6px; border-radius: 14px; }
 .cm-menu-item { display: block; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: none; color: var(--text-main); font-size: 0.86rem; font-weight: 600; text-align: left; cursor: pointer; }
 .cm-menu-item:hover, .cm-menu-item:focus-visible { background: var(--accent-dim); color: var(--accent); outline: none; }
 .dlg-range { display: flex; gap: 12px; }

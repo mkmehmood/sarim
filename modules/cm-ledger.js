@@ -47,7 +47,7 @@ window.toggleCmMenu = (btn, kind, safeName) => {
   if (open) { const same = open.dataset.owner === kind; closeCmMenu(); if (same) return; }
   const menu = document.createElement('div');
   menu.id = 'cm-menu';
-  menu.className = 'cm-menu';
+  menu.className = 'overlay cm-menu';
   menu.dataset.owner = kind;
   menu.setAttribute('role', 'menu');
   menu.innerHTML = `<button type="button" role="menuitem" class="cm-menu-item" data-a="edit">${CFG[kind].menuEdit || 'Edit customer'}</button><button type="button" role="menuitem" class="cm-menu-item" data-a="pdf">Statement PDF</button>`;

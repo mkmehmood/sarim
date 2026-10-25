@@ -85,3 +85,21 @@ describe('remaining icon and chip buttons use the shared .btn base', () => {
     }
   });
 });
+
+describe('shared overlay surface', () => {
+  it('one .overlay rule defines the frosted surface', () => {
+    const rules = [];
+    sheet.walkRules((r) => { if (r.selector.trim() === '.overlay') rules.push(r); });
+    assert.equal(rules.length, 1);
+    const props = rules[0].nodes.map((d) => d.prop);
+    for (const p of ['background', 'border', 'box-shadow', 'backdrop-filter']) assert.ok(props.includes(p), p);
+  });
+  it('sheet, menu and popover carry .overlay and do not redeclare the surface', () => {
+    assert.ok(/id="cm-sheet" class="overlay cm-sheet"/.test(src));
+    assert.ok(src.includes("className = 'overlay cm-menu'") && src.includes("className = 'overlay cdp-popover'"));
+    for (const c of ['cm-menu', 'cdp-popover', 'cm-sheet']) {
+      assert.ok(!ownDecls(c).some((p) => /^(background|border|backdrop-filter|-webkit-backdrop-filter):/.test(p)), `${c} repeats the overlay surface`);
+    }
+    assert.ok(!/\.factory-overlay-card\s*\{/.test(readFileSync(new URL('app.css', root), 'utf8')));
+  });
+});
