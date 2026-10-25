@@ -1686,7 +1686,7 @@ amount: fmtAmt(isCollection && !(Number(item.totalValue) > 0) && Number(item.exp
 metrics: (isCollection || isOldDebt) ? [] : [{ label: 'Quantity', value: `${fmtNum(item.quantity)} kg`, cls: 'qty-val' }]
 }, { className: `is-compact${item.isSettled ? ' is-settled-record' : ''}`, attrs: { 'data-date': item.date } });
 }).join('');
-const tableHTML = `<div class="hc-list-head"><span class="hc-list-title">${esc(headerText)}</span><span class="hc-list-count">${activityData.length} ${activityData.length === 1 ? 'entry' : 'entries'}</span></div><div class="hc-list">${cardsHtml}</div>`;
+const tableHTML = `<div class="hc-list-head"><span class="hc-list-title">${esc(headerText)}</span><span class="hc-list-count">${fmtNum(periodQuantity(activityData.map((t) => ({ t }))))} kg</span></div><div class="hc-list">${cardsHtml}</div>`;
 list.innerHTML = tableHTML;
 }
 

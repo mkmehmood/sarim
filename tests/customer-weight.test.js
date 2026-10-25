@@ -26,4 +26,10 @@ describe('customer management shows weight instead of entry counts', () => {
     assert.ok(/customerData\.qty > 0 \?[^\n]*\} kg/.test(rep));
     assert.ok(!/customerData\.count/.test(rep));
   });
+
+  it('rep activity header shows total kg', () => {
+    const rep = read('modules/rep-sales.js');
+    assert.ok(/hc-list-count">\$\{fmtNum\(periodQuantity\(activityData\.map/.test(rep));
+    assert.ok(!/activityData\.length\} \$\{activityData\.length === 1/.test(rep));
+  });
 });
