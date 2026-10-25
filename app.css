@@ -754,8 +754,8 @@ height: 100%;
 .cy-status-badge {
   animation: cy-badge-pop 0.3s var(--ease-spring);
 }
-.cy-status-badge.ok { color: var(--accent-emerald); }
-.cy-status-badge.warn { color: var(--warning); }
+.badge-tint.cy-status-badge.ok { --tone: var(--accent-emerald); }
+.badge-tint.cy-status-badge.warn { --tone: var(--warning); }
 .cy-chips {
   margin-top: 5px;
   padding-left: 37px;
@@ -1302,10 +1302,8 @@ font-size: 0.85rem;
 .inv-label { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; }
 .inv-figure { font-family: var(--font-display); font-size: 1.85rem; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .inv-figure small { margin-left: 4px; font-family: inherit; font-size: 0.85rem; font-weight: 600; opacity: 0.6; }
-.inv-pill {
-  flex-shrink: 0; padding: 5px 12px; border-radius: var(--radius-full); font-size: 0.74rem; font-weight: 800; white-space: nowrap;
-  color: var(--inv-tone); background: color-mix(in srgb, var(--inv-tone) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--inv-tone) 30%, transparent);
+.badge-tint.inv-pill {
+  flex-shrink: 0; white-space: nowrap; --tone: var(--inv-tone);
 }
 .inv-bar { display: flex; height: 8px; border-radius: var(--radius-full); overflow: hidden; background: color-mix(in srgb, var(--text-main) 10%, transparent); }
 .inv-seg { display: block; flex: 0 0 var(--w, 0%); min-width: 0; }
@@ -2888,9 +2886,7 @@ font-feature-settings: "tnum" 1;
 .pp-strip-img { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: var(--glass); cursor: pointer; }
 .pp-strip-img.pp-missing { opacity: 0.35; }
 .pp-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
-.pp-badge {
-  display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border: none; border-radius: 6px; cursor: pointer;
-  font-size: 0.62rem; font-weight: 700; background: color-mix(in srgb, var(--accent-indigo) 15%, transparent); color: var(--accent-indigo); white-space: nowrap;
+.badge-tint.pp-badge { border: 0; cursor: pointer; white-space: nowrap; --tone: var(--accent-indigo);
 }
 .pp-box {
   margin-left: auto; flex-shrink: 0; width: 28px; height: 28px; padding: 0; border: none; background: transparent;
@@ -3587,12 +3583,6 @@ box-shadow: var(--shadow-lg);
   pointer-events: none;
   z-index: 0;
 }
-.cy-row-body {
-  flex: 1;
-  padding: 10px 13px;
-  min-width: 0;
-  background: color-mix(in srgb, var(--text-main) 2%, transparent);
-}
 .cy-row-top {
   display: flex;
   align-items: center;
@@ -3606,14 +3596,10 @@ box-shadow: var(--shadow-lg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .cy-arrow { font-size: 0.62rem; color: color-mix(in srgb, var(--text-main) 22%, transparent); flex-shrink: 0; }
-.cy-status-badge {
+.badge-tint.cy-status-badge {
   display: none;
-  font-size: 0.58rem; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.07em;
-  padding: 2px 8px; border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-mint) 12%, transparent); color: var(--accent-emerald);
-  border: 1px solid color-mix(in srgb, var(--accent-mint) 25%, transparent);
-  flex-shrink: 0; white-space: nowrap;
+  flex-shrink: 0; white-space: nowrap; --tone: var(--accent-emerald);
 }
 .cy-detail-chips {
   margin-top: 5px;
@@ -3622,12 +3608,6 @@ box-shadow: var(--shadow-lg);
   transition: all 0.35s ease;
 }
 .cy-chip-val { font-size: 0.68rem; font-weight: 700; margin-right: 9px; }
-.cy-result-block {
-  display: none;
-  margin-top: 7px; padding: 7px 11px; border-radius: var(--radius-base, 8px);
-  animation: cy-fade-in 0.32s ease;
-  border-width: 1px; border-style: solid;
-}
 .cy-result-inner  { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .cy-result-lbl    { font-size: 0.73rem; font-weight: 700; }
 .cy-result-tag    { font-size: 0.62rem; color: var(--text-muted); font-family: var(--font-mono); }
@@ -4880,9 +4860,9 @@ button.dl-row-line { cursor: pointer; }
 .rl-muted { color: var(--text-muted); }
 .rl-strong { color: var(--text-main); font-weight: 700; }
 .rl-owed { color: var(--danger); font-weight: 700; }
-.rl-flag {
-  flex-shrink: 0; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.64rem; font-weight: 800;
-  color: var(--danger); background: var(--danger-dim);
+.badge-tint.rl-flag {
+  flex-shrink: 0;
+  --tone: var(--danger);
 }
 .rl-end { text-align: right; padding-left: 4px; }
 .rl-amt { font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-main); white-space: nowrap; }
@@ -4988,8 +4968,7 @@ border-left: 3px solid var(--stat-c, var(--glass-border-strong));
 @media (min-width: 720px) { .hc-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .pf-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .pf-summary {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px;
-  border-radius: var(--radius-base); background: var(--accent-dim); border: 1px solid var(--glass-border);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; --tone: var(--accent);
 }
 .pf-sum-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .pf-sum-label { font-size: 0.64rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
@@ -5047,7 +5026,6 @@ border-left: 3px solid var(--stat-c, var(--glass-border-strong));
 .sx-section { display: flex; flex-direction: column; gap: 6px; }
 .sx-section-head { display: flex; align-items: center; justify-content: space-between; }
 .sx-section-head h4 { margin: 0; font: 700 0.7rem var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
-.sx-details { border-radius: 12px; background: var(--soft-card); border: 1px solid var(--glass-border); }
 .sx-details > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; padding: 7px 10px; font: 600 0.7rem var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
 .sx-details > summary::-webkit-details-marker { display: none; }
 .sx-details > summary::after { content: '\25BE'; margin-left: 8px; transition: transform 0.2s; }

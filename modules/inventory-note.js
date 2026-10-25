@@ -46,5 +46,5 @@ export function inventoryNoteHtml(m) {
   const keys = m.keys
     .map(([kind, label, value]) => `<span class="inv-key is-${kind}"><span class="inv-dot"></span>${label} <b>${value}</b></span>`)
     .join('');
-  return `<span class="inv-head"><span class="inv-main"><span class="inv-label">In stock</span><span class="inv-figure">${num}<small>${unit}</small></span></span><span class="inv-pill">${m.pill}</span></span>${bar}<span class="inv-legend">${keys}</span>`;
+  return `<span class="inv-head"><span class="inv-main"><span class="inv-label">In stock</span><span class="inv-figure">${num}<small>${unit}</small></span></span><span class="badge badge-tint inv-pill">${m.pill}</span></span>${bar}<span class="inv-legend">${keys}</span>`;
 }

@@ -40,7 +40,7 @@ export function sxSection(title, bodyHtml, opts = {}) {
 export function sxBreakdown(title, rows, headRight = '') {
   if (!rows || !rows.length) return '';
   const body = rows.map((r) => `<div class="sx-row"><span class="sx-row-name">${_esc(r.name)}</span><span class="sx-row-val">${r.value}</span></div>`).join('');
-  return `<details class="sx-details"><summary><span>${_esc(title)}</span><em>${headRight}</em></summary><div class="sx-rows">${body}</div></details>`;
+  return `<details class="panel sx-details"><summary><span>${_esc(title)}</span><em>${headRight}</em></summary><div class="sx-rows">${body}</div></details>`;
 }
 
 export function sxMargin(profit, value) {

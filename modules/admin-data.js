@@ -769,7 +769,7 @@ const previewRow = (id, label, key, recCount, details, mergeNote, accent, hasDat
           '<span id="cy-val-' + id + '-after" class="badge badge-tint cy-pill-after">' + mergeNote + '</span>'
         : '<span class="badge badge-tint cy-pill-skip">skipped</span>'
       ) +
-      '<span id="cy-status-' + id + '" class="cy-status-badge ok"></span>' +
+      '<span id="cy-status-' + id + '" class="badge badge-tint cy-status-badge ok"></span>' +
     '</div>' +
     (hasData && details.length
       ? '<div class="cy-chips">' + detailChips + '</div>'

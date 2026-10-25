@@ -517,7 +517,7 @@ prebuiltRows.push(rlRowHtml({
 name: item.name,
 avatar: 'none',
 tone: out ? 'debt' : 'plain',
-badges: [out ? '<span class="rl-flag">Out of stock</span>' : ''],
+badges: [out ? '<span class="badge badge-tint rl-flag">Out of stock</span>' : ''],
 details: [`<span class="rl-strong">${stockText}</span>`, `<span class="rl-muted">${rateText}</span>`, supplierLine],
 amount: await formatCurrency(itemTotalValue),
 tag: 'Stock value',

@@ -287,3 +287,28 @@ describe('themed dialog, auth and fullscreen surfaces use the shared classes thr
     assert.ok(!ownDecls('dlg-callout').some((p) => /^(background|box-shadow|border-radius):/.test(p)));
   });
 });
+
+describe('final near-miss families', () => {
+  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const need = (cls, shared) => {
+    const bad = [];
+    for (const m of src.matchAll(/class=\\?"([^"\\]*)\\?"/g)) { const t = m[1].split(/\s+/); if (t.includes(cls) && !shared.every((s) => t.includes(s))) bad.push(m[1]); }
+    return bad;
+  };
+  it('status, flag, pill and photo badges are tinted badges driven by --tone', () => {
+    for (const c of ['cy-status-badge', 'pp-badge', 'inv-pill', 'rl-flag']) {
+      assert.deepEqual(need(c, ['badge', 'badge-tint']), [], c);
+      assert.ok(!ownDecls(c).some((p) => /^(padding|border-radius|font-size|font-weight|background|color):/.test(p)), c + ' repeats badge shape');
+    }
+    assert.ok(/\.badge-tint\.cy-status-badge\.ok \{ --tone/.test(cssText));
+    assert.ok(/\.badge-tint\.pp-badge \{ border: 0/.test(cssText));
+  });
+  it('summary and details blocks use callout and panel', () => {
+    assert.deepEqual(need('pf-summary', ['callout']), []);
+    assert.deepEqual(need('sx-details', ['panel']), []);
+    assert.ok(!ownDecls('pf-summary').some((p) => /^(background|border|border-radius):/.test(p)));
+  });
+  it('unreferenced cy-row-body and cy-result-block are gone', () => {
+    assert.ok(!/\.cy-row-body(?![\w-])|\.cy-result-block(?![\w-])/.test(cssText));
+  });
+});
