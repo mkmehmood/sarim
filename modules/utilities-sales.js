@@ -10,6 +10,7 @@ import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
+import { inventoryNoteModel, inventoryNoteHtml } from './inventory-note.js';
 import { allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
@@ -1897,7 +1898,11 @@ totalValue: quantity * salePricePerKg
 export async function calculateCustomerSale() {
 const { production, returns, sales } = await loadCollections('production', 'returns', 'sales');
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-if (typeof custTransactionMode !== 'undefined' && (custTransactionMode === 'collection' || custTransactionMode === 'return')) return;
+if (typeof custTransactionMode !== 'undefined' && (custTransactionMode === 'collection' || custTransactionMode === 'return')) {
+const _staleNote = document.getElementById('inventory-warning');
+if (_staleNote) _staleNote.className = 'inventory-note d-none';
+return;
+}
 const quantity = readNum('cust-quantity');
 const date = document.getElementById('cust-date').value;
 const store = document.getElementById('supply-store-value').value;
@@ -1935,22 +1940,10 @@ storeSales += sale.quantity || 0;
 const totalAvailable = storeProduction + storeReturns;
 const availableInventory = Math.round((totalAvailable - storeSales) * 1e6) / 1e6;
 const inventoryWarning = document.getElementById('inventory-warning') || createInventoryWarningElement();
-if (quantity - availableInventory > 1e-6) {
-inventoryWarning.innerHTML = ` Warning: Only ${fmtNum(safeNumber(availableInventory, 0))} kg available.<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
-window.setDisplay(inventoryWarning, 'block');
-window.setStyle(inventoryWarning, 'color', 'st-color__497726');
-window.setStyle(inventoryWarning, 'background', 'st-background__10233b');
-} else if (availableInventory < (quantity * 1.5)) {
-inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available (${fmtNum(safeNumber(availableInventory - quantity, 0))} kg remaining)<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg</small>`;
-window.setDisplay(inventoryWarning, 'block');
-window.setStyle(inventoryWarning, 'color', 'st-color__52df2b');
-window.setStyle(inventoryWarning, 'background', 'st-background__3031a5');
-} else {
-inventoryWarning.innerHTML = ` Inventory: ${fmtNum(safeNumber(availableInventory, 0))} kg available<br><small>Production: ${fmtNum(safeNumber(storeProduction, 0))} kg + Returns: ${fmtNum(safeNumber(storeReturns, 0))} kg = ${fmtNum(safeNumber(totalAvailable, 0))} kg total</small>`;
-window.setDisplay(inventoryWarning, 'block');
-window.setStyle(inventoryWarning, 'color', 'st-color__a4c6ac');
-window.setStyle(inventoryWarning, 'background', 'st-background__ca4057');
-}
+const _invModel = inventoryNoteModel({ available: availableInventory, quantity, production: storeProduction, returns: storeReturns, sold: storeSales });
+inventoryWarning.className = `inventory-note is-${_invModel.tone}`;
+inventoryWarning.setAttribute('role', _invModel.tone === 'short' ? 'alert' : 'status');
+inventoryWarning.innerHTML = inventoryNoteHtml(_invModel);
 }
 }
 
@@ -2022,11 +2015,8 @@ infoDisplay.classList.add('hidden');
 export function createInventoryWarningElement() {
 const warningDiv = document.createElement('div');
 warningDiv.id = 'inventory-warning';
-window.setStyle(warningDiv, 'font-size', 'st-font-size__c95659');
-window.setStyle(warningDiv, 'margin-top', 'st-margin-top__8a77e5');
-window.setStyle(warningDiv, 'padding', 'st-padding__492c8f');
-window.setStyle(warningDiv, 'border-radius', 'st-border-radius__0dc840');
-window.setDisplay(warningDiv, 'none');
+warningDiv.className = 'inventory-note';
+warningDiv.setAttribute('aria-live', 'polite');
 const salesSection = document.querySelector('#tab-sales > .card');
 const calculateButton = salesSection.querySelector('#btn-save-cust-transaction') || salesSection.querySelector('.btn-main');
 const anchor = (calculateButton && calculateButton.closest('.form-foot')) || calculateButton;

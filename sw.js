@@ -23,6 +23,7 @@ const ASSETS_TO_CACHE = [
   './modules/stmt-range.js',
   './modules/dialog-image.js',
   './modules/phone-format.js',
+  './modules/inventory-note.js',
   './modules/date-format.js',
   './modules/theme-tokens.js',
   './modules/phone-actions.js',
