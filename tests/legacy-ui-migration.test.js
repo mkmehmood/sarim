@@ -212,3 +212,13 @@ describe('dead css removed', () => {
     for (const live of ['sc-host', 'sc-tooltip', 'sc-dot-end']) assert.ok(new RegExp('\\.' + live + '(?![\\w-])').test(cssText), live + ' is still used');
   });
 });
+
+describe('generated utility classes stay referenced', () => {
+  it('every u-*, st-* and dc-* class in app.css is used by markup, scripts or tests', () => {
+    const everything = [src, ...readdirSync(new URL('tests/', root)).filter((n) => n.endsWith('.js')).map((n) => read('tests/' + n))].join('\n');
+    const names = new Set();
+    sheet.walkRules((r) => { for (const m of r.selector.matchAll(/\.((?:u|st|dc)-[\w-]+)/g)) names.add(m[1]); });
+    const unused = [...names].filter((n) => !everything.includes(n));
+    assert.deepEqual(unused, []);
+  });
+});
