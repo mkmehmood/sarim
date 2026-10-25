@@ -261,3 +261,29 @@ describe('shared menu item and line', () => {
     for (const c of ['dl-row-line', 'txn-card-row']) assert.ok(!ownDecls(c).some((p) => /^(justify-content|align-items|width):/.test(p)), c);
   });
 });
+
+describe('themed dialog, auth and fullscreen surfaces use the shared classes through tokens', () => {
+  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  it('.overlay, .panel and .scrim read their values from override tokens', () => {
+    assert.ok(/\.overlay \{[^}]*var\(--overlay-bg, var\(--soft-card\)\)/.test(cssText));
+    assert.ok(/\.panel \{[^}]*var\(--panel-bg, var\(--glass-raised\)\)/.test(cssText));
+    assert.ok(/\.scrim \{[^}]*var\(--scrim-bg, var\(--black\)\)/.test(cssText));
+    assert.ok(/\.dlg \{[^}]*--panel-bg: var\(--dt-raise\)/.test(cssText));
+  });
+  it('dialog card and login sheet are overlays that set tokens instead of their own surface', () => {
+    assert.ok(/class="overlay dlg-card/.test(src) || /class=\\"overlay dlg-card/.test(src));
+    assert.ok(/class="overlay auth-sheet/.test(src) || /class=\\"overlay auth-sheet/.test(src));
+    for (const c of ['dlg-card', 'auth-sheet']) {
+      const props = ownDecls(c);
+      assert.ok(props.some((p) => p.startsWith('--overlay-bg:')) && props.some((p) => p.startsWith('--overlay-shadow:')), c + ' sets tokens');
+      assert.ok(!props.some((p) => /^(background|box-shadow):/.test(p)), c + ' repeats the surface');
+    }
+  });
+  it('lightbox and camera are scrims; dialog option is a panel; dialog callout is a callout', () => {
+    assert.ok(/class="scrim lb-modal/.test(src) && /class="scrim cam-modal/.test(src));
+    assert.ok(/class=\\?"panel dlg-option/.test(src) && /class=\\?"callout dlg-callout/.test(src));
+    assert.ok(!ownDecls('cam-modal').some((p) => /^(background|padding):/.test(p)));
+    assert.ok(!ownDecls('dlg-option').some((p) => /^(background|border):/.test(p)));
+    assert.ok(!ownDecls('dlg-callout').some((p) => /^(background|box-shadow|border-radius):/.test(p)));
+  });
+});

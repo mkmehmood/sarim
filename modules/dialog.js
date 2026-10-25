@@ -129,7 +129,7 @@ export function renderBlocks(blocks) {
       return `<dl class="dlg-facts">${blk.items.map((f) => `<div><dt>${escapeHtml(f.k)}</dt><dd>${escapeHtml(f.v)}</dd></div>`).join('')}</dl>`;
     }
     if (blk.type === 'points') return `<ul class="dlg-points">${blk.items.map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
-    if (blk.type === 'callout') return `<div class="dlg-callout dlg-callout--${blk.kind}" role="note"><strong>${escapeHtml(blk.label)}</strong><span>${escapeHtml(blk.text)}</span></div>`;
+    if (blk.type === 'callout') return `<div class="callout dlg-callout dlg-callout--${blk.kind}" role="note"><strong>${escapeHtml(blk.label)}</strong><span>${escapeHtml(blk.text)}</span></div>`;
     if (blk.type === 'subhead') return `<p class="dlg-subhead">${escapeHtml(blk.text)}</p>`;
     return `<p class="${blk.lead ? 'dlg-lead' : 'dlg-text'}">${escapeHtml(blk.text)}</p>`;
   }).join('');
@@ -147,7 +147,7 @@ export function dialogMarkup({ tone = 'primary', title = '', eyebrow = null, cap
     const buttons = actions.map((a, i) => `<button type="button" class="dlg-btn dlg-btn--${a.variant === 'solid' ? 'solid' : 'ghost'}" data-act="${i}"${i === dismissIndex ? ' data-dlg-cancel' : ''}>${escapeHtml(a.label)}</button>`).join('');
     const glyph = icon || pickIcon(tone, title, '');
     const figureHtml = figure ? `<div class="dlg-figure"><span class="dlg-figure-label">${escapeHtml(figure.k)}</span><strong class="dlg-figure-value">${escapeHtml(figure.v)}</strong></div>` : '';
-    return `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><div class="dlg-chip"><span class="dlg-chip-icon" aria-hidden="true">${glyph}</span><span>${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span></div><div class="dlg-card"><div class="dlg-top"><span class="dlg-glyph" aria-hidden="true">${glyph}</span><span class="dlg-caption">${escapeHtml(caption || CAPTIONS[tone] || '')}</span></div><h2 class="title dlg-title" id="${id}-t">${escapeHtml(humanizeKeys(String(title)).trim())}</h2><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot${figure ? ' has-figure' : ''}">${figureHtml}<div class="dlg-actions">${buttons}</div></footer></div></div>`;
+    return `<div class="dlg" role="${ROLES[tone] || 'dialog'}" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-b" data-tone="${tone}" tabindex="-1"><div class="dlg-chip"><span class="dlg-chip-icon" aria-hidden="true">${glyph}</span><span>${escapeHtml(eyebrow || EYEBROWS[tone] || '')}</span></div><div class="overlay dlg-card"><div class="dlg-top"><span class="dlg-glyph" aria-hidden="true">${glyph}</span><span class="dlg-caption">${escapeHtml(caption || CAPTIONS[tone] || '')}</span></div><h2 class="title dlg-title" id="${id}-t">${escapeHtml(humanizeKeys(String(title)).trim())}</h2><div class="dlg-body" id="${id}-b">${body}</div><footer class="dlg-foot${figure ? ' has-figure' : ''}">${figureHtml}<div class="dlg-actions">${buttons}</div></footer></div></div>`;
 }
 
 export function openDialog({ tone = 'primary', title = '', eyebrow = null, caption = null, icon = null, body = '', figure = null, actions = [], dismissIndex = -1, dismissOnBackdrop = true, focusIndex = -1, onBodyClick = null }) {
@@ -368,7 +368,7 @@ export function showGlassAlert(message, { title = null, tone, buttonText = 'OK',
 export function showChoiceDialog(message, choices, { title = null, cancelText = 'Cancel', icon = null } = {}) {
   const list = Array.isArray(choices) ? choices : [];
   const shownTitle = requireTitle(title);
-  const options = list.map((c, i) => `<li><button type="button" class="dlg-option" data-opt="${i}" data-act="${i + 1}">${c.icon ? `<span class="dlg-option-icon" aria-hidden="true">${c.icon}</span>` : ''}<span class="dlg-option-label">${escapeHtml(c.label)}</span><span class="dlg-option-go" aria-hidden="true">${dialogIcons.chevron}</span></button></li>`).join('');
+  const options = list.map((c, i) => `<li><button type="button" class="panel dlg-option" data-opt="${i}" data-act="${i + 1}">${c.icon ? `<span class="dlg-option-icon" aria-hidden="true">${c.icon}</span>` : ''}<span class="dlg-option-label">${escapeHtml(c.label)}</span><span class="dlg-option-go" aria-hidden="true">${dialogIcons.chevron}</span></button></li>`).join('');
   return openDialog({
     tone: 'primary',
     title: shownTitle,

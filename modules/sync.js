@@ -3760,7 +3760,7 @@ overlay.innerHTML = `
 <div class="auth-brand-main">GULL AND ZUBAIR</div>
 <div class="auth-brand-sub">Naswar Dealers</div>
 </div>
-<div class="auth-sheet">
+<div class="overlay auth-sheet">
 <h2 class="auth-title">Welcome back</h2>
 <p class="auth-sub">Sign in to unlock and sync your business data.</p>
 <div class="auth-card">
