@@ -196,6 +196,12 @@ function _showUpdateDialog(reg) {
     var waiting = reg.waiting;
     if (waiting) {
       waiting.postMessage({ type: 'SKIP_WAITING' });
+      setTimeout(function() {
+        if (window._swReloading) return;
+        window._swReloading = true;
+        sessionStorage.setItem('_swJustUpdated', '1');
+        window.location.reload();
+      }, 5000);
     } else {
       sessionStorage.setItem('_swJustUpdated', '1');
       window.location.reload();
@@ -234,12 +240,13 @@ if ('serviceWorker' in navigator && !window.__desktopApp && !(window.Capacitor &
       });
       var _reloading = false;
       navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (_reloading) return;
+        if (_reloading || window._swReloading) return;
         if (!window._swConfirmed) return;
         _reloading = true;
+        window._swReloading = true;
         window.location.reload();
       });
-      setInterval(function() { reg.update(); }, 30 * 60 * 1000);
+      setInterval(function() { if (navigator.onLine) reg.update().catch(function() {}); }, 30 * 60 * 1000);
       document.addEventListener('visibilitychange', function() { if (!document.hidden) reg.update().catch(function() {}); });
       window.addEventListener('online', function() { reg.update().catch(function() {}); });
     }).catch(function(e) {
