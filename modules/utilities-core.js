@@ -4229,7 +4229,7 @@ export const SarimChart = (() => {
       }).join('') + '</div>';
     }
     _empty(msg) {
-      this.el.innerHTML = `<div class="cx">${this._titleHtml()}<div class="cx-empty">${_esc(msg || 'No data yet')}</div></div>`;
+      this.el.innerHTML = `<div class="cx">${this._titleHtml()}<div class="empty">${_esc(msg || 'No data yet')}</div></div>`;
     }
     _bar() {
       const { datasets = [], labels = [] } = this.data;

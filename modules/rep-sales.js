@@ -1668,7 +1668,7 @@ s.paymentType !== 'PARTIAL_PAYMENT' &&
 )
 .sort((a,b) => b.timestamp - a.timestamp);
 if(activityData.length === 0) {
-list.innerHTML = `<div class="hc-empty">No activity found for ${pickedCustomer ? `${esc((document.getElementById('rep-cust-name').value || '').trim())} on ` : ''}${esc(selectedDate)}</div>`;
+list.innerHTML = `<div class="empty hc-empty">No activity found for ${pickedCustomer ? `${esc((document.getElementById('rep-cust-name').value || '').trim())} on ` : ''}${esc(selectedDate)}</div>`;
 return;
 }
 const cardsHtml = activityData.map(item => {

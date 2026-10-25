@@ -108,5 +108,5 @@ export function hcCardHtml(o, extra = {}) {
 }
 
 export function hcEmptyHtml(message) {
-  return `<div class="hc-empty">${esc(message)}</div>`;
+  return `<div class="empty hc-empty">${esc(message)}</div>`;
 }

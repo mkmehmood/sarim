@@ -100,7 +100,7 @@ function renderList() {
   const rows = visibleRows();
   const list = el('dailyLedgerList');
   if (!rows.length) {
-    list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No matching transactions found' }));
+    list.replaceChildren(Object.assign(document.createElement('div'), { className: 'empty', textContent: 'No matching transactions found' }));
     return;
   }
   list.innerHTML = rows.map(rowHtml).join('');

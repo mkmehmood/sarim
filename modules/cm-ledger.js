@@ -165,7 +165,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     list.className = 'cm-list';
     const emptyTitle = c.emptyTitle || 'No transactions yet';
     const emptyText = c.emptyText ? c.emptyText(esc(name)) : `Sales, collections and old debt for ${esc(name)} will appear here.`;
-    list.innerHTML = `<div class="cm-empty"><div class="cm-empty-title">${emptyTitle}</div><p>${emptyText}</p>${emptyAction ? `<button type="button" class="btn btn-main" onclick="${emptyAction}">${c.emptyBtn || 'Record first sale'}</button>` : ''}</div>`;
+    list.innerHTML = `<div class="empty is-boxed"><div class="empty-title">${emptyTitle}</div><p>${emptyText}</p>${emptyAction ? `<button type="button" class="btn btn-main" onclick="${emptyAction}">${c.emptyBtn || 'Record first sale'}</button>` : ''}</div>`;
     return;
   }
   for (const e of entries) state.rows.set(String(e.id), e.row);
@@ -209,7 +209,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     const collapsed = many && mi > 0;
     html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}" id="cm-m-${kind}-${esc(M.key)}"><button type="button" class="cm-month-head" onclick="toggleCmMonth(this)" aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(mName)}</span><span class="cm-month-count">${countLabel(M.c, M.q)}</span><span class="cm-month-sum">${lbl(kind).a} ${await money(M.sold)} \u00b7 ${lbl(kind).b} ${await money(M.got)}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
   }
-  html += '<div class="cm-no-match u-empty-state-sm d-none">No matching history. Clear the search or pick All.</div>';
+  html += '<div class="cm-no-match empty d-none">No matching history. Clear the search or pick All.</div>';
   list.className = comfortable ? 'cm-list is-comfortable' : 'cm-list';
   list.innerHTML = html;
   if (filters && !comfortable) {
@@ -298,7 +298,7 @@ export async function openDayInvoice(kind, dayKey, render) {
     eyebrow: 'Invoice',
     caption: 'This is the picture that will be shared',
     icon: RECEIPT_ICON,
-    body: '<div class="invp-loading">Preparing invoice\u2026</div>',
+    body: '<div class="empty invp-loading">Preparing invoice\u2026</div>',
     actions: [
       { label: 'Close', variant: 'ghost', value: false },
       {
@@ -333,7 +333,7 @@ export async function openDayInvoice(kind, dayKey, render) {
   const body = overlays[overlays.length - 1] && overlays[overlays.length - 1].querySelector('.dlg-body');
   dataPromise.then((x) => {
     if (!body || !body.isConnected) return;
-    body.innerHTML = x ? x.html : '<div class="invp-loading">Nothing to invoice for this day.</div>';
+    body.innerHTML = x ? x.html : '<div class="empty invp-loading">Nothing to invoice for this day.</div>';
   });
   await shown;
 }

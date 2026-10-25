@@ -52,7 +52,7 @@ export function rlRowHtml(opts) {
 }
 
 export function rlEmptyHtml(title, hint) {
-  return `<div class="rl-empty"><div class="rl-empty-title">${esc(title)}</div>${hint ? `<div class="rl-empty-hint">${esc(hint)}</div>` : ''}</div>`;
+  return `<div class="empty"><div class="empty-title">${esc(title)}</div>${hint ? `<div class="empty-hint">${esc(hint)}</div>` : ''}</div>`;
 }
 
 export function rlDetailDate(label, text) {

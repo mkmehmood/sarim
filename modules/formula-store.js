@@ -123,7 +123,7 @@ export async function renderFormulaStoreList() {
   if (!box) return;
   const [list, stores] = await Promise.all([getFormulaStore(), getAppStores()]);
   if (!list.length) {
-    box.innerHTML = '<div class="u-search-empty u-83094ef">No formulas yet. Tap the + button to add one.</div>';
+    box.innerHTML = '<div class="empty is-compact u-83094ef">No formulas yet. Tap the + button to add one.</div>';
     return;
   }
   const inventory = ensureArray(await sqliteStore.get('inventory'));
@@ -179,7 +179,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     const exact = typed && inventory.some((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
     const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom u-d7ba50a" data-custom="1" data-name="${esc(typed)}">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
     if (!filtered.length) {
-      dropdown.innerHTML = (customOpt || '<div class="u-search-empty">No materials found</div>');
+      dropdown.innerHTML = (customOpt || '<div class="empty is-compact">No materials found</div>');
     } else {
       dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610 st-background__356c02" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}">${esc(i.name)}</div>`).join('') + customOpt;
     }

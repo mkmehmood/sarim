@@ -2696,7 +2696,7 @@ const allTimeTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
 filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
 const totalItems = filteredExpenses.length;
 if (!filteredExpenses || !Array.isArray(filteredExpenses)) {
-tbody.innerHTML = `<tr><td class="u-empty-state-danger" colspan="4" >Invalid expense data</td></tr>`;
+tbody.innerHTML = `<tr><td class="empty is-danger" colspan="4" >Invalid expense data</td></tr>`;
 if (totalEl) totalEl.textContent = '0';
 if (totalAllEl) totalAllEl.textContent = '0';
 return;
@@ -2706,7 +2706,7 @@ if (totalAllEl) totalAllEl.textContent = `${fmtAmt(allTimeTotal)}`;
 if (totalItems === 0) {
 tbody.innerHTML = `
 <tr>
-<td class="u-empty-state-md" colspan="4" >
+<td class="empty" colspan="4" >
 No expenses found for selected period
 </td>
 </tr>`;
@@ -3535,7 +3535,7 @@ statsEl.innerHTML = `
 const list = document.getElementById('expenseManagementHistoryList');
 if (!list) return;
 if (relatedExpenses.length === 0) {
-list.replaceChildren(Object.assign(document.createElement('div'), {className:'u-empty-state-sm',textContent:'No expense records found for selected period'}));
+list.replaceChildren(Object.assign(document.createElement('div'), {className:'empty',textContent:'No expense records found for selected period'}));
 return;
 }
 const _expFrag = document.createDocumentFragment();
@@ -5925,7 +5925,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 </div>`;
 });
 } else {
-html = `<div class="u-search-empty" >
+html = `<div class="empty is-compact" >
 No match found. "${query}" will be created as new customer.
 </div>`;
 }
@@ -5951,7 +5951,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 </div>`;
 });
 } else {
-html = `<div class="u-search-empty" >
+html = `<div class="empty is-compact" >
 No matching entities found
 </div>`;
 }
@@ -5970,7 +5970,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeItem
 </div>`;
 });
 } else if (query) {
-html = `<div class="u-search-empty" >
+html = `<div class="empty is-compact" >
 No match found. "${esc(query)}" will be created as new.
 </div>`;
 } else {
@@ -5992,7 +5992,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeItem
 </div>`;
 });
 } else if (query) {
-html = `<div class="u-search-empty" >
+html = `<div class="empty is-compact" >
 No match found. "${esc(query)}" will be created as new.
 </div>`;
 } else {
@@ -6021,7 +6021,7 @@ ${supplier.phone ? `<span class="u-8ce609a st-font-size__8e87b7 st-color__5872de
 </div>`;
 });
 } else {
-html = `<div class="u-search-empty" >
+html = `<div class="empty is-compact" >
 No matching suppliers found
 </div>`;
 }
@@ -6052,7 +6052,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 </div>`;
 });
 } else {
-html = `<div class="u-search-empty" >
+html = `<div class="empty is-compact" >
 No match found. "${query}" will be created.
 </div>`;
 }
@@ -6955,7 +6955,7 @@ const container = document.getElementById('device-list-container');
 if (!container) return;
 if (!firebaseDB || !currentUser) {
 container.innerHTML = `
-<div class="u-empty-state-sm" >
+<div class="empty" >
 Please log in to view devices
 </div>
 `;
@@ -6966,7 +6966,7 @@ const userRef = firebaseDB.collection('users').doc(currentUser.uid);
 const devicesSnap = await userRef.collection('devices').get();
 if (devicesSnap.empty) {
 container.innerHTML = `
-<div class="u-empty-state-sm" >
+<div class="empty" >
 No devices registered yet
 </div>
 `;
@@ -6998,7 +6998,7 @@ return true;
 });
 if (uniqueDocs.length === 0) {
 container.innerHTML = `
-<div class="u-empty-state-sm" >
+<div class="empty" >
 No other devices registered
 </div>
 `;
@@ -7167,7 +7167,7 @@ export async function refreshDeviceList() {
 const container = document.getElementById('device-list-container');
 if (container) {
 container.innerHTML = `
-<div class="u-empty-state-sm" >
+<div class="empty" >
 Refreshing...
 </div>
 `;
@@ -7735,7 +7735,7 @@ const transactions = ensureArray(await sqliteStore.get('transactions'));
 const transfers = transactions.filter(t => t.isTransfer === true && t.type === 'OUT')
 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 if (transfers.length === 0) {
-list.replaceChildren(Object.assign(document.createElement('div'), { className: 'u-empty-state-sm', textContent: 'No payment transfers recorded yet.' }));
+list.replaceChildren(Object.assign(document.createElement('div'), { className: 'empty', textContent: 'No payment transfers recorded yet.' }));
 return;
 }
 const fragment = document.createDocumentFragment();
