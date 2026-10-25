@@ -861,8 +861,8 @@ s.salesRep === currentRepProfile
 );
 const custMap = {};
 myData.forEach(s => {
-if(!custMap[s.customerName]) custMap[s.customerName] = { debt: 0, count: 0 };
-custMap[s.customerName].count++;
+if(!custMap[s.customerName]) custMap[s.customerName] = { debt: 0, qty: 0 };
+custMap[s.customerName].qty = round2(custMap[s.customerName].qty + periodQuantity([{ t: s }]));
 custMap[s.customerName].debt = round2(custMap[s.customerName].debt + debtDelta(s, s.totalValue));
 });
 const sortedCustomers = Object.keys(custMap).sort();
@@ -879,7 +879,7 @@ if (rc.salesRep && rc.salesRep !== currentRepProfile) return;
 if (!rc.salesRep && !repSalesNamesForProfile.has(rc.name.toLowerCase())) return;
 const lcName = rc.name.toLowerCase();
 if (custMapNames.has(lcName)) return;
-custMap[rc.name] = { debt: 0, count: 0 };
+custMap[rc.name] = { debt: 0, qty: 0 };
 sortedCustomers.push(rc.name);
 custMapNames.add(lcName);
 });
@@ -919,7 +919,7 @@ photo: rlPhoto(_rlPhotos, 'rep-cust:' + (currentRepProfile || '') + ':' + name.t
 tone: customerData.debt > 1 ? 'warn' : 'clear',
 details: [
 phone ? phoneActionHTML(phone) : '<span class="rl-muted">No phone</span>',
-customerData.count > 0 ? `<span class="rl-muted">${customerData.count} ${customerData.count === 1 ? 'entry' : 'entries'}</span>` : '',
+customerData.qty > 0 ? `<span class="rl-muted">${fmtNum(customerData.qty)} kg</span>` : '',
 dateText ? `<span class="rl-muted">Last ${esc(dateText)}</span>` : ''
 ],
 amount: fmtAmt(Math.max(0, customerData.debt)),
@@ -1177,7 +1177,7 @@ if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
 else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = rAmt; _credit = rAmt; }
 const _isSale = !isOldDebt && !isCollection && !isPartialPayment;
 _entries.push({
-  id: t.id, dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, rIn, rKind, rCat,
+  id: t.id, qty: periodQuantity([{ t }]), dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, rIn, rKind, rCat,
   tag: (t.isMerged || isCredit) ? toggleBtnHtml : '',
   amtText: await formatCurrency(rAmt),
   balText: _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal)),
