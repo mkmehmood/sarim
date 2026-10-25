@@ -6,7 +6,7 @@ export function prepareSettingsScreen() {
   screen.querySelectorAll('.sidebar-item').forEach((b) => {
     b.classList.toggle('d-none', !admin && !ALWAYS_VISIBLE.has(b.id));
   });
-  screen.querySelectorAll('.liquid-card').forEach((card) => {
+  screen.querySelectorAll('.card').forEach((card) => {
     const anyShown = Array.from(card.querySelectorAll('.sidebar-item')).some((b) => !b.classList.contains('d-none'));
     card.classList.toggle('d-none', !anyShown);
   });

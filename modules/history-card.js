@@ -31,7 +31,7 @@ export function hcMetricsHtml(metrics) {
   if (!list.length) return '';
   return `<dl class="hc-metrics">${list.map((m) => {
     const cls = VALUE_CLASSES.has(m.cls) ? ` ${m.cls}` : '';
-    return `<div class="hc-metric${m.wide ? ' is-wide' : ''}"><dt>${esc(m.label)}</dt><dd class="${cls.trim()}">${m.value}</dd></div>`;
+    return `<div class="card hc-metric${m.wide ? ' is-wide' : ''}"><dt>${esc(m.label)}</dt><dd class="${cls.trim()}">${m.value}</dd></div>`;
   }).join('')}</dl>`;
 }
 
@@ -95,7 +95,7 @@ if (typeof document !== 'undefined' && !window.__hcBound) {
 
 export function hcCard(o, extra = {}) {
   const el = document.createElement('div');
-  el.className = `card liquid-card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen(extra.className) ? ' is-open' : ''}`;
+  el.className = `card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen(extra.className) ? ' is-open' : ''}`;
   Object.entries(extra.attrs || {}).forEach(([k, v]) => { if (v != null && v !== '') el.setAttribute(k, v); });
   el.innerHTML = hcInnerHtml(o);
   if (el.classList.contains('is-open')) el.querySelector('.hc-head')?.setAttribute('aria-expanded', 'true');
@@ -104,7 +104,7 @@ export function hcCard(o, extra = {}) {
 
 export function hcCardHtml(o, extra = {}) {
   const attrs = Object.entries(extra.attrs || {}).filter(([, v]) => v != null && v !== '').map(([k, v]) => ` ${k}="${esc(v)}"`).join('');
-  return `<div class="card liquid-card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen(extra.className) ? ' is-open' : ''}"${attrs}>${hcStartsOpen(extra.className) ? hcInnerHtml(o).replace('aria-expanded="false"', 'aria-expanded="true"') : hcInnerHtml(o)}</div>`;
+  return `<div class="card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen(extra.className) ? ' is-open' : ''}"${attrs}>${hcStartsOpen(extra.className) ? hcInnerHtml(o).replace('aria-expanded="false"', 'aria-expanded="true"') : hcInnerHtml(o)}</div>`;
 }
 
 export function hcEmptyHtml(message) {
