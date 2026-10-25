@@ -242,3 +242,22 @@ describe('last small families use shared classes', () => {
     assert.ok(!ownDecls('pf-locate').includes('cursor:pointer'));
   });
 });
+
+describe('shared menu item and line', () => {
+  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  it('one .menu-item and one .line rule', () => {
+    assert.equal((cssText.match(/^\.menu-item \{/gm) || []).length, 1);
+    assert.equal((cssText.match(/^\.line \{/gm) || []).length, 1);
+  });
+  it('members carry the shared class and drop the repeated declarations', () => {
+    const bad = [];
+    for (const m of src.matchAll(/class=\\?"([^"\\]*)\\?"/g)) {
+      const t = m[1].split(/\s+/);
+      if ((t.includes('cm-menu-item') || t.includes('formula-fab-item')) && !t.includes('menu-item')) bad.push(m[1]);
+      if ((t.includes('dl-row-line') || t.includes('txn-card-row')) && !t.includes('line')) bad.push(m[1]);
+    }
+    assert.deepEqual(bad, []);
+    for (const c of ['cm-menu-item', 'formula-fab-item']) assert.ok(!ownDecls(c).some((p) => /^(border|background|cursor):/.test(p)), c);
+    for (const c of ['dl-row-line', 'txn-card-row']) assert.ok(!ownDecls(c).some((p) => /^(justify-content|align-items|width):/.test(p)), c);
+  });
+});

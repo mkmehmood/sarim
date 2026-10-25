@@ -7747,7 +7747,7 @@ window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 const safeId = String(t.id).replace(/'/g, "\\'");
 const photoBadgeId = 'ph-badge-trf-' + String(t.id).replace(/[^a-z0-9]/gi, '');
 item.innerHTML = `
-<div class="txn-card-row">
+<div class="line txn-card-row">
   <div class="cust-history-info">
     <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}</div>
     <div class="u-fs-sm2 u-text-muted">${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}</div>

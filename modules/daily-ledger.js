@@ -63,10 +63,10 @@ function renderSummary() {
   el('dl-net-tag').textContent = s.net >= 0 ? 'Surplus' : 'Deficit';
   const modes = Object.entries(s.byMode).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
   el('dl-modes-block').classList.toggle('d-none', !modes.length);
-  el('dl-modes-card').innerHTML = modes.map(([m, n]) => `<button type="button" class="dl-row-line" data-v="${esc(m)}" onclick="dailyLedgerOpenMode(this.dataset.v)"><span>${esc(m)}</span><strong class="${n >= 0 ? 'dl-amt-in' : 'dl-amt-out'}">${signed(n)}</strong></button>`).join('');
+  el('dl-modes-card').innerHTML = modes.map(([m, n]) => `<button type="button" class="line dl-row-line" data-v="${esc(m)}" onclick="dailyLedgerOpenMode(this.dataset.v)"><span>${esc(m)}</span><strong class="${n >= 0 ? 'dl-amt-in' : 'dl-amt-out'}">${signed(n)}</strong></button>`).join('');
   const cats = Object.entries(s.byCategory).sort((a, b) => b[1] - a[1]);
   el('dl-cats-block').classList.toggle('d-none', !cats.length);
-  el('dl-cats-card').innerHTML = cats.map(([c, a]) => `<div class="dl-row-line"><span>${esc(c)}</span><strong>${fmtAmt(a)}</strong></div>`).join('');
+  el('dl-cats-card').innerHTML = cats.map(([c, a]) => `<div class="line dl-row-line"><span>${esc(c)}</span><strong>${fmtAmt(a)}</strong></div>`).join('');
 }
 function isHomeRow(t) {
   return t.type === 'OUT' && (t.scope === 'HOME' || isHomeExpense(t.category));
@@ -91,7 +91,7 @@ function rowHtml(t) {
   if (t.ref) rows.push(detailRow('Ref / Bill #', esc(t.ref)));
   if (t.note) rows.push(detailRow('Remarks', esc(t.note)));
   if (st) rows.push(detailRow('Statement Effect', esc(impactText(t, fmtAmt))));
-  return `<div class="card cust-history-item flex-col dl-item"><details class="dl-details"><summary><div class="txn-card-row"><div class="cust-history-info"><div class="u-fs-sm2 u-text-muted">${esc(shortDate(t.date))}</div><div>${isT ? 'Account Transfer' : esc(t.category)}${tag}</div><div class="u-fs-sm2 u-text-muted">${sub}</div></div><div class="text-right"><div class="cost-val dl-amount ${cls}">${sign}${fmtAmt(t.amount)}</div>${bal}</div></div></summary><div class="u-mt-8">${rows.join('')}</div><div class="dl-actions"><button class="btn btn-theme btn-sm" onclick="(async()=>{await dailyLedgerCopyVoucher('${id}')})()">Copy Voucher</button><button class="btn btn-theme btn-sm" onclick="dailyLedgerEdit('${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="dailyLedgerDelete('${id}')">Delete</button></div></details></div>`;
+  return `<div class="card cust-history-item flex-col dl-item"><details class="dl-details"><summary><div class="line txn-card-row"><div class="cust-history-info"><div class="u-fs-sm2 u-text-muted">${esc(shortDate(t.date))}</div><div>${isT ? 'Account Transfer' : esc(t.category)}${tag}</div><div class="u-fs-sm2 u-text-muted">${sub}</div></div><div class="text-right"><div class="cost-val dl-amount ${cls}">${sign}${fmtAmt(t.amount)}</div>${bal}</div></div></summary><div class="u-mt-8">${rows.join('')}</div><div class="dl-actions"><button class="btn btn-theme btn-sm" onclick="(async()=>{await dailyLedgerCopyVoucher('${id}')})()">Copy Voucher</button><button class="btn btn-theme btn-sm" onclick="dailyLedgerEdit('${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="dailyLedgerDelete('${id}')">Delete</button></div></details></div>`;
 }
 function visibleRows() {
   return filterRows(sortNewestFirst(_rows), { query: state.query });

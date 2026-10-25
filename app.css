@@ -1173,6 +1173,20 @@ border: 1.5px dashed var(--glass-border);
 border-radius: var(--radius-lg);
 }
 .empty.is-boxed p { margin: 0 0 16px; font-size: 0.82rem; }
+.menu-item {
+border: 0;
+background: none;
+color: inherit;
+cursor: pointer;
+text-align: left;
+}
+.line {
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 8px;
+width: 100%;
+}
 .title {
 margin: 0;
 font-weight: 700;
@@ -2534,13 +2548,6 @@ padding-bottom: 20px;
 .txn-balance-debt b { color: var(--warning); }
 .txn-balance-clear b, .txn-balance-in b { color: var(--accent-emerald); }
 .txn-balance-out b { color: var(--danger, var(--danger)); }
-.txn-card-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  gap: 6px;
-}
 .txn-kebab-btn {
   background: none;
   padding: 4px 7px;
@@ -3109,7 +3116,7 @@ code, pre, [id*="uuid"], [id*="hash"] { font-family: var(--font-mono); }
 .formula-fab-menu { display: none; position: fixed; right: 20px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 6; flex-direction: column; align-items: flex-end; gap: 14px; }
 .formula-fab-dial.open .formula-fab-backdrop { display: block; }
 .formula-fab-dial.open .formula-fab-menu { display: flex; }
-.formula-fab-item { display: flex; align-items: center; gap: 10px; padding: 0; border: none; background: transparent; cursor: pointer; }
+.formula-fab-item { display: flex; align-items: center; gap: 10px; padding: 0; }
 .formula-fab-label { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--input-bg); color: var(--text-main); font-size: 0.82rem; font-weight: 700; box-shadow: 0 4px 12px color-mix(in srgb, var(--black) 18%, transparent); }
 .formula-fab-mini { width: 46px; height: 46px; border-radius: 50%; background: var(--accent); color: var(--white); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px color-mix(in srgb, var(--black) 28%, transparent); }
 .formula-fab-item:active .formula-fab-mini { transform: scale(0.92); }
@@ -4699,7 +4706,7 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .dl-actions { display: flex; gap: 8px; margin-top: 8px; }
 .dl-actions .btn { flex: 1; }
 .dl-cancel { margin-top: 8px; }
-.dl-row-line:not(._) { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; width: 100%; background: none; border: none; font-family: inherit; color: var(--text-main); text-align: left; }
+.dl-row-line:not(._) { padding: 8px 0; background: none; border: none; font-family: inherit; color: var(--text-main); text-align: left; }
 .dl-row-line:last-child { border-bottom: none; }
 button.dl-row-line { cursor: pointer; }
 .dl-results { max-height: 30vh; overflow-y: auto; border-radius: 10px; margin-top: 6px; }
@@ -4761,7 +4768,7 @@ button.dl-row-line { cursor: pointer; }
 .cm-menu-btn { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; margin-left: auto; border: 1px solid var(--glass-border); background: transparent; color: var(--text-muted); }
 .cm-menu-btn:hover, .cm-menu-btn:focus-visible { color: var(--accent); border-color: var(--highlight-border); outline: none; }
 .cm-menu { position: fixed; z-index: 10260; min-width: 176px; padding: 6px; border-radius: 14px; }
-.cm-menu-item { display: block; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: none; color: var(--text-main); font-size: 0.86rem; font-weight: 600; text-align: left; cursor: pointer; }
+.cm-menu-item { display: block; width: 100%; padding: 11px 12px; border-radius: 10px; color: var(--text-main); font-size: 0.86rem; font-weight: 600; }
 .cm-menu-item:hover, .cm-menu-item:focus-visible { background: var(--accent-dim); color: var(--accent); outline: none; }
 .dlg-range { display: flex; gap: 12px; }
 .dlg-range-field { flex: 1 1 0; min-width: 0; display: block; }

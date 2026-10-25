@@ -50,7 +50,7 @@ window.toggleCmMenu = (btn, kind, safeName) => {
   menu.className = 'overlay cm-menu';
   menu.dataset.owner = kind;
   menu.setAttribute('role', 'menu');
-  menu.innerHTML = `<button type="button" role="menuitem" class="cm-menu-item" data-a="edit">${CFG[kind].menuEdit || 'Edit customer'}</button><button type="button" role="menuitem" class="cm-menu-item" data-a="pdf">Statement PDF</button>`;
+  menu.innerHTML = `<button type="button" role="menuitem" class="menu-item cm-menu-item" data-a="edit">${CFG[kind].menuEdit || 'Edit customer'}</button><button type="button" role="menuitem" class="menu-item cm-menu-item" data-a="pdf">Statement PDF</button>`;
   document.body.appendChild(menu);
   const r = btn.getBoundingClientRect();
   menu.style.setProperty('top', `${Math.round(r.bottom + 6)}px`);
