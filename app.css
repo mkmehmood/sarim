@@ -1248,6 +1248,29 @@ border: 1px solid var(--glass-border);
 backdrop-filter: var(--backdrop-blur);
 font-size: 0.85rem;
 }
+.stock-tile {
+  --stock-tone: var(--success);
+  display: flex; flex-direction: column; align-items: stretch; align-self: end; gap: 6px; min-width: 0;
+  margin: 0; padding: 10px 12px 11px; font: inherit; color: var(--text-main); text-align: left; cursor: pointer;
+  border: 1px solid var(--glass-border); border-radius: var(--radius-base);
+  background: color-mix(in srgb, var(--text-main) 4%, transparent);
+  -webkit-tap-highlight-color: transparent;
+}
+.stock-tile.d-none { display: none; }
+.stock-tile.is-low { --stock-tone: var(--warning); }
+.stock-tile.is-short { --stock-tone: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.stock-top { display: flex; align-items: center; gap: 6px; }
+.stock-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--stock-tone); box-shadow: 0 0 0 3px color-mix(in srgb, var(--stock-tone) 22%, transparent); }
+.stock-label { flex: 1; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.62; }
+.stock-info { display: flex; opacity: 0.45; }
+.stock-tile.is-open .stock-info { opacity: 0.9; }
+.stock-figure { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.stock-figure small { margin-left: 4px; font-family: inherit; font-size: 0.78rem; font-weight: 600; opacity: 0.55; }
+.stock-gauge { display: block; height: 5px; border-radius: var(--radius-full); overflow: hidden; background: color-mix(in srgb, var(--text-main) 12%, transparent); }
+.stock-gauge i { display: block; width: var(--used, 0%); height: 100%; border-radius: inherit; background: var(--stock-tone); }
+.stock-note { font-size: 0.74rem; font-weight: 800; line-height: 1.2; color: var(--stock-tone); }
+.stock-tile:not(.is-open) .stock-detail { display: none; }
+.stock-detail { padding-top: 6px; border-top: 1px dashed var(--glass-border-strong); font-size: 0.68rem; line-height: 1.35; font-variant-numeric: tabular-nums; opacity: 0.7; }
 .discrepancy-alert {
 border-left: 4px solid var(--danger);
 background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 10%, transparent) 0%, color-mix(in srgb, var(--danger) 5%, transparent) 100%);
