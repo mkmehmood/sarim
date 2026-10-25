@@ -786,11 +786,8 @@ height: 100%;
   display: none;
   margin-top: 7px;
   padding: 7px 10px;
-  border-radius: 14px;
-  border: 1px solid;
   animation: cy-fade-in 0.3s var(--ease-out-quart);
-  background: color-mix(in srgb, var(--cy-accent, var(--accent)) 6%, transparent);
-  border-color: color-mix(in srgb, var(--cy-accent, var(--accent)) 22%, transparent);
+  --tone: var(--cy-accent, var(--accent));
 }
 .cy-result-top {
   display: flex;
@@ -1162,6 +1159,16 @@ position: relative;
 }
 .btn-theme:hover {
 background: var(--card-hover);
+}
+.panel {
+background: var(--glass-raised);
+border: 1px solid var(--glass-border);
+border-radius: var(--radius-lg);
+}
+.callout {
+background: color-mix(in srgb, var(--tone, var(--accent)) 8%, transparent);
+border: 1px solid color-mix(in srgb, var(--tone, var(--accent)) 28%, transparent);
+border-radius: 14px;
 }
 .title {
 margin: 0;
@@ -1692,11 +1699,10 @@ flex-shrink: 0;
 background: color-mix(in srgb, var(--danger) 25%, transparent);
 }
 .formula-display {
-background: var(--accent-dim);
 padding: 15px;
 font-size: 0.85rem;
 margin: 15px 0;
-border: 1px solid var(--glass-border);
+--tone: var(--accent);
 }
 .factory-formula-grid select,
 .factory-formula-grid input {
@@ -1734,12 +1740,11 @@ text-align: center;
 }
 .cost-display {
 padding: 10px;
-background: color-mix(in srgb, var(--danger) 10%, transparent);
-border-radius: 14px;
 color: var(--danger);
 font-weight: 800;
 text-align: center;
 margin: 5px 0;
+--tone: var(--danger);
 }
 .units-available-indicator {
 margin-left: 10px;
@@ -1755,8 +1760,6 @@ color: var(--warning);
 color: var(--danger);
 }
 .warning-message {
-background: linear-gradient(135deg, color-mix(in srgb, var(--warning) 16%, transparent), color-mix(in srgb, var(--warning) 4%, transparent));
-border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
 padding: 10px;
 margin: 10px 0;
 font-size: 0.8rem;
@@ -1764,6 +1767,7 @@ color: var(--warning);
 font-weight: 400;
 align-items: center;
 gap: 8px;
+--tone: var(--warning);
 }
 .warning-message::before {
 content: "";
@@ -1780,15 +1784,12 @@ margin-left: 5px;
 display: flex;
 justify-content: space-between;
 align-items: center;
-background: var(--panel-bg);
 padding: 8px 12px;
 margin: 8px 0;
 font-size: 0.75rem;
 font-weight: 400;
 }
 .formula-unit-display {
-background: var(--panel-bg);
-border: 1px solid var(--accent-glow);
 padding: 10px;
 margin: 10px 0;
 }
@@ -1987,9 +1988,6 @@ gap: 8px;
 flex: 1;
 }
 .dl-queue-row {
-background: var(--glass-raised);
-border: 1px solid var(--glass-border);
-border-radius: 18px;
 padding: 10px 12px;
 display: flex;
 align-items: flex-start;
@@ -2789,9 +2787,7 @@ padding-bottom: 20px;
   display: none;
   margin-top: 10px;
   padding: 10px 12px;
-  background: color-mix(in srgb, var(--accent-purple) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent-purple) 25%, transparent);
-  border-radius: 12px;
+  --tone: var(--accent-purple);
 }
 .txn-preclose-panel.open {
   display: block;
@@ -4939,9 +4935,7 @@ body, input:not(._), select:not(._), textarea, button:not(._), .btn, .btn-sm, .b
 [id$="-total"], [id$="-net"], [id$="-balance"], [id$="-cash"]:not(._), [id$="-credit"]:not(._), [id$="-profit"], [id*="cash-"], [id*="net-"]:not(._), [id*="profit-"], td.profit-val, td.cost-val, span.profit-val, span.cost-val, p .profit-val, p .cost-val, td.text-right, .net-cash-value { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
 .factory-overlay-card, [class*="overlay-card"], [class*="modal-card"] { border-radius: 24px; }
 .credit-checkbox-container { border-radius: 10px; }
-.formula-display, .formula-unit-display { border-radius: 14px; }
-.production-unit-info { border-radius: 14px; }
-.warning-message { border-radius: 14px; }
+.warning-message { --tone: var(--warning); }
 .factory-badge-formula,
 .units-available-good,
 .units-available-warning,
@@ -5101,7 +5095,7 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .dl-row-line:last-child { border-bottom: none; }
 button.dl-row-line { cursor: pointer; }
 .dl-results { max-height: 30vh; overflow-y: auto; border-radius: 10px; margin-top: 6px; }
-.cm-summary { margin-bottom: 12px; padding: 14px 16px; border-radius: var(--radius-lg); background: var(--glass-raised); border: 1px solid var(--glass-border); }
+.cm-summary { margin-bottom: 12px; padding: 14px 16px; }
 .cm-sum-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
 .cm-sum-debt { font-family: var(--font-num); font-size: 1.85rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .cm-sum-debt.is-debt { color: var(--warning); }
@@ -5666,7 +5660,7 @@ border-left: 3px solid var(--stat-c, var(--glass-border-strong));
 .hc-metric dd.qty-val { color: var(--accent-cyan); }
 .hc-metric dd.cost-val, .hc-metric dd.balance-neg { color: var(--danger); }
 .hc-metric dd.rev-val, .hc-metric dd.profit-val, .hc-metric dd.balance-pos { color: var(--accent); }
-.hc-more { border: 1px solid var(--glass-border); border-radius: 12px; background: var(--soft-card); padding: 0 10px; }
+.hc-more { padding: 0 10px; }
 .hc-more[open] { padding-bottom: 6px; }
 .hc-more > summary { display: block; padding: 7px 0; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .hc-more[open] > summary { margin-bottom: 0; }

@@ -347,7 +347,7 @@ const ts = entry.failedAt ? new Date(entry.failedAt).toLocaleString() : '—';
 const op = entry.operation || {};
 const label = [op.action, op.collection, op.docId ? op.docId.slice(0, 8) + '…' : ''].filter(Boolean).join(' · ');
 const errText = esc(entry.finalError || '');
-return `<div class="dl-queue-row" data-id="${esc(entry.id)}">
+return `<div class="panel dl-queue-row" data-id="${esc(entry.id)}">
 <div class="dl-queue-row-info">
 <span class="dl-queue-label">${esc(label)}</span>
 <span class="dl-queue-time">${ts}</span>
@@ -1882,7 +1882,7 @@ export async function _buildPreclosePanel(record, type, panelId) {
   if (record.notes) {
     html += `<div class="u-1000f16">${esc(record.notes)}</div>`;
   }
-  return `<div class="txn-preclose-panel" id="${panelId}">
+  return `<div class="callout txn-preclose-panel" id="${panelId}">
     <div class="txn-preclose-title">Pre-Close Year Data</div>
     ${html}
   </div>`;

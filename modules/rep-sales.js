@@ -1129,7 +1129,7 @@ const panelId = `rp-${t.id}`;
 const kebabBtn = t.isMerged
   ? `<button class="btn txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','rep','sale')">⋮</button>`
   : '';
-const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
+const panelPlaceholder = t.isMerged ? `<div class="callout txn-preclose-panel" id="${panelId}"></div>` : '';
 const _when = formatDisplayDateTime(txEffectiveDate(t), txShowTime(t) ? (t.time || null) : null);
 let info = '';
 let _price = 0;

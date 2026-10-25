@@ -115,7 +115,7 @@ function _card(f, inventory, usedBy) {
   html += _row('Total Cost per Unit', _money(t.perUnit), 'st-font-weight__e3ec02');
   html += _row('Cost per kg (Sales/Calc)', _money(t.perKg));
   html += `<div class="formula-store-edit-hint">${usedBy.length ? 'Used by ' + esc(usedBy.join(', ')) + ' · ' : ''}Tap to edit</div>`;
-  return `<div class="formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;
+  return `<div class="callout formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;
 }
 
 export async function renderFormulaStoreList() {

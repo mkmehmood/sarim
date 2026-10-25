@@ -62,7 +62,7 @@ describe('field expense items', () => {
 describe('expense breakdown cards', () => {
   it('history card uses the same collapsible rows as the factory materials breakdown', () => {
     const html = hcExpensesHtml([['Fuel', 750], ['A <b>', 20]], (v) => `Rs ${v}`);
-    assert.match(html, /<details class="hc-more"><summary>Expenses breakdown<\/summary><div class="hc-mats">/);
+    assert.match(html, /<details class="panel hc-more"><summary>Expenses breakdown<\/summary><div class="hc-mats">/);
     assert.match(html, /<div class="hc-mat"><span class="hc-mat-name">Fuel<\/span>/);
     assert.ok(html.includes('Rs 750'));
     assert.ok(html.includes('A &lt;b&gt;'), 'names are escaped');

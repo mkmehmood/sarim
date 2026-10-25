@@ -1080,7 +1080,7 @@ const unitCost = _hasUsed ? (f.cost != null ? f.cost : (inv ? inv.cost : 0)) : (
 const matCost = _hasUsed ? (unitCost * f.quantity) : (unitCost * f.quantity * entry.units);
 return `<div class="hc-mat"><span class="hc-mat-name">${matName}</span><span class="hc-mat-val"><span>${qtyUsed} kg</span><span class="cost-val">${fmtAmt(matCost)}</span></span></div>`;
 }).join('');
-matsBreakdownHtml = `<details class="hc-more"><summary>Materials breakdown</summary><div class="hc-mats">${matRows}</div></details>`;
+matsBreakdownHtml = `<details class="panel hc-more"><summary>Materials breakdown</summary><div class="hc-mats">${matRows}</div></details>`;
 }
 const factorySub = `${dateStr}${entry.managedBy ? `<span class="badge managed-by-badge">${esc(entry.managedBy)}</span>` : ''}${entry.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(entry) : ''}${_mergedBadgeHtml(entry)}`;
 const div = hcCard({

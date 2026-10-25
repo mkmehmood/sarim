@@ -180,3 +180,25 @@ describe('daily ledger summary tiles use .stat', () => {
     assert.equal(tiles.length, 6);
   });
 });
+
+describe('shared panel and callout', () => {
+  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const PANELS = ['cm-summary', 'hc-more', 'dl-queue-row', 'formula-unit-display', 'production-unit-info'];
+  const CALLOUTS = ['txn-preclose-panel', 'warning-message', 'cost-display', 'cy-result-card', 'formula-display'];
+  it('one .panel and one .callout rule', () => {
+    assert.equal((cssText.match(/^\.panel \{/gm) || []).length, 1);
+    assert.equal((cssText.match(/^\.callout \{/gm) || []).length, 1);
+  });
+  it('members carry the shared class and do not redeclare the surface', () => {
+    const bad = [];
+    for (const m of src.matchAll(/class=\\?"([^"\\]*)\\?"/g)) {
+      const t = m[1].split(/\s+/);
+      for (const [list, cls] of [[PANELS, 'panel'], [CALLOUTS, 'callout']]) if (list.some((n) => t.includes(n)) && !t.includes(cls)) bad.push(m[1]);
+    }
+    assert.deepEqual(bad, []);
+    for (const n of [...PANELS, ...CALLOUTS]) {
+      assert.ok(!ownDecls(n).some((p) => /^(background|background-color|border|border-color|border-radius):/.test(p)), n + ' repeats the surface');
+    }
+    for (const n of CALLOUTS) assert.ok(ownDecls(n).some((p) => p.startsWith('--tone:')), n + ' sets --tone');
+  });
+});

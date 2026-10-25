@@ -751,7 +751,7 @@ const previewRow = (id, label, key, recCount, details, mergeNote, accent, hasDat
     '<span class="cy-chip-val">' + val + '</span>'
   ).join('');
   const resultBlock =
-    '<div id="cy-result-' + id + '" class="cy-result-card" style="--cy-accent:' + accent + ';">' +
+    '<div id="cy-result-' + id + '" class="callout cy-result-card" style="--cy-accent:' + accent + ';">' +
     '<div class="cy-result-top">' +
     '<span id="cy-result-label-' + id + '" class="cy-result-main"></span>' +
     '<span class="cy-result-tag">compacted</span>' +

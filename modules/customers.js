@@ -420,7 +420,7 @@ const panelId = `cp-${t.id}`;
 const kebabBtn = t.isMerged
   ? `<button class="btn txn-kebab-btn" title="View pre-close details" onclick="_togglePreclosePanel(this,'${panelId}','${safeId}','sales','sale')">⋮</button>`
   : '';
-const panelPlaceholder = t.isMerged ? `<div class="txn-preclose-panel" id="${panelId}"></div>` : '';
+const panelPlaceholder = t.isMerged ? `<div class="callout txn-preclose-panel" id="${panelId}"></div>` : '';
 let info = '';
 let _salePrice = 0;
 if (isRepReturn) {

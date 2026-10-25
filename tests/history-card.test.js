@@ -41,7 +41,7 @@ describe('history card is small until tapped', () => {
   });
   it('keeps sections collapsible and draws no icon for them', () => {
     const html = hcInnerHtml({ title: 'x', sections: [{ title: 'More', metrics: [{ label: 'A', value: '1' }] }] });
-    assert.ok(html.includes('<details class="hc-more"><summary>More</summary>'));
+    assert.ok(html.includes('<details class="panel hc-more"><summary>More</summary>'));
     const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
     assert.ok(!/\.hc-more\s*>\s*summary::after/.test(css));
   });

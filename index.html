@@ -1344,7 +1344,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
   <div class="screen-body">
-    <div id="entityManagementSummary" class="cm-summary d-none"></div>
+    <div id="entityManagementSummary" class="panel cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
       <input type="text" id="entity-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterEntityManagementHistory()">
     </div>
@@ -1448,7 +1448,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
   <div class="screen-body">
-    <div id="customerManagementSummary" class="cm-summary d-none"></div>
+    <div id="customerManagementSummary" class="panel cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
       <input type="text" id="cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterCustomerManagementHistory()">
     </div>
@@ -1526,7 +1526,7 @@ window._showLogoutConfirmDialog = async function() {
     </div>
   </div>
   <div class="screen-body">
-    <div id="repCustomerManagementSummary" class="cm-summary d-none"></div>
+    <div id="repCustomerManagementSummary" class="panel cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
       <input type="text" id="rep-cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterRepCustomerManagementHistory()">
     </div>
@@ -1794,7 +1794,7 @@ oninput="renderRepCustomerTable()">
 </header>
 <div id="production-entry-section" class="card">
 <h3 class="u-text-accent" >New Entry</h3>
-<div id="unitsAvailableIndicator" class="production-unit-info">
+<div id="unitsAvailableIndicator" class="panel production-unit-info">
 <span>Formula Units Available:</span>
 <span id="currentUnitsAvailable" class="units-available-good">Calculating...</span>
 </div>
@@ -1834,7 +1834,7 @@ Units of factory mixture consumed
 </div>
 </div>
 </div>
-<div class="formula-unit-display" id="prod-formula-cost-block">
+<div class="panel formula-unit-display" id="prod-formula-cost-block">
 <div class="u-edd1c24 d-flex">
 <span class="u-text-muted" >Formula Unit Cost:</span>
 <span class="u-danger-bold" id="formula-unit-cost-display" >0.00/unit</span>
@@ -1862,7 +1862,7 @@ Units of factory mixture consumed
 <span class="u-text-emerald u-fw-800" id="profit-per-kg" >0.00</span>
 </div>
 </div>
-<div id="insufficientUnitsWarning" class="warning-message hidden">
+<div id="insufficientUnitsWarning" class="callout warning-message hidden">
 Insufficient formula units available! Please reduce formula units used.
 </div>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-production" onclick="(async () => { await recordEntry() })()">Save Production</button></div>
@@ -2297,10 +2297,10 @@ oninput="filterCustomers()">
 </div>
 <div class="field">
 <label>Total Cost</label>
-<div id="factoryTotalProductionCostDisplay" class="cost-display">0 </div>
+<div id="factoryTotalProductionCostDisplay" class="callout cost-display">0 </div>
 </div>
 </div>
-<div id="factoryFormulaDisplay" class="formula-display">
+<div id="factoryFormulaDisplay" class="callout formula-display">
 Select a store...
 </div>
 <button class="btn btn-main u-mt-8" id="btn-save-factory-production" onclick="(async () => { await saveFactoryProductionEntry() })()">Save Factory Production</button>

@@ -39,7 +39,7 @@ export function hcExpensesHtml(entries, amt, title = 'Expenses breakdown') {
   const list = (entries || []).filter((e) => e && Number(e[1]) > 0);
   if (!list.length) return '';
   const rows = list.map(([name, value]) => `<div class="hc-mat"><span class="hc-mat-name">${esc(name)}</span><span class="hc-mat-val"><span class="cost-val">${amt(value)}</span></span></div>`).join('');
-  return `<details class="hc-more"><summary>${esc(title)}</summary><div class="hc-mats">${rows}</div></details>`;
+  return `<details class="panel hc-more"><summary>${esc(title)}</summary><div class="hc-mats">${rows}</div></details>`;
 }
 
 export function hcInnerHtml(o) {
@@ -51,7 +51,7 @@ export function hcInnerHtml(o) {
   const chips = (o.chips || []).filter(Boolean).join('');
   const sections = (o.sections || []).map((s) => {
     const m = hcMetricsHtml(s.metrics);
-    return m ? `<details class="hc-more"${s.open ? ' open' : ''}><summary>${esc(s.title)}</summary>${m}</details>` : '';
+    return m ? `<details class="panel hc-more"${s.open ? ' open' : ''}><summary>${esc(s.title)}</summary>${m}</details>` : '';
   }).join('');
   return `<div class="hc-head" role="button" tabindex="0" aria-expanded="false">${lead}`
     + `<div class="hc-title-wrap"><div class="title title-sm hc-title${o.titleClass ? ' ' + o.titleClass : ''}">${title}</div>${o.sub ? `<div class="hc-sub">${o.sub}</div>` : ''}</div>`
