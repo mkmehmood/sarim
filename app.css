@@ -5085,9 +5085,6 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .dl-period-field .cdp-wrap, .dl-period-field .cdp-btn { width: 100%; box-sizing: border-box; }
 .dl-stats { display: grid; gap: 10px; margin-bottom: 15px; }
 .dl-stats-3 { grid-template-columns: repeat(3, 1fr); }
-.dl-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--text-main) 5%, transparent); min-width: 0; }
-.dl-stat strong { font-size: 0.9rem; font-weight: 700; color: var(--text-main); overflow-wrap: anywhere; }
-.dl-stat-btn { border: none; font-family: inherit; text-align: left; cursor: pointer; }
 .dl-amt-trf { color: var(--accent-gold); }
 .dl-amount { font-size: 0.9rem; margin-top: 2px; }
 .dl-item { align-items: stretch; }

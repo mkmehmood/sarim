@@ -809,15 +809,15 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div class="dl-hero-amt" id="dl-hero-amt">0</div>
       <div class="dl-stats dl-stats-3">
-        <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Cash</span><strong id="dl-bal-cash">0</strong></div>
-        <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Bank</span><strong id="dl-bal-bank">0</strong></div>
-        <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Others</span><strong id="dl-bal-other">0</strong></div>
+        <div class="stat"><span class="stat-label">Cash</span><strong class="stat-value" id="dl-bal-cash">0</strong></div>
+        <div class="stat"><span class="stat-label">Bank</span><strong class="stat-value" id="dl-bal-bank">0</strong></div>
+        <div class="stat"><span class="stat-label">Others</span><strong class="stat-value" id="dl-bal-other">0</strong></div>
       </div>
     </div>
     <div class="dl-stats dl-stats-3">
-      <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Total Cash In</span><strong class="dl-amt-in" id="dl-sum-in">0</strong><span class="u-fs-sm2 u-text-muted" id="dl-cnt-in">0 entries</span></div>
-      <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Total Cash Out</span><strong class="dl-amt-out" id="dl-sum-out">0</strong><span class="u-fs-sm2 u-text-muted" id="dl-cnt-out">0 entries</span></div>
-      <div class="dl-stat"><span class="u-fs-sm2 u-text-muted">Net Balance</span><strong id="dl-sum-net">0</strong><span class="u-fs-sm2 u-text-muted" id="dl-net-tag">Surplus</span></div>
+      <div class="stat"><span class="stat-label">Total Cash In</span><strong class="stat-value dl-amt-in" id="dl-sum-in">0</strong><span class="stat-sub" id="dl-cnt-in">0 entries</span></div>
+      <div class="stat"><span class="stat-label">Total Cash Out</span><strong class="stat-value dl-amt-out" id="dl-sum-out">0</strong><span class="stat-sub" id="dl-cnt-out">0 entries</span></div>
+      <div class="stat"><span class="stat-label">Net Balance</span><strong class="stat-value" id="dl-sum-net">0</strong><span class="stat-sub" id="dl-net-tag">Surplus</span></div>
     </div>
     <div class="card u-d8ddece st-border-bottom__e54b2f" id="dl-form-card">
       <p class="settings-group-label" id="dl-form-title">Add Entry</p>

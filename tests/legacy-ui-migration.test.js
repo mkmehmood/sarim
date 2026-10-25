@@ -170,3 +170,13 @@ describe('settings pickers reuse the settings list item', () => {
     assert.ok(/class="form-ctl bm-picker"/.test(src));
   });
 });
+
+describe('daily ledger summary tiles use .stat', () => {
+  const htmlText = readFileSync(new URL('index.html', root), 'utf8');
+  it('dl-stat is gone and the tiles carry stat-label / stat-value', () => {
+    assert.ok(!/dl-stat(?![\w-]*s\b)(?!s)/.test(htmlText.replace(/dl-stats/g, '')));
+    assert.ok(!/\.dl-stat(?![\w-])/.test(readFileSync(new URL('app.css', root), 'utf8')));
+    const tiles = htmlText.match(/<div class="stat"><span class="stat-label">/g) || [];
+    assert.equal(tiles.length, 6);
+  });
+});
