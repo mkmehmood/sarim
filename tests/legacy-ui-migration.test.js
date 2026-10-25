@@ -202,3 +202,13 @@ describe('shared panel and callout', () => {
     for (const n of CALLOUTS) assert.ok(ownDecls(n).some((p) => p.startsWith('--tone:')), n + ' sets --tone');
   });
 });
+
+describe('dead css removed', () => {
+  it('unreferenced chart, checkbox and toggle-track classes are gone', () => {
+    const cssText = readFileSync(new URL('app.css', root), 'utf8');
+    for (const n of ['sc-bar-chart', 'sc-pie-svg', 'sc-legend', 'sc-donut-total', 'credit-checkbox', 'theme-toggle-track', 'theme-toggle-switch', 'sm-combined', 'sx-overview', 'scroll-x']) {
+      assert.ok(!new RegExp('\\.' + n + '(?![\\w-])').test(cssText), n + ' is back');
+    }
+    for (const live of ['sc-host', 'sc-tooltip', 'sc-dot-end']) assert.ok(new RegExp('\\.' + live + '(?![\\w-])').test(cssText), live + ' is still used');
+  });
+});
