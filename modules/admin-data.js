@@ -494,7 +494,7 @@ _cyBody.innerHTML = `
         <span id="cy-progress-meta-stage">Processing: <b id="close-year-stage">Initializing…</b></span>
         <span id="cy-progress-pct">0%</span>
       </div>
-      <div id="cy-progress-track">
+      <div id="cy-progress-track" class="bar">
         <div id="close-year-progress-bar"></div>
       </div>
     </div>

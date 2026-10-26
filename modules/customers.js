@@ -214,7 +214,7 @@ html += `<div class="cust-period-row d-flex">
 <div class="stat is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
 <div class="stat is-collect"><span class="stat-label">Collection</span><span class="stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
 </div>`;
-if (n >= 3) html += `<div class="cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of credit given has been settled</div>`;
+if (n >= 3) html += `<div class="bar cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of credit given has been settled</div>`;
 return html;
 }
 window.toggleSaleChip = (chip) => {
