@@ -92,7 +92,7 @@ function hcTopOffset() {
   let el = document.elementFromPoint(window.innerWidth / 2, 4);
   while (el && el !== document.body) {
     const st = getComputedStyle(el);
-    if (st.position === 'fixed' || st.position === 'sticky') return el.getBoundingClientRect().bottom + 10;
+    if (st.position === 'fixed' || st.position === 'sticky') return el.getBoundingClientRect().bottom + 4;
     el = el.parentElement;
   }
   return 120;
