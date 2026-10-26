@@ -76,6 +76,13 @@ function hcStartsOpen(className) {
 export function hcToggle(card) {
   if (!card) return;
   const open = card.classList.toggle('is-open');
+  if (open && card.parentElement) {
+    card.parentElement.querySelectorAll(':scope > .hc-card.is-open').forEach((other) => {
+      if (other === card) return;
+      other.classList.remove('is-open');
+      other.querySelector(':scope > .hc-head')?.setAttribute('aria-expanded', 'false');
+    });
+  }
   const head = card.querySelector(':scope > .hc-head');
   if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
