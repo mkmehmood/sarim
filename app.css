@@ -2528,8 +2528,8 @@ transform: none;
 
 *, *::before, *::after {
 text-shadow: none;
-animation: none !important;
 }
+*:not(.hc-card, .hc-card *), *:not(.hc-card)::before, *:not(.hc-card)::after { animation: none !important; }
 .section, .card, .liquid-card, .overview-card, .entity-card, .entity-card-compact, .chart-box, .sales-rep-chart-box, .cust-history-item, .factory-history-item, .net-cash-dashboard, .all-times-summary, .debt-panel { border: 1px solid var(--glass-border) !important; }
 .section, .card, .liquid-card, .overview-card, .entity-card, .entity-card-compact, .chart-box:not(.section .chart-box), .sales-rep-chart-box:not(.section .sales-rep-chart-box), .cust-history-item, .factory-history-item, .net-cash-dashboard, .all-times-summary, .debt-panel { box-shadow: var(--shadow) !important; }@media (hover: hover) and (pointer: fine) {
 
@@ -2542,7 +2542,7 @@ animation: none !important;
 input:focus, textarea:focus {
 box-shadow: none !important;
 }
-.section:hover, .card:hover, .entity-card:hover, .entity-card-compact:hover, .btn:hover, button:hover, .metric-btn:hover, .production-toggle-btn:hover, .toggle-opt:hover, .cust-history-item:hover, .entity-chip:hover, .btn-theme:hover, .btn-theme:active, .btn:active, button:active, .card:active {
+.section:hover, .card:not(.hc-card):hover, .entity-card:hover, .entity-card-compact:hover, .btn:hover, button:hover, .metric-btn:hover, .production-toggle-btn:hover, .toggle-opt:hover, .cust-history-item:hover, .entity-chip:hover, .btn-theme:hover, .btn-theme:active, .btn:active, button:active, .card:not(.hc-card):active {
 transform: none !important;
 }
 .liquid-toast.show { animation: toastSlideDown 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards !important; }
@@ -2622,10 +2622,10 @@ background-image: none !important;
 .winner-cell { background: var(--warning-dim) !important; background-image: none !important; }
 thead { background: var(--surface-2) !important; background-image: none !important; }
 .overview-card:hover { transform: none !important; box-shadow: none !important; }
-.liquid-card:hover { transform: none !important; }
-.liquid-card:active { transform: none !important; }
+.liquid-card:not(.hc-card):hover { transform: none !important; }
+.liquid-card:not(.hc-card):active { transform: none !important; }
 .factory-history-item:hover { transform: none !important; }
-* { animation-duration: 0s !important; }
+*:not(.hc-card, .hc-card *) { animation-duration: 0s !important; }
 .u-flex-1 { flex: 1; }
 .u-flex-2 { flex: 2; }
 .u-w-full { width: 100%; }
@@ -6388,7 +6388,7 @@ html.theme-switching *::after {
     var(--surface);
   box-shadow: 0 -12px 22px -14px rgba(0, 0, 0, 0.55), var(--shadow);
   transition: transform 0.45s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)), box-shadow 0.3s, margin 0.3s, border-color 0.2s;
-  animation: hc-rise 0.6s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+  animation: hc-rise 0.6s var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) backwards;
   animation-delay: calc(var(--hc-i, 0) * 60ms);
 }
 .hc-card.is-good { --hc-c: var(--accent-emerald); }
@@ -6449,7 +6449,7 @@ html.theme-switching *::after {
 .hc-body-in { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
 .hc-card.is-open > .hc-body { grid-template-rows: 1fr; opacity: 1; }
 .hc-card.is-open > .hc-body > .hc-body-in { padding-top: 12px; margin-top: 10px; border-top: 1px dashed color-mix(in srgb, var(--hc-c) 45%, var(--glass-border)); }
-.hc-card.is-open > .hc-body > .hc-body-in > * { animation: hc-item 0.45s var(--ease-out-quart, ease) both; }
+.hc-card.is-open > .hc-body > .hc-body-in > * { animation: hc-item 0.45s var(--ease-out-quart, ease) backwards; }
 .hc-card.is-open > .hc-body > .hc-body-in > :nth-child(2) { animation-delay: 60ms; }
 .hc-card.is-open > .hc-body > .hc-body-in > :nth-child(3) { animation-delay: 120ms; }
 .hc-card.is-open > .hc-body > .hc-body-in > :nth-child(n + 4) { animation-delay: 180ms; }
@@ -6484,7 +6484,7 @@ html.theme-switching *::after {
 @keyframes hc-scroll { from { opacity: 0.2; transform: translateY(44px) scale(0.94); } to { opacity: 1; transform: none; } }
 
 @supports (animation-timeline: view()) {
-  .hc-card { animation: hc-scroll linear both; animation-timeline: view(); animation-range: entry 0% entry 65%; animation-delay: 0s; }
+  .hc-card { animation: hc-scroll linear backwards; animation-timeline: view(); animation-range: entry 0% entry 65%; animation-delay: 0s; }
 }
 
 @media (prefers-reduced-motion: reduce) {
