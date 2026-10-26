@@ -3646,7 +3646,7 @@ export async function showSyncHealthPanel() {
         Last sync: ${results.valid[0]?.lastSync || 'Never'}
       </div>
       <button onclick="performOneClickSync();document.getElementById('sync-health-panel').remove()"
-        class="u-ca0f564 st-border-bottom__2eda1d st-background__830bed">
+        class="btn btn-main">
         Sync Now
       </button>
     `;

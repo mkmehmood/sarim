@@ -449,7 +449,7 @@ try {
     <div class="u-5267c24">Failed to load database structure</div>
     <div class="u-bb2fbde text-xs">${err && err.message ? err.message : String(err)}</div>
     <button onclick="document.getElementById('delta-stats-modal').remove()"
-      class="u-f86db90 st-background__36d305 st-border-bottom__2eda1d">Close</button>
+      class="btn btn-theme">Close</button>
   </div>`;
 }
 }

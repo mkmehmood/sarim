@@ -2737,7 +2737,7 @@ ${fmtAmt(expense.amount)}
 </td>
 <td class="u-1d3001e">
 <button
-onclick="openExpenseEntityDetails('${esc(expense.id)}')" class="u-3e75d4a st-background__a9f971 st-border-bottom__2eda1d hv-lift"
+onclick="openExpenseEntityDetails('${esc(expense.id)}')" class="btn btn-theme btn-sm hv-lift"
 >
 Manage
 </button>
@@ -4918,9 +4918,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
         </div>
         <div class="u-d533703 d-flex">
           ${canRecover
-            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" class="u-8f09525 d-inline-flex st-align-items__7c6197 st-padding__5905b7 st-background__a967b8 st-color__acd97a st-border-bottom__539edd st-border-radius__a28678 st-font-size__ca0c64 st-font-weight__e3ec02 st-cursor__3b6a3a"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
+            ? `<button onclick="attemptRecoverRecord('${esc(rec.id)}','${esc(col)}')" class="btn btn-theme btn-sm d-inline-flex"><svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M6 22V28A2.5 2.5 0 0 0 8.5 30.5H27.5A2.5 2.5 0 0 0 30 28V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 24V6M11.2 12.5L18 5.7 24.8 12.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M30.5 6.1Q30.5 8.5 32.9 8.5Q30.5 8.5 30.5 10.9Q30.5 8.5 28.1 8.5Q30.5 8.5 30.5 6.1Z" fill="currentColor"/></svg> Restore</button>`
             : `<span class="text-xs st-font-size__8e87b7 st-color__5872de st-padding__f26165">—</span>`}
-          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="u-064a084 text-xs d-inline-flex st-background__2d27c1 st-border-bottom__111288"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
+          <button onclick="attemptHardDeleteRecord('${esc(rec.id)}','${esc(col)}')" class="btn btn-danger btn-sm d-inline-flex"><svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg> Delete Forever</button>
         </div>
       </div>`;
     }).join('');
@@ -7147,7 +7147,7 @@ cardHtml += userTick + user.name + '</button>';
 cardHtml += '</div>';
 }
 cardHtml += '<button onclick="removeDevice(\'' + device.deviceId + '\')"';
-cardHtml += ' class="u-834b546 st-background__534216 st-border-bottom__c806be">Remove Device</button>';
+cardHtml += ' class="btn btn-danger btn-sm">Remove Device</button>';
 cardHtml += '</div>';
 html += cardHtml;
 });

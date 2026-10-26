@@ -50,3 +50,13 @@ describe('shared pill button shape', () => {
     assert.deepEqual([...missing], [], 'add the class to the shared pill rule');
   });
 });
+
+describe('buttons converted off one-off classes', () => {
+  const html = readFileSync(new URL('index.html', root), 'utf8');
+  it('recycle-bin, photo and refresh buttons use the shared base', () => {
+    for (const id of ['recycleBinEmptyBtn', 'payment-transfer-photo-btn', 'expense-photo-btn']) {
+      const m = html.match(new RegExp('<button[^>]*id="' + id + '"[^>]*>'));
+      assert.ok(m && /class="[^"]*\bbtn\b/.test(m[0]) || new RegExp('class="[^"]*\\bbtn\\b[^"]*"[^>]*id="' + id + '"').test(html) || new RegExp('id="' + id + '"[^>]*class="[^"]*\\bbtn\\b').test(html), id + ' is not a shared .btn');
+    }
+  });
+});

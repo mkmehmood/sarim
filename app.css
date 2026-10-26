@@ -1143,6 +1143,7 @@ justify-content: center;
 gap: 5px;
 position: relative;
 }
+.btn-icon { flex-shrink: 0; width: 40px; min-width: 40px; height: 40px; padding: 0; }
 .btn-theme:hover {
 background: var(--card-hover);
 }
@@ -4552,6 +4553,7 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .btn-theme,
 .btn-sm,
 .btn-danger,
+.btn-icon,
 .btn-pdf,
 .status-badge,
 .toggle-opt,
