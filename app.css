@@ -6415,9 +6415,9 @@ html.theme-switching *::after {
 .hc-card.is-open {
   z-index: 30; transform: translateY(-3px) scale(1.012); box-shadow: var(--shadow-lg);
   border-color: color-mix(in srgb, var(--hc-c) 65%, var(--glass-border));
-  margin-bottom: calc(var(--hc-overlap) + 8px);
+  padding-bottom: calc(14px + var(--hc-overlap));
 }
-.hc-card.is-open + .hc-card { margin-top: 0; }
+.hc-card.is-open + .hc-card { padding-top: calc(12px + var(--hc-overlap)); }
 .hc-card.highlight-card { outline: 2px solid var(--accent); outline-offset: -2px; }
 .hc-card.is-settled-record { opacity: 0.72; }
 
