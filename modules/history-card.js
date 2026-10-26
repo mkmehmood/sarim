@@ -85,6 +85,26 @@ export function hcToggle(card) {
   }
   const head = card.querySelector(':scope > .hc-head');
   if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) hcAlign(card);
+}
+
+function hcTopOffset() {
+  let el = document.elementFromPoint(window.innerWidth / 2, 4);
+  while (el && el !== document.body) {
+    const st = getComputedStyle(el);
+    if (st.position === 'fixed' || st.position === 'sticky') return el.getBoundingClientRect().bottom + 10;
+    el = el.parentElement;
+  }
+  return 120;
+}
+
+export function hcAlign(card) {
+  if (typeof window === 'undefined' || !card.isConnected) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(() => {
+    const delta = card.getBoundingClientRect().top - hcTopOffset();
+    window.scrollBy({ top: delta, behavior: reduce ? 'auto' : 'smooth' });
+  });
 }
 
 if (typeof document !== 'undefined' && !window.__hcBound) {
