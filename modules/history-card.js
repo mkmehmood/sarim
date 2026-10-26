@@ -59,14 +59,14 @@ export function hcInnerHtml(o) {
       ? `<div class="hc-end">${o.amount != null && o.amount !== '' ? `<div class="hc-amt">${o.amount}</div>` : ''}${o.tag ? `<div class="hc-tag${o.tagTone ? ' is-' + o.tagTone : ''}">${esc(o.tag)}</div>` : ''}</div>`
       : '')
     + `</div>`
-    + `<div class="hc-body">`
+    + `<div class="hc-body"><div class="hc-body-in">`
     + (chips ? `<div class="hc-chips">${chips}</div>` : '')
     + hcMetricsHtml(o.metrics)
     + sections
     + (o.note ? `<p class="hc-note">${o.note}</p>` : '')
     + (o.body || '')
     + (o.actions ? `<div class="hc-actions">${o.actions}</div>` : '')
-    + `</div>`;
+    + `</div></div>`;
 }
 
 function hcStartsOpen(className) {
