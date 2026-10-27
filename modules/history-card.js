@@ -92,19 +92,31 @@ function hcTopOffset() {
   let el = document.elementFromPoint(window.innerWidth / 2, 4);
   while (el && el !== document.body) {
     const st = getComputedStyle(el);
-    if (st.position === 'fixed' || st.position === 'sticky') return el.getBoundingClientRect().bottom + 4;
+    if (st.position === 'fixed' || st.position === 'sticky') return el.getBoundingClientRect().bottom;
     el = el.parentElement;
   }
   return 120;
 }
 
+let hcAlignRun = 0;
+
 export function hcAlign(card) {
   if (typeof window === 'undefined' || !card.isConnected) return;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  requestAnimationFrame(() => {
+  const run = ++hcAlignRun;
+  const started = performance.now();
+  let calm = 0;
+  let stop = false;
+  const cancel = () => { stop = true; };
+  window.addEventListener('wheel', cancel, { once: true, passive: true });
+  window.addEventListener('touchmove', cancel, { once: true, passive: true });
+  const step = () => {
+    if (stop || run !== hcAlignRun || !card.isConnected || !card.classList.contains('is-open')) return;
     const delta = card.getBoundingClientRect().top - hcTopOffset();
-    window.scrollBy({ top: delta, behavior: reduce ? 'auto' : 'smooth' });
-  });
+    if (Math.abs(delta) > 1) { window.scrollBy({ top: delta, behavior: 'instant' }); calm = 0; } else calm++;
+    if (calm < 12 && performance.now() - started < 1500) requestAnimationFrame(step);
+    else { window.removeEventListener('wheel', cancel); window.removeEventListener('touchmove', cancel); }
+  };
+  requestAnimationFrame(step);
 }
 
 if (typeof document !== 'undefined' && !window.__hcBound) {
