@@ -976,10 +976,10 @@ if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 }, 100);
 }
 
-export async function deleteCurrentRepCustomer() {
+export async function deleteCurrentRepCustomer(nameArg) {
 const { rep, clients } = await loadCollections('rep', 'clients');
-if (!currentManagingRepCustomer) return;
-const name = currentManagingRepCustomer;
+const name = (typeof nameArg === 'string' && nameArg.trim()) ? nameArg : currentManagingRepCustomer;
+if (!name) return;
 const txs = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'rep', { ignoreChildren: true });
@@ -1034,6 +1034,7 @@ await sqliteStore.set('photodirty', _rcDk);
 } catch(_rcPhErr) { console.warn('[deleteCurrentRepCustomer] photo cleanup failed', _rcPhErr); }
 notifyDataChange('rep');
 triggerAutoSync();
+closeRepCustomerEditModal();
 closeRepCustomerManagement();
 } catch (e) {
 window.notifyBlocking('Failed to delete rep customer. Please try again.', 'error', 'Something went wrong');
@@ -1219,6 +1220,8 @@ if (nameHint) nameHint.textContent = 'Editing the name will update all records f
 const { rep, clients } = await loadCollections('rep', 'clients');
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
+const _repCustDelBtn = document.getElementById('deleteRepCustomerBtn');
+if (_repCustDelBtn) { _repCustDelBtn.classList.toggle('u-hidden', !customerName); }
 if (!customerName) {
 document.getElementById('rep-edit-cust-phone').value = '';
 document.getElementById('rep-edit-cust-address').value = '';

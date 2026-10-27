@@ -2372,6 +2372,7 @@ if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_)
 }
 } catch(_delEntPhErr) { console.warn('[deleteCurrentEntity] photo cleanup failed', _delEntPhErr); }
 notifyDataChange('entities');
+if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('add-entity-screen');
 closeEntityDetailsOverlay();
 await _refreshSupplierLinkViews();
 } catch (error) {

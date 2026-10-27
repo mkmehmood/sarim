@@ -1641,6 +1641,7 @@ document.getElementById('entityName').value = entity.name;
 document.getElementById('entityPhone').value = entity.phone || '';
 document.getElementById('entityWallet').value = entity.wallet || '';
 const _entMT2 = document.getElementById('entityManagementModalTitle'); if (_entMT2) _entMT2.innerText = 'Edit Entity Info';
+const _entDelBtn = document.getElementById('deleteEntityBtn'); if (_entDelBtn) { _entDelBtn.classList.remove('u-hidden'); window.setDisplay(_entDelBtn, ''); }
 await loadPersonPhotoIntoEditor('entity', 'entity:' + String(id));
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('add-entity-screen');
 }

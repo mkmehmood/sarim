@@ -81,6 +81,8 @@ export function periodTotals(rows) {
   let sale = 0;
   let collection = 0;
   let returns = 0;
+  let cashSales = 0;
+  let paidSales = 0;
   for (const row of rows || []) {
     const t = row && row.t;
     if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') continue;
@@ -90,10 +92,13 @@ export function periodTotals(rows) {
       const collected = t.collectedAmount != null ? num(t.collectedAmount, 0) : num(t.totalValue, 0);
       collection += Math.max(0, collected) + Math.max(0, num(t.expiredValue, 0));
     } else {
-      sale += Math.max(0, num(row.value, 0));
+      const v = Math.max(0, num(row.value, 0));
+      sale += v;
+      if (t.paymentType === 'CASH') cashSales += v;
+      else if (t.paymentType === 'CREDIT' && t.creditReceived && !(Array.isArray(t.collectionAllocs) && t.collectionAllocs.length)) paidSales += v;
     }
   }
-  return { totalSale: round2(sale), collection: round2(collection), returns: round2(returns), totalCollection: round2(collection + returns) };
+  return { totalSale: round2(sale), collection: round2(collection), returns: round2(returns), totalCollection: round2(collection + returns), cashSales: round2(cashSales), paidSales: round2(paidSales), totalReceived: round2(collection + returns + cashSales + paidSales) };
 }
 export function soldQuantity(t) {
   if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') return 0;

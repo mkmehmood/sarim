@@ -10,14 +10,24 @@ describe('periodTotals', () => {
       { t: { paymentType: 'PARTIAL_PAYMENT', totalValue: 200, collectedAmount: 150 }, value: 200 },
       { t: { isRepReturn: true, returnValue: 120 }, value: 0 },
     ];
-    assert.deepEqual(periodTotals(rows), { totalSale: 1500, collection: 500, returns: 120, totalCollection: 620 });
+    assert.deepEqual(periodTotals(rows), { totalSale: 1500, collection: 500, returns: 120, totalCollection: 620, cashSales: 1000, paidSales: 0, totalReceived: 1620 });
   });
   it('ignores opening balances and merged records', () => {
     const rows = [
       { t: { transactionType: 'OLD_DEBT', totalValue: 900 }, value: 900 },
       { t: { isMerged: true, paymentType: 'CREDIT' }, value: 400 },
     ];
-    assert.deepEqual(periodTotals(rows), { totalSale: 0, collection: 0, returns: 0, totalCollection: 0 });
+    assert.deepEqual(periodTotals(rows), { totalSale: 0, collection: 0, returns: 0, totalCollection: 0, cashSales: 0, paidSales: 0, totalReceived: 0 });
+  });
+  it('counts manually paid credit sales as received, but not ones already settled by a collection', () => {
+    const rows = [
+      { t: { paymentType: 'CREDIT', creditReceived: true }, value: 400 },
+      { t: { paymentType: 'CREDIT', creditReceived: true, collectionAllocs: [{ cid: 'c1', amount: 300 }] }, value: 300 },
+      { t: { paymentType: 'CREDIT', creditReceived: false }, value: 250 },
+    ];
+    const r = periodTotals(rows);
+    assert.equal(r.paidSales, 400);
+    assert.equal(r.totalReceived, 400);
   });
   it('handles empty input', () => {
     assert.equal(periodTotals().totalSale, 0);

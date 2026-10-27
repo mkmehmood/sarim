@@ -196,7 +196,7 @@ const amountText = String(await formatCurrency(totals.totalSale));
 const qtyText = `${fmtNum(qty)} kg`;
 return `<div class="cust-period-row d-flex">
 <div class="stat is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
-<div class="stat is-collect"><span class="stat-label">Collection</span><span class="stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
+<div class="stat is-collect"><span class="stat-label">Received</span><span class="stat-value">${await formatCurrency(totals.totalReceived)}</span></div>
 <div class="stat ${debtTone}"><span class="stat-label">Current Debt</span><span class="stat-value">${await formatCurrency(debt)}</span></div>
 </div>`;
 }
@@ -212,7 +212,7 @@ let html = `<div class="cm-sum-label">Current debt</div><div class="cm-sum-debt 
 if (n === 0) return html;
 html += `<div class="cust-period-row d-flex">
 <div class="stat is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
-<div class="stat is-collect"><span class="stat-label">Collection</span><span class="stat-value">${await formatCurrency(totals.totalCollection)}</span></div>
+<div class="stat is-collect"><span class="stat-label">Received</span><span class="stat-value">${await formatCurrency(totals.totalReceived)}</span></div>
 </div>`;
 if (n >= 3) html += `<div class="bar cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of credit given has been settled</div>`;
 return html;
@@ -251,10 +251,10 @@ if (typeof renderCustomersTable === 'function') renderCustomersTable();
 }, 100);
 }
 
-export async function deleteCurrentCustomer() {
+export async function deleteCurrentCustomer(nameArg) {
 const { sales, customers } = await loadCollections('sales', 'customers');
-if (!currentManagingCustomer) return;
-const name = currentManagingCustomer;
+const name = (typeof nameArg === 'string' && nameArg.trim()) ? nameArg : currentManagingCustomer;
+if (!name) return;
 const txs = sales.filter(s =>
 s && s.customerName === name
 );
@@ -293,6 +293,7 @@ await unifiedDelete('sales', prunedSales, tx.id, { strict: true }, stampGroup(tx
 }
 notifyDataChange('sales');
 triggerAutoSync();
+closeCustomerEditModal();
 closeCustomerManagement();
 } catch (e) {
 window.notifyBlocking('Failed to delete customer. Please try again.', 'error', 'Something went wrong');
@@ -885,6 +886,8 @@ if (nameHint) nameHint.textContent = 'Editing the name will update all records f
 const { sales, customers } = await loadCollections('sales', 'customers');
 nameInput.value = customerName;
 nameInput.dataset.originalName = customerName;
+const _custDelBtn = document.getElementById('deleteCustomerBtn');
+if (_custDelBtn) { _custDelBtn.classList.toggle('u-hidden', !customerName); }
 if (!customerName) {
 document.getElementById('edit-cust-phone').value = '';
 document.getElementById('edit-cust-address').value = '';

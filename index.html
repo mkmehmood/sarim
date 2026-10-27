@@ -1351,9 +1351,6 @@ window._showLogoutConfirmDialog = async function() {
     <div id="entityHistoryFilters" class="cm-filters d-none"></div>
     <div id="entityMonthJump" class="cm-filters cm-jump d-none"></div>
     <div id="entityManagementHistoryList" class="history-list"></div>
-    <div class="u-be796b5">
-      <button class="btn btn-danger btn-sm u-16000cc" onclick="deleteCurrentEntity()">Delete Entity</button>
-    </div>
   </div>
 </div>
 <div id="add-entity-screen" class="standalone-screen d-none">
@@ -1455,9 +1452,6 @@ window._showLogoutConfirmDialog = async function() {
     <div id="customerHistoryFilters" class="cm-filters d-none"></div>
     <div id="customerMonthJump" class="cm-filters cm-jump d-none"></div>
     <div id="customerManagementHistoryList" class="history-list"></div>
-    <div class="u-be796b5">
-      <button class="btn btn-danger btn-sm u-16000cc" onclick="(async()=>{await deleteCurrentCustomer()})()">Delete Customer</button>
-    </div>
   </div>
 </div>
 <div id="customer-edit-screen" class="standalone-screen d-none">
@@ -1514,7 +1508,8 @@ window._showLogoutConfirmDialog = async function() {
         </div>
       </section>
     </div>
-    <div class="pf-footer">
+    <div class="pf-footer pf-footer-split">
+      <button class="btn btn-danger u-hidden pf-delete" id="deleteCustomerBtn" onclick="(async()=>{await deleteCurrentCustomer(document.getElementById('edit-cust-name').dataset.originalName)})()">Delete</button>
       <button class="btn btn-main pf-save" id="cust-edit-save-btn" onclick="(async()=>{await saveCustomerDetails()})()">Update Customer</button>
     </div>
   </div>
@@ -1533,9 +1528,6 @@ window._showLogoutConfirmDialog = async function() {
     <div id="repCustomerHistoryFilters" class="cm-filters d-none"></div>
     <div id="repCustomerMonthJump" class="cm-filters cm-jump d-none"></div>
     <div id="repCustomerManagementHistoryList" class="history-list"></div>
-    <div class="u-be796b5">
-      <button class="btn btn-danger btn-sm u-16000cc" onclick="(async()=>{await deleteCurrentRepCustomer()})()">Delete Customer</button>
-    </div>
   </div>
 </div>
 <div id="rep-customer-edit-screen" class="standalone-screen d-none">
@@ -1587,7 +1579,8 @@ window._showLogoutConfirmDialog = async function() {
         </div>
       </section>
     </div>
-    <div class="pf-footer">
+    <div class="pf-footer pf-footer-split">
+      <button class="btn btn-danger u-hidden pf-delete" id="deleteRepCustomerBtn" onclick="(async()=>{await deleteCurrentRepCustomer(document.getElementById('rep-edit-cust-name').dataset.originalName)})()">Delete</button>
       <button class="btn btn-main pf-save" id="rep-cust-edit-save-btn" onclick="(async()=>{await saveRepCustomerDetails()})()">Update Customer</button>
     </div>
   </div>
@@ -2126,6 +2119,7 @@ oninput="filterCustomers()">
 <div class="field"><label>Returned Qty</label><input class="form-ctl" type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
 <div class="field"><label>Expired / Damage Qty</label><input class="form-ctl" type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
 <div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Net Sold Qty</label><input type="number" id="netSoldQty" readonly tabindex="-1" placeholder="0" class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div id="repReturnAutoHint" class="hidden u-field-hint u-78f55da-hint"></div>
 <div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb">
 <label class="u-5c10e65"> Return Stock To Physical Inventory:</label>
