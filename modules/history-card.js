@@ -59,25 +59,64 @@ export function hcInnerHtml(o) {
       ? `<div class="hc-end">${o.amount != null && o.amount !== '' ? `<div class="hc-amt">${o.amount}</div>` : ''}${o.tag ? `<div class="hc-tag${o.tagTone ? ' is-' + o.tagTone : ''}">${esc(o.tag)}</div>` : ''}</div>`
       : '')
     + `</div>`
-    + `<div class="hc-body">`
+    + `<div class="hc-body"><div class="hc-body-in">`
     + (chips ? `<div class="hc-chips">${chips}</div>` : '')
     + hcMetricsHtml(o.metrics)
     + sections
     + (o.note ? `<p class="hc-note">${o.note}</p>` : '')
     + (o.body || '')
     + (o.actions ? `<div class="hc-actions">${o.actions}</div>` : '')
-    + `</div>`;
+    + `</div></div>`;
 }
 
-function hcStartsOpen(className) {
-  return /\bhighlight-card\b/.test(className || '');
+function hcStartsOpen() {
+  return false;
 }
 
 export function hcToggle(card) {
   if (!card) return;
   const open = card.classList.toggle('is-open');
+  if (open && card.parentElement) {
+    card.parentElement.querySelectorAll(':scope > .hc-card.is-open').forEach((other) => {
+      if (other === card) return;
+      other.classList.remove('is-open');
+      other.querySelector(':scope > .hc-head')?.setAttribute('aria-expanded', 'false');
+    });
+  }
   const head = card.querySelector(':scope > .hc-head');
   if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) hcAlign(card);
+}
+
+function hcTopOffset() {
+  let el = document.elementFromPoint(window.innerWidth / 2, 4);
+  while (el && el !== document.body) {
+    const st = getComputedStyle(el);
+    if (st.position === 'fixed' || st.position === 'sticky') return el.getBoundingClientRect().bottom;
+    el = el.parentElement;
+  }
+  return 120;
+}
+
+let hcAlignRun = 0;
+
+export function hcAlign(card) {
+  if (typeof window === 'undefined' || !card.isConnected) return;
+  const run = ++hcAlignRun;
+  const started = performance.now();
+  let calm = 0;
+  let stop = false;
+  const cancel = () => { stop = true; };
+  window.addEventListener('wheel', cancel, { once: true, passive: true });
+  window.addEventListener('touchmove', cancel, { once: true, passive: true });
+  const step = () => {
+    if (stop || run !== hcAlignRun || !card.isConnected || !card.classList.contains('is-open')) return;
+    const delta = card.getBoundingClientRect().top - hcTopOffset();
+    if (Math.abs(delta) > 1) { window.scrollBy({ top: delta, behavior: 'instant' }); calm = 0; } else calm++;
+    if (calm < 12 && performance.now() - started < 1500) requestAnimationFrame(step);
+    else { window.removeEventListener('wheel', cancel); window.removeEventListener('touchmove', cancel); }
+  };
+  requestAnimationFrame(step);
 }
 
 if (typeof document !== 'undefined' && !window.__hcBound) {
@@ -95,7 +134,7 @@ if (typeof document !== 'undefined' && !window.__hcBound) {
 
 export function hcCard(o, extra = {}) {
   const el = document.createElement('div');
-  el.className = `card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen(extra.className) ? ' is-open' : ''}`;
+  el.className = `card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen() ? ' is-open' : ''}`;
   Object.entries(extra.attrs || {}).forEach(([k, v]) => { if (v != null && v !== '') el.setAttribute(k, v); });
   el.innerHTML = hcInnerHtml(o);
   if (el.classList.contains('is-open')) el.querySelector('.hc-head')?.setAttribute('aria-expanded', 'true');
@@ -104,7 +143,7 @@ export function hcCard(o, extra = {}) {
 
 export function hcCardHtml(o, extra = {}) {
   const attrs = Object.entries(extra.attrs || {}).filter(([, v]) => v != null && v !== '').map(([k, v]) => ` ${k}="${esc(v)}"`).join('');
-  return `<div class="card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen(extra.className) ? ' is-open' : ''}"${attrs}>${hcStartsOpen(extra.className) ? hcInnerHtml(o).replace('aria-expanded="false"', 'aria-expanded="true"') : hcInnerHtml(o)}</div>`;
+  return `<div class="card hc-card is-${o.tone || 'muted'}${extra.className ? ' ' + extra.className : ''}${hcStartsOpen() ? ' is-open' : ''}"${attrs}>${hcStartsOpen() ? hcInnerHtml(o).replace('aria-expanded="false"', 'aria-expanded="true"') : hcInnerHtml(o)}</div>`;
 }
 
 export function hcEmptyHtml(message) {

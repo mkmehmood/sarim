@@ -10,7 +10,7 @@ import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { inventoryNoteModel, inventoryNoteHtml } from './inventory-note.js';
+import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
 import { allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
@@ -1900,7 +1900,7 @@ const { production, returns, sales } = await loadCollections('production', 'retu
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 if (typeof custTransactionMode !== 'undefined' && (custTransactionMode === 'collection' || custTransactionMode === 'return')) {
 const _staleNote = document.getElementById('inventory-warning');
-if (_staleNote) _staleNote.className = 'inventory-note d-none';
+if (_staleNote) _staleNote.className = 'stock-tile d-none';
 return;
 }
 const quantity = readNum('cust-quantity');
@@ -1939,11 +1939,16 @@ storeSales += sale.quantity || 0;
 });
 const totalAvailable = storeProduction + storeReturns;
 const availableInventory = Math.round((totalAvailable - storeSales) * 1e6) / 1e6;
-const inventoryWarning = document.getElementById('inventory-warning') || createInventoryWarningElement();
-const _invModel = inventoryNoteModel({ available: availableInventory, quantity, production: storeProduction, returns: storeReturns, sold: storeSales });
-inventoryWarning.className = `inventory-note is-${_invModel.tone}`;
-inventoryWarning.setAttribute('role', _invModel.tone === 'short' ? 'alert' : 'status');
-inventoryWarning.innerHTML = inventoryNoteHtml(_invModel);
+const stockTile = document.getElementById('inventory-warning');
+if (stockTile) {
+const _tile = inventoryTileModel({ available: availableInventory, quantity, production: storeProduction, returns: storeReturns, sold: storeSales });
+const _open = stockTile.classList.contains('is-open');
+stockTile.className = `stock-tile is-${_tile.tone}${_open ? ' is-open' : ''}`;
+stockTile.innerHTML = inventoryTileHtml(_tile);
+}
+} else {
+const _stockTile = document.getElementById('inventory-warning');
+if (_stockTile) _stockTile.className = 'stock-tile d-none';
 }
 }
 
@@ -2012,17 +2017,9 @@ infoDisplay.classList.add('hidden');
 }
 }
 
-export function createInventoryWarningElement() {
-const warningDiv = document.createElement('div');
-warningDiv.id = 'inventory-warning';
-warningDiv.className = 'inventory-note';
-warningDiv.setAttribute('aria-live', 'polite');
-const salesSection = document.querySelector('#tab-sales > .card');
-const calculateButton = salesSection.querySelector('#btn-save-cust-transaction') || salesSection.querySelector('.btn-main');
-const anchor = (calculateButton && calculateButton.closest('.form-foot')) || calculateButton;
-if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(warningDiv, anchor);
-else salesSection.appendChild(warningDiv);
-return warningDiv;
+export function toggleStockTile(tile) {
+const open = tile.classList.toggle('is-open');
+tile.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 export async function deleteCustomerSale(id) {
@@ -6594,7 +6591,7 @@ window.selectSupplyStore = selectSupplyStore;
 window.selectPaymentType = selectPaymentType;
 window.selectRepPaymentType = selectRepPaymentType;
 window.autoFillCustomerName = autoFillCustomerName;
-window.createInventoryWarningElement = createInventoryWarningElement;
+window.toggleStockTile = toggleStockTile;
 window.deleteCustomerSale = deleteCustomerSale;
 window.calculateSales = calculateSales;
 window.firebaseConfig = firebaseConfig;

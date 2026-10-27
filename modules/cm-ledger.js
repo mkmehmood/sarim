@@ -1,5 +1,7 @@
 import { esc, fmtAmt } from './business.js';
 import { fmtNum } from './finance.js';
+
+const kgSoldText = (kg) => `${fmtNum(Math.round(kg * 100) / 100)} kg sold`;
 import { openDialog } from './dialog.js';
 import { renderMarkupImage, warmMarkupImage } from './dialog-image.js';
 import { formatDateKey, dateSearchText } from './date-format.js';
@@ -174,13 +176,12 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
   for (const e of entries) {
     const month = e.dkey.slice(0, 7);
     let M = mIdx[month];
-    if (!M) { M = mIdx[month] = { key: month, days: [], dIdx: {}, c: 0, q: 0, sold: 0, got: 0 }; months.push(M); }
+    if (!M) { M = mIdx[month] = { key: month, days: [], dIdx: {}, c: 0, kg: 0, sold: 0, got: 0 }; months.push(M); }
     let D = M.dIdx[e.dkey];
-    if (!D) { D = M.dIdx[e.dkey] = { key: e.dkey, items: [], q: 0, sold: 0, got: 0 }; M.days.push(D); }
-    D.items.push(e); D.q += e.qty || 0; D.sold += e.sold; D.got += e.got;
-    M.c++; M.q += e.qty || 0; M.sold += e.sold; M.got += e.got;
+    if (!D) { D = M.dIdx[e.dkey] = { key: e.dkey, items: [], kg: 0, sold: 0, got: 0 }; M.days.push(D); }
+    D.items.push(e); D.kg += e.kg || 0; D.sold += e.sold; D.got += e.got;
+    M.c++; M.kg += e.kg || 0; M.sold += e.sold; M.got += e.got;
   }
-  const countLabel = (count, qty) => (kind === 'ent' ? `${count} ${count === 1 ? 'entry' : 'entries'}` : `${fmtNum(qty)} kg`);
   const rowHtml = (e, first) => {
     const dateObj = new Date(e.dkey + 'T00:00:00');
     const ok = !isNaN(dateObj.getTime());
@@ -194,7 +195,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     const net = D.items.reduce((a, e) => a + (e.debit || 0) - (e.credit || 0), 0);
     state.days.set(D.key, { rows: chrono, closing: latest.bal, opening: latest.bal - net, sold: D.sold, got: D.got });
     const L = lbl(kind);
-    const summary = D.items.length > 1 ? `${countLabel(D.items.length, D.q)} \u00b7 ${L.a} ${await money(D.sold)} \u00b7 ${L.b} ${await money(D.got)}` : '';
+    const summary = D.items.length > 1 ? `${D.kg > 0 ? kgSoldText(D.kg) + ' \u00b7 ' : ''}${L.a} ${await money(D.sold)} \u00b7 ${L.b} ${await money(D.got)}` : '';
     return `<div class="card cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${c.noInvoice ? '' : `<button type="button" class="btn cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
   };
   let html = '';
@@ -207,7 +208,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     const md = new Date(M.key + '-01T00:00:00');
     const mName = isNaN(md.getTime()) ? M.key : md.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const collapsed = many && mi > 0;
-    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}" id="cm-m-${kind}-${esc(M.key)}"><button type="button" class="cm-month-head" onclick="toggleCmMonth(this)" aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(mName)}</span><span class="cm-month-count">${countLabel(M.c, M.q)}</span><span class="cm-month-sum">${lbl(kind).a} ${await money(M.sold)} \u00b7 ${lbl(kind).b} ${await money(M.got)}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
+    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}" id="cm-m-${kind}-${esc(M.key)}"><button type="button" class="cm-month-head" onclick="toggleCmMonth(this)" aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(mName)}</span><span class="cm-month-count">${M.kg > 0 ? kgSoldText(M.kg) : ''}</span><span class="cm-month-sum">${lbl(kind).a} ${await money(M.sold)} \u00b7 ${lbl(kind).b} ${await money(M.got)}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
   }
   html += '<div class="cm-no-match empty d-none">No matching history. Clear the search or pick All.</div>';
   list.className = comfortable ? 'cm-list is-comfortable' : 'cm-list';

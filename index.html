@@ -2025,6 +2025,7 @@ Profit: <span id="cust-profit">0.00</span>
 <div class="card result-box d-none" id="cust-coll-result">
 <span id="cust-coll-result-label">Balance After Collection:</span> <span id="cust-coll-balance">—</span>
 </div>
+<button type="button" class="stock-tile d-none" id="inventory-warning" aria-expanded="false" aria-live="polite" onclick="toggleStockTile(this)"></button>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction" onclick="(async () => { await saveCustomerTransaction() })()">Save Transaction</button></div>
 </div>
 <div class="card" id="customers-card">

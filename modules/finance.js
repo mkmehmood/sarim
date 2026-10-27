@@ -95,14 +95,14 @@ export function periodTotals(rows) {
   }
   return { totalSale: round2(sale), collection: round2(collection), returns: round2(returns), totalCollection: round2(collection + returns) };
 }
+export function soldQuantity(t) {
+  if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') return 0;
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return 0;
+  return Math.max(0, num(t.quantity, 0));
+}
 export function periodQuantity(rows) {
   let qty = 0;
-  for (const row of rows || []) {
-    const t = row && row.t;
-    if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') continue;
-    if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') continue;
-    qty += Math.max(0, num(t.quantity, 0));
-  }
+  for (const row of rows || []) qty += soldQuantity(row && row.t);
   return round2(qty);
 }
 export function localDateStr(d = new Date()) {

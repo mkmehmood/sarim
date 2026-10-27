@@ -9,8 +9,8 @@ describe('customer management shows weight instead of entry counts', () => {
   const ledger = read('modules/cm-ledger.js');
 
   it('ledger month and day summaries use total kg for customers and reps', () => {
-    assert.ok(/countLabel\s*=\s*\(count, qty\)\s*=>\s*\(kind === 'ent'/.test(ledger), 'entity ledgers keep counts, others show kg');
-    assert.ok(/fmtNum\(qty\)\} kg/.test(ledger), 'weight is formatted as kg');
+    assert.ok(!/countLabel/.test(ledger), 'no entry-count label remains in any ledger');
+    assert.ok(/\} kg sold/.test(ledger), 'weight is formatted as kg sold');
     assert.ok(!/\$\{D\.items\.length\} entries/.test(ledger), 'day footer no longer hard-codes entries');
     assert.ok(!/\$\{M\.c\} \$\{M\.c === 1/.test(ledger), 'month header no longer hard-codes entries');
   });
