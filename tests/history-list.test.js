@@ -8,7 +8,8 @@ const html = read('index.html');
 const css = read('app.css');
 
 const IDS = ['prodHistoryList', 'custHistoryList', 'factoryHistoryList', 'paymentHistoryList', 'historyList', 'repHistoryList',
-  'expenseManagementHistoryList', 'entityManagementHistoryList', 'customerManagementHistoryList', 'repCustomerManagementHistoryList'];
+  'expenseManagementHistoryList', 'entityManagementHistoryList', 'customerManagementHistoryList', 'repCustomerManagementHistoryList',
+  'stockTransferHistoryList', 'paymentTransferHistoryList', 'dailyLedgerList', 'bmSaved', 'bfSaved'];
 
 describe('one shared gap between consecutive history cards', () => {
   it('every history list container uses .history-list', () => {

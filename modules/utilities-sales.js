@@ -6495,24 +6495,20 @@ const production = ensureArray(await sqliteStore.get('production'));
 const transfers = production.filter(item => item.isTransfer === true && item.transferDirection === 'out')
 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 if (transfers.length === 0) {
-list.replaceChildren(Object.assign(document.createElement('p'), { textContent: 'No stock transfers recorded yet.', style: 'text-align:center;color:var(--text-muted);width:100%;font-size:0.85rem' }));
+list.innerHTML = hcEmptyHtml('No stock transfers recorded yet.');
 return;
 }
 const fragment = document.createDocumentFragment();
 transfers.forEach(item => {
-const div = document.createElement('div');
-div.className = 'card card-rows';
-div.innerHTML = `
-<div class="u-edba70e d-flex">
-<span class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(item.date, item.time)}</span>
-${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}
-</div>
-<p><span class="u-b68d496">${escapeHtml(getStoreLabel(item.store))}</span> <span class="u-d59bb54"> &rarr; </span> <span class="u-3b9712c">${escapeHtml(getStoreLabel(item.transferPeerStore))}</span></p>
-<p><span>Quantity:</span> <span class="qty-val">${fmtNum(safeValue(Math.abs(item.net)))} kg</span></p>
-${item.transferNote ? `<p><span>Note:</span> <span class="st-color__5872de">${escapeHtml(item.transferNote)}</span></p>` : ''}
-${actionRowHtml('stocktransfer', item.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)}
-`;
-fragment.appendChild(div);
+const creator = item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : '';
+fragment.appendChild(hcCard({
+tone: 'info', icon: 'transfer',
+titleHtml: `${escapeHtml(getStoreLabel(item.store))} &rarr; ${escapeHtml(getStoreLabel(item.transferPeerStore))}`,
+sub: `${escapeHtml(formatDisplayDateTime(item.date, item.time))}${creator}`,
+amount: `${fmtNum(safeValue(Math.abs(item.net)))} kg`, tag: 'Transfer', tagTone: 'info',
+metrics: [{ label: 'Note', value: item.transferNote ? escapeHtml(item.transferNote) : '', wide: true }],
+actions: actionRowHtml('stocktransfer', item.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)
+}, { className: 'transfer-card', attrs: { 'data-date': item.date } }));
 });
 list.replaceChildren(fragment);
 }

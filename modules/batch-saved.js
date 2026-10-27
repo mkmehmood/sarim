@@ -1,29 +1,45 @@
 import { formatDayMonthYear } from './date-format.js';
 import { esc, generateUUID } from './business.js';
-import { fixed3, fmtAmt, show, summaryRow } from './batch-common.js';
+import { fixed3, fmtAmt, show } from './batch-common.js';
+import { hcCardHtml } from './history-card.js';
 const _when = (ts) => {
   const d = new Date(ts);
   return Number.isFinite(d.getTime()) ? `${formatDayMonthYear(d)} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
 };
 export const newCalcId = () => generateUUID('calc');
-function _headline(rec, f, u) {
+function _metrics(rec, f, u) {
   if (rec.kind === 'fix') {
-    return summaryRow('Remaining Batch', `${f(rec.remaining)} ${u}`) + summaryRow('New Total', `${f(rec.requiredTotal)} ${u}`, 'rev-val') + summaryRow('Total to Add', `${f(rec.addTotal)} ${u}`, 'cost-val');
+    return [
+      { label: 'Remaining batch', value: `${f(rec.remaining)} ${u}`, cls: 'qty-val' },
+      { label: 'New total', value: `${f(rec.requiredTotal)} ${u}`, cls: 'rev-val' },
+      { label: 'Total to add', value: `${f(rec.addTotal)} ${u}`, cls: 'cost-val' }
+    ];
   }
-  return summaryRow('Units', fixed3(Number(rec.units) || 0)) + summaryRow('Total Batch Weight', `${f(rec.totalWeight)} ${u}`, 'rev-val');
+  return [
+    { label: 'Units', value: fixed3(Number(rec.units) || 0), cls: 'qty-val' },
+    { label: 'Total batch weight', value: `${f(rec.totalWeight)} ${u}`, cls: 'rev-val' }
+  ];
 }
 function _ingredients(rec, f, u) {
   const rows = Array.isArray(rec.rows) ? rec.rows : [];
-  if (rec.kind === 'fix') return rows.map((r) => summaryRow(esc(r.n), `${Number(r.a) > 0 ? '+' : ''}${f(r.a)} ${u}`)).join('');
-  return rows.map((r) => summaryRow(esc(r.n), `${f(r.t)} ${u}`)).join('');
+  if (rec.kind === 'fix') return rows.map((r) => ({ label: String(r.n ?? ''), value: `${Number(r.a) > 0 ? '+' : ''}${f(r.a)} ${u}`, cls: 'qty-val' }));
+  return rows.map((r) => ({ label: String(r.n ?? ''), value: `${f(r.t)} ${u}`, cls: 'qty-val' }));
 }
 export function renderSavedList(records, editFn, deleteFn) {
   return records.map((rec) => {
     const u = rec.unit === 'g' ? 'g' : 'kg';
     const f = (v) => fmtAmt(Number(v) || 0, u);
     const id = esc(rec.id);
-    const badge = rec.kind === 'fix' ? 'Correction' : 'Batch';
-    return `<div class="card factory-history-item"><div class="u-a7c79e8 d-flex"><div class="u-9af2403 d-flex"><span class="u-fs-sm2 u-text-muted">${esc(_when(rec.updatedAt || rec.createdAt))}</span></div><div class="u-832bae1 d-flex"><span class="badge factory-badge factory-badge-formula">${badge}</span></div></div><div class="bs-name">${esc(rec.name || 'Untitled')}</div>${_headline(rec, f, u)}<details class="bs-details"><summary>${rec.kind === 'fix' ? 'Ingredients to add' : 'Required ingredients'}</summary>${_ingredients(rec, f, u)}</details><div class="tbl-action-row"><button type="button" class="btn btn-theme btn-sm" onclick="${editFn}('${id}')">Edit</button><button type="button" class="btn btn-danger btn-sm" onclick="${deleteFn}('${id}')">Delete</button></div></div>`;
+    const isFix = rec.kind === 'fix';
+    return hcCardHtml({
+      tone: isFix ? 'warn' : 'info', icon: 'calc', title: rec.name || 'Untitled',
+      sub: esc(_when(rec.updatedAt || rec.createdAt)),
+      amount: isFix ? `${f(rec.addTotal)} ${u}` : `${f(rec.totalWeight)} ${u}`,
+      tag: isFix ? 'Correction' : 'Batch', tagTone: isFix ? 'warn' : 'info',
+      metrics: _metrics(rec, f, u),
+      sections: [{ title: isFix ? 'Ingredients to add' : 'Required ingredients', metrics: _ingredients(rec, f, u) }],
+      actions: `<div class="tbl-action-row"><button type="button" class="btn btn-theme btn-sm" onclick="${editFn}('${id}')">Edit</button><button type="button" class="btn btn-danger btn-sm" onclick="${deleteFn}('${id}')">Delete</button></div>`
+    }, { attrs: { 'data-id': rec.id } });
   }).join('');
 }
 export function setSaveButtons(btnId, cancelId, editing, noun) {

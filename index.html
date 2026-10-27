@@ -724,7 +724,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-stock-transfer" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
     </div>
     <p class="settings-group-label">Transfer History</p>
-    <div id="stockTransferHistoryList"></div>
+    <div id="stockTransferHistoryList" class="history-list report-grid"></div>
     <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb">
       <strong class="u-cab13eb">Note:</strong> A transfer is only allowed up to the stock currently available at the source store on the selected date.
       Transfers are recorded against both stores' stock history and sync to all connected devices automatically.
@@ -790,7 +790,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-payment-transfer" onclick="(async()=>{await saveEntityTransfer()})()">Transfer Payment</button>
     </div>
     <p class="settings-group-label">Transfer History</p>
-    <div id="paymentTransferHistoryList"></div>
+    <div id="paymentTransferHistoryList" class="history-list report-grid"></div>
     <div class="u-5efdd87 st-background__5e344c st-border-bottom__167edb">
       <strong class="u-cab13eb">Note:</strong> A payment transfer records an OUT transaction against the source entity and an IN transaction against the destination entity.
       Both entities' balances update immediately and sync to all connected devices automatically.
@@ -882,7 +882,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <input class="form-ctl" type="text" id="dl-search" placeholder="Search by party, category, mode, amount..." autocomplete="off" oninput="dailyLedgerSetQuery(this.value)">
       </div>
     </div>
-    <div id="dailyLedgerList"></div>
+    <div id="dailyLedgerList" class="history-list report-grid"></div>
   </div>
 </div>
 <div id="raw-material-screen" class="standalone-screen d-none">
@@ -1027,7 +1027,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div id="bmSavedWrap" class="d-none">
       <label class="u-5250855 d-block">Saved Calculations <span id="bmSavedCount"></span></label>
-      <div id="bmSaved"></div>
+      <div id="bmSaved" class="history-list report-grid"></div>
     </div>
   </div>
 </div>
@@ -1095,7 +1095,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div id="bfSavedWrap" class="d-none">
       <label class="u-5250855 d-block">Saved Corrections <span id="bfSavedCount"></span></label>
-      <div id="bfSaved"></div>
+      <div id="bfSaved" class="history-list report-grid"></div>
     </div>
   </div>
 </div>

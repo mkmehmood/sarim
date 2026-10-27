@@ -1,4 +1,5 @@
 import { formatDayMonthYear } from './date-format.js';
+import { hcCardHtml, hcEmptyHtml } from './history-card.js';
 import { sqliteStore, esc, fmtAmt, generateUUID, localDateStr } from './business.js';
 import { openDialog, showGlassConfirm } from './dialog.js';
 import { triggerAutoSync, loadScript } from './utilities-core.js';
@@ -71,8 +72,8 @@ function renderSummary() {
 function isHomeRow(t) {
   return t.type === 'OUT' && (t.scope === 'HOME' || isHomeExpense(t.category));
 }
-function detailRow(label, value) {
-  return `<div class="factory-summary-row"><span class="factory-summary-label">${label}</span><span class="qty-val">${value}</span></div>`;
+function detailMetric(label, value) {
+  return { label, value: esc(value), cls: 'qty-val' };
 }
 function rowHtml(t) {
   const id = esc(t.id);
@@ -80,18 +81,26 @@ function rowHtml(t) {
   const isT = t.type === 'TRANSFER';
   const isOut = t.type === 'OUT';
   const home = isHomeRow(t);
-  const cls = t.type === 'IN' ? 'dl-amt-in' : isOut ? 'dl-amt-out' : 'dl-amt-trf';
   const sign = isT ? '&#8646; ' : isOut ? '- ' : '+ ';
-  const tag = isOut ? `<span class="badge dl-tag ${home ? 'dl-tag-home' : 'dl-tag-biz'}">${home ? 'Home' : 'Biz'}</span>` : '';
   const sub = isT ? `${esc(t.mode)} &rarr; ${esc(t.toMode)}` : `${t.party ? `${esc(t.party)} &bull; ` : ''}${esc(t.mode)}`;
-  const bal = st ? `<div class="dl-bal-line">Balance: ${fmtAmt(st.before)} &rarr; ${fmtAmt(st.after)}</div>` : '';
-  const rows = [detailRow('Type', TYPE_LABEL[t.type]), isT ? detailRow('From', esc(t.mode)) + detailRow('To', esc(t.toMode)) : detailRow('Category', esc(t.category)) + detailRow('Mode', esc(t.mode))];
-  if (isOut) rows.push(detailRow('Scope', home ? 'Home / Personal Expense' : 'Business Expense'));
-  if (t.party) rows.push(detailRow('Party / Name', esc(t.party)));
-  if (t.ref) rows.push(detailRow('Ref / Bill #', esc(t.ref)));
-  if (t.note) rows.push(detailRow('Remarks', esc(t.note)));
-  if (st) rows.push(detailRow('Statement Effect', esc(impactText(t, fmtAmt))));
-  return `<div class="card cust-history-item flex-col dl-item"><details class="dl-details"><summary><div class="line txn-card-row"><div class="cust-history-info"><div class="u-fs-sm2 u-text-muted">${esc(shortDate(t.date))}</div><div>${isT ? 'Account Transfer' : esc(t.category)}${tag}</div><div class="u-fs-sm2 u-text-muted">${sub}</div></div><div class="text-right"><div class="cost-val dl-amount ${cls}">${sign}${fmtAmt(t.amount)}</div>${bal}</div></div></summary><div class="u-mt-8">${rows.join('')}</div><div class="dl-actions"><button class="btn btn-theme btn-sm" onclick="(async()=>{await dailyLedgerCopyVoucher('${id}')})()">Copy Voucher</button><button class="btn btn-theme btn-sm" onclick="dailyLedgerEdit('${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="dailyLedgerDelete('${id}')">Delete</button></div></details></div>`;
+  const metrics = [detailMetric('Type', TYPE_LABEL[t.type])];
+  if (isT) metrics.push(detailMetric('From', t.mode), detailMetric('To', t.toMode));
+  else metrics.push(detailMetric('Category', t.category), detailMetric('Mode', t.mode));
+  if (isOut) metrics.push(detailMetric('Scope', home ? 'Home / Personal Expense' : 'Business Expense'));
+  if (t.party) metrics.push(detailMetric('Party / Name', t.party));
+  if (t.ref) metrics.push(detailMetric('Ref / Bill #', t.ref));
+  if (st) metrics.push({ label: 'Balance', value: `${fmtAmt(st.before)} &rarr; ${fmtAmt(st.after)}`, cls: 'balance-pos', wide: true });
+  if (t.note) metrics.push({ label: 'Remarks', value: esc(t.note), wide: true });
+  if (st) metrics.push({ label: 'Statement effect', value: esc(impactText(t, fmtAmt)), wide: true });
+  return hcCardHtml({
+    tone: isT ? 'info' : isOut ? 'bad' : 'good', icon: isT ? 'transfer' : isOut ? 'out' : 'in',
+    title: isT ? 'Account Transfer' : t.category,
+    sub: `${esc(shortDate(t.date))} &bull; ${sub}`,
+    amount: `${sign}${fmtAmt(t.amount)}`,
+    tag: isT ? 'Transfer' : isOut ? (home ? 'Home' : 'Biz') : 'In', tagTone: isT ? 'info' : isOut ? (home ? 'warn' : 'bad') : 'good',
+    metrics,
+    actions: `<button class="btn btn-theme btn-sm" onclick="(async()=>{await dailyLedgerCopyVoucher('${id}')})()">Copy Voucher</button><button class="btn btn-theme btn-sm" onclick="dailyLedgerEdit('${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="dailyLedgerDelete('${id}')">Delete</button>`
+  }, { attrs: { 'data-date': t.date } });
 }
 function visibleRows() {
   return filterRows(sortNewestFirst(_rows), { query: state.query });
@@ -100,7 +109,7 @@ function renderList() {
   const rows = visibleRows();
   const list = el('dailyLedgerList');
   if (!rows.length) {
-    list.replaceChildren(Object.assign(document.createElement('div'), { className: 'empty', textContent: 'No matching transactions found' }));
+    list.innerHTML = hcEmptyHtml('No matching transactions found');
     return;
   }
   list.innerHTML = rows.map(rowHtml).join('');

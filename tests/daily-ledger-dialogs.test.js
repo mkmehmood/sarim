@@ -18,8 +18,8 @@ describe('daily ledger screen controls', () => {
     assert.ok(block.includes("handleUniversalSearch('dl-to-mode','dl-to-results','ledger-mode')"));
     assert.ok(block.includes("handleUniversalSearch('dl-party','dl-party-results','ledger-party')"));
   });
-  it('entries expand inline with Copy Voucher, Edit and Delete', () => {
-    assert.ok(mod.includes('<details class="dl-details">'));
+  it('entries are shared history cards with Copy Voucher, Edit and Delete', () => {
+    assert.ok(mod.includes('hcCardHtml('));
     for (const a of ['Copy Voucher', 'dailyLedgerEdit', 'dailyLedgerDelete']) assert.ok(mod.includes(a), a);
     assert.equal(mod.includes('dailyLedgerOpenDetail'), false);
   });

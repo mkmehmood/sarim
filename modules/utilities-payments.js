@@ -7735,50 +7735,37 @@ const transactions = ensureArray(await sqliteStore.get('transactions'));
 const transfers = transactions.filter(t => t.isTransfer === true && t.type === 'OUT')
 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 if (transfers.length === 0) {
-list.replaceChildren(Object.assign(document.createElement('div'), { className: 'empty', textContent: 'No payment transfers recorded yet.' }));
+list.innerHTML = hcEmptyHtml('No payment transfers recorded yet.');
 return;
 }
 const fragment = document.createDocumentFragment();
+const photoIds = [];
 transfers.forEach(t => {
-const item = document.createElement('div');
-item.className = 'card cust-history-item';
-item.classList.add('flex-col');
-window.setStyle(item, 'align-items', 'st-align-items__3f367c');
 const safeId = String(t.id).replace(/'/g, "\\'");
 const photoBadgeId = 'ph-badge-trf-' + String(t.id).replace(/[^a-z0-9]/gi, '');
-item.innerHTML = `
-<div class="line txn-card-row">
-  <div class="cust-history-info">
-    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date, t.time || null)}</div>
-    <div class="u-fs-sm2 u-text-muted">${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}</div>
-    ${t.description ? `<div class="u-fs-sm2 u-text-muted">${esc(t.description)}</div>` : ''}
-  </div>
-  <div class="u-d94b2d8 d-flex">
-    <div class="text-right">
-      <span class="u-56e02ab">TRANSFER</span>
-      <div class="cost-val u-bb4c6c9">${fmtAmt(t.amount)}</div>
-    </div>
-    <button id="${photoBadgeId}" title="View photo" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')"
-      class="u-129f796 d-none st-border-bottom__2eda1d st-background__c6ed62">
-      <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
-      Photo
-    </button>
-  </div>
-</div>
-${actionRowHtml('paytransfer', t.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>`)}
-`;
-fragment.appendChild(item);
-if (t.id) {
-  const _phKey = 'expense:' + t.id;
-  sqliteStore.get('photos').then(ph => {
-    if (ph && ph[_phKey]) {
-      const badge = document.getElementById(photoBadgeId);
-      if (badge) window.setDisplay(badge, 'inline-flex');
-    }
-  }).catch(() => {});
-}
+const photoBtn = `<button type="button" id="${photoBadgeId}" title="View photo" class="badge badge-tint d-none" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')">Photo</button>`;
+fragment.appendChild(hcCard({
+tone: 'info', icon: 'transfer',
+titleHtml: `${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}`,
+sub: esc(formatDisplayDateTime(t.date, t.time || null)),
+chips: [photoBtn],
+amount: fmtAmt(t.amount), tag: 'Transfer', tagTone: 'info',
+metrics: [{ label: 'Description', value: t.description ? esc(t.description) : '', wide: true }],
+actions: actionRowHtml('paytransfer', t.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>`)
+}, { className: 'transfer-card', attrs: { 'data-date': t.date } }));
+if (t.id) photoIds.push([photoBadgeId, 'expense:' + t.id]);
 });
 list.replaceChildren(fragment);
+if (photoIds.length) {
+sqliteStore.get('photos').then(ph => {
+photoIds.forEach(([badgeId, key]) => {
+if (ph && ph[key]) {
+const badge = document.getElementById(badgeId);
+if (badge) window.setDisplay(badge, 'inline-flex');
+}
+});
+}).catch(() => {});
+}
 }
 
 window.renderPaymentTransferHistory = renderPaymentTransferHistory;
