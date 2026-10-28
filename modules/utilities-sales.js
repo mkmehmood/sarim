@@ -4,6 +4,7 @@ import { formatDayMonthYear, formatMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
 import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
+import { customerHistoryMatcher } from './business.js';
 import { sxTile, sxGrid, sxHero, sxSplit, sxBreakdown, sxMargin } from './summary-kit.js';
 import { ownsNoPayable } from './raw-purchases.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
@@ -6053,6 +6054,82 @@ font: { size: 13, weight: 'bold' }
 
 const _pendingOf = (item) => Math.max(0, (item.totalValue || 0) - (item.partialPaymentReceived || 0));
 
+export function computeCustomerPeriodStats(sortedSales, selectedDate, matchName) {
+const selectedDateObj = new Date(selectedDate);
+const selectedYear = selectedDateObj.getFullYear();
+const selectedMonth = selectedDateObj.getMonth();
+const selectedDay = selectedDateObj.getDate();
+const weekStart = new Date(selectedDateObj);
+weekStart.setDate(selectedDay - 6);
+let stats = {
+day: {q:0, v:0, cash:0, credit:0, profit:0},
+week: {q:0, v:0, cash:0, credit:0, profit:0},
+month: {q:0, v:0, cash:0, credit:0, profit:0},
+year: {q:0, v:0, cash:0, credit:0, profit:0},
+all: {q:0, v:0, cash:0, credit:0, profit:0}
+};
+sortedSales.forEach(item => {
+if (matchName && !matchName(String(item.customerName || '').trim().toLowerCase())) return;
+const isRepLinked = item.salesRep && item.salesRep !== 'NONE';
+const isAdminCollection = !isRepLinked && item.paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
+const isOldDebt = item.transactionType === 'OLD_DEBT';
+if (!isRepLinked && !isAdminCollection && !isOldDebt && (item.paymentType === 'PARTIAL_PAYMENT' ||
+item.paymentType === 'COLLECTION')) return;
+if (isRepLinked && item.paymentType === 'PARTIAL_PAYMENT') return;
+const effDateStr = item.supplyDate || item.date;
+const rowDate = new Date(effDateStr);
+const rowYear = rowDate.getFullYear();
+const rowMonth = rowDate.getMonth();
+const updatePeriod = (period) => {
+if (isAdminCollection) {
+period.cash += (item.totalValue || 0);
+return;
+}
+if (isOldDebt) {
+period.credit += (item.totalValue || 0);
+return;
+}
+if (item.isMerged && item.mergedSummary) {
+const ms = item.mergedSummary;
+period.cash += (ms.cashSales || 0);
+period.credit += (ms.unpaidCredit || 0);
+} else if (isRepLinked) {
+if (item.paymentType === 'CREDIT' && !item.creditReceived) {
+const partialPaid = item.partialPaymentReceived || 0;
+period.credit += (item.totalValue || 0) - partialPaid;
+}
+return;
+} else if (item.paymentType === 'CREDIT' && !item.creditReceived) {
+const partialPaid = item.partialPaymentReceived || 0;
+period.credit += Math.max(0, (item.totalValue || 0) - partialPaid);
+} else if (item.paymentType === 'CASH' || item.creditReceived) {
+period.cash += (item.totalValue || 0);
+}
+period.q += (item.quantity || 0);
+period.v += (item.totalValue || 0);
+period.profit += (item.profit || 0);
+};
+if (effDateStr === selectedDate) updatePeriod(stats.day);
+if (rowDate >= weekStart && rowDate <= selectedDateObj) updatePeriod(stats.week);
+if (rowYear === selectedYear && rowMonth === selectedMonth) updatePeriod(stats.month);
+if (rowYear === selectedYear) updatePeriod(stats.year);
+updatePeriod(stats.all);
+});
+return stats;
+}
+
+export function recomputeCustomerSummary() {
+const cache = window._custSalesCache;
+const selectedDate = (document.getElementById('cust-date') || {}).value;
+if (!Array.isArray(cache) || !selectedDate) return false;
+const stats = computeCustomerPeriodStats(cache, selectedDate, customerHistoryMatcher('cust-name'));
+window._custStats = {};
+Object.keys(stats).forEach(k => { const v = stats[k]; window._custStats[k] = { q: safeValue(v.q), v: safeValue(v.v), cash: safeValue(v.cash), credit: safeValue(v.credit), profit: safeValue(v.profit) }; });
+if (typeof setSalesSummaryMode === 'function') setSalesSummaryMode(window.currentSalesSummaryMode || 'day');
+return true;
+}
+window.recomputeCustomerSummary = recomputeCustomerSummary;
+
 export async function refreshCustomerSales(page = 1, force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rcsAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -6112,19 +6189,6 @@ return false;
 console.warn('[refreshCustomerSales] data integrity fix failed:', _safeErr(error));
 }
 }
-const selectedDateObj = new Date(selectedDate);
-const selectedYear = selectedDateObj.getFullYear();
-const selectedMonth = selectedDateObj.getMonth();
-const selectedDay = selectedDateObj.getDate();
-const weekStart = new Date(selectedDateObj);
-weekStart.setDate(selectedDay - 6);
-let stats = {
-day: {q:0, v:0, cash:0, credit:0, profit:0},
-week: {q:0, v:0, cash:0, credit:0, profit:0},
-month: {q:0, v:0, cash:0, credit:0, profit:0},
-year: {q:0, v:0, cash:0, credit:0, profit:0},
-all: {q:0, v:0, cash:0, credit:0, profit:0}
-};
 const sortedSales = [...sales].sort((a,b) => {
 const aEff = a.date;
 const bEff = b.date;
@@ -6132,52 +6196,8 @@ if (aEff === selectedDate && bEff !== selectedDate) return -1;
 if (aEff !== selectedDate && bEff === selectedDate) return 1;
 return compareTimestamps(getRecordTimestamp(b), getRecordTimestamp(a));
 });
-sortedSales.forEach(item => {
-const isRepLinked = item.salesRep && item.salesRep !== 'NONE';
-const isAdminCollection = !isRepLinked && item.paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
-const isOldDebt = item.transactionType === 'OLD_DEBT';
-if (!isRepLinked && !isAdminCollection && !isOldDebt && (item.paymentType === 'PARTIAL_PAYMENT' ||
-item.paymentType === 'COLLECTION')) return;
-if (isRepLinked && item.paymentType === 'PARTIAL_PAYMENT') return;
-const effDateStr = item.supplyDate || item.date;
-const rowDate = new Date(effDateStr);
-const rowYear = rowDate.getFullYear();
-const rowMonth = rowDate.getMonth();
-const updatePeriod = (period) => {
-if (isAdminCollection) {
-period.cash += (item.totalValue || 0);
-return;
-}
-if (isOldDebt) {
-period.credit += (item.totalValue || 0);
-return;
-}
-if (item.isMerged && item.mergedSummary) {
-const ms = item.mergedSummary;
-period.cash += (ms.cashSales || 0);
-period.credit += (ms.unpaidCredit || 0);
-} else if (isRepLinked) {
-if (item.paymentType === 'CREDIT' && !item.creditReceived) {
-const partialPaid = item.partialPaymentReceived || 0;
-period.credit += (item.totalValue || 0) - partialPaid;
-}
-return;
-} else if (item.paymentType === 'CREDIT' && !item.creditReceived) {
-const partialPaid = item.partialPaymentReceived || 0;
-period.credit += Math.max(0, (item.totalValue || 0) - partialPaid);
-} else if (item.paymentType === 'CASH' || item.creditReceived) {
-period.cash += (item.totalValue || 0);
-}
-period.q += (item.quantity || 0);
-period.v += (item.totalValue || 0);
-period.profit += (item.profit || 0);
-};
-if (effDateStr === selectedDate) updatePeriod(stats.day);
-if (rowDate >= weekStart && rowDate <= selectedDateObj) updatePeriod(stats.week);
-if (rowYear === selectedYear && rowMonth === selectedMonth) updatePeriod(stats.month);
-if (rowYear === selectedYear) updatePeriod(stats.year);
-updatePeriod(stats.all);
-});
+const stats = computeCustomerPeriodStats(sortedSales, selectedDate, customerHistoryMatcher('cust-name'));
+window._custSalesCache = sortedSales;
 const displayData = sortedSales.filter(item => {
 const _isRepLinked = item.salesRep && item.salesRep !== 'NONE';
 const _isAdminColl = !_isRepLinked && item.paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';

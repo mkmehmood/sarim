@@ -63,6 +63,14 @@ export function selectedCustomerFilter(inputId) {
   const picked = String(input.dataset.histCustomer || '');
   return picked && picked === String(input.value || '').trim().toLowerCase() ? picked : '';
 }
+export function customerHistoryMatcher(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return null;
+  const typed = String(input.value || '').trim().toLowerCase();
+  if (!typed) return null;
+  const picked = selectedCustomerFilter(inputId);
+  return picked ? (name) => name === picked : (name) => name.includes(typed);
+}
 export const oldDebtNote = (notes) => {
   const text = String(notes == null ? '' : notes).trim();
   return !text || /^(previous balance brought forward|brought forward from previous records)$/i.test(text) ? 'Previous balance' : text;

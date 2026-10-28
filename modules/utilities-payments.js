@@ -11,7 +11,7 @@ import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryM
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateUUID, selectedCustomerFilter, formatTime12, repairStoredRecords, loadCollections } from './business.js';
+import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateUUID, customerHistoryMatcher, formatTime12, repairStoredRecords, loadCollections } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
@@ -1170,25 +1170,48 @@ const refDate = new Date(refDateStr);
 if (isNaN(refDate.getTime())) return;
 const weekStart = new Date(refDate);
 weekStart.setDate(refDate.getDate() - 6);
-const customerOnly = listSelector === '#custHistoryList' ? selectedCustomerFilter('cust-name') : '';
-document.querySelectorAll(listSelector + ' .card').forEach(card => {
-if (customerOnly && card.getAttribute('data-customer') !== customerOnly) { window.setDisplay(card, 'none'); return; }
-const ds = card.getAttribute('data-date');
-if (!ds) { window.setDisplay(card, ''); return; }
-const cd = new Date(ds);
-if (isNaN(cd.getTime())) { window.setDisplay(card, ''); return; }
-let show = false;
-if (mode === 'day') show = (ds === refDateStr);
-else if (mode === 'week') show = (cd >= weekStart && cd <= refDate);
-else if (mode === 'month') show = (cd.getMonth() === refDate.getMonth() && cd.getFullYear() === refDate.getFullYear());
-else if (mode === 'year') show = (cd.getFullYear() === refDate.getFullYear());
-else show = true;
+const isCustList = listSelector === '#custHistoryList';
+const matchName = isCustList ? customerHistoryMatcher('cust-name') : null;
+const cards = document.querySelectorAll(listSelector + ' .card');
+let total = 0, shown = 0;
+cards.forEach(card => {
+total++;
+const show = _cardInPeriod(card, refDate, refDateStr, weekStart, mode) &&
+(!matchName || matchName(String(card.getAttribute('data-customer') || '')));
+if (show) shown++;
 window.setDisplay(card, show ? '' : 'none');
 });
+if (isCustList) _showHistoryFilterEmpty(listSelector, total, shown, mode, !!matchName);
+}
+
+function _cardInPeriod(card, refDate, refDateStr, weekStart, mode) {
+const ds = card.getAttribute('data-date');
+if (!ds) return true;
+const cd = new Date(ds);
+if (isNaN(cd.getTime())) return true;
+if (mode === 'day') return ds === refDateStr;
+if (mode === 'week') return cd >= weekStart && cd <= refDate;
+if (mode === 'month') return cd.getMonth() === refDate.getMonth() && cd.getFullYear() === refDate.getFullYear();
+if (mode === 'year') return cd.getFullYear() === refDate.getFullYear();
+return true;
+}
+
+function _showHistoryFilterEmpty(listSelector, total, shown, mode, byName) {
+const list = document.querySelector(listSelector);
+if (!list || !list.querySelectorAll) return;
+list.querySelectorAll('.hist-filter-empty').forEach(n => n.remove());
+if (total === 0 || shown > 0) return;
+const labels = { day: 'this day', week: 'this week', month: 'this month', year: 'this year', all: 'all time' };
+const msg = byName ? `No matching sales for ${labels[mode] || 'this period'}. Try another period or clear the name.` : `No sales for ${labels[mode] || 'this period'}.`;
+const holder = document.createElement('div');
+holder.className = 'hist-filter-empty';
+holder.innerHTML = hcEmptyHtml(msg);
+list.appendChild(holder);
 }
 
 export function applyCustomerHistoryFilter(mode) {
 if (mode === 'rep') { if (typeof renderRepHistory === 'function') renderRepHistory(); return; }
+if (typeof window.recomputeCustomerSummary === 'function' && window.recomputeCustomerSummary()) return;
 const refDate = (document.getElementById('cust-date') || {}).value || localDateStr();
 _filterHistoryByPeriod('#custHistoryList', refDate, currentSalesSummaryMode || 'day');
 }

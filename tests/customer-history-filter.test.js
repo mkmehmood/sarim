@@ -32,8 +32,8 @@ describe('selectedCustomerFilter', () => {
 describe('customer history filter wiring', () => {
   it('sales cards carry the customer and the period filter hides other customers', () => {
     assert.match(sales, /'data-customer': String\(item\.customerName/);
-    assert.match(payments, /selectedCustomerFilter\('cust-name'\)/);
-    assert.match(payments, /card\.getAttribute\('data-customer'\) !== customerOnly/);
+    assert.match(payments, /customerHistoryMatcher\('cust-name'\)/);
+    assert.match(payments, /matchName\(String\(card\.getAttribute\('data-customer'\)/);
   });
   it('typing or picking a customer refreshes the history in both tabs', () => {
     assert.match(payments, /applyCustomerHistoryFilter\(isRep \? 'rep' : 'admin'\)/);
