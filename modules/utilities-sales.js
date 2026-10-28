@@ -5,6 +5,7 @@ import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePay
 import { smCardEl, smProductionHtml } from './summary-card.js';
 import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
 import { sxTile, sxGrid, sxHero, sxSplit, sxBreakdown, sxMargin } from './summary-kit.js';
+import { ownsNoPayable } from './raw-purchases.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
@@ -895,7 +896,7 @@ const isPending = material.paymentStatus === 'pending' || !material.paymentStatu
 if (material.supplierId && isPending && material.totalPayable > 0 && hasLiveSupplierInvoice(material, transactions)) {
 const sid = String(material.supplierId);
 pendingPerSupplier[sid] = (pendingPerSupplier[sid] || 0) + material.totalPayable;
-} else if (!material.supplierId && isPending) {
+} else if (!material.supplierId && isPending && !ownsNoPayable(material)) {
 const unlinkedPayable = parseFloat(material.totalPayable || material.totalValue || 0);
 if (unlinkedPayable > 0) {
 pendingPerSupplier['__unlinked__' + material.id] = unlinkedPayable;

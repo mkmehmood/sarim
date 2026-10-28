@@ -561,6 +561,8 @@ delete material.paidDate;
 material.updatedAt = getTimestamp();
 ensureRecordIntegrity(material, true);
 if (!skipSideEffects) {
+const _liveIdx = inventory.findIndex(i => i && i.id === material.id);
+if (_liveIdx !== -1) inventory[_liveIdx] = material;
 await unifiedSave('inventory', inventory, material);
 triggerAutoSync();
 await _refreshSupplierLinkViews();
@@ -611,11 +613,14 @@ const inventory = sortInventoryItems(materialRecords(ensureArray(await sqliteSto
 _updateInvSortHeaders();
 const tbody = document.getElementById('factoryInventoryTableBody');
 let totalVal = 0;
+let totalCollected = 0;
 const _invEmpty = (t, h) => rlEmptyHtml(t, h);
 if (inventory.length === 0) {
 tbody.innerHTML = _invEmpty('No raw materials yet', 'Add a material from the menu to start tracking stock.');
 const _invEl = document.getElementById('factoryTotalInventoryValue');
 if (_invEl) _invEl.innerText = await formatCurrency(0);
+const _colEmpty = document.getElementById('factoryTotalCollectedKg');
+if (_colEmpty) _colEmpty.innerText = '0 kg';
 return;
 }
 const prebuiltRows = [];
@@ -623,6 +628,7 @@ for (const item of inventory) {
 const qty = Number(item.quantity) || 0;
 const itemTotalValue = (item.quantity * item.cost) || 0;
 totalVal += itemTotalValue;
+totalCollected += collectedKg(item);
 const converted = item.conversionFactor && item.conversionFactor !== 1;
 let stockText;
 if (item.purchaseQuantity && item.purchaseUnitName && converted) stockText = `${fmtNum(item.purchaseQuantity || 0)} ${esc(item.purchaseUnitName)} (${fmtNum(qty)} kg)`;
@@ -644,6 +650,8 @@ if (_mySeq !== _invRenderSeq) return;
 tbody.innerHTML = prebuiltRows.join('');
 const _invEl = document.getElementById('factoryTotalInventoryValue');
 if (_invEl) _invEl.innerText = await formatCurrency(totalVal);
+const _colEl = document.getElementById('factoryTotalCollectedKg');
+if (_colEl) _colEl.innerText = `${fmtNum(totalCollected)} kg`;
 }
 
 export async function unlinkSupplierFromMaterialById(materialId) {

@@ -6,6 +6,10 @@ export const normMaterialName = (s) => String(s == null ? '' : s).trim().toLower
 
 export const isPurchaseLot = (rec) => !!(rec && rec.isPurchaseLot === true);
 
+export function ownsNoPayable(rec) {
+  return !!rec && (isPurchaseLot(rec) || rec.purchasesTracked === true);
+}
+
 export function materialRecords(inventory) {
   return (Array.isArray(inventory) ? inventory : []).filter((m) => m && !m.deletedAt && !isPurchaseLot(m));
 }

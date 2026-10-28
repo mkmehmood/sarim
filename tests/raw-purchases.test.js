@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyPurchaseDelta, buildPurchaseLot, collectedKg, findMaterialByName, materialPending, materialRecords, purchasesOf, searchMaterials } from '../modules/raw-purchases.js';
+import { ownsNoPayable, applyPurchaseDelta, buildPurchaseLot, collectedKg, findMaterialByName, materialPending, materialRecords, purchasesOf, searchMaterials } from '../modules/raw-purchases.js';
 
 const mat = (o = {}) => ({ id: 'm1', name: 'Sugar', quantity: 0, cost: 0, ...o });
 
@@ -44,5 +44,11 @@ describe('raw purchases', () => {
   it('adds up what is still owed across purchases from different suppliers', () => {
     const lots = [{ supplierId: 'a', totalPayable: 300, paymentStatus: 'pending' }, { supplierId: 'b', totalPayable: 200 }, { supplierId: 'c', totalPayable: 0, paymentStatus: 'paid' }, { totalPayable: 999 }];
     assert.equal(materialPending(mat(), lots), 500);
+  });
+  it('never counts stock records or cash purchases as money owed to an unlinked supplier', () => {
+    assert.equal(ownsNoPayable({ id: 'l', isPurchaseLot: true }), true);
+    assert.equal(ownsNoPayable(mat({ purchasesTracked: true })), true);
+    assert.equal(ownsNoPayable(mat()), false);
+    assert.equal(ownsNoPayable(null), false);
   });
 });

@@ -40,4 +40,16 @@ describe('raw material screen', () => {
     assert.doesNotMatch(table, /supplierName|totalPayable|Owed/);
     assert.match(table, /collectedKg\(item\)/);
   });
+  it('shows the total collected weight under the inventory table', () => {
+    assert.ok(html.includes('id="factoryTotalCollectedKg"'));
+    assert.match(factory, /getElementById\('factoryTotalCollectedKg'\)/);
+  });
+  it('unlinking a supplier saves the changed record, not a stale copy of the list', () => {
+    const fn = factory.slice(factory.indexOf('export async function unlinkSupplierFromMaterial('), factory.indexOf('export async function createSupplierFromMaterial'));
+    assert.match(fn, /inventory\[_liveIdx\] = material/);
+  });
+  it('keeps stock records and cash purchases out of the unlinked payables on the balance sheet', () => {
+    const sales = readFileSync(new URL('../modules/utilities-sales.js', import.meta.url), 'utf8');
+    assert.match(sales, /!material\.supplierId && isPending && !ownsNoPayable\(material\)/);
+  });
 });
