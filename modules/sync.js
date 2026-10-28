@@ -4447,8 +4447,10 @@ export async function signOut() {
 try {
 if (currentUser && !window._forceLogoutSignOut) {
   if (navigator.onLine) {
-    try { await performOneClickSync(true); } catch (_) {}
-    try { await sqliteStore.drainOutbox(); } catch (_) {}
+    showToast('Syncing before sign out…', 'info', 4000);
+    const within = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
+    await within(performOneClickSync(true), 8000);
+    await within(sqliteStore.drainOutbox(), 4000);
   }
   const unsynced = (sqliteStore.outboxPending() || 0) + ((typeof OfflineQueue !== 'undefined' && OfflineQueue.queue) ? OfflineQueue.queue.length : 0);
   if (unsynced > 0) {

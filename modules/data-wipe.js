@@ -89,7 +89,8 @@ export async function wipeAllLocalData({ keep = KEEP_KEYS } = {}) {
   } catch (_) {}
   wipeWebStorage();
   wipeCookies();
-  await Promise.all([wipeIndexedDb(), wipeOpfs(), wipeCaches(), wipeNativeFiles(), wipeDesktopSession()]);
+  const limit = (p) => Promise.race([p.catch(swallow), new Promise(r => setTimeout(r, 5000))]);
+  await Promise.all([wipeIndexedDb(), wipeOpfs(), wipeCaches(), wipeNativeFiles(), wipeDesktopSession()].map(limit));
   wipeWebStorage();
   try { kept.forEach(([k, v]) => localStorage.setItem(k, v)); } catch (_) {}
 }
