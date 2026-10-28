@@ -1,4 +1,5 @@
 import { themeColor } from './theme-tokens.js';
+import { moneyLine } from './money-privacy.js';
 import { promptStatementRange, rangeBounds, rangeLabel } from './stmt-range.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from './cm-ledger.js';
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
@@ -1252,7 +1253,7 @@ if (formulaUnits <= 0) {
 window.notifyBlocking('Please enter formula units used.', 'warning', 'Low formula units');
 return;
 }
-if (!(await window.gcCommit({ lead: _ed ? 'Update this production entry?' : 'Save this production entry?', lines: [`Total Cost: ${fmtAmt(net * costData.dynamicCostPerKg)}`, `Net Profit: ${fmtAmt(net * salePrice - net * costData.dynamicCostPerKg)}`] }))) return;
+if (!(await window.gcCommit({ lead: _ed ? 'Update this production entry?' : 'Save this production entry?', lines: [moneyLine(`Total Cost: ${fmtAmt(net * costData.dynamicCostPerKg)}`), moneyLine(`Net Profit: ${fmtAmt(net * salePrice - net * costData.dynamicCostPerKg)}`)] }))) return;
 const totalCost = net * costData.dynamicCostPerKg;
 const totalSale = net * salePrice;
 const profit = totalSale - totalCost;

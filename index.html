@@ -2795,6 +2795,10 @@ window.closeSidebar = closeSidebar;
 function openStandaloneScreen(id) {
   var el = document.getElementById(id);
   if (!el) return;
+  if (typeof window.isScreenAllowed === 'function' && !window.isScreenAllowed(id)) {
+    if (typeof window.showToast === 'function') window.showToast('Access Denied — not available for your role', 'warning', 3000);
+    return;
+  }
   el.classList.remove('screen-leaving');
   window.setDisplay(el, 'flex');
   void el.offsetWidth;

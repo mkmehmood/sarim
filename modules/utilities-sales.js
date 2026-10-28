@@ -11,7 +11,7 @@ import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
-import { isMoneyRestricted } from './money-privacy.js';
+import { isMoneyRestricted, moneyLine, redactMoney } from './money-privacy.js';
 import { allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
@@ -449,7 +449,7 @@ const netCashOutflow = amount - materialPayableReduction;
 if (type === 'OUT') {
 const _spAvailCash = await getAvailableCashInHand();
 if (_spAvailCash < netCashOutflow) {
-window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _spAvailCash))} — Required (net): ${fmtAmt(netCashOutflow)}`, 'error', 'Low cash in hand');
+window.notifyBlocking(redactMoney(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _spAvailCash))} — Required (net): ${fmtAmt(netCashOutflow)}`, 'Insufficient cash in hand.'), 'error', 'Low cash in hand');
 return;
 }
 }
@@ -1157,7 +1157,7 @@ existingCredit = Math.max(0, existingCredit);
 if (paymentType === 'CREDIT') {
 const creditWarningThreshold = 5000;
 if (existingCredit > creditWarningThreshold) {
-_gcWarn = { lines: [`Unpaid balance: ${fmtAmt(safeNumber(existingCredit, 0))}`, `This credit sale: ${fmtAmt(safeNumber(totalValue, 0))}`, `New total: ${fmtAmt(safeNumber(existingCredit + totalValue, 0))}`], warning: `${name} already has unpaid credit. Collect it before adding more.`, confirmText: 'Add Credit Anyway' };
+_gcWarn = { lines: [moneyLine(`Unpaid balance: ${fmtAmt(safeNumber(existingCredit, 0))}`), moneyLine(`This credit sale: ${fmtAmt(safeNumber(totalValue, 0))}`), moneyLine(`New total: ${fmtAmt(safeNumber(existingCredit + totalValue, 0))}`)], warning: `${name} already has unpaid credit. Collect it before adding more.`, restrictedWarning: 'Check this credit sale before saving.', confirmText: 'Add Credit Anyway' };
 }
 }
 if (!(await window.gcCommit(_gcWarn || {}))) return;
@@ -1507,7 +1507,7 @@ setSaleMode('sale');
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
 if (typeof loadSalesData === 'function') { try { await loadSalesData(currentCompMode); } catch (_) {} }
-showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned${_repPlan.value > 0 ? `, ${fmtAmt(_repPlan.value)} deducted from the balance` : ''}. Stock reaches CHORA / production when the Calculator is reconciled.`, 'success');
+showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned${_repPlan.value > 0 ? redactMoney(`, ${fmtAmt(_repPlan.value)} deducted from the balance`, ', balance adjusted') : ''}. Stock reaches CHORA / production when the Calculator is reconciled.`, 'success');
 } catch (error) {
 sales.length = 0;
 sales.push(...snapshot);
@@ -1610,7 +1610,7 @@ restoreBtn();
 return;
 } else if (amount > 0 && _custOutstanding >= 0 && amount > _custOutstanding) {
 const _overAmt = amount - _custOutstanding;
-_gcWarn = { lines: [`Owes: ${fmtAmt(_custOutstanding)}`, `Collecting: ${fmtAmt(amount)}`, `Overpayment: ${fmtAmt(_overAmt)}`], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
+_gcWarn = { lines: [moneyLine(`Owes: ${fmtAmt(_custOutstanding)}`), `Collecting: ${fmtAmt(amount)}`, moneyLine(`Overpayment: ${fmtAmt(_overAmt)}`)], warning: 'Proceed only if this is an advance payment.', confirmText: 'Collect Anyway' };
 }
 if (_ed && _ed.original.paymentType === 'PARTIAL_PAYMENT' && _ed.original.relatedSaleId && Math.abs((_ed.original.totalValue || 0) - amount) > 0.001) {
 window.notifyBlocking('This payment is linked to a credit sale. Delete it and record a new one instead of changing the amount.', 'warning', 'Credit warning');
@@ -1626,8 +1626,8 @@ const _gcExtra = _gcWarn ? { ..._gcWarn } : {};
 if (expired > 0) {
 _gcExtra.notes = [`Expired ${fmtNum(expired)} kg will be added to CHORA raw material.`];
 _gcExtra.notes.push(expiredValue > 0
-? `Expired goods credited: ${fmtAmt(expiredValue)} (${fmtNum(expired)} kg × ${fmtAmt(_expUnit)}) will be deducted from ${name}'s balance${_expCapped ? ' (limited to what is owed)' : ''}. This is not cash.`
-: `No balance is owed, so the expired goods are recorded without a credit.`);
+? moneyLine(`Expired goods credited: ${fmtAmt(expiredValue)} (${fmtNum(expired)} kg × ${fmtAmt(_expUnit)}) will be deducted from ${name}'s balance${_expCapped ? ' (limited to what is owed)' : ''}. This is not cash.`)
+: moneyLine(`No balance is owed, so the expired goods are recorded without a credit.`));
 }
 if (!(await window.gcCommit(_gcExtra))) { restoreBtn(); return; }
 let gpsCoords = null;

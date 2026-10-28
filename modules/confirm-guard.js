@@ -1,4 +1,5 @@
 import { getEditCtx } from './edit-mode.js';
+import { sanitizeConfirmExtra } from './money-privacy.js';
 const _pending = new Set();
 const SHARE_PREF = 'sarim.shareInvoiceAfterSave';
 const readSharePref = () => { try { return localStorage.getItem(SHARE_PREF) === '1'; } catch (_) { return false; } };
@@ -91,7 +92,7 @@ export function gcCommit(extra) {
   const l = window._gcLate;
   if (!l) return Promise.resolve(true);
   window._gcLate = null;
-  return l.ask(extra || {});
+  return l.ask(sanitizeConfirmExtra(extra));
 }
 
 window.gcCommit = gcCommit;

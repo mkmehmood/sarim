@@ -1,5 +1,5 @@
 import { themeColor, themeVar } from './theme-tokens.js';
-import { isMoneyRestricted } from './money-privacy.js';
+import { isMoneyRestricted, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
@@ -2166,7 +2166,7 @@ const delta = newSigned - oldSigned;
 if (delta < 0) {
 const avail = await getAvailableCashInHand();
 if (avail + delta < 0) {
-window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, avail))} — Extra required: ${fmtAmt(-delta)}`, 'error', 'Low cash in hand');
+window.notifyBlocking(redactMoney(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, avail))} — Extra required: ${fmtAmt(-delta)}`, 'Insufficient cash in hand.'), 'error', 'Low cash in hand');
 return;
 }
 }
@@ -2318,7 +2318,7 @@ _seRem -= m.totalPayable;
 const _seNetOutflow = amount - _seMaterialOffset;
 const _seAvailCash = await getAvailableCashInHand();
 if (_seAvailCash < _seNetOutflow) {
-window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _seAvailCash))} — Required: ${fmtAmt(_seNetOutflow)}`, 'error', 'Low cash in hand');
+window.notifyBlocking(redactMoney(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _seAvailCash))} — Required: ${fmtAmt(_seNetOutflow)}`, 'Insufficient cash in hand.'), 'error', 'Low cash in hand');
 return;
 }
 }
@@ -3610,7 +3610,7 @@ return;
 }
 const _sqeeAvail = await getAvailableCashInHand();
 if (_sqeeAvail < amount) {
-window.notifyBlocking(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _sqeeAvail))} — Required: ${fmtAmt(amount)}`, 'error', 'Low cash in hand');
+window.notifyBlocking(redactMoney(`Insufficient cash in hand. Available: ${fmtAmt(Math.max(0, _sqeeAvail))} — Required: ${fmtAmt(amount)}`, 'Insufficient cash in hand.'), 'error', 'Low cash in hand');
 return;
 }
 if (!(await window.gcCommit({}))) return;

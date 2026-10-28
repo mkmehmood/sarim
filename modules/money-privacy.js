@@ -21,3 +21,35 @@ export function applyMoneyPrivacy(mode) {
   if (locked) scrubMoney();
   return locked;
 }
+
+const RESTRICTED_SCREENS = new Set(['settings-screen', 'splash-screen', 'feedback-screen']);
+
+export function isScreenAllowed(id, mode) {
+  return !isMoneyRestricted(mode) || RESTRICTED_SCREENS.has(id);
+}
+
+export function moneyLine(text) {
+  return { money: true, text: String(text) };
+}
+
+export function redactMoney(full, safe) {
+  return isMoneyRestricted() ? safe : full;
+}
+
+const keepLine = (restricted) => (item) => {
+  if (item && typeof item === 'object' && item.money) return restricted ? null : item.text;
+  return item;
+};
+
+export function sanitizeConfirmExtra(extra, mode) {
+  const restricted = isMoneyRestricted(mode);
+  const out = { ...(extra || {}) };
+  ['lines', 'notes'].forEach((k) => {
+    if (Array.isArray(out[k])) out[k] = out[k].map(keepLine(restricted)).filter((v) => v !== null && v !== undefined);
+  });
+  if (restricted && out.restrictedWarning !== undefined) out.warning = out.restrictedWarning;
+  delete out.restrictedWarning;
+  return out;
+}
+
+if (typeof window !== 'undefined') window.isScreenAllowed = isScreenAllowed;

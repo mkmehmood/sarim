@@ -1,4 +1,5 @@
 import { findCalcLinkForReturn } from './link-guards.js';
+import { moneyLine } from './money-privacy.js';
 import { hcCard, hcCardHtml, hcEmptyHtml } from './history-card.js';
 import { applyPurchaseDelta, buildPurchaseLot, collectedKg, findMaterialByName, isPurchaseLot, materialPending, materialRecords, normMaterialName, pendingOf, purchaseKgOf, purchasesOf, searchMaterials } from './raw-purchases.js';
 import { sortInventoryItems, runExclusive, findReturnLogFor, getReturnStockDrop, newGroupId, stampGroup, DELETE_ORIGIN_FIELD, findPayableInTxs, planPayableAdjustment, weightedUnitPrice } from './link-graph.js';
@@ -1060,7 +1061,7 @@ const _gcFormula = (await getFormulaNames())[_sfpeType] || 'Formula';
 const _gcLow = materialsUsed.map(m => { const inv = inventory.find(i => String(i.id) === String(m.id)); return inv && inv.quantity + 1e-6 < m.quantity ? `${m.name} (${fmtNum(inv.quantity)} kg left)` : null; }).filter(Boolean);
 const _gcExtra = {
 lead: _ed ? 'Update this factory production batch?' : 'Save this factory production batch?',
-lines: [`Formula: ${_gcFormula}`, `Date: ${localDateStr()}`, `Units Produced: ${fmtNum(units)}`, `Total Cost: ${fmtAmt(totalCost)}`, `Cost Per Unit: ${fmtAmt(units > 0 ? totalCost / units : 0)}`],
+lines: [`Formula: ${_gcFormula}`, `Date: ${localDateStr()}`, `Units Produced: ${fmtNum(units)}`, moneyLine(`Total Cost: ${fmtAmt(totalCost)}`), moneyLine(`Cost Per Unit: ${fmtAmt(units > 0 ? totalCost / units : 0)}`)],
 notes: [`\u21A9 Raw materials deducted from inventory:`].concat(materialsUsed.map(m => ` \u2022 ${m.name}: ${fmtNum(m.quantity)} kg used`)),
 confirmText: _ed ? 'Update Production' : 'Save Production'
 };
