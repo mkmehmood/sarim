@@ -333,6 +333,21 @@ async function unregisterServiceWorkers() {
   } catch (_) {}
 }
 
+const TEXT_FIELD = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]), textarea, select, [contenteditable=""], [contenteditable="true"]';
+
+function installKeyboardGuard() {
+  const root = document.documentElement;
+  const set = (open) => root.classList.toggle('kb-open', open);
+  const editing = () => !!(document.activeElement && document.activeElement.matches && document.activeElement.matches(TEXT_FIELD));
+  document.addEventListener('focusin', (e) => { if (e.target && e.target.matches && e.target.matches(TEXT_FIELD)) set(true); });
+  document.addEventListener('focusout', () => setTimeout(() => { if (!editing()) set(false); }, 150));
+  const { Keyboard } = P();
+  if (Keyboard && typeof Keyboard.addListener === 'function') {
+    Keyboard.addListener('keyboardWillShow', () => set(true));
+    Keyboard.addListener('keyboardDidHide', () => set(false));
+  }
+}
+
 if (isNative) {
   document.documentElement.classList.add('is-native', 'is-android');
   installShareBridge();
@@ -344,6 +359,7 @@ if (isNative) {
   unregisterServiceWorkers();
   const { App, SplashScreen } = P();
   if (App && typeof App.addListener === 'function') App.addListener('backButton', handleBack);
+  installKeyboardGuard();
   applyStatusBar();
   new MutationObserver(applyStatusBar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   let nativeSplashHidden = false;
