@@ -4443,20 +4443,41 @@ console.error('adminRemoveAccount:', _safeErr(err));
 }
 }
 
+const _SYNC_COLLECTIONS_FOR_PENDING = ['production', 'sales', 'calculator', 'rep', 'clients', 'customers', 'transactions', 'entities', 'inventory', 'factory', 'returns', 'expenses'];
+
+async function _countUnsyncedLocal() {
+  let n = 0;
+  try { n += sqliteStore.outboxPending() || 0; } catch (_) {}
+  try { if (typeof OfflineQueue !== 'undefined' && OfflineQueue.queue) n += OfflineQueue.queue.length; } catch (_) {}
+  try { n += _SYNC_COLLECTIONS_FOR_PENDING.filter(c => DeltaSync.isDirty(c)).length; } catch (_) {}
+  try {
+    const dels = await sqliteStore.get('deletions', []);
+    if (Array.isArray(dels)) n += dels.filter(r => r && !r.syncedToCloud).length;
+  } catch (_) {}
+  return n;
+}
+
 export async function signOut() {
 try {
 if (currentUser && !window._forceLogoutSignOut) {
+  const within = (p, ms) => Promise.race([Promise.resolve(p).catch(() => ({ error: true })), new Promise(r => setTimeout(() => r({ error: true, timedOut: true }), ms))]);
+  let syncFailed = !navigator.onLine;
   if (navigator.onLine) {
-    showToast('Syncing before sign out…', 'info', 4000);
-    const within = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
-    await within(performOneClickSync(true), 8000);
-    await within(sqliteStore.drainOutbox(), 4000);
+    showToast('Uploading your data before sign out…', 'info', 6000);
+    const synced = await within(performOneClickSync(true), 25000);
+    if (!synced || synced.error) syncFailed = true;
+    const pushed = await within(pushDataToCloud(true), 25000);
+    if (pushed && pushed.error) syncFailed = true;
+    await within(sqliteStore.drainOutbox(), 10000);
   }
-  const unsynced = (sqliteStore.outboxPending() || 0) + ((typeof OfflineQueue !== 'undefined' && OfflineQueue.queue) ? OfflineQueue.queue.length : 0);
-  if (unsynced > 0) {
+  const unsynced = await _countUnsyncedLocal();
+  if (unsynced > 0 || syncFailed) {
+    const detail = unsynced > 0
+      ? `${unsynced} change(s) have not reached the cloud yet.`
+      : 'The upload could not be confirmed.';
     const proceed = await showGlassConfirm(
-      `${unsynced} change(s) have not reached the cloud yet. Signing out now will erase them from this device and they will be lost.\nConnect to the internet and try again to keep them.`,
-      { title: 'Unsynced Changes', confirmText: 'Sign Out Anyway', cancelText: 'Stay Signed In', danger: true }
+      `${detail} Signing out now erases this device's data, so anything not uploaded will be lost.\nConnect to the internet and try again to keep everything.`,
+      { title: 'Not Fully Uploaded', confirmText: 'Sign Out Anyway', cancelText: 'Stay Signed In', danger: true }
     );
     if (!proceed) return;
   }
