@@ -2,6 +2,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractFunctions, readSource } from './_extract.js';
 import * as mp from '../modules/money-privacy.js';
+import { formatDateTime } from '../modules/date-format.js';
 
 const SRC = readSource('modules/utilities-payments.js');
 const constant = (name) => {
@@ -40,6 +41,7 @@ function env(mode, tabs, tombs = TOMBS()) {
     firebaseDB: null,
     currentUser: null,
     fmtNum: (n) => String(n),
+    formatDateTime,
     esc: (s) => String(s),
     getStoreLabel: (s) => s,
     _captureRecordSnapshot: Object.assign(async () => null, {}),
