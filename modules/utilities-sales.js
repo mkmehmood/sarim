@@ -1,9 +1,10 @@
+import { hideMoney, MONEY_MASK } from './team-privacy.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid } from './field-expenses.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
-import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
+import { hcCard, hcMaskMoney, hcChip, hcEmptyHtml } from './history-card.js';
 import { sxTile, sxGrid, sxHero, sxSplit, sxBreakdown, sxMargin } from './summary-kit.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
@@ -1542,14 +1543,15 @@ const amtEl    = document.getElementById('cust-amount-collected');
 const expEl    = document.getElementById('cust-expired-qty');
 const nameEl   = document.getElementById('cust-name');
 const currentDebt = creditEl
-? parseFloat((creditEl.innerText || '0').replace(/[^0-9.-]/g, '')) || 0
+? (creditEl.dataset.value !== undefined ? parseFloat(creditEl.dataset.value) || 0 : parseFloat((creditEl.innerText || '0').replace(/[^0-9.-]/g, '')) || 0)
 : 0;
+const _balHidden = !!(creditEl && creditEl.dataset.hidden === '1');
 const collected = parseFloat(amtEl?.value) || 0;
 const expired = parseFloat(expEl?.value) || 0;
 const paint = (remaining) => {
 if (collRes) window.setDisplay(collRes, '');
 if (balEl) {
-balEl.textContent = fmtAmt(remaining);
+balEl.textContent = _balHidden ? MONEY_MASK : fmtAmt(remaining);
 window.setStyle(balEl, 'color', remaining === 0 ? 'st-color__a4c6ac' : 'st-color__52df2b');
 }
 };
@@ -3817,6 +3819,7 @@ const _freshInv = await sqliteStore.get('inventory', []);
 if (_freshInv && Array.isArray(_freshInv) && _freshInv.length > 0) {
 }
 } catch (_e) {}
+const _hiddenEnt = new Set(transactions.filter(t => hideMoney(t)).map(t => t.entityId));
 const balances = await calculateEntityBalances();
 let totalReceivables = 0;
 let totalPayables = 0;
@@ -3848,7 +3851,9 @@ matchedEntities.forEach(entity => {
 const safeName = String(entity.name || 'Unknown Entity');
 const balance = balances[entity.id] || 0;
 let balanceHtml = '';
-if (balance > 0.01) {
+if (_hiddenEnt.has(entity.id)) {
+balanceHtml = `<span class="u-text-muted" >${MONEY_MASK}</span>`;
+} else if (balance > 0.01) {
 balanceHtml = `<span class="u-danger-bold" >Payable: ${fmtAmt(balance)}</span>`;
 } else if (balance < -0.01) {
 balanceHtml = `<span class="u-text-emerald u-fw-800" >Receivable: ${fmtAmt(Math.abs(balance))}</span>`;
@@ -3871,8 +3876,8 @@ tbody.appendChild(fragment);
 }
 const recEl = document.getElementById('total-receivables');
 const payEl = document.getElementById('total-payables');
-if(recEl) recEl.innerText = `${fmtAmt(totalReceivables)}`;
-if(payEl) payEl.innerText = `${fmtAmt(totalPayables)}`;
+if(recEl) recEl.innerText = _hiddenEnt.size ? MONEY_MASK : `${fmtAmt(totalReceivables)}`;
+if(payEl) payEl.innerText = _hiddenEnt.size ? MONEY_MASK : `${fmtAmt(totalPayables)}`;
 }
 
 export async function filterEntityList() {
@@ -6290,7 +6295,7 @@ note: paymentType === 'CREDIT' ? (creditReceived ? 'Credit received.' : 'Awaitin
 actions: deleteBtnHtml
 };
 }
-const card = hcCard(cardOpts, {
+const card = hcCard(hideMoney(item) ? hcMaskMoney(cardOpts) : cardOpts, {
 className: `${highlightClass}${item.isSettled ? ' is-settled-record' : ''}`.trim(),
 attrs: { 'data-date': _cardDate, 'data-customer': String(item.customerName || '').trim().toLowerCase() }
 });

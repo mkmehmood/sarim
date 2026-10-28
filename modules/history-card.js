@@ -1,4 +1,5 @@
 import { rlInitials, rlHue } from './record-list.js';
+import { MONEY_MASK } from './team-privacy.js';
 
 const esc = (v) => (v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
 
@@ -14,6 +15,28 @@ const ICONS = {
   collection: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
   debt: '<path d="M12 3v18"/><path d="M16 7h-6a3 3 0 000 6h4a3 3 0 010 6H8"/>'
 };
+
+const MONEY_CLASSES = new Set(['cost-val', 'rev-val', 'profit-val', 'balance-pos', 'balance-neg']);
+const plain = (v) => String(v == null ? '' : v).replace(/<[^>]*>/g, '').trim();
+function isMoneyMetric(m) {
+  if (!m || m.value == null || m.value === '') return false;
+  const v = plain(m.value);
+  if (/^-?[\d,.]+\s*kg$/.test(v)) return false;
+  return MONEY_CLASSES.has(m.cls) || /^-?[\d,.]+(\s*\/\s*kg)?$/.test(v) || /[=@]|\/\s*kg/.test(v);
+}
+const maskMetrics = (list) => (list || []).map((m) => (isMoneyMetric(m) ? { ...m, value: MONEY_MASK, cls: '' } : m));
+
+export function hcMaskMoney(o) {
+  if (!o) return o;
+  const amt = plain(o.amount);
+  return {
+    ...o,
+    amount: amt === '' || /^-?[\d,.]+\s*kg$/.test(amt) ? o.amount : MONEY_MASK,
+    tag: o.tag ? String(o.tag).replace(/-?\d[\d,.]*/g, MONEY_MASK) : o.tag,
+    metrics: maskMetrics(o.metrics),
+    sections: (o.sections || []).map((s) => ({ ...s, metrics: maskMetrics(s.metrics) }))
+  };
+}
 
 export function hcIcon(kind) {
   const p = ICONS[kind] || ICONS.sale;

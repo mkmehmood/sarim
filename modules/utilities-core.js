@@ -1,3 +1,4 @@
+import { hideMoney, MONEY_MASK } from './team-privacy.js';
 import { themeColor } from './theme-tokens.js';
 import { promptStatementRange, rangeBounds, rangeLabel } from './stmt-range.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from './cm-ledger.js';
@@ -2004,14 +2005,15 @@ _entries.push({
   balText: _balText(_bal), balTone: _bal > 0.005 ? 'is-debt' : 'is-clear',
   unpaid: false,
   sold: isOut && !t.isExpense ? amt : 0, got: !isOut && !t.isExpense ? amt : 0,
-  debit: Math.max(0, _delta(t)), credit: Math.max(0, -_delta(t)), bal: _bal, isSettled: !!t.isSettled,
+  debit: Math.max(0, _delta(t)), credit: Math.max(0, -_delta(t)), bal: _bal, isSettled: !!t.isSettled, hide: hideMoney(t),
   row: { title: label, amtText: fmtAmt(amt), rIn: !isOut, info, panelPlaceholder: '', kebabBtn: photoBtn, canEdit, canDelete: !t.isMerged, editCall, delCall, balHtml: balanceAfterHtml(_balText(_bal), _bal > 0.005 ? 'debt' : 'clear'), safeId: esc(t.id) }
 });
 }
-await renderLedger('ent', { name: entity.name, phone: entity.phone || '', entries: _entries, summaryHtml: entitySummaryHtml(balance, totalIn, totalOut, _entries.length), money, emptyAction: "openEntityPaymentFromDetails()" });
+await renderLedger('ent', { name: entity.name, phone: entity.phone || '', entries: _entries, summaryHtml: entitySummaryHtml(balance, totalIn, totalOut, _entries.length, entityTxns.some(hideMoney)), money, emptyAction: "openEntityPaymentFromDetails()" });
 }
 
-export function entitySummaryHtml(balance, totalIn, totalOut, n) {
+export function entitySummaryHtml(balance, totalIn, totalOut, n, hidden = false) {
+if (hidden) return `<div class="cm-sum-label">Balance</div><div class="cm-sum-debt is-clear">${MONEY_MASK}</div>${n === 0 ? '' : `<div class="cust-period-row d-flex"><div class="stat is-collect"><span class="stat-label">Total In</span><span class="stat-value">${MONEY_MASK}</span></div><div class="stat is-out"><span class="stat-label">Total Out</span><span class="stat-value">${MONEY_MASK}</span></div></div>`}`;
 const settled = Math.abs(balance) < 0.005;
 const label = balance > 0.005 ? 'Payable' : balance < -0.005 ? 'Receivable' : 'Balance';
 const tone = balance > 0.005 ? 'is-debt' : 'is-clear';
