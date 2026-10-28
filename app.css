@@ -108,7 +108,7 @@ to   { transform: translateY(100%); opacity: 0;   }
   0%   { background-position:-200% center; }
   100% { background-position:200% center; }
 }
-html{background:var(--bg)}
+html{background:var(--bg);min-height:100%}
 #splash-screen {
 --sp-ui: 'Plus Jakarta Sans', 'Noto Nastaliq Urdu', 'Noto Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 --sp-brand: 'Cinzel', 'Playfair Display', Georgia, serif;
@@ -625,7 +625,6 @@ text-size-adjust: 100%;
 }
 body {
 background: var(--bg-gradient);
-background-attachment: fixed;
 color: var(--text-main);
 margin: 0;
 padding: 12px;
