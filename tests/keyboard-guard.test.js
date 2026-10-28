@@ -18,3 +18,11 @@ describe('keyboard guard for the Android app', () => {
     assert.match(css, /html\.kb-open \.liquid-bg-element \{ display: none; \}/);
   });
 });
+
+describe('Android window keyboard handling', () => {
+  it('stops the window from resizing so Capacitor SystemBars is the only resizer', () => {
+    const src = readSource('android/app/src/main/java/com/gullzubair/sarim/MainActivity.java');
+    assert.match(src, /SOFT_INPUT_ADJUST_NOTHING/);
+    assert.match(src, /Build\.VERSION_CODES\.R/);
+  });
+});
