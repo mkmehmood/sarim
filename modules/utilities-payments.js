@@ -8,6 +8,7 @@ import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
 import { expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries } from './field-expense-items.js';
 import { hcCard, hcCardHtml, hcChip, hcEmptyHtml, hcExpensesHtml } from './history-card.js';
 import { editDateValue } from './edit-date.js';
+import { planCalcRelink, applyCalcRelink } from './calc-relink.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
@@ -278,6 +279,23 @@ actions: isMerged ? '' : `<button class="btn btn-danger btn-sm u-w-full u-mt-8" 
 
 export function _calcSaleDay(sale) {
 return txDeviceDate(sale);
+}
+
+const CALC_RELINK_FLAG = 'calcRelinkDeviceDateV1';
+
+export async function runCalcRelinkMigration() {
+  if (await sqliteStore.get(CALC_RELINK_FLAG)) return null;
+  const { calculator, sales } = await loadCollections('calculator', 'sales');
+  if (!calculator.length || !sales.length) return null;
+  const moves = planCalcRelink(calculator, sales);
+  if (moves.length) {
+    const changed = applyCalcRelink(calculator, moves, getTimestamp);
+    calculator.forEach(e => { if (changed.includes(String(e.id))) ensureRecordIntegrity(e, true); });
+    await unifiedSave('calculator', calculator, null, changed);
+    notifyDataChange('calculator');
+  }
+  await sqliteStore.set(CALC_RELINK_FLAG, { at: Date.now(), moved: moves.length });
+  return moves.length;
 }
 
 export async function getPendingRepDeliveries(seller) {
@@ -1053,6 +1071,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   }
   try {
     await loadAllData();
+    try { await runCalcRelinkMigration(); } catch (e) { console.warn('[Startup] calculator relink skipped:', _safeErr(e)); }
     await initializeDeviceListeners();
     if (typeof OfflineQueue !== 'undefined') await OfflineQueue.init();
     loadFirestoreStats();
