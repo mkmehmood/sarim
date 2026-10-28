@@ -22,7 +22,7 @@ export function applyMoneyPrivacy(mode) {
   return locked;
 }
 
-const RESTRICTED_SCREENS = new Set(['settings-screen', 'splash-screen', 'feedback-screen']);
+const RESTRICTED_SCREENS = new Set(['settings-screen', 'splash-screen', 'feedback-screen', 'recycle-bin-screen']);
 
 export function isScreenAllowed(id, mode) {
   return !isMoneyRestricted(mode) || RESTRICTED_SCREENS.has(id);
@@ -52,4 +52,50 @@ export function sanitizeConfirmExtra(extra, mode) {
   return out;
 }
 
-if (typeof window !== 'undefined') window.isScreenAllowed = isScreenAllowed;
+const RECYCLE_SCOPE = {
+  prod: { filter: 'tab_production', collections: ['production'] },
+  factory: { filter: 'tab_factory', collections: ['factory'] },
+  sales: { filter: 'tab_sales', collections: ['sales'] },
+  payments: { filter: 'tab_payments', collections: ['transactions', 'expenses'] },
+};
+
+const assignedTabs = () => {
+  if (typeof window === 'undefined') return [];
+  const t = window._userRoleAllowedTabs || window._assignedUserTabs;
+  return Array.isArray(t) ? t : [];
+};
+
+export function recycleCollections(mode, tabs) {
+  if (!isMoneyRestricted(mode)) return null;
+  const out = new Set();
+  (Array.isArray(tabs) ? tabs : assignedTabs()).forEach((t) => {
+    const sc = RECYCLE_SCOPE[t];
+    if (sc) sc.collections.forEach((c) => out.add(c));
+  });
+  return out;
+}
+
+export function recycleFilters(mode, tabs) {
+  if (!isMoneyRestricted(mode)) return null;
+  const out = new Set(['all']);
+  (Array.isArray(tabs) ? tabs : assignedTabs()).forEach((t) => { if (RECYCLE_SCOPE[t]) out.add(RECYCLE_SCOPE[t].filter); });
+  return out;
+}
+
+export function isRecycleRecordAllowed(rec, mode, tabs) {
+  const allowed = recycleCollections(mode, tabs);
+  if (!allowed) return true;
+  const col = rec && (rec.collection || rec.recordType);
+  return !!col && allowed.has(col);
+}
+
+export function recycleAmountText(text, mode) {
+  if (!text) return null;
+  if (!isMoneyRestricted(mode)) return text;
+  return /^[\d.,\s-]+\s*(kg|units?)$/i.test(String(text).trim()) ? text : null;
+}
+
+if (typeof window !== 'undefined') {
+  window.isScreenAllowed = isScreenAllowed;
+  window.isRecycleRecordAllowed = isRecycleRecordAllowed;
+}

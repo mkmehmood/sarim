@@ -56,7 +56,7 @@ describe('money areas are tagged', () => {
     'prod-formula-cost-block', 'prod-profit-block', 'prod-sale-price-field', 'dynamic-cost-display',
     'custHistoryList', 'sales-summary-card', 'customers-card', 'sale-result-cost', 'sale-result-profit', 'cust-coll-result', 'customer-info-display',
     'repHistoryList', 'rep-customers-card', 'rep-customer-info-display', 'admin-rep-analytics',
-    'historyList', 'combinedSection', 'individualChartSection', 'sidebar-btn-recycle', 'sidebar-btn-stores',
+    'historyList', 'combinedSection', 'individualChartSection', 'sidebar-btn-stores',
   ];
   for (const id of ids) it(`#${id} is hidden for restricted roles`, () => assert.ok(tagged(id), id));
 

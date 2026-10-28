@@ -1,5 +1,5 @@
 import { themeColor, themeVar } from './theme-tokens.js';
-import { isMoneyRestricted, redactMoney } from './money-privacy.js';
+import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
@@ -4337,6 +4337,7 @@ async function recoverCalcEntry(deletedId, snap) {
 }
 
 export async function recoverRecord(deletedId, collectionName, _isPairRecovery = false, _opts = {}) {
+  if (isMoneyRestricted() && !isRecycleRecordAllowed({ collection: collectionName })) return false;
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   if (!deletedId || !collectionName) return false;
@@ -4583,6 +4584,13 @@ export const RECYCLE_TAB_LABELS = {
   'tab_formulas':    'Formula Store',
 };
 
+function _recycleDenied(recs) {
+  if (!isMoneyRestricted()) return false;
+  if ((recs || []).every(r => isRecycleRecordAllowed(r))) return false;
+  window.notifyBlocking('Access Denied — this record, or one linked to it, is outside your assigned tabs.', 'warning', 'Access Denied');
+  return true;
+}
+
 export const RECYCLE_RECOVERABLE_COLLECTIONS = new Set([
   'sales','transactions','rep','expenses','production',
   'factory','inventory','returns','calculator',
@@ -4650,6 +4658,8 @@ export async function renderRecycleBin(filterCollection = 'all') {
   const container = document.getElementById('recycleBinList');
   const statsEl   = document.getElementById('recycleBinStats');
   if (!container) return;
+  const _rbFilters = recycleFilters();
+  if (_rbFilters && !_rbFilters.has(filterCollection)) filterCollection = 'all';
   container.innerHTML = '<div class="u-7cbe623">Loading...</div>';
   try {
     let localDeletionRecords = ensureArray(await sqliteStore.get('deletions'));
@@ -4700,6 +4710,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
       }
     }
     localDeletionRecords = Array.from(_seen.values());
+    if (isMoneyRestricted()) localDeletionRecords = localDeletionRecords.filter(r => isRecycleRecordAllowed(r));
     for (const r of localDeletionRecords) {
       if (r.displayName) { continue; }
       const col = r.collection || 'unknown';
@@ -4888,8 +4899,9 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const detailHtml = displayDetail
         ? `<span class="u-dd827b8">${esc(displayDetail)}</span>`
         : '';
-      const amountHtml = displayAmount
-        ? `<span class="u-dd009f5">${esc(displayAmount)}</span>`
+      const _amtShown = recycleAmountText(displayAmount);
+      const amountHtml = _amtShown
+        ? `<span class="u-dd009f5">${esc(_amtShown)}</span>`
         : '';
       const syncBadge = rec.syncedToCloud
         ? `<span class="badge sync-status-badge sync-ok"> synced</span>`
@@ -4945,8 +4957,10 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
   const label = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[collectionName] || collectionName}`;
   const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
+  if (_recycleDenied([ownTomb || { collection: collectionName }])) return;
   const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
   const _recov = ownTomb ? await _planRecovery(ownTomb, deletionRecords) : { members: [], plan: { restore: [], skipped: [], requestedSkipped: null } };
+  if (_recycleDenied(_recov.members)) return;
   const _grpMembers = _recov.plan.restore.length > 0 ? _recov.plan.restore : _recov.members;
   if (_recov.members.length > 1) {
     if (_recov.plan.requestedSkipped) { window.notifyBlocking(_recov.plan.requestedSkipped, 'warning', 'Warning'); return; }
@@ -5010,6 +5024,7 @@ async function _emptyRecycleBinImpl() {
     return;
   }
   const targets = expandGroups(shown, ensureArray(await sqliteStore.get('deletions')).concat(shown));
+  if (_recycleDenied(targets)) return;
   const scopeLabel = currentFilter === 'all' ? 'the entire recycle bin' : `all "${RECYCLE_TAB_LABELS[currentFilter] || currentFilter}" items`;
   const confirmed = await showGlassConfirm(
     `Permanently delete ${targets.length} record${targets.length !== 1 ? 's' : ''} from ${scopeLabel}?\n\nThis action CANNOT be undone. Any linked transfer pairs will be deleted together. All records will be erased from local storage and the cloud.`,
@@ -5046,6 +5061,7 @@ async function _emptyRecycleBinImpl() {
 window.emptyRecycleBin = emptyRecycleBin;
 
 export async function hardDeleteRecord(id, collectionName, _isPairDelete = false) {
+  if (isMoneyRestricted() && !isRecycleRecordAllowed({ collection: collectionName })) return false;
   if (!id || !collectionName) return false;
   const sid = String(id);
   try {
@@ -5168,6 +5184,7 @@ async function _attemptHardDeleteImpl(id, collectionName) {
   const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   const ownTomb = deletionRecords.find(r => String(r.id) === String(id) || String(r.recordId || r.id) === String(id));
   const members = ownTomb ? findGroupMembers(ownTomb, deletionRecords) : [];
+  if (_recycleDenied(members.length ? members : [ownTomb || { collection: collectionName }])) return;
   const isGroup = members.length > 1;
   const isTransferPair = !!(ownTomb && ownTomb.snapshot && ownTomb.snapshot.isTransfer === true && ownTomb.snapshot.transferPairId);
   const pairNote = isGroup

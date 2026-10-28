@@ -1,7 +1,7 @@
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isScreenAllowed, moneyLine, redactMoney, sanitizeConfirmExtra } from '../modules/money-privacy.js';
+import { isRecycleRecordAllowed, isScreenAllowed, moneyLine, recycleAmountText, recycleCollections, recycleFilters, redactMoney, sanitizeConfirmExtra } from '../modules/money-privacy.js';
 
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const read = (f) => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
@@ -55,11 +55,11 @@ describe('redactMoney', () => {
 });
 
 describe('isScreenAllowed', () => {
-  it('limits restricted roles to the settings, splash and feedback screens', () => {
-    for (const id of ['settings-screen', 'splash-screen', 'feedback-screen']) assert.equal(isScreenAllowed(id, 'userrole'), true, id);
+  it('limits restricted roles to the settings, splash, feedback and recycle bin screens', () => {
+    for (const id of ['settings-screen', 'splash-screen', 'feedback-screen', 'recycle-bin-screen']) assert.equal(isScreenAllowed(id, 'userrole'), true, id);
     for (const id of ['entity-details-screen', 'expense-details-screen', 'customer-edit-screen', 'customer-management-screen',
       'stock-transfer-screen', 'payment-transfer-screen', 'daily-ledger-screen', 'add-entity-screen', 'raw-material-screen',
-      'recycle-bin-screen', 'store-manager-screen', 'user-roles-screen', 'app-accounts-screen']) {
+      'store-manager-screen', 'user-roles-screen', 'app-accounts-screen']) {
       assert.equal(isScreenAllowed(id, 'userrole'), false, id);
     }
   });
@@ -95,5 +95,60 @@ describe('wiring', () => {
   it('redacts cash-in-hand alerts', () => {
     assert.equal((read('utilities-payments.js').match(/redactMoney\(`Insufficient cash in hand/g) || []).length, 3);
     assert.match(read('utilities-sales.js'), /redactMoney\(`Insufficient cash in hand/);
+  });
+});
+
+describe('recycle bin scope for restricted roles', () => {
+  it('only covers the collections entered through the assigned tabs', () => {
+    assert.deepEqual([...recycleCollections('userrole', ['prod'])], ['production']);
+    assert.deepEqual([...recycleCollections('userrole', ['sales', 'payments'])].sort(), ['expenses', 'sales', 'transactions']);
+    assert.deepEqual([...recycleCollections('userrole', ['factory', 'prod'])].sort(), ['factory', 'production']);
+    assert.equal(recycleCollections('userrole', []).size, 0);
+    assert.equal(recycleCollections('admin', ['prod']), null);
+  });
+
+  it('offers only the assigned tab filters', () => {
+    assert.deepEqual([...recycleFilters('userrole', ['sales', 'factory'])].sort(), ['all', 'tab_factory', 'tab_sales']);
+    assert.equal(recycleFilters('rep', ['sales']), null);
+  });
+
+  it('rejects other tabs, contacts, entities, ledger, formulas and unknown records', () => {
+    const tabs = ['sales'];
+    assert.equal(isRecycleRecordAllowed({ collection: 'sales' }, 'userrole', tabs), true);
+    for (const col of ['transactions', 'expenses', 'production', 'factory', 'customers', 'entities', 'inventory', 'daily_ledger', 'formulas', 'calculator', 'rep', 'clients', 'returns', 'unknown', undefined]) {
+      assert.equal(isRecycleRecordAllowed({ collection: col }, 'userrole', tabs), false, String(col));
+    }
+    assert.equal(isRecycleRecordAllowed({ recordType: 'sales' }, 'userrole', tabs), true);
+  });
+
+  it('never restricts unrestricted modes', () => {
+    for (const m of ['admin', 'rep', 'production', 'factory']) assert.equal(isRecycleRecordAllowed({ collection: 'entities' }, m, ['sales']), true);
+  });
+
+  it('shows quantities but never currency amounts', () => {
+    for (const t of ['120 kg', '12.5 kg', '3 units', '1,200 kg']) assert.equal(recycleAmountText(t, 'userrole'), t, t);
+    for (const t of ['₨5,000', 'Rs 5000', '₨0', '5000', 'kg of Rs 40']) assert.equal(recycleAmountText(t, 'userrole'), null, t);
+    assert.equal(recycleAmountText('₨5,000', 'admin'), '₨5,000');
+    assert.equal(recycleAmountText(null, 'userrole'), null);
+  });
+});
+
+describe('recycle bin wiring', () => {
+  const pay = read('utilities-payments.js');
+
+  it('is reachable from settings for restricted roles', () => {
+    assert.doesNotMatch(HTML, /data-money[^>]*id="sidebar-btn-recycle"|id="sidebar-btn-recycle"[^>]*data-money/);
+  });
+
+  it('scopes the rendered list and hides currency amounts', () => {
+    assert.match(pay, /localDeletionRecords\.filter\(r => isRecycleRecordAllowed\(r\)\)/);
+    assert.match(pay, /recycleAmountText\(displayAmount\)/);
+    assert.match(pay, /recycleFilters\(\)/);
+  });
+
+  it('guards restore, delete forever, empty bin and the core functions', () => {
+    assert.equal((pay.match(/_recycleDenied\(/g) || []).length >= 5, true);
+    assert.match(pay, /export async function recoverRecord\([^)]*\) \{\n  if \(isMoneyRestricted\(\) && !isRecycleRecordAllowed/);
+    assert.match(pay, /export async function hardDeleteRecord\([^)]*\) \{\n  if \(isMoneyRestricted\(\) && !isRecycleRecordAllowed/);
   });
 });
