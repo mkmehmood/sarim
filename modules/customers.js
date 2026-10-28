@@ -1,4 +1,5 @@
 import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
+import { isMoneyRestricted } from './money-privacy.js';
 import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
@@ -66,6 +67,11 @@ updateCollectionPreview();
 }
 
 export async function renderCustomersTable(page = 1) {
+if (isMoneyRestricted()) {
+const _t = document.getElementById('customers-table-body');
+if (_t) _t.replaceChildren();
+return;
+}
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
 const sales = ensureArray(await sqliteStore.get('sales')).filter(_rctAlive);

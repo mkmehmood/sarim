@@ -521,7 +521,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 31V17.5M12.8 22.2L18 17 23.2 22.2" stroke="var(--accent-gold)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--accent-gold)"/></svg>
       Backup &amp; Restore
     </button>
-    <button id="sidebar-btn-recycle" class="sidebar-item" onclick="openRecycleBin()">
+    <button data-money id="sidebar-btn-recycle" class="sidebar-item" onclick="openRecycleBin()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="var(--danger)" fill-opacity="0.15" stroke="var(--danger)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="var(--danger)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>
       Recycle Bin
     </button>
@@ -569,7 +569,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Business</p>
-    <button class="sidebar-item" id="sidebar-btn-stores" onclick="openStoreManagerScreen()">
+    <button data-money class="sidebar-item" id="sidebar-btn-stores" onclick="openStoreManagerScreen()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 16.5V31H29V16.5" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M4 13L7.5 5.5H28.5L32 13Z" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M4 13A4.67 4.67 0 0 0 13.33 13A4.67 4.67 0 0 0 22.67 13A4.67 4.67 0 0 0 32 13" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><rect x="14" y="21" width="8" height="10" rx="1.6" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="20" cy="26.2" r="0.9" fill="var(--accent-gold)"/></svg>
       Store Manager
     </button>
@@ -1705,7 +1705,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 </div>
 </div>
-<div id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
+<div data-money id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
 <div class="u-25351ff d-flex">
 <span class="u-cb45723">Current Debt:</span>
 <span id="rep-customer-current-credit" class="u-a5b525a">0.00</span>
@@ -1740,7 +1740,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
  Cash Sale |  Collection |  Credit Sale
 </div>
 </div>
-<div id="admin-rep-analytics" class="card hidden">
+<div data-money id="admin-rep-analytics" class="card hidden">
 <div class="section-header">
 <h3 class="u-heading-main" >Analytics</h3>
 <div class="toggle-group">
@@ -1761,7 +1761,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 </div>
 </div>
-<div id="rep-customers-card" class="card">
+<div data-money id="rep-customers-card" class="card">
 <div class="section-header u-4053333">
 <h3 class="u-3b741c2">Customer List</h3>
 <input type="text" id="rep-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
@@ -1780,12 +1780,12 @@ oninput="renderRepCustomerTable()">
 </div>
 
 </div>
-<div id="repHistoryList" class="history-list report-grid"></div>
+<div data-money id="repHistoryList" class="history-list report-grid"></div>
 </div>
 <div id="tab-prod">
 <header id="prod-tab-header" class="u-cfe00e0 d-flex">
 <h1 class="shimmer-text u-heading-bold">Manufacturing</h1>
-<div id="prod-toggle-container" class="toggle-group u-mb-15">
+<div data-money id="prod-toggle-container" class="toggle-group u-mb-15">
 <button class="toggle-opt" onclick="setProductionView('combined', event)">Combined</button>
 <button class="toggle-opt active" onclick="setProductionView('store', event)">Store Entry</button>
 </div>
@@ -1805,7 +1805,7 @@ oninput="renderRepCustomerTable()">
 <div class="field">
 <label>Net Production (kg)</label>
 <input type="number" id="net-wt" readonly class="form-ctl u-540e04e st-background__44812c">
-<div id="dynamic-cost-display" class="u-7960f3f text-xs">
+<div data-money id="dynamic-cost-display" class="u-7960f3f text-xs">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
 </div>
@@ -1823,7 +1823,7 @@ Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</s
 Units of factory mixture consumed
 </div>
 </div>
-<div class="field" id="prod-sale-price-field">
+<div data-money class="field" id="prod-sale-price-field">
 <label>Sale Price (per kg)</label>
 <div class="pp-price-row">
 <span class="u-text-accent u-fw-800 u-bf2ee51 d-block" id="production-sale-price-display">0.00/kg</span>
@@ -1832,7 +1832,7 @@ Units of factory mixture consumed
 </div>
 </div>
 </div>
-<div class="panel formula-unit-display" id="prod-formula-cost-block">
+<div data-money class="panel formula-unit-display" id="prod-formula-cost-block">
 <div class="u-edd1c24 d-flex">
 <span class="u-text-muted" >Formula Unit Cost:</span>
 <span class="u-danger-bold" id="formula-unit-cost-display" >0.00/unit</span>
@@ -1846,7 +1846,7 @@ Units of factory mixture consumed
 <span class="u-danger-bold" id="dynamic-cost-per-kg" >0.00/kg</span>
 </div>
 </div>
-<div class="card result-box st-background__2cf90b" id="prod-profit-block">
+<div data-money class="card result-box st-background__2cf90b" id="prod-profit-block">
 <div class="u-787e284 d-flex">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Dynamic Cost Price:</span>
 <span class="u-danger-bold" id="factory-cost-price" >0.00/kg</span>
@@ -1865,7 +1865,7 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-production" onclick="(async () => { await recordEntry() })()">Save Production</button></div>
 </div>
-<div id="combinedOverview" class="card u-11b271b">
+<div data-money id="combinedOverview" class="card u-11b271b">
 <h3 class="shimmer-text u-38c3ebd">All Stores Overview</h3>
 <div class="all-stores-toggle u-29b7980">
 <div class="toggle-group">
@@ -1879,7 +1879,7 @@ Insufficient formula units available! Please reduce formula units used.
 <div class="overview-report-grid" id="all-stores-grid">
 </div>
 </div>
-<div id="combinedChart" class="card chart-card u-11b271b">
+<div data-money id="combinedChart" class="card chart-card u-11b271b">
 <div class="store-comparison-toggle">
 <label class="u-d98bf71 d-block">Compare Stores By:</label>
 <div class="toggle-group u-mt-8">
@@ -1895,7 +1895,7 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 </div>
 </div>
-<div id="prod-analytics-section" class="card chart-card">
+<div data-money id="prod-analytics-section" class="card chart-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Analytics</h3>
 <div class="toggle-group">
@@ -1914,10 +1914,10 @@ Insufficient formula units available! Please reduce formula units used.
 </div>
 </div>
 </div>
-<div id="prod-history-header" class="u-03ee4e9 d-flex">
+<div data-money id="prod-history-header" class="u-03ee4e9 d-flex">
 <span class="u-9daf5c8">Production History</span>
 </div>
-<div id="prodHistoryList" class="history-list report-grid"></div>
+<div data-money id="prodHistoryList" class="history-list report-grid"></div>
 </div>
 <div id="tab-sales" class="hidden">
 <header class="u-497acf1 d-flex">
@@ -1982,7 +1982,7 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 </div>
 </div>
-<div id="customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
+<div data-money id="customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
 <div class="u-25351ff d-flex">
 <span class="u-fs-sm2 u-text-muted u-fw-400" >Current Credit:</span>
 <span id="customer-current-credit" class="u-b3cc95b">0.00</span>
@@ -2010,23 +2010,23 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 <input type="hidden" id="payment-type-value" value="CREDIT">
 </div>
-<div class="card result-box" id="sale-result-cost">
+<div data-money class="card result-box" id="sale-result-cost">
 Total Cost: <span id="cust-total-cost">0.00</span>
 </div>
 <div class="card result-box" id="sale-result-value">
 Total Value: <span id="cust-total-value">0.00</span>
 </div>
-<div class="card result-box" id="sale-result-profit">
+<div data-money class="card result-box" id="sale-result-profit">
 Profit: <span id="cust-profit">0.00</span>
 </div>
 </div>
-<div class="card result-box d-none" id="cust-coll-result">
+<div data-money class="card result-box d-none" id="cust-coll-result">
 <span id="cust-coll-result-label">Balance After Collection:</span> <span id="cust-coll-balance">—</span>
 </div>
 <button type="button" class="stock-tile d-none" id="inventory-warning" aria-expanded="false" aria-live="polite" onclick="toggleStockTile(this)"></button>
 <div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction" onclick="(async () => { await saveCustomerTransaction() })()">Save Transaction</button></div>
 </div>
-<div class="card" id="customers-card">
+<div data-money class="card" id="customers-card">
 <div class="section-header u-59e2099">
 <h3 class="u-3b741c2">CUSTOMERS</h3>
 <input type="text" id="customer-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
@@ -2044,7 +2044,7 @@ oninput="filterCustomers()">
 </div>
 
 </div>
-<div class="card chart-card">
+<div data-money class="card chart-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Analytics</h3>
 <div class="toggle-group">
@@ -2063,7 +2063,7 @@ oninput="filterCustomers()">
 </div>
 </div>
 </div>
-<div class="section-header">
+<div data-money class="section-header">
 <h3>Summary</h3>
 <div class="toggle-group" id="sales-summary-toggle">
 <div class="toggle-opt active" id="ss-day-btn" onclick="setSalesSummaryMode('day')">Daily</div>
@@ -2073,7 +2073,7 @@ oninput="filterCustomers()">
 <div class="toggle-opt" id="ss-all-btn" onclick="setSalesSummaryMode('all')">All Time</div>
 </div>
 </div>
-<div class="card sx-card sx-card--accent" id="sales-summary-card">
+<div data-money class="card sx-card sx-card--accent" id="sales-summary-card">
 <div class="sx-card-head"><h4 class="sx-card-title" id="sales-summary-title">Daily Sales</h4><span class="badge badge-tint sx-chip sx-tone-good d-none" id="cust-active-margin"></span></div>
 <div class="sx-hero sx-tone-good"><span class="sx-hero-label">Total value</span><div class="sx-hero-value rev-val" id="cust-active-value">0.00</div></div>
 <div id="sales-split"></div>
@@ -2084,10 +2084,10 @@ oninput="filterCustomers()">
 <div class="card stat sx-tone-warn"><span class="stat-label">Pending credits</span><span class="stat-value" id="cust-active-credit">0.00</span></div>
 </div>
 </div>
-<div class="u-03ee4e9 d-flex">
+<div data-money class="u-03ee4e9 d-flex">
 <span class="u-9daf5c8">Sales History</span>
 </div>
-<div id="custHistoryList" class="history-list u-20b2a6c d-flex"></div>
+<div data-money id="custHistoryList" class="history-list u-20b2a6c d-flex"></div>
 </div>
 <div id="tab-calc" class="hidden">
 <header class="u-497acf1 d-flex">
@@ -2162,7 +2162,7 @@ oninput="filterCustomers()">
 <div class="card result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
 <button class="btn btn-main u-mt-8" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
 </div>
-<div id="combinedSection" class="hidden">
+<div data-money id="combinedSection" class="hidden">
 <div class="section-header">
 <h3 class="u-heading-main" >Comparison</h3>
 <div class="toggle-group">
@@ -2200,7 +2200,7 @@ oninput="filterCustomers()">
 </table>
 </div>
 </div>
-<div id="individualChartSection" class="hidden">
+<div data-money id="individualChartSection" class="hidden">
 <div class="card chart-card">
 <div class="section-header">
 <h3 class="u-heading-main" >Performance Analytics for <span id="selectedSellerName">...</span></h3>
@@ -2233,7 +2233,7 @@ oninput="filterCustomers()">
 </div>
 </div>
 </div>
-<div class="daily-performance-overview">
+<div data-money class="daily-performance-overview">
 <div class="section-header u-5beb8fb">
 <h3>Performance Overview (<span id="reportSellerName">...</span>)</h3>
 <div class="toggle-group" id="perf-overview-toggle">
@@ -2259,7 +2259,7 @@ oninput="filterCustomers()">
 </div>
 </div>
 </div>
-<div class="card debt-panel sx-card">
+<div data-money class="card debt-panel sx-card">
 <div class="sx-card-head"><h4 class="sx-card-title"><span id="debtSellerName">...</span> · Market debt tracker</h4></div>
 <div class="sx-hero sx-tone-bad"><span class="sx-hero-label">Current market debt</span><div class="sx-hero-value" id="ltBalance">0.00</div></div>
 <div id="ltRecovery"></div>
@@ -2268,10 +2268,10 @@ oninput="filterCustomers()">
 <div class="card stat sx-tone-good"><span class="stat-label">Cash recovered</span><span class="stat-value" id="ltCollected">0.00</span></div>
 </div>
 </div>
-<div class="u-03ee4e9 d-flex">
+<div data-money class="u-03ee4e9 d-flex">
 <span class="u-9daf5c8">Calculator History</span>
 </div>
-<div id="historyList" class="history-list report-grid"></div>
+<div data-money id="historyList" class="history-list report-grid"></div>
 </div>
 <div id="tab-factory" class="hidden">
 <header id="factory-tab-header" class="u-cfe00e0 d-flex">

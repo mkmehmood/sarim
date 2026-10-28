@@ -1,4 +1,5 @@
 import { themeColor, themeVar } from './theme-tokens.js';
+import { isMoneyRestricted } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
@@ -663,6 +664,7 @@ range.commissionItems = mergeExpenseItems(range.commissionItems, commissionItems
 }
 
 export function updateSalesCharts(comp) {
+if (isMoneyRestricted()) return;
 if(!comp) return;
 const selectedMetric = document.getElementById('metricSelector').value;
 const metricLabel = document.getElementById('metricSelector').options[document.getElementById('metricSelector').selectedIndex].text;
@@ -1193,6 +1195,7 @@ _filterHistoryByPeriod('#custHistoryList', refDate, currentSalesSummaryMode || '
 
 export function setSalesSummaryMode(mode) {
 currentSalesSummaryMode = mode; window.currentSalesSummaryMode = currentSalesSummaryMode;
+if (isMoneyRestricted()) return;
 const labels = { day:'Daily', week:'Weekly', month:'Monthly', year:'Yearly', all:'All Time' };
 const prefixes = ['day','week','month','year','all'];
 prefixes.forEach(p => {

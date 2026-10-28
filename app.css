@@ -5656,3 +5656,4 @@ html.theme-switching *::after {
   .hc-card, .hc-body, .hc-lead { transition: none; }
   .hc-card:hover, .hc-card.is-open { transform: none; }
 }
+html[data-money-locked] [data-money] { display: none; }

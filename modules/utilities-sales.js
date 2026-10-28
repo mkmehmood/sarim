@@ -11,6 +11,7 @@ import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
+import { isMoneyRestricted } from './money-privacy.js';
 import { allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
@@ -3343,6 +3344,7 @@ await updateIndChart();
 }
 
 export async function updateIndChart() {
+if (isMoneyRestricted()) return;
 const seller = document.getElementById('sellerSelect').value;
 if (seller === 'COMBINED') return;
 if(indPerformanceChart) indPerformanceChart.destroy();
@@ -3477,6 +3479,7 @@ updateStoreComparisonChart(currentOverviewMode);
 }
 
 export async function updateStoreComparisonChart(mode = 'day') {
+if (isMoneyRestricted()) return;
 const { production } = await loadCollections('production');
 if(storeComparisonChart) storeComparisonChart.destroy();
 const selectedDate = document.getElementById('sys-date').value;
@@ -3661,7 +3664,9 @@ return true;
 });
 const totalItems = filteredProduction.length;
 const histContainer = document.getElementById('prodHistoryList');
-if (totalItems === 0) {
+if (isMoneyRestricted()) {
+histContainer.replaceChildren();
+} else if (totalItems === 0) {
 histContainer.innerHTML = hcEmptyHtml('No records found for this selection.');
 } else {
 const fragment = document.createDocumentFragment();
@@ -5160,6 +5165,7 @@ updateMfgCharts();
 }
 
 export async function updateMfgCharts() {
+if (isMoneyRestricted()) return;
 const { production } = await loadCollections('production');
 if(mfgBarChart) mfgBarChart.destroy();
 if(mfgPieChart) mfgPieChart.destroy();
@@ -5630,6 +5636,7 @@ refreshUI();
 }
 
 export async function updateAllStoresOverview(mode = 'day') {
+if (isMoneyRestricted()) return;
 const { calculator, production, sales } = await loadCollections('calculator', 'production', 'sales');
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
@@ -5814,6 +5821,7 @@ updateCustomerCharts();
 }
 
 export async function updateCustomerCharts() {
+if (isMoneyRestricted()) return;
 const { sales } = await loadCollections('sales');
 if(custSalesChart) custSalesChart.destroy();
 if(custPaymentChart) custPaymentChart.destroy();
@@ -6194,7 +6202,9 @@ updateStatDisplay('year', stats.year);
 updateStatDisplay('all', stats.all);
 if (typeof setSalesSummaryMode === 'function') setSalesSummaryMode(currentSalesSummaryMode || 'day');
 const histContainer = document.getElementById('custHistoryList');
-if (totalItems === 0) {
+if (isMoneyRestricted()) {
+histContainer.replaceChildren();
+} else if (totalItems === 0) {
 histContainer.innerHTML = hcEmptyHtml('No sales found.');
 } else {
 const fragment = document.createDocumentFragment();

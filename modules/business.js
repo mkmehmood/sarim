@@ -1,4 +1,5 @@
 import { APP_CONFIG } from './constants.js';
+import { applyMoneyPrivacy } from './money-privacy.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
 import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
@@ -6,7 +7,7 @@ import { showToast } from './customers.js';
 import { RECORD_KEYS } from './link-graph.js';
 export let appMode;
 window.appMode = appMode;
-export function _set_appMode(v) { appMode = v; window.appMode = v; }
+export function _set_appMode(v) { appMode = v; window.appMode = v; applyMoneyPrivacy(v); }
 export let currentRepProfile;
 window.currentRepProfile = currentRepProfile;
 export function _set_currentRepProfile(v) { currentRepProfile = v; window.currentRepProfile = v; }
