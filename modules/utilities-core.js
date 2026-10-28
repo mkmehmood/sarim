@@ -3163,7 +3163,7 @@ const _rrSet = await (typeof window.getReconciledRepReturnIds === 'function' ? w
 const buildSaleRow = async (t, runBal) => {
   const pt = t.paymentType || 'CASH';
   const isOldDebt = t.transactionType === 'OLD_DEBT';
-  let debit = 0, credit = 0, typeLabel = '', detailLabel = '', extraDetail = '', displayDate = formatDisplayDate(t.supplyDate || t.date);
+  let debit = 0, credit = 0, typeLabel = '', detailLabel = '', extraDetail = '', displayDate = formatDisplayDate(t.date);
   if (isOldDebt) {
     debit = parseFloat(t.totalValue) || 0;
     credit = parseFloat(t.partialPaymentReceived) || 0;
@@ -3187,7 +3187,7 @@ const buildSaleRow = async (t, runBal) => {
     debit = val; credit = val;
     typeLabel = 'CREDIT\n(PAID)';
     detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 ${fmtAmt(await getSalePrice(t))}`;
-    displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
+    displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'REP_RETURN') {
     typeLabel = 'REP RETURN';
     {

@@ -6077,7 +6077,7 @@ const isOldDebt = item.transactionType === 'OLD_DEBT';
 if (!isRepLinked && !isAdminCollection && !isOldDebt && (item.paymentType === 'PARTIAL_PAYMENT' ||
 item.paymentType === 'COLLECTION')) return;
 if (isRepLinked && item.paymentType === 'PARTIAL_PAYMENT') return;
-const effDateStr = item.supplyDate || item.date;
+const effDateStr = item.date;
 const rowDate = new Date(effDateStr);
 const rowYear = rowDate.getFullYear();
 const rowMonth = rowDate.getMonth();
@@ -6261,7 +6261,7 @@ let mergedBadge = '';
 if (item.isMerged) {
 mergedBadge = _mergedBadgeHtml(item, {inline:true});
 }
-const _cardDate = item.supplyDate || item.date;
+const _cardDate = item.date;
 const deleteBtnHtml = item.isMerged ? '' : item.isSettled ? `<div class="badge settled-badge"> Settled</div>` : actionRowHtml('sale', item.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteCustomerSale('${esc(item.id)}') })()">Delete</button>`);
 const creatorHtml = (typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(item) : '';
 const supplyDateText = (item.supplyDate && item.supplyDate !== item.date) ? `Supply date ${formatDisplayDate(item.supplyDate)}` : '';

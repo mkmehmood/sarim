@@ -46,3 +46,13 @@ test('no module writes supplyDate into a record other than the two sale writers'
     assert.doesNotMatch(readSource(`modules/${f}`), /supplyDate\s*:/, `${f} must not create a supplyDate`);
   }
 });
+
+test('ledgers, collection order, history periods and the calculator link use the device date', () => {
+  for (const f of ['link-graph.js', 'rep-sales.js', 'utilities-core.js', 'utilities-payments.js', 'tx-date.js']) {
+    const lines = readSource(`modules/${f}`).split('\n').filter(l => /supplyDate/.test(l) && !/const soldOld = /.test(l));
+    assert.deepEqual(lines, [], `${f} must not read supplyDate outside the inventory check`);
+  }
+  const hist = readSource('modules/utilities-sales.js');
+  assert.match(hist, /const effDateStr = item\.date;/);
+  assert.match(hist, /const _cardDate = item\.date;/);
+});

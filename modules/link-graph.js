@@ -629,7 +629,7 @@ export function collectionCollected(rec) {
 }
 
 export function sortForCollection(list) {
-  const day = (s) => String(s.supplyDate || s.date || '');
+  const day = (s) => String(s.date || '');
   return list.slice().sort((a, b) => {
     const ao = a.transactionType === 'OLD_DEBT' ? 1 : 0, bo = b.transactionType === 'OLD_DEBT' ? 1 : 0;
     if (ao !== bo) return ao - bo;
@@ -639,7 +639,7 @@ export function sortForCollection(list) {
 }
 
 export function collectionEligible(list, collectionDate) {
-  const day = (s) => String(s.supplyDate || s.date || '');
+  const day = (s) => String(s.date || '');
   const cut = String(collectionDate || '');
   return list.filter(s => s.transactionType === 'OLD_DEBT' || !cut || !day(s) || day(s) <= cut);
 }

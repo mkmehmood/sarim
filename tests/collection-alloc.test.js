@@ -142,10 +142,10 @@ describe('collections only reach transactions on or before the collection date',
     assert.deepEqual(plan.allocs.map(x => x.saleId), ['a']);
     assert.equal(plan.leftover, 400);
   });
-  it('uses the supply date when a sale has one', () => {
+  it('uses the device date and ignores the supply date', () => {
     const sales = [{ ...credit('s', '2026-02-20', 100), supplyDate: '2026-01-03' }];
-    assert.equal(collectionEligible(sales, '2026-01-05').length, 1);
-    assert.equal(collectionEligible(sales, '2026-01-02').length, 0);
+    assert.equal(collectionEligible(sales, '2026-01-05').length, 0);
+    assert.equal(collectionEligible(sales, '2026-02-20').length, 1);
   });
 });
 

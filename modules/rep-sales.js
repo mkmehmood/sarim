@@ -1495,7 +1495,7 @@ if (transactions.length > 0) {
 const buildRow = async (t, runBal) => {
 const pt = t.paymentType || 'CASH';
 const isOldDebt = t.transactionType === 'OLD_DEBT';
-let debit = 0, credit = 0, typeLabel = '', detailLabel = '', displayDate = formatDisplayDate(t.supplyDate || t.date);
+let debit = 0, credit = 0, typeLabel = '', detailLabel = '', displayDate = formatDisplayDate(t.date);
 const unitPrice = lockedUnitPrice(t) > 0 ? lockedUnitPrice(t) : await getSalePriceForStore(t.supplyStore || getDefaultStoreKey());
 if (isOldDebt) {
 debit = parseFloat(t.totalValue) || 0;
@@ -1520,7 +1520,7 @@ const val = t.totalValue || 0;
 debit = val; credit = val;
 typeLabel = 'CREDIT\n(PAID)';
 detailLabel = `${fmtAmt(t.quantity||0)} kg × Rs ${fmtAmt(unitPrice)}`;
-displayDate = formatDisplayDate(t.creditReceivedDate || t.supplyDate || t.date);
+displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
 } else if (pt === 'COLLECTION') {
 credit = (parseFloat(t.totalValue) || 0) + collectionExpiredLeft(t);
 typeLabel = 'COLLECTION';
