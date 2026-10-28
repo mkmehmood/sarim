@@ -1,3 +1,4 @@
+import { pickReturnsCovered } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid } from './field-expenses.js';
 import { formatDayMonthYear, formatMonthYear } from './date-format.js';
@@ -2954,7 +2955,7 @@ linkedIds = await markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds,
 entry.linkedSalesIds = linkedIds;
 linkedRepIds = await markRepSalesEntriesAsUsed(seller, date, calcId, _cycSel.from);
 entry.linkedRepSalesIds = linkedRepIds;
-entry.linkedRepReturnIds = (await getPendingRepReturns(seller, _cycSel.to || date)).map(r => r.id);
+entry.linkedRepReturnIds = pickReturnsCovered(await getPendingRepReturns(seller, _cycSel.to || date), ret, exp).map(r => r.id);
 } catch (e) {
 await _rollbackCalc();
 window.notifyBlocking('Failed to save transaction. Nothing was changed.', 'error', 'Something went wrong');

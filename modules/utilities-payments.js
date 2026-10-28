@@ -1,3 +1,5 @@
+import { txDeviceDate } from './tx-date.js';
+import { runRepReturnRelinkMigration } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
@@ -307,7 +309,7 @@ return sales.filter(r =>
   r.currentRepProfile === 'admin' &&
   r.customerName === seller &&
   !used.has(r.id) &&
-  (!toDate || !r.date || r.date <= toDate)
+  (!toDate || !txDeviceDate(r) || txDeviceDate(r) <= toDate)
 );
 }
 
@@ -436,6 +438,13 @@ totalSoldField.value = '';
 totalSoldField.readOnly = true;
 updateCalcRangeLabel();
 return;
+}
+if (!window._repReturnRelinkRan) {
+  window._repReturnRelinkRan = true;
+  try {
+    const r = await runRepReturnRelinkMigration({ store: sqliteStore, save: unifiedSave });
+    if (r && !r.skipped && r.changed) showToast(`Calculator links repaired: ${r.changed} record${r.changed !== 1 ? 's' : ''}.`, 'info');
+  } catch (e) { window._repReturnRelinkRan = false; console.warn('[relink] failed:', _safeErr(e)); }
 }
 const sel = await getCalcCycleSelection(seller);
 if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
