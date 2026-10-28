@@ -4445,6 +4445,20 @@ console.error('adminRemoveAccount:', _safeErr(err));
 
 export async function signOut() {
 try {
+if (currentUser && !window._forceLogoutSignOut) {
+  if (navigator.onLine) {
+    try { await performOneClickSync(true); } catch (_) {}
+    try { await sqliteStore.drainOutbox(); } catch (_) {}
+  }
+  const unsynced = (sqliteStore.outboxPending() || 0) + ((typeof OfflineQueue !== 'undefined' && OfflineQueue.queue) ? OfflineQueue.queue.length : 0);
+  if (unsynced > 0) {
+    const proceed = await showGlassConfirm(
+      `${unsynced} change(s) have not reached the cloud yet. Signing out now will erase them from this device and they will be lost.\nConnect to the internet and try again to keep them.`,
+      { title: 'Unsynced Changes', confirmText: 'Sign Out Anyway', cancelText: 'Stay Signed In', danger: true }
+    );
+    if (!proceed) return;
+  }
+}
 let _savedAppMode = null;
 try {
   const _modeKeys = [

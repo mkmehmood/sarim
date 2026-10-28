@@ -1329,7 +1329,7 @@ window._showLogoutConfirmDialog = async function() {
     showToast('Sign out failed', 'error'); return;
   }
   const confirmed = await window.showGlassConfirm(
-    'You will be signed out of this device.\nYour data remains saved locally and in the cloud.',
+    'You will be signed out and this device's local data will be erased.\nYour data stays safe in the cloud and returns when you sign in again.',
     {
       title: 'Sign Out?',
       confirmText: 'Sign Out',
