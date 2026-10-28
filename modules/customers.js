@@ -1,4 +1,3 @@
-import { hideMoney, anyHidden, isTeamMode, MONEY_MASK } from './team-privacy.js';
 import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, recordCustomerRename, getOldDebtChangeIssue } from './link-guards.js';
 import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
@@ -58,9 +57,7 @@ totalCredit = round2(totalCredit + debtDelta(s, debtNeedsGross(s) ? await getSal
 }
 totalCredit = Math.max(0, totalCredit);
 const _setCust = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
-_setCust('customer-current-credit', anyHidden(matchedSales) ? MONEY_MASK : await formatCurrency(totalCredit));
-const _credNode = document.getElementById('customer-current-credit');
-if (_credNode) { _credNode.dataset.value = String(totalCredit); _credNode.dataset.hidden = anyHidden(matchedSales) ? '1' : ''; }
+_setCust('customer-current-credit', await formatCurrency(totalCredit));
 _setCust('customer-total-quantity', fmtNum(safeNumber(totalQty, 0)) + ' kg');
 document.getElementById('customer-info-display').classList.remove('hidden');
 if (typeof custTransactionMode !== 'undefined' && custTransactionMode === 'collection' && typeof updateCollectionPreview === 'function') {
@@ -110,9 +107,8 @@ if (!name || name.trim() === '') continue;
 if (sale.currentRepProfile !== 'admin') continue;
 const isRepLinked = sale.salesRep && sale.salesRep !== 'NONE';
 if (!customerStats[name]) {
-customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0, hidden: false };
+customerStats[name] = { name: name, credit: 0, quantity: 0, lastSaleDate: 0 };
 }
-if (hideMoney(sale)) customerStats[name].hidden = true;
 customerStats[name].quantity += (sale.quantity || 0);
 customerStats[name].credit = round2(customerStats[name].credit + debtDelta(sale, debtNeedsGross(sale) ? await getSaleTransactionValue(sale) : 0, { reconciledReturnIds: _rrDone }));
 const saleDate = sale.date;
@@ -126,7 +122,7 @@ customerStats[name].lastSaleDate = timestamp;
 let sortedCustomers = Object.values(customerStats)
 .filter(c => c && c.name)
 .sort((a, b) => {
-if (!isTeamMode() && b.credit !== a.credit) return b.credit - a.credit;
+if (b.credit !== a.credit) return b.credit - a.credit;
 return b.lastSaleDate - a.lastSaleDate;
 });
 if (Array.isArray(customers)) {
@@ -169,11 +165,11 @@ const owes = c.credit > 0.005;
 return rlRowHtml({
 name: c.name,
 photo: rlPhoto(_rlPhotos, 'cust:' + c.name.toLowerCase()),
-tone: c.hidden ? 'clear' : (owes ? 'debt' : 'clear'),
+tone: owes ? 'debt' : 'clear',
 details: [
 phone ? phoneActionHTML(phone) : '<span class="rl-muted">No phone</span>'
 ],
-amount: c.hidden ? MONEY_MASK : fmtAmt(safeValue(Math.max(0, c.credit))),
+amount: fmtAmt(safeValue(Math.max(0, c.credit))),
 onOpen: `openCustomerManagement('${rlJsArg(c.name)}')`
 });
 };
@@ -181,7 +177,7 @@ tbody.innerHTML = customerList.map(buildCustomerRow).join('');
 }
 const _setCustH = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
 _setCustH('customer-count', `${totalItems || 0} active`);
-_setCustH('customers-total-credit', sortedCustomers.some(c => c.hidden) ? MONEY_MASK : `${fmtAmt(totalOutstanding)}`);
+_setCustH('customers-total-credit', `${fmtAmt(totalOutstanding)}`);
 _setCustH('customers-total-quantity', fmtNum(safeNumber(totalGlobalQty, 0)) + ' kg');
 }
 
@@ -202,11 +198,7 @@ return `<div class="cust-period-row d-flex">
 }
 
 let _cmEmptyName = '';
-export async function custSummaryHtml(totals, debt, qty, given, settled, n, kind = 'cust', hidden = false) {
-if (hidden) {
-const qtyOnly = `${fmtNum(qty)} kg`;
-return `<div class="cm-sum-label">Current debt</div><div class="cm-sum-debt is-clear">${MONEY_MASK}</div>${n === 0 ? '' : `<div class="cust-period-row d-flex"><div class="stat is-toggle"><span class="stat-label">Total Quantity</span><span class="stat-value">${qtyOnly}</span></div><div class="stat is-collect"><span class="stat-label">Received</span><span class="stat-value">${MONEY_MASK}</span></div></div>`}`;
-}
+export async function custSummaryHtml(totals, debt, qty, given, settled, n, kind = 'cust') {
 const tone = debt > 0.005 ? 'is-debt' : 'is-clear';
 const showQty = _saleChipMode[kind] === 'qty';
 const amountText = String(await formatCurrency(totals.totalSale));
@@ -506,9 +498,9 @@ const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
 const _canDelete = !t.isMerged;
 const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
 const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
-_entries.push({ id: t.id, qty: periodQuantity([{ t }]), dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, kg: soldQuantity(t), sold: _isSale ? _txValue : 0, got: rowReceived(t, _txValue).received, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, hide: hideMoney(t), row: _rowData });
+_entries.push({ id: t.id, qty: periodQuantity([{ t }]), dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, kg: soldQuantity(t), sold: _isSale ? _txValue : 0, got: rowReceived(t, _txValue).received, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
 }
-await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll, 'cust', historyTxns.some(hideMoney)), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
+await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
 }
 
 window.recordFirstSaleForCustomer = () => {

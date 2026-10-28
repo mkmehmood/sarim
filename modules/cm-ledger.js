@@ -2,7 +2,6 @@ import { esc, fmtAmt } from './business.js';
 import { fmtNum, periodLine } from './finance.js';
 
 const kgSoldText = (kg) => `${fmtNum(Math.round(kg * 100) / 100)} kg sold`;
-import { MONEY_MASK } from './team-privacy.js';
 import { openDialog } from './dialog.js';
 import { renderMarkupImage, warmMarkupImage } from './dialog-image.js';
 import { formatDateKey, dateSearchText } from './date-format.js';
@@ -143,29 +142,11 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.clo
   document.addEventListener('touchend', (e) => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 70) { const sh = document.getElementById('cm-sheet'); if (sh && sh.scrollTop <= 0) window.closeCustomerTxnSheet(); } y0 = null; }, { passive: true });
 })();
 
-function maskEntryMoney(e) {
-  const kgOnly = e.kg > 0 ? `${fmtNum(Math.round(e.kg * 100) / 100)} kg` : '';
-  e.amtText = MONEY_MASK;
-  e.balText = MONEY_MASK;
-  e.balTone = '';
-  e.tag = '';
-  e.rSub = kgOnly;
-  e.invSub = kgOnly;
-  e.sold = 0;
-  e.got = 0;
-  if (e.row) {
-    e.row.amtText = MONEY_MASK;
-    e.row.balHtml = '';
-    e.row.info = '<div class="u-fs-sm2 u-text-muted">Amounts are hidden for records entered by others.</div>';
-  }
-}
-
 export async function renderLedger(kind, { name, phone, entries, summaryHtml, money, emptyAction }) {
   const c = CFG[kind];
   const state = st(kind);
   const list = document.getElementById(c.list);
   if (!list) return;
-  entries.forEach((e) => { if (e.hide) maskEntryMoney(e); });
   state.rows.clear();
   state.days.clear();
   state.name = name;
@@ -195,10 +176,10 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
   for (const e of entries) {
     const month = e.dkey.slice(0, 7);
     let M = mIdx[month];
-    if (!M) { M = mIdx[month] = { key: month, days: [], dIdx: {}, c: 0, kg: 0, sold: 0, got: 0, hidden: false }; months.push(M); }
+    if (!M) { M = mIdx[month] = { key: month, days: [], dIdx: {}, c: 0, kg: 0, sold: 0, got: 0 }; months.push(M); }
     let D = M.dIdx[e.dkey];
-    if (!D) { D = M.dIdx[e.dkey] = { key: e.dkey, items: [], kg: 0, sold: 0, got: 0, hidden: false }; M.days.push(D); }
-    D.items.push(e); D.kg += e.kg || 0; D.sold += e.sold; D.got += e.got; if (e.hide) { D.hidden = true; M.hidden = true; }
+    if (!D) { D = M.dIdx[e.dkey] = { key: e.dkey, items: [], kg: 0, sold: 0, got: 0 }; M.days.push(D); }
+    D.items.push(e); D.kg += e.kg || 0; D.sold += e.sold; D.got += e.got;
     M.c++; M.kg += e.kg || 0; M.sold += e.sold; M.got += e.got;
   }
   const rowHtml = (e, first) => {
@@ -212,10 +193,10 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     const chrono = D.items.slice().reverse();
     const latest = D.items[0];
     const net = D.items.reduce((a, e) => a + (e.debit || 0) - (e.credit || 0), 0);
-    state.days.set(D.key, { rows: chrono, closing: latest.bal, opening: latest.bal - net, sold: D.sold, got: D.got, hidden: D.hidden });
+    state.days.set(D.key, { rows: chrono, closing: latest.bal, opening: latest.bal - net, sold: D.sold, got: D.got });
     const L = lbl(kind);
-    const summary = D.hidden ? (D.kg > 0 ? kgSoldText(D.kg) : '') : (D.items.length > 1 && kind !== 'ent') ? periodLine(D.kg, D.sold, D.got) : (D.items.length > 1 ? `${L.a} ${await money(D.sold)} \u00b7 ${L.b} ${await money(D.got)}` : '');
-    return `<div class="card cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${(c.noInvoice || D.hidden) ? '' : `<button type="button" class="btn cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
+    const summary = (D.items.length > 1 && kind !== 'ent') ? periodLine(D.kg, D.sold, D.got) : (D.items.length > 1 ? `${L.a} ${await money(D.sold)} \u00b7 ${L.b} ${await money(D.got)}` : '');
+    return `<div class="card cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, i === 0)).join('')}<div class="cm-day-foot"><span>${summary}</span>${c.noInvoice ? '' : `<button type="button" class="btn cm-share" onclick="shareCustomerDay('${kind}','${esc(D.key)}')" title="Open invoice for this day">${SHARE_ICON}<span>Invoice</span></button>`}</div></div>`;
   };
   let html = '';
   const many = n > 40;
@@ -227,7 +208,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     const md = new Date(M.key + '-01T00:00:00');
     const mName = isNaN(md.getTime()) ? M.key : md.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const collapsed = many && mi > 0;
-    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}" id="cm-m-${kind}-${esc(M.key)}"><button type="button" class="cm-month-head" onclick="toggleCmMonth(this)" aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(mName)}</span><span class="cm-month-count">${M.kg > 0 ? kgSoldText(M.kg) : ''}</span><span class="cm-month-sum">${M.hidden ? '' : `${lbl(kind).a} ${await money(M.sold)} \u00b7 ${lbl(kind).b} ${await money(M.got)}`}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
+    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}" id="cm-m-${kind}-${esc(M.key)}"><button type="button" class="cm-month-head" onclick="toggleCmMonth(this)" aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(mName)}</span><span class="cm-month-count">${M.kg > 0 ? kgSoldText(M.kg) : ''}</span><span class="cm-month-sum">${lbl(kind).a} ${await money(M.sold)} \u00b7 ${lbl(kind).b} ${await money(M.got)}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
   }
   html += '<div class="cm-no-match empty d-none">No matching history. Clear the search or pick All.</div>';
   list.className = comfortable ? 'cm-list is-comfortable' : 'cm-list';
@@ -301,7 +282,7 @@ async function openDayInvoicePreview(kind, dayKey, render) {
     if (typeof render === 'function') await render();
     const state = st(kind);
     const d = state.days.get(dayKey);
-    if (!state.name || !d || !d.rows.length || d.hidden) return null;
+    if (!state.name || !d || !d.rows.length) return null;
     const logo = await logoPromise;
     return { state, d, logo, html: invoicePaperHtml(kind, dayKey, d, state, logo) };
   })().catch((err) => { console.error('Invoice data failed.', err); return null; });
@@ -365,7 +346,6 @@ export async function openDayInvoice(kind, dayKey, render) {
     if (typeof render === 'function') await render();
     const state = st(kind);
     const d = state.days.get(dayKey);
-    if (d && d.hidden) { toast('Invoices are not available for days with hidden amounts.', 'warning'); return; }
     if (!state.name || !d || !d.rows.length) { toast('Nothing to invoice for this day.', 'warning'); return; }
     const logo = await brandLogo();
     file = await prepareInvoiceFile(kind, dayKey, d, state, logo);

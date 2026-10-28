@@ -1,9 +1,8 @@
 import { themeColor } from './theme-tokens.js';
-import { hideMoney, MONEY_MASK } from './team-privacy.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smBarHtml } from './summary-card.js';
-import { hcCardHtml, hcChip, hcMaskMoney } from './history-card.js';
+import { hcCardHtml, hcChip } from './history-card.js';
 import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate, pinOpeningDays } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected, planGoodsCredit } from './link-graph.js';
@@ -223,8 +222,7 @@ let debt = 0;
 history.forEach(h => { debt = round2(debt + debtDelta(h, h.totalValue)); });
 debt = Math.max(0, debt);
 const _repCred = document.getElementById('rep-customer-current-credit');
-const _repHide = history.some(hideMoney);
-if (_repCred) { _repCred.innerText = _repHide ? MONEY_MASK : "" + fmtAmt(safeNumber(debt, 0)); _repCred.dataset.value = String(debt); _repCred.dataset.hidden = _repHide ? '1' : ''; }
+if (_repCred) _repCred.innerText = "" + fmtAmt(safeNumber(debt, 0));
 const _repInfo = document.getElementById('rep-customer-info-display');
 if (_repInfo) _repInfo.classList.remove('hidden');
 if(repTransactionMode === 'collection') {
@@ -239,13 +237,12 @@ const seq = ++_repPreviewSeq;
 const _credEl = document.getElementById('rep-customer-current-credit');
 const debt = (typeof debtOverride === 'number')
 ? debtOverride
-: (_credEl && _credEl.dataset.value !== undefined ? parseFloat(_credEl.dataset.value) || 0 : parseFloat((_credEl?.innerText || '0').replace(/[^0-9.-]/g, '')) || 0);
-const _repBalHidden = !!(_credEl && _credEl.dataset.hidden === '1');
+: parseFloat((_credEl?.innerText || '0').replace(/[^0-9.-]/g, '')) || 0;
 const inputAmt = parseFloat(document.getElementById('rep-amount-collected')?.value) || 0;
 const expired = parseFloat(document.getElementById('rep-expired-qty')?.value) || 0;
 const paint = (remaining) => {
 const _repTV = document.getElementById('rep-total-value');
-if (_repTV) _repTV.innerText = _repBalHidden ? MONEY_MASK : '' + fmtAmt(safeNumber(remaining, 0));
+if (_repTV) _repTV.innerText = '' + fmtAmt(safeNumber(remaining, 0));
 };
 paint(Math.max(0, debt - inputAmt));
 if (expired <= 0) return;
@@ -864,8 +861,7 @@ s.salesRep === currentRepProfile
 );
 const custMap = {};
 myData.forEach(s => {
-if(!custMap[s.customerName]) custMap[s.customerName] = { debt: 0, qty: 0, hidden: false };
-if (hideMoney(s)) custMap[s.customerName].hidden = true;
+if(!custMap[s.customerName]) custMap[s.customerName] = { debt: 0, qty: 0 };
 custMap[s.customerName].qty = round2(custMap[s.customerName].qty + periodQuantity([{ t: s }]));
 custMap[s.customerName].debt = round2(custMap[s.customerName].debt + debtDelta(s, s.totalValue));
 });
@@ -918,11 +914,11 @@ const phone = repContact?.phone || latest?.customerPhone || '';
 return rlRowHtml({
 name,
 photo: rlPhoto(_rlPhotos, 'rep-cust:' + (currentRepProfile || '') + ':' + name.toLowerCase()),
-tone: customerData.hidden ? 'clear' : (customerData.debt > 1 ? 'warn' : 'clear'),
+tone: customerData.debt > 1 ? 'warn' : 'clear',
 details: [
 phone ? phoneActionHTML(phone) : '<span class="rl-muted">No phone</span>'
 ],
-amount: customerData.hidden ? MONEY_MASK : fmtAmt(Math.max(0, customerData.debt)),
+amount: fmtAmt(Math.max(0, customerData.debt)),
 onOpen: `openRepCustomerManagement('${rlJsArg(name)}')`
 });
 };
@@ -1184,11 +1180,11 @@ _entries.push({
   balTone: _bal > 0.005 ? 'is-debt' : 'is-clear',
   unpaid: isCredit && !t.creditReceived && !t.isMerged,
   kg: soldQuantity(t), sold: _isSale ? rAmt : 0, got: rowReceived(t, rAmt).received,
-  debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, hide: hideMoney(t),
+  debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled,
   row: { title: rTitle, amtText: await formatCurrency(rAmt), rIn, info, panelPlaceholder, kebabBtn, canEdit: !(t.isMerged || isOldDebt), canDelete: !t.isMerged, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) }
 });
 }
-await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _gAll, _rAll, _nAll, 'rep', transactions.some(hideMoney)), money: formatCurrency });
+await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _gAll, _rAll, _nAll, 'rep'), money: formatCurrency });
 }
 
 export async function openRepCustomerEditModal(customerName) {
@@ -1680,14 +1676,13 @@ const isOldDebt = item.transactionType === 'OLD_DEBT';
 const tone = isCollection ? 'good' : (isCredit ? 'warn' : 'info');
 const tag = isCollection ? 'Collection' : (isOldDebt ? 'Old debt' : (isCredit ? 'Credit' : 'Sale'));
 const repChip = item.salesRep && !item.createdBy ? hcChip(item.salesRep.split(' ')[0], 'info') : '';
-const _repCard = {
+return hcCardHtml({
 tone, avatar: item.customerName, title: item.customerName,
 sub: `${esc(item.time || '')}${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`,
 chips: [repChip, item.isSettled ? hcChip('Settled', 'good') : ''],
 amount: fmtAmt(isCollection && !(Number(item.totalValue) > 0) && Number(item.expiredValue) > 0 ? item.expiredValue : item.totalValue), tag, tagTone: isCollection ? 'good' : (isCredit ? 'warn' : ''),
 metrics: (isCollection || isOldDebt) ? [] : [{ label: 'Quantity', value: `${fmtNum(item.quantity)} kg`, cls: 'qty-val' }]
-};
-return hcCardHtml(hideMoney(item) ? hcMaskMoney(_repCard) : _repCard, { className: `is-compact${item.isSettled ? ' is-settled-record' : ''}`, attrs: { 'data-date': item.date } });
+}, { className: `is-compact${item.isSettled ? ' is-settled-record' : ''}`, attrs: { 'data-date': item.date } });
 }).join('');
 const tableHTML = `<div class="hc-list-head"><span class="hc-list-title">${esc(headerText)}</span><span class="hc-list-count">${fmtNum(periodQuantity(activityData.map((t) => ({ t }))))} kg</span></div><div class="hc-list">${cardsHtml}</div>`;
 list.innerHTML = tableHTML;
