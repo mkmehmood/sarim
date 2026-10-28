@@ -1,4 +1,5 @@
 import { formatDateTime } from './date-format.js';
+import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
 import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateUUID } from './business.js';
@@ -4511,6 +4512,7 @@ if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.clearAll().catch((
 if (typeof _clearDeviceIdStorage === 'function') {
   await _clearDeviceIdStorage().catch(() => {});
 }
+try { await wipeAllLocalData(); } catch (_) {}
 if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }

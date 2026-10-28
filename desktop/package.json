@@ -55,7 +55,8 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "differentialPackage": false
+      "differentialPackage": false,
+      "deleteAppDataOnUninstall": true
     },
     "portable": {
       "artifactName": "Gull-Zubair-Desktop-${os}-${arch}-portable.${ext}"

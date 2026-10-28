@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, protocol, net, session, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, protocol, net, session, shell, dialog, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -55,6 +55,12 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 app.whenReady().then(() => {
+  ipcMain.handle('desktop:wipe-data', async () => {
+    await session.defaultSession.clearStorageData();
+    await session.defaultSession.clearCache();
+    await session.defaultSession.clearAuthCache();
+    return true;
+  });
   protocol.handle('https', (request) => {
     const url = new URL(request.url);
     if (url.host === APP_HOST && (url.pathname.startsWith(APP_BASE) || url.pathname === '/' || !url.pathname.startsWith('/_'))) {
