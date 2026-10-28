@@ -1172,7 +1172,7 @@ const weekStart = new Date(refDate);
 weekStart.setDate(refDate.getDate() - 6);
 const isCustList = listSelector === '#custHistoryList';
 const matchName = isCustList ? customerHistoryMatcher('cust-name') : null;
-const cards = document.querySelectorAll(listSelector + ' .card');
+const cards = document.querySelectorAll(listSelector + ' .card:not(.hc-metric)');
 let total = 0, shown = 0;
 cards.forEach(card => {
 total++;

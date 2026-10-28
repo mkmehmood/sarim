@@ -8,8 +8,9 @@ const list = {
   querySelectorAll: (sel) => (sel === '.hist-filter-empty' ? emptyNodes.map((n) => ({ remove() { emptyNodes = emptyNodes.filter((x) => x !== n); } })) : []),
   appendChild: (n) => emptyNodes.push(n)
 };
+let tiles = [];
 const doc = {
-  querySelectorAll: () => cards,
+  querySelectorAll: (sel) => (sel.includes(':not(.hc-metric)') ? cards : [...cards, ...tiles]),
   querySelector: () => list,
   createElement: () => ({ className: '', innerHTML: '' }),
   getElementById: (id) => (id === 'cust-name' ? input : null)
@@ -25,6 +26,7 @@ const visible = (mode) => { pay._filterHistoryByPeriod('#custHistoryList', '2026
 beforeEach(() => {
   cards = [mkCard('2026-10-28', 'ali'), mkCard('2026-10-25', 'ali khan'), mkCard('2026-10-10', 'sara'), mkCard('2026-03-01', 'ali'), mkCard('2025-12-31', 'sara')];
   emptyNodes = [];
+  tiles = cards.map(() => ({ shown: true, getAttribute: () => null }));
   input = { value: '', dataset: {} };
 });
 
@@ -55,6 +57,14 @@ describe('name input filters history', () => {
   it('clearing the name shows everyone again', () => {
     input.value = 'sara'; visible('all'); input.value = '';
     assert.equal(visible('all').length, 5);
+  });
+  it('never hides the stat tiles inside visible cards', () => {
+    input.value = 'ali'; visible('all');
+    assert.ok(tiles.every((t) => t.shown), 'metric tiles stay visible');
+  });
+  it('shows the empty message for a period with no sales even when no name is typed', () => {
+    pay._filterHistoryByPeriod('#custHistoryList', '2026-01-01', 'day');
+    assert.equal(emptyNodes.length, 1);
   });
   it('shows a message when nothing matches, and removes it afterwards', () => {
     input.value = 'zzz'; assert.equal(visible('all').length, 0); assert.equal(emptyNodes.length, 1);
