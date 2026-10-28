@@ -21,7 +21,7 @@
   function formatDisplay(iso, placeholder) {
     var dt = parseISO(iso);
     if (!dt) return placeholder || 'Select date';
-    return dt.getDate() + ' ' + MONTHS_SHORT[dt.getMonth()] + ' ' + dt.getFullYear();
+    return ('0' + dt.getDate()).slice(-2) + ' ' + MONTHS_SHORT[dt.getMonth()].toUpperCase() + ' ' + dt.getFullYear();
   }
   var openPopoverBtn = null;
   var activeReposition = null;

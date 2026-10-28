@@ -1,5 +1,5 @@
 import { themeVar } from './theme-tokens.js';
-import { formatDayMonthYear } from './date-format.js';
+import { formatDayMonthYear, formatDateTime } from './date-format.js';
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID, loadCollections } from './business.js';
 import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToCloud, sanitizeForFirestore } from './sync.js';
 import { defaultSettings } from './utilities-core.js';
@@ -20,7 +20,7 @@ export async function updateDeltaSyncStatsDisplay() {
       statsRows.forEach(row => {
         const col = row.getAttribute('data-sync-stat');
         if (stats && stats[col]) {
-          row.textContent = new Date(stats[col]).toLocaleString();
+          row.textContent = formatDateTime(stats[col]);
         } else {
           row.textContent = 'Never';
         }

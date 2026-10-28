@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-format.js';
 import { APP_CONFIG } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
 import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateUUID } from './business.js';
@@ -295,9 +296,9 @@ const hasChanges = await DeltaSync.hasLocalChanges(collection);
 const status = {
 collection,
 lastSync: lastSyncMs
-? new Date(lastSyncMs).toLocaleString()
+? formatDateTime(lastSyncMs)
 : 'Never',
-lastModification: lastMod ? new Date(lastMod).toLocaleString() : 'Never',
+lastModification: lastMod ? formatDateTime(lastMod) : 'Never',
 localRecords: data.length,
 hasPendingChanges: hasChanges
 };
@@ -3519,7 +3520,7 @@ export async function _doPushDataToCloud(silent = false) {
         : ` Backup complete — ${operationCount} item${operationCount !== 1 ? 's' : ''} uploaded`;
       showToast(message, 'success');
       const display = document.getElementById('lastSyncDisplay');
-      if (display) display.textContent = `Last Cloud Sync: ${new Date(now).toLocaleString()}`;
+      if (display) display.textContent = `Last Cloud Sync: ${formatDateTime(now)}`;
     }
   } catch (error) {
     console.error('[pushDataToCloud] error:', _safeErr(error));

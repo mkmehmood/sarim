@@ -22,7 +22,7 @@ import { collectAuxBackupFields } from './link-graph.js';
 import { isBinStore, recoverStoreRecord } from './store-recycle.js';
 import { confirmGuard } from './confirm-guard.js';
 import { toInternationalDigits } from './phone-format.js';
-import { formatDayMonthYear } from './date-format.js';
+import { formatDayMonthYear, formatDateTime, formatMonthYear } from './date-format.js';
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
 export let currentCompMode = 'all';
 window.currentCompMode = currentCompMode;
@@ -3840,7 +3840,7 @@ const monthTotals = {};
 records.forEach(e => {
 if (!e.date) return;
 const d = new Date(e.date);
-const key = d.toLocaleDateString('en-US',{year:'numeric',month:'short'});
+const key = formatMonthYear(d);
 monthTotals[key] = (monthTotals[key] || 0) + (parseFloat(e.amount) || 0);
 });
 doc.setFontSize(9); doc.setFont(undefined,'bold'); doc.setTextColor(50,50,50);
@@ -4811,7 +4811,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
       const tabLabel = RECYCLE_TAB_LABELS[tabKey] || tabKey;
       const typeLabel = `${tabLabel} › ${RECYCLE_BIN_COLLECTION_LABELS[col] || col}`;
       const deletedDate = rec.deletedAt
-        ? new Date(rec.deletedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+        ? formatDateTime(rec.deletedAt)
         : 'Unknown date';
       const daysAgo = rec.deletedAt ? Math.floor((Date.now() - rec.deletedAt) / 86400000) : '?';
       const expiresIn = rec.deletedAt ? Math.max(0, 90 - Math.floor((Date.now() - rec.deletedAt) / 86400000)) : '?';
@@ -7079,12 +7079,12 @@ if (device.firstLoginAt) {
     const ms = typeof device.firstLoginAt === 'number'
       ? device.firstLoginAt
       : (device.firstLoginAt.toMillis ? device.firstLoginAt.toMillis() : Number(device.firstLoginAt));
-    firstLoginStr = new Date(ms).toLocaleString();
+    firstLoginStr = formatDateTime(ms);
   } catch (_) {}
 } else if (device.deviceId && typeof _extractDeviceFirstLoginTime === 'function') {
   try {
     const flt = _extractDeviceFirstLoginTime(device.deviceId);
-    if (flt) firstLoginStr = flt.toLocaleString();
+    if (flt) firstLoginStr = formatDateTime(flt);
   } catch (_) {}
 }
 let cardHtml = '<div class="u-296d231 st-background__f38efd st-border-bottom__e54b2f">';
@@ -7095,9 +7095,9 @@ cardHtml += '<div class="st-font-size__c95659 st-font-weight__2b9532 u-1cd2eeb d
 cardHtml += '<div class="st-font-size__2f7bba st-margin-top__7a21c6 dc-color" style="--d-color:' + onlineColor + '">' + onlineDot + '</div>';
 cardHtml += '</div>';
 cardHtml += '</div>';
-const lastSeenStr = lastSeen ? new Date(lastSeen).toLocaleString() : 'Never';
+const lastSeenStr = lastSeen ? formatDateTime(lastSeen) : 'Never';
 cardHtml += '<div class="u-af437a1">Last seen: ' + lastSeenStr + '</div>';
-const lastCmdStr = remoteAppliedAt ? new Date(remoteAppliedAt).toLocaleString() : null;
+const lastCmdStr = remoteAppliedAt ? formatDateTime(remoteAppliedAt) : null;
 const lastCmdMode = remoteAppliedMode ? remoteAppliedMode.toUpperCase() : null;
 const lastCmdBy = remoteAppliedBy || null;
 if (lastCmdMode || totalCommands > 0) {

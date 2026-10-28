@@ -1,6 +1,6 @@
 import { themeColor, themeVar } from './theme-tokens.js';
 import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid } from './field-expenses.js';
-import { formatDayMonthYear } from './date-format.js';
+import { formatDayMonthYear, formatMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
 import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
@@ -3399,7 +3399,7 @@ const monthData = {};
 sellerHistory.forEach(h => {
 const d = new Date(h.date);
 const monthYear = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-const monthLabel = `${d.toLocaleDateString('en-US', {month:'short'})} ${d.getFullYear()}`;
+const monthLabel = formatMonthYear(d);
 if (!monthData[monthYear]) {
 monthData[monthYear] = {
 label: monthLabel,
@@ -5221,7 +5221,7 @@ const monthData = {};
 filteredData.forEach(item => {
 const d = new Date(item.date);
 const monthYear = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-const monthLabel = `${d.toLocaleDateString('en-US', {month:'short'})} ${d.getFullYear()}`;
+const monthLabel = formatMonthYear(d);
 if (!monthData[monthYear]) {
 monthData[monthYear] = {
 label: monthLabel,
@@ -5910,7 +5910,7 @@ const monthData = {};
 sales.forEach(item => {
 const d = new Date(item.date);
 const monthYear = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-const monthLabel = `${d.toLocaleDateString('en-US', {month:'short'})} ${d.getFullYear()}`;
+const monthLabel = formatMonthYear(d);
 if (!monthData[monthYear]) {
 monthData[monthYear] = {
 label: monthLabel,

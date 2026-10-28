@@ -18,7 +18,7 @@ import { calculateDynamicCost, getEffectiveSalePriceForCustomer, getSalePriceFor
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, refreshRepUI, renderRepCustomerTable } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
-import { formatDayMonthYear } from './date-format.js';
+import { formatDayMonthYear, formatDateTime } from './date-format.js';
 import { getDefaultStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
 import { ledgerEffectiveDate } from './tx-date.js';
 import { describeBinRecord } from './store-recycle.js';
@@ -344,7 +344,7 @@ modal.setAttribute('role', 'dialog');
 modal.setAttribute('aria-modal', 'true');
 modal.setAttribute('aria-label', 'Failed operations');
 const rows = this.deadLetterQueue.map(entry => {
-const ts = entry.failedAt ? new Date(entry.failedAt).toLocaleString() : '—';
+const ts = entry.failedAt ? formatDateTime(entry.failedAt) : '—';
 const op = entry.operation || {};
 const label = [op.action, op.collection, op.docId ? op.docId.slice(0, 8) + '…' : ''].filter(Boolean).join(' · ');
 const errText = esc(entry.finalError || '');

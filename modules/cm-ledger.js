@@ -4,7 +4,7 @@ import { fmtNum, periodLine } from './finance.js';
 const kgSoldText = (kg) => `${fmtNum(Math.round(kg * 100) / 100)} kg sold`;
 import { openDialog } from './dialog.js';
 import { renderMarkupImage, warmMarkupImage } from './dialog-image.js';
-import { formatDateKey, dateSearchText } from './date-format.js';
+import { formatDateKey, dateSearchText, formatMonthYear } from './date-format.js';
 import { BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 
 const CFG = {
@@ -206,7 +206,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
     for (const D of M.days) days += await dayHtml(D);
     if (comfortable) { html += days; continue; }
     const md = new Date(M.key + '-01T00:00:00');
-    const mName = isNaN(md.getTime()) ? M.key : md.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const mName = isNaN(md.getTime()) ? M.key : formatMonthYear(md);
     const collapsed = many && mi > 0;
     html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}" id="cm-m-${kind}-${esc(M.key)}"><button type="button" class="cm-month-head" onclick="toggleCmMonth(this)" aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(mName)}</span><span class="cm-month-count">${M.kg > 0 ? kgSoldText(M.kg) : ''}</span><span class="cm-month-sum">${lbl(kind).a} ${await money(M.sold)} \u00b7 ${lbl(kind).b} ${await money(M.got)}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
   }
@@ -220,7 +220,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
   if (jump) {
     const show = many && months.length >= 3;
     jump.classList.toggle('d-none', !show);
-    jump.innerHTML = show ? months.map((M) => { const d = new Date(M.key + '-01T00:00:00'); return `<button type="button" class="toggle-opt" onclick="jumpCmMonth('cm-m-${kind}-${esc(M.key)}')">${isNaN(d.getTime()) ? esc(M.key) : d.toLocaleDateString('en-US', { month: 'short' })} ${M.c}</button>`; }).join('') : '';
+    jump.innerHTML = show ? months.map((M) => { const d = new Date(M.key + '-01T00:00:00'); return `<button type="button" class="toggle-opt" onclick="jumpCmMonth('cm-m-${kind}-${esc(M.key)}')">${isNaN(d.getTime()) ? esc(M.key) : d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} ${M.c}</button>`; }).join('') : '';
   }
   applyCmFilters(kind);
 }
