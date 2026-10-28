@@ -2,8 +2,9 @@ import { txDeviceDate, txDeviceCompare } from './tx-date.js';
 
 const EPS = 0.0001;
 const num = v => Number(v) || 0;
+const nameKey = v => String(v == null ? '' : v).trim().replace(/\s+/g, ' ').toLowerCase();
 
-export const REP_RETURN_RELINK_FLAG = 'repReturnRelink.v1';
+export const REP_RETURN_RELINK_FLAG = 'repReturnRelink.v2';
 
 export function isLiveRepReturn(r) {
   return !!r && r.isRepReturn === true && !r.deletedAt && r.currentRepProfile === 'admin';
@@ -15,7 +16,7 @@ export function pickReturnsCovered(pending, ret, exp) {
   const picked = [];
   for (const r of sorted) {
     const nr = usedRet + num(r.returnedQty), ne = usedExp + num(r.expiredQty);
-    if (nr > num(ret) + EPS || ne > num(exp) + EPS) break;
+    if (nr > num(ret) + EPS || ne > num(exp) + EPS) continue;
     usedRet = nr; usedExp = ne;
     picked.push(r);
   }
@@ -61,13 +62,13 @@ export function planRepReturnRelink(calcs, sales) {
     const end = entryWindowEnd(e, salesById);
     const born = num(e.createdAt || e.timestamp);
     const cands = returns
-      .filter(r => r.customerName === e.seller && !claimed.has(r.id) &&
+      .filter(r => nameKey(r.customerName) === nameKey(e.seller) && !claimed.has(r.id) &&
         txDeviceDate(r) && txDeviceDate(r) <= end &&
         num(r.createdAt || r.timestamp) <= born)
       .sort(txDeviceCompare);
     for (const r of cands) {
       const nr = usedRet + num(r.returnedQty), ne = usedExp + num(r.expiredQty);
-      if (nr > num(e.returned) + EPS || ne > num(e.expired) + EPS) break;
+      if (nr > num(e.returned) + EPS || ne > num(e.expired) + EPS) continue;
       usedRet = nr; usedExp = ne;
       claimed.add(r.id); ids.push(r.id);
       report.added.push({ entry: e.id, id: r.id });

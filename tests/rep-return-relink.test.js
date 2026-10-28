@@ -35,6 +35,19 @@ describe('planRepReturnRelink', () => {
   });
 });
 
+describe('relink skips returns that do not fit instead of stopping', () => {
+  it('links the later return when an older one is too big for the calc', () => {
+    const p = [R('old', '2026-10-15', 5, 5, 800), R('d17', '2026-10-17', 0, 3, 900)];
+    assert.deepEqual(pickReturnsCovered(p, 0, 3).map(r => r.id), ['d17']);
+    const { changes } = planRepReturnRelink([C('c1', '2026-10-17', 0, 3, 1000)], p);
+    assert.deepEqual(changes[0].ids, ['d17']);
+  });
+  it('matches seller names ignoring case and spacing', () => {
+    const { changes } = planRepReturnRelink([C('c1', '2026-10-17', 0, 3, 1000)], [R('d17', '2026-10-17', 0, 3, 900, { customerName: ' noman ' })]);
+    assert.deepEqual(changes[0].ids, ['d17']);
+  });
+});
+
 describe('runRepReturnRelinkMigration', () => {
   it('runs once and is a no-op the second time', async () => {
     const data = new Map([['calculator', [C('c1', '2026-10-14', 1, 1, 1000)]], ['sales', [R('r1', '2026-10-13', 1, 1, 900)]]]);
