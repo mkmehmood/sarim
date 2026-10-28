@@ -1,5 +1,5 @@
 import { txDeviceDate } from './tx-date.js';
-import { runRepReturnRelinkMigration, runCreditDeviceDateMigration } from './rep-return-link.js';
+import { runRepReturnRelinkMigration } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
@@ -277,7 +277,7 @@ actions: isMerged ? '' : `<button class="btn btn-danger btn-sm u-w-full u-mt-8" 
 }
 
 export function _calcSaleDay(sale) {
-return (sale && (sale.supplyDate || sale.date)) || '';
+return txDeviceDate(sale);
 }
 
 export async function getPendingRepDeliveries(seller) {
@@ -445,10 +445,6 @@ if (!window._repReturnRelinkRan) {
     const r = await runRepReturnRelinkMigration({ store: sqliteStore, save: unifiedSave });
     if (r && !r.skipped && r.changed) showToast(`Calculator links repaired: ${r.changed} record${r.changed !== 1 ? 's' : ''}.`, 'info');
   } catch (e) { window._repReturnRelinkRan = false; console.warn('[relink] failed:', _safeErr(e)); }
-  try {
-    const c = await runCreditDeviceDateMigration({ store: sqliteStore, save: unifiedSave, localDateStr });
-    if (c && !c.skipped && c.sales) { showToast(`Credit sales re-checked by device date: ${c.sales} record${c.sales !== 1 ? 's' : ''}.`, 'info'); refreshCustomerSales(1, false); notifyDataChange('sales'); }
-  } catch (e) { console.warn('[credit-device-date] failed:', _safeErr(e)); }
 }
 const sel = await getCalcCycleSelection(seller);
 if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
