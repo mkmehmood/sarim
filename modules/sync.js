@@ -4463,9 +4463,7 @@ if (currentUser && !window._forceLogoutSignOut) {
   const within = (p, ms) => Promise.race([Promise.resolve(p).catch(() => ({ error: true })), new Promise(r => setTimeout(() => r({ error: true, timedOut: true }), ms))]);
   let syncFailed = !navigator.onLine;
   if (navigator.onLine) {
-    showToast('Uploading your data before sign out…', 'info', 6000);
-    const synced = await within(performOneClickSync(true), 25000);
-    if (!synced || synced.error) syncFailed = true;
+    showToast('Uploading unsynced changes before sign out…', 'info', 6000);
     const pushed = await within(pushDataToCloud(true), 25000);
     if (pushed && pushed.error) syncFailed = true;
     await within(sqliteStore.drainOutbox(), 10000);
