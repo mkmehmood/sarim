@@ -2995,7 +2995,7 @@ font-feature-settings: "tnum" 1;
 .pp-bar-share { background: var(--brand-whatsapp); color: var(--white); padding: 8px 14px; font-size: 0.78rem; font-weight: 700; }
 #sys-header {
   position: fixed; top: 0; left: 0; right: 0; height: var(--sys-top);
-  background: linear-gradient(180deg, var(--accent-blue) 0%, var(--accent-blue) 100%);
+  background: var(--bg) linear-gradient(var(--soft-card), var(--soft-card));
   z-index: 2147483000; pointer-events: none;
 }@media screen {
 

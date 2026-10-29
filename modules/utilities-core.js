@@ -1,4 +1,5 @@
 import { themeColor } from './theme-tokens.js';
+import { normalizePref, resolveTheme, nextPref, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { moneyLine } from './money-privacy.js';
 import { promptStatementRange, rangeBounds, rangeLabel } from './stmt-range.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from './cm-ledger.js';
@@ -79,24 +80,23 @@ if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => req
 else setTimeout(resolve, 32);
 });
 
-export async function toggleDarkMode() {
-const html = document.documentElement;
+function currentThemePref() {
+return readStoredPref() || normalizePref(document.documentElement.getAttribute('data-theme'));
+}
+
+function paintThemeChrome(pref) {
 const themeToggle = document.getElementById('themeToggle');
-const currentTheme = html.getAttribute('data-theme') || 'dark';
-const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-html.classList.add('theme-switching');
-html.setAttribute('data-theme', newTheme);
-void html.offsetHeight;
-const themeBtn = document.getElementById('sidebar-btn-theme');
-if (themeBtn && typeof themeBtn.blur === 'function') themeBtn.blur();
-if (themeToggle) themeToggle.title = newTheme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+const resolved = resolveTheme(pref);
+if (themeToggle) themeToggle.title = 'Theme: ' + prefLabel(pref);
+const label = document.getElementById('theme-mode-label');
+if (label) label.textContent = 'Theme: ' + prefLabel(pref);
 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 if (metaThemeColor) {
-metaThemeColor.setAttribute('content', getComputedStyle(html).getPropertyValue('--bg').trim());
+metaThemeColor.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || (resolved === 'light' ? '#FFFFFF' : '#000000'));
 }
-await nextPaint();
-html.classList.remove('theme-switching');
-await sqliteStore.set('theme', newTheme);
+}
+
+function refreshThemeCharts() {
 if (mfgBarChart) mfgBarChart.update();
 if (mfgPieChart) mfgPieChart.update();
 if (custSalesChart) custSalesChart.update();
@@ -105,8 +105,35 @@ if (storeComparisonChart) storeComparisonChart.update();
 if (salesPerfChart) salesPerfChart.update();
 if (salesCompChart) salesCompChart.update();
 if (indPerformanceChart) indPerformanceChart.update();
-showToast(newTheme === 'dark' ? ' Dark mode enabled' : 'Light mode enabled', 'info', 2000);
 }
+
+export async function applyThemePref(pref, announce) {
+const html = document.documentElement;
+const next = normalizePref(pref);
+const resolved = resolveTheme(next);
+html.classList.add('theme-switching');
+html.setAttribute('data-theme', resolved);
+void html.offsetHeight;
+const themeBtn = document.getElementById('sidebar-btn-theme');
+if (themeBtn && typeof themeBtn.blur === 'function') themeBtn.blur();
+writeStoredPref(next);
+paintThemeChrome(next);
+await nextPaint();
+html.classList.remove('theme-switching');
+await sqliteStore.set('theme', next);
+refreshThemeCharts();
+if (announce) showToast(next === 'auto' ? 'Theme: Auto (' + prefLabel(resolved) + ')' : prefLabel(next) + ' mode enabled', 'info', 2000);
+}
+
+export async function toggleDarkMode() {
+await applyThemePref(nextPref(currentThemePref()), true);
+}
+
+try {
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+if (currentThemePref() === 'auto') applyThemePref('auto', false);
+});
+} catch (_) {}
 
 export const syncState = {
 lastUpdate: {

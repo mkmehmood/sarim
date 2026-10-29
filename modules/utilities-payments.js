@@ -1,6 +1,7 @@
 import { txDeviceDate } from './tx-date.js';
 import { runRepReturnRelinkMigration } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
+import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
@@ -6236,14 +6237,18 @@ window.selectRepCustomer = function(name) {
 };
 
 export async function initTheme() {
-const savedTheme = await sqliteStore.get('theme') || 'dark';
+const savedPref = readStoredPref() || normalizePref(await sqliteStore.get('theme'));
+const savedTheme = resolveTheme(savedPref);
 const html = document.documentElement;
 html.setAttribute('data-theme', savedTheme);
+writeStoredPref(savedPref);
 const themeToggle = document.getElementById('themeToggle');
 if (themeToggle) {
 themeToggle.innerHTML = savedTheme === 'dark' ? '' : '';
-themeToggle.title = savedTheme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode";
+themeToggle.title = 'Theme: ' + prefLabel(savedPref);
 }
+const themeLabel = document.getElementById('theme-mode-label');
+if (themeLabel) themeLabel.textContent = 'Theme: ' + prefLabel(savedPref);
 const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 if (metaThemeColor) {
 metaThemeColor.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
@@ -6467,14 +6472,8 @@ currentTheme: 'dark',
 observers: new Set(),
 async init() {
 const saved = await sqliteStore.get('theme', null);
-const systemPrefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-this.currentTheme = saved || systemPrefers;
+this.currentTheme = resolveTheme(readStoredPref() || saved);
 this.apply();
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (e) => {
-if (!(await sqliteStore.get('theme', null))) {
-this.setTheme(e.matches ? 'dark' : 'light');
-}
-});
 },
 apply() {
 document.documentElement.setAttribute('data-theme', this.currentTheme);
@@ -6482,6 +6481,7 @@ this.notifyObservers();
 },
 setTheme(theme) {
 this.currentTheme = theme;
+writeStoredPref(theme);
 sqliteStore.set('theme', theme).catch(() => {});
 this.apply();
 },

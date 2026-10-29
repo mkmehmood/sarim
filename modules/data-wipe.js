@@ -2,7 +2,7 @@ const KNOWN_IDB = ['gznd_sqlite_store', 'firebaseLocalStorageDb', 'firebase-hear
 const KNOWN_OPFS = ['naswar_dealers.sqlite', 'naswar_dealers.sqlite.bak', 'gznd_auth.json', 'gznd_keystore.json', 'gznd_entropy.json', 'gznd_session.json'];
 
 const SHELL_CACHE_PREFIX = 'app-';
-const KEEP_KEYS = ['sarim_theme_hint'];
+const KEEP_KEYS = ['sarim_theme_hint', 'sarim_theme_pref'];
 
 const swallow = () => {};
 
