@@ -4989,6 +4989,7 @@ input.search-bar:focus {
   --hc-c: var(--text-muted);
   position: relative; display: flex; flex-direction: column; min-height: 0; text-align: left;
 }
+.hc-card.d-none { display: none; }
 .hc-card.is-good { --hc-c: var(--accent-emerald); }
 .hc-card.is-bad { --hc-c: var(--danger); }
 .hc-card.is-warn { --hc-c: var(--warning); }

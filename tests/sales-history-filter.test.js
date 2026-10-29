@@ -1,5 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { extractFunctions } from './_extract.js';
 
 const mkCard = (date, customer) => ({ date, customer, shown: true, getAttribute(k) { return k === 'data-date' ? this.date : this.customer; } });
@@ -83,5 +84,12 @@ describe('summary numbers follow the selected person', () => {
   it('only the picked person when filtered', () => {
     const s = computeCustomerPeriodStats(data, '2026-10-28', (n) => n === 'ali');
     assert.equal(s.day.v, 1000); assert.equal(s.all.v, 1300); assert.equal(s.year.q, 6);
+  });
+});
+
+describe('history cards can actually be hidden', () => {
+  it('app.css lets d-none beat the flex display of .hc-card', () => {
+    const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+    assert.match(css, /\.hc-card\.d-none\s*\{\s*display:\s*none/);
   });
 });
