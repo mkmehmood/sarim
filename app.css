@@ -1064,7 +1064,8 @@ transition: border-color 0.15s ease;
 .form-ctl:focus,
 .form-ctl:focus-visible {
 border-color: var(--accent);
-outline: none;
+outline: 3px solid color-mix(in srgb, var(--accent) 28%, transparent);
+outline-offset: 0;
 box-shadow: none;
 }
 .form-ctl:disabled { opacity: 0.5; cursor: not-allowed; }
