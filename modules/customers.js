@@ -493,9 +493,6 @@ const _dl = _deltaMap.get(t) || 0;
 let _debit = 0, _credit = 0;
 if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
 else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = _txValue; _credit = _txValue; }
-const _balCell = Math.abs(_bal) < 0.01 ? 'SETTLED' : (_bal > 0 ? fmtAmt(_bal) : 'OVERPAID ' + fmtAmt(-_bal));
-const _dateObj = new Date(_dkey + 'T00:00:00');
-const _validDate = !isNaN(_dateObj.getTime());
 const _amtText = await formatCurrency(rAmt);
 const _isSale = !isOldDebt && !isCollection && !isPartialPayment && !isRepReturn;
 const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
