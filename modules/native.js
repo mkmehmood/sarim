@@ -335,11 +335,32 @@ async function unregisterServiceWorkers() {
 
 const TEXT_FIELD = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]), textarea, select, [contenteditable=""], [contenteditable="true"]';
 
+
+// TEMPORARY on-device diagnostic (branch kb-debug only): reports layout state ~1s after a text field gets focus.
+function kbDiag(inp) {
+  setTimeout(() => {
+    try {
+      const r = (el) => { if (!el) return 'none'; const b = el.getBoundingClientRect(); const c = getComputedStyle(el); return Math.round(b.top) + ',' + Math.round(b.height) + ' d:' + c.display + ' v:' + c.visibility + ' o:' + c.opacity; };
+      const tab = [...document.querySelectorAll('[id^="tab-"]')].find(t => !t.classList.contains('hidden'));
+      const hit = document.elementFromPoint(200, 300);
+      const vv = window.visualViewport;
+      const a = 'win ' + innerWidth + 'x' + innerHeight + ' vv ' + (vv ? Math.round(vv.height) + ' top' + Math.round(vv.offsetTop) : '-') + ' sY ' + Math.round(scrollY) + ' sH ' + document.documentElement.scrollHeight;
+      const b = 'tab ' + (tab ? tab.id + ' ' + r(tab) : 'none') + ' | body ' + r(document.body);
+      const c = 'input ' + r(inp) + ' | hit ' + (hit ? hit.tagName + '#' + hit.id + '.' + String(hit.className).slice(0, 30) : 'null') + ' | ' + document.documentElement.className;
+      if (typeof window.showToast === 'function') {
+        window.showToast(a, 'info', 9000);
+        setTimeout(() => window.showToast(b, 'info', 9000), 400);
+        setTimeout(() => window.showToast(c, 'info', 9000), 800);
+      }
+    } catch (err) { if (typeof window.showToast === 'function') window.showToast('diag err ' + err.message, 'error', 6000); }
+  }, 1000);
+}
+
 function installKeyboardGuard() {
   const root = document.documentElement;
   const set = (open) => root.classList.toggle('kb-open', open);
   const editing = () => !!(document.activeElement && document.activeElement.matches && document.activeElement.matches(TEXT_FIELD));
-  document.addEventListener('focusin', (e) => { if (e.target && e.target.matches && e.target.matches(TEXT_FIELD)) set(true); });
+  document.addEventListener('focusin', (e) => { if (e.target && e.target.matches && e.target.matches(TEXT_FIELD)) { set(true); kbDiag(e.target); } });
   document.addEventListener('focusout', () => setTimeout(() => { if (!editing()) set(false); }, 150));
   const { Keyboard } = P();
   if (Keyboard && typeof Keyboard.addListener === 'function') {
