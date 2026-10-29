@@ -1,5 +1,4 @@
 import { txDeviceDate } from './tx-date.js';
-import { runRepReturnRelinkMigration } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
@@ -9,7 +8,6 @@ import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
 import { expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries } from './field-expense-items.js';
 import { hcCard, hcCardHtml, hcChip, hcEmptyHtml, hcExpensesHtml } from './history-card.js';
 import { editDateValue } from './edit-date.js';
-import { planCalcRelink, applyCalcRelink } from './calc-relink.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryMembers, planGroupRecovery, planCreditToggle, applySettlement, newGroupId, stampGroup, findGroupMembers, isOrphanSupplierTx, orderForRestore, expandGroups, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
@@ -282,23 +280,6 @@ export function _calcSaleDay(sale) {
 return txDeviceDate(sale);
 }
 
-const CALC_RELINK_FLAG = 'calcRelinkDeviceDateV1';
-
-export async function runCalcRelinkMigration() {
-  if (await sqliteStore.get(CALC_RELINK_FLAG)) return null;
-  const { calculator, sales } = await loadCollections('calculator', 'sales');
-  if (!calculator.length || !sales.length) return null;
-  const moves = planCalcRelink(calculator, sales);
-  if (moves.length) {
-    const changed = applyCalcRelink(calculator, moves, getTimestamp);
-    calculator.forEach(e => { if (changed.includes(String(e.id))) ensureRecordIntegrity(e, true); });
-    await unifiedSave('calculator', calculator, null, changed);
-    notifyDataChange('calculator');
-  }
-  await sqliteStore.set(CALC_RELINK_FLAG, { at: Date.now(), moved: moves.length });
-  return moves.length;
-}
-
 export async function getPendingRepDeliveries(seller) {
 const { calculator, sales } = await loadCollections('calculator', 'sales');
 if (!seller || seller === 'COMBINED') return [];
@@ -457,13 +438,6 @@ totalSoldField.value = '';
 totalSoldField.readOnly = true;
 updateCalcRangeLabel();
 return;
-}
-if (!window._repReturnRelinkRan) {
-  window._repReturnRelinkRan = true;
-  try {
-    const r = await runRepReturnRelinkMigration({ store: sqliteStore, save: unifiedSave });
-    if (r && !r.skipped && r.changed) showToast(`Calculator links repaired: ${r.changed} record${r.changed !== 1 ? 's' : ''}.`, 'info');
-  } catch (e) { window._repReturnRelinkRan = false; console.warn('[relink] failed:', _safeErr(e)); }
 }
 const sel = await getCalcCycleSelection(seller);
 if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
@@ -1072,7 +1046,6 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   }
   try {
     await loadAllData();
-    try { await runCalcRelinkMigration(); } catch (e) { console.warn('[Startup] calculator relink skipped:', _safeErr(e)); }
     await initializeDeviceListeners();
     if (typeof OfflineQueue !== 'undefined') await OfflineQueue.init();
     loadFirestoreStats();
