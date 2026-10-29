@@ -3,7 +3,7 @@ import { isMoneyRestricted } from './money-privacy.js';
 import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
-import { periodTotals, periodQuantity, soldQuantity, rowReceived } from './finance.js';
+import { periodTotals, periodQuantity, netSoldQuantity, receivedPercent, rowReceived } from './finance.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
 import { renderLedger, applyCmFilters, resetLedgerFilter, menuButtonHtml } from './cm-ledger.js';
@@ -204,19 +204,19 @@ return `<div class="cust-period-row d-flex">
 }
 
 let _cmEmptyName = '';
-export async function custSummaryHtml(totals, debt, qty, given, settled, n, kind = 'cust') {
+export async function custSummaryHtml(totals, debt, qty, n, kind = 'cust') {
 const tone = debt > 0.005 ? 'is-debt' : 'is-clear';
 const showQty = _saleChipMode[kind] === 'qty';
 const amountText = String(await formatCurrency(totals.totalSale));
 const qtyText = `${fmtNum(qty)} kg`;
-const pct = given > 0.005 ? Math.max(0, Math.min(100, Math.round(settled / given * 100))) : 0;
+const pct = receivedPercent(totals.totalReceived, debt);
 let html = `<div class="cm-sum-label">Current debt</div><div class="cm-sum-debt ${tone}">${await formatCurrency(debt)}</div>`;
 if (n === 0) return html;
 html += `<div class="cust-period-row d-flex">
 <div class="stat is-toggle" role="button" tabindex="0" data-kind="${kind}" data-amount="${esc(amountText)}" data-qty="${esc(qtyText)}" onclick="toggleSaleChip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSaleChip(this);}" title="Tap to switch between amount and quantity"><span class="stat-label">${showQty ? 'Total Quantity' : 'Total Sale'}</span><span class="stat-value">${esc(showQty ? qtyText : amountText)}</span></div>
 <div class="stat is-collect"><span class="stat-label">Received</span><span class="stat-value">${await formatCurrency(totals.totalReceived)}</span></div>
 </div>`;
-if (n >= 3) html += `<div class="bar cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of credit given has been settled</div>`;
+if (n >= 3) html += `<div class="bar cm-meter" style="--cm-pct:${pct}%"><i></i></div><div class="cm-meter-label">${pct}% of the amount owed has been received</div>`;
 return html;
 }
 window.toggleSaleChip = (chip) => {
@@ -345,11 +345,9 @@ const _runBal = new Map();
 let _runTotal = 0;
 const _ascTx = historyTxns.map((t, i) => ({ t, i })).sort((a, b) => txDeviceCompare(a.t, b.t) || (a.i - b.i));
 const _deltaMap = new Map();
-let _gAll = 0, _rAll = 0;
 for (const { t } of _ascTx) {
 const _dl = await _custDelta(t);
 _deltaMap.set(t, _dl);
-if (_dl > 0) _gAll += _dl; else _rAll -= _dl;
 _runTotal = round2(_runTotal + _dl);
 _runBal.set(t, _runTotal);
 }
@@ -504,9 +502,9 @@ const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
 const _canDelete = !t.isMerged;
 const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
 const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
-_entries.push({ id: t.id, qty: periodQuantity([{ t }]), dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, kg: soldQuantity(t), sold: _isSale ? _txValue : 0, got: rowReceived(t, _txValue).received, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
+_entries.push({ id: t.id, qty: periodQuantity([{ t }]), dkey: _dkey, opening: !!(t.isMerged || t.transactionType === 'OLD_DEBT'), noDate: t.transactionType === 'OLD_DEBT', rTitle, rSub, invSub: rInv != null ? rInv : rSub, rIn, rKind, rCat, tag: _tag, amtText: _amtText, balText: _balText, balTone: _balTone, unpaid: isCredit && !t.creditReceived && !t.isMerged, kg: netSoldQuantity(t), sold: _isSale ? _txValue : 0, got: rowReceived(t, _txValue).received, debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled, row: _rowData });
 }
-await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _gAll, _rAll, _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
+await renderLedger('cust', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_custTotals, Math.max(0, _runTotal), periodQuantity(_custRows), _nAll), money: formatCurrency, emptyAction: 'recordFirstSaleForCustomer()' });
 }
 
 window.recordFirstSaleForCustomer = () => {

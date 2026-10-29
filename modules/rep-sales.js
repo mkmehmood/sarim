@@ -13,7 +13,7 @@ import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory.js';
-import { periodTotals, periodQuantity, soldQuantity, collectionExpiredLeft, rowReceived } from './finance.js';
+import { periodTotals, periodQuantity, netSoldQuantity, collectionExpiredLeft, rowReceived } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
 import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast, fetchLocationInto } from './customers.js';
@@ -1059,13 +1059,11 @@ transactions = rep.filter(s => s.customerName === name && s.salesRep === current
 const _repDelta = (t) => debtDelta(t, t.totalValue);
 const _runBal = new Map();
 const _deltaMap = new Map();
-let _gAll = 0, _rAll = 0;
 let _runTotal = 0;
 const _ascTx = transactions.map((t, i) => ({ t, i })).sort((a, b) => txChronoCompare(a.t, b.t) || (a.i - b.i));
 for (const { t } of _ascTx) {
 const _dl = _repDelta(t);
 _deltaMap.set(t, _dl);
-if (_dl > 0) _gAll += _dl; else _rAll -= _dl;
 _runTotal = round2(_runTotal + _dl);
 _runBal.set(t, _runTotal);
 }
@@ -1179,12 +1177,12 @@ _entries.push({
   balText: _bal < -0.005 ? `${await formatCurrency(-_bal)} CR` : await formatCurrency(Math.max(0, _bal)),
   balTone: _bal > 0.005 ? 'is-debt' : 'is-clear',
   unpaid: isCredit && !t.creditReceived && !t.isMerged,
-  kg: soldQuantity(t), sold: _isSale ? rAmt : 0, got: rowReceived(t, rAmt).received,
+  kg: netSoldQuantity(t), sold: _isSale ? rAmt : 0, got: rowReceived(t, rAmt).received,
   debit: _debit, credit: _credit, bal: _bal, isSettled: !!t.isSettled,
   row: { title: rTitle, amtText: await formatCurrency(rAmt), rIn, info, panelPlaceholder, kebabBtn, canEdit: !(t.isMerged || isOldDebt), canDelete: !t.isMerged, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) }
 });
 }
-await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _gAll, _rAll, _nAll, 'rep'), money: formatCurrency });
+await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _nAll, 'rep'), money: formatCurrency });
 }
 
 export async function openRepCustomerEditModal(customerName) {

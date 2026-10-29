@@ -62,3 +62,25 @@ describe('soldQuantity', () => {
     assert.equal(soldQuantity(null), 0);
   });
 });
+describe('net kg sold (minus returns and expired)', () => {
+  it('subtracts returned and expired kg', () => {
+    const rows = [
+      { t: { paymentType: 'CASH', quantity: 100 }, value: 1 },
+      { t: { isRepReturn: true, returnedQty: 15, expiredQty: 5 }, value: 0 },
+      { t: { paymentType: 'COLLECTION', expiredQty: 5 }, value: 0 },
+    ];
+    assert.equal(periodQuantity(rows), 75);
+  });
+  it('never goes below zero', () => {
+    assert.equal(periodQuantity([{ t: { isRepReturn: true, returnedQty: 3 }, value: 0 }]), 0);
+  });
+});
+describe('receivedPercent', () => {
+  it('is received over received plus owed', async () => {
+    const { receivedPercent } = await import('../modules/finance.js');
+    assert.equal(receivedPercent(0, 30000), 0);
+    assert.equal(receivedPercent(10000, 30000), 25);
+    assert.equal(receivedPercent(500, 0), 100);
+    assert.equal(receivedPercent(0, 0), 0);
+  });
+});

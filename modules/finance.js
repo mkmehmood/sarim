@@ -120,10 +120,25 @@ export function soldQuantity(t) {
   if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return 0;
   return Math.max(0, num(t.quantity, 0));
 }
+export function returnedQuantity(t) {
+  if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') return 0;
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN') return Math.max(0, num(t.returnedQty, 0)) + Math.max(0, num(t.expiredQty, 0));
+  if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return Math.max(0, num(t.expiredQty, 0));
+  return 0;
+}
+export function netSoldQuantity(t) {
+  return round2(soldQuantity(t) - returnedQuantity(t));
+}
 export function periodQuantity(rows) {
   let qty = 0;
-  for (const row of rows || []) qty += soldQuantity(row && row.t);
-  return round2(qty);
+  for (const row of rows || []) qty += netSoldQuantity(row && row.t);
+  return Math.max(0, round2(qty));
+}
+export function receivedPercent(received, debt) {
+  const got = Math.max(0, num(received, 0));
+  const owed = Math.max(0, num(debt, 0));
+  const total = got + owed;
+  return total > 0.005 ? Math.max(0, Math.min(100, Math.round(got / total * 100))) : 0;
 }
 export function localDateStr(d = new Date()) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
