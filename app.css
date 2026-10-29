@@ -5657,5 +5657,3 @@ html.theme-switching *::after {
   .hc-card:hover, .hc-card.is-open { transform: none; }
 }
 html[data-money-locked] [data-money] { display: none; }
-html.kb-open * { backdrop-filter: none; -webkit-backdrop-filter: none; }
-html.kb-open .liquid-bg-element { display: none; }
