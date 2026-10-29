@@ -1280,7 +1280,7 @@ setSaleMode('sale');
 export async function startEditSale(id) {
 const sales = ensureArray(await sqliteStore.get('sales'));
 const rec = sales.find(s => s && String(s.id) === String(id));
-if (rec && rec.isRepReturn) { showToast('A rep return cannot be edited. Delete it and enter it again.', 'warning'); return; }
+if (rec && rec.isRepReturn) { await startEditRepReturn(id); return; }
 if (!rec || rec.isMerged || rec.isRepTransfer) { showToast('This entry cannot be edited.', 'warning'); return; }
 {
 const _blk = await getSaleBlockReason(rec.id, 'customer', { forEdit: true });
@@ -1329,7 +1329,38 @@ updateCollectionPreview();
 beginEditMode('collection', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Collection', watchIds: ['cust-name','cust-amount-collected','cust-expired-qty','cust-date','new-cust-phone'], anchorId: 'cust-amount-collected', cancelFn: _resetSaleForm });
 }
 
+function _resetRepReturnForm() {
+const e1 = document.getElementById('rep-return-expired'); if (e1) e1.value = '';
+const e2 = document.getElementById('rep-return-qty'); if (e2) e2.value = '';
+const fr = document.querySelector('#sales-rep-toggle-group .toggle-opt'); if (fr && _repSelectedValue()) selectSalesRep(fr, 'NONE');
+_resetSaleForm();
+}
+
+export async function startEditRepReturn(id) {
+const sales = ensureArray(await sqliteStore.get('sales'));
+const rec = sales.find(s => s && String(s.id) === String(id));
+if (!rec || !rec.isRepReturn || rec.isMerged || rec.deletedAt) { showToast('This entry cannot be edited.', 'warning'); return; }
+{
+const _blk = await getSaleBlockReason(rec.id, 'customer', { forEdit: true });
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
+}
+if ((await getReconciledRepReturnIds()).has(rec.id)) { window.notifyBlocking('This return is already reconciled in the Calculator, so it can no longer be edited.', 'warning', 'Warning'); return; }
+if (typeof showTab === 'function') showTab('sales');
+const repBtns = Array.from(document.querySelectorAll('#sales-rep-toggle-group .toggle-opt'));
+const repBtn = repBtns.find(b => (b.getAttribute('onclick') || '').includes(`'${rec.salesRep}'`));
+if (!repBtn) { showToast('The rep of this return is not available for editing.', 'warning'); return; }
+selectSalesRep(repBtn, rec.salesRep);
+setSaleMode('return');
+const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
+set('cust-date', editDateValue(rec, ['date', 'createdAt', 'timestamp']));
+set('rep-return-expired', Number(rec.expiredQty) > 0 ? rec.expiredQty : '');
+set('rep-return-qty', Number(rec.returnedQty) > 0 ? rec.returnedQty : '');
+updateRepReturnPreview();
+beginEditMode('repreturn', rec, { buttonId: 'btn-save-cust-transaction', label: 'Update Return', watchIds: ['rep-return-expired', 'rep-return-qty', 'cust-date', 'sales-rep-value'], anchorId: 'rep-return-expired', cancelFn: _resetRepReturnForm });
+}
+
 registerEditHandler('sale', startEditSale);
+registerEditHandler('repreturn', startEditRepReturn);
 registerEditHandler('collection', startEditCollection);
 
 function _resetProdForm() {
@@ -1446,6 +1477,15 @@ if (!date) { window.notifyBlocking('Please select a date.', 'warning'); return; 
 if (!rep) { window.notifyBlocking('Please select a sales representative.', 'warning'); return; }
 if (expired < 0 || returned < 0) { window.notifyBlocking('Quantities cannot be negative.', 'warning'); return; }
 if (expired <= 0 && returned <= 0) { window.notifyBlocking('Enter an expired and/or returned quantity.', 'warning'); return; }
+const _ed = getEditCtx('repreturn');
+if (_ed) {
+const o = _ed.original;
+if (rep !== o.salesRep || date !== o.date) { window.notifyBlocking('The rep and date of a return cannot be changed. Delete it and enter it again.', 'warning'); return; }
+if (expired === (Number(o.expiredQty) || 0) && returned === (Number(o.returnedQty) || 0)) { showToast('No changes to save.', 'info'); return; }
+const _blk = await getSaleBlockReason(_ed.id, 'customer', { forEdit: true });
+if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
+if ((await getReconciledRepReturnIds()).has(_ed.id)) { window.notifyBlocking('This return is already reconciled in the Calculator, so it can no longer be edited.', 'warning', 'Warning'); return; }
+}
 const btn = document.getElementById('btn-save-cust-transaction');
 if (btn) { if (btn.disabled) return; btn.disabled = true; }
 try {
@@ -1455,13 +1495,13 @@ try {
 const pend = await getPendingRepDeliveries(rep);
 pendingDelivered = pend.reduce((t, x) => t + (Number(x.quantity) || 0), 0);
 } catch (_) { pendingDelivered = -1; }
-const alreadyBack = (await getPendingRepReturns(rep)).reduce((t, x) => t + (Number(x.expiredQty) || 0) + (Number(x.returnedQty) || 0), 0);
+const alreadyBack = (await getPendingRepReturns(rep)).filter(x => !_ed || x.id !== _ed.id).reduce((t, x) => t + (Number(x.expiredQty) || 0) + (Number(x.returnedQty) || 0), 0);
 if (pendingDelivered >= 0 && round2(alreadyBack + expired + returned) > round2(pendingDelivered) + 0.0001) {
 window.notifyBlocking(`${rep} only has ${fmtNum(pendingDelivered)} kg awaiting reconciliation, and ${fmtNum(alreadyBack)} kg of that already has a pending return. Cannot add ${fmtNum(round2(expired + returned))} kg more.`, 'warning');
 return;
 }
-const _repOwed = await _partyOutstanding(rep);
-const _repUnit = await getGoodsCreditUnitPrice(rep);
+const _repOwed = await _partyOutstanding(rep, _ed ? _ed.id : undefined);
+const _repUnit = await getGoodsCreditUnitPrice(rep, _ed ? _ed.id : undefined);
 const _repPlan = planGoodsCredit(round2(expired + returned), _repUnit, _repOwed);
 const _repNotes = ['Stock moves to CHORA / production only after the Calculator is reconciled.'];
 _repNotes.push(_repPlan.value > 0
@@ -1474,7 +1514,7 @@ gpsCoords = await Promise.race([getPosition(), new Promise(resolve => setTimeout
 } catch (e) {}
 const now = new Date();
 const timeString = formatTime12(now);
-let recordId = generateUUID('sale');
+let recordId = _ed ? _ed.id : generateUUID('sale');
 if (!validateUUID(recordId)) recordId = generateUUID('sale');
 const ts = getTimestamp();
 let rec = {
@@ -1493,10 +1533,17 @@ gps: gpsCoords,
 syncedAt: new Date().toISOString(),
 createdBy: (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null,
 };
-rec = ensureRecordIntegrity(rec, false);
+if (_ed) {
+const o = _ed.original;
+stampEdit(rec, o);
+rec.date = o.date;
+rec.time = o.time;
+if (!rec.gps && o.gps) rec.gps = o.gps;
+}
+rec = ensureRecordIntegrity(rec, !!_ed);
 const snapshot = [...sales];
 try {
-sales.push(rec);
+if (_ed) replaceRecord(sales, rec); else sales.push(rec);
 await unifiedSave('sales', sales, rec);
 notifyDataChange('sales');
 triggerAutoSync();
@@ -1507,11 +1554,12 @@ const _e2 = document.getElementById('rep-return-qty'); if (_e2) _e2.value = '';
 const _nameEl = document.getElementById('cust-name'); if (_nameEl) _nameEl.value = '';
 const _firstRepBtn = document.querySelector('#sales-rep-toggle-group .toggle-opt');
 if (_firstRepBtn) selectSalesRep(_firstRepBtn, 'NONE');
+if (_ed) endEditMode();
 setSaleMode('sale');
 if (typeof renderCustomersTable === 'function') renderCustomersTable();
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales();
 if (typeof loadSalesData === 'function') { try { await loadSalesData(currentCompMode); } catch (_) {} }
-showToast(`Return saved for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned${_repPlan.value > 0 ? redactMoney(`, ${fmtAmt(_repPlan.value)} deducted from the balance`, ', balance adjusted') : ''}. Stock reaches CHORA / production when the Calculator is reconciled.`, 'success');
+showToast(`Return ${_ed ? 'updated' : 'saved'} for ${savedRep}: ${fmtNum(expired)} kg expired, ${fmtNum(returned)} kg returned${_repPlan.value > 0 ? redactMoney(`, ${fmtAmt(_repPlan.value)} deducted from the balance`, ', balance adjusted') : ''}. Stock reaches CHORA / production when the Calculator is reconciled.`, 'success');
 } catch (error) {
 sales.length = 0;
 sales.push(...snapshot);
@@ -6383,7 +6431,7 @@ metrics: [
 { label: 'Returned', value: `${fmtNum(_rrRet)} kg`, cls: 'qty-val' }
 ],
 note: _rrDone ? 'Applied to CHORA / production via Calculator.' : 'Pending: pick the return store in the Calculator; expired goes to CHORA and returned to production on reconciliation.',
-actions: deleteBtnHtml
+actions: _rrDone ? deleteBtnHtml.replace(/<button class="btn btn-theme btn-sm"[^>]*>Edit<\/button>/, '') : deleteBtnHtml
 };
 } else if (isAdminCollItem) {
 const collected = safeValue(collectionCollected(item));

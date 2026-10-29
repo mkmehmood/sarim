@@ -495,7 +495,7 @@ if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
 else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = _txValue; _credit = _txValue; }
 const _amtText = await formatCurrency(rAmt);
 const _isSale = !isOldDebt && !isCollection && !isPartialPayment && !isRepReturn;
-const _canEdit = !(t.isMerged || isRepReturn || isOldDebt);
+const _canEdit = !(t.isMerged || isOldDebt || (isRepReturn && _rrUsed.has(t.id)));
 const _canDelete = !t.isMerged;
 const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
 const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
