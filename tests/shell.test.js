@@ -28,7 +28,7 @@ describe('app shell', () => {
   });
 
   it('the shell bar surface is defined once', () => {
-    const rules = [...css.matchAll(/^\.shell-bar \{([^}]*)\}/gm)].filter((m) => m[1].includes('var(--soft-card)'));
+    const rules = [...css.matchAll(/^\.shell-bar \{([^}]*)\}/gm)].filter((m) => m[1].includes('linear-gradient(180deg, var(--bg) 0%'));
     assert.equal(rules.length, 1);
   });
 });

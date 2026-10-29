@@ -26,6 +26,7 @@ describe('theme preference', () => {
     const start = css.indexOf('#sys-header {\n');
     const band = css.slice(start, css.indexOf('}', start));
     assert.doesNotMatch(band, /accent-blue/);
-    assert.match(band, /var\(--bg\)/);
+    assert.match(band, /background: var\(--bg\);/);
+    assert.doesNotMatch(css.slice(css.indexOf('.shell-bar {'), css.indexOf('.toggle-group {')), /radial-gradient|soft-card/);
   });
 });

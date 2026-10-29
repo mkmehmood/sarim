@@ -981,7 +981,7 @@ display: flex;
 align-items: center;
 box-sizing: border-box;
 min-height: 52px;
-background: var(--soft-card);
+background: linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--accent-cyan) 4%, var(--surface-2)) 100%);
 border-bottom: 1px solid var(--glass-border);
 border-radius: 0 0 22px 22px;
 box-shadow: var(--shadow-header);
@@ -2336,7 +2336,7 @@ text-shadow: none;
 @media (hover: hover) and (pointer: fine) {
 .card:hover { box-shadow: var(--shadow-lg) !important; }
 }
-#sys-header { box-shadow: var(--shadow-header) !important; }
+#sys-header { box-shadow: none !important; }
 .card:hover, .btn:hover, button:hover, .toggle-opt:hover, .btn-theme:hover, .btn-theme:active, .btn:active, button:active, .card:active {
 transform: none !important;
 }
@@ -2995,9 +2995,11 @@ font-feature-settings: "tnum" 1;
 .pp-bar-share { background: var(--brand-whatsapp); color: var(--white); padding: 8px 14px; font-size: 0.78rem; font-weight: 700; }
 #sys-header {
   position: fixed; top: 0; left: 0; right: 0; height: var(--sys-top);
-  background: var(--bg) linear-gradient(var(--soft-card), var(--soft-card));
+  background: var(--bg);
   z-index: 2147483000; pointer-events: none;
-}@media screen {
+}
+body:has(.standalone-screen:not(.d-none):not(.hidden)) #sys-header { background: transparent; }
+@media screen {
 
   .system-controls { top: var(--sys-top); }
   body { padding-top: calc(52px + var(--sys-top)); }
