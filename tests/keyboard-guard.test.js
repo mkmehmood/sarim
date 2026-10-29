@@ -12,10 +12,9 @@ describe('keyboard guard for the Android app', () => {
     assert.match(src, /installKeyboardGuard\(\);/);
   });
 
-  it('drops GPU-heavy blur layers and forces repaints while the keyboard is open', () => {
+  it('drops GPU-heavy blur layers while the keyboard is open', () => {
     const css = readSource('app.css');
-    assert.match(css, /html\.kb-repaint \{ opacity: 0\.999;/);
-    assert.match(readSource('modules/native.js'), /function forceRepaint/);
+    assert.match(css, /html\.kb-open \* \{ backdrop-filter: none;/);
     assert.match(css, /html\.kb-open \.liquid-bg-element \{ display: none; \}/);
   });
 });

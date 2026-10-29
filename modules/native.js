@@ -335,31 +335,15 @@ async function unregisterServiceWorkers() {
 
 const TEXT_FIELD = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]), textarea, select, [contenteditable=""], [contenteditable="true"]';
 
-function forceRepaint() {
-  const root = document.documentElement;
-  const nudge = () => {
-    try {
-      const y = window.scrollY;
-      root.classList.add('kb-repaint');
-      window.scrollTo(0, y + 1);
-      window.scrollTo(0, y);
-      requestAnimationFrame(() => root.classList.remove('kb-repaint'));
-    } catch (_) {}
-  };
-  [60, 200, 450, 900].forEach((ms) => setTimeout(nudge, ms));
-}
-
 function installKeyboardGuard() {
   const root = document.documentElement;
   const set = (open) => root.classList.toggle('kb-open', open);
   const editing = () => !!(document.activeElement && document.activeElement.matches && document.activeElement.matches(TEXT_FIELD));
-  document.addEventListener('focusin', (e) => { if (e.target && e.target.matches && e.target.matches(TEXT_FIELD)) { set(true); forceRepaint(); } });
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', forceRepaint);
+  document.addEventListener('focusin', (e) => { if (e.target && e.target.matches && e.target.matches(TEXT_FIELD)) set(true); });
   document.addEventListener('focusout', () => setTimeout(() => { if (!editing()) set(false); }, 150));
   const { Keyboard } = P();
   if (Keyboard && typeof Keyboard.addListener === 'function') {
     Keyboard.addListener('keyboardWillShow', () => set(true));
-    Keyboard.addListener('keyboardDidShow', forceRepaint);
     Keyboard.addListener('keyboardDidHide', () => set(false));
   }
 }
