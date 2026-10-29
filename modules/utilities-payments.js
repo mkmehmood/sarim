@@ -6470,6 +6470,15 @@ const saved = await sqliteStore.get('theme', null);
 this.currentTheme = saved || 'light';
 this.apply();
 },
+apply() {
+document.documentElement.setAttribute('data-theme', this.currentTheme);
+this.notifyObservers();
+},
+setTheme(theme) {
+this.currentTheme = theme;
+sqliteStore.set('theme', theme).catch(() => {});
+this.apply();
+},
 toggle() {
 this.setTheme(this.currentTheme === 'dark' ? 'light' : 'dark');
 },
