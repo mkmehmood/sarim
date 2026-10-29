@@ -23,7 +23,8 @@ describe('theme preference', () => {
   it('draws the top status band from the theme, not a fixed blue', async () => {
     const { readFileSync } = await import('node:fs');
     const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
-    const band = css.slice(css.lastIndexOf('#sys-header {'), css.lastIndexOf('#sys-header {') + 260);
+    const start = css.indexOf('#sys-header {\n');
+    const band = css.slice(start, css.indexOf('}', start));
     assert.doesNotMatch(band, /accent-blue/);
     assert.match(band, /var\(--bg\)/);
   });
