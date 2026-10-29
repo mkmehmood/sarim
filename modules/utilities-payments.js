@@ -6236,7 +6236,7 @@ window.selectRepCustomer = function(name) {
 };
 
 export async function initTheme() {
-const savedTheme = await sqliteStore.get('theme') || 'light';
+const savedTheme = await sqliteStore.get('theme') || 'dark';
 const html = document.documentElement;
 html.setAttribute('data-theme', savedTheme);
 const themeToggle = document.getElementById('themeToggle');
@@ -6463,12 +6463,18 @@ if (typeof renderRepCustomerTable === 'function') {
 })();
 
 export var ThemeManager = {
-currentTheme: 'light',
+currentTheme: 'dark',
 observers: new Set(),
 async init() {
 const saved = await sqliteStore.get('theme', null);
-this.currentTheme = saved || 'light';
+const systemPrefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+this.currentTheme = saved || systemPrefers;
 this.apply();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (e) => {
+if (!(await sqliteStore.get('theme', null))) {
+this.setTheme(e.matches ? 'dark' : 'light');
+}
+});
 },
 apply() {
 document.documentElement.setAttribute('data-theme', this.currentTheme);
