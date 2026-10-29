@@ -1058,15 +1058,14 @@ outline: none;
 -webkit-appearance: none;
 appearance: none;
 caret-color: var(--accent);
-transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+transition: border-color 0.15s ease;
 }
 .form-ctl::placeholder { color: var(--text-muted); opacity: 0.7; }
 .form-ctl:focus,
 .form-ctl:focus-visible {
 border-color: var(--accent);
-background: var(--well-bg-focus);
 outline: none;
-box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent);
+box-shadow: none;
 }
 .form-ctl:disabled { opacity: 0.5; cursor: not-allowed; }
 input[type="number"].form-ctl { -moz-appearance: textfield; }
