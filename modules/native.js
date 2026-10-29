@@ -335,8 +335,6 @@ async function unregisterServiceWorkers() {
 
 const TEXT_FIELD = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]), textarea, select, [contenteditable=""], [contenteditable="true"]';
 
-
-// TEMPORARY on-device diagnostic (branch kb-debug only): reports layout state ~1s after a text field gets focus.
 function kbDiag(inp) {
   setTimeout(() => {
     try {
