@@ -282,14 +282,23 @@ function handleBack() {
   toast('Press back again to exit', 'info', 1800);
 }
 
-function applyStatusBar() {
-  const { StatusBar } = P();
-  if (!StatusBar) return;
-  const light = document.documentElement.getAttribute('data-theme') === 'light';
+function safeCall(fn) {
   try {
-    StatusBar.setStyle({ style: light ? 'LIGHT' : 'DARK' });
-    StatusBar.setBackgroundColor({ color: getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() });
+    const r = fn();
+    if (r && typeof r.catch === 'function') r.catch(() => {});
   } catch (_) {}
+}
+
+function applyStatusBar() {
+  const { StatusBar, ThemeBars } = P();
+  const light = document.documentElement.getAttribute('data-theme') !== 'dark';
+  const fromCss = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  const color = /^#[0-9a-f]{6}$/i.test(fromCss) ? fromCss : (light ? '#FFFFFF' : '#000000');
+  if (StatusBar) {
+    safeCall(() => StatusBar.setStyle({ style: light ? 'LIGHT' : 'DARK' }));
+    safeCall(() => StatusBar.setBackgroundColor({ color }));
+  }
+  if (ThemeBars && typeof ThemeBars.apply === 'function') safeCall(() => ThemeBars.apply({ color, light }));
 }
 
 async function requestStartupPermissions() {

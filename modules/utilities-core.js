@@ -82,7 +82,7 @@ else setTimeout(resolve, 32);
 export async function toggleDarkMode() {
 const html = document.documentElement;
 const themeToggle = document.getElementById('themeToggle');
-const currentTheme = html.getAttribute('data-theme') || 'dark';
+const currentTheme = html.getAttribute('data-theme') || 'light';
 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
 html.classList.add('theme-switching');
 html.setAttribute('data-theme', newTheme);
