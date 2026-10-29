@@ -222,7 +222,7 @@ if (isHistory) {
 html += `
 <div class="${displayStatusClass} u-0948237">${displayStatusText}</div>`;
 if (!isMerged) {
-html += `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${id}')">Delete</button>`;
+html += actionRowHtml('calc', id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${id}')">Delete</button>`);
 }
 }
 html += `</div>`;
@@ -272,7 +272,7 @@ sections: [
 ] }
 ],
 body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt) + hcExpensesHtml(sortedExpenseEntries(data.commissionItems), fmtAmt, 'Commission breakdown'),
-actions: isMerged ? '' : `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`
+actions: isMerged ? '' : actionRowHtml('calc', id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`)
 }, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate } });
 }
 
@@ -423,6 +423,7 @@ setPerfOverviewMode(currentPerfOverviewMode || 'day');
 
 export async function autoFillTotalSoldQuantity() {
 const { calculator, rep } = await loadCollections('calculator', 'rep');
+if (window._editCtx && window._editCtx.kind === 'calc') return;
 const seller = document.getElementById('sellerSelect').value;
 const totalSoldField = document.getElementById('totalSold');
 const creditSalesField = document.getElementById('creditSales');

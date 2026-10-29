@@ -2160,7 +2160,7 @@ oninput="filterCustomers()">
 <div class="card result-box">Gross Commission Earned: <span id="grossCommissionEarned">0.00</span></div>
 <div class="card result-box">Commission Paid: <span id="commissionPaidDisplay">0.00</span></div>
 <div class="card result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
-<button class="btn btn-main u-mt-8" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
+<button id="btn-save-calculator" class="btn btn-main u-mt-8" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
 </div>
 <div data-money id="combinedSection" class="hidden">
 <div class="section-header">

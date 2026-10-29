@@ -55,6 +55,16 @@ function syncInput(kind, recalculate) {
   if (recalculate && typeof window.calculateSales === 'function') window.calculateSales();
 }
 
+export function setFieldExpenseItems(items) {
+  lists.expense = cleanExpenseItems(items);
+  syncInput('expense', false);
+}
+
+export function setCommissionItems(items) {
+  lists.commission = cleanExpenseItems(items);
+  syncInput('commission', false);
+}
+
 export function resetFieldExpenses() {
   lists.expense = [];
   syncInput('expense', false);

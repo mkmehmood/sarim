@@ -1,6 +1,6 @@
 import { pickReturnsCovered } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
-import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid } from './field-expenses.js';
+import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid, setFieldExpenseItems, setCommissionItems } from './field-expenses.js';
 import { formatDayMonthYear, formatMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
@@ -10,9 +10,10 @@ import { sxTile, sxGrid, sxHero, sxSplit, sxBreakdown, sxMargin } from './summar
 import { ownsNoPayable } from './raw-purchases.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
+import { commissionItemsOfRecord, expenseItemsOfRecord } from './field-expense-items.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
-import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
+import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
 import { isMoneyRestricted, moneyLine, redactMoney } from './money-privacy.js';
 import { allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
@@ -2788,6 +2789,54 @@ emitSyncUpdate({ sales: null });
 return { saleId: id };
 }
 
+function _resetCalcForm() {
+['totalSold', 'returnedQuantity', 'expiredQuantity', 'sharedQty', 'creditSales', 'prevCreditReceived', 'receivedCash', 'commissionPerUnit'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+resetFieldExpenses();
+resetCommissionPaid();
+['returnedQuantity', 'expiredQuantity', 'sellerSelectBtn', 'sale-date'].forEach(id => { const el = document.getElementById(id); if (el) { el.readOnly = false; el.disabled = false; } });
+window._returnStore = null;
+window._returnRep = null;
+if (typeof window.autoFillTotalSoldQuantity === 'function') window.autoFillTotalSoldQuantity();
+else if (typeof window.calculateSales === 'function') window.calculateSales();
+}
+
+export async function startEditCalc(id) {
+const history = ensureArray(await sqliteStore.get('calculator', []));
+const rec = history.find(h => h && String(h.id) === String(id));
+if (!rec) { showToast('This entry cannot be edited.', 'warning'); return; }
+if (rec.isMerged) { showToast('Merged opening balance records cannot be edited.', 'warning'); return; }
+if (typeof showTab === 'function') showTab('calc');
+const sel = document.getElementById('sellerSelect');
+if (!sel || !Array.from(sel.options).some(o => o.value === rec.seller)) { showToast('The seller of this entry is not available for editing.', 'warning'); return; }
+beginEditMode('calc', rec, { buttonId: 'btn-save-calculator', watchIds: ['totalSold', 'sharedQty', 'creditSales', 'prevCreditReceived', 'receivedCash', 'commissionPerUnit', 'fieldExpenses', 'commissionPaid'], label: 'Update Entry', anchorId: 'totalSold', cancelFn: _resetCalcForm });
+window._calcSeller = rec.seller;
+sel.value = rec.seller;
+const selBtnLabel = document.querySelector('#sellerSelectBtn span');
+if (selBtnLabel) { const opt = Array.from(sel.options).find(o => o.value === rec.seller); if (opt) selBtnLabel.textContent = opt.text; }
+const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
+set('sale-date', editDateValue(rec, ['date', 'createdAt', 'timestamp']));
+const _num = (v) => (Number(v) > 0 ? String(Number(v)) : '');
+const totalSold = document.getElementById('totalSold');
+if (totalSold) { totalSold.readOnly = false; totalSold.value = String(Number(rec.totalSold) || 0); }
+set('returnedQuantity', _num(rec.returned));
+set('expiredQuantity', _num(rec.expired));
+set('sharedQty', _num(rec.shared));
+set('creditSales', _num(rec.creditQty));
+set('prevCreditReceived', _num(rec.prevColl));
+set('receivedCash', _num(rec.received));
+set('commissionPerUnit', _num(rec.commissionPerUnit));
+setFieldExpenseItems(expenseItemsOfRecord(rec));
+setCommissionItems(commissionItemsOfRecord(rec));
+['returnedQuantity', 'expiredQuantity', 'sale-date'].forEach(eid => { const el = document.getElementById(eid); if (el) el.readOnly = true; });
+const selectBtn = document.getElementById('sellerSelectBtn'); if (selectBtn) selectBtn.disabled = true;
+if (typeof window.calculateSales === 'function') window.calculateSales();
+if (window._editCtx) window._editCtx.snapshot = Object.fromEntries(window._editCtx.watchIds.map(wid => { const el = document.getElementById(wid); return [wid, String(el ? (el.value ?? '') : '')]; }));
+if (Number(rec.returned) > 0 || Number(rec.expired) > 0) showToast('Returned, expired, seller and date are locked. Delete and re-enter the entry to change them.', 'info');
+}
+
+registerEditHandler('calc', startEditCalc);
+window.startEditCalc = startEditCalc;
+
 let _calcSaveInFlight = false;
 export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale', late: true, fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']] }); }
 
@@ -2804,8 +2853,9 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const seller = document.getElementById('sellerSelect').value;
 const date = document.getElementById('sale-date').value;
 const sold = readNum('totalSold');
-const ret = readNum('returnedQuantity');
-const exp = readNum('expiredQuantity');
+const _calcEd = getEditCtx('calc');
+const ret = _calcEd ? Number(_calcEd.original.returned) || 0 : readNum('returnedQuantity');
+const exp = _calcEd ? Number(_calcEd.original.expired) || 0 : readNum('expiredQuantity');
 const shared = readNum('sharedQty');
 const cred = readNum('creditSales');
 const prev = readNum('prevCreditReceived');
@@ -2815,7 +2865,7 @@ const commissionPerUnit = readNum('commissionPerUnit');
 const commissionPaid = readNum('commissionPaid');
 let selectedStore = null;
 let selectedRep = null;
-if (ret > 0) {
+if (ret > 0 && !_calcEd) {
 if (window._returnRep && window._returnRep !== seller) {
 selectedRep = window._returnRep;
 } else if (window._returnStore) {
@@ -2825,8 +2875,8 @@ window.notifyBlocking('Please select a store (ZUBAIR or MAHMOOD) for a product r
 return;
 }
 }
-const costPerKg = (await getCostPriceForStore(getDefaultStoreKey(), date)) || 0;
-const salePrice = await getSalePriceForStore(getDefaultStoreKey());
+const costPerKg = _calcEd ? (Number(_calcEd.original.costPrice) || 0) : ((await getCostPriceForStore(getDefaultStoreKey(), date)) || 0);
+const salePrice = _calcEd ? (Number(_calcEd.original.unitPrice) || 0) : await getSalePriceForStore(getDefaultStoreKey());
 if(!date) return window.notifyBlocking('Please select a date', 'warning', 'Warning');
 if(sold <= 0) return window.notifyBlocking('Please enter valid units sold (must be greater than 0)', 'warning', 'Warning');
 if(salePrice <= 0) return window.notifyBlocking('Please set a sale price in Factory Formulas first', 'warning', 'Warning');
@@ -2862,6 +2912,49 @@ statusClass = "result-box callout discrepancy-alert";
 statusText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 statusClass = "result-box callout discrepancy-ok";
 }
+}
+if (_calcEd) {
+const _o = _calcEd.original;
+const _r2 = (n) => Number(safeNumber(n, 0).toFixed(2));
+const _fieldItems = getFieldExpenseItems();
+const _commItems = getCommissionItems();
+const _changes = {
+totalSold: _r2(sold), shared: _r2(shared), creditQty: _r2(cred), cashQty: _r2(cashQty), creditValue: _r2(creditValue),
+prevColl: _r2(prev), fieldExpenses: _r2(fieldExp), fieldExpenseItems: _fieldItems,
+commissionPerUnit: _r2(commissionPerUnit), commissionPaid: _r2(commissionPaid), commissionPaidItems: _commItems,
+grossCommission: _r2(grossCommission), commissionPayable: _r2(commissionPayable),
+revenue: _r2(revenue), profit: _r2(profit), totalCost: _r2(totalCost), totalExpected: _r2(totalExpected), received: _r2(rec),
+statusText, statusClass
+};
+const _rows = [
+{ label: 'Total sold', from: _o.totalSold, to: _changes.totalSold },
+{ label: 'Shared', from: _o.shared, to: _changes.shared },
+{ label: 'Credit qty', from: _o.creditQty, to: _changes.creditQty },
+{ label: 'Previous credit received', from: _o.prevColl, to: _changes.prevColl },
+{ label: 'Field expenses', from: _o.fieldExpenses, to: _changes.fieldExpenses },
+{ label: 'Commission / unit', from: _o.commissionPerUnit, to: _changes.commissionPerUnit },
+{ label: 'Commission paid', from: _o.commissionPaid, to: _changes.commissionPaid },
+{ label: 'Cash received', from: _o.received, to: _changes.received }
+].map(r => ({ ...r, from: _r2(r.from), to: _r2(r.to) }));
+if (!(await confirmEditChanges(_rows, 'Update Calculator Entry?'))) return;
+try {
+let _hist = ensureArray(await sqliteStore.get('calculator', []));
+const _live = _hist.find(h => h && String(h.id) === String(_o.id)) || _o;
+const _updated = ensureRecordIntegrity(stampEdit({ ..._live, ..._changes, syncedAt: new Date().toISOString() }, _live), true);
+replaceRecord(_hist, _updated);
+await unifiedSave('calculator', _hist, _updated);
+notifyDataChange('calculator');
+emitSyncUpdate({ calculator: null });
+if (Array.isArray(calculator)) replaceRecord(calculator, _updated);
+endEditMode();
+_resetCalcForm();
+showToast('Calculator entry updated', 'success');
+await loadSalesData(currentCompMode);
+if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);
+} catch (e) {
+window.notifyBlocking('Could not update the entry. Nothing was changed.', 'error', 'Something went wrong');
+}
+return;
 }
 if (!(await window.gcCommit({}))) return;
 let transferInfo = null;

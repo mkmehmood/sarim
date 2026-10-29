@@ -6,7 +6,7 @@ import { hcCardHtml, hcChip } from './history-card.js';
 import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate, pinOpeningDays } from './tx-date.js';
 import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected, planGoodsCredit } from './link-graph.js';
-import { beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
+import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, selectedCustomerFilter, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
@@ -1679,7 +1679,8 @@ tone, avatar: item.customerName, title: item.customerName,
 sub: `${esc(item.time || '')}${item.isMerged ? _mergedBadgeHtml(item, {inline:true}) : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`,
 chips: [repChip, item.isSettled ? hcChip('Settled', 'good') : ''],
 amount: fmtAmt(isCollection && !(Number(item.totalValue) > 0) && Number(item.expiredValue) > 0 ? item.expiredValue : item.totalValue), tag, tagTone: isCollection ? 'good' : (isCredit ? 'warn' : ''),
-metrics: (isCollection || isOldDebt) ? [] : [{ label: 'Quantity', value: `${fmtNum(item.quantity)} kg`, cls: 'qty-val' }]
+metrics: (isCollection || isOldDebt) ? [] : [{ label: 'Quantity', value: `${fmtNum(item.quantity)} kg`, cls: 'qty-val' }],
+actions: (item.isMerged || item.isSettled || isOldDebt) ? '' : actionRowHtml('repsale', item.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteRepTransaction('${esc(item.id)}') })()">Delete</button>`)
 }, { className: `is-compact${item.isSettled ? ' is-settled-record' : ''}`, attrs: { 'data-date': item.date } });
 }).join('');
 const tableHTML = `<div class="hc-list-head"><span class="hc-list-title">${esc(headerText)}</span><span class="hc-list-count">${fmtNum(periodQuantity(activityData.map((t) => ({ t }))))} kg</span></div><div class="hc-list">${cardsHtml}</div>`;
