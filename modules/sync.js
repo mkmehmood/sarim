@@ -1,4 +1,5 @@
 import { dataUid, resolveDataOwner, isTeamMember } from './data-owner.js';
+import { accountLockPanelHtml } from './utilities-payments.js';
 import { formatDateTime } from './date-format.js';
 import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
@@ -4397,6 +4398,7 @@ const dot = approved
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
+      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9" data-uid="' + acct.uid + '" onclick="document.getElementById(\'acct-lock-\' + this.dataset.uid).classList.toggle(\'d-none\')">Access</button>',
       '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="--d-color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';--d-border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + '">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
       '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
     ].join('');
@@ -4410,7 +4412,8 @@ return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54
     : '<span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">user</span>') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
-  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
+  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>' +
+  (isMe ? '' : '<div id="acct-lock-' + acct.uid + '" class="d-none u-296d231">' + accountLockPanelHtml(acct) + '</div>');
 }).join('');
 } catch(err) {
 listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';

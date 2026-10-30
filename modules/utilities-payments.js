@@ -1,4 +1,5 @@
 import { dataUid } from './data-owner.js';
+import { normalizeAccountLock, buildLockPatch, lockLabel, lockPanelButtons } from './account-lock.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
@@ -15,7 +16,7 @@ import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateUUID, customerHistoryMatcher, formatTime12, repairStoredRecords, loadCollections } from './business.js';
-import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
+import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton, _readAccountsIndex, _writeAccountsIndex } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
@@ -7210,52 +7211,6 @@ cardHtml += '</div>';
 } else {
 cardHtml += '<div class="u-3a66e13 st-background__64ff56 st-border-bottom__e54b2f">No commands sent yet</div>';
 }
-const isAdmin = deviceMode === 'admin';
-const adminBg = themeVar('--accent-blue', isAdmin ? 18 : 8);
-const adminBord = (isAdmin ? '2px solid ' : '1px solid ') + themeVar('--accent-blue', isAdmin ? 55 : 25);
-const adminFw = isAdmin ? '800' : '600';
-const adminTick = isAdmin ? ' ' : '';
-cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'admin\')"';
-cardHtml += ' class="st-padding__9e953a st-border-radius__5f7dc3 st-color__88b379 st-cursor__3b6a3a st-font-size__569d78 u-6e48b0b dc-background dc-border dc-font-weight" style="--d-background:' + adminBg + ';--d-border:' + adminBord + ';--d-font-weight:' + adminFw + '">' + adminTick + 'Admin Mode</button>';
-if (salesRepsList.length > 0) {
-cardHtml += '<div class="u-788ba48">Sales Representatives</div>';
-cardHtml += '<div class="u-ab90486 d-grid">';
-const repColors = [
-'--success', '--accent-orange', '--accent-purple', '--danger', '--accent-sky'
-];
-for (let ri = 0; ri < salesRepsList.length; ri++) {
-const rep = salesRepsList[ri];
-const c = repColors[ri % repColors.length];
-const repLocked = deviceMode === 'rep' && assignedRep === rep;
-const repBg = themeVar(c, repLocked ? 22 : 8);
-const repBord = (repLocked ? '2' : '1') + 'px solid ' + themeVar(c, repLocked ? 65 : 28);
-const repFw = repLocked ? '800' : '600';
-const repTick = repLocked ? ' ' : '';
-cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'rep\', \'' + rep + '\')"';
-cardHtml += ' class="has-overflow st-padding__9c6be7 st-border-radius__5f7dc3 st-cursor__3b6a3a st-font-size__ce2d05 u-268adcd dc-background dc-border dc-color dc-font-weight" style="--d-background:' + repBg + ';--d-border:' + repBord + ';--d-color:' + themeVar(c) + ';--d-font-weight:' + repFw + '">';
-cardHtml += repTick + rep + '</button>';
-}
-cardHtml += '</div>';
-}
-if (userRolesList.length > 0) {
-cardHtml += '<div class="u-788ba48">User Roles</div>';
-cardHtml += '<div class="u-ab90486 d-grid">';
-for (let ui = 0; ui < userRolesList.length; ui++) {
-const user = userRolesList[ui];
-const userLocked = deviceMode === 'userrole' && device.assignedManager === user.name;
-const userBg = themeVar('--warning', userLocked ? 22 : 8);
-const userBord = (userLocked ? '2' : '1') + 'px solid ' + themeVar('--warning', userLocked ? 65 : 28);
-const userFw = userLocked ? '800' : '600';
-const userTick = userLocked ? ' ' : '';
-const lookupKey = '_devTabsCache';
-if (!window[lookupKey]) window[lookupKey] = {};
-window[lookupKey][device.deviceId + '_' + ui] = user.tabs || [];
-cardHtml += '<button onclick="remoteControlDevice(\'' + device.deviceId + '\', \'userrole\', \'' + user.name + '\', (window._devTabsCache||{})[\'' + device.deviceId + '_' + ui + '\'])"';
-cardHtml += ' class="has-overflow st-padding__9c6be7 st-border-radius__5f7dc3 st-color__0d0827 st-cursor__3b6a3a st-font-size__ce2d05 u-268adcd dc-background dc-border dc-font-weight" style="--d-background:' + userBg + ';--d-border:' + userBord + ';--d-font-weight:' + userFw + '">';
-cardHtml += userTick + user.name + '</button>';
-}
-cardHtml += '</div>';
-}
 cardHtml += '<button onclick="removeDevice(\'' + device.deviceId + '\')"';
 cardHtml += ' class="btn btn-danger btn-sm">Remove Device</button>';
 cardHtml += '</div>';
@@ -7284,72 +7239,6 @@ Refreshing...
 }
 await loadDeviceList();
 showToast(' Device list refreshed', 'success', 2000);
-}
-
-export async function remoteControlDevice(deviceId, targetMode, repName = null, userTabs = null) {
-if (!firebaseDB || !currentUser) {
-window.notifyBlocking('Not logged in', 'error', 'Something went wrong');
-return;
-}
-let _rcTitle, _rcMsg, _rcConfirm;
-if (targetMode === 'admin') {
-_rcTitle = 'Unlock to Admin Mode';
-_rcMsg = 'Unlock this device to full Admin mode?\n\nAll tabs and admin features will become accessible.';
-_rcConfirm = 'Unlock to Admin';
-} else if (targetMode === 'rep' && repName) {
-_rcTitle = 'Lock Device — Sales Rep';
-_rcMsg = `Lock this device to Sales Rep mode for ${repName}?\n\nThe device will only show the Rep Sales tab. All admin features, tabs and controls will be hidden until unlocked remotely.`;
-_rcConfirm = `Lock to ${repName}`;
-} else if (targetMode === 'userrole' && repName) {
-const tabLabels = { prod: 'Production', factory: 'Factory', sales: 'Sales', payments: 'Payments' };
-const tabList = Array.isArray(userTabs) ? userTabs.map(t => tabLabels[t] || t).join(', ') : 'assigned tabs';
-_rcTitle = 'Lock Device — User Role';
-_rcMsg = `Lock this device to User Role for ${repName}?\n\nAssigned tabs: ${tabList}\n\nOnly the assigned sections will be visible. All other tabs, analytics and admin controls will be hidden.`;
-_rcConfirm = `Lock to ${repName}`;
-} else {
-_rcTitle = 'Switch Device Mode';
-_rcMsg = `Switch this device to ${targetMode.toUpperCase()} mode?`;
-_rcConfirm = 'Confirm';
-}
-const confirmed = await showGlassConfirm(_rcMsg, {
-title: _rcTitle,
-confirmText: _rcConfirm,
-cancelText: 'Cancel',
-danger: targetMode !== 'admin'
-});
-if (!confirmed) return;
-try {
-if (window._firestoreNetworkDisabled) {
-try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
-}
-const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
-const commandTimestamp = Date.now();
-const deviceRef = userRef.collection('devices').doc(deviceId);
-const updateData = {
-targetMode: targetMode,
-targetModeTimestamp: commandTimestamp,
-commandSource: 'remote_admin',
-lastControlled: commandTimestamp,
-controlledBy: currentUser.email || 'Admin',
-currentMode: targetMode,
-assignedRep: targetMode === 'rep' ? (repName || null) : null,
-assignedManager: targetMode === 'userrole' ? (repName || null) : null,
-assignedUserTabs: targetMode === 'userrole' ? (userTabs || []) : null,
-assignedRoleType: targetMode,
-assignedRoleName: repName || null,
-lockedAt: repName ? commandTimestamp : null,
-lockedBy: repName ? (currentUser.email || 'Admin') : null,
-};
-await deviceRef.set(updateData, { merge: true });
-const successMsg = targetMode === 'admin'
-? ' Device unlocked to Admin mode'
-: targetMode === 'rep' ? ` Device locked to Sales Rep: ${repName}`
-: targetMode === 'userrole' ? ` Device locked to User: ${repName}`
-: ` Command sent: ${targetMode}`;
-setTimeout(loadDeviceList, 2000);
-} catch (error) {
-window.notifyBlocking('Failed to control device: ' + error.message, 'error', 'Something went wrong');
-}
 }
 
 export async function removeDevice(deviceId) {
@@ -7385,7 +7274,6 @@ window.notifyBlocking('Failed to remove device: ' + error.message, 'error', 'Som
 
 window.loadDeviceList = loadDeviceList;
 window.refreshDeviceList = refreshDeviceList;
-window.remoteControlDevice = remoteControlDevice;
 window.removeDevice = removeDevice;
 window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
@@ -7477,93 +7365,57 @@ try {
 
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
 
-export async function listenForDeviceCommands() {
-if (!firebaseDB || !currentUser) return;
-if (typeof window.deviceCommandsUnsubscribe === 'function') {
-try { window.deviceCommandsUnsubscribe(); } catch (_) {}
-window.deviceCommandsUnsubscribe = null;
+export async function listenForAccountLock() {
+if (!firebaseDB || !currentUser || currentUser.offlineMode) return;
+if (typeof window.accountLockUnsubscribe === 'function') {
+try { window.accountLockUnsubscribe(); } catch (_) {}
+window.accountLockUnsubscribe = null;
 }
-if (!window._deviceCmdRetryAttempts) window._deviceCmdRetryAttempts = 0;
-if (!window._deviceCmdRetrying) window._deviceCmdRetrying = false;
 try {
-const deviceId = await getDeviceId();
-const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
-const deviceRef = userRef.collection('devices').doc(deviceId);
-const unsubscribe = deviceRef.onSnapshot({ includeMetadataChanges: false }, (doc) => {
+window.accountLockUnsubscribe = firebaseDB.collection('users').doc(currentUser.uid).onSnapshot({ includeMetadataChanges: false }, async (snap) => {
 try {
-if (doc.metadata.fromCache || doc.metadata.hasPendingWrites) return;
-if (!doc.exists) {
-return;
+if (!snap.exists || snap.metadata.fromCache || snap.metadata.hasPendingWrites) return;
+const lock = normalizeAccountLock(snap.data());
+if (!lock) return;
+const applied = Number(await sqliteStore.get('accountLockAt', 0)) || 0;
+if (lock.at <= applied) return;
+await applyRemoteModeChange(lock.mode, 'account_lock', lock.name, lock.tabs);
+await sqliteStore.set('accountLockAt', lock.at);
+} catch (e) { console.warn('[account-lock] handler error:', _safeErr(e)); }
+}, (e) => console.warn('[account-lock] listener error:', e && e.code, _safeErr(e)));
+} catch (e) { console.error('[account-lock] listen failed:', _safeErr(e)); }
 }
-const data = doc.data();
-if (!data || !data.targetMode || !data.targetModeTimestamp) return;
-if (data.forceLogout === true || data.targetMode === 'force_logout') {
-if (typeof signOut === 'function') {
-showToast('Logged out remotely by admin.', 'warning', 4000);
-window._forceLogoutSignOut = true;
-setTimeout(() => signOut().catch(() => {}), 1200);
+
+export function accountLockPanelHtml(acct) {
+const buttons = lockPanelButtons(acct.lock, salesRepsList, userRolesList);
+let html = '<div class="u-788ba48">' + esc(lockLabel(acct.lock)) + '</div><div class="u-ab90486 d-grid">';
+let group = '';
+for (const b of buttons) {
+if (b.group !== group) {
+group = b.group;
+if (group !== 'Access') html += '</div><div class="u-788ba48">' + esc(group) + '</div><div class="u-ab90486 d-grid">';
 }
-return;
+html += '<button class="btn btn-theme btn-sm ' + (b.active ? 'active' : 'idle') + '" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email || '') + '" data-mode="' + b.mode + '" data-index="' + b.index + '" onclick="setAccountLock(this.dataset.uid,this.dataset.email,this.dataset.mode,Number(this.dataset.index))">' + (b.active ? '&#10003; ' : '') + esc(b.label) + '</button>';
 }
-const targetMode = data.targetMode;
-let resolvedName = null;
-const roleType = data.assignedRoleType || targetMode;
-if (roleType === 'rep') {
-resolvedName = data.assignedRoleName || data.assignedRep || null;
-} else if (roleType === 'userrole' || roleType === 'production' || roleType === 'factory') {
-resolvedName = data.assignedRoleName || data.assignedManager || null;
+return html + '</div>';
 }
-const effectiveMode = data.assignedRoleType || targetMode;
-const resolvedUserTabs = Array.isArray(data.assignedUserTabs) ? data.assignedUserTabs : [];
-const commandTimestamp = data.targetModeTimestamp && data.targetModeTimestamp.toMillis
-? data.targetModeTimestamp.toMillis()
-: (typeof data.targetModeTimestamp === 'number' ? data.targetModeTimestamp : 0);
-if (!commandTimestamp) return;
-const lastProcessed = window.lastProcessedCommandTimestamp || 0;
-if (commandTimestamp > lastProcessed) {
-applyRemoteModeChange(effectiveMode, data.commandSource || 'remote', resolvedName, resolvedUserTabs);
-window.lastProcessedCommandTimestamp = commandTimestamp;
-window._deviceCmdRetryAttempts = 0;
-}
-} catch (snapErr) {
-console.warn('[device] command snapshot handler error:', _safeErr(snapErr));
-}
-}, (error) => {
-const _code = error && error.code;
-console.warn('[device] command listener error:', _code, _safeErr(error));
-window.deviceCommandsUnsubscribe = null;
-if (_code === 'permission-denied' || _code === 'failed-precondition') {
-console.warn('[device] stopping device listener — unrecoverable error:', _code);
-window._deviceCmdRetryAttempts = 0;
-window._deviceCmdRetrying = false;
-return;
-}
-if (window._deviceCmdRetrying) return;
-window._deviceCmdRetryAttempts = (window._deviceCmdRetryAttempts || 0) + 1;
-const MAX_DEVICE_RETRIES = 8;
-if (window._deviceCmdRetryAttempts > MAX_DEVICE_RETRIES) {
-console.warn('[device] max retries reached — giving up device listener');
-window._deviceCmdRetryAttempts = 0;
-window._deviceCmdRetrying = false;
-return;
-}
-const delay = Math.min(5000 * Math.pow(2, window._deviceCmdRetryAttempts - 1), 120000);
-window._deviceCmdRetrying = true;
-setTimeout(() => {
-window._deviceCmdRetrying = false;
-if (firebaseDB && currentUser) {
-listenForDeviceCommands().catch(e => {
-window._deviceCmdRetrying = false;
-console.warn('[device] listenForDeviceCommands retry failed:', _safeErr(e));
-});
-}
-}, delay);
-});
-window.deviceCommandsUnsubscribe = unsubscribe;
-window._deviceCmdRetryAttempts = 0;
-window._deviceCmdRetrying = false;
+
+export async function setAccountLock(uid, email, mode, index) {
+if (!firebaseDB || !currentUser) { window.notifyBlocking('Not logged in', 'error', 'Something went wrong'); return; }
+const name = mode === 'rep' ? salesRepsList[index] : mode === 'userrole' ? (userRolesList[index] || {}).name : null;
+const tabs = mode === 'userrole' ? ((userRolesList[index] || {}).tabs || []) : null;
+const what = mode === 'admin' ? 'unlock to full Admin access' : 'lock to ' + (mode === 'rep' ? 'Sales Rep ' : 'User Role ') + name;
+const confirmed = await showGlassConfirm('Sign-in as ' + email + ' will ' + what + ' on every device.', { title: 'Account Access', confirmText: 'Apply', cancelText: 'Cancel', danger: mode !== 'admin' });
+if (!confirmed) return;
+try {
+const lock = buildLockPatch(mode, name, tabs, currentUser.email, Date.now());
+await firebaseDB.collection('users').doc(uid).update({ lock });
+const accounts = await _readAccountsIndex();
+await _writeAccountsIndex(accounts.map(a => a.uid === uid ? { ...a, lock } : a));
+showToast('Access updated for ' + email, 'success', 2500);
+if (typeof loadAccountsList === 'function') await loadAccountsList();
 } catch (error) {
-console.error('[device] listenForDeviceCommands failed:', _safeErr(error));
+window.notifyBlocking('Failed to update access: ' + error.message, 'error', 'Something went wrong');
 }
 }
 
@@ -7641,7 +7493,8 @@ showToast('Device unlocked to Admin mode', 'info', 4000);
 }
 }
 
-window.listenForDeviceCommands = listenForDeviceCommands;
+window.listenForAccountLock = listenForAccountLock;
+window.setAccountLock = setAccountLock;
 
 export function listenForTeamChanges() {
 if (window._teamUnsubscribe) {
@@ -8076,11 +7929,11 @@ window.loadUserRolesContent = loadUserRolesContent;
 window.phoneActionHTML = phoneActionHTML;
 window.loadDeviceList = loadDeviceList;
 window.refreshDeviceList = refreshDeviceList;
-window.remoteControlDevice = remoteControlDevice;
 window.removeDevice = removeDevice;
 window._applyModeFromData = _applyModeFromData;
 window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
-window.listenForDeviceCommands = listenForDeviceCommands;
+window.listenForAccountLock = listenForAccountLock;
+window.setAccountLock = setAccountLock;
 window.applyRemoteModeChange = applyRemoteModeChange;
 window.listenForTeamChanges = listenForTeamChanges;
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;

@@ -3,7 +3,7 @@ import { APP_CONFIG } from './constants.js';
 import { applyMoneyPrivacy } from './money-privacy.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
-import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
+import { listenForAccountLock, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';
 import { RECORD_KEYS } from './link-graph.js';
 export let appMode;
@@ -2190,7 +2190,7 @@ accountCreated: firebase.firestore.FieldValue.serverTimestamp()
 }, { merge: true });
 startDeviceHeartbeat(deviceRef);
 setTimeout(() => {
-listenForDeviceCommands().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
+listenForAccountLock().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
 }, 2000);
 listenForTeamChanges();
 await logDeviceActivity('device_registered', {
@@ -2269,7 +2269,7 @@ window.logDeviceActivity = logDeviceActivity;
 export async function initializeDeviceListeners() {
 try {
 setTimeout(() => {
-listenForDeviceCommands().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
+listenForAccountLock().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
 }, 2000);
 listenForTeamChanges();
 } catch (error) {
