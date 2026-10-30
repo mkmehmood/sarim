@@ -4433,12 +4433,14 @@ const role     = normalizeRole(acct);
 const dot = approved
   ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3"></span>'
   : '<span class="u-eca6a09 d-inline-block st-background__047b23"></span>';
-const roleBtns = isMe ? '' : '<div class="u-ab90486 d-grid">' + ACCOUNT_ROLES.map(r =>
-  '<button class="btn btn-theme btn-sm ' + (r === role ? 'active' : 'idle') + '" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email || '') + '" data-role="' + r + '" onclick="adminSetAccountRole(this.dataset.uid,this.dataset.email,this.dataset.role)">' + roleLabel(r) + '</button>'
-).join('') + '</div>';
+const roleName = acct.name ? roleLabel(role) + ': ' + acct.name : roleLabel(role);
+const rolePanel = isMe ? '' : '<div id="acct-lock-' + esc(acct.uid) + '" class="d-none u-296d231 st-background__f38efd st-border-bottom__e54b2f"><div class="u-788ba48">' + esc(roleName) + '</div><div class="u-ab90486 d-grid">' + ACCOUNT_ROLES.map(r =>
+  '<button class="btn btn-theme btn-sm ' + (r === role ? 'active' : 'idle') + '" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email || '') + '" data-role="' + r + '" onclick="adminSetAccountRole(this.dataset.uid,this.dataset.email,this.dataset.role)">' + (r === role ? '&#10003; ' : '') + roleLabel(r) + '</button>'
+).join('') + '</div></div>';
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
+      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9" data-uid="' + esc(acct.uid) + '" onclick="document.getElementById(\'acct-lock-\' + this.dataset.uid).classList.toggle(\'d-none\')">Access</button>',
       '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + esc(acct.uid) + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
       '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
     ].join('');
@@ -4449,8 +4451,8 @@ return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54
   '<div class="u-28c8f7e d-flex"><span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">' + esc(roleLabel(role)) + '</span>' +
   (acct.name ? '<span class="u-e7a1434">' + esc(acct.name) + '</span>' : '') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
-  '</div>' + roleBtns +
-  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
+  '</div>' +
+  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>' + rolePanel;
 }).join('');
 } catch(err) {
 listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';

@@ -44,6 +44,13 @@ describe('app accounts: managing accounts', () => {
     assert.match(sync, /signInWithEmailAndPassword\(email, password\)/);
     assert.match(sync, /profile && profile\.ownerUid !== ownerUid/);
   });
+  it('keeps the original lock panel: Access toggle, current role label and a button grid with a tick', () => {
+    assert.match(sync, /classList\.toggle\(\\'d-none\\'\)">Access<\/button>/);
+    assert.match(sync, /class="d-none u-296d231/);
+    assert.match(sync, /<div class="u-788ba48">' \+ esc\(roleName\)/);
+    assert.match(sync, /<div class="u-ab90486 d-grid">' \+ ACCOUNT_ROLES\.map/);
+    assert.match(sync, /\(r === role \? '&#10003; ' : ''\) \+ roleLabel\(r\)/);
+  });
   it('lists six role buttons per account plus suspend and remove', () => {
     assert.match(sync, /ACCOUNT_ROLES\.map\(r =>/);
     assert.match(sync, /adminSetAccountRole\(this\.dataset\.uid/);
