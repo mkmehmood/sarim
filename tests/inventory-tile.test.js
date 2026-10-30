@@ -65,8 +65,8 @@ describe('stock tile wiring', () => {
   const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const SALES = readFileSync(new URL('../modules/utilities-sales.js', import.meta.url), 'utf8');
 
-  it('sits directly above the Save Transaction button and starts hidden', () => {
-    assert.match(HTML, /<button type="button" class="stock-tile d-none" id="inventory-warning"[^>]*><\/button>\s*<div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction"/);
+  it('sits in the results card above the Save Transaction button and starts hidden', () => {
+    assert.match(HTML, /<button type="button" class="stock-tile d-none" id="inventory-warning"[^>]*><\/button>\s*<\/div>[\s\S]*<div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction"/);
   });
 
   it('is filled by the sale calculator and hidden when there is no date', () => {

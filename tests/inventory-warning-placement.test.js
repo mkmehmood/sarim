@@ -11,8 +11,8 @@ describe('sale inventory notice placement', () => {
     assert.match(HTML, /<div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction"/);
   });
 
-  it('the stock tile is static markup placed right above the footer band', () => {
-    assert.match(HTML, /id="inventory-warning"[^>]*><\/button>\s*<div class="form-foot">/);
+  it('the stock tile is static markup inside the single results card, above the footer band', () => {
+    assert.match(HTML, /id="sale-result-card">[\s\S]*id="cust-profit"[\s\S]*id="inventory-warning"[^>]*><\/button>\s*<\/div>[\s\S]*<div class="form-foot"><button class="btn btn-main" id="btn-save-cust-transaction"/);
     assert.doesNotMatch(SALES, /createInventoryWarningElement/);
   });
 });
@@ -26,5 +26,16 @@ describe('camera screen colours', () => {
     assert.ok(start > 0 && end > start);
     assert.doesNotMatch(CSS.slice(start, end), /var\(--text-main\)/);
     assert.ok(camRules.length > 0);
+  });
+});
+
+describe('sale form layout', () => {
+  it('puts cost, value, profit and stock in one card', () => {
+    const card = HTML.slice(HTML.indexOf('id="sale-result-card"'), HTML.indexOf('id="cust-coll-result"'));
+    for (const id of ['sale-result-cost', 'sale-result-value', 'sale-result-profit', 'inventory-warning']) assert.ok(card.includes(`id="${id}"`), id);
+  });
+  it('places the supply stores beside the quantity field', () => {
+    const grid = HTML.slice(HTML.indexOf('id="cust-quantity"'), HTML.indexOf('id="cust-return-inputs"'));
+    assert.ok(grid.includes('id="supply-store-toggles"') && grid.includes('id="supply-store-value"'));
   });
 });
