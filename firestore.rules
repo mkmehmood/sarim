@@ -2,85 +2,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
-      return request.auth != null;
-    }
+    function signedIn() { return request.auth != null; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
 
-    function profilePath(uid) {
-      return /databases/$(database)/documents/users/$(uid);
+    function meRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
+    function me() { return get(meRef()).data; }
 
-    function hasProfile() {
-      return signedIn() && exists(profilePath(request.auth.uid));
+    function active() {
+      return signedIn()
+        && request.auth.token.email != null
+        && exists(meRef())
+        && me().get('approved', true) != false
+        && me().get('email', request.auth.token.email).lower() == request.auth.token.email.lower();
     }
-
-    function me() {
-      return get(profilePath(request.auth.uid)).data;
-    }
-
-    function isApproved() {
-      return hasProfile() && me().get('approved', true) != false;
-    }
-
-    function emailMatches() {
-      return !('email' in me())
-        || (request.auth.token.email != null
-            && me().email.lower() == request.auth.token.email.lower());
-    }
-
-    function dataOwner() {
-      return me().get('ownerUid', request.auth.uid);
-    }
-
-    function isOwner() {
-      return dataOwner() == request.auth.uid;
-    }
-
-    function isAdmin() {
-      return isOwner() || me().get('role', 'user') == 'admin';
-    }
-
-    function canUseData(uid) {
-      return isApproved() && emailMatches() && dataOwner() == uid;
-    }
-
-    function sameTeam(data) {
-      return data.get('ownerUid', null) == dataOwner();
+    function teamOwner() { return me().get('ownerUid', request.auth.uid); }
+    function isAdmin() { return active() && me().get('role', 'user') == 'admin'; }
+    function inMyTeam(uid) { return active() && teamOwner() == uid; }
+    function isMemberOfMyTeam(data) { return data.get('ownerUid', null) == teamOwner(); }
+    function dataAccess(uid, subcollection, docId) {
+      return inMyTeam(uid)
+        && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && (
-        request.auth.uid == uid
-        || canUseData(uid)
-        || (isApproved() && emailMatches() && isAdmin() && sameTeam(resource.data))
-      );
+      allow read: if isSelf(uid)
+        || inMyTeam(uid)
+        || (isAdmin() && isMemberOfMyTeam(resource.data));
 
-      allow create: if isApproved() && emailMatches() && isAdmin()
-        && request.resource.data.ownerUid == dataOwner()
-        && request.auth.uid != uid;
+      allow create: if isAdmin()
+        && !isSelf(uid)
+        && request.resource.data.get('ownerUid', null) == teamOwner();
 
       allow update: if (
-        request.auth.uid == uid
-        && isApproved() && emailMatches()
-        && !request.resource.data.diff(resource.data).affectedKeys()
-             .hasAny(['ownerUid', 'role', 'approved', 'email', 'forceLogout', 'removedAt', 'removedBy'])
+        isSelf(uid) && active()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['lastWrite', 'lastLoginAt', 'authProviders', 'displayName'])
       ) || (
-        canUseData(uid) && request.auth.uid != uid
+        inMyTeam(uid) && !isSelf(uid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastWrite'])
       ) || (
-        isApproved() && emailMatches() && isAdmin()
-        && request.auth.uid != uid
-        && sameTeam(resource.data)
-        && request.resource.data.ownerUid == resource.data.ownerUid
+        isAdmin() && isSelf(uid) && teamOwner() == uid
+      ) || (
+        isAdmin() && !isSelf(uid)
+        && isMemberOfMyTeam(resource.data)
+        && request.resource.data.get('ownerUid', null) == resource.data.get('ownerUid', null)
       );
 
-      allow delete: if false;
+      allow delete: if isAdmin() && !isSelf(uid) && isMemberOfMyTeam(resource.data);
     }
 
-    match /users/{uid}/{path=**} {
-      allow read: if canUseData(uid);
-      allow write: if canUseData(uid)
-        && (isAdmin() || string(path) != 'settings/accounts');
+    match /users/{uid}/{subcollection}/{docId} {
+      allow read, write: if dataAccess(uid, subcollection, docId);
+    }
+
+    match /users/{uid}/{subcollection}/{docId}/{rest=**} {
+      allow read, write: if dataAccess(uid, subcollection, docId);
     }
   }
 }

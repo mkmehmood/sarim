@@ -44,16 +44,22 @@ describe('team and access screen', () => {
 });
 
 describe('firestore rules', () => {
-  it('locks everything to the approved account whose email matches and whose profile points at the data owner', () => {
-    assert.match(RULES, /function canUseData\(uid\)/);
-    assert.match(RULES, /isApproved\(\) && emailMatches\(\) && dataOwner\(\) == uid/);
-    assert.match(RULES, /allow delete: if false/);
+  it('ties every data path to an active, email-matched account in the same team', () => {
+    assert.match(RULES, /function active\(\)/);
+    assert.match(RULES, /request\.auth\.token\.email != null/);
+    assert.match(RULES, /me\(\)\.get\('email', request\.auth\.token\.email\)\.lower\(\) == request\.auth\.token\.email\.lower\(\)/);
+    assert.match(RULES, /function inMyTeam\(uid\) \{ return active\(\) && teamOwner\(\) == uid; \}/);
     assert.doesNotMatch(RULES, /allow (read|write)[^;]*: if true/);
   });
   it('stops members changing their own role, owner, approval or email', () => {
-    assert.match(RULES, /hasAny\(\['ownerUid', 'role', 'approved', 'email'/);
+    assert.match(RULES, /hasOnly\(\['lastWrite', 'lastLoginAt', 'authProviders', 'displayName'\]\)/);
   });
-  it('keeps the accounts index admin-only for writes', () => {
-    assert.match(RULES, /string\(path\) != 'settings\/accounts'/);
+  it('scopes admins to their own team and keeps the accounts index admin-only', () => {
+    assert.match(RULES, /isAdmin\(\) && !isSelf\(uid\)\s+&& isMemberOfMyTeam\(resource\.data\)/);
+    assert.match(RULES, /subcollection == 'settings' && docId == 'accounts'/);
+    assert.doesNotMatch(RULES, /subcollection in \[/);
+  });
+  it('only lets admins delete member profiles', () => {
+    assert.match(RULES, /allow delete: if isAdmin\(\) && !isSelf\(uid\) && isMemberOfMyTeam\(resource\.data\)/);
   });
 });
