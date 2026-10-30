@@ -314,6 +314,7 @@ return sales.filter(r =>
 }
 
 export async function applyRepReturnsToCalculator(seller, toDate) {
+if (getEditCtx('calc')) return;
 const retEl = document.getElementById('returnedQuantity');
 const expEl = document.getElementById('expiredQuantity');
 const hint = document.getElementById('repReturnAutoHint');
@@ -422,6 +423,7 @@ setPerfOverviewMode(currentPerfOverviewMode || 'day');
 }
 
 export async function autoFillTotalSoldQuantity() {
+if (getEditCtx('calc')) return;
 const { calculator, rep } = await loadCollections('calculator', 'rep');
 if (window._editCtx && window._editCtx.kind === 'calc') return;
 const seller = document.getElementById('sellerSelect').value;
@@ -1399,6 +1401,66 @@ window.notifyBlocking("Error: Record not found.", 'error', 'Something went wrong
 }
 } catch (error) {
 window.notifyBlocking("Failed to delete entry. Please try again.", 'error', 'Something went wrong');
+}
+}
+
+export async function getCalcEditBlockReason(entry) {
+if (!entry) return 'Record not found.';
+if (entry.isMerged) return 'Merged opening balance records cannot be edited.';
+let blk = (await getTransferDeleteBlockReason(entry)) || (await getExpiredDeleteBlockReason(entry));
+if (!blk && entry.returned > 0 && entry.returnStore && typeof window.computeStoreStockSnapshot === 'function') {
+const snap = await window.computeStoreStockSnapshot(entry.returnStore, entry.date);
+if (snap.available - entry.returned < -0.0001) blk = `${getStoreLabel(entry.returnStore)} stock on ${entry.date} was already sold. Changing the ${entry.returned} kg return would make stock negative.`;
+}
+return blk || '';
+}
+
+export async function reverseCalcEntryForEdit(id) {
+const history = ensureArray(await sqliteStore.get('calculator', []));
+const live = history.find(h => h && h.id === id);
+const blk = await getCalcEditBlockReason(live);
+if (blk) return { error: blk };
+const snap = JSON.parse(JSON.stringify(live));
+const done = [];
+try {
+if (snap.linkedSalesIds && snap.linkedSalesIds.length > 0) { await revertSpecificSalesEntries(snap.linkedSalesIds); done.push('sales'); }
+if (snap.linkedRepSalesIds && snap.linkedRepSalesIds.length > 0) { await revertRepSalesEntries(snap.linkedRepSalesIds); done.push('rep'); }
+if (snap.returned > 0 && snap.returnStore) {
+await reverseReturnFromProduction(snap.returnStore, snap.returned, snap.date, snap.seller, { returnEntryId: snap.returnEntryId, returnLogId: snap.returnLogId });
+done.push('return');
+}
+if (snap.transferSaleId) {
+const all = ensureArray(await sqliteStore.get('sales'));
+const tr = all.find(x => x.id === snap.transferSaleId);
+if (tr) {
+await unifiedDelete('sales', all.filter(x => x.id !== tr.id), tr.id, { strict: true }, tr);
+done.push('transfer');
+if (tr.supplyStore && tr.supplyStore !== 'N/A') await reverseReturnFromProduction(tr.supplyStore, snap.returned, snap.date, snap.seller);
+}
+}
+if (snap.expired > 0 && snap.expiredApplied !== false) {
+await reverseExpiredFromChora(snap.expired, snap.date);
+done.push('expired');
+}
+live.linkedSalesIds = []; live.linkedRepSalesIds = []; live.linkedRepReturnIds = [];
+live.updatedAt = getTimestamp();
+await unifiedSave('calculator', history, live);
+} catch (e) {
+await _reapplyCalcEffects(snap, done, live);
+try { Object.assign(live, { linkedSalesIds: snap.linkedSalesIds || [], linkedRepSalesIds: snap.linkedRepSalesIds || [], linkedRepReturnIds: snap.linkedRepReturnIds || [] }); await unifiedSave('calculator', history, live); } catch (_) { }
+return { error: 'Could not prepare the entry for editing: ' + ((e && e.message) || 'a step failed') + ' Everything was put back as it was.' };
+}
+return { snap, done };
+}
+
+export async function restoreCalcAfterFailedEdit(rev) {
+if (!rev || !rev.snap) return;
+const history = ensureArray(await sqliteStore.get('calculator', []));
+const live = history.find(h => h && h.id === rev.snap.id);
+await _reapplyCalcEffects(rev.snap, rev.done, live);
+if (live) {
+Object.assign(live, { ...JSON.parse(JSON.stringify(rev.snap)), returnEntryId: live.returnEntryId, returnLogId: live.returnLogId, transferSaleId: live.transferSaleId, expiredApplied: rev.snap.expired > 0 ? true : live.expiredApplied, updatedAt: getTimestamp() });
+try { await unifiedSave('calculator', history, live); } catch (_) { }
 }
 }
 

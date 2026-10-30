@@ -11,6 +11,7 @@ import { ownsNoPayable } from './raw-purchases.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { commissionItemsOfRecord, expenseItemsOfRecord } from './field-expense-items.js';
+import { getCalcEditBlockReason, reverseCalcEntryForEdit, restoreCalcAfterFailedEdit, updateCalcRangeLabel } from './utilities-payments.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
 import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, resetProdPhotos } from './prod-photos.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
@@ -2856,13 +2857,20 @@ if (rec.isMerged) { showToast('Merged opening balance records cannot be edited.'
 if (typeof showTab === 'function') showTab('calc');
 const sel = document.getElementById('sellerSelect');
 if (!sel || !Array.from(sel.options).some(o => o.value === rec.seller)) { showToast('The seller of this entry is not available for editing.', 'warning'); return; }
-beginEditMode('calc', rec, { buttonId: 'btn-save-calculator', watchIds: ['totalSold', 'sharedQty', 'creditSales', 'prevCreditReceived', 'receivedCash', 'commissionPerUnit', 'fieldExpenses', 'commissionPaid'], label: 'Update Entry', anchorId: 'totalSold', cancelFn: _resetCalcForm });
+beginEditMode('calc', rec, { buttonId: 'btn-save-calculator', watchIds: ['sellerSelect', 'sale-date', 'totalSold', 'returnedQuantity', 'expiredQuantity', 'sharedQty', 'creditSales', 'prevCreditReceived', 'receivedCash', 'commissionPerUnit', 'fieldExpenses', 'commissionPaid'], label: 'Update Entry', anchorId: 'totalSold', cancelFn: _resetCalcForm });
 window._calcSeller = rec.seller;
 sel.value = rec.seller;
 const selBtnLabel = document.querySelector('#sellerSelectBtn span');
 if (selBtnLabel) { const opt = Array.from(sel.options).find(o => o.value === rec.seller); if (opt) selBtnLabel.textContent = opt.text; }
 const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
 set('sale-date', editDateValue(rec, ['date', 'createdAt', 'timestamp']));
+{
+const _repAll = ensureArray(await sqliteStore.get('rep'));
+const _days = (rec.linkedRepSalesIds || []).map(rid => { const r = _repAll.find(x => x && x.id === rid); return r && r.date; }).filter(Boolean).sort();
+set('sale-date-from', (_days[0] && _days[0] < rec.date) ? _days[0] : rec.date);
+window._calcFromManual = true;
+updateCalcRangeLabel();
+}
 const _num = (v) => (Number(v) > 0 ? String(Number(v)) : '');
 const totalSold = document.getElementById('totalSold');
 if (totalSold) { totalSold.readOnly = false; totalSold.value = String(Number(rec.totalSold) || 0); }
@@ -2875,11 +2883,24 @@ set('receivedCash', _num(rec.received));
 set('commissionPerUnit', _num(rec.commissionPerUnit));
 setFieldExpenseItems(expenseItemsOfRecord(rec));
 setCommissionItems(commissionItemsOfRecord(rec));
-['returnedQuantity', 'expiredQuantity', 'sale-date'].forEach(eid => { const el = document.getElementById(eid); if (el) el.readOnly = true; });
-const selectBtn = document.getElementById('sellerSelectBtn'); if (selectBtn) selectBtn.disabled = true;
+['returnedQuantity', 'expiredQuantity', 'sale-date'].forEach(eid => { const el = document.getElementById(eid); if (el) el.readOnly = false; });
+const selectBtn = document.getElementById('sellerSelectBtn'); if (selectBtn) selectBtn.disabled = false;
+window._returnStore = rec.returnStore || null;
+window._returnRep = rec.returnRep || null;
+if (Number(rec.returned) > 0) {
+const _sec = document.getElementById('returnStoreSection');
+if (_sec) _sec.classList.remove('hidden');
+if (typeof renderReturnTargets === 'function') await renderReturnTargets();
+const _grp = document.querySelector('#returnStoreSection .toggle-group');
+if (_grp) {
+_grp.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
+const _btn = rec.returnStore ? document.getElementById('ret-store-' + rec.returnStore) : Array.from(_grp.querySelectorAll('.ret-rep-btn')).find(b => (b.textContent || '').trim().toLowerCase() === String(rec.returnRep || '').trim().toLowerCase());
+if (_btn) _btn.classList.add('active');
+}
+}
 if (typeof window.calculateSales === 'function') window.calculateSales();
 if (window._editCtx) window._editCtx.snapshot = Object.fromEntries(window._editCtx.watchIds.map(wid => { const el = document.getElementById(wid); return [wid, String(el ? (el.value ?? '') : '')]; }));
-if (Number(rec.returned) > 0 || Number(rec.expired) > 0) showToast('Returned, expired, seller and date are locked. Delete and re-enter the entry to change them.', 'info');
+if (Number(rec.returned) > 0 || Number(rec.expired) > 0) showToast('Changing the seller, date, returned or expired quantity re-applies stock and credit links when you save.', 'info');
 }
 
 registerEditHandler('calc', startEditCalc);
@@ -2902,8 +2923,16 @@ const seller = document.getElementById('sellerSelect').value;
 const date = document.getElementById('sale-date').value;
 const sold = readNum('totalSold');
 const _calcEd = getEditCtx('calc');
-const ret = _calcEd ? Number(_calcEd.original.returned) || 0 : readNum('returnedQuantity');
-const exp = _calcEd ? Number(_calcEd.original.expired) || 0 : readNum('expiredQuantity');
+const ret = readNum('returnedQuantity');
+const exp = readNum('expiredQuantity');
+const _r2e = (n) => Number(safeNumber(n, 0).toFixed(2));
+const _calcFull = !!_calcEd && (() => {
+const o = _calcEd.original;
+if (seller !== o.seller || date !== editDateValue(o, ['date', 'createdAt', 'timestamp'])) return true;
+if (_r2e(ret) !== _r2e(o.returned) || _r2e(exp) !== _r2e(o.expired)) return true;
+return ret > 0 && ((window._returnStore || null) !== (o.returnStore || null) || (window._returnRep || null) !== (o.returnRep || null));
+})();
+const _calcQuick = !!_calcEd && !_calcFull;
 const shared = readNum('sharedQty');
 const cred = readNum('creditSales');
 const prev = readNum('prevCreditReceived');
@@ -2913,7 +2942,7 @@ const commissionPerUnit = readNum('commissionPerUnit');
 const commissionPaid = readNum('commissionPaid');
 let selectedStore = null;
 let selectedRep = null;
-if (ret > 0 && !_calcEd) {
+if (ret > 0 && !_calcQuick) {
 if (window._returnRep && window._returnRep !== seller) {
 selectedRep = window._returnRep;
 } else if (window._returnStore) {
@@ -2923,8 +2952,8 @@ window.notifyBlocking('Please select a store (ZUBAIR or MAHMOOD) for a product r
 return;
 }
 }
-const costPerKg = _calcEd ? (Number(_calcEd.original.costPrice) || 0) : ((await getCostPriceForStore(getDefaultStoreKey(), date)) || 0);
-const salePrice = _calcEd ? (Number(_calcEd.original.unitPrice) || 0) : await getSalePriceForStore(getDefaultStoreKey());
+const costPerKg = _calcQuick ? (Number(_calcEd.original.costPrice) || 0) : ((await getCostPriceForStore(getDefaultStoreKey(), date)) || 0);
+const salePrice = _calcQuick ? (Number(_calcEd.original.unitPrice) || 0) : await getSalePriceForStore(getDefaultStoreKey());
 if(!date) return window.notifyBlocking('Please select a date', 'warning', 'Warning');
 if(sold <= 0) return window.notifyBlocking('Please enter valid units sold (must be greater than 0)', 'warning', 'Warning');
 if(salePrice <= 0) return window.notifyBlocking('Please set a sale price in Factory Formulas first', 'warning', 'Warning');
@@ -2961,7 +2990,7 @@ statusText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
 statusClass = "result-box callout discrepancy-ok";
 }
 }
-if (_calcEd) {
+if (_calcQuick) {
 const _o = _calcEd.original;
 const _r2 = (n) => Number(safeNumber(n, 0).toFixed(2));
 const _fieldItems = getFieldExpenseItems();
@@ -3004,7 +3033,31 @@ window.notifyBlocking('Could not update the entry. Nothing was changed.', 'error
 }
 return;
 }
+if (_calcFull) {
+const _o = _calcEd.original;
+const _fr = [
+{ label: 'Seller', from: _o.seller, to: seller },
+{ label: 'Date', from: editDateValue(_o, ['date', 'createdAt', 'timestamp']), to: date },
+{ label: 'Total sold', from: _r2e(_o.totalSold), to: _r2e(sold) },
+{ label: 'Returned', from: _r2e(_o.returned), to: _r2e(ret) },
+{ label: 'Expired', from: _r2e(_o.expired), to: _r2e(exp) },
+{ label: 'Shared', from: _r2e(_o.shared), to: _r2e(shared) },
+{ label: 'Credit qty', from: _r2e(_o.creditQty), to: _r2e(cred) },
+{ label: 'Previous credit received', from: _r2e(_o.prevColl), to: _r2e(prev) },
+{ label: 'Field expenses', from: _r2e(_o.fieldExpenses), to: _r2e(fieldExp) },
+{ label: 'Commission / unit', from: _r2e(_o.commissionPerUnit), to: _r2e(commissionPerUnit) },
+{ label: 'Commission paid', from: _r2e(_o.commissionPaid), to: _r2e(commissionPaid) },
+{ label: 'Cash received', from: _r2e(_o.received), to: _r2e(rec) }
+];
+if (!(await confirmEditChanges(_fr, 'Update Calculator Entry?'))) return;
+}
 if (!(await window.gcCommit({}))) return;
+const _ed = _calcFull ? _calcEd : null;
+let _rev = null;
+if (_ed) {
+_rev = await reverseCalcEntryForEdit(_ed.id);
+if (_rev.error) { window.notifyBlocking(_rev.error, 'warning', 'Action not allowed'); return; }
+}
 let transferInfo = null;
 let _retIds = null;
 let _expApplied = null;
@@ -3022,6 +3075,7 @@ if (_expApplied) await reverseExpiredFromChora(exp, date);
 if (linkedIds.length) await revertSpecificSalesEntries(linkedIds);
 if (linkedRepIds.length) await revertRepSalesEntries(linkedRepIds);
 } catch (_) {}
+if (_rev) { try { await restoreCalcAfterFailedEdit(_rev); } catch (_) {} }
 };
 try {
 if (ret > 0 && selectedStore) {
@@ -3037,8 +3091,8 @@ await _rollbackCalc();
 window.notifyBlocking('Could not save: ' + ((e && e.message) || 'unknown error'), 'error', 'Something went wrong');
 return;
 }
-let calcId = generateUUID('calc');
-if (!validateUUID(calcId)) {
+let calcId = _ed ? _ed.id : generateUUID('calc');
+if (!_ed && !validateUUID(calcId)) {
 calcId = generateUUID('calc');
 }
 const calcCreatedAt = getTimestamp();
@@ -3085,10 +3139,11 @@ linkedRepSalesIds: [],
 linkedRepReturnIds: [],
 syncedAt: new Date().toISOString()
 };
-entry = ensureRecordIntegrity(entry, false);
+if (_ed) stampEdit(entry, _ed.original);
+entry = ensureRecordIntegrity(entry, !!_ed);
 const reconciledCustomerIds = new Set();
 if (Array.isArray(calculator)) {
-  calculator.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(id => reconciledCustomerIds.add(id)); });
+  calculator.forEach(h => { if (_ed && h.id === _ed.id) return; if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(id => reconciledCustomerIds.add(id)); });
 }
 const _cycSel = await getCalcCycleSelection(seller);
 try {
@@ -3106,14 +3161,15 @@ let _persisted = false;
 try {
 let history = await sqliteStore.get('calculator', []);
 if (!Array.isArray(history)) history = [];
-history.push(entry);
+if (_ed) replaceRecord(history, entry); else history.push(entry);
 await unifiedSave('calculator', history, entry);
 _persisted = true;
 notifyDataChange('calculator');
 emitSyncUpdate({ calculator: null});
 if (Array.isArray(calculator)) {
-calculator.push(entry);
+if (_ed) replaceRecord(calculator, entry); else calculator.push(entry);
 }
+if (_ed) endEditMode();
 document.getElementById('totalSold').value = '';
 document.getElementById('returnedQuantity').value = '';
 document.getElementById('expiredQuantity').value = '';
@@ -3132,7 +3188,7 @@ if (_ee) { delete _ee.dataset.repReturnAuto; window.clearAutoFilledField(_ee); }
 if (_hh) { _hh.classList.add('hidden'); _hh.textContent = ''; } }
 document.getElementById('returnStoreSection').classList.add('hidden');
 window._calcFromManual = false;
-showToast(`Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');
+showToast(_ed ? `Transaction updated! ${linkedIds.length} sales entries reconciled.` : `Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');
 await loadSalesData(currentCompMode);
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);
 if (entry.returned > 0 && (entry.returnStore || entry.returnRep)) {
