@@ -46,8 +46,31 @@ describe('calculator edit: quick vs full', () => {
     assert.match(sales, /if \(_ed\) replaceRecord\(history, entry\)/);
     assert.match(sales, /restoreCalcAfterFailedEdit\(_rev\)/);
   });
-  it('auto-fill does not overwrite the form while editing a calculator entry', () => {
-    assert.match(pay, /autoFillTotalSoldQuantity\(\) \{\nif \(getEditCtx\('calc'\)\) return;/);
-    assert.match(pay, /applyRepReturnsToCalculator\(seller, toDate\) \{\nif \(getEditCtx\('calc'\)\) return;/);
+  it('only legacy entries without linked deliveries keep their saved figures', () => {
+    assert.match(pay, /autoFillTotalSoldQuantity\(\) \{\nif \(window\._calcLegacyEdit && getEditCtx\('calc'\)\) return;/);
+    assert.match(pay, /applyRepReturnsToCalculator\(seller, toDate\) \{\nif \(window\._calcLegacyEdit && getEditCtx\('calc'\)\) return;/);
+  });
+});
+
+describe('total sold, returned and expired come fresh from the Sales tab', () => {
+  it('the three inputs are read-only', () => {
+    assert.match(html, /id="totalSold" readonly/);
+    assert.match(html, /id="returnedQuantity" readonly/);
+    assert.match(html, /id="expiredQuantity" readonly/);
+  });
+  it('they stay read-only while editing and the form reset never unlocks them', () => {
+    assert.match(sales, /\['totalSold', 'returnedQuantity', 'expiredQuantity'\]\.forEach\(eid => \{ const el = document\.getElementById\(eid\); if \(el\) el\.readOnly = true; \}\);/);
+    assert.doesNotMatch(sales, /\['returnedQuantity', 'expiredQuantity', 'sellerSelectBtn'/);
+  });
+  it('editing refreshes them from the Sales tab, counting the entry\'s own links as pending', () => {
+    assert.match(sales, /if \(_hasLinks\) \{\nawait autoFillTotalSoldQuantity\(\);/);
+    assert.match(pay, /ownIds\.has\(sale\.id\)/);
+    assert.match(pay, /entry\.id === _calcEd\.id\) return;/);
+  });
+  it('a changed total sold re-links the entry through the full edit', () => {
+    assert.match(sales, /_r2e\(sold\) !== _r2e\(o\.totalSold\)/);
+  });
+  it('stale returned/expired values are cleared when nothing is pending', () => {
+    assert.match(pay, /if \(wasAuto \|\| retEl\.value \|\| expEl\.value\)/);
   });
 });

@@ -2126,8 +2126,8 @@ oninput="filterCustomers()">
 <label>Total Sold Qty</label>
 <input type="number" id="totalSold" readonly class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
 </div>
-<div class="field"><label>Returned Qty</label><input class="form-ctl" type="number" id="returnedQuantity" oninput="handleReturnQtyInput()"></div>
-<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl" type="number" id="expiredQuantity" oninput="handleExpiredQtyInput()" placeholder="0"></div>
+<div class="field"><label>Returned Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" id="returnedQuantity" readonly tabindex="-1" placeholder="0" oninput="handleReturnQtyInput()"></div>
+<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" id="expiredQuantity" readonly tabindex="-1" placeholder="0" oninput="handleExpiredQtyInput()"></div>
 <div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
 <div class="field"><label>Net Sold Qty</label><input type="number" id="netSoldQty" readonly tabindex="-1" placeholder="0" class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div id="repReturnAutoHint" class="hidden u-field-hint u-78f55da-hint"></div>

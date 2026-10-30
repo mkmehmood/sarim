@@ -283,17 +283,19 @@ return txDeviceDate(sale);
 export async function getPendingRepDeliveries(seller) {
 const { calculator, sales } = await loadCollections('calculator', 'sales');
 if (!seller || seller === 'COMBINED') return [];
+const _calcEd = getEditCtx('calc');
+const ownIds = new Set(_calcEd && _calcEd.original && Array.isArray(_calcEd.original.linkedSalesIds) ? _calcEd.original.linkedSalesIds : []);
 const reconciledSalesIds = new Set();
 calculator.forEach(entry => {
+  if (_calcEd && entry && entry.id === _calcEd.id) return;
   if (Array.isArray(entry.linkedSalesIds)) entry.linkedSalesIds.forEach(id => reconciledSalesIds.add(id));
 });
 return sales.filter(sale =>
   sale.currentRepProfile === 'admin' &&
   sale.customerName === seller &&
-  sale.paymentType === 'CREDIT' &&
-  !sale.creditReceived &&
-  !reconciledSalesIds.has(sale.id) &&
-  sale.transactionType !== 'OLD_DEBT'
+  sale.transactionType !== 'OLD_DEBT' &&
+  !sale.deletedAt &&
+  ((sale.paymentType === 'CREDIT' && !sale.creditReceived && !reconciledSalesIds.has(sale.id)) || ownIds.has(sale.id))
 );
 }
 
@@ -301,7 +303,9 @@ export async function getPendingRepReturns(seller, toDate) {
 if (!seller || seller === 'COMBINED') return [];
 const { calculator, sales } = await loadCollections('calculator', 'sales');
 const used = new Set();
+const _calcEd = getEditCtx('calc');
 calculator.forEach(entry => {
+  if (_calcEd && entry && entry.id === _calcEd.id) return;
   if (entry && Array.isArray(entry.linkedRepReturnIds)) entry.linkedRepReturnIds.forEach(id => used.add(id));
 });
 return sales.filter(r =>
@@ -314,7 +318,7 @@ return sales.filter(r =>
 }
 
 export async function applyRepReturnsToCalculator(seller, toDate) {
-if (getEditCtx('calc')) return;
+if (window._calcLegacyEdit && getEditCtx('calc')) return;
 const retEl = document.getElementById('returnedQuantity');
 const expEl = document.getElementById('expiredQuantity');
 const hint = document.getElementById('repReturnAutoHint');
@@ -324,7 +328,7 @@ const totalExp = round2(pending.reduce((t, r) => t + (Number(r.expiredQty) || 0)
 const totalRet = round2(pending.reduce((t, r) => t + (Number(r.returnedQty) || 0), 0));
 const wasAuto = retEl.dataset.repReturnAuto === '1' || expEl.dataset.repReturnAuto === '1';
 if (pending.length === 0) {
-  if (wasAuto) {
+  if (wasAuto || retEl.value || expEl.value) {
     retEl.value = ''; expEl.value = '';
     delete retEl.dataset.repReturnAuto; delete expEl.dataset.repReturnAuto;
     clearAutoFilledField(retEl); clearAutoFilledField(expEl);
@@ -423,7 +427,7 @@ setPerfOverviewMode(currentPerfOverviewMode || 'day');
 }
 
 export async function autoFillTotalSoldQuantity() {
-if (getEditCtx('calc')) return;
+if (window._calcLegacyEdit && getEditCtx('calc')) return;
 const { calculator, rep } = await loadCollections('calculator', 'rep');
 if (window._editCtx && window._editCtx.kind === 'calc') return;
 const seller = document.getElementById('sellerSelect').value;
@@ -452,15 +456,17 @@ window.setStyle(totalSoldField, 'color', 'st-color__a80552');
 window.setStyle(totalSoldField, 'font-weight', 'st-font-weight__bff3d1');
 window.setStyle(totalSoldField, 'border', 'st-border__89f1f8');
 const usedRepSaleIds = new Set();
+const _edCalc = getEditCtx('calc');
 if (Array.isArray(calculator)) {
   calculator.forEach(calcEntry => {
+    if (_edCalc && calcEntry.id === _edCalc.id) return;
     if (calcEntry.linkedRepSalesIds && Array.isArray(calcEntry.linkedRepSalesIds)) {
       calcEntry.linkedRepSalesIds.forEach(id => usedRepSaleIds.add(id));
     }
   });
 }
 (Array.isArray(rep) ? rep : []).forEach(sale => {
-  if (sale.usedInCalcId) usedRepSaleIds.add(sale.id);
+  if (sale.usedInCalcId && !(_edCalc && sale.usedInCalcId === _edCalc.id)) usedRepSaleIds.add(sale.id);
 });
 let creditSalesKg = 0;
 let recoveredCash = 0;
