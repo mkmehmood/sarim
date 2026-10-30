@@ -465,7 +465,11 @@ if (!window._repReturnRelinkRan) {
   window._repReturnRelinkRan = true;
   try {
     const r = await runRepReturnRelinkMigration({ store: sqliteStore, save: unifiedSave });
-    if (r && !r.skipped && r.changed) showToast(`Calculator links repaired: ${r.changed} record${r.changed !== 1 ? 's' : ''}.`, 'info');
+    if (r && !r.skipped && r.changed) {
+      showToast(`Calculator links repaired: ${r.changed} record${r.changed !== 1 ? 's' : ''}.`, 'info');
+      notifyDataChange('calculator');
+      if (typeof refreshCustomerSales === 'function') refreshCustomerSales(1, false);
+    }
   } catch (e) { window._repReturnRelinkRan = false; console.warn('[relink] failed:', _safeErr(e)); }
 }
 const sel = await getCalcCycleSelection(seller);

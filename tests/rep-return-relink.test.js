@@ -14,6 +14,39 @@ describe('pickReturnsCovered', () => {
   });
 });
 
+describe('exact cover and skipping', () => {
+  it('prefers the subset that matches the entered quantities exactly', () => {
+    const p = [R('a', '2026-10-10', 2, 0), R('b', '2026-10-11', 2, 0), R('c', '2026-10-12', 3, 0)];
+    assert.deepEqual(pickReturnsCovered(p, 3, 0).map(r => r.id), ['c']);
+  });
+  it('an oversized older return does not block later ones', () => {
+    const p = [R('old', '2026-10-15', 5, 5), R('d24', '2026-10-24', 0, 1.5), R('d25', '2026-10-25', 4.5, 5), R('d26', '2026-10-26', 1.89, 0)];
+    assert.deepEqual(pickReturnsCovered(p, 6.39, 6.5).map(r => r.id), ['d24', 'd25', 'd26']);
+  });
+  it('falls back to every return that fits when the totals are not exact', () => {
+    const p = [R('a', '2026-10-10', 1, 0), R('b', '2026-10-11', 1, 0)];
+    assert.deepEqual(pickReturnsCovered(p, 5, 0).map(r => r.id), ['a', 'b']);
+  });
+  it('handles float quantities exactly', () => {
+    const p = [R('a', '2026-10-10', 0.1, 0), R('b', '2026-10-11', 0.2, 0)];
+    assert.deepEqual(pickReturnsCovered(p, 0.3, 0).map(r => r.id), ['a', 'b']);
+  });
+  it('relinks a window with a blocker return through the migration plan', () => {
+    const sales = [R('old', '2026-10-15', 5, 5, 900), R('d24', '2026-10-24', 0, 1.5, 900), R('d25', '2026-10-25', 4.5, 5, 900)];
+    const { changes } = planRepReturnRelink([C('c1', '2026-10-26', 4.5, 6.5, 1000)], sales);
+    assert.deepEqual(changes[0].ids, ['d24', 'd25']);
+  });
+  it('re-runs after an old v1 flag and stays one-time afterwards', async () => {
+    const data = new Map([['repReturnRelink.v1', { ok: true }], ['calculator', [C('c1', '2026-10-26', 4.5, 6.5, 1000)]], ['sales', [R('d24', '2026-10-24', 0, 1.5, 900), R('d25', '2026-10-25', 4.5, 5, 900)]]]);
+    const store = { get: async (k, d) => (data.has(k) ? structuredClone(data.get(k)) : d), set: async (k, v) => { data.set(k, v); } };
+    const saved = [];
+    const a = await runRepReturnRelinkMigration({ store, save: async (c, all, one) => { saved.push(one.linkedRepReturnIds); } });
+    assert.equal(a.changed, 1);
+    assert.deepEqual(saved[0], ['d24', 'd25']);
+    assert.equal((await runRepReturnRelinkMigration({ store, save: async () => {} })).skipped, true);
+  });
+});
+
 describe('planRepReturnRelink', () => {
   it('relinks a return created before the calc whose device date falls in its window', () => {
     const sales = [{ id: 's1', date: '2026-10-14' }, R('r1', '2026-10-14', 3.5, 10, 900)];
