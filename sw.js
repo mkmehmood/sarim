@@ -42,6 +42,11 @@ const ASSETS_TO_CACHE = [
   './modules/store-recycle.js',
   './modules/screen-order.js',
   './modules/settings-screen.js',
+  './modules/account-roles.js',
+  './modules/data-owner.js',
+  './modules/account-access.js',
+  './modules/app-accounts.js',
+  './modules/account-view.js',
   './manifest.json',
   './192.png',
   './512.png',
@@ -375,6 +380,7 @@ async function doBackgroundSync() {
   const authRec = await getSWAuthToken();
   if (!authRec) { console.warn('[SW-BgSync] No valid auth token available, skipping.'); return; }
   const { token, uid } = authRec;
+  const owner = authRec.dataUid || uid;
   const queue = await readQueueFromOPFS(uid);
   if (!queue || queue.length === 0) { console.log('[SW-BgSync] Queue is empty.'); return; }
   console.log(`[SW-BgSync] Processing ${queue.length} queued operation(s) for uid=${uid}`);
@@ -382,7 +388,7 @@ async function doBackgroundSync() {
   for (const item of queue) {
     if (!item || !item.operation) continue;
     try {
-      await executeViaREST(item.operation, uid, token);
+      await executeViaREST(item.operation, owner, token);
       successIds.push(item.id);
       console.log(`[SW-BgSync] ✓ synced ${item.operation.action} → ${item.operation.collection}/${item.operation.docId}`);
     } catch (e) {

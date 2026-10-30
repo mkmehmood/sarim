@@ -1,3 +1,4 @@
+import { dataUid } from './data-owner.js';
 import { themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatDateTime } from './date-format.js';
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID, loadCollections } from './business.js';
@@ -51,14 +52,13 @@ modal.innerHTML = `<div class="u-ed43437 st-background__e02427">
 </div>`;
 document.body.appendChild(modal);
 try {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-  const deviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => '—') : '—';
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const [
     productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
     salesCustomersSnap, transactionsSnap, entitiesSnap, inventorySnap,
     factoryHistorySnap, returnsSnap, expensesSnap, deletionsSnap, personPhotosSnap,
     settingsDoc, factorySettingsDoc, expenseCategoriesDoc, teamDoc,
-    deviceDoc, accountInfoDoc, yearCloseSignalDoc, appStoresDoc
+    accountInfoDoc, yearCloseSignalDoc, appStoresDoc
   ] = await Promise.all([
     userRef.collection('production').get(),
     userRef.collection('sales').get(),
@@ -78,7 +78,6 @@ try {
     userRef.collection('formulas').doc('config').get(),
     userRef.collection('categories').doc('list').get(),
     userRef.collection('settings').doc('team').get(),
-    userRef.collection('devices').doc(deviceId).get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('account').doc('info').get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('settings').doc('yearCloseSignal').get().catch(() => ({ exists: false, data: () => null })),
     userRef.collection('stores').doc('list').get().catch(() => ({ exists: false, data: () => null })),
@@ -142,10 +141,6 @@ try {
       sqlite:[['stores','stores'],['stores_timestamp','stores_timestamp']],
       fsFields:['stores','stores_timestamp'],
       listener:'_handleAppStoresSnapshot' },
-    { path:`devices/${deviceId}`,          doc:deviceDoc,            desc:'This device: mode, fingerprint, heartbeat, remote commands',
-      sqlite:[['appMode','currentMode'],['appMode_timestamp','appMode_timestamp'],['device_id','deviceId']],
-      fsFields:['currentMode','appMode_timestamp','assignedRep','assignedManager','remoteAppliedMode','lastSeen','online','fingerprint'],
-      listener:'_handleDeviceSnapshot (live mode changes)' },
     { path:'account/info',                 doc:accountInfoDoc,       desc:'Account email, displayName, lastActivity (updated on login)',
       sqlite:[],
       fsFields:['email','displayName','accountCreated','lastActivity'],
@@ -337,7 +332,6 @@ try {
     { name:'formulas/config',           type:'doc',  path:'_handleFactorySettingsSnapshot',                  purpose:'defaults, costs, adjustment, tracking', fires:'Individual per-field timestamp guards' },
     { name:'stores/list',                 type:'doc',  path:'appStoresUnsub',                                  purpose:'stores — store list including each store\'s per-store sale price', fires:'stores_timestamp change' },
     { name:'categories/list',     type:'doc',  path:'_handleExpenseCategoriesSnapshot',                purpose:'categories', fires:'categories_timestamp change or content diff' },
-    { name:'devices/{deviceId}',               type:'doc',  path:'_handleDeviceSnapshot',                           purpose:'Live remote mode changes (admin→rep etc.) without re-login', fires:'remoteAppliedMode flag + appMode_timestamp > local' },
     { name:'deletions',                        type:'col',  path:'_handleDeletionsSnapshot',                        purpose:'Propagate soft deletes to all devices, filter from data arrays', fires:'Any add/modify/remove on the deletions collection' },
     { name:'photos',                     type:'col',  path:'pullDataFromCloud → photos delta fetch',    purpose:'Sync person/customer/entity photos (base64) from cloud; upload dirty keys on push', fires:'Delta pull on sync — not a live onSnapshot listener; uploads via dirty-key queue' },
     ...COLLECTIONS.filter(c => c.fsName !== 'deletions').map(c => ({
@@ -414,7 +408,6 @@ try {
       <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">photos/</span> <span class="u-d59bb54">{base64Key}</span> — photos keyed by type:id (cust:name, entity:id, rep-cust:rep:name)</div>
       <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">activity/</span> <span class="u-d59bb54">{auto}</span> — write-only audit</div>
       <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">updates/</span> <span class="u-d59bb54">{auto}</span> — heartbeat log (cleaned hourly)</div>
-      <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">devices/</span> <span class="u-d59bb54">{deviceId}</span> — fingerprint, mode, heartbeat</div>
       <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">account/info</span> — email, displayName</div>
       <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">settings/config</span> — settings, repProfile</div>
       <div class="u-ce88006"><span class="u-e4906e4">├─</span> <span class="u-182e628">settings/team</span> — reps, roles</div>
@@ -902,7 +895,7 @@ export async function restoreFromBackup(backupTimestamp) {
     }
     if (firebaseDB && currentUser) {
       try {
-        const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+        const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
         const fbCollections = [
           { name: 'production',         backupData: backup.production },
           { name: 'sales',              backupData: backup.sales },
@@ -1186,7 +1179,7 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
       new Set(ensureArray(await sqliteStore.get('deleted')).map(String))
     );
     if (_tombstoneIds.length > 0 && firebaseDB && currentUser) {
-      const _delUserRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const _delUserRef = firebaseDB.collection('users').doc(dataUid(currentUser));
       const OPS_PER_BATCH = 400;
       for (let _di = 0; _di < _tombstoneIds.length; _di += OPS_PER_BATCH) {
         const _chunk = _tombstoneIds.slice(_di, _di + OPS_PER_BATCH);
@@ -1223,7 +1216,7 @@ try {
   await sqliteStore.set('settings', fyMeta);
   await sqliteStore.set('settings_timestamp', _fyMetaTs);
   if (firebaseDB && currentUser) {
-    await firebaseDB.collection('users').doc(currentUser.uid)
+    await firebaseDB.collection('users').doc(dataUid(currentUser))
       .collection('settings').doc('config')
       .set({
         settings: {
@@ -1238,7 +1231,7 @@ try {
     }
     try {
       const _sigDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
-      await firebaseDB.collection('users').doc(currentUser.uid)
+      await firebaseDB.collection('users').doc(dataUid(currentUser))
         .collection('settings').doc('yearCloseSignal')
         .set({
           type:          'close',
@@ -1512,7 +1505,7 @@ if (Object.keys(storeGroups).length === 0 && Object.keys(sellerReturnGroups).len
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'production', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergeProductionData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1678,7 +1671,7 @@ for (const [customer, b] of Object.entries(customerBuckets)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'sales', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1784,7 +1777,7 @@ for (const [seller, items] of Object.entries(repGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'calculator', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergeCalculatorData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1864,7 +1857,7 @@ for (const [entityId, items] of Object.entries(entityGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'transactions', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergePaymentData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1940,7 +1933,7 @@ for (const items of Object.values(storeGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'factory', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergeFactoryData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2020,7 +2013,7 @@ for (const [, b] of Object.entries(repBuckets)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'rep', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeRepSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2091,7 +2084,7 @@ for (const [, grp] of Object.entries(expenseGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'expenses', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeExpensesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2197,7 +2190,7 @@ for (const [, grp] of Object.entries(storeGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'returns', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeStockReturnsData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2754,7 +2747,7 @@ try {
     return;
   }
   if (firebaseDB && currentUser) {
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     for (const col of dirtyCollections) {
       try {
         const snapshot = await userRef.collection(col.firestore).get();

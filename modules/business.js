@@ -1,8 +1,8 @@
+import { dataUid, isWorkspaceMember } from './data-owner.js';
 import { APP_CONFIG } from './constants.js';
 import { applyMoneyPrivacy } from './money-privacy.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, loadUIState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry } from './utilities-sales.js';
-import { listenForDeviceCommands, listenForTeamChanges } from './utilities-payments.js';
 import { showToast } from './customers.js';
 import { RECORD_KEYS } from './link-graph.js';
 export let appMode;
@@ -1243,7 +1243,7 @@ export const sqliteStore = (() => {
     if (typeof currentUser === 'undefined' || !currentUser) return;
     const ops = _outboxGetAll();
     if (ops.length === 0) return;
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     let drained = 0;
     for (const op of ops) {
       try {
@@ -1865,48 +1865,6 @@ export async function _clearDeviceIdStorage() {
 
 window._clearDeviceIdStorage = _clearDeviceIdStorage;
 
-export async function _recoverDeviceIdByFingerprint() {
-if (!firebaseDB || !currentUser) return null;
-try {
-const fp = await getDeviceFingerprint();
-const snap = await firebaseDB
-.collection('users').doc(currentUser.uid)
-.collection('devices')
-.where('fingerprint.stableHash', '==', fp.stableHash)
-.limit(1)
-.get();
-if (!snap.empty) {
-const data = snap.docs[0].data();
-return data.deviceId || null;
-}
-} catch (e) {
-console.warn('Fingerprint-based device ID recovery failed:', _safeErr(e));
-}
-return null;
-}
-
-export async function _recoverDeviceIdByToken() {
-if (!firebaseDB || !currentUser) return null;
-try {
-const installToken = _readCookie(INSTALL_TOKEN_COOKIE)
-|| _readSession('gz_itk_session')
-|| null;
-if (!installToken) return null;
-const snap = await firebaseDB
-.collection('users').doc(currentUser.uid)
-.collection('devices')
-.where('installationToken', '==', installToken)
-.limit(1)
-.get();
-if (!snap.empty) {
-return snap.docs[0].data().deviceId || null;
-}
-} catch (e) {
-console.warn('Token-based device ID recovery failed:', _safeErr(e));
-}
-return null;
-}
-
 export async function getDeviceId() {
 let _loginTs = 0;
 try { _loginTs = parseInt(sessionStorage.getItem('_gznd_login_ts') || '0', 10) || 0; } catch(_) {}
@@ -2052,183 +2010,30 @@ return deviceName;
 }
 
 export async function registerDevice() {
-if (!firebaseDB) {
-return;
-}
-if (!currentUser) {
-return;
-}
+if (!currentUser) return;
 try {
 const deviceId = await getDeviceId();
 const fp = await getDeviceFingerprint();
-const deviceName = fp.readableName;
-try { await sqliteStore.set('device_name', deviceName); } catch(e) {
+try { await sqliteStore.set('device_name', fp.readableName); } catch(e) {
 console.warn('Failed to save data locally.', _safeErr(e));
 }
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
-try {
-const dupSnap = await userRef.collection('devices')
-.where('fingerprint.stableHash', '==', fp.stableHash)
-.get();
-const deleteOps = dupSnap.docs
-.filter(doc => doc.id !== deviceId && doc.id !== 'device')
-.map(doc => doc.ref.delete());
-if (deleteOps.length > 0) {
-await Promise.all(deleteOps);
-}
-} catch (dupErr) {
-console.warn('Duplicate cleanup failed:', _safeErr(dupErr));
-}
-const userAgent = navigator.userAgent;
-const deviceType = /Mobile|Android|iPhone/.test(userAgent)
-? 'mobile'
-: /Tablet|iPad/.test(userAgent)
-? 'tablet'
-: 'desktop';
-const browser = fp.browserFull;
-const deviceRef = userRef.collection('devices').doc(deviceId);
-const existingDoc = await deviceRef.get();
-const existing = existingDoc.exists ? existingDoc.data() : {};
-const persistedMode = existing.currentMode || appMode || 'admin';
-const persistedRoleType = existing.assignedRoleType || persistedMode;
-const persistedRoleName = existing.assignedRoleName
-|| (persistedRoleType === 'rep' ? existing.assignedRep : existing.assignedManager)
-|| null;
-const persistedRep = persistedRoleType === 'rep' ? (persistedRoleName || currentRepProfile || null) : null;
-const persistedManager = (persistedRoleType === 'production' || persistedRoleType === 'factory' || persistedRoleType === 'userrole')
-  ? (persistedRoleName || existing.assignedManager || existing.assignedRoleName || null)
-  : null;
-if (persistedMode !== appMode) {
-appMode = persistedMode; window.appMode = appMode;
-const sqliteBatch = [
-['appMode', appMode],
-['appMode_timestamp', existing.appMode_timestamp || Date.now()]
-];
-if (persistedMode === 'rep' && persistedRep) {
-currentRepProfile = persistedRep; window.currentRepProfile = currentRepProfile;
-sqliteBatch.push(['repProfile', persistedRep]);
-} else if (persistedMode === 'userrole') {
-const persistedUserManager = existing.assignedManager || existing.assignedRoleName || null;
-const persistedUserTabs = Array.isArray(existing.assignedUserTabs) ? existing.assignedUserTabs : [];
-window._assignedManagerName = persistedUserManager;
-window._assignedUserTabs = persistedUserTabs;
-window._userRoleAllowedTabs = persistedUserTabs;
-sqliteBatch.push(['assignedManager', persistedUserManager]);
-sqliteBatch.push(['assignedUserTabs', persistedUserTabs]);
-} else if ((persistedMode === 'production' || persistedMode === 'factory') && persistedManager) {
-window._assignedManagerName = persistedManager;
-sqliteBatch.push(['assignedManager', persistedManager]);
-}
-await sqliteStore.setBatch(sqliteBatch);
-}
-const isFirstRegistration = !existingDoc.exists;
-const deviceShard = _deriveDeviceShard(deviceId);
-const firstLoginDate = _extractDeviceFirstLoginTime(deviceId);
-const firstLoginAtMs = firstLoginDate ? firstLoginDate.getTime() : null;
-let _persistedModeTs = existing.appMode_timestamp || 0;
-try {
-  const _sqliteTs = await sqliteStore.get('appMode_timestamp');
-  if (_sqliteTs && Number(_sqliteTs) > _persistedModeTs) _persistedModeTs = Number(_sqliteTs);
-} catch(_) {}
-await deviceRef.set({
-deviceId: deviceId,
-deviceShard: deviceShard,
-deviceName: deviceName,
-deviceType: deviceType,
-browser: browser,
-platform: fp.platform,
-userAgent: fp.fullUserAgent,
-fingerprint: {
-os: fp.os,
-browser: fp.browserFull,
-screenRes: fp.screenRes,
-colorDepth: fp.colorDepth,
-pixelRatio: fp.pixelRatio,
-cpuCores: fp.cores,
-timezone: fp.tz,
-language: fp.lang,
-touch: fp.touch,
-canvasHash: fp.canvasHash,
-stableHash: fp.stableHash
-},
-online: true,
-lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-...(isFirstRegistration ? {
-  registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
-  firstLoginAt: firstLoginAtMs !== null
-    ? firstLoginAtMs
-    : firebase.firestore.FieldValue.serverTimestamp(),
-} : {
-  ...((!existing.firstLoginAt && firstLoginAtMs !== null)
-    ? { firstLoginAt: firstLoginAtMs } : {}),
-}),
-currentMode: persistedMode,
-appMode_timestamp: _persistedModeTs || Date.now(),
-assignedRoleType: persistedRoleType,
-assignedRoleName: persistedRoleName,
-assignedRep: persistedMode === 'rep' ? persistedRep : null,
-assignedManager: (persistedMode === 'userrole' || persistedMode === 'production' || persistedMode === 'factory') ? persistedManager : null,
-assignedUserTabs: persistedMode === 'userrole' ? (window._assignedUserTabs || []) : null,
-installationToken: _readCookie(INSTALL_TOKEN_COOKIE) || null,
-capabilities: {
-canSync: true,
-canReceiveCommands: true,
-supportsBiometric: false,
-supportsNotifications: 'Notification' in window
-},
-lastSyncTimestamp: existing.lastSyncTimestamp || null,
-dataUsage: existing.dataUsage || { reads: 0, writes: 0, deletes: 0 }
-}, { merge: true });
-const accountInfoRef = userRef.collection('account').doc('info');
-await accountInfoRef.set({
+if (firebaseDB && !isWorkspaceMember(currentUser)) {
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
+await userRef.collection('account').doc('info').set({
 email: currentUser.email || 'unknown@example.com',
 displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
 lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
 accountCreated: firebase.firestore.FieldValue.serverTimestamp()
 }, { merge: true });
-startDeviceHeartbeat(deviceRef);
-setTimeout(() => {
-listenForDeviceCommands().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
-}, 2000);
-listenForTeamChanges();
+}
 await logDeviceActivity('device_registered', {
 deviceId: deviceId,
-deviceName: deviceName,
-deviceType: deviceType,
-browser: browser
+deviceName: fp.readableName,
+browser: fp.browserFull
 });
 } catch (error) {
 console.error('Device registration failed.', _safeErr(error));
 }
-}
-
-export function startDeviceHeartbeat(deviceRef) {
-if (window.deviceHeartbeatInterval) {
-clearInterval(window.deviceHeartbeatInterval);
-}
-window.deviceHeartbeatInterval = setInterval(async () => {
-if (firebaseDB && currentUser) {
-try {
-const _isRepMode = appMode === 'rep';
-const _isUserRole = appMode === 'userrole';
-const _isMgrMode = appMode === 'production' || appMode === 'factory';
-await deviceRef.update({
-lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-online: true,
-currentMode: appMode,
-assignedRoleType: appMode,
-assignedRoleName: _isRepMode ? (currentRepProfile || null) : (_isUserRole || _isMgrMode) ? (window._assignedManagerName || null) : null,
-assignedRep: _isRepMode ? (currentRepProfile || null) : null,
-assignedManager: (_isUserRole || _isMgrMode) ? (window._assignedManagerName || null) : null,
-assignedUserTabs: _isUserRole ? (window._assignedUserTabs || []) : null,
-});
-} catch (error) {
-console.warn('Heartbeat update failed.', _safeErr(error));
-}
-}
-}, APP_CONFIG.HEARTBEAT_INTERVAL_MS);
 }
 
 export async function logDeviceActivity(activityType, details = {}) {
@@ -2249,7 +2054,7 @@ return;
 }
 try {
 const deviceId = await getDeviceId();
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const activityRef = userRef.collection('activity').doc();
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2265,22 +2070,13 @@ console.warn('Firebase operation failed.', _safeErr(error));
 
 window.logDeviceActivity = logDeviceActivity;
 
-export async function initializeDeviceListeners() {
-try {
+export async function scheduleStartupCleanup() {
 setTimeout(() => {
-listenForDeviceCommands().catch(e => console.warn('Device command listener failed.', _safeErr(e)));
-}, 2000);
-listenForTeamChanges();
-} catch (error) {
-console.error('Device command listener failed.', _safeErr(error));
-showToast('Device command listener failed.', 'error');
-}
-setTimeout(() => {
-  cleanupOldDeletions().catch(e => console.warn('[initializeDeviceListeners] cleanup failed:', _safeErr(e)));
+  cleanupOldDeletions().catch(e => console.warn('[scheduleStartupCleanup] cleanup failed:', _safeErr(e)));
 }, 5000);
 }
 
-window.initializeDeviceListeners = initializeDeviceListeners;
+window.scheduleStartupCleanup = scheduleStartupCleanup;
 currentUser = null; window.currentUser = currentUser;
 firebaseDB = null; window.firebaseDB = firebaseDB;
 database = null; window.database = database;
@@ -2811,16 +2607,13 @@ window._writeSession = _writeSession;
 window._extractDeviceFirstLoginTime = _extractDeviceFirstLoginTime;
 window._persistDeviceId = _persistDeviceId;
 window._clearDeviceIdStorage = _clearDeviceIdStorage;
-window._recoverDeviceIdByFingerprint = _recoverDeviceIdByFingerprint;
-window._recoverDeviceIdByToken = _recoverDeviceIdByToken;
 window.getDeviceId = getDeviceId;
 window.refreshDeviceIdAnchors = refreshDeviceIdAnchors;
 window.getDeviceFingerprint = getDeviceFingerprint;
 window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
-window.startDeviceHeartbeat = startDeviceHeartbeat;
 window.logDeviceActivity = logDeviceActivity;
-window.initializeDeviceListeners = initializeDeviceListeners;
+window.scheduleStartupCleanup = scheduleStartupCleanup;
 window._VALID_APP_MODES = _VALID_APP_MODES;
 window._MODE_CODES = _MODE_CODES;
 window._MODE_LABELS = _MODE_LABELS;

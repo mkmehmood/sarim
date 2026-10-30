@@ -69,9 +69,9 @@ describe('settings screen', () => {
     const groups = settings.split('<p class="settings-group-label">').slice(1).map((g) => [g.slice(0, g.indexOf('</p>')).replace(/&amp;/g, '&'), labelOf(g)]);
     assert.deepEqual(groups, [
       ['Data & Sync', ['Sync Data', 'Backup & Restore', 'Recycle Bin', 'Database Structure']],
-      ['Appearance & Device', ['Theme', 'Device Display', 'Sound & Haptics']],
+      ['Appearance & Device', ['Theme', 'Sound & Haptics']],
       ['Security', ['Fingerprint Lock']],
-      ['Team & Access', ['Sales Representatives', 'User Roles', 'App Accounts']],
+      ['Accounts', ['App Accounts']],
       ['Business', ['Store Manager']],
       ['Danger Zone', ['Close Financial Year']]
     ]);

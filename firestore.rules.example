@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // REVIEW BEFORE DEPLOYING. Written from the code in this repo, never run against
+    // your deployed project. Test it in the Firebase emulator first.
+    //
+    // What these rules enforce for real:
+    //   - an account can only touch its own workspace (users/{ownerUid}/...)
+    //   - only an admin can create accounts, change roles, suspend or remove
+    //   - nobody can change their own role, ownerUid or approval
+    //   - a suspended account can read and write nothing
+    // What they do NOT enforce: per-role tab and money visibility. The app hides those.
+    // The client syncs every collection for every role, so read access is workspace-wide.
+
+    function signedIn() { return request.auth != null; }
+    function meRef() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function me() { return get(meRef()).data; }
+    function active() {
+      return signedIn() && exists(meRef())
+        && me().get('approved', true) != false
+        && me().get('removed', false) != true;
+    }
+    function role() {
+      let r = me().get('role', 'admin');
+      return r == 'user' ? 'admin' : r;
+    }
+    function wsOwner() { return me().get('ownerUid', request.auth.uid); }
+    function inWorkspace(owner) { return active() && wsOwner() == owner; }
+    function isAdmin() { return active() && role() == 'admin'; }
+    function validRole(r) {
+      return r in ['admin', 'rep', 'production', 'factory', 'payments', 'sales'];
+    }
+
+    // Accounts that belong to this admin's workspace. Old accounts made before roles
+    // existed have no ownerUid, only createdBy, so they count when this admin made them.
+    function ownedByMyWorkspace(res, uid) {
+      return res.data.get('ownerUid', null) == wsOwner()
+        || (res.data.get('ownerUid', null) == null
+            && res.data.get('createdBy', '') == request.auth.token.email)
+        || uid == wsOwner();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid
+                  || (isAdmin() && ownedByMyWorkspace(resource, uid)));
+
+      allow create: if isAdmin()
+                    && request.resource.data.ownerUid == wsOwner()
+                    && validRole(request.resource.data.role);
+
+      allow update: if
+        // admin managing an account in their workspace, but never themselves
+        // and never the workspace owner
+        (isAdmin() && uid != request.auth.uid && uid != wsOwner()
+          && ownedByMyWorkspace(resource, uid)
+          && request.resource.data.ownerUid == wsOwner()
+          && validRole(request.resource.data.role))
+        // any active member pings lastWrite on the shared workspace document
+        || (inWorkspace(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastWrite']))
+        // anyone updating harmless fields on their own document
+        || (request.auth.uid == uid && active()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['lastWrite', 'lastLoginAt', 'authProviders', 'displayName']));
+
+      // accounts are removed with removed: true, never deleted
+      allow delete: if false;
+    }
+
+    // The workspace data tree. The account list lives at settings/accounts and holds
+    // everyone's email, so it is admin only. Everything else is shared by the workspace.
+    match /users/{owner}/{sub}/{docId=**} {
+      allow read: if inWorkspace(owner)
+        && !(sub == 'settings' && docId == 'accounts' && role() != 'admin');
+
+      allow write: if inWorkspace(owner)
+        && (role() == 'admin'
+            || !(sub in ['settings', 'account']));
+    }
+  }
+}
