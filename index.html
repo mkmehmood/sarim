@@ -168,7 +168,7 @@ window._mkPopover=function(anchor,popId,items,onSelect,opts){
   });
   mark(opts.selected);
   window.setStyle(anchor,'position','st-position__d461c9');anchor.appendChild(pop);
-  document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)window.setDisplay(pop,'none');}},true);
+  document.addEventListener('click',function h(e){if(!anchor.contains(e.target)&&!(pop&&pop.contains(e.target))){if(pop)window.setDisplay(pop,'none');}},true);
 };
 
 function _showUpdateDialog(reg) {

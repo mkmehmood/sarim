@@ -2405,6 +2405,7 @@ animation: none !important;
 .u-heading-main { color: var(--text-main); margin: 0; }
 .u-heading-bold { color: var(--text-main); font-weight: 800; margin: 0; }
 .u-heading-accent { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--accent); }
+body > .fl-list { position: fixed; top: var(--fl-top, 0); left: var(--fl-left, 0); right: auto; bottom: auto; width: var(--fl-w, auto); min-width: 0; max-height: var(--fl-mh, 260px); margin: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; z-index: 10400; box-sizing: border-box; }
 .u-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; max-height: 200px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 14px; margin-top: 5px; box-shadow: var(--shadow); }
 .u-debt-header { flex-shrink: 0; }
 .u-quick-btn { margin-bottom: 1px; }

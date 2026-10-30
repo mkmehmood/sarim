@@ -6264,7 +6264,7 @@ const input = document.getElementById(item.input);
 const resultsDiv = document.getElementById(item.results);
 if (input && resultsDiv) {
 const container = input.parentElement;
-if (container && !container.contains(e.target)) {
+if (container && !container.contains(e.target) && !resultsDiv.contains(e.target)) {
 resultsDiv.classList.add('hidden');
 }
 }
