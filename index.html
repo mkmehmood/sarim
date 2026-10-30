@@ -819,10 +819,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div class="card u-d8ddece st-border-bottom__e54b2f" id="dl-form-card">
       <p class="settings-group-label" id="dl-form-title">Add Entry</p>
-      <div class="toggle-group u-mb-15" role="group">
-        <button type="button" class="toggle-opt active" data-dl-type="IN" aria-pressed="true" onclick="dailyLedgerSetType('IN')">+ In</button>
-        <button type="button" class="toggle-opt" data-dl-type="OUT" aria-pressed="false" onclick="dailyLedgerSetType('OUT')">- Out</button>
-        <button type="button" class="toggle-opt" data-dl-type="TRANSFER" aria-pressed="false" onclick="dailyLedgerSetType('TRANSFER')">Transfer</button>
+      <div class="dl-type-row u-mb-15" role="group" aria-label="Entry type">
+        <button type="button" class="dl-type-btn dl-type-in active" data-dl-type="IN" aria-pressed="true" onclick="dailyLedgerSetType('IN')">+ In</button>
+        <button type="button" class="dl-type-btn dl-type-out" data-dl-type="OUT" aria-pressed="false" onclick="dailyLedgerSetType('OUT')">- Out</button>
+        <button type="button" class="dl-type-btn dl-type-transfer" data-dl-type="TRANSFER" aria-pressed="false" onclick="dailyLedgerSetType('TRANSFER')">Transfer</button>
       </div>
       <div class="grid-inputs u-mb-15">
         <div class="field">

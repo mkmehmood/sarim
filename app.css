@@ -5668,3 +5668,12 @@ html.is-android *, html.is-android *::before, html.is-android *::after { backdro
 .result-box .stock-tile { margin: 8px 0 0; padding: 11px 0 14px; border: 0; border-top: 1px dashed var(--glass-border-strong); border-radius: 0; background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .result-box .stock-tile.is-short { border-top-color: color-mix(in srgb, var(--danger) 50%, transparent); }
 .result-box .stock-tile.d-none { display: none; }
+
+.dl-type-row { display: flex; gap: 8px; }
+.dl-type-btn { flex: 1; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; border: 1.5px solid var(--dl-c); color: var(--dl-c); background: color-mix(in srgb, var(--dl-c) 14%, transparent); transition: background .15s, color .15s, box-shadow .15s; }
+.dl-type-in { --dl-c: #16a34a; }
+.dl-type-out { --dl-c: #dc2626; }
+.dl-type-transfer { --dl-c: #2563eb; }
+.dl-type-btn.active { background: var(--dl-c); color: #fff; box-shadow: 0 6px 14px -8px var(--dl-c); }
+.dl-type-btn:hover { background: color-mix(in srgb, var(--dl-c) 24%, transparent); }
+.dl-type-btn.active:hover { background: var(--dl-c); }
