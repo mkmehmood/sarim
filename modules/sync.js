@@ -10,7 +10,7 @@ import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defa
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
 import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, applyAccountRoleOnLogin, saveSalesRepsList } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
-import { showGlassConfirm, showToast } from './customers.js';
+import { showGlassConfirm, showChoiceDialog, showToast } from './customers.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
 
@@ -4433,16 +4433,11 @@ const role     = normalizeRole(acct);
 const dot = approved
   ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3"></span>'
   : '<span class="u-eca6a09 d-inline-block st-background__047b23"></span>';
-const roleName = acct.name ? roleLabel(role) + ': ' + acct.name : roleLabel(role);
-const rolePanel = isMe ? '' : '<div id="acct-lock-' + esc(acct.uid) + '" class="d-none u-296d231 st-background__f38efd st-border-bottom__e54b2f"><div class="u-788ba48">' + esc(roleName) + '</div><div class="u-ab90486 d-grid">' + ACCOUNT_ROLES.map(r =>
-  '<button class="btn btn-theme btn-sm ' + (r === role ? 'active' : 'idle') + '" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email || '') + '" data-role="' + r + '" onclick="adminSetAccountRole(this.dataset.uid,this.dataset.email,this.dataset.role)">' + (r === role ? '&#10003; ' : '') + roleLabel(r) + '</button>'
-).join('') + '</div></div>';
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
-      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9" data-uid="' + esc(acct.uid) + '" onclick="document.getElementById(\'acct-lock-\' + this.dataset.uid).classList.toggle(\'d-none\')">Access</button>',
-      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + esc(acct.uid) + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
+      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminAccountMore(this.dataset.uid,this.dataset.email)">More</button>',
+      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Delete</button>'
     ].join('');
 return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f">' +
   '<div class="u-855cc88 d-flex">' + dot +
@@ -4452,7 +4447,7 @@ return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54
   (acct.name ? '<span class="u-e7a1434">' + esc(acct.name) + '</span>' : '') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
-  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>' + rolePanel;
+  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
 }).join('');
 } catch(err) {
 listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';
@@ -4466,13 +4461,7 @@ if (uid === currentUser.uid) { window.notifyBlocking('You cannot change your own
 const accounts = await _readAccountsIndex().catch(() => []);
 const entry = accounts.find(a => a.uid === uid) || {};
 if (normalizeRole(entry) === role) return;
-let name = entry.name || accountName({ email });
-if (role === 'rep' && !name) name = accountName({ email });
-const confirmed = await showGlassConfirm(
-'Make ' + email + ' a ' + roleLabel(role) + ' account?\n\nIt applies on their devices right away.',
-{ title: 'Change Role', confirmText: 'Apply', cancelText: 'Cancel', danger: role !== 'admin' }
-);
-if (!confirmed) return;
+const name = entry.name || accountName({ email });
 try {
 await firebaseDB.collection('users').doc(uid).update({ role, name });
 await _writeAccountsIndex(accounts.map(a => a.uid === uid ? { ...a, role, name } : a));
@@ -4483,6 +4472,20 @@ await loadAccountsList();
 window.notifyBlocking('Failed to change role: ' + (err.message || ''), 'error', 'Something went wrong');
 console.error('adminSetAccountRole:', _safeErr(err));
 }
+}
+
+export async function adminAccountMore(uid, email) {
+if (uid === currentUser.uid) return;
+const accounts = await _readAccountsIndex().catch(() => []);
+const entry = accounts.find(a => a.uid === uid) || {};
+const current = normalizeRole(entry);
+const approved = entry.approved !== false;
+const choices = ACCOUNT_ROLES.map(r => ({ label: (r === current ? '\u2713 ' : '') + roleLabel(r), value: 'role:' + r }));
+choices.push({ label: approved ? 'Suspend account' : 'Reinstate account', value: 'toggle' });
+const picked = await showChoiceDialog(email + ' is ' + roleLabel(current) + '. Choose the new assignment. It applies on their devices right away.', choices, { title: 'Update Assignment' });
+if (!picked) return;
+if (picked === 'toggle') { await adminToggleApproval(uid, email, approved); return; }
+if (picked.indexOf('role:') === 0) await adminSetAccountRole(uid, email, picked.slice(5));
 }
 
 export async function adminToggleApproval(uid, email, currentlyApproved) {
@@ -4513,8 +4516,8 @@ console.error('adminToggleApproval:', _safeErr(err));
 export async function adminRemoveAccount(uid, email) {
 if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning', 'Warning'); return; }
 const confirmed = await showGlassConfirm(
-'Remove access for ' + email + '?\n\nThey will be blocked immediately. Their stored data is preserved.\n\nTo fully delete the Firebase Auth account, use Firebase Console.',
-{ title: 'Remove Account', confirmText: 'Remove', cancelText: 'Cancel', danger: true }
+'Delete the account for ' + email + '?\n\nThey will be blocked immediately. Their stored data is preserved.\n\nTo fully delete the Firebase Auth login, use Firebase Console.',
+{ title: 'Delete Account', confirmText: 'Delete', cancelText: 'Cancel', danger: true }
 );
 if (!confirmed) return;
 try {
@@ -4524,7 +4527,7 @@ const updated = accounts.map(a => a.uid === uid ? { ...a, approved: false } : a)
 await _writeAccountsIndex(updated);
 await loadAccountsList();
 } catch(err) {
-window.notifyBlocking('Failed to remove account.', 'error', 'Something went wrong');
+window.notifyBlocking('Failed to delete account.', 'error', 'Something went wrong');
 console.error('adminRemoveAccount:', _safeErr(err));
 }
 }
@@ -4764,5 +4767,6 @@ window.loadAccountsList = loadAccountsList;
 window.adminToggleApproval = adminToggleApproval;
 window.adminRemoveAccount = adminRemoveAccount;
 window.adminSetAccountRole = adminSetAccountRole;
+window.adminAccountMore = adminAccountMore;
 window.signOut = signOut;
 window.updateSyncButton = updateSyncButton;

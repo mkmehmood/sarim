@@ -54,18 +54,19 @@ describe('app accounts: managing accounts', () => {
     assert.match(sync, /signInWithEmailAndPassword\(email, password\)/);
     assert.match(sync, /profile && profile\.ownerUid !== ownerUid/);
   });
-  it('keeps the original lock panel: Access toggle, current role label and a button grid with a tick', () => {
-    assert.match(sync, /classList\.toggle\(\\'d-none\\'\)">Access<\/button>/);
-    assert.match(sync, /class="d-none u-296d231/);
-    assert.match(sync, /<div class="u-788ba48">' \+ esc\(roleName\)/);
-    assert.match(sync, /<div class="u-ab90486 d-grid">' \+ ACCOUNT_ROLES\.map/);
-    assert.match(sync, /\(r === role \? '&#10003; ' : ''\) \+ roleLabel\(r\)/);
+  it('shows More and Delete on each account instead of six role toggles', () => {
+    assert.match(sync, /onclick="adminAccountMore\(this\.dataset\.uid,this\.dataset\.email\)">More<\/button>/);
+    assert.match(sync, /onclick="adminRemoveAccount\(this\.dataset\.uid,this\.dataset\.email\)">Delete<\/button>/);
+    assert.doesNotMatch(sync, /acct-lock-/);
+    assert.doesNotMatch(sync, />Access<\/button>/);
+    assert.doesNotMatch(sync, /roleBtns|rolePanel/);
   });
-  it('lists six role buttons per account plus suspend and remove', () => {
-    assert.match(sync, /ACCOUNT_ROLES\.map\(r =>/);
-    assert.match(sync, /adminSetAccountRole\(this\.dataset\.uid/);
-    assert.match(sync, /\(approved \? 'Suspend' : 'Reinstate'\)/);
-    assert.match(sync, /window\.adminSetAccountRole = adminSetAccountRole;/);
+  it('More opens a pop-up to update the assignment, with the six roles and suspend or reinstate', () => {
+    assert.match(sync, /showChoiceDialog\(.*, choices, \{ title: 'Update Assignment' \}\)/);
+    assert.match(sync, /ACCOUNT_ROLES\.map\(r => \(\{ label: \(r === current \? '\\u2713 ' : ''\) \+ roleLabel\(r\), value: 'role:' \+ r \}\)\)/);
+    assert.match(sync, /approved \? 'Suspend account' : 'Reinstate account'/);
+    assert.match(sync, /adminSetAccountRole\(uid, email, picked\.slice\(5\)\)/);
+    assert.match(sync, /window\.adminAccountMore = adminAccountMore;/);
   });
   it('does not let anyone change their own role', () => {
     assert.match(sync, /You cannot change your own role\./);
