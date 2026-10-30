@@ -1772,6 +1772,7 @@ for (const [seller, items] of Object.entries(repGroups)) {
     statusClass:   'result-box callout discrepancy-ok',
     linkedSalesIds:    [],
     linkedRepSalesIds: [],
+    linkedRepReturnIds: [],
     mergedRecordCount: items.length,
     mergedSummary: {
       dateRange:      { from: datesSorted[0] || nowISODate, to: datesSorted.slice(-1)[0] || nowISODate },
