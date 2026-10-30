@@ -1962,15 +1962,6 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <div id="cust-sale-inputs">
 <div class="grid-inputs">
 <div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
-<div class="field">
-<label>Supply</label>
-<div class="toggle-group u-8d25eff" id="supply-store-toggles">
-<button class="toggle-opt active" onclick="selectSupplyStore(this,'zubair')">ZUBAIR</button>
-<button class="toggle-opt" onclick="selectSupplyStore(this,'mahmood')">MAHMOOD</button>
-<button class="toggle-opt" onclick="selectSupplyStore(this,'asaan')">ASAAN</button>
-</div>
-<input type="hidden" id="supply-store-value" value="zubair">
-</div>
 </div>
 </div>
 <div id="cust-return-inputs" class="hidden">
@@ -2002,6 +1993,15 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 </div>
 <div id="cust-sale-supply-payment">
+<div class="field u-mb-15" >
+<label>Supply</label>
+<div class="toggle-group" id="supply-store-toggles">
+<button class="toggle-opt active" onclick="selectSupplyStore(this,'zubair')">ZUBAIR</button>
+<button class="toggle-opt" onclick="selectSupplyStore(this,'mahmood')">MAHMOOD</button>
+<button class="toggle-opt" onclick="selectSupplyStore(this,'asaan')">ASAAN</button>
+</div>
+<input type="hidden" id="supply-store-value" value="zubair">
+</div>
 <div class="field u-mb-15" >
 <label>Payment:</label>
 <div class="toggle-group">

@@ -34,9 +34,12 @@ describe('sale form layout', () => {
     const card = HTML.slice(HTML.indexOf('id="sale-result-card"'), HTML.indexOf('id="cust-coll-result"'));
     for (const id of ['sale-result-cost', 'sale-result-value', 'sale-result-profit', 'inventory-warning']) assert.ok(card.includes(`id="${id}"`), id);
   });
-  it('places the supply stores beside the quantity field', () => {
-    const grid = HTML.slice(HTML.indexOf('id="cust-quantity"'), HTML.indexOf('id="cust-return-inputs"'));
-    assert.ok(grid.includes('id="supply-store-toggles"') && grid.includes('id="supply-store-value"'));
+  it('keeps the supply stores in their own row above payment', () => {
+    const qty = HTML.slice(HTML.indexOf('id="cust-quantity"'), HTML.indexOf('id="cust-return-inputs"'));
+    assert.ok(!qty.includes('id="supply-store-toggles"'));
+    const row = HTML.slice(HTML.indexOf('id="cust-sale-supply-payment"'), HTML.indexOf('id="sale-result-card"'));
+    assert.ok(row.includes('id="supply-store-toggles"') && row.includes('id="supply-store-value"'));
+    assert.ok(row.indexOf('id="supply-store-toggles"') < row.indexOf('id="btn-payment-cash"'));
   });
 });
 
