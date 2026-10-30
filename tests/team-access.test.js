@@ -34,12 +34,19 @@ describe('data owner', () => {
   });
 });
 
-describe('team and access screen', () => {
-  it('replaces the three screens with one that has three panes', () => {
-    for (const id of ['sales-rep-screen', 'user-roles-screen', 'app-accounts-screen']) assert.ok(!HTML.includes(`id="${id}"`), id);
-    assert.ok(HTML.includes('id="team-access-screen"'));
-    for (const id of ['new-rep-name-input', 'manage-reps-list', 'new-userrole-name-input', 'manage-userrole-list', 'acct-new-email', 'manage-accounts-list']) assert.ok(HTML.includes(`id="${id}"`), id);
-    for (const t of ['reps', 'roles', 'accounts']) assert.ok(HTML.includes(`data-ta-pane="${t}"`), t);
+describe('app accounts screen', () => {
+  it('replaces reps, roles, devices and team access with one account screen', () => {
+    for (const id of ['sales-rep-screen', 'user-roles-screen', 'device-display-screen', 'team-access-screen']) assert.ok(!HTML.includes(`id="${id}"`), id);
+    assert.ok(HTML.includes('id="app-accounts-screen"'));
+    for (const id of ['acct-new-email', 'acct-new-password', 'acct-new-name', 'acct-add-btn', 'manage-accounts-list']) assert.ok(HTML.includes(`id="${id}"`), id);
+    assert.ok(!HTML.includes('Device Display'));
+    assert.ok(!HTML.includes('Connected Devices'));
+  });
+  it('offers the six role buttons with none selected', () => {
+    for (const r of ['admin', 'rep', 'production', 'factory', 'payments', 'sales']) {
+      assert.match(HTML, new RegExp(`id="acct-role-${r}" class="toggle-opt u-44dfa2b" onclick="setNewAccountRole\\('${r}'\\)"`), r);
+    }
+    assert.doesNotMatch(HTML, /id="acct-role-[a-z]+" class="toggle-opt active/);
   });
 });
 

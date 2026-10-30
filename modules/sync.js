@@ -1,5 +1,5 @@
 import { dataUid, resolveDataOwner, isTeamMember } from './data-owner.js';
-import { accountLockPanelHtml } from './utilities-payments.js';
+import { ACCOUNT_ROLES, normalizeRole, roleLabel, accountName, clearCachedAccountRole } from './account-role.js';
 import { formatDateTime } from './date-format.js';
 import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
@@ -8,7 +8,7 @@ import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, 
 import { _set_restoring, _set_closing, closeYearInProgress, restoring, closing } from './admin-data.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
-import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
+import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, applyAccountRoleOnLogin, saveSalesRepsList } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
@@ -545,7 +545,7 @@ setTimeout(() => { refreshDeviceIdAnchors().catch(() => {}); }, 1500);
 }
 setTimeout(async () => {
 try {
-await restoreDeviceModeOnLogin(user.uid);
+await applyAccountRoleOnLogin(user);
 } catch (error) {
 console.error('Could not restore device mode:', _safeErr(error));
 }
@@ -2071,10 +2071,6 @@ _cleanUnitPools
         await sqliteStore.set('team_timestamp', cloudTs);
         if (changed) {
           if (typeof renderAllRepUI === 'function') renderAllRepUI();
-          if (typeof renderUserRoleList === 'function') {
-            const list = document.getElementById('manage-userrole-list');
-            if (list) renderUserRoleList();
-          }
           flashLivePulse();
           showToast('Team list updated from another device', 'info', 3000);
         }
@@ -4308,30 +4304,59 @@ export async function _writeAccountsIndex(accounts) {
 await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: false });
 }
 
-export let _newAccountRole = 'user';
+export let _newAccountRole = '';
 
 export function setNewAccountRole(role) {
-_newAccountRole = role;
-const userBtn  = document.getElementById('acct-role-user');
-const adminBtn = document.getElementById('acct-role-admin');
-if (userBtn)  userBtn.classList.toggle('active',  role === 'user');
-if (adminBtn) adminBtn.classList.toggle('active', role === 'admin');
+_newAccountRole = ACCOUNT_ROLES.includes(role) ? role : '';
+ACCOUNT_ROLES.forEach(r => {
+const btn = document.getElementById('acct-role-' + r);
+if (btn) btn.classList.toggle('active', r === _newAccountRole);
+});
 }
 
 export function adminAddAccount(...a) { return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), { label: 'Account', late: true, fields: [['acct-new-email', 'Email']], verb: 'Add' }); }
 
+async function _ensureRepName(name) {
+if (!name || !Array.isArray(salesRepsList) || salesRepsList.includes(name)) return;
+salesRepsList.push(name);
+await saveSalesRepsList();
+}
+
+async function _adoptExistingLogin(secondaryApp, secondaryAuth, email, password, ownerUid) {
+let cred;
+try { cred = await secondaryAuth.signInWithEmailAndPassword(email, password); }
+catch (e) {
+const c = (e && e.code) || '';
+if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') throw Object.assign(new Error('This email is already registered and the password does not match.'), { friendly: true });
+throw e;
+}
+const uid = cred.user.uid;
+let profile = null;
+try {
+const snap = await secondaryApp.firestore().collection('users').doc(uid).get();
+profile = snap.exists ? (snap.data() || {}) : null;
+} finally { await secondaryAuth.signOut().catch(() => {}); }
+if (uid === ownerUid) throw Object.assign(new Error('That is your own account.'), { friendly: true });
+if (profile && profile.ownerUid !== ownerUid) throw Object.assign(new Error('This email already has its own workspace. It cannot join this one.'), { friendly: true });
+return { uid, existing: !!profile };
+}
+
 async function _adminAddAccountRaw() {
 const emailEl = document.getElementById('acct-new-email');
 const passEl  = document.getElementById('acct-new-password');
+const nameEl  = document.getElementById('acct-new-name');
 const msgEl   = document.getElementById('acct-add-msg');
 const btn     = document.getElementById('acct-add-btn');
 if (!emailEl || !passEl || !msgEl) return;
 const email    = emailEl.value.trim();
 const password = passEl.value;
-const role     = _newAccountRole || 'user';
+const role     = _newAccountRole;
+const name     = nameEl ? nameEl.value.trim().toUpperCase() : '';
 const setMsg = (txt, color) => { if (msgEl) { msgEl.textContent = txt; msgEl.style.setProperty('--d-color', color || 'var(--text-muted)'); msgEl.classList.add('dc-color'); } };
 if (!email)              { setMsg('Enter an email address.', 'var(--danger)'); return; }
 if (password.length < 8) { setMsg('Password must be at least 8 characters.', 'var(--danger)'); return; }
+if (!ACCOUNT_ROLES.includes(role)) { setMsg('Choose a role for this account.', 'var(--danger)'); return; }
+if (role === 'rep' && !name) { setMsg('Enter the rep name.', 'var(--danger)'); return; }
 if (!navigator.onLine)   { setMsg('Internet required to create accounts.', 'var(--danger)'); return; }
 if (!(await window.gcCommit({}))) return;
 if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
@@ -4340,29 +4365,41 @@ try {
 const secondaryApp = firebase.apps.find(a => a.name === '_adminCreate') ||
   firebase.initializeApp(firebaseConfig, '_adminCreate');
 const secondaryAuth = secondaryApp.auth();
-const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-const newUid = cred.user.uid;
-await secondaryAuth.signOut();
 const ownerUid = dataUid(currentUser);
+let newUid, adopted = false;
+try {
+const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+newUid = cred.user.uid;
+await secondaryAuth.signOut();
+} catch (e) {
+if (e && e.code === 'auth/email-already-in-use') {
+const got = await _adoptExistingLogin(secondaryApp, secondaryAuth, email, password, ownerUid);
+newUid = got.uid; adopted = true;
+} else throw e;
+}
+const finalName = name || accountName({ email });
+const now = Date.now();
 await firebaseDB.collection('users').doc(newUid).set({
-  email, role, approved: true, ownerUid,
-  createdAt: Date.now(), createdBy: currentUser.email
-});
-const entry = { uid: newUid, email, role, approved: true, ownerUid, createdAt: Date.now(), createdBy: currentUser.email };
+  email, role, name: finalName, approved: true, ownerUid,
+  createdAt: now, createdBy: currentUser.email
+}, { merge: true });
+const entry = { uid: newUid, email, role, name: finalName, approved: true, ownerUid, createdAt: now, createdBy: currentUser.email };
 const existing = await _readAccountsIndex();
 await _writeAccountsIndex([...existing.filter(a => a.uid !== newUid), entry]);
+if (role === 'rep') await _ensureRepName(finalName);
 emailEl.value = '';
 passEl.value  = '';
-_newAccountRole = 'user';
-setNewAccountRole('user');
-setMsg('Account created successfully.', 'var(--accent-emerald)');
-showToast('Account created: ' + email, 'success');
+if (nameEl) nameEl.value = '';
+setNewAccountRole('');
+setMsg(adopted ? 'Existing login added to this workspace.' : 'Account created successfully.', 'var(--accent-emerald)');
+showToast((adopted ? 'Account added: ' : 'Account created: ') + email, 'success');
 await loadAccountsList();
 } catch (err) {
 const code = err.code || '';
-if (code === 'auth/email-already-in-use') setMsg('This email is already registered.', 'var(--danger)');
+if (err.friendly) setMsg(err.message, 'var(--danger)');
 else if (code === 'auth/invalid-email')   setMsg('Invalid email address.', 'var(--danger)');
 else if (code === 'auth/weak-password')   setMsg('Password too weak.', 'var(--danger)');
+else if (code === 'permission-denied')    setMsg('Not allowed. Only an admin of this workspace can add accounts.', 'var(--danger)');
 else setMsg('Failed: ' + (err.message || code), 'var(--danger)');
 console.error('adminAddAccount error:', _safeErr(err));
 } finally {
@@ -4392,32 +4429,57 @@ return;
 listEl.innerHTML = allAccounts.map(acct => {
 const isMe     = acct.uid === currentUser.uid;
 const approved = acct.approved !== false;
+const role     = normalizeRole(acct);
 const dot = approved
   ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3"></span>'
   : '<span class="u-eca6a09 d-inline-block st-background__047b23"></span>';
+const roleBtns = isMe ? '' : '<div class="u-ab90486 d-grid">' + ACCOUNT_ROLES.map(r =>
+  '<button class="btn btn-theme btn-sm ' + (r === role ? 'active' : 'idle') + '" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email || '') + '" data-role="' + r + '" onclick="adminSetAccountRole(this.dataset.uid,this.dataset.email,this.dataset.role)">' + roleLabel(r) + '</button>'
+).join('') + '</div>';
 const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
-      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9" data-uid="' + acct.uid + '" onclick="document.getElementById(\'acct-lock-\' + this.dataset.uid).classList.toggle(\'d-none\')">Access</button>',
-      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="--d-color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';--d-border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + '">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
+      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + esc(acct.uid) + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
+      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
     ].join('');
 return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f">' +
   '<div class="u-855cc88 d-flex">' + dot +
   '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow u-0da05dd">' +
-  esc(acct.email||acct.uid) + (isMe ? ' <em class=\"st-color__5872de st-font-size__c3e9d8\">(you)</em>' : '') + '</div>' +
-  '<div class="u-28c8f7e d-flex">' +
-  (acct.role === 'admin'
-    ? '<span class="u-e4e2d96 st-background__74ab11 st-border-bottom__cdd2cd">admin</span>'
-    : '<span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">user</span>') +
+  esc(acct.email||acct.uid) + (isMe ? ' <em class="st-color__5872de st-font-size__c3e9d8">(you)</em>' : '') + '</div>' +
+  '<div class="u-28c8f7e d-flex"><span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">' + esc(roleLabel(role)) + '</span>' +
+  (acct.name ? '<span class="u-e7a1434">' + esc(acct.name) + '</span>' : '') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
-  '</div>' +
-  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>' +
-  (isMe ? '' : '<div id="acct-lock-' + acct.uid + '" class="d-none u-296d231">' + accountLockPanelHtml(acct) + '</div>');
+  '</div>' + roleBtns +
+  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
 }).join('');
 } catch(err) {
 listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';
 console.error('loadAccountsList:', _safeErr(err));
+}
+}
+
+export async function adminSetAccountRole(uid, email, role) {
+if (!ACCOUNT_ROLES.includes(role)) return;
+if (uid === currentUser.uid) { window.notifyBlocking('You cannot change your own role.', 'warning', 'Warning'); return; }
+const accounts = await _readAccountsIndex().catch(() => []);
+const entry = accounts.find(a => a.uid === uid) || {};
+if (normalizeRole(entry) === role) return;
+let name = entry.name || accountName({ email });
+if (role === 'rep' && !name) name = accountName({ email });
+const confirmed = await showGlassConfirm(
+'Make ' + email + ' a ' + roleLabel(role) + ' account?\n\nIt applies on their devices right away.',
+{ title: 'Change Role', confirmText: 'Apply', cancelText: 'Cancel', danger: role !== 'admin' }
+);
+if (!confirmed) return;
+try {
+await firebaseDB.collection('users').doc(uid).update({ role, name });
+await _writeAccountsIndex(accounts.map(a => a.uid === uid ? { ...a, role, name } : a));
+if (role === 'rep') await _ensureRepName(name);
+showToast(email + ' is now ' + roleLabel(role), 'success', 2500);
+await loadAccountsList();
+} catch (err) {
+window.notifyBlocking('Failed to change role: ' + (err.message || ''), 'error', 'Something went wrong');
+console.error('adminSetAccountRole:', _safeErr(err));
 }
 }
 
@@ -4502,19 +4564,6 @@ if (currentUser && !window._forceLogoutSignOut) {
     if (!proceed) return;
   }
 }
-let _savedAppMode = null;
-try {
-  const _modeKeys = [
-    'appMode', 'appMode_timestamp',
-    'repProfile', 'repProfile_timestamp',
-    'assignedManager', 'assignedUserTabs',
-  ];
-  const _modeVals = await sqliteStore.getBatch(_modeKeys).catch(() => new Map());
-  const _modeEntries = _modeKeys
-    .map(k => [k, _modeVals.get(k)])
-    .filter(([, v]) => v != null && v !== undefined);
-  if (_modeEntries.length) _savedAppMode = _modeEntries;
-} catch(_) {}
 stopDatabaseHeartbeat();
 clearAutoBackup();
 if (typeof OfflineQueue !== 'undefined') OfflineQueue.cancelRetry();
@@ -4570,9 +4619,7 @@ if (typeof _clearDeviceIdStorage === 'function') {
   await _clearDeviceIdStorage().catch(() => {});
 }
 try { await wipeAllLocalData(); } catch (_) {}
-if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
-  await sqliteStore.setBatch(_savedAppMode).catch(() => {});
-}
+clearCachedAccountRole();
 window._forceLogoutSignOut = false;
 showToast(auth ? ' Signed out successfully' : ' Signed out', 'success');
 setTimeout(() => {
@@ -4714,5 +4761,6 @@ window.adminAddAccount = adminAddAccount;
 window.loadAccountsList = loadAccountsList;
 window.adminToggleApproval = adminToggleApproval;
 window.adminRemoveAccount = adminRemoveAccount;
+window.adminSetAccountRole = adminSetAccountRole;
 window.signOut = signOut;
 window.updateSyncButton = updateSyncButton;

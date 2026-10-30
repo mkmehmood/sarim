@@ -1,11 +1,11 @@
 import { dataUid } from './data-owner.js';
-import { normalizeAccountLock, buildLockPatch, lockLabel, lockPanelButtons } from './account-lock.js';
+import { roleToMode, isAccountSuspended, cacheAccountRole, readCachedAccountRole } from './account-role.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
-import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
+import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
 import { expenseItemsOfRecord, commissionItemsOfRecord, mergeExpenseItems, sortedExpenseEntries } from './field-expense-items.js';
 import { hcCard, hcCardHtml, hcChip, hcEmptyHtml, hcExpensesHtml } from './history-card.js';
@@ -15,8 +15,8 @@ import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryM
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _extractDeviceFirstLoginTime, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, deriveDeviceShard, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateUUID, customerHistoryMatcher, formatTime12, repairStoredRecords, loadCollections } from './business.js';
-import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, loadAccountsList, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, signOut, unifiedDelete, unifiedSave, updateSyncButton, _readAccountsIndex, _writeAccountsIndex } from './sync.js';
+import { allocatePaymentToMaterials, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _set_userRolesList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getDeviceName, getTimestamp, initializeDeviceListeners, loadAllData, localDateStr, registerDevice, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, userRolesList, validateUUID, customerHistoryMatcher, formatTime12, repairStoredRecords, loadCollections } from './business.js';
+import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
@@ -6751,170 +6751,16 @@ const shortName = firstName.charAt(0) + firstName.slice(1).toLowerCase();
 return `<button id="btn-rep-dyn-${i}" class="toggle-opt${currentVal === r ? ' active' : ''}" onclick="selectSalesRep(this,'${esc(r)}')">${esc(shortName)}</button>`;
 }).join('');
 }
-renderManageRepsList();
-}
-
-export function renderManageRepsList() {
-const list = document.getElementById('manage-reps-list');
-if (!list) return;
-if (salesRepsList.length === 0) {
-list.innerHTML = '<div class="u-cca393b">No representatives added yet.</div>';
-return;
-}
-list.innerHTML = salesRepsList.map((rep, i) => `
-<div class="d-flex st-align-items__7c6197 st-padding__8d6c25 st-background__f38efd st-border-bottom__e54b2f st-border-radius__c8d49a u-4d20c0a${i === 0 ? ' st-border__ad358e' : ''}">
-<div class="u-2c42b11 d-flex">
-<span class="u-76ebb48 has-overflow u-0da05dd">${esc(rep)}</span>
-<span class="st-font-size__8303b5 st-font-weight__e3ec02 u-3d59ac9 u-fa74faf dc-color u-b62856e" style="--d-color: ${i === 0 ? 'var(--accent)' : 'var(--text-muted)'}">${i === 0 ? ' Default' : `#${i + 1}`}</span>
-</div>
-<button class="btn btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeSalesRep(${i})" title="Remove ${esc(rep)}"></button>
-</div>
-`).join('');
-}
-
-export let _newUserRoleSelectedTabs = new Set();
-
-export function toggleUserRoleTabAccess(tabKey) {
-if (_newUserRoleSelectedTabs.has(tabKey)) {
-_newUserRoleSelectedTabs.delete(tabKey);
-} else {
-_newUserRoleSelectedTabs.add(tabKey);
-}
-['factory','prod','payments','sales'].forEach(t => {
-const btn = document.getElementById('userrole-tab-' + t);
-if (btn) btn.classList.toggle('active', _newUserRoleSelectedTabs.has(t));
-});
-const hint = document.getElementById('userrole-access-hint');
-if (hint) {
-hint.textContent = _newUserRoleSelectedTabs.size === 0
-? 'Select one or more tabs to assign'
-: 'Access: ' + [..._newUserRoleSelectedTabs].map(t => _cap(t)).join(', ');
-}
-}
-
-export function renderUserRoleList() {
-const list = document.getElementById('manage-userrole-list');
-if (!list) return;
-if (userRolesList.length === 0) {
-list.innerHTML = '<div class="u-cca393b">No users added yet.</div>';
-return;
-}
-const TAB_COLORS = { factory: 'var(--accent-purple)', prod: 'var(--accent-emerald)', payments: 'var(--accent-cyan)', sales: 'var(--accent-gold)' };
-list.innerHTML = userRolesList.map((user, i) => {
-const tabs = Array.isArray(user.tabs) ? user.tabs : [];
-const tabBadges = tabs.map(t => `<span class="st-font-size__a9e436 st-padding__8f0293 st-border-radius__c8d49a dc-color dc-border st-font-weight__e3ec02 u-3d59ac9" style="--d-color: ${TAB_COLORS[t]||'var(--accent)'}; --d-border: 1px solid ${TAB_COLORS[t]||'var(--accent)'}55">${t}</span>`).join('');
-return `
-<div class="u-b3a0b25 d-flex st-background__f38efd st-border-bottom__e54b2f">
-<div class="u-8b4ab7f">
-<div class="u-5e4bab7 d-flex">
-<span class="u-555bcbe">${esc(user.name)}</span>
-</div>
-<div class="u-91a590f d-flex">${tabBadges || '<span class="st-font-size__c3e9d8 st-color__ce14cb">No tabs assigned</span>'}</div>
-</div>
-<button class="btn btn-theme u-eeccbea st-border-bottom__b34a17" onclick="removeUserRole(${i})" title="Remove ${esc(user.name)}"></button>
-</div>`;
-}).join('');
-}
-
-export function switchManageTeamTab(tab) {
-['rep', 'userrole', 'accounts'].forEach(t => {
-const btn = document.getElementById('team-tab-' + t);
-const panel = document.getElementById('team-panel-' + t);
-if (btn) btn.classList.toggle('active', t === tab);
-if (panel) window.setDisplay(panel, t === tab ? '' : 'none');
-});
-if (tab === 'userrole') renderUserRoleList();
-if (tab === 'rep') renderManageRepsList();
-if (tab === 'accounts' && typeof loadAccountsList === 'function') loadAccountsList();
-}
-
-export function addNewUserRole(...a) { return confirmGuard('addNewUserRole', () => _addNewUserRoleRaw(...a), { label: 'User', late: true, fields: [['new-userrole-name-input', 'Name']], verb: 'Add' }); }
-
-async function _addNewUserRoleRaw() {
-const input = document.getElementById('new-userrole-name-input');
-if (!input) return;
-const name = input.value.trim().toUpperCase();
-if (!name) { window.notifyBlocking('Please enter a name', 'warning', 'Warning'); return; }
-if (_newUserRoleSelectedTabs.size === 0) { window.notifyBlocking('Please select at least one tab', 'warning', 'Warning'); return; }
-if (userRolesList.some(u => u.name === name)) { window.notifyBlocking('User already exists', 'warning', 'Warning'); return; }
-if (!(await window.gcCommit({}))) return;
-userRolesList.push({ name, tabs: [..._newUserRoleSelectedTabs] });
-await saveUserRolesList();
-input.value = '';
-_newUserRoleSelectedTabs.clear();
-['factory','prod','payments','sales'].forEach(t => {
-const btn = document.getElementById('userrole-tab-' + t);
-if (btn) btn.classList.remove('active');
-});
-const hint = document.getElementById('userrole-access-hint');
-if (hint) hint.textContent = 'Select one or more tabs to assign';
-renderUserRoleList();
-showToast(`${name} added as User`, 'success');
-}
-
-export async function removeUserRole(index) {
-const user = userRolesList[index];
-if (!user) return;
-const _rMsg = `Remove ${user.name} from the team?\n\nThey will lose access to their assigned sections. This does not delete any recorded data.`;
-const confirmed = await showGlassConfirm(_rMsg, { title: 'Remove User', confirmText: 'Remove', cancelText: 'Cancel', danger: true });
-if (!confirmed) return;
-userRolesList.splice(index, 1);
-await saveUserRolesList();
-renderUserRoleList();
-}
-
-export function addNewSalesRep(...a) { return confirmGuard('addNewSalesRep', () => _addNewSalesRepRaw(...a), { label: 'Representative', late: true, fields: [['new-rep-name-input', 'Name']], verb: 'Add' }); }
-
-async function _addNewSalesRepRaw() {
-const input = document.getElementById('new-rep-name-input');
-if (!input) return;
-const name = input.value.trim().toUpperCase();
-if (!name) { window.notifyBlocking('Please enter a name', 'warning', 'Warning'); return; }
-if (salesRepsList.includes(name)) { window.notifyBlocking('Rep already exists', 'warning', 'Warning'); return; }
-if (!(await window.gcCommit({}))) return;
-salesRepsList.push(name);
-await saveSalesRepsList();
-input.value = '';
-showToast(`${name} added`, 'success');
-}
-
-export async function removeSalesRep(index) {
-const rep = ensureArray(await sqliteStore.get('rep'));
-if (salesRepsList.length <= 1) { window.notifyBlocking('Must have at least one representative', 'warning', 'Warning'); return; }
-const name = salesRepsList[index];
-{
-const _pend = await getPendingAllocationCount(name);
-if (_pend > 0) { window.notifyBlocking(`${name} still has ${_pend} unsettled allocation${_pend !== 1 ? 's' : ''}. Settle them in the calculator first.`, 'warning', 'Warning'); return; }
-}
-const _rsrSales = (typeof rep !== 'undefined' ? rep : []).filter(s => s.salesRep === name).length;
-let _rsrMsg = `Remove ${name} from the sales team?`;
-_rsrMsg += `\n\nThey will no longer appear as an available rep in the app.`;
-if (_rsrSales > 0) _rsrMsg += `\n\n ${name} has ${_rsrSales} recorded sale${_rsrSales !== 1 ? 's' : ''} in the system. Those records will be kept, but you will no longer be able to add new sales under this name.`;
-if (typeof currentRepProfile !== 'undefined' && currentRepProfile === name) _rsrMsg += `\n\n This rep is currently active on this device. The device will switch to the next available rep.`;
-_rsrMsg += `\n\nThis does not delete any of their existing sales data.`;
-const confirmed = await showGlassConfirm(_rsrMsg, {
-title: `Remove ${name}`,
-confirmText: 'Remove',
-cancelText: 'Cancel',
-danger: true
-});
-if (!confirmed) return;
-salesRepsList.splice(index, 1);
-if (currentRepProfile === name) {
-_set_currentRepProfile(salesRepsList[0]);
-await sqliteStore.set('repProfile', currentRepProfile);
-}
-await saveSalesRepsList();
 }
 
 export function openManageRepsModal() {
-renderManageRepsList();
-if (typeof openStandaloneScreen === 'function') openStandaloneScreen('team-access-screen');
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('app-accounts-screen');
+if (typeof window.loadAccountsList === 'function') window.loadAccountsList();
 }
 
 export function closeManageRepsModal() {
 if (typeof closeStandaloneScreen === 'function') {
-closeStandaloneScreen('team-access-screen');
+closeStandaloneScreen('app-accounts-screen');
 }
 }
 
@@ -6924,14 +6770,13 @@ export const _overlayStack = (() => {
     'formula-store-edit-screen':   { closeFn: () => closeStandaloneScreen('formula-store-edit-screen'), contentSel: '.screen-body' },
     'raw-material-screen':         { closeFn: () => closeStandaloneScreen('raw-material-screen'),     contentSel: '.screen-body' },
     'add-entity-screen':           { closeFn: () => closeStandaloneScreen('add-entity-screen'),       contentSel: '.screen-body' },
-    'team-access-screen':          { closeFn: () => closeStandaloneScreen('team-access-screen'),      contentSel: '.screen-body' },
+    'app-accounts-screen':         { closeFn: () => closeStandaloneScreen('app-accounts-screen'),     contentSel: '.screen-body' },
     'sync-data-screen':            { closeFn: () => closeStandaloneScreen('sync-data-screen'),        contentSel: '.screen-body' },
     'backup-restore-screen':       { closeFn: () => closeStandaloneScreen('backup-restore-screen'),   contentSel: '.screen-body' },
     'recycle-bin-screen':          { closeFn: () => closeStandaloneScreen('recycle-bin-screen'),      contentSel: '.screen-body' },
     'theme-screen':                { closeFn: () => closeStandaloneScreen('theme-screen'),            contentSel: '.screen-body' },
     'db-structure-screen':         { closeFn: () => closeStandaloneScreen('db-structure-screen'),     contentSel: '.screen-body' },
     'logout-screen':               { closeFn: () => closeStandaloneScreen('logout-screen'),           contentSel: '.screen-body' },
-    'device-display-screen':       { closeFn: () => closeStandaloneScreen('device-display-screen'),   contentSel: '.screen-body' },
     'settings-screen':             { closeFn: () => closeStandaloneScreen('settings-screen'),         contentSel: '.screen-body' },
     'feedback-screen':             { closeFn: () => closeStandaloneScreen('feedback-screen'),         contentSel: '.screen-body' },
     'close-financial-year-screen': { closeFn: () => closeStandaloneScreen('close-financial-year-screen'), contentSel: '.screen-body' },
@@ -6976,36 +6821,8 @@ export const _overlayStack = (() => {
 window.loadSalesRepsList = loadSalesRepsList;
 window.saveSalesRepsList = saveSalesRepsList;
 window.renderAllRepUI = renderAllRepUI;
-window.addNewSalesRep = addNewSalesRep;
-window.removeSalesRep = removeSalesRep;
 window.openManageRepsModal = openManageRepsModal;
 window.closeManageRepsModal = closeManageRepsModal;
-window.switchManageTeamTab = switchManageTeamTab;
-
-export async function loadUserRolesContent() {
-if (firebaseDB && currentUser) {
-try {
-const teamDoc = await firebaseDB.collection('users').doc(dataUid(currentUser))
-.collection('settings').doc('team').get();
-if (teamDoc.exists) {
-const data = teamDoc.data();
-if (Array.isArray(data.roles) && data.roles.length > 0) {
-_set_userRolesList(data.roles);
-await sqliteStore.set('roles', userRolesList).catch(() => {});
-}
-}
-} catch (e) {
-console.warn('loadUserRolesContent: cloud fetch failed, showing cached list', _safeErr(e));
-}
-}
-renderUserRoleList();
-}
-
-window.addNewUserRole = addNewUserRole;
-window.removeUserRole = removeUserRole;
-window.toggleUserRoleTabAccess = toggleUserRoleTabAccess;
-window.renderUserRoleList = renderUserRoleList;
-window.loadUserRolesContent = loadUserRolesContent;
 window.saveUserRolesList = saveUserRolesList;
 window.lockToUserRoleMode = lockToUserRoleMode;
 
@@ -7067,220 +6884,6 @@ return result;
   };
 })();
 
-export async function loadDeviceList() {
-const container = document.getElementById('device-list-container');
-if (!container) return;
-if (!firebaseDB || !currentUser) {
-container.innerHTML = `
-<div class="empty" >
-Please log in to view devices
-</div>
-`;
-return;
-}
-try {
-const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
-const devicesSnap = await userRef.collection('devices').get();
-if (devicesSnap.empty) {
-container.innerHTML = `
-<div class="empty" >
-No devices registered yet
-</div>
-`;
-return;
-}
-const currentDeviceId = await getDeviceId();
-const now = Date.now();
-let accountEmail = currentUser.email || 'Unknown';
-try {
-const accountInfoSnap = await userRef.collection('account').doc('info').get();
-if (accountInfoSnap.exists) {
-const accountData = accountInfoSnap.data();
-accountEmail = accountData.email || accountEmail;
-}
-} catch (e) {
-console.error('An unexpected error occurred.', _safeErr(e));
-showToast('An unexpected error occurred.', 'error');
-}
-const seenIds = new Set();
-const uniqueDocs = devicesSnap.docs.filter(doc => {
-const data = doc.data();
-const id = data.deviceId;
-if (!id || id === 'device' || doc.id === 'device') return false;
-if (id === currentDeviceId || doc.id === currentDeviceId) return false;
-if (seenIds.has(id) || seenIds.has(doc.id)) return false;
-seenIds.add(id);
-seenIds.add(doc.id);
-return true;
-});
-if (uniqueDocs.length === 0) {
-container.innerHTML = `
-<div class="empty" >
-No other devices registered
-</div>
-`;
-return;
-}
-let html = `
-<div class="u-60c2221 st-background__e7d797 st-border-bottom__f9139a">
-<div class="u-975bc61">
-Account: ${accountEmail}
-</div>
-<div class="u-field-hint-xxs" >
-Total Devices: ${uniqueDocs.length} • Online: ${uniqueDocs.filter(d => {
-const ls = d.data().lastSeen?.toMillis() || 0;
-return (now - ls) < 60000;
-}).length}
-</div>
-</div>
-`;
-uniqueDocs.forEach(doc => {
-const device = doc.data();
-const lastSeen = device.lastSeen?.toMillis() || 0;
-const isOnline = (now - lastSeen) < 60000;
-const totalCommands = device.totalCommands || 0;
-const remoteAppliedMode = device.remoteAppliedMode || null;
-const remoteAppliedAt = device.remoteAppliedAt || null;
-const remoteAppliedBy = device.remoteAppliedBy || null;
-const deviceMode = device.currentMode || 'admin';
-const assignedRep = device.assignedRep || null;
-const assignedManager = device.assignedManager || null;
-const assignedUserTabs = Array.isArray(device.assignedUserTabs) ? device.assignedUserTabs : [];
-const modeLabel = deviceMode === 'admin'
-? 'ADMIN'
-: deviceMode === 'userrole'
-? (assignedManager || 'USER ROLE')
-: deviceMode === 'production'
-? (assignedManager || 'PRODUCTION')
-: deviceMode === 'factory'
-? (assignedManager || 'FACTORY')
-: (assignedRep || 'REP');
-const modeColor = deviceMode === 'admin' ? 'var(--accent-blue)'
-: deviceMode === 'userrole' ? 'var(--warning)'
-: deviceMode === 'production' ? 'var(--accent-mint)'
-: deviceMode === 'factory' ? 'var(--accent-purple)'
-: 'var(--accent-orange)';
-const modeIcon = '';
-const onlineColor = isOnline ? 'var(--success)' : 'var(--danger)';
-const onlineDot = isOnline ? ' Online' : ' Offline';
-let deviceShard = 'N/A';
-if (device.deviceShard) {
-  deviceShard = String(device.deviceShard).toUpperCase();
-} else if (device.deviceId && typeof deriveDeviceShard === 'function') {
-try {
-deviceShard = deriveDeviceShard(device.deviceId).toUpperCase();
-} catch (_) { deviceShard = 'N/A'; }
-}
-let firstLoginStr = '';
-if (device.firstLoginAt) {
-  try {
-    const ms = typeof device.firstLoginAt === 'number'
-      ? device.firstLoginAt
-      : (device.firstLoginAt.toMillis ? device.firstLoginAt.toMillis() : Number(device.firstLoginAt));
-    firstLoginStr = formatDateTime(ms);
-  } catch (_) {}
-} else if (device.deviceId && typeof _extractDeviceFirstLoginTime === 'function') {
-  try {
-    const flt = _extractDeviceFirstLoginTime(device.deviceId);
-    if (flt) firstLoginStr = formatDateTime(flt);
-  } catch (_) {}
-}
-let cardHtml = '<div class="u-296d231 st-background__f38efd st-border-bottom__e54b2f">';
-cardHtml += '<div class="u-d42a404 d-flex">';
-cardHtml += '<div class="u-3eddfae" title="Device shard: ' + deviceShard + (firstLoginStr ? ' | First login: ' + firstLoginStr : '') + '">Shard: <span class="u-fe495ba">' + deviceShard + '</span>' + (firstLoginStr ? ' &nbsp;<span class="u-56e4c0c">first login: ' + firstLoginStr + '</span>' : '') + '</div>';
-cardHtml += '<div class="u-b62856e text-right">';
-cardHtml += '<div class="st-font-size__c95659 st-font-weight__2b9532 u-1cd2eeb dc-color" style="--d-color:' + modeColor + '">' + modeLabel + '</div>';
-cardHtml += '<div class="st-font-size__2f7bba st-margin-top__7a21c6 dc-color" style="--d-color:' + onlineColor + '">' + onlineDot + '</div>';
-cardHtml += '</div>';
-cardHtml += '</div>';
-const lastSeenStr = lastSeen ? formatDateTime(lastSeen) : 'Never';
-cardHtml += '<div class="u-af437a1">Last seen: ' + lastSeenStr + '</div>';
-const lastCmdStr = remoteAppliedAt ? formatDateTime(remoteAppliedAt) : null;
-const lastCmdMode = remoteAppliedMode ? remoteAppliedMode.toUpperCase() : null;
-const lastCmdBy = remoteAppliedBy || null;
-if (lastCmdMode || totalCommands > 0) {
-cardHtml += '<div class="u-61da305 d-flex st-background__6fedaa st-border-bottom__e54b2f">';
-cardHtml += '<span class="u-2ae1270">Commands:</span>';
-if (totalCommands > 0) {
-cardHtml += '<span class="u-f07758c st-background__776447">' + totalCommands + ' sent</span>';
-}
-if (lastCmdMode) {
-cardHtml += '<span class="u-040bdbd">→ ' + lastCmdMode + '</span>';
-}
-if (lastCmdBy) {
-cardHtml += '<span class="u-a2cad5b">by ' + esc(lastCmdBy) + '</span>';
-}
-if (lastCmdStr) {
-cardHtml += '<span class="u-bae6c2c">' + lastCmdStr + '</span>';
-}
-cardHtml += '</div>';
-} else {
-cardHtml += '<div class="u-3a66e13 st-background__64ff56 st-border-bottom__e54b2f">No commands sent yet</div>';
-}
-cardHtml += '<button onclick="removeDevice(\'' + device.deviceId + '\')"';
-cardHtml += ' class="btn btn-danger btn-sm">Remove Device</button>';
-cardHtml += '</div>';
-html += cardHtml;
-});
-container.innerHTML = html;
-} catch (error) {
-console.error('An unexpected error occurred.', _safeErr(error));
-showToast('An unexpected error occurred.', 'error');
-container.innerHTML = `
-<div class="u-72c3d7b">
-Error loading devices: ${esc(error.message)}
-</div>
-`;
-}
-}
-
-export async function refreshDeviceList() {
-const container = document.getElementById('device-list-container');
-if (container) {
-container.innerHTML = `
-<div class="empty" >
-Refreshing...
-</div>
-`;
-}
-await loadDeviceList();
-showToast(' Device list refreshed', 'success', 2000);
-}
-
-export async function removeDevice(deviceId) {
-if (!firebaseDB || !currentUser) {
-window.notifyBlocking('Not logged in', 'error', 'Something went wrong');
-return;
-}
-if (!deviceId || !validateUUID(String(deviceId))) {
-window.notifyBlocking('Invalid device ID', 'error', 'Something went wrong');
-return;
-}
-const _rdMsg = `Remove this device from the trusted list?\n\nThe device will be logged out immediately and will no longer be able to sync data or receive remote commands. It will need to be re-approved if the user tries to reconnect.\n\nThis does not delete any data already on the device.`;
-if (!(await showGlassConfirm(_rdMsg, { title: 'Remove Trusted Device', confirmText: 'Remove', danger: true }))) {
-return;
-}
-try {
-const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
-const deviceRef = userRef.collection('devices').doc(deviceId);
-await deviceRef.set({
-targetMode: 'force_logout',
-targetModeTimestamp: Date.now(),
-commandSource: 'remote_admin',
-forceLogout: true,
-forceLogoutAt: Date.now()
-}, { merge: true });
-await new Promise(resolve => setTimeout(resolve, 600));
-await deviceRef.delete();
-await loadDeviceList();
-} catch (error) {
-window.notifyBlocking('Failed to remove device: ' + error.message, 'error', 'Something went wrong');
-}
-}
-
-window.loadDeviceList = loadDeviceList;
-window.refreshDeviceList = refreshDeviceList;
-window.removeDevice = removeDevice;
 window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
 window.registerDevice = registerDevice;
@@ -7314,62 +6917,31 @@ export function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, as
 
 window._applyModeFromData = _applyModeFromData;
 
-export async function restoreDeviceModeOnLogin(uid) {
-try {
-  const localTimestamp = Number(await sqliteStore.get('appMode_timestamp')) || 0;
-  if (firebaseDB && !window._firestoreNetworkDisabled && navigator.onLine) {
-    try {
-      const deviceId = await getDeviceId();
-      const deviceRef = firebaseDB.collection('users').doc(uid)
-                                  .collection('devices').doc(deviceId);
-      const deviceDoc = await deviceRef.get();
-      if (deviceDoc.exists) {
-        const data = deviceDoc.data();
-        if (data && (data.forceLogout === true || data.targetMode === 'force_logout')) {
-          if (typeof signOut === 'function') {
-            showToast('This device has been removed by admin. Logging out…', 'warning', 4000);
-            window._forceLogoutSignOut = true;
-            setTimeout(() => signOut().catch(() => {}), 1200);
-          }
-          return;
-        }
-        const cloudMode      = data.currentMode || 'admin';
-        const cloudTimestamp = data.appMode_timestamp || 0;
-        const _modeIsLocked  = cloudMode !== 'admin';
-        const _localIsAdmin  = appMode === 'admin';
-        const shouldRestore  = (cloudMode && cloudTimestamp > localTimestamp && cloudMode !== appMode)
-                            || (_modeIsLocked && _localIsAdmin);
-        if (shouldRestore) {
-          _applyModeFromData(
-            cloudMode, cloudTimestamp,
-            data.assignedRep, data.assignedManager,
-            data.assignedUserTabs, !!data.remoteAppliedMode
-          );
-        }
-        return;
-      }
-    } catch (_fsErr) {
-      console.warn('[restoreDeviceMode] Firestore read failed, trying SQLite fallback:', _safeErr(_fsErr));
-    }
-  }
-  const sqliteMode = await sqliteStore.get('appMode') || 'admin';
-  const _modeIsLockedSqlite = sqliteMode !== 'admin';
-  const _localIsAdminSqlite = appMode === 'admin';
-  if (_modeIsLockedSqlite && _localIsAdminSqlite) {
-    const assignedRep     = await sqliteStore.get('repProfile').catch(() => null);
-    const assignedManager = await sqliteStore.get('assignedManager').catch(() => null);
-    const assignedTabs    = await sqliteStore.get('assignedUserTabs').catch(() => []);
-    _applyModeFromData(
-      sqliteMode, localTimestamp || Date.now(),
-      assignedRep, assignedManager, assignedTabs, false
-    );
-  }
-} catch (error) {
-  console.warn('[restoreDeviceMode] could not restore device mode:', _safeErr(error));
-}
+export async function applyAccountRole(profile, source) {
+const want = roleToMode(profile);
+await applyRemoteModeChange(want.mode, source || 'account_role', want.name, want.tabs);
 }
 
-window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
+export async function applyAccountRoleOnLogin(user) {
+if (!user) return;
+try {
+if (user.offlineMode || !navigator.onLine || !firebaseDB) {
+const cached = readCachedAccountRole(user.uid, user.email);
+if (cached) await applyAccountRole({ role: cached.role, name: cached.name, email: cached.email }, 'cached_account_role');
+return;
+}
+const snap = await firebaseDB.collection('users').doc(user.uid).get();
+if (!snap.exists) return;
+const data = snap.data() || {};
+cacheAccountRole(user.uid, data);
+if (isAccountSuspended(data)) return;
+await applyAccountRole(data, 'account_role');
+} catch (e) {
+console.warn('[account-role] could not apply role at sign-in:', _safeErr(e));
+const cached = readCachedAccountRole(user.uid, user.email);
+if (cached) { try { await applyAccountRole({ role: cached.role, name: cached.name, email: cached.email }, 'cached_account_role'); } catch (_) {} }
+}
+}
 
 export async function listenForAccountLock() {
 if (!firebaseDB || !currentUser || currentUser.offlineMode) return;
@@ -7378,51 +6950,17 @@ try { window.accountLockUnsubscribe(); } catch (_) {}
 window.accountLockUnsubscribe = null;
 }
 try {
-window.accountLockUnsubscribe = firebaseDB.collection('users').doc(currentUser.uid).onSnapshot({ includeMetadataChanges: false }, async (snap) => {
+const uid = currentUser.uid;
+window.accountLockUnsubscribe = firebaseDB.collection('users').doc(uid).onSnapshot({ includeMetadataChanges: false }, async (snap) => {
 try {
-if (!snap.exists || snap.metadata.fromCache || snap.metadata.hasPendingWrites) return;
-const lock = normalizeAccountLock(snap.data());
-if (!lock) return;
-const applied = Number(await sqliteStore.get('accountLockAt', 0)) || 0;
-if (lock.at <= applied) return;
-await applyRemoteModeChange(lock.mode, 'account_lock', lock.name, lock.tabs);
-await sqliteStore.set('accountLockAt', lock.at);
-} catch (e) { console.warn('[account-lock] handler error:', _safeErr(e)); }
-}, (e) => console.warn('[account-lock] listener error:', e && e.code, _safeErr(e)));
-} catch (e) { console.error('[account-lock] listen failed:', _safeErr(e)); }
-}
-
-export function accountLockPanelHtml(acct) {
-const buttons = lockPanelButtons(acct.lock, salesRepsList, userRolesList);
-let html = '<div class="u-788ba48">' + esc(lockLabel(acct.lock)) + '</div><div class="u-ab90486 d-grid">';
-let group = '';
-for (const b of buttons) {
-if (b.group !== group) {
-group = b.group;
-if (group !== 'Access') html += '</div><div class="u-788ba48">' + esc(group) + '</div><div class="u-ab90486 d-grid">';
-}
-html += '<button class="btn btn-theme btn-sm ' + (b.active ? 'active' : 'idle') + '" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email || '') + '" data-mode="' + b.mode + '" data-index="' + b.index + '" onclick="setAccountLock(this.dataset.uid,this.dataset.email,this.dataset.mode,Number(this.dataset.index))">' + (b.active ? '&#10003; ' : '') + esc(b.label) + '</button>';
-}
-return html + '</div>';
-}
-
-export async function setAccountLock(uid, email, mode, index) {
-if (!firebaseDB || !currentUser) { window.notifyBlocking('Not logged in', 'error', 'Something went wrong'); return; }
-const name = mode === 'rep' ? salesRepsList[index] : mode === 'userrole' ? (userRolesList[index] || {}).name : null;
-const tabs = mode === 'userrole' ? ((userRolesList[index] || {}).tabs || []) : null;
-const what = mode === 'admin' ? 'unlock to full Admin access' : 'lock to ' + (mode === 'rep' ? 'Sales Rep ' : 'User Role ') + name;
-const confirmed = await showGlassConfirm('Sign-in as ' + email + ' will ' + what + ' on every device.', { title: 'Account Access', confirmText: 'Apply', cancelText: 'Cancel', danger: mode !== 'admin' });
-if (!confirmed) return;
-try {
-const lock = buildLockPatch(mode, name, tabs, currentUser.email, Date.now());
-await firebaseDB.collection('users').doc(uid).update({ lock });
-const accounts = await _readAccountsIndex();
-await _writeAccountsIndex(accounts.map(a => a.uid === uid ? { ...a, lock } : a));
-showToast('Access updated for ' + email, 'success', 2500);
-if (typeof loadAccountsList === 'function') await loadAccountsList();
-} catch (error) {
-window.notifyBlocking('Failed to update access: ' + error.message, 'error', 'Something went wrong');
-}
+if (!snap.exists || snap.metadata.fromCache) return;
+const data = snap.data() || {};
+cacheAccountRole(uid, data);
+if (isAccountSuspended(data)) return;
+await applyAccountRole(data, 'account_role');
+} catch (e) { console.warn('[account-role] handler error:', _safeErr(e)); }
+}, (e) => console.warn('[account-role] listener error:', e && e.code, _safeErr(e)));
+} catch (e) { console.error('[account-role] listen failed:', _safeErr(e)); }
 }
 
 export async function applyRemoteModeChange(targetMode, source, repName = null, userTabs = null) {
@@ -7433,6 +6971,7 @@ if (previousMode === targetMode) {
 if (targetMode === 'admin') return;
 if (targetMode === 'rep' && currentRepProfile === repName) return;
 if (targetMode === 'userrole' && previousManager === repName && previousTabs === JSON.stringify(userTabs || [])) return;
+if ((targetMode === 'production' || targetMode === 'factory') && previousManager === (repName || null)) return;
 }
 _set_appMode(targetMode);
 const nowMs = Date.now();
@@ -7458,25 +6997,8 @@ window._assignedUserTabs = [];
 batchData.push(['assignedManager', null], ['assignedUserTabs', []]);
 }
 await sqliteStore.setBatch(batchData);
-if (firebaseDB && currentUser) {
-try {
-if (targetMode === 'admin' && window._firestoreNetworkDisabled) {
+if (targetMode === 'admin' && firebaseDB && currentUser && window._firestoreNetworkDisabled) {
 try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
-}
-const deviceId = await getDeviceId();
-const deviceRef = firebaseDB.collection('users').doc(dataUid(currentUser))
-.collection('devices').doc(deviceId);
-const payload = {
-currentMode: targetMode, appMode_timestamp: nowMs,
-remoteAppliedMode: targetMode, remoteAppliedAt: nowMs, remoteAppliedBy: source || 'remote',
-assignedRoleType: targetMode, assignedRoleName: repName || null,
-assignedRep: targetMode === 'rep' ? (repName || null) : null,
-assignedManager: targetMode === 'userrole' ? (repName || null) : null,
-assignedUserTabs: targetMode === 'userrole' ? (window._assignedUserTabs || []) : null,
-};
-if (targetMode === 'rep') payload.repProfile_timestamp = nowMs;
-await deviceRef.set(payload, { merge: true });
-} catch (e) { console.error('Firebase write failed:', _safeErr(e)); }
 }
 if (targetMode === 'rep') {
 if (typeof lockToRepMode === 'function') lockToRepMode();
@@ -7500,8 +7022,6 @@ showToast('Device unlocked to Admin mode', 'info', 4000);
 }
 
 window.listenForAccountLock = listenForAccountLock;
-window.setAccountLock = setAccountLock;
-
 export function listenForTeamChanges() {
 if (window._teamUnsubscribe) {
 try { window._teamUnsubscribe(); } catch(e) {}
@@ -7919,27 +7439,12 @@ window.loadSalesRepsList = loadSalesRepsList;
 window.saveSalesRepsList = saveSalesRepsList;
 window.saveUserRolesList = saveUserRolesList;
 window.renderAllRepUI = renderAllRepUI;
-window.renderManageRepsList = renderManageRepsList;
-window._newUserRoleSelectedTabs = _newUserRoleSelectedTabs;
-window.toggleUserRoleTabAccess = toggleUserRoleTabAccess;
-window.renderUserRoleList = renderUserRoleList;
-window.switchManageTeamTab = switchManageTeamTab;
-window.addNewUserRole = addNewUserRole;
-window.removeUserRole = removeUserRole;
-window.addNewSalesRep = addNewSalesRep;
-window.removeSalesRep = removeSalesRep;
 window.openManageRepsModal = openManageRepsModal;
 window.closeManageRepsModal = closeManageRepsModal;
 window._overlayStack = _overlayStack;
-window.loadUserRolesContent = loadUserRolesContent;
 window.phoneActionHTML = phoneActionHTML;
-window.loadDeviceList = loadDeviceList;
-window.refreshDeviceList = refreshDeviceList;
-window.removeDevice = removeDevice;
 window._applyModeFromData = _applyModeFromData;
-window.restoreDeviceModeOnLogin = restoreDeviceModeOnLogin;
 window.listenForAccountLock = listenForAccountLock;
-window.setAccountLock = setAccountLock;
 window.applyRemoteModeChange = applyRemoteModeChange;
 window.listenForTeamChanges = listenForTeamChanges;
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
