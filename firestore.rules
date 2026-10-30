@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(profilePath(request.auth.uid));
+    }
+
+    function me() {
+      return get(profilePath(request.auth.uid)).data;
+    }
+
+    function isApproved() {
+      return hasProfile() && me().get('approved', true) != false;
+    }
+
+    function emailMatches() {
+      return !('email' in me())
+        || (request.auth.token.email != null
+            && me().email.lower() == request.auth.token.email.lower());
+    }
+
+    function dataOwner() {
+      return me().get('ownerUid', request.auth.uid);
+    }
+
+    function isOwner() {
+      return dataOwner() == request.auth.uid;
+    }
+
+    function isAdmin() {
+      return isOwner() || me().get('role', 'user') == 'admin';
+    }
+
+    function canUseData(uid) {
+      return isApproved() && emailMatches() && dataOwner() == uid;
+    }
+
+    function sameTeam(data) {
+      return data.get('ownerUid', null) == dataOwner();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (
+        request.auth.uid == uid
+        || canUseData(uid)
+        || (isApproved() && emailMatches() && isAdmin() && sameTeam(resource.data))
+      );
+
+      allow create: if isApproved() && emailMatches() && isAdmin()
+        && request.resource.data.ownerUid == dataOwner()
+        && request.auth.uid != uid;
+
+      allow update: if (
+        request.auth.uid == uid
+        && isApproved() && emailMatches()
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['ownerUid', 'role', 'approved', 'email', 'forceLogout', 'removedAt', 'removedBy'])
+      ) || (
+        canUseData(uid) && request.auth.uid != uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastWrite'])
+      ) || (
+        isApproved() && emailMatches() && isAdmin()
+        && request.auth.uid != uid
+        && sameTeam(resource.data)
+        && request.resource.data.ownerUid == resource.data.ownerUid
+      );
+
+      allow delete: if false;
+    }
+
+    match /users/{uid}/{path=**} {
+      allow read: if canUseData(uid);
+      allow write: if canUseData(uid)
+        && (isAdmin() || string(path) != 'settings/accounts');
+    }
+  }
+}

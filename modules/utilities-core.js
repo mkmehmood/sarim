@@ -1,3 +1,4 @@
+import { dataUid } from './data-owner.js';
 import { themeColor } from './theme-tokens.js';
 import { normalizePref, resolveTheme, nextPref, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { moneyLine } from './money-privacy.js';
@@ -407,7 +408,7 @@ if (!firebaseDB || !currentUser) {
 throw new Error('Database or user not available');
 }
 const { collection, docId, data, action } = operation;
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 switch (action) {
 case 'set': {
 const setData = (data && typeof data === 'object') ? { ...data } : data;
@@ -1757,7 +1758,7 @@ data: null
 return;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const batch = firebaseDB.batch();
 const deletionsRef = userRef.collection('deletions').doc(String(deletionRecord.id));
 batch.set(deletionsRef, {
@@ -1820,7 +1821,7 @@ await sqliteStore.set('deleted', Array.from(deletedRecordIds));
 if (firebaseDB && typeof currentUser !== 'undefined' && currentUser &&
 !window._firestoreNetworkDisabled && navigator.onLine) {
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const expiredQuery = userRef.collection('deletions')
 .where('expiresAt', '<=', firebase.firestore.Timestamp.now());
 const snapshot = await expiredQuery.get();

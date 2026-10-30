@@ -1,3 +1,4 @@
+import { dataUid } from './data-owner.js';
 import { themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatDateTime } from './date-format.js';
 import { CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID, loadCollections } from './business.js';
@@ -51,7 +52,7 @@ modal.innerHTML = `<div class="u-ed43437 st-background__e02427">
 </div>`;
 document.body.appendChild(modal);
 try {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const deviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => '—') : '—';
   const [
     productionSnap, salesSnap, calcHistorySnap, repSalesSnap, repCustomersSnap,
@@ -902,7 +903,7 @@ export async function restoreFromBackup(backupTimestamp) {
     }
     if (firebaseDB && currentUser) {
       try {
-        const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+        const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
         const fbCollections = [
           { name: 'production',         backupData: backup.production },
           { name: 'sales',              backupData: backup.sales },
@@ -1186,7 +1187,7 @@ liveUpdate('ret', `${snap.returns.after} merged record${snap.returns.after!==1?'
       new Set(ensureArray(await sqliteStore.get('deleted')).map(String))
     );
     if (_tombstoneIds.length > 0 && firebaseDB && currentUser) {
-      const _delUserRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const _delUserRef = firebaseDB.collection('users').doc(dataUid(currentUser));
       const OPS_PER_BATCH = 400;
       for (let _di = 0; _di < _tombstoneIds.length; _di += OPS_PER_BATCH) {
         const _chunk = _tombstoneIds.slice(_di, _di + OPS_PER_BATCH);
@@ -1223,7 +1224,7 @@ try {
   await sqliteStore.set('settings', fyMeta);
   await sqliteStore.set('settings_timestamp', _fyMetaTs);
   if (firebaseDB && currentUser) {
-    await firebaseDB.collection('users').doc(currentUser.uid)
+    await firebaseDB.collection('users').doc(dataUid(currentUser))
       .collection('settings').doc('config')
       .set({
         settings: {
@@ -1238,7 +1239,7 @@ try {
     }
     try {
       const _sigDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
-      await firebaseDB.collection('users').doc(currentUser.uid)
+      await firebaseDB.collection('users').doc(dataUid(currentUser))
         .collection('settings').doc('yearCloseSignal')
         .set({
           type:          'close',
@@ -1512,7 +1513,7 @@ if (Object.keys(storeGroups).length === 0 && Object.keys(sellerReturnGroups).len
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'production', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergeProductionData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1678,7 +1679,7 @@ for (const [customer, b] of Object.entries(customerBuckets)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'sales', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1784,7 +1785,7 @@ for (const [seller, items] of Object.entries(repGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'calculator', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergeCalculatorData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1864,7 +1865,7 @@ for (const [entityId, items] of Object.entries(entityGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'transactions', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergePaymentData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -1940,7 +1941,7 @@ for (const items of Object.values(storeGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'factory', mergedRecords);
   if (!commitResult.ok) {
     console.warn(`mergeFactoryData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2020,7 +2021,7 @@ for (const [, b] of Object.entries(repBuckets)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'rep', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeRepSalesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2091,7 +2092,7 @@ for (const [, grp] of Object.entries(expenseGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'expenses', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeExpensesData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2197,7 +2198,7 @@ for (const [, grp] of Object.entries(storeGroups)) {
 }
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (firebaseDB && currentUser) {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const commitResult = await _commitMergedBatch(userRef, 'returns', mergedRecords, d => !d.isMerged);
   if (!commitResult.ok) {
     console.warn(`mergeStockReturnsData: Firestore commit partial failure — ${commitResult.batchesFailed}/${commitResult.batchesTotal} batch(es) failed`, _safeErr(commitResult.error));
@@ -2754,7 +2755,7 @@ try {
     return;
   }
   if (firebaseDB && currentUser) {
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     for (const col of dirtyCollections) {
       try {
         const snapshot = await userRef.collection(col.firestore).get();

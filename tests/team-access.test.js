@@ -1,0 +1,59 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dataUid, setDataOwner, resolveDataOwner, isTeamMember } from '../modules/data-owner.js';
+
+const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const RULES = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+
+const fakeDb = (docs) => ({
+  collection: () => ({ doc: (id) => ({ get: async () => {
+    if (docs === 'fail') throw new Error('offline');
+    return { exists: id in docs, data: () => docs[id] };
+  } }) }),
+});
+
+describe('data owner', () => {
+  it('uses own uid until an owner is set', () => {
+    assert.equal(dataUid({ uid: 'a' }), 'a');
+    setDataOwner('a', 'boss');
+    assert.equal(dataUid({ uid: 'a' }), 'boss');
+    assert.equal(isTeamMember({ uid: 'a' }), true);
+    assert.equal(isTeamMember({ uid: 'boss' }), false);
+  });
+  it('resolves ownerUid from the profile and ignores suspended members', async () => {
+    const u = { uid: 'm1' };
+    assert.equal(await resolveDataOwner(fakeDb({ m1: { ownerUid: 'boss', approved: true } }), u), 'boss');
+    const s = { uid: 'm2' };
+    assert.equal(await resolveDataOwner(fakeDb({ m2: { ownerUid: 'boss', approved: false } }), s), 'm2');
+    const o = { uid: 'boss2' };
+    assert.equal(await resolveDataOwner(fakeDb({ boss2: { role: 'admin' } }), o), 'boss2');
+  });
+  it('never touches Firestore for offline sessions', async () => {
+    assert.equal(await resolveDataOwner('fail', { uid: 'x_y', offlineMode: true }), 'x_y');
+  });
+});
+
+describe('team and access screen', () => {
+  it('replaces the three screens with one that has three panes', () => {
+    for (const id of ['sales-rep-screen', 'user-roles-screen', 'app-accounts-screen']) assert.ok(!HTML.includes(`id="${id}"`), id);
+    assert.ok(HTML.includes('id="team-access-screen"'));
+    for (const id of ['new-rep-name-input', 'manage-reps-list', 'new-userrole-name-input', 'manage-userrole-list', 'acct-new-email', 'manage-accounts-list']) assert.ok(HTML.includes(`id="${id}"`), id);
+    for (const t of ['reps', 'roles', 'accounts']) assert.ok(HTML.includes(`data-ta-pane="${t}"`), t);
+  });
+});
+
+describe('firestore rules', () => {
+  it('locks everything to the approved account whose email matches and whose profile points at the data owner', () => {
+    assert.match(RULES, /function canUseData\(uid\)/);
+    assert.match(RULES, /isApproved\(\) && emailMatches\(\) && dataOwner\(\) == uid/);
+    assert.match(RULES, /allow delete: if false/);
+    assert.doesNotMatch(RULES, /allow (read|write)[^;]*: if true/);
+  });
+  it('stops members changing their own role, owner, approval or email', () => {
+    assert.match(RULES, /hasAny\(\['ownerUid', 'role', 'approved', 'email'/);
+  });
+  it('keeps the accounts index admin-only for writes', () => {
+    assert.match(RULES, /string\(path\) != 'settings\/accounts'/);
+  });
+});

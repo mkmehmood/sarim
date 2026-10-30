@@ -1,3 +1,4 @@
+import { dataUid } from './data-owner.js';
 import { pickReturnsCovered } from './rep-return-link.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { getFieldExpenseItems, resetFieldExpenses, getCommissionItems, resetCommissionPaid, setFieldExpenseItems, setCommissionItems } from './field-expenses.js';
@@ -4612,7 +4613,7 @@ try { await refreshAllDisplays(); } catch(e) { console.error('Display refresh er
 let cloudSyncSuccess = false;
 if (firebaseDB && currentUser) {
 try {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
   const collectionMapping = {
     'production':         { data: ensureArray(mergedData.production),                deltaName: 'production' },
     'sales':              { data: ensureArray(mergedData.sales), deltaName: 'sales' },
@@ -4907,7 +4908,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
     _set_defaultSettings(currentSettings);
     if (firebaseDB && currentUser) {
       try {
-        await firebaseDB.collection('users').doc(currentUser.uid)
+        await firebaseDB.collection('users').doc(dataUid(currentUser))
           .collection('settings').doc('config')
           .set({
             settings: {
@@ -4925,7 +4926,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
     let _restoreCloudOk = false;
     try {
       showToast('Uploading reversed data to cloud...', 'info');
-      const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
       for (const [colName, records] of Object.entries(replaceData)) {
         try {
           const colRef = userRef.collection(colName);
@@ -4994,7 +4995,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
       try {
         const _restoreSigTs = Date.now();
         const _restoreDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
-        await firebaseDB.collection('users').doc(currentUser.uid)
+        await firebaseDB.collection('users').doc(dataUid(currentUser))
           .collection('settings').doc('yearCloseSignal')
           .set({
             type:        'restore',
@@ -6339,7 +6340,7 @@ let freshSales = await sqliteStore.get('sales', []);
 if (force && firebaseDB && currentUser &&
 !window._firestoreNetworkDisabled && navigator.onLine) {
 try {
-const userDocRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userDocRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const snapshot = await userDocRef.collection('sales').get();
 if (!snapshot.empty) {
 const firestoreSales = [];

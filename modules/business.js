@@ -1,3 +1,4 @@
+import { dataUid } from './data-owner.js';
 import { APP_CONFIG } from './constants.js';
 import { applyMoneyPrivacy } from './money-privacy.js';
 import { OfflineQueue, _set_defaultSettings, cleanupOldDeletions, loadUIState, triggerAutoSync } from './utilities-core.js';
@@ -1243,7 +1244,7 @@ export const sqliteStore = (() => {
     if (typeof currentUser === 'undefined' || !currentUser) return;
     const ops = _outboxGetAll();
     if (ops.length === 0) return;
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     let drained = 0;
     for (const op of ops) {
       try {
@@ -1870,7 +1871,7 @@ if (!firebaseDB || !currentUser) return null;
 try {
 const fp = await getDeviceFingerprint();
 const snap = await firebaseDB
-.collection('users').doc(currentUser.uid)
+.collection('users').doc(dataUid(currentUser))
 .collection('devices')
 .where('fingerprint.stableHash', '==', fp.stableHash)
 .limit(1)
@@ -1893,7 +1894,7 @@ const installToken = _readCookie(INSTALL_TOKEN_COOKIE)
 || null;
 if (!installToken) return null;
 const snap = await firebaseDB
-.collection('users').doc(currentUser.uid)
+.collection('users').doc(dataUid(currentUser))
 .collection('devices')
 .where('installationToken', '==', installToken)
 .limit(1)
@@ -2065,7 +2066,7 @@ const deviceName = fp.readableName;
 try { await sqliteStore.set('device_name', deviceName); } catch(e) {
 console.warn('Failed to save data locally.', _safeErr(e));
 }
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 try {
 const dupSnap = await userRef.collection('devices')
 .where('fingerprint.stableHash', '==', fp.stableHash)
@@ -2249,7 +2250,7 @@ return;
 }
 try {
 const deviceId = await getDeviceId();
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const activityRef = userRef.collection('activity').doc();
 await activityRef.set({
 timestamp: firebase.firestore.FieldValue.serverTimestamp(),

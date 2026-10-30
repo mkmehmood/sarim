@@ -1,3 +1,4 @@
+import { dataUid, resolveDataOwner, isTeamMember } from './data-owner.js';
 import { formatDateTime } from './date-format.js';
 import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
@@ -73,7 +74,7 @@ data: queuedRecord
 return true;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const docRef = userRef.collection(collectionName).doc(String(record.id));
 const now = Date.now();
 const sanitized = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
@@ -136,7 +137,7 @@ data: null
 return true;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const batch = firebaseDB.batch();
 batch.delete(userRef.collection(collectionName).doc(String(recordId)));
 batch.set(userRef.collection('deletions').doc(String(recordId)), {
@@ -420,6 +421,7 @@ uid: user.uid,
 email: user.email,
 displayName: user.displayName
 });
+await resolveDataOwner(firebaseDB, currentUser);
 if (!window._sessionStartMs) {
   const _lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
   window._sessionStartMs = _lsStart || Date.now();
@@ -601,7 +603,10 @@ if (!this.firebaseDB || !this.currentUser) {
 throw new Error('Firebase DB and Current User are required');
 }
 if (!silent) showToast('Setting up complete cloud database...', 'info');
-this.userRef = this.firebaseDB.collection('users').doc(this.currentUser.uid);
+this.userRef = this.firebaseDB.collection('users').doc(dataUid(this.currentUser));
+if (isTeamMember(this.currentUser)) {
+return { success: true, results: this.results, message: 'Team member uses the owner database' };
+}
 try {
 await this.createUserDocument();
 await this.createDevicesCollection();
@@ -972,7 +977,7 @@ return await initializer.initialize(silent);
 export async function isCompleteDatabaseInitialized() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const requiredCollections = [
 'devices', 'account', 'activity', 'production', 'sales',
 'rep', 'clients',
@@ -1016,7 +1021,7 @@ return await initializeCompleteFirestoreDatabase(silent);
 export async function cleanupPlaceholders() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const batch = firebaseDB.batch();
 const collections = [
 'devices', 'account', 'activity',
@@ -1379,7 +1384,7 @@ try {
 const _now = Date.now();
 if (!window._lastEmitPingAt || (_now - window._lastEmitPingAt) > 2000) {
 window._lastEmitPingAt = _now;
-firebaseDB.collection('users').doc(currentUser.uid).set({
+firebaseDB.collection('users').doc(dataUid(currentUser)).set({
 lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: changedKeys }
 }, { merge: true }).catch(() => {});
 }
@@ -1393,7 +1398,7 @@ export async function startSyncUpdatesCleanup() {
     if (!firebaseDB || !currentUser) return;
     try {
       const syncSnapshot = await firebaseDB
-        .collection('users').doc(currentUser.uid)
+        .collection('users').doc(dataUid(currentUser))
         .collection('updates')
         .orderBy('timestamp', 'desc')
         .get();
@@ -1455,7 +1460,7 @@ export async function subscribeToRealtime() {
   } catch (_flagErr) {  }
   if (closing && !closeYearInProgress) {
     try {
-      const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
       const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
         sqliteStore.get('production',[]), sqliteStore.get('sales',[]),
         sqliteStore.get('rep',[]), sqliteStore.get('calculator',[]),
@@ -1524,7 +1529,7 @@ export async function subscribeToRealtime() {
   if (restoring) {
     try {
       showToast('Retrying restore cloud sync...', 'info', 3000);
-      const _restoreUserRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const _restoreUserRef = firebaseDB.collection('users').doc(dataUid(currentUser));
       const _restoreKeys = [
         'production', 'sales', 'calculator', 'rep',
         'clients', 'customers', 'inventory',
@@ -1603,32 +1608,43 @@ export async function subscribeToRealtime() {
     catch (e) { console.error('Firebase operation failed.', _safeErr(e)); }
   });
   realtimeRefs = [];
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const _guardAccess = async (data) => {
+    if (data.forceLogout && data.forceLogout.at) {
+      let sessionStart = window._sessionStartMs;
+      if (!sessionStart) {
+        const lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
+        sessionStart = lsStart || parseInt((await sqliteStore.get('session_start', 0)) || '0', 10) || Date.now();
+      }
+      if (data.forceLogout.at > sessionStart) {
+        showToast('Your account access has been revoked. Signing out…', 'error', 5000);
+        setTimeout(async () => {
+          try { if (typeof signOut === 'function') await signOut(); }
+          catch (e) { console.warn('[Auth] Force logout error:', _safeErr(e)); }
+        }, 1500);
+      }
+    }
+    if (data.approved === false) {
+      showToast('Your account has been suspended. Signing out…', 'error', 5000);
+      setTimeout(async () => {
+        try { if (typeof signOut === 'function') await signOut(); }
+        catch (e) { console.warn('[Auth] Suspend logout error:', _safeErr(e)); }
+      }, 1500);
+    }
+  };
+  const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
+  if (isTeamMember(currentUser)) {
+    try {
+      const selfUnsub = firebaseDB.collection('users').doc(currentUser.uid).onSnapshot((snap) => {
+        if (snap.exists) _guardAccess(snap.data() || {});
+      }, (e) => console.warn('[Auth] Profile watch error:', _safeErr(e)));
+      realtimeRefs.push(selfUnsub);
+    } catch (e) { console.warn('[Auth] Profile watch failed:', _safeErr(e)); }
+  }
   try {
     const userDocUnsub = userRef.onSnapshot(async (snap) => {
       if (!snap.exists) return;
       const data = snap.data() || {};
-      if (data.forceLogout && data.forceLogout.at) {
-        let sessionStart = window._sessionStartMs;
-        if (!sessionStart) {
-          const lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
-          sessionStart = lsStart || parseInt((await sqliteStore.get('session_start', 0)) || '0', 10) || Date.now();
-        }
-        if (data.forceLogout.at > sessionStart) {
-          showToast('Your account access has been revoked. Signing out…', 'error', 5000);
-          setTimeout(async () => {
-            try { if (typeof signOut === 'function') await signOut(); }
-            catch (e) { console.warn('[Auth] Force logout error:', _safeErr(e)); }
-          }, 1500);
-        }
-      }
-      if (data.approved === false) {
-        showToast('Your account has been suspended. Signing out…', 'error', 5000);
-        setTimeout(async () => {
-          try { if (typeof signOut === 'function') await signOut(); }
-          catch (e) { console.warn('[Auth] Suspend logout error:', _safeErr(e)); }
-        }, 1500);
-      }
+      await _guardAccess(data);
       if (!snap.metadata.hasPendingWrites && !snap.metadata.fromCache && data.lastWrite) {
         const pingTs = data.lastWrite.ts && data.lastWrite.ts.toMillis
           ? data.lastWrite.ts.toMillis()
@@ -2765,7 +2781,7 @@ export async function _mergeAndPersist(cloudData) {
     if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
     const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
     const deletionsSnap = await firebaseDB
-      .collection('users').doc(currentUser.uid)
+      .collection('users').doc(dataUid(currentUser))
       .collection('deletions').get();
     const threeMonthsAgo = Date.now() - APP_CONFIG.TOMBSTONE_EXPIRY_MS;
     const cloudDels = deletionsSnap.docs
@@ -3391,7 +3407,7 @@ export async function _doOneClickSync(silent = false) {
     if (typeof UUIDSyncRegistry !== 'undefined') {
       await UUIDSyncRegistry.loadAll().catch(() => {});
     }
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     const userType = await _detectUserType(userRef);
     if (userType === 'new') {
       await initializeFirestoreStructure(true);
@@ -3485,7 +3501,7 @@ export async function _doPushDataToCloud(silent = false) {
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
     }
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     const operationCount = await _uploadChanges(userRef);
     const deletionRecordsLocal = await sqliteStore.get('deletions', []);
     const unsyncedDeletions = deletionRecordsLocal.filter(r => !r.syncedToCloud);
@@ -3551,7 +3567,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
     }
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     const pullUserType = await _detectUserType(userRef);
     const effectiveUserType = forceDownload ? 'existing' : (pullUserType === 'new' ? 'existing' : pullUserType);
     const cloudData = await _downloadDeltas(userRef, effectiveUserType, forceDownload);
@@ -3923,6 +3939,7 @@ email: user.email, displayName: check.displayName || user.displayName || '',
 photoURL: user.photoURL || null, googleAuth: true,
 role: check.role || 'user'
 });
+await resolveDataOwner(firebaseDB, currentUser);
 sqliteStore.setUserPrefix(user.uid);
 await SQLiteCrypto.setSessionKey(user.email, _googleKeyMaterial, user.uid);
 await SQLiteCrypto.sessionSet('login', {
@@ -4152,6 +4169,7 @@ window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
 await OfflineAuth.saveCredentials(email, password);
+await resolveDataOwner(firebaseDB, { uid: _signInCred.user.uid });
 sqliteStore.setUserPrefix(_signInCred.user.uid);
 const _linkedProviders = (_signInCred.user.providerData || []).map(p => p && p.providerId).filter(Boolean);
 const _hasGoogleLinked = _linkedProviders.includes('google.com');
@@ -4274,7 +4292,7 @@ return snap.exists && snap.data().role === 'admin';
 }
 
 export function _accountsIndexRef() {
-return firebaseDB.collection('users').doc(currentUser.uid)
+return firebaseDB.collection('users').doc(dataUid(currentUser))
   .collection('settings').doc('accounts');
 }
 
@@ -4324,11 +4342,12 @@ const secondaryAuth = secondaryApp.auth();
 const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
 const newUid = cred.user.uid;
 await secondaryAuth.signOut();
+const ownerUid = dataUid(currentUser);
 await firebaseDB.collection('users').doc(newUid).set({
-  email, role, approved: true,
+  email, role, approved: true, ownerUid,
   createdAt: Date.now(), createdBy: currentUser.email
 });
-const entry = { uid: newUid, email, role, approved: true, createdAt: Date.now(), createdBy: currentUser.email };
+const entry = { uid: newUid, email, role, approved: true, ownerUid, createdAt: Date.now(), createdBy: currentUser.email };
 const existing = await _readAccountsIndex();
 await _writeAccountsIndex([...existing.filter(a => a.uid !== newUid), entry]);
 emailEl.value = '';

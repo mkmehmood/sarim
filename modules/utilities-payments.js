@@ -1,3 +1,4 @@
+import { dataUid } from './data-owner.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
@@ -32,7 +33,7 @@ async function pushTeamSettings(label) {
 if (!(firebaseDB && currentUser)) return;
 try {
 const nowMs = Date.now();
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 await userRef.collection('settings').doc('team').set({
 reps: salesRepsList,
 roles: userRolesList,
@@ -4149,7 +4150,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   if (firebaseDB && currentUser) {
     (async () => {
       try {
-        const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+        const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
         const batch = firebaseDB.batch();
         batch.delete(userRef.collection('deletions').doc(sid));
         if (cleanRecord && collectionName) {
@@ -4276,7 +4277,7 @@ export async function flushErasedTombstones() {
     const pending = ensureArray(await sqliteStore.get('erased')).map(String);
     if (!pending.length || !firebaseDB || !currentUser) return;
     if (window._firestoreNetworkDisabled || navigator.onLine === false) return;
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
     for (let i = 0; i < pending.length; i += 400) {
       const chunk = pending.slice(i, i + 400);
       try {
@@ -4488,7 +4489,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
     if (collectionName === 'calculator' && recoveredData) return await recoverCalcEntry(deletedId, recoveredData);
     if (!recoveredData && firebaseDB && currentUser) {
       try {
-        const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+        const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
         const tombDoc = await userRef.collection('deletions').doc(String(deletedId)).get();
         if (tombDoc.exists) {
           const td = tombDoc.data();
@@ -4765,7 +4766,7 @@ export async function renderRecycleBin(filterCollection = 'all') {
     );
     if (firebaseDB && currentUser) {
       try {
-        const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+        const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
         const snap = await userRef.collection('deletions').orderBy('deletedAt', 'desc').limit(200).get();
         const seenIds = new Set(localDeletionRecords.map(r => String(r.id)));
         const seenRecordIds = new Set(localDeletionRecords.map(r => String(r.recordId || r.id)));
@@ -5197,7 +5198,7 @@ export async function hardDeleteRecord(id, collectionName, _isPairDelete = false
     if (firebaseDB && currentUser) {
       (async () => {
         try {
-          const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+          const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
           const batch = firebaseDB.batch();
           batch.delete(userRef.collection('deletions').doc(sid));
           batch.delete(userRef.collection(collectionName).doc(sid));
@@ -5535,7 +5536,7 @@ return false;
 }
 try {
 const timestamp = Date.now();
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const settingsRef = userRef.collection('settings').doc('config');
 const updatePayload = {
 appMode: targetMode,
@@ -6673,7 +6674,7 @@ const storedUserRoles = await sqliteStore.get('roles', null);
 if (Array.isArray(storedUserRoles)) _set_userRolesList(storedUserRoles);
 if (firebaseDB && currentUser) {
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const teamDoc = await userRef.collection('settings').doc('team').get();
 if (teamDoc.exists) {
 const teamData = teamDoc.data();
@@ -6901,14 +6902,12 @@ await saveSalesRepsList();
 
 export function openManageRepsModal() {
 renderManageRepsList();
-if (typeof openStandaloneScreen === 'function') openStandaloneScreen('sales-rep-screen');
+if (typeof openStandaloneScreen === 'function') openStandaloneScreen('team-access-screen');
 }
 
 export function closeManageRepsModal() {
 if (typeof closeStandaloneScreen === 'function') {
-closeStandaloneScreen('sales-rep-screen');
-closeStandaloneScreen('user-roles-screen');
-closeStandaloneScreen('app-accounts-screen');
+closeStandaloneScreen('team-access-screen');
 }
 }
 
@@ -6918,9 +6917,7 @@ export const _overlayStack = (() => {
     'formula-store-edit-screen':   { closeFn: () => closeStandaloneScreen('formula-store-edit-screen'), contentSel: '.screen-body' },
     'raw-material-screen':         { closeFn: () => closeStandaloneScreen('raw-material-screen'),     contentSel: '.screen-body' },
     'add-entity-screen':           { closeFn: () => closeStandaloneScreen('add-entity-screen'),       contentSel: '.screen-body' },
-    'sales-rep-screen':            { closeFn: () => closeStandaloneScreen('sales-rep-screen'),        contentSel: '.screen-body' },
-    'user-roles-screen':           { closeFn: () => closeStandaloneScreen('user-roles-screen'),       contentSel: '.screen-body' },
-    'app-accounts-screen':         { closeFn: () => closeStandaloneScreen('app-accounts-screen'),     contentSel: '.screen-body' },
+    'team-access-screen':          { closeFn: () => closeStandaloneScreen('team-access-screen'),      contentSel: '.screen-body' },
     'sync-data-screen':            { closeFn: () => closeStandaloneScreen('sync-data-screen'),        contentSel: '.screen-body' },
     'backup-restore-screen':       { closeFn: () => closeStandaloneScreen('backup-restore-screen'),   contentSel: '.screen-body' },
     'recycle-bin-screen':          { closeFn: () => closeStandaloneScreen('recycle-bin-screen'),      contentSel: '.screen-body' },
@@ -6981,7 +6978,7 @@ window.switchManageTeamTab = switchManageTeamTab;
 export async function loadUserRolesContent() {
 if (firebaseDB && currentUser) {
 try {
-const teamDoc = await firebaseDB.collection('users').doc(currentUser.uid)
+const teamDoc = await firebaseDB.collection('users').doc(dataUid(currentUser))
 .collection('settings').doc('team').get();
 if (teamDoc.exists) {
 const data = teamDoc.data();
@@ -7075,7 +7072,7 @@ Please log in to view devices
 return;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const devicesSnap = await userRef.collection('devices').get();
 if (devicesSnap.empty) {
 container.innerHTML = `
@@ -7325,7 +7322,7 @@ try {
 if (window._firestoreNetworkDisabled) {
 try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
 }
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const commandTimestamp = Date.now();
 const deviceRef = userRef.collection('devices').doc(deviceId);
 const updateData = {
@@ -7369,7 +7366,7 @@ if (!(await showGlassConfirm(_rdMsg, { title: 'Remove Trusted Device', confirmTe
 return;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const deviceRef = userRef.collection('devices').doc(deviceId);
 await deviceRef.set({
 targetMode: 'force_logout',
@@ -7490,7 +7487,7 @@ if (!window._deviceCmdRetryAttempts) window._deviceCmdRetryAttempts = 0;
 if (!window._deviceCmdRetrying) window._deviceCmdRetrying = false;
 try {
 const deviceId = await getDeviceId();
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = firebaseDB.collection('users').doc(dataUid(currentUser));
 const deviceRef = userRef.collection('devices').doc(deviceId);
 const unsubscribe = deviceRef.onSnapshot({ includeMetadataChanges: false }, (doc) => {
 try {
@@ -7609,7 +7606,7 @@ if (targetMode === 'admin' && window._firestoreNetworkDisabled) {
 try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
 }
 const deviceId = await getDeviceId();
-const deviceRef = firebaseDB.collection('users').doc(currentUser.uid)
+const deviceRef = firebaseDB.collection('users').doc(dataUid(currentUser))
 .collection('devices').doc(deviceId);
 const payload = {
 currentMode: targetMode, appMode_timestamp: nowMs,

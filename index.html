@@ -554,17 +554,9 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Team &amp; Access</p>
-    <button class="sidebar-item" onclick="openStandaloneScreen('sales-rep-screen');if(typeof loadManageRepsContent==='function')loadManageRepsContent()">
+    <button class="sidebar-item" onclick="openStandaloneScreen('team-access-screen');if(typeof teamAccessOpen==='function')teamAccessOpen()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23 21.2C29 21.2 33 24 33 29.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/><circle cx="24" cy="11" r="4.4" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.6"/><circle cx="12.5" cy="12" r="5.2" fill="var(--accent)" fill-opacity="0.22" stroke="var(--accent)" stroke-width="1.7"/><path d="M2.5 31C2.5 22.5 22.5 22.5 22.5 31Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path class="ic-sp" d="M30 2.9Q30 5.5 32.6 5.5Q30 5.5 30 8.1Q30 5.5 27.4 5.5Q30 5.5 30 2.9Z" fill="var(--accent-gold)"/></svg>
-      Sales Representatives
-    </button>
-    <button class="sidebar-item" onclick="openStandaloneScreen('user-roles-screen');if(typeof loadUserRolesContent==='function')loadUserRolesContent()">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="13.5" cy="11" r="5.4" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.7"/><path d="M3 29.5C3 21 24 21 24 29.5Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="26.5" cy="23.5" r="4.2" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><path d="M29.6 26.6L34 31M31.8 28.8L33.8 26.8" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-      User Roles
-    </button>
-    <button class="sidebar-item" onclick="openStandaloneScreen('app-accounts-screen');if(typeof loadAccountsList==='function')loadAccountsList()">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 3.5L30 8V18C30 25.5 24.5 30.5 18 33C11.5 30.5 6 25.5 6 18V8Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="12.7" y="16.8" width="10.6" height="8.6" rx="2.2" fill="var(--accent-gold)" fill-opacity="0.32" stroke="var(--accent-gold)" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 16.8V14.7A3 3 0 0 1 21 14.7V16.8" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="21" r="1.2" fill="var(--accent-gold)"/></svg>
-      App Accounts
+      Team &amp; Access
     </button>
     </div>
     <div class="card u-d8ddece st-border-bottom__e54b2f">
@@ -1149,11 +1141,17 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-<div id="sales-rep-screen" class="standalone-screen d-none">
+<div id="team-access-screen" class="standalone-screen d-none">
   <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">Sales Representatives</h2>
+    <h2 class="screen-title">Team &amp; Access</h2>
   </div>
   <div class="screen-body">
+    <div class="toggle-group u-mb-15" role="tablist" id="team-access-tabs">
+      <button type="button" class="toggle-opt active" data-ta-tab="reps" role="tab" aria-selected="true" onclick="teamAccessSetTab('reps')">Reps</button>
+      <button type="button" class="toggle-opt" data-ta-tab="roles" role="tab" aria-selected="false" onclick="teamAccessSetTab('roles')">Roles</button>
+      <button type="button" class="toggle-opt" data-ta-tab="accounts" role="tab" aria-selected="false" onclick="teamAccessSetTab('accounts')">Accounts</button>
+    </div>
+    <div id="team-access-pane-reps" data-ta-pane="reps">
     <div class="grid-inputs u-mb-20">
       <div class="field">
         <label>Representative Name</label>
@@ -1168,12 +1166,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="manage-reps-list"></div>
     </div>
   </div>
-</div>
-<div id="user-roles-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">User Roles</h2>
-  </div>
-  <div class="screen-body">
+    <div id="team-access-pane-roles" data-ta-pane="roles" class="d-none">
     <div class="grid-inputs u-mb-15">
       <div class="field">
         <label>User Name</label>
@@ -1198,12 +1191,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div id="manage-userrole-list"></div>
     </div>
   </div>
-</div>
-<div id="app-accounts-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">App Accounts</h2>
-  </div>
-  <div class="screen-body">
+    <div id="team-access-pane-accounts" data-ta-pane="accounts" class="d-none">
     <div class="u-a0d4a03">
       <label class="u-5250855 d-block">Add New Account</label>
       <div class="grid-inputs u-39ae4db">
@@ -1227,6 +1215,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
     </div>
+  </div>
   </div>
 </div>
 <div id="device-display-screen" class="standalone-screen d-none">
@@ -3064,14 +3053,26 @@ window.openFactoryInventoryModal = function() {
 };
 window.closeFactoryInventoryModal = function() { closeStandaloneScreen('raw-material-screen'); };
 window.openManageRepsModal = function() {
-  openStandaloneScreen('sales-rep-screen');
-  if (typeof renderManageRepsList === 'function') renderManageRepsList();
+  openStandaloneScreen('team-access-screen');
+  if (typeof teamAccessOpen === 'function') teamAccessOpen();
 };
 window.closeManageRepsModal = function() {
-  closeStandaloneScreen('sales-rep-screen');
-  closeStandaloneScreen('user-roles-screen');
-  closeStandaloneScreen('app-accounts-screen');
+  closeStandaloneScreen('team-access-screen');
 };
+window.teamAccessSetTab = function(tab) {
+  document.querySelectorAll('[data-ta-tab]').forEach(function(b) {
+    var on = b.getAttribute('data-ta-tab') === tab;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-ta-pane]').forEach(function(p) {
+    p.classList.toggle('d-none', p.getAttribute('data-ta-pane') !== tab);
+  });
+  if (tab === 'reps' && typeof renderManageRepsList === 'function') renderManageRepsList();
+  else if (tab === 'roles' && typeof loadUserRolesContent === 'function') loadUserRolesContent();
+  else if (tab === 'accounts' && typeof loadAccountsList === 'function') loadAccountsList();
+};
+window.teamAccessOpen = function() { window.teamAccessSetTab('reps'); };
 window.loadManageRepsContent = function() {
   if (typeof renderManageRepsList === 'function') renderManageRepsList();
 };

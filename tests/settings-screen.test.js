@@ -71,7 +71,7 @@ describe('settings screen', () => {
       ['Data & Sync', ['Sync Data', 'Backup & Restore', 'Recycle Bin', 'Database Structure']],
       ['Appearance & Device', ['Theme', 'Device Display', 'Sound & Haptics']],
       ['Security', ['Fingerprint Lock']],
-      ['Team & Access', ['Sales Representatives', 'User Roles', 'App Accounts']],
+      ['Team & Access', ['Team & Access']],
       ['Business', ['Store Manager']],
       ['Danger Zone', ['Close Financial Year']]
     ]);
