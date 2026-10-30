@@ -1,5 +1,5 @@
 import { dataUid } from './data-owner.js';
-import { roleToMode, isAccountSuspended, cacheAccountRole, readCachedAccountRole } from './account-role.js';
+import { roleToMode, isAccountSuspended, cacheAccountRole, readCachedAccountRole, sameMode } from './account-role.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
@@ -5763,6 +5763,7 @@ if (storedMode === 'rep') {
 _set_appMode('rep');
 _set_currentRepProfile(await sqliteStore.get('repProfile') || (salesRepsList[0] || 'NORAN SHAH'));
 lockToRepMode();
+if (typeof showTab === 'function') showTab('rep');
 } else if (storedMode === 'userrole') {
 _set_appMode('userrole');
 window._assignedManagerName = await sqliteStore.get('assignedManager') || null;
@@ -5773,10 +5774,12 @@ lockToUserRoleMode();
 _set_appMode('production');
 window._assignedManagerName = await sqliteStore.get('assignedManager') || null;
 lockToProductionMode();
+if (typeof showTab === 'function') showTab('prod');
 } else if (storedMode === 'factory') {
 _set_appMode('factory');
 window._assignedManagerName = await sqliteStore.get('assignedManager') || null;
 lockToFactoryMode();
+if (typeof showTab === 'function') showTab('factory');
 }
 } catch(e) {
 console.warn('enforceRepModeLock: failed to read mode from SQLite, defaulting to admin.', _safeErr(e));
@@ -6917,9 +6920,25 @@ export function _applyModeFromData(modeStr, ts, assignedRep, assignedManager, as
 
 window._applyModeFromData = _applyModeFromData;
 
-export async function applyAccountRole(profile, source) {
+export function _currentDeviceMode() {
+const mode = appMode;
+if (mode === 'rep') return { mode, name: currentRepProfile || null, tabs: [] };
+if (mode === 'userrole') return { mode, name: window._assignedManagerName || null, tabs: window._assignedUserTabs || [] };
+if (mode === 'production' || mode === 'factory') return { mode, name: window._assignedManagerName || null, tabs: [] };
+return { mode: 'admin', name: null, tabs: [] };
+}
+
+export async function applyAccountRole(profile) {
 const want = roleToMode(profile);
-await applyRemoteModeChange(want.mode, source || 'account_role', want.name, want.tabs);
+if (sameMode(_currentDeviceMode(), want)) return;
+if (window._roleApplyPending === want.mode + '|' + (want.name || '') + '|' + want.tabs.join(',')) return;
+window._roleApplyPending = want.mode + '|' + (want.name || '') + '|' + want.tabs.join(',');
+if (want.mode === 'admin') { await unlockAdminMode(); return; }
+if (want.mode === 'rep' && Array.isArray(salesRepsList) && !salesRepsList.includes(want.name)) {
+salesRepsList.push(want.name);
+await saveSalesRepsList();
+}
+_applyModeFromData(want.mode, Date.now(), want.mode === 'rep' ? want.name : null, want.mode === 'rep' ? null : want.name, want.tabs, true);
 }
 
 export async function applyAccountRoleOnLogin(user) {
@@ -6927,7 +6946,7 @@ if (!user) return;
 try {
 if (user.offlineMode || !navigator.onLine || !firebaseDB) {
 const cached = readCachedAccountRole(user.uid, user.email);
-if (cached) await applyAccountRole({ role: cached.role, name: cached.name, email: cached.email }, 'cached_account_role');
+if (cached) await applyAccountRole({ role: cached.role, name: cached.name, email: cached.email });
 return;
 }
 const snap = await firebaseDB.collection('users').doc(user.uid).get();
@@ -6935,11 +6954,11 @@ if (!snap.exists) return;
 const data = snap.data() || {};
 cacheAccountRole(user.uid, data);
 if (isAccountSuspended(data)) return;
-await applyAccountRole(data, 'account_role');
+await applyAccountRole(data);
 } catch (e) {
 console.warn('[account-role] could not apply role at sign-in:', _safeErr(e));
 const cached = readCachedAccountRole(user.uid, user.email);
-if (cached) { try { await applyAccountRole({ role: cached.role, name: cached.name, email: cached.email }, 'cached_account_role'); } catch (_) {} }
+if (cached) { try { await applyAccountRole({ role: cached.role, name: cached.name, email: cached.email }); } catch (_) {} }
 }
 }
 
@@ -6957,68 +6976,10 @@ if (!snap.exists || snap.metadata.fromCache) return;
 const data = snap.data() || {};
 cacheAccountRole(uid, data);
 if (isAccountSuspended(data)) return;
-await applyAccountRole(data, 'account_role');
+await applyAccountRole(data);
 } catch (e) { console.warn('[account-role] handler error:', _safeErr(e)); }
 }, (e) => console.warn('[account-role] listener error:', e && e.code, _safeErr(e)));
 } catch (e) { console.error('[account-role] listen failed:', _safeErr(e)); }
-}
-
-export async function applyRemoteModeChange(targetMode, source, repName = null, userTabs = null) {
-const previousMode = appMode;
-const previousManager = window._assignedManagerName || null;
-const previousTabs = JSON.stringify(window._assignedUserTabs || []);
-if (previousMode === targetMode) {
-if (targetMode === 'admin') return;
-if (targetMode === 'rep' && currentRepProfile === repName) return;
-if (targetMode === 'userrole' && previousManager === repName && previousTabs === JSON.stringify(userTabs || [])) return;
-if ((targetMode === 'production' || targetMode === 'factory') && previousManager === (repName || null)) return;
-}
-_set_appMode(targetMode);
-const nowMs = Date.now();
-const batchData = [['appMode', appMode], ['appMode_timestamp', nowMs]];
-if (targetMode === 'rep' && repName) {
-_set_currentRepProfile(repName);
-batchData.push(['repProfile', repName], ['repProfile_timestamp', nowMs]);
-if (!salesRepsList.includes(repName)) {
-salesRepsList.push(repName);
-batchData.push(['reps', salesRepsList]);
-if (typeof renderAllRepUI === 'function') renderAllRepUI();
-}
-} else if (targetMode === 'userrole') {
-window._assignedManagerName = repName || null;
-window._assignedUserTabs = Array.isArray(userTabs) ? userTabs : [];
-batchData.push(['assignedManager', repName || null], ['assignedUserTabs', window._assignedUserTabs]);
-} else if (targetMode === 'production' || targetMode === 'factory') {
-window._assignedManagerName = repName || null;
-batchData.push(['assignedManager', repName || null]);
-} else if (targetMode === 'admin') {
-window._assignedManagerName = null;
-window._assignedUserTabs = [];
-batchData.push(['assignedManager', null], ['assignedUserTabs', []]);
-}
-await sqliteStore.setBatch(batchData);
-if (targetMode === 'admin' && firebaseDB && currentUser && window._firestoreNetworkDisabled) {
-try { await firebaseDB.enableNetwork(); window._firestoreNetworkDisabled = false; } catch (_en) {}
-}
-if (targetMode === 'rep') {
-if (typeof lockToRepMode === 'function') lockToRepMode();
-if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
-showToast(repName ? `Locked to Rep: ${repName}` : 'Device locked to Rep Sales mode', 'info', 4000);
-} else if (targetMode === 'userrole') {
-window._userRoleAllowedTabs = window._assignedUserTabs || [];
-if (typeof lockToUserRoleMode === 'function') lockToUserRoleMode();
-showToast(repName ? `Locked to User: ${repName}` : 'Device locked to User Role mode', 'info', 4000);
-} else if (targetMode === 'production') {
-if (typeof lockToProductionMode === 'function') lockToProductionMode();
-showToast(repName ? `Locked to Production: ${repName}` : 'Device locked to Production mode', 'info', 4000);
-} else if (targetMode === 'factory') {
-if (typeof lockToFactoryMode === 'function') lockToFactoryMode();
-showToast(repName ? `Locked to Factory: ${repName}` : 'Device locked to Factory mode', 'info', 4000);
-} else if (targetMode === 'admin') {
-if (typeof unlockAdminMode === 'function') unlockAdminMode();
-if (typeof notifyDataChange === 'function') notifyDataChange('all');
-showToast('Device unlocked to Admin mode', 'info', 4000);
-}
 }
 
 window.listenForAccountLock = listenForAccountLock;
@@ -7030,8 +6991,6 @@ window._teamUnsubscribe = null;
 }
 
 window.listenForTeamChanges = listenForTeamChanges;
-window.applyRemoteModeChange = applyRemoteModeChange;
-
 export async function prepareEntityTransferScreen() {
 if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
 showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
@@ -7445,7 +7404,6 @@ window._overlayStack = _overlayStack;
 window.phoneActionHTML = phoneActionHTML;
 window._applyModeFromData = _applyModeFromData;
 window.listenForAccountLock = listenForAccountLock;
-window.applyRemoteModeChange = applyRemoteModeChange;
 window.listenForTeamChanges = listenForTeamChanges;
 window.prepareEntityTransferScreen = prepareEntityTransferScreen;
 window.saveEntityTransfer = saveEntityTransfer;

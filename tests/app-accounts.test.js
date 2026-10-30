@@ -24,8 +24,18 @@ describe('app accounts: the role comes from the account', () => {
     assert.doesNotMatch(sync, /_savedAppMode/);
     assert.match(sync, /clearCachedAccountRole\(\);/);
   });
-  it('a role change applies immediately and does not reapply an unchanged factory or production lock', () => {
-    assert.match(pay, /targetMode === 'production' \|\| targetMode === 'factory'\) && previousManager === \(repName \|\| null\)\) return;/);
+  it('applies a changed role the original way: persist the mode and reload, so startup locks to the assigned tab', () => {
+    assert.match(pay, /if \(sameMode\(_currentDeviceMode\(\), want\)\) return;/);
+    assert.match(pay, /_applyModeFromData\(want\.mode, Date\.now\(\)/);
+    assert.match(pay, /if \(want\.mode === 'admin'\) \{ await unlockAdminMode\(\); return; \}/);
+    assert.doesNotMatch(pay, /applyRemoteModeChange/);
+  });
+  it('startup enforces the lock, hides the other tabs and opens only the assigned one', () => {
+    assert.match(pay, /await enforceRepModeLock\(\);\n\s*preventAdminAccess\(\);/);
+    assert.match(pay, /lockToRepMode\(\);\nif \(typeof showTab === 'function'\) showTab\('rep'\);/);
+    assert.match(pay, /lockToProductionMode\(\);\nif \(typeof showTab === 'function'\) showTab\('prod'\);/);
+    assert.match(pay, /lockToFactoryMode\(\);\nif \(typeof showTab === 'function'\) showTab\('factory'\);/);
+    assert.match(pay, /showTab\(assignedTabs\[0\]\);/);
   });
 });
 
