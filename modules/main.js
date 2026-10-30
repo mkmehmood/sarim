@@ -28,6 +28,7 @@ window._lazyLoadRep = function (cb) {
 };
 
 import './custom-date-picker.js';
+import './floating-lists.js';
 import './daily-ledger.js';
 import './phone-actions.js';
 import './field-expenses.js';
