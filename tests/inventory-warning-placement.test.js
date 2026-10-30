@@ -39,3 +39,15 @@ describe('sale form layout', () => {
     assert.ok(grid.includes('id="supply-store-toggles"') && grid.includes('id="supply-store-value"'));
   });
 });
+
+describe('calculator results card', () => {
+  it('puts expected cash, status and the three commission rows in one card', () => {
+    const card = HTML.slice(HTML.indexOf('id="calc-result-card"'), HTML.indexOf('id="btn-save-calculator"'));
+    for (const id of ['totalExpectedCash', 'discrepancyStatus', 'grossCommissionEarned', 'commissionPaidDisplay', 'commissionPayableDisplay']) assert.ok(card.includes(`id="${id}"`), id);
+    assert.equal((card.match(/class="card /g) || []).length, 0);
+  });
+  it('colours the status and payable values, not whole boxes', () => {
+    assert.match(SALES, /const _tone = \(ok\) => \(ok \? 'u-text-accent u-fw-800' : 'u-danger-bold'\)/);
+    assert.doesNotMatch(SALES, /discrepancyBox'\)\s*;\s*[\s\S]{0,40}box\.className/);
+  });
+});

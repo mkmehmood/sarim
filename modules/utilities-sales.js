@@ -2184,28 +2184,24 @@ const cashQty = Math.max(0, netSold - cred);
 const expected = (cashQty * salePrice) + prev - fieldExp - commissionPaid;
 document.getElementById('totalExpectedCash').textContent = fmtAmt(safeValue(expected));
 const diff = rec - expected;
-const box = document.getElementById('discrepancyBox');
 const _discEl = document.getElementById('discrepancyStatus');
+const _tone = (ok) => (ok ? 'u-text-accent u-fw-800' : 'u-danger-bold');
 if(Math.abs(diff) < 0.01) {
-if (box) box.className = 'result-box callout discrepancy-ok';
-if (_discEl) _discEl.innerText = "PERFECT MATCH ";
+if (_discEl) { _discEl.className = _tone(true); _discEl.innerText = "PERFECT MATCH "; }
 } else if(diff < -0.01) {
-if (box) box.className = 'result-box callout discrepancy-alert';
-if (_discEl) _discEl.innerText = `SHORT: ${fmtAmt(Math.abs(diff))}`;
+if (_discEl) { _discEl.className = _tone(false); _discEl.innerText = `SHORT: ${fmtAmt(Math.abs(diff))}`; }
 } else {
-if (box) box.className = 'result-box callout discrepancy-ok';
-if (_discEl) _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`;
+if (_discEl) { _discEl.className = _tone(true); _discEl.innerText = `OVER: ${fmtAmt(safeNumber(diff, 0))}`; }
 }
 const grossCommission = commissionPerUnit * netSold;
 const commissionPayable = Math.max(0, grossCommission - commissionPaid);
 const grossEl = document.getElementById('grossCommissionEarned');
 const paidEl = document.getElementById('commissionPaidDisplay');
 const payableEl = document.getElementById('commissionPayableDisplay');
-const payableBox = document.getElementById('commissionPayableBox');
 if (grossEl) grossEl.textContent = fmtAmt(safeValue(grossCommission));
 if (paidEl) paidEl.textContent = fmtAmt(safeValue(commissionPaid));
 if (payableEl) payableEl.textContent = fmtAmt(safeValue(commissionPayable));
-if (payableBox) payableBox.className = commissionPayable > 0.01 ? 'result-box callout discrepancy-alert' : 'result-box callout discrepancy-ok';
+if (payableEl) payableEl.className = _tone(commissionPayable <= 0.01);
 }
 
 export const firebaseConfig = {

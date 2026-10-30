@@ -2160,11 +2160,28 @@ oninput="filterCustomers()">
 <div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" id="receivedCash" oninput="calculateSales()"></div>
 </div>
-<div class="card result-box">Expected Cash: <span id="totalExpectedCash">0.00</span></div>
-<div class="card result-box" id="discrepancyBox">Status: <span id="discrepancyStatus">OK</span></div>
-<div class="card result-box">Gross Commission Earned: <span id="grossCommissionEarned">0.00</span></div>
-<div class="card result-box">Commission Paid: <span id="commissionPaidDisplay">0.00</span></div>
-<div class="card result-box" id="commissionPayableBox">Commission Payable: <span id="commissionPayableDisplay">0.00</span></div>
+<div class="card result-box st-background__2cf90b" id="calc-result-card">
+<div class="u-787e284 d-flex">
+<span class="u-fs-sm2 u-text-muted u-fw-400" >Expected Cash:</span>
+<span class="u-text-accent u-fw-800" id="totalExpectedCash" >0.00</span>
+</div>
+<div class="u-787e284 d-flex" id="discrepancyBox">
+<span class="u-fs-sm2 u-text-muted u-fw-400" >Status:</span>
+<span class="u-text-accent u-fw-800" id="discrepancyStatus" >OK</span>
+</div>
+<div class="u-787e284 d-flex">
+<span class="u-fs-sm2 u-text-muted u-fw-400" >Gross Commission Earned:</span>
+<span class="u-text-accent u-fw-800" id="grossCommissionEarned" >0.00</span>
+</div>
+<div class="u-787e284 d-flex">
+<span class="u-fs-sm2 u-text-muted u-fw-400" >Commission Paid:</span>
+<span class="u-danger-bold" id="commissionPaidDisplay" >0.00</span>
+</div>
+<div class="u-40cb37b d-flex" id="commissionPayableBox">
+<span class="u-fs-sm2 u-text-muted u-fw-400" >Commission Payable:</span>
+<span class="u-text-accent u-fw-800" id="commissionPayableDisplay" >0.00</span>
+</div>
+</div>
 <button id="btn-save-calculator" class="btn btn-main u-mt-8" onclick="(async () => { await saveTransaction() })()">Save Transaction</button>
 </div>
 <div data-money id="combinedSection" class="hidden">
