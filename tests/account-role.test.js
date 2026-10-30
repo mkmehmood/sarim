@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { ACCOUNT_ROLES, normalizeRole, accountName, roleToMode, isAccountSuspended, cacheAccountRole, readCachedAccountRole, clearCachedAccountRole, sameMode, roleLabel } from '../modules/account-role.js';
+import { ACCOUNT_ROLES, TAB_ROLES, isTabRole, accountTabs, tabsToRole, roleSummary, normalizeRole, accountName, roleToMode, isAccountSuspended, cacheAccountRole, readCachedAccountRole, clearCachedAccountRole, sameMode, roleLabel } from '../modules/account-role.js';
 
 const store = new Map();
 globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
@@ -48,5 +48,34 @@ describe('account roles', () => {
     assert.equal(sameMode({ mode: 'rep', name: 'A', tabs: [] }, { mode: 'rep', name: 'A', tabs: [] }), true);
     assert.equal(sameMode({ mode: 'rep', name: 'A', tabs: [] }, { mode: 'rep', name: 'B', tabs: [] }), false);
     assert.equal(sameMode({ mode: 'userrole', name: 'A', tabs: ['sales'] }, { mode: 'userrole', name: 'A', tabs: ['payments'] }), false);
+  });
+
+  it('lets production, factory, payments and sales hold several tabs', () => {
+    assert.deepEqual(TAB_ROLES, ['production', 'factory', 'payments', 'sales']);
+    assert.equal(isTabRole('rep'), false);
+    assert.deepEqual(accountTabs({ role: 'payments' }), ['payments']);
+    assert.deepEqual(accountTabs({ role: 'production', tabs: ['payments', 'prod'] }), ['prod', 'payments']);
+    assert.deepEqual(accountTabs({ role: 'admin', tabs: ['prod'] }), []);
+    assert.deepEqual(accountTabs({ role: 'rep', tabs: ['prod'] }), []);
+    assert.deepEqual(accountTabs({ role: 'sales', tabs: ['bogus'] }), ['sales']);
+  });
+  it('uses the multi-tab mode when two or more tabs are assigned, and the dedicated mode for one', () => {
+    assert.deepEqual(roleToMode({ role: 'production', name: 'a', tabs: ['prod', 'payments'] }), { mode: 'userrole', name: 'A', tabs: ['prod', 'payments'] });
+    assert.deepEqual(roleToMode({ role: 'factory', name: 'a', tabs: ['factory', 'sales', 'payments'] }), { mode: 'userrole', name: 'A', tabs: ['factory', 'payments', 'sales'] });
+    assert.deepEqual(roleToMode({ role: 'production', name: 'a', tabs: ['prod'] }), { mode: 'production', name: 'A', tabs: [] });
+    assert.deepEqual(roleToMode({ role: 'factory', name: 'a' }), { mode: 'factory', name: 'A', tabs: [] });
+    assert.deepEqual(roleToMode({ role: 'sales', name: 'a', tabs: ['sales'] }), { mode: 'userrole', name: 'A', tabs: ['sales'] });
+  });
+  it('turns a tab selection into the stored role and tabs', () => {
+    assert.deepEqual(tabsToRole(['payments', 'prod']), { role: 'production', tabs: ['prod', 'payments'] });
+    assert.deepEqual(tabsToRole(['sales']), { role: 'sales', tabs: ['sales'] });
+    assert.equal(tabsToRole([]), null);
+    assert.equal(tabsToRole(['nope']), null);
+  });
+  it('summarises the assignment for display', () => {
+    assert.equal(roleSummary({ role: 'admin' }), 'Admin');
+    assert.equal(roleSummary({ role: 'rep' }), 'Rep');
+    assert.equal(roleSummary({ role: 'production', tabs: ['prod', 'payments'] }), 'Production + Payments');
+    assert.equal(roleSummary({ role: 'sales' }), 'Sales');
   });
 });

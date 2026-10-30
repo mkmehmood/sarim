@@ -1,5 +1,6 @@
 import { dataUid, resolveDataOwner, isTeamMember } from './data-owner.js';
-import { ACCOUNT_ROLES, normalizeRole, roleLabel, accountName, clearCachedAccountRole } from './account-role.js';
+import { ACCOUNT_ROLES, TAB_CHOICES, normalizeRole, roleLabel, roleSummary, roleTab, isTabRole, accountTabs, tabsToRole, accountName, clearCachedAccountRole } from './account-role.js';
+import { openDialog } from './dialog.js';
 import { formatDateTime } from './date-format.js';
 import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
@@ -4305,12 +4306,22 @@ await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: fals
 }
 
 export let _newAccountRole = '';
+export let _newAccountTabs = [];
 
 export function setNewAccountRole(role) {
-_newAccountRole = ACCOUNT_ROLES.includes(role) ? role : '';
+if (!ACCOUNT_ROLES.includes(role)) { _newAccountRole = ''; _newAccountTabs = []; }
+else if (isTabRole(role) && isTabRole(_newAccountRole)) {
+const t = roleTab(role);
+const next = _newAccountTabs.includes(t) ? _newAccountTabs.filter(x => x !== t) : [..._newAccountTabs, t];
+const r = tabsToRole(next);
+_newAccountRole = r ? r.role : '';
+_newAccountTabs = r ? r.tabs : [];
+}
+else if (isTabRole(role)) { _newAccountRole = role; _newAccountTabs = [roleTab(role)]; }
+else { _newAccountRole = role; _newAccountTabs = []; }
 ACCOUNT_ROLES.forEach(r => {
 const btn = document.getElementById('acct-role-' + r);
-if (btn) btn.classList.toggle('active', r === _newAccountRole);
+if (btn) btn.classList.toggle('active', isTabRole(r) ? _newAccountTabs.includes(roleTab(r)) : r === _newAccountRole);
 });
 }
 
@@ -4351,6 +4362,7 @@ if (!emailEl || !passEl || !msgEl) return;
 const email    = emailEl.value.trim();
 const password = passEl.value;
 const role     = _newAccountRole;
+const tabs     = isTabRole(role) ? [..._newAccountTabs] : [];
 const name     = nameEl ? nameEl.value.trim().toUpperCase() : '';
 const setMsg = (txt, color) => { if (msgEl) { msgEl.textContent = txt; msgEl.style.setProperty('--d-color', color || 'var(--text-muted)'); msgEl.classList.add('dc-color'); } };
 if (!email)              { setMsg('Enter an email address.', 'var(--danger)'); return; }
@@ -4380,10 +4392,10 @@ newUid = got.uid; adopted = true;
 const finalName = name || accountName({ email });
 const now = Date.now();
 await firebaseDB.collection('users').doc(newUid).set({
-  email, role, name: finalName, approved: true, ownerUid,
+  email, role, tabs, name: finalName, approved: true, ownerUid,
   createdAt: now, createdBy: currentUser.email
 }, { merge: true });
-const entry = { uid: newUid, email, role, name: finalName, approved: true, ownerUid, createdAt: now, createdBy: currentUser.email };
+const entry = { uid: newUid, email, role, tabs, name: finalName, approved: true, ownerUid, createdAt: now, createdBy: currentUser.email };
 const existing = await _readAccountsIndex();
 await _writeAccountsIndex([...existing.filter(a => a.uid !== newUid), entry]);
 if (role === 'rep') await _ensureRepName(finalName);
@@ -4437,13 +4449,13 @@ const actions = isMe
   ? '<span class="u-28e6137">(you)</span>'
   : [
       '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminAccountMore(this.dataset.uid,this.dataset.email)">More</button>',
-      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Delete</button>'
+      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminDeleteAccount(this.dataset.uid,this.dataset.email)">Delete</button>'
     ].join('');
 return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f">' +
   '<div class="u-855cc88 d-flex">' + dot +
   '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow u-0da05dd">' +
   esc(acct.email||acct.uid) + (isMe ? ' <em class="st-color__5872de st-font-size__c3e9d8">(you)</em>' : '') + '</div>' +
-  '<div class="u-28c8f7e d-flex"><span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">' + esc(roleLabel(role)) + '</span>' +
+  '<div class="u-28c8f7e d-flex"><span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">' + esc(roleSummary(acct)) + '</span>' +
   (acct.name ? '<span class="u-e7a1434">' + esc(acct.name) + '</span>' : '') +
   (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
   '</div>' +
@@ -4455,18 +4467,19 @@ console.error('loadAccountsList:', _safeErr(err));
 }
 }
 
-export async function adminSetAccountRole(uid, email, role) {
+export async function adminSetAccountRole(uid, email, role, tabs) {
 if (!ACCOUNT_ROLES.includes(role)) return;
 if (uid === currentUser.uid) { window.notifyBlocking('You cannot change your own role.', 'warning', 'Warning'); return; }
 const accounts = await _readAccountsIndex().catch(() => []);
 const entry = accounts.find(a => a.uid === uid) || {};
-if (normalizeRole(entry) === role) return;
+const tabList = isTabRole(role) ? (Array.isArray(tabs) && tabs.length ? tabs : [roleTab(role)]) : [];
+if (normalizeRole(entry) === role && JSON.stringify(accountTabs(entry)) === JSON.stringify(tabList)) return;
 const name = entry.name || accountName({ email });
 try {
-await firebaseDB.collection('users').doc(uid).update({ role, name });
-await _writeAccountsIndex(accounts.map(a => a.uid === uid ? { ...a, role, name } : a));
+await firebaseDB.collection('users').doc(uid).update({ role, tabs: tabList, name });
+await _writeAccountsIndex(accounts.map(a => a.uid === uid ? { ...a, role, tabs: tabList, name } : a));
 if (role === 'rep') await _ensureRepName(name);
-showToast(email + ' is now ' + roleLabel(role), 'success', 2500);
+showToast(email + ' is now ' + roleSummary({ role, tabs: tabList }), 'success', 2500);
 await loadAccountsList();
 } catch (err) {
 window.notifyBlocking('Failed to change role: ' + (err.message || ''), 'error', 'Something went wrong');
@@ -4474,17 +4487,44 @@ console.error('adminSetAccountRole:', _safeErr(err));
 }
 }
 
+function _pickTabs(current) {
+const rows = TAB_CHOICES.map(c => '<li><label class="panel dlg-option"><input type="checkbox" value="' + c.tab + '"' + (current.includes(c.tab) ? ' checked' : '') + '> <span class="dlg-option-label">' + esc(roleLabel(c.role)) + '</span></label></li>').join('');
+return openDialog({
+tone: 'primary',
+title: 'Assign Tabs',
+body: '<p>Tick every tab this account can use. Everything else stays hidden.</p><ul class="dlg-options">' + rows + '</ul>',
+actions: [
+{ label: 'Cancel', variant: 'ghost', value: null },
+{ label: 'Save', variant: 'solid', value: 'save', guard: (overlay) => {
+const picked = Array.from(overlay.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+if (!picked.length) { showToast('Tick at least one tab.', 'warning', 2500); return { ok: false }; }
+return { ok: true, value: picked };
+} }
+],
+dismissIndex: 0
+});
+}
+
 export async function adminAccountMore(uid, email) {
 if (uid === currentUser.uid) return;
 const accounts = await _readAccountsIndex().catch(() => []);
 const entry = accounts.find(a => a.uid === uid) || {};
 const current = normalizeRole(entry);
+const curTabs = accountTabs(entry);
+const several = isTabRole(current) && curTabs.length > 1;
 const approved = entry.approved !== false;
-const choices = ACCOUNT_ROLES.map(r => ({ label: (r === current ? '\u2713 ' : '') + roleLabel(r), value: 'role:' + r }));
+const choices = ACCOUNT_ROLES.map(r => ({ label: ((r === current && !several) ? '\u2713 ' : '') + roleLabel(r), value: 'role:' + r }));
+choices.push({ label: (several ? '\u2713 ' : '') + 'Several tabs\u2026', value: 'tabs' });
 choices.push({ label: approved ? 'Suspend account' : 'Reinstate account', value: 'toggle' });
-const picked = await showChoiceDialog(email + ' is ' + roleLabel(current) + '. Choose the new assignment. It applies on their devices right away.', choices, { title: 'Update Assignment' });
+const picked = await showChoiceDialog(email + ' is ' + roleSummary(entry) + '. Choose the new assignment. It applies on their devices right away.', choices, { title: 'Update Assignment' });
 if (!picked) return;
 if (picked === 'toggle') { await adminToggleApproval(uid, email, approved); return; }
+if (picked === 'tabs') {
+const tabs = await _pickTabs(curTabs);
+const r = tabs && tabsToRole(tabs);
+if (r) await adminSetAccountRole(uid, email, r.role, r.tabs);
+return;
+}
 if (picked.indexOf('role:') === 0) await adminSetAccountRole(uid, email, picked.slice(5));
 }
 
@@ -4513,22 +4553,24 @@ console.error('adminToggleApproval:', _safeErr(err));
 }
 }
 
-export async function adminRemoveAccount(uid, email) {
-if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning', 'Warning'); return; }
+export async function adminDeleteAccount(uid, email) {
+if (uid === currentUser.uid) { window.notifyBlocking('You cannot delete your own account.', 'warning', 'Warning'); return; }
 const confirmed = await showGlassConfirm(
-'Delete the account for ' + email + '?\n\nThey will be blocked immediately. Their stored data is preserved.\n\nTo fully delete the Firebase Auth login, use Firebase Console.',
-{ title: 'Delete Account', confirmText: 'Delete', cancelText: 'Cancel', danger: true }
+'Permanently delete the account for ' + email + '?\n\nTheir profile is erased, they are signed out, and they can no longer open any data. This cannot be undone.\n\nThe workspace data is kept. Their login stays in Firebase Authentication, which an app cannot delete; the same email can be added again later. To remove the login too, use the Firebase Console.',
+{ title: 'Delete Account Permanently', confirmText: 'Delete Permanently', cancelText: 'Cancel', danger: true }
 );
 if (!confirmed) return;
 try {
-await firebaseDB.collection('users').doc(uid).update({ approved: false, removedAt: Date.now(), removedBy: currentUser.email, forceLogout: { at: Date.now(), by: currentUser.email } }).catch(() => {});
+const ref = firebaseDB.collection('users').doc(uid);
+await ref.update({ approved: false, removedAt: Date.now(), removedBy: currentUser.email, forceLogout: { at: Date.now(), by: currentUser.email } }).catch(() => {});
+await ref.delete();
 const accounts = await _readAccountsIndex();
-const updated = accounts.map(a => a.uid === uid ? { ...a, approved: false } : a);
-await _writeAccountsIndex(updated);
+await _writeAccountsIndex(accounts.filter(a => a.uid !== uid));
+showToast('Deleted: ' + email, 'success', 2500);
 await loadAccountsList();
 } catch(err) {
-window.notifyBlocking('Failed to delete account.', 'error', 'Something went wrong');
-console.error('adminRemoveAccount:', _safeErr(err));
+window.notifyBlocking('Failed to delete account: ' + (err.message || ''), 'error', 'Something went wrong');
+console.error('adminDeleteAccount:', _safeErr(err));
 }
 }
 
@@ -4765,7 +4807,7 @@ window.setNewAccountRole = setNewAccountRole;
 window.adminAddAccount = adminAddAccount;
 window.loadAccountsList = loadAccountsList;
 window.adminToggleApproval = adminToggleApproval;
-window.adminRemoveAccount = adminRemoveAccount;
+window.adminDeleteAccount = adminDeleteAccount;
 window.adminSetAccountRole = adminSetAccountRole;
 window.adminAccountMore = adminAccountMore;
 window.signOut = signOut;

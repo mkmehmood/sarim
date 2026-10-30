@@ -56,19 +56,51 @@ describe('app accounts: managing accounts', () => {
   });
   it('shows More and Delete on each account instead of six role toggles', () => {
     assert.match(sync, /onclick="adminAccountMore\(this\.dataset\.uid,this\.dataset\.email\)">More<\/button>/);
-    assert.match(sync, /onclick="adminRemoveAccount\(this\.dataset\.uid,this\.dataset\.email\)">Delete<\/button>/);
+    assert.match(sync, /onclick="adminDeleteAccount\(this\.dataset\.uid,this\.dataset\.email\)">Delete<\/button>/);
     assert.doesNotMatch(sync, /acct-lock-/);
     assert.doesNotMatch(sync, />Access<\/button>/);
     assert.doesNotMatch(sync, /roleBtns|rolePanel/);
   });
   it('More opens a pop-up to update the assignment, with the six roles and suspend or reinstate', () => {
     assert.match(sync, /showChoiceDialog\(.*, choices, \{ title: 'Update Assignment' \}\)/);
-    assert.match(sync, /ACCOUNT_ROLES\.map\(r => \(\{ label: \(r === current \? '\\u2713 ' : ''\) \+ roleLabel\(r\), value: 'role:' \+ r \}\)\)/);
+    assert.match(sync, /ACCOUNT_ROLES\.map\(r => \(\{ label: \(\(r === current && !several\) \? '\\u2713 ' : ''\) \+ roleLabel\(r\), value: 'role:' \+ r \}\)\)/);
     assert.match(sync, /approved \? 'Suspend account' : 'Reinstate account'/);
     assert.match(sync, /adminSetAccountRole\(uid, email, picked\.slice\(5\)\)/);
     assert.match(sync, /window\.adminAccountMore = adminAccountMore;/);
   });
   it('does not let anyone change their own role', () => {
     assert.match(sync, /You cannot change your own role\./);
+  });
+});
+
+describe('app accounts: hard delete and several tabs', () => {
+  it('hard delete erases the profile and the index entry, and never lets you delete yourself', () => {
+    assert.match(sync, /export async function adminDeleteAccount/);
+    assert.match(sync, /await ref\.delete\(\);/);
+    assert.match(sync, /_writeAccountsIndex\(accounts\.filter\(a => a\.uid !== uid\)\)/);
+    assert.match(sync, /You cannot delete your own account\./);
+    assert.match(sync, /title: 'Delete Account Permanently'/);
+    assert.match(sync, /window\.adminDeleteAccount = adminDeleteAccount;/);
+    assert.doesNotMatch(sync, /adminRemoveAccount/);
+  });
+  it('a device whose profile was deleted signs itself out', () => {
+    assert.match(pay, /function _signOutRemovedAccount\(\)/);
+    assert.match(pay, /if \(!snap\.exists\) \{ if \(seen\) _signOutRemovedAccount\(\); return; \}/);
+    assert.match(pay, /if \(!snap\.exists\) \{ if \(readCachedAccountRole\(user\.uid, user\.email\)\) _signOutRemovedAccount\(\); return; \}/);
+  });
+  it('the add form lets production, factory, payments and sales be combined', () => {
+    assert.match(sync, /export let _newAccountTabs = \[\];/);
+    assert.match(sync, /isTabRole\(role\) && isTabRole\(_newAccountRole\)/);
+    assert.match(sync, /email, role, tabs, name: finalName/);
+  });
+  it('More offers Several tabs with a tick-box pop-up that needs at least one tab', () => {
+    assert.match(sync, /value: 'tabs'/);
+    assert.match(sync, /title: 'Assign Tabs'/);
+    assert.match(sync, /input\[type=checkbox\]:checked/);
+    assert.match(sync, /Tick at least one tab\./);
+    assert.match(sync, /update\(\{ role, tabs: tabList, name \}\)/);
+  });
+  it('shows the full assignment on the account row', () => {
+    assert.match(sync, /esc\(roleSummary\(acct\)\)/);
   });
 });

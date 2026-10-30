@@ -6941,6 +6941,14 @@ await saveSalesRepsList();
 _applyModeFromData(want.mode, Date.now(), want.mode === 'rep' ? want.name : null, want.mode === 'rep' ? null : want.name, want.tabs, true);
 }
 
+function _signOutRemovedAccount() {
+if (window._removedSignOutPending) return;
+window._removedSignOutPending = true;
+showToast('Your account was removed. Signing out…', 'error', 5000);
+window._forceLogoutSignOut = true;
+setTimeout(() => { if (typeof window.signOut === 'function') window.signOut().catch(() => {}); }, 1500);
+}
+
 export async function applyAccountRoleOnLogin(user) {
 if (!user) return;
 try {
@@ -6950,7 +6958,7 @@ if (cached) await applyAccountRole({ role: cached.role, name: cached.name, email
 return;
 }
 const snap = await firebaseDB.collection('users').doc(user.uid).get();
-if (!snap.exists) return;
+if (!snap.exists) { if (readCachedAccountRole(user.uid, user.email)) _signOutRemovedAccount(); return; }
 const data = snap.data() || {};
 cacheAccountRole(user.uid, data);
 if (isAccountSuspended(data)) return;
@@ -6970,9 +6978,12 @@ window.accountLockUnsubscribe = null;
 }
 try {
 const uid = currentUser.uid;
+let seen = !!readCachedAccountRole(uid, currentUser.email);
 window.accountLockUnsubscribe = firebaseDB.collection('users').doc(uid).onSnapshot({ includeMetadataChanges: false }, async (snap) => {
 try {
-if (!snap.exists || snap.metadata.fromCache) return;
+if (snap.metadata.fromCache) return;
+if (!snap.exists) { if (seen) _signOutRemovedAccount(); return; }
+seen = true;
 const data = snap.data() || {};
 cacheAccountRole(uid, data);
 if (isAccountSuspended(data)) return;
