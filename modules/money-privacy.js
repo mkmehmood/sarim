@@ -5,10 +5,24 @@ export function isMoneyRestricted(mode) {
   return MONEY_RESTRICTED_MODES.has(m);
 }
 
+function sessionTabs() {
+  return typeof window !== 'undefined' && Array.isArray(window._userRoleAllowedTabs) ? window._userRoleAllowedTabs : [];
+}
+
+export function hasOwnRepAccess() {
+  return sessionTabs().includes('rep');
+}
+
+export function hidesPaymentHistory(mode) {
+  return isMoneyRestricted(mode) && sessionTabs().includes('payments');
+}
+
 export function scrubMoney(root) {
   const scope = root || (typeof document !== 'undefined' ? document : null);
   if (!scope || !scope.querySelectorAll) return;
+  const keepRep = hasOwnRepAccess();
   scope.querySelectorAll('[data-money]').forEach((el) => {
+    if (keepRep && el.hasAttribute('data-money-rep')) return;
     if (el.children.length === 0 && el.textContent) el.textContent = '';
     else if (el.matches('.history-list, #all-stores-grid, #customers-table-body, #rep-customers-table-body')) el.replaceChildren();
   });
@@ -18,14 +32,19 @@ export function applyMoneyPrivacy(mode) {
   if (typeof document === 'undefined' || !document.documentElement) return false;
   const locked = isMoneyRestricted(mode);
   document.documentElement.toggleAttribute('data-money-locked', locked);
+  const root = document.documentElement;
+  if (locked && hasOwnRepAccess() && root.setAttribute) root.setAttribute('data-rep-own', '');
+  else if (root.removeAttribute) root.removeAttribute('data-rep-own');
   if (locked) scrubMoney();
   return locked;
 }
 
 const RESTRICTED_SCREENS = new Set(['settings-screen', 'splash-screen', 'feedback-screen', 'recycle-bin-screen']);
+const REP_OWN_SCREENS = new Set(['rep-customer-management-screen', 'rep-customer-edit-screen']);
 
 export function isScreenAllowed(id, mode) {
-  return !isMoneyRestricted(mode) || RESTRICTED_SCREENS.has(id);
+  if (!isMoneyRestricted(mode) || RESTRICTED_SCREENS.has(id)) return true;
+  return REP_OWN_SCREENS.has(id) && hasOwnRepAccess();
 }
 
 export function moneyLine(text) {

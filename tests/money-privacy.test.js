@@ -74,7 +74,7 @@ describe('money areas are tagged', () => {
 
 describe('the lock is enforced in CSS and in the renderers', () => {
   it('hides every tagged element under the lock attribute', () => {
-    assert.match(CSS, /html\[data-money-locked\] \[data-money\] \{ display: none; \}/);
+    assert.match(CSS, /html\[data-money-locked\]:not\(\[data-rep-own\]\) \[data-money\],\s*html\[data-money-locked\]\[data-rep-own\] \[data-money\]:not\(\[data-money-rep\]\) \{ display: none; \}/);
   });
 
   it('is driven by every app-mode change', () => {
@@ -91,5 +91,29 @@ describe('the lock is enforced in CSS and in the renderers', () => {
     assert.ok(read('utilities-payments.js').includes('setSalesSummaryMode(mode) {\ncurrentSalesSummaryMode = mode; window.currentSalesSummaryMode = currentSalesSummaryMode;\nif (isMoneyRestricted()) return;'));
     assert.ok(read('utilities-payments.js').includes('updateSalesCharts(comp) {\nif (isMoneyRestricted()) return;'));
     assert.match(read('customers.js'), /renderCustomersTable\(page = 1\) \{\nif \(isMoneyRestricted\(\)\) \{/);
+  });
+});
+
+describe('own-rep exemption and payment history', async () => {
+  const mp = await import('../modules/money-privacy.js');
+  const withTabs = (tabs, fn) => {
+    globalThis.window = { _userRoleAllowedTabs: tabs };
+    try { return fn(); } finally { delete globalThis.window; }
+  };
+  it('a rep holding a restricted role may open its own customer screens, nothing else', () => {
+    withTabs(['sales', 'rep'], () => {
+      assert.equal(mp.isScreenAllowed('rep-customer-management-screen', 'userrole'), true);
+      assert.equal(mp.isScreenAllowed('customer-management-screen', 'userrole'), false);
+    });
+    withTabs(['sales'], () => assert.equal(mp.isScreenAllowed('rep-customer-management-screen', 'userrole'), false));
+  });
+  it('hides payment history only for the payments role', () => {
+    withTabs(['payments'], () => assert.equal(mp.hidesPaymentHistory('userrole'), true));
+    withTabs(['sales'], () => assert.equal(mp.hidesPaymentHistory('userrole'), false));
+    withTabs(['payments'], () => assert.equal(mp.hidesPaymentHistory('admin'), false));
+  });
+  it('tags the rep list, rep history and rep customer info as exempt', () => {
+    for (const id of ['repHistoryList', 'rep-customers-card', 'rep-customer-info-display'])
+      assert.match(HTML, new RegExp(`data-money data-money-rep id="${id}"`));
   });
 });

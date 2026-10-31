@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    function meRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function getUserData() {
+      return get(meRef()).data;
+    }
+
+    // Active = has a user doc, is not suspended, and the doc email matches the login email.
+    function notSuspended() {
+      return signedIn() && exists(meRef())
+        && getUserData().get('approved', true) != false
+        && (request.auth.token.email == null
+            || getUserData().get('email', request.auth.token.email).lower()
+               == request.auth.token.email.lower());
+    }
+
+    function dataIsAdmin(data) {
+      return 'admin' in data.get('roles', []) || data.get('role', 'user') == 'admin';
+    }
+
+    // Checks admin status via new roles array or legacy single string
+    function isAdmin() {
+      return notSuspended() && dataIsAdmin(getUserData());
+    }
+
+    // Checks if user has a specific role or is an admin
+    function hasRole(roleName) {
+      let data = getUserData();
+      return notSuspended() && (
+        isAdmin() ||
+        roleName in data.get('roles', []) ||
+        data.get('role', '') == roleName
+      );
+    }
+
+    // Workspace = the owner's uid. Owners have no ownerUid; members point at it.
+    function wsOwner() { return getUserData().get('ownerUid', request.auth.uid); }
+    function inWorkspace(owner) { return notSuspended() && wsOwner() == owner; }
+
+    // An account this admin may manage: in their workspace, or a legacy account
+    // they created before ownerUid existed, or the workspace owner itself.
+    function managedByMe(data, uid) {
+      return data.get('ownerUid', null) == wsOwner()
+        || (data.get('ownerUid', null) == null
+            && data.get('createdBy', '') == request.auth.token.email)
+        || uid == wsOwner();
+    }
+
+    function targetUser(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid)
+        || inWorkspace(uid)
+        || (isAdmin() && managedByMe(resource.data, uid));
+
+      // New accounts must join the creating admin's workspace.
+      allow create: if isAdmin()
+        && request.resource.data.get('ownerUid', null) == wsOwner();
+
+      allow update:
+        // admin managing someone else in their workspace (never the owner)
+        if (isAdmin() && uid != request.auth.uid && uid != wsOwner()
+            && managedByMe(resource.data, uid)
+            && request.resource.data.get('ownerUid', null) == wsOwner())
+        // admin editing themselves may not drop their own admin status
+        || (isAdmin() && isOwner(uid) && dataIsAdmin(request.resource.data)
+            && request.resource.data.get('ownerUid', null) == resource.data.get('ownerUid', null))
+        // owners may touch only harmless fields on their own doc
+        || (isOwner(uid) && notSuspended()
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['lastWrite','lastLoginAt','authProviders','displayName']))
+        // members ping the workspace owner's doc so every device re-syncs
+        || (inWorkspace(uid) && !isOwner(uid)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['lastWrite']));
+
+      allow delete: if isAdmin() && uid != request.auth.uid && uid != wsOwner()
+        && managedByMe(resource.data, uid);
+    }
+
+    // The account list holds everyone's email, so only admins read or write it.
+    function dataAccess(owner, subcollection, docId) {
+      return inWorkspace(owner)
+        && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
+    }
+
+    match /users/{uid}/{subcollection}/{docId} {
+      allow read, write: if isOwner(uid) && notSuspended()
+        && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
+      allow read, write: if dataAccess(uid, subcollection, docId);
+      allow read, write: if isAdmin() && subcollection in ['devices','settings']
+        && managedByMe(targetUser(uid), uid);
+    }
+
+    match /users/{uid}/{subcollection}/{docId}/{rest=**} {
+      allow read, write: if isOwner(uid) && notSuspended();
+      allow read, write: if dataAccess(uid, subcollection, docId);
+      allow read, write: if isAdmin() && subcollection in ['devices','settings']
+        && managedByMe(targetUser(uid), uid);
+    }
+  }
+}
