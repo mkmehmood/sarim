@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { ESLint } from 'eslint';
 import { fileURLToPath } from 'node:url';
 
-const UNUSED_VARIABLE_BUDGET = 221;
+const UNUSED_VARIABLE_BUDGET = 219;
 const cwd = fileURLToPath(new URL('../', import.meta.url));
 
 describe('static analysis', () => {

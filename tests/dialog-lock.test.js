@@ -59,7 +59,7 @@ describe('isScreenAllowed', () => {
     for (const id of ['settings-screen', 'splash-screen', 'feedback-screen', 'recycle-bin-screen']) assert.equal(isScreenAllowed(id, 'userrole'), true, id);
     for (const id of ['entity-details-screen', 'expense-details-screen', 'customer-edit-screen', 'customer-management-screen',
       'stock-transfer-screen', 'payment-transfer-screen', 'daily-ledger-screen', 'add-entity-screen', 'raw-material-screen',
-      'store-manager-screen', 'user-roles-screen', 'app-accounts-screen']) {
+      'store-manager-screen', 'app-accounts-screen']) {
       assert.equal(isScreenAllowed(id, 'userrole'), false, id);
     }
   });

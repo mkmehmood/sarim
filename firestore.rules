@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    function meRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function getUserData() {
+      return get(meRef()).data;
+    }
+
+    function notSuspended() {
+      return signedIn() && exists(meRef())
+        && getUserData().get('approved', true) != false;
+    }
+
+    // Checks admin status via new roles array or legacy single string
+    function isAdmin() {
+      let data = getUserData();
+      return notSuspended() && (
+        'admin' in data.get('roles', []) ||
+        data.get('role', 'user') == 'admin'
+      );
+    }
+
+    // Checks if user has a specific role or is an admin
+    function hasRole(roleName) {
+      let data = getUserData();
+      return notSuspended() && (
+        isAdmin() ||
+        roleName in data.get('roles', []) ||
+        data.get('role', '') == roleName
+      );
+    }
+
+    // ADDITION to the spec: accounts created in App Accounts carry ownerUid
+    // (the admin's workspace id) and share that workspace's dataset.
+    function isWorkspaceMember(ownerUid) {
+      return notSuspended() && getUserData().get('ownerUid', '') == ownerUid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (
+        isOwner(uid) && notSuspended() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lastWrite','lastLoginAt','authProviders','displayName'])
+      ) || (
+        // members ping the workspace owner's doc so every device re-syncs
+        isWorkspaceMember(uid) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lastWrite'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /users/{uid}/{subcollection}/{docId} {
+      allow read, write: if isOwner(uid) && notSuspended();
+      allow read, write: if isWorkspaceMember(uid);
+      allow read, write: if isAdmin() && subcollection in ['devices','settings'];
+    }
+
+    match /users/{uid}/{subcollection}/{docId}/{rest=**} {
+      allow read, write: if isOwner(uid) && notSuspended();
+      allow read, write: if isWorkspaceMember(uid);
+      allow read, write: if isAdmin() && subcollection in ['devices','settings'];
+    }
+  }
+}

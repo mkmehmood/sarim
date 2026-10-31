@@ -536,10 +536,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="7.2" fill="var(--accent-gold)" fill-opacity="0.15" stroke="var(--accent-gold)" stroke-width="1.7"/><path d="M18 10.8A7.2 7.2 0 0 1 18 25.2Z" fill="var(--accent-gold)" fill-opacity=".8"/><path d="M29.3 18L32.8 18" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M25.99 25.99L28.47 28.47" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 29.3L18 32.8" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M10.01 25.99L7.53 28.47" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.7 18L3.2 18" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M10.01 10.01L7.53 7.53" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 6.7L18 3.2" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M25.99 10.01L28.47 7.53" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
       <span id="theme-mode-label">Theme</span>
     </button>
-    <button class="sidebar-item" onclick="openStandaloneScreen('device-display-screen')">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="9.5" y="3" width="17" height="30" rx="4.6" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><rect x="12.8" y="7.2" width="10.4" height="17.5" rx="2" fill="var(--accent-gold)" fill-opacity="0.26" stroke="var(--accent-gold)" stroke-width="1.3" stroke-linejoin="round"/><path d="M15.5 29.4H20.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M16 5.2H20" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.5"/><path class="ic-sp" d="M18 12.8Q18 16 21.2 16Q18 16 18 19.2Q18 16 14.8 16Q18 16 18 12.8Z" fill="var(--accent-gold)"/><path class="ic-sp" d="M31 6.6Q31 9 33.4 9Q31 9 31 11.4Q31 9 28.6 9Q31 9 31 6.6Z" fill="var(--accent-gold)"/></svg>
-      Device Display
-    </button>
     <button class="sidebar-item" onclick="openStandaloneScreen('feedback-screen')">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/></svg>
       Sound &amp; Haptics
@@ -550,17 +546,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     <button id="bio-toggle-btn" class="sidebar-item" onclick="toggleBiometricLock()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 24V17.5A10.5 10.5 0 0 1 28.5 17.5V21" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M12.5 28.5V17.5A5.5 5.5 0 0 1 23.5 17.5V24.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 17.5V23.5C18 27 17 29.5 15.5 31.8" stroke="var(--accent-gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M23.5 28C23 29.6 22.4 30.7 21.6 31.8" stroke="var(--accent-gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M7.5 29.5V28" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/><path class="ic-sp" d="M30 4Q30 7 33 7Q30 7 30 10Q30 7 27 7Q30 7 30 4Z" fill="var(--accent-gold)"/></svg>
       <span id="bio-toggle-label">Fingerprint Lock</span>
-    </button>
-    </div>
-    <div class="card u-d8ddece st-border-bottom__e54b2f">
-      <p class="settings-group-label">Team &amp; Access</p>
-    <button class="sidebar-item" onclick="openStandaloneScreen('sales-rep-screen');if(typeof loadManageRepsContent==='function')loadManageRepsContent()">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23 21.2C29 21.2 33 24 33 29.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/><circle cx="24" cy="11" r="4.4" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.6"/><circle cx="12.5" cy="12" r="5.2" fill="var(--accent)" fill-opacity="0.22" stroke="var(--accent)" stroke-width="1.7"/><path d="M2.5 31C2.5 22.5 22.5 22.5 22.5 31Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path class="ic-sp" d="M30 2.9Q30 5.5 32.6 5.5Q30 5.5 30 8.1Q30 5.5 27.4 5.5Q30 5.5 30 2.9Z" fill="var(--accent-gold)"/></svg>
-      Sales Representatives
-    </button>
-    <button class="sidebar-item" onclick="openStandaloneScreen('user-roles-screen');if(typeof loadUserRolesContent==='function')loadUserRolesContent()">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="13.5" cy="11" r="5.4" fill="var(--accent)" fill-opacity="0.2" stroke="var(--accent)" stroke-width="1.7"/><path d="M3 29.5C3 21 24 21 24 29.5Z" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="26.5" cy="23.5" r="4.2" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><path d="M29.6 26.6L34 31M31.8 28.8L33.8 26.8" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-      User Roles
     </button>
     <button class="sidebar-item" onclick="openStandaloneScreen('app-accounts-screen');if(typeof loadAccountsList==='function')loadAccountsList()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 3.5L30 8V18C30 25.5 24.5 30.5 18 33C11.5 30.5 6 25.5 6 18V8Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="12.7" y="16.8" width="10.6" height="8.6" rx="2.2" fill="var(--accent-gold)" fill-opacity="0.32" stroke="var(--accent-gold)" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 16.8V14.7A3 3 0 0 1 21 14.7V16.8" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="21" r="1.2" fill="var(--accent-gold)"/></svg>
@@ -1149,73 +1134,21 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-<div id="sales-rep-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">Sales Representatives</h2>
-  </div>
-  <div class="screen-body">
-    <div class="grid-inputs u-mb-20">
-      <div class="field">
-        <label>Representative Name</label>
-        <input class="form-ctl" type="text" id="new-rep-name-input" placeholder="sales representative name" oninput="this.value=this.value.toUpperCase()">
-      </div>
-    </div>
-    <div class="u-f553a9b d-flex">
-      <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="addNewSalesRep()">Add Representative</button>
-    </div>
-    <div class="u-734e5d6">
-      <label class="u-5250855 d-block">Current Representatives</label>
-      <div id="manage-reps-list"></div>
-    </div>
-  </div>
-</div>
-<div id="user-roles-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">User Roles</h2>
-  </div>
-  <div class="screen-body">
-    <div class="grid-inputs u-mb-15">
-      <div class="field">
-        <label>User Name</label>
-        <input class="form-ctl" type="text" id="new-userrole-name-input" placeholder="user name" oninput="this.value=this.value.toUpperCase()">
-      </div>
-    </div>
-    <div class="u-47e3b7d">
-      <label class="u-6068d65 d-block">Assign Tab Access</label>
-      <div class="u-0762397 d-flex">
-        <button id="userrole-tab-factory" class="toggle-opt u-b4cd53b" onclick="toggleUserRoleTabAccess('factory')">Factory</button>
-        <button id="userrole-tab-prod" class="toggle-opt u-b4cd53b" onclick="toggleUserRoleTabAccess('prod')">Production</button>
-        <button id="userrole-tab-payments" class="toggle-opt u-b4cd53b" onclick="toggleUserRoleTabAccess('payments')">Payments</button>
-        <button id="userrole-tab-sales" class="toggle-opt u-b4cd53b" onclick="toggleUserRoleTabAccess('sales')">Sales</button>
-      </div>
-      <div id="userrole-access-hint" class="u-8cb89dc">Select one or more tabs to assign</div>
-    </div>
-    <div class="u-f553a9b d-flex">
-      <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="addNewUserRole()">Add User</button>
-    </div>
-    <div class="u-734e5d6">
-      <label class="u-5250855 d-block">Current Users</label>
-      <div id="manage-userrole-list"></div>
-    </div>
-  </div>
-</div>
 <div id="app-accounts-screen" class="standalone-screen d-none">
   <div class="shell-bar screen-topbar">
     <h2 class="screen-title">App Accounts</h2>
   </div>
   <div class="screen-body">
     <div class="u-a0d4a03">
-      <label class="u-5250855 d-block">Add New Account</label>
+      <label class="u-5250855 d-block">Add Account</label>
       <div class="grid-inputs u-39ae4db">
         <div class="field"><label>Email</label><input class="form-ctl" type="email" id="acct-new-email" placeholder="user@example.com" autocomplete="off"></div>
         <div class="field"><label>Password</label><input class="form-ctl" type="password" id="acct-new-password" placeholder="min 8 characters" autocomplete="new-password"></div>
+        <div class="field"><label>Name</label><input class="form-ctl" type="text" id="acct-new-name" placeholder="full name" autocomplete="off"></div>
       </div>
       <div class="u-39ae4db">
-        <label class="u-6068d65 d-block">Role</label>
-        <div class="u-f67fe7f d-flex st-background__f38efd">
-          <button id="acct-role-user" class="toggle-opt active u-44dfa2b" onclick="setNewAccountRole('user')">User</button>
-          <button id="acct-role-admin" class="toggle-opt u-44dfa2b" onclick="setNewAccountRole('admin')">Admin</button>
-        </div>
+        <label class="u-6068d65 d-block">Roles</label>
+        <div class="acct-roles"><button type="button" id="acct-role-admin" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('admin')">Admin</button><button type="button" id="acct-role-rep" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('rep')">Rep</button><button type="button" id="acct-role-production" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('production')">Production</button><button type="button" id="acct-role-factory" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('factory')">Factory</button><button type="button" id="acct-role-payments" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('payments')">Payments</button><button type="button" id="acct-role-sales" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('sales')">Sales</button></div>
       </div>
       <div id="acct-add-msg" class="u-04b7f5f"></div>
       <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="adminAddAccount()" id="acct-add-btn">Add Account</button>
@@ -1226,20 +1159,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <button class="btn btn-theme u-f984b84 text-xs" onclick="loadAccountsList()">&#8635; Refresh</button>
       </div>
       <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
-    </div>
-  </div>
-</div>
-<div id="device-display-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">Connected Devices</h2>
-    <div id="this-device-shard-badge" class="u-f5f1c4d d-none">This: —</div>
-    <button class="btn btn-theme u-d5d3d1b" onclick="refreshDeviceList()" title="Refresh">
-      <svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><g class="ic-sync-arrows"><path d="M30.5 15.5A12.8 12.8 0 0 0 8.2 10" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M8 4.8V10.4H13.6" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M5.5 20.5A12.8 12.8 0 0 0 27.8 26" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M28 31.2V25.6H22.4" stroke="var(--accent)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></g><circle cx="18" cy="18" r="3.6" fill="var(--accent-gold)" fill-opacity="0.35" stroke="var(--accent-gold)" stroke-width="1.5"/><circle cx="18" cy="18" r="1.2" fill="var(--accent-gold)"/></svg>
-    </button>
-  </div>
-  <div class="screen-body">
-    <div id="device-list-container" class="u-8ecc199">
-      <div class="empty">Loading devices...</div>
     </div>
   </div>
 </div>
@@ -3063,18 +2982,6 @@ window.openFactoryInventoryModal = function() {
   openStandaloneScreen('raw-material-screen');
 };
 window.closeFactoryInventoryModal = function() { closeStandaloneScreen('raw-material-screen'); };
-window.openManageRepsModal = function() {
-  openStandaloneScreen('sales-rep-screen');
-  if (typeof renderManageRepsList === 'function') renderManageRepsList();
-};
-window.closeManageRepsModal = function() {
-  closeStandaloneScreen('sales-rep-screen');
-  closeStandaloneScreen('user-roles-screen');
-  closeStandaloneScreen('app-accounts-screen');
-};
-window.loadManageRepsContent = function() {
-  if (typeof renderManageRepsList === 'function') renderManageRepsList();
-};
 window.loadDbStructureScreen = async function() {
   var container = document.getElementById('delta-sync-details-container');
   if (!container) return;
@@ -3141,24 +3048,6 @@ document.addEventListener('DOMContentLoaded', function() {
   window.openStandaloneScreen = function(id) {
     origOpenDevice(id);
     if (id === 'feedback-screen' && typeof window.syncFeedbackSettings === 'function') window.syncFeedbackSettings();
-    if (id === 'device-display-screen') {
-      setTimeout(function() {
-        if (typeof loadDeviceList === 'function') loadDeviceList();
-      }, 150);
-      (async function() {
-        try {
-          var badge = document.getElementById('this-device-shard-badge');
-          if (!badge) return;
-          var did = typeof getDeviceId === 'function' ? await getDeviceId() : null;
-          if (!did) return;
-          var shard = typeof deriveDeviceShard === 'function'
-            ? deriveDeviceShard(did).toUpperCase()
-            : did.slice(-4).toUpperCase();
-          badge.textContent = 'This: ' + shard;
-          window.setDisplay(badge, '');
-        } catch(_) {}
-      })();
-    }
   };
 });
 })();

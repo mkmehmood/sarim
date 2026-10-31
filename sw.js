@@ -42,6 +42,8 @@ const ASSETS_TO_CACHE = [
   './modules/store-recycle.js',
   './modules/screen-order.js',
   './modules/settings-screen.js',
+  './modules/accounts.js',
+  './modules/roles.js',
   './manifest.json',
   './192.png',
   './512.png',

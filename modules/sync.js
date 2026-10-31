@@ -2,15 +2,16 @@ import { formatDateTime } from './date-format.js';
 import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
-import { OfflineAuth, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, _set_userRolesList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, esc, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, registerDevice, salesRepsList, sqliteStore, userRolesList, validateUUID } from './business.js';
+import { OfflineAuth, dataRootRef, dataRootUid, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, salesRepsList, sqliteStore, validateUUID } from './business.js';
 import { _set_restoring, _set_closing, closeYearInProgress, restoring, closing } from './admin-data.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
-import { _applyModeFromData, _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable, renderUserRoleList, restoreDeviceModeOnLogin } from './utilities-payments.js';
+import { _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
+import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './accounts.js';
+import { clearRolesCache, readRolesCache, writeRolesCache } from './roles.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
-import { confirmGuard } from './confirm-guard.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
 const result = await sqliteStore.set(key, data);
@@ -73,7 +74,7 @@ data: queuedRecord
 return true;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 const docRef = userRef.collection(collectionName).doc(String(record.id));
 const now = Date.now();
 const sanitized = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
@@ -136,7 +137,7 @@ data: null
 return true;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 const batch = firebaseDB.batch();
 batch.delete(userRef.collection(collectionName).doc(String(recordId)));
 batch.set(userRef.collection('deletions').doc(String(recordId)), {
@@ -455,6 +456,7 @@ const _welcomeName = (() => {
 showToast(`Welcome back, ${_welcomeName}`, 'success');
 sqliteStore.setUserPrefix(user.uid);
 await SQLiteCrypto.initialize();
+await syncAccountSession(user).catch(e => console.warn('[accounts] session sync failed:', _safeErr(e)));
 const _isGoogleProvider = Array.isArray(user.providerData) &&
   user.providerData.some(p => p && p.providerId === 'google.com');
 if (_isGoogleProvider) {
@@ -530,23 +532,9 @@ if (typeof initDeviceShard === 'function') {
 if (typeof subscribeToRealtime === 'function') {
 subscribeToRealtime().catch(e => console.warn('subscribeToRealtime failed:', _safeErr(e)));
 }
-if (typeof registerDevice === 'function') {
-setTimeout(() => {
-registerDevice().catch(err => {
-console.warn('Device registration failed:', _safeErr(err));
-});
-}, 500);
-}
 if (typeof refreshDeviceIdAnchors === 'function') {
 setTimeout(() => { refreshDeviceIdAnchors().catch(() => {}); }, 1500);
 }
-setTimeout(async () => {
-try {
-await restoreDeviceModeOnLogin(user.uid);
-} catch (error) {
-console.error('Could not restore device mode:', _safeErr(error));
-}
-}, 1000);
 setTimeout(async () => {
 try {
 if (typeof performOneClickSync === 'function' && !isSyncing) {
@@ -556,6 +544,8 @@ if (typeof performOneClickSync === 'function' && !isSyncing) {
 }, 1500);
 } else {
 _set_currentUser(null);
+window._workspaceOwnerUid = null;
+window._userRoles = [];
 stopSWTokenRefresh();
 clearTokenForSW().catch(() => {});
 try {
@@ -601,10 +591,9 @@ if (!this.firebaseDB || !this.currentUser) {
 throw new Error('Firebase DB and Current User are required');
 }
 if (!silent) showToast('Setting up complete cloud database...', 'info');
-this.userRef = this.firebaseDB.collection('users').doc(this.currentUser.uid);
+this.userRef = this.firebaseDB.collection('users').doc(dataRootUid());
 try {
 await this.createUserDocument();
-await this.createDevicesCollection();
 await this.createAccountCollection();
 await this.createActivityLogCollection();
 await this.createProductionCollection();
@@ -653,40 +642,6 @@ this.results.success.push('users/document');
 } catch (error) {
 this.results.errors.push({ collection: 'users', error: error.message });
 throw error;
-}
-}
-async createDevicesCollection() {
-try {
-const deviceRef = this.userRef.collection('devices').doc('device');
-await deviceRef.set({
-deviceId: 'device',
-deviceName: 'Default Device',
-deviceType: 'desktop',
-browser: navigator.userAgent || 'Unknown',
-platform: navigator.platform || 'Unknown',
-online: true,
-lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-lastActivity: firebase.firestore.FieldValue.serverTimestamp(),
-registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
-currentMode: 'admin',
-assignedRep: null,
-capabilities: {
-canSync: true,
-canReceiveCommands: true,
-supportsBiometric: false,
-supportsNotifications: false
-},
-totalSyncs: 0,
-totalCommands: 0,
-dataUsage: {
-reads: 0,
-writes: 0,
-deletes: 0
-}
-});
-this.results.success.push('devices');
-} catch (error) {
-this.results.errors.push({ collection: 'devices', error: error.message });
 }
 }
 async createAccountCollection() {
@@ -855,7 +810,6 @@ try {
 const settingsRef = this.userRef.collection('settings').doc('config');
 await settingsRef.set({
 settings: {},
-appMode: 'admin',
 repProfile: salesRepsList[0] || 'NORAN SHAH',
 theme: 'dark',
 biometricEnabled: false,
@@ -972,9 +926,9 @@ return await initializer.initialize(silent);
 export async function isCompleteDatabaseInitialized() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 const requiredCollections = [
-'devices', 'account', 'activity', 'production', 'sales',
+'account', 'activity', 'production', 'sales',
 'rep', 'clients',
 'customers',
 'transactions', 'entities', 'inventory', 'factory', 'expenses', 'returns',
@@ -1016,10 +970,10 @@ return await initializeCompleteFirestoreDatabase(silent);
 export async function cleanupPlaceholders() {
 if (!firebaseDB || !currentUser) return false;
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 const batch = firebaseDB.batch();
 const collections = [
-'devices', 'account', 'activity',
+'account', 'activity',
 'production', 'sales',
 'rep', 'clients',
 'customers',
@@ -1379,7 +1333,7 @@ try {
 const _now = Date.now();
 if (!window._lastEmitPingAt || (_now - window._lastEmitPingAt) > 2000) {
 window._lastEmitPingAt = _now;
-firebaseDB.collection('users').doc(currentUser.uid).set({
+dataRootRef().set({
 lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: changedKeys }
 }, { merge: true }).catch(() => {});
 }
@@ -1392,8 +1346,7 @@ export async function startSyncUpdatesCleanup() {
   const runCleanup = async () => {
     if (!firebaseDB || !currentUser) return;
     try {
-      const syncSnapshot = await firebaseDB
-        .collection('users').doc(currentUser.uid)
+      const syncSnapshot = await dataRootRef()
         .collection('updates')
         .orderBy('timestamp', 'desc')
         .get();
@@ -1455,7 +1408,7 @@ export async function subscribeToRealtime() {
   } catch (_flagErr) {  }
   if (closing && !closeYearInProgress) {
     try {
-      const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const userRef = dataRootRef();
       const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
         sqliteStore.get('production',[]), sqliteStore.get('sales',[]),
         sqliteStore.get('rep',[]), sqliteStore.get('calculator',[]),
@@ -1524,7 +1477,7 @@ export async function subscribeToRealtime() {
   if (restoring) {
     try {
       showToast('Retrying restore cloud sync...', 'info', 3000);
-      const _restoreUserRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const _restoreUserRef = dataRootRef();
       const _restoreKeys = [
         'production', 'sales', 'calculator', 'rep',
         'clients', 'customers', 'inventory',
@@ -1603,32 +1556,12 @@ export async function subscribeToRealtime() {
     catch (e) { console.error('Firebase operation failed.', _safeErr(e)); }
   });
   realtimeRefs = [];
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = dataRootRef();
+  const selfRef = firebaseDB.collection('users').doc(currentUser.uid);
   try {
-    const userDocUnsub = userRef.onSnapshot(async (snap) => {
+    const _handlePing = (snap) => {
       if (!snap.exists) return;
       const data = snap.data() || {};
-      if (data.forceLogout && data.forceLogout.at) {
-        let sessionStart = window._sessionStartMs;
-        if (!sessionStart) {
-          const lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
-          sessionStart = lsStart || parseInt((await sqliteStore.get('session_start', 0)) || '0', 10) || Date.now();
-        }
-        if (data.forceLogout.at > sessionStart) {
-          showToast('Your account access has been revoked. Signing out…', 'error', 5000);
-          setTimeout(async () => {
-            try { if (typeof signOut === 'function') await signOut(); }
-            catch (e) { console.warn('[Auth] Force logout error:', _safeErr(e)); }
-          }, 1500);
-        }
-      }
-      if (data.approved === false) {
-        showToast('Your account has been suspended. Signing out…', 'error', 5000);
-        setTimeout(async () => {
-          try { if (typeof signOut === 'function') await signOut(); }
-          catch (e) { console.warn('[Auth] Suspend logout error:', _safeErr(e)); }
-        }, 1500);
-      }
       if (!snap.metadata.hasPendingWrites && !snap.metadata.fromCache && data.lastWrite) {
         const pingTs = data.lastWrite.ts && data.lastWrite.ts.toMillis
           ? data.lastWrite.ts.toMillis()
@@ -1643,7 +1576,39 @@ export async function subscribeToRealtime() {
           }
         }
       }
-    }, (_userDocErr) => {
+    };
+    const _signOutWith = (message, tag) => {
+      showToast(message, 'error', 5000);
+      setTimeout(async () => {
+        try { if (typeof signOut === 'function') await signOut(); }
+        catch (e) { console.warn(`[Auth] ${tag} error:`, _safeErr(e)); }
+      }, 1500);
+    };
+    const _handleSelf = async (snap) => {
+      if (!snap.exists) {
+        if (!snap.metadata.fromCache && navigator.onLine) _signOutWith('Your account has been removed. Signing out…', 'Removed logout');
+        return;
+      }
+      const data = snap.data() || {};
+      if (data.forceLogout && data.forceLogout.at) {
+        let sessionStart = window._sessionStartMs;
+        if (!sessionStart) {
+          const lsStart = parseInt(localStorage.getItem('_gznd_session_start') || '0', 10);
+          sessionStart = lsStart || parseInt((await sqliteStore.get('session_start', 0)) || '0', 10) || Date.now();
+        }
+        if (data.forceLogout.at > sessionStart) _signOutWith('Your account access has been revoked. Signing out…', 'Force logout');
+      }
+      if (data.approved === false) {
+        _signOutWith('Your account has been suspended. Signing out…', 'Suspend logout');
+        return;
+      }
+      if (!snap.metadata.fromCache) {
+        const info = accountInfoFromDoc(data, currentUser);
+        writeRolesCache(info);
+        applyAccountSession(info);
+      }
+    };
+    const _selfError = (_userDocErr) => {
       const _code = _userDocErr && _userDocErr.code;
       console.warn('[sync] userDoc snapshot error:', _code, _safeErr(_userDocErr));
       if (_code === 'permission-denied' || _code === 'failed-precondition') {
@@ -1652,8 +1617,14 @@ export async function subscribeToRealtime() {
         updateSignalUI('error');
         scheduleListenerReconnect();
       }
-    });
+    };
+    const sharedRoot = selfRef.path === userRef.path;
+    const userDocUnsub = selfRef.onSnapshot(async (snap) => {
+      await _handleSelf(snap);
+      if (sharedRoot) _handlePing(snap);
+    }, _selfError);
     realtimeRefs.push(userDocUnsub);
+    if (!sharedRoot) realtimeRefs.push(userRef.onSnapshot(_handlePing, _selfError));
     const _handleSettingsSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -2045,19 +2016,9 @@ _cleanUnitPools
           await sqliteStore.set('reps', salesRepsList);
           if (JSON.stringify(salesRepsList) !== prev) changed = true;
         }
-        if (Array.isArray(teamData.roles)) {
-          const prev2 = JSON.stringify(userRolesList);
-          _set_userRolesList(teamData.roles);
-          await sqliteStore.set('roles', userRolesList);
-          if (JSON.stringify(userRolesList) !== prev2) changed = true;
-        }
         await sqliteStore.set('team_timestamp', cloudTs);
         if (changed) {
           if (typeof renderAllRepUI === 'function') renderAllRepUI();
-          if (typeof renderUserRoleList === 'function') {
-            const list = document.getElementById('manage-userrole-list');
-            if (list) renderUserRoleList();
-          }
           flashLivePulse();
           showToast('Team list updated from another device', 'info', 3000);
         }
@@ -2137,53 +2098,9 @@ _cleanUnitPools
       console.warn('[sync] yearCloseSignal listener error:', _ec, _safeErr(_e));
     });
     realtimeRefs.push(yearCloseSignalUnsub);
-    try {
-      const _listenDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => null) : null;
-      if (_listenDeviceId) {
-        const _deviceDocRef = userRef.collection('devices').doc(_listenDeviceId);
-        const _handleDeviceSnapshot = async (docSnap) => {
-          try {
-            if (!docSnap.exists) return;
-            if (docSnap.metadata.hasPendingWrites) return;
-            if (docSnap.metadata.fromCache) return;
-            const data = docSnap.data();
-            if (!data) return;
-            const cloudMode      = data.currentMode || 'admin';
-            const cloudTimestamp = data.appMode_timestamp || 0;
-            if (!data.remoteAppliedMode) return;
-            const localTimestamp = Number(await sqliteStore.get('appMode_timestamp').catch(() => 0)) || 0;
-            if (cloudTimestamp <= localTimestamp) return;
-            if (cloudMode === appMode) return;
-            if (typeof _applyModeFromData === 'function') {
-              _applyModeFromData(
-                cloudMode, cloudTimestamp,
-                data.assignedRep    || null,
-                data.assignedManager || null,
-                data.assignedUserTabs || [],
-                true
-              );
-            }
-          } catch (_devSnapErr) {
-            console.warn('[sync] device snapshot handler error:', _safeErr(_devSnapErr));
-          }
-        };
-        const deviceDocUnsub = _deviceDocRef.onSnapshot(async (docSnap) => {
-          if (isSyncing) { _enqueueSyncLocked(_handleDeviceSnapshot, docSnap); return; }
-          await _handleDeviceSnapshot(docSnap);
-        }, _e => {
-          console.warn('[sync] device doc listener error:', _e && _e.code, _safeErr(_e));
-        });
-        realtimeRefs.push(deviceDocUnsub);
-      }
-    } catch (_devListenErr) {
-      console.warn('[sync] failed to register device doc listener (non-fatal):', _safeErr(_devListenErr));
-    }
     updateSignalUI('online');
     recordSuccessfulConnection();
     listenerRetryAttempts = 0;
-    if (typeof registerDevice === 'function') {
-      registerDevice().catch(err => { console.warn('Device registration failed:', _safeErr(err)); });
-    }
   } catch (error) {
     console.error('[sync] subscribeToRealtime failed:', _safeErr(error));
     showToast('Failed to connect to cloud. Retrying…', 'error');
@@ -2764,8 +2681,7 @@ export async function _mergeAndPersist(cloudData) {
   try {
     if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
     const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
-    const deletionsSnap = await firebaseDB
-      .collection('users').doc(currentUser.uid)
+    const deletionsSnap = await dataRootRef()
       .collection('deletions').get();
     const threeMonthsAgo = Date.now() - APP_CONFIG.TOMBSTONE_EXPIRY_MS;
     const cloudDels = deletionsSnap.docs
@@ -3391,7 +3307,7 @@ export async function _doOneClickSync(silent = false) {
     if (typeof UUIDSyncRegistry !== 'undefined') {
       await UUIDSyncRegistry.loadAll().catch(() => {});
     }
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = dataRootRef();
     const userType = await _detectUserType(userRef);
     if (userType === 'new') {
       await initializeFirestoreStructure(true);
@@ -3485,7 +3401,7 @@ export async function _doPushDataToCloud(silent = false) {
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
     }
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = dataRootRef();
     const operationCount = await _uploadChanges(userRef);
     const deletionRecordsLocal = await sqliteStore.get('deletions', []);
     const unsyncedDeletions = deletionRecordsLocal.filter(r => !r.syncedToCloud);
@@ -3551,7 +3467,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
     if (typeof initDeviceShard === 'function') {
       await initDeviceShard().catch(() => {});
     }
-    const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+    const userRef = dataRootRef();
     const pullUserType = await _detectUserType(userRef);
     const effectiveUserType = forceDownload ? 'existing' : (pullUserType === 'new' ? 'existing' : pullUserType);
     const cloudData = await _downloadDeltas(userRef, effectiveUserType, forceDownload);
@@ -3897,7 +3813,7 @@ if (data.approved === false) {
 await firebase.auth().signOut().catch(() => {});
 return { denied: true, reason: `Access denied. Your account has been suspended. Contact the administrator.` };
 }
-return { denied: false, role: data.role || 'user', displayName: data.displayName || '' };
+return { denied: false, role: data.role || 'user', displayName: data.displayName || '', data };
 } catch(e) {
 if (e.code === 'permission-denied') {
 await firebase.auth().signOut().catch(() => {});
@@ -3916,6 +3832,7 @@ if (messageDiv) { messageDiv.textContent = check.reason; window.setStyle(message
 if (btn) { btn.disabled = false; window.setStyle(btn, 'opacity', 'st-opacity__c6e797'); }
 return;
 }
+await syncAccountSession(user, check.data).catch(e => console.warn('[accounts] session sync failed:', _safeErr(e)));
 const _googleKeyMaterial = user.uid;
 _set_currentUser({
 id: user.uid, uid: user.uid,
@@ -4151,6 +4068,7 @@ messageDiv.textContent = _wlCheck.reason;
 window.setStyle(messageDiv, 'color', 'st-color__497726');
 return;
 }
+await syncAccountSession(_signInCred.user, _wlCheck.data).catch(e => console.warn('[accounts] session sync failed:', _safeErr(e)));
 await OfflineAuth.saveCredentials(email, password);
 sqliteStore.setUserPrefix(_signInCred.user.uid);
 const _linkedProviders = (_signInCred.user.providerData || []).map(p => p && p.providerId).filter(Boolean);
@@ -4198,6 +4116,7 @@ email: email,
 offlineMode: true
 });
 sqliteStore.setUserPrefix(currentUser.uid);
+applyCachedAccountSession(email, null);
 await SQLiteCrypto.setSessionKey(email, password, currentUser.uid);
 sqliteStore.reEncryptAll().catch(() => {});
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
@@ -4241,6 +4160,7 @@ const valid = await OfflineAuth.verifyCredentials(email, password).catch(() => f
 if (valid) {
 _set_currentUser({ id: email.replace(/[^a-zA-Z0-9]/g, '_'), uid: email.replace(/[^a-zA-Z0-9]/g, '_'), email, offlineMode: true });
 sqliteStore.setUserPrefix(currentUser.uid);
+applyCachedAccountSession(email, null);
 await SQLiteCrypto.setSessionKey(email, password, currentUser.uid);
 try { localStorage.setItem('_gznd_session_active', '1'); sessionStorage.setItem('_gznd_session_active', '1'); } catch(e) {}
 if (typeof initDeviceShard === 'function') { await initDeviceShard().catch(() => {}); }
@@ -4262,184 +4182,6 @@ errorMessage = `Too many failed attempts. Account temporarily locked. Try again 
 }
 messageDiv.textContent = errorMessage;
 window.setStyle(messageDiv, 'color', 'st-color__497726');
-}
-}
-
-export async function _isAdminUser() {
-if (!currentUser || !firebaseDB) return false;
-try {
-const snap = await firebaseDB.collection('users').doc(currentUser.uid).get();
-return snap.exists && snap.data().role === 'admin';
-} catch(_) { return false; }
-}
-
-export function _accountsIndexRef() {
-return firebaseDB.collection('users').doc(currentUser.uid)
-  .collection('settings').doc('accounts');
-}
-
-export async function _readAccountsIndex() {
-const snap = await _accountsIndexRef().get();
-if (!snap.exists) return [];
-const data = snap.data() || {};
-return Array.isArray(data.accounts) ? data.accounts : [];
-}
-
-export async function _writeAccountsIndex(accounts) {
-await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: false });
-}
-
-export let _newAccountRole = 'user';
-
-export function setNewAccountRole(role) {
-_newAccountRole = role;
-const userBtn  = document.getElementById('acct-role-user');
-const adminBtn = document.getElementById('acct-role-admin');
-if (userBtn)  userBtn.classList.toggle('active',  role === 'user');
-if (adminBtn) adminBtn.classList.toggle('active', role === 'admin');
-}
-
-export function adminAddAccount(...a) { return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), { label: 'Account', late: true, fields: [['acct-new-email', 'Email']], verb: 'Add' }); }
-
-async function _adminAddAccountRaw() {
-const emailEl = document.getElementById('acct-new-email');
-const passEl  = document.getElementById('acct-new-password');
-const msgEl   = document.getElementById('acct-add-msg');
-const btn     = document.getElementById('acct-add-btn');
-if (!emailEl || !passEl || !msgEl) return;
-const email    = emailEl.value.trim();
-const password = passEl.value;
-const role     = _newAccountRole || 'user';
-const setMsg = (txt, color) => { if (msgEl) { msgEl.textContent = txt; msgEl.style.setProperty('--d-color', color || 'var(--text-muted)'); msgEl.classList.add('dc-color'); } };
-if (!email)              { setMsg('Enter an email address.', 'var(--danger)'); return; }
-if (password.length < 8) { setMsg('Password must be at least 8 characters.', 'var(--danger)'); return; }
-if (!navigator.onLine)   { setMsg('Internet required to create accounts.', 'var(--danger)'); return; }
-if (!(await window.gcCommit({}))) return;
-if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
-setMsg('Creating account...', 'var(--accent)');
-try {
-const secondaryApp = firebase.apps.find(a => a.name === '_adminCreate') ||
-  firebase.initializeApp(firebaseConfig, '_adminCreate');
-const secondaryAuth = secondaryApp.auth();
-const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-const newUid = cred.user.uid;
-await secondaryAuth.signOut();
-await firebaseDB.collection('users').doc(newUid).set({
-  email, role, approved: true,
-  createdAt: Date.now(), createdBy: currentUser.email
-});
-const entry = { uid: newUid, email, role, approved: true, createdAt: Date.now(), createdBy: currentUser.email };
-const existing = await _readAccountsIndex();
-await _writeAccountsIndex([...existing.filter(a => a.uid !== newUid), entry]);
-emailEl.value = '';
-passEl.value  = '';
-_newAccountRole = 'user';
-setNewAccountRole('user');
-setMsg('Account created successfully.', 'var(--accent-emerald)');
-showToast('Account created: ' + email, 'success');
-await loadAccountsList();
-} catch (err) {
-const code = err.code || '';
-if (code === 'auth/email-already-in-use') setMsg('This email is already registered.', 'var(--danger)');
-else if (code === 'auth/invalid-email')   setMsg('Invalid email address.', 'var(--danger)');
-else if (code === 'auth/weak-password')   setMsg('Password too weak.', 'var(--danger)');
-else setMsg('Failed: ' + (err.message || code), 'var(--danger)');
-console.error('adminAddAccount error:', _safeErr(err));
-} finally {
-if (btn) { btn.disabled = false; btn.textContent = 'Add Account'; }
-}
-}
-
-export async function loadAccountsList() {
-const listEl = document.getElementById('manage-accounts-list');
-if (!listEl) return;
-if (!navigator.onLine) {
-listEl.innerHTML = '<div class="u-ed93e92">Internet required to load accounts.</div>';
-return;
-}
-listEl.innerHTML = '<div class="u-ed93e92">Loading...</div>';
-try {
-const meSnap = await firebaseDB.collection('users').doc(currentUser.uid).get();
-const meData = meSnap.exists ? meSnap.data() : {};
-const meEntry = { uid: currentUser.uid, email: currentUser.email, approved: meData.approved !== false, ...meData };
-const others = await _readAccountsIndex().catch(() => []);
-const allAccounts = [meEntry, ...others.filter(a => a.uid !== currentUser.uid)];
-allAccounts.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
-if (allAccounts.length === 0) {
-listEl.innerHTML = '<div class="u-ed93e92">No accounts found.</div>';
-return;
-}
-listEl.innerHTML = allAccounts.map(acct => {
-const isMe     = acct.uid === currentUser.uid;
-const approved = acct.approved !== false;
-const dot = approved
-  ? '<span class="u-eca6a09 d-inline-block st-background__1ffaf3"></span>'
-  : '<span class="u-eca6a09 d-inline-block st-background__047b23"></span>';
-const actions = isMe
-  ? '<span class="u-28e6137">(you)</span>'
-  : [
-      '<button class="btn btn-theme st-font-size__569d78 st-padding__8f18e9 dc-color dc-border-color" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="--d-color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';--d-border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + '">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn btn-theme u-af19549 st-border-bottom__763610" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)">Remove</button>'
-    ].join('');
-return '<div class="u-a412d9a d-flex st-background__f38efd st-border-bottom__e54b2f">' +
-  '<div class="u-855cc88 d-flex">' + dot +
-  '<div class="u-33f2a66"><div class="u-d2751c2 has-overflow u-0da05dd">' +
-  esc(acct.email||acct.uid) + (isMe ? ' <em class=\"st-color__5872de st-font-size__c3e9d8\">(you)</em>' : '') + '</div>' +
-  '<div class="u-28c8f7e d-flex">' +
-  (acct.role === 'admin'
-    ? '<span class="u-e4e2d96 st-background__74ab11 st-border-bottom__cdd2cd">admin</span>'
-    : '<span class="u-e7a1434 st-background__f38efd st-border-bottom__e54b2f">user</span>') +
-  (!approved ? '<span class="u-d857e96">· Suspended</span>' : '') +
-  '</div>' +
-  '</div></div><div class="u-c59185e d-flex">' + actions + '</div></div>';
-}).join('');
-} catch(err) {
-listEl.innerHTML = '<div class="u-e135e79">Failed to load: ' + esc(err.message||'') + '</div>';
-console.error('loadAccountsList:', _safeErr(err));
-}
-}
-
-export async function adminToggleApproval(uid, email, currentlyApproved) {
-const confirmed = await showGlassConfirm(
-(currentlyApproved ? 'Suspend' : 'Reinstate') + ' the account for ' + email + '?' +
-(currentlyApproved ? '\n\nThey will be blocked on their next login attempt.' : '\n\nThey will be able to sign in again.'),
-{ title: currentlyApproved ? 'Suspend Account' : 'Reinstate Account',
-  confirmText: currentlyApproved ? 'Suspend' : 'Reinstate',
-  cancelText: 'Cancel', danger: currentlyApproved }
-);
-if (!confirmed) return;
-try {
-const _toggleUpdate = { approved: !currentlyApproved };
-if (currentlyApproved) {
-_toggleUpdate.forceLogout = { at: Date.now(), by: currentUser.email };
-}
-await firebaseDB.collection('users').doc(uid).update(_toggleUpdate).catch(() => {});
-const accounts = await _readAccountsIndex();
-const updated = accounts.map(a => a.uid === uid ? { ...a, approved: !currentlyApproved } : a);
-await _writeAccountsIndex(updated);
-await loadAccountsList();
-} catch(err) {
-window.notifyBlocking('Failed to update account.', 'error', 'Something went wrong');
-console.error('adminToggleApproval:', _safeErr(err));
-}
-}
-
-export async function adminRemoveAccount(uid, email) {
-if (uid === currentUser.uid) { window.notifyBlocking('You cannot remove your own account.', 'warning', 'Warning'); return; }
-const confirmed = await showGlassConfirm(
-'Remove access for ' + email + '?\n\nThey will be blocked immediately. Their stored data is preserved.\n\nTo fully delete the Firebase Auth account, use Firebase Console.',
-{ title: 'Remove Account', confirmText: 'Remove', cancelText: 'Cancel', danger: true }
-);
-if (!confirmed) return;
-try {
-await firebaseDB.collection('users').doc(uid).update({ approved: false, removedAt: Date.now(), removedBy: currentUser.email, forceLogout: { at: Date.now(), by: currentUser.email } }).catch(() => {});
-const accounts = await _readAccountsIndex();
-const updated = accounts.map(a => a.uid === uid ? { ...a, approved: false } : a);
-await _writeAccountsIndex(updated);
-await loadAccountsList();
-} catch(err) {
-window.notifyBlocking('Failed to remove account.', 'error', 'Something went wrong');
-console.error('adminRemoveAccount:', _safeErr(err));
 }
 }
 
@@ -4481,7 +4223,9 @@ if (currentUser && !window._forceLogoutSignOut) {
   }
 }
 let _savedAppMode = null;
+const _rolesCache = readRolesCache();
 try {
+  if (_rolesCache && !_rolesCache.legacy) throw new Error('roles-managed');
   const _modeKeys = [
     'appMode', 'appMode_timestamp',
     'repProfile', 'repProfile_timestamp',
@@ -4548,6 +4292,10 @@ if (typeof _clearDeviceIdStorage === 'function') {
   await _clearDeviceIdStorage().catch(() => {});
 }
 try { await wipeAllLocalData(); } catch (_) {}
+clearRolesCache();
+window._workspaceOwnerUid = null;
+window._userRoles = [];
+window._appliedSession = null;
 if (_savedAppMode && _savedAppMode.length && !window._forceLogoutSignOut) {
   await sqliteStore.setBatch(_savedAppMode).catch(() => {});
 }
@@ -4682,15 +4430,5 @@ window._gsiInitialized = _gsiInitialized;
 window._initGSIInOverlay = _initGSIInOverlay;
 window._handleGoogleBtnClick = _handleGoogleBtnClick;
 window.handleSignIn = handleSignIn;
-window._isAdminUser = _isAdminUser;
-window._accountsIndexRef = _accountsIndexRef;
-window._readAccountsIndex = _readAccountsIndex;
-window._writeAccountsIndex = _writeAccountsIndex;
-window._newAccountRole = _newAccountRole;
-window.setNewAccountRole = setNewAccountRole;
-window.adminAddAccount = adminAddAccount;
-window.loadAccountsList = loadAccountsList;
-window.adminToggleApproval = adminToggleApproval;
-window.adminRemoveAccount = adminRemoveAccount;
 window.signOut = signOut;
 window.updateSyncButton = updateSyncButton;

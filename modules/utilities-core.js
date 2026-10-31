@@ -11,7 +11,7 @@ import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.j
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
 import { deleteProdPhotos } from './prod-photos.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, salesRepsList, sqliteStore, validateTimestamp, validateUUID, readFileAsDataUrl, oldDebtNote, balanceAfterHtml, formatTime12, loadCollections } from './business.js';
+import { dataRootRef, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, salesRepsList, sqliteStore, validateTimestamp, validateUUID, readFileAsDataUrl, oldDebtNote, balanceAfterHtml, formatTime12, loadCollections } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { _applyPaymentTransferPendingPhoto, autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, deletePaymentTransfer, editEntityBasicInfo, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, toSafeDate } from './utilities-payments.js';
@@ -407,7 +407,7 @@ if (!firebaseDB || !currentUser) {
 throw new Error('Database or user not available');
 }
 const { collection, docId, data, action } = operation;
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 switch (action) {
 case 'set': {
 const setData = (data && typeof data === 'object') ? { ...data } : data;
@@ -1757,7 +1757,7 @@ data: null
 return;
 }
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 const batch = firebaseDB.batch();
 const deletionsRef = userRef.collection('deletions').doc(String(deletionRecord.id));
 batch.set(deletionsRef, {
@@ -1820,7 +1820,7 @@ await sqliteStore.set('deleted', Array.from(deletedRecordIds));
 if (firebaseDB && typeof currentUser !== 'undefined' && currentUser &&
 !window._firestoreNetworkDisabled && navigator.onLine) {
 try {
-const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userRef = dataRootRef();
 const expiredQuery = userRef.collection('deletions')
 .where('expiresAt', '<=', firebase.firestore.Timestamp.now());
 const snapshot = await expiredQuery.get();

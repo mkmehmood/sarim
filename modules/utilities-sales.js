@@ -17,7 +17,7 @@ import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, rese
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
 import { isMoneyRestricted, moneyLine, redactMoney } from './money-privacy.js';
-import { allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
+import { dataRootRef, allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, escapeHtml, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
@@ -4620,7 +4620,7 @@ try { await refreshAllDisplays(); } catch(e) { console.error('Display refresh er
 let cloudSyncSuccess = false;
 if (firebaseDB && currentUser) {
 try {
-  const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+  const userRef = dataRootRef();
   const collectionMapping = {
     'production':         { data: ensureArray(mergedData.production),                deltaName: 'production' },
     'sales':              { data: ensureArray(mergedData.sales), deltaName: 'sales' },
@@ -4915,7 +4915,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
     _set_defaultSettings(currentSettings);
     if (firebaseDB && currentUser) {
       try {
-        await firebaseDB.collection('users').doc(currentUser.uid)
+        await dataRootRef()
           .collection('settings').doc('config')
           .set({
             settings: {
@@ -4933,7 +4933,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
     let _restoreCloudOk = false;
     try {
       showToast('Uploading reversed data to cloud...', 'info');
-      const userRef = firebaseDB.collection('users').doc(currentUser.uid);
+      const userRef = dataRootRef();
       for (const [colName, records] of Object.entries(replaceData)) {
         try {
           const colRef = userRef.collection(colName);
@@ -5002,7 +5002,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
       try {
         const _restoreSigTs = Date.now();
         const _restoreDeviceId = (typeof getDeviceId === 'function') ? await getDeviceId().catch(() => 'unknown') : 'unknown';
-        await firebaseDB.collection('users').doc(currentUser.uid)
+        await dataRootRef()
           .collection('settings').doc('yearCloseSignal')
           .set({
             type:        'restore',
@@ -5146,8 +5146,6 @@ if (adminAnalytics) {
 adminAnalytics.classList.remove('hidden');
 window.setDisplay(adminAnalytics, 'block');
 }
-const manageRepsBtnAdmin = document.getElementById('btn-manage-reps');
-if (manageRepsBtnAdmin) window.setDisplay(manageRepsBtnAdmin, '');
 const mainDate = document.getElementById('rep-date');
 const adminDate = document.getElementById('admin-rep-date');
 if (mainDate && adminDate) {
@@ -5171,8 +5169,6 @@ updateRepLiveMap();
 } else {
 if (adminControls) window.setDisplay(adminControls, 'none');
 if (adminAnalytics) window.setDisplay(adminAnalytics, 'none');
-const manageRepsBtnRep = document.getElementById('btn-manage-reps');
-if (manageRepsBtnRep) window.setDisplay(manageRepsBtnRep, 'none');
 if (newTransCard) window.setDisplay(newTransCard, 'block');
 if (typeof renderRepCustomerTable === 'function') {
 renderRepCustomerTable();
@@ -6347,7 +6343,7 @@ let freshSales = await sqliteStore.get('sales', []);
 if (force && firebaseDB && currentUser &&
 !window._firestoreNetworkDisabled && navigator.onLine) {
 try {
-const userDocRef = firebaseDB.collection('users').doc(currentUser.uid);
+const userDocRef = dataRootRef();
 const snapshot = await userDocRef.collection('sales').get();
 if (!snapshot.empty) {
 const firestoreSales = [];
