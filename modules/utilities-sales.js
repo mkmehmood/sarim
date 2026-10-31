@@ -5,7 +5,7 @@ import { formatDayMonthYear, formatMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smCardEl, smProductionHtml } from './summary-card.js';
 import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
-import { customerHistoryMatcher } from './business.js';
+import { customerHistoryMatcher, selectedValueFilter } from './business.js';
 import { sxTile, sxGrid, sxHero, sxSplit, sxBreakdown, sxMargin } from './summary-kit.js';
 import { ownsNoPayable } from './raw-purchases.js';
 import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
@@ -21,7 +21,7 @@ import { dataRootRef, allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadg
 import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
-import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getPendingRepDeliveries, getPendingRepReturns, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
+import { _filterHistoryByPeriod, applyStockTransferFilter, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getPendingRepDeliveries, getPendingRepReturns, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getFormulaUnitsValue, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, getGoodsCreditUnitPrice, getReconciledRepReturnIds, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
 import { calculateRepAnalytics, calculateRepSalePreview, getPosition, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
@@ -5587,10 +5587,13 @@ _setFac('factoryAvailProfitUnit', await formatCurrency(profitPerKg) + '/kg');
 }
 
 export async function updateFactorySummaryCard() {
-const factory = ensureArray(await sqliteStore.get('factory'));
+const _fsFormula = selectedValueFilter('factory-formula-value');
+const _fsMatch = (entry) => !_fsFormula || String(entry && entry.formulaId || '').toLowerCase() === _fsFormula;
+const factory = ensureArray(await sqliteStore.get('factory')).filter(_fsMatch);
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
-const { inventory, production } = await loadCollections('inventory', 'production');
+const { inventory, production: _allProduction } = await loadCollections('inventory', 'production');
+const production = _allProduction.filter(_fsMatch);
 const mode = currentFactorySummaryMode || 'all';
 const selectedDateVal = document.getElementById('factory-date').value || localDateStr();
 const selectedDate = new Date(selectedDateVal);
@@ -6022,7 +6025,9 @@ updateCustomerCharts();
 
 export async function updateCustomerCharts() {
 if (isMoneyRestricted()) return;
-const { sales } = await loadCollections('sales');
+const { sales: _allChartSales } = await loadCollections('sales');
+const _chartMatch = customerHistoryMatcher('cust-name');
+const sales = _chartMatch ? _allChartSales.filter(item => _chartMatch(String(item.customerName || '').trim().toLowerCase())) : _allChartSales;
 if(custSalesChart) custSalesChart.destroy();
 if(custPaymentChart) custPaymentChart.destroy();
 const selectedDate = document.getElementById('cust-date').value;
@@ -6573,6 +6578,8 @@ const fromBtn = document.getElementById('stockTransferFromBtn');
 const toBtn = document.getElementById('stockTransferToBtn');
 const fromHidden = document.getElementById('stock-transfer-from-value');
 const toHidden = document.getElementById('stock-transfer-to-value');
+if (fromHidden) delete fromHidden.dataset.histPicked;
+if (toHidden) delete toHidden.dataset.histPicked;
 if (fromHidden && opts.length) {
 fromHidden.value = opts[0].value;
 const sp = fromBtn ? fromBtn.querySelector('span') : null;
@@ -6739,9 +6746,10 @@ sub: `${escapeHtml(formatDisplayDateTime(item.date, item.time))}${creator}`,
 amount: `${fmtNum(safeValue(Math.abs(item.net)))} kg`, tag: 'Transfer', tagTone: 'info',
 metrics: [{ label: 'Note', value: item.transferNote ? escapeHtml(item.transferNote) : '', wide: true }],
 actions: actionRowHtml('stocktransfer', item.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteStockTransfer('${escapeHtml(item.transferPairId)}') })()">Delete</button>`)
-}, { className: 'transfer-card', attrs: { 'data-date': item.date } }));
+}, { className: 'transfer-card', attrs: { 'data-date': item.date, 'data-from': item.store || '', 'data-to': item.transferPeerStore || '' } }));
 });
 list.replaceChildren(fragment);
+applyStockTransferFilter();
 }
 
 window.renderStockTransferHistory = renderStockTransferHistory;

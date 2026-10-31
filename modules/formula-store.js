@@ -448,6 +448,7 @@ export function syncFactoryFormulaPicker(pool) {
   const input = _el('factory-formula-value');
   if (input) input.value = pool || '';
   _renderChoice('factoryFormulaToggle', _items(view, view ? view.entryOrder : []), pool, (k) => { if (typeof window.selectFactoryFormula === 'function') window.selectFactoryFormula(k); }, 'No formula');
+  if (typeof window.refreshFactoryFormulaFilter === 'function') Promise.resolve(window.refreshFactoryFormulaFilter()).catch(() => {});
 }
 
 export function syncFactoryAvailPicker(pool) {

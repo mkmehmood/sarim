@@ -13,7 +13,7 @@ import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryM
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, formatTime12, repairStoredRecords, loadCollections } from './business.js';
+import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, routeHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
@@ -1143,19 +1143,24 @@ const selectedDate = new Date(selectedDateVal);
 if (isNaN(selectedDate.getTime())) return;
 const weekStart = new Date(selectedDate);
 weekStart.setDate(selectedDate.getDate() - 6);
+const formula = selectedValueFilter('factory-formula-value');
+let total = 0, shown = 0;
 document.querySelectorAll('#factoryHistoryList .hc-card').forEach(item => {
+total++;
 const ds = item.getAttribute('data-date');
-if (!ds) { window.setDisplay(item, ''); return; }
-const cd = new Date(ds);
-if (isNaN(cd.getTime())) { window.setDisplay(item, ''); return; }
-let show = false;
-if (mode === 'daily') show = (ds === selectedDateVal);
-else if (mode === 'weekly') show = (cd >= weekStart && cd <= selectedDate);
-else if (mode === 'monthly') show = (cd.getMonth() === selectedDate.getMonth() && cd.getFullYear() === selectedDate.getFullYear());
-else if (mode === 'yearly') show = (cd.getFullYear() === selectedDate.getFullYear());
-else show = true;
+const cd = ds ? new Date(ds) : null;
+let inPeriod = true;
+if (cd && !isNaN(cd.getTime())) {
+if (mode === 'daily') inPeriod = (ds === selectedDateVal);
+else if (mode === 'weekly') inPeriod = (cd >= weekStart && cd <= selectedDate);
+else if (mode === 'monthly') inPeriod = (cd.getMonth() === selectedDate.getMonth() && cd.getFullYear() === selectedDate.getFullYear());
+else if (mode === 'yearly') inPeriod = (cd.getFullYear() === selectedDate.getFullYear());
+}
+const show = inPeriod && (!formula || String(item.getAttribute('data-formula') || '').toLowerCase() === formula);
+if (show) shown++;
 window.setDisplay(item, show ? '' : 'none');
 });
+_showFilterEmpty('#factoryHistoryList', total, shown, formula ? 'No production for this formula in this period.' : 'No production in this period.');
 }
 
 export function _filterPaymentHistoryByPeriod() {
@@ -1167,13 +1172,48 @@ let startDate = new Date(0);
 if (period === 'today') startDate = today;
 else if (period === 'week') { startDate = new Date(today); startDate.setDate(today.getDate() - 7); }
 else if (period === 'month') { startDate = new Date(today); startDate.setDate(today.getDate() - 30); }
+const matchName = customerHistoryMatcher('expenseName');
+let total = 0, shown = 0;
 document.querySelectorAll('#paymentHistoryList .card').forEach(card => {
+total++;
 const ds = card.getAttribute('data-date');
-if (!ds) { window.setDisplay(card, ''); return; }
-const cd = new Date(ds);
-if (isNaN(cd.getTime())) { window.setDisplay(card, ''); return; }
-window.setDisplay(card, (cd >= startDate) ? '' : 'none');
+const cd = ds ? new Date(ds) : null;
+const inPeriod = !cd || isNaN(cd.getTime()) || cd >= startDate;
+const show = inPeriod && (!matchName || matchName(String(card.getAttribute('data-entity') || '')));
+if (show) shown++;
+window.setDisplay(card, show ? '' : 'none');
 });
+_showFilterEmpty('#paymentHistoryList', total, shown, matchName ? 'No matching payments for this period. Try another period or clear the name.' : 'No payments for this period.');
+}
+
+export function applyPaymentHistoryFilter() {
+_filterPaymentHistoryByPeriod();
+}
+
+export function applyStockTransferFilter() {
+const match = routeHistoryMatcher('stock-transfer-from-value', 'stock-transfer-to-value');
+let total = 0, shown = 0;
+document.querySelectorAll('#stockTransferHistoryList .card').forEach(card => {
+total++;
+const show = !match || match(card.getAttribute('data-from'), card.getAttribute('data-to'));
+if (show) shown++;
+window.setDisplay(card, show ? '' : 'none');
+});
+_showFilterEmpty('#stockTransferHistoryList', total, shown, 'No transfers match the selected stores. Change the stores to see more.');
+}
+
+export function applyPaymentTransferFilter() {
+const matchFrom = customerHistoryMatcher('payment-transfer-from-search');
+const matchTo = customerHistoryMatcher('payment-transfer-to-search');
+let total = 0, shown = 0;
+document.querySelectorAll('#paymentTransferHistoryList .card').forEach(card => {
+total++;
+const show = (!matchFrom || matchFrom(String(card.getAttribute('data-from') || ''))) &&
+(!matchTo || matchTo(String(card.getAttribute('data-to') || '')));
+if (show) shown++;
+window.setDisplay(card, show ? '' : 'none');
+});
+_showFilterEmpty('#paymentTransferHistoryList', total, shown, 'No transfers match the selected entities. Clear the names to see all.');
 }
 
 export function _filterHistoryByPeriod(listSelector, refDateStr, mode) {
@@ -1207,21 +1247,26 @@ if (mode === 'year') return cd.getFullYear() === refDate.getFullYear();
 return true;
 }
 
-function _showHistoryFilterEmpty(listSelector, total, shown, mode, byName) {
+function _showFilterEmpty(listSelector, total, shown, message) {
 const list = document.querySelector(listSelector);
 if (!list || !list.querySelectorAll) return;
 list.querySelectorAll('.hist-filter-empty').forEach(n => n.remove());
 if (total === 0 || shown > 0) return;
-const labels = { day: 'this day', week: 'this week', month: 'this month', year: 'this year', all: 'all time' };
-const msg = byName ? `No matching sales for ${labels[mode] || 'this period'}. Try another period or clear the name.` : `No sales for ${labels[mode] || 'this period'}.`;
 const holder = document.createElement('div');
 holder.className = 'hist-filter-empty';
-holder.innerHTML = hcEmptyHtml(msg);
+holder.innerHTML = hcEmptyHtml(message);
 list.appendChild(holder);
+}
+
+function _showHistoryFilterEmpty(listSelector, total, shown, mode, byName) {
+const labels = { day: 'this day', week: 'this week', month: 'this month', year: 'this year', all: 'all time' };
+const msg = byName ? `No matching sales for ${labels[mode] || 'this period'}. Try another period or clear the name.` : `No sales for ${labels[mode] || 'this period'}.`;
+_showFilterEmpty(listSelector, total, shown, msg);
 }
 
 export function applyCustomerHistoryFilter(mode) {
 if (mode === 'rep') { if (typeof renderRepHistory === 'function') renderRepHistory(); return; }
+if (typeof window.updateCustomerCharts === 'function') Promise.resolve(window.updateCustomerCharts()).catch(() => {});
 if (typeof window.recomputeCustomerSummary === 'function' && window.recomputeCustomerSummary()) return;
 const refDate = (document.getElementById('cust-date') || {}).value || localDateStr();
 _filterHistoryByPeriod('#custHistoryList', refDate, currentSalesSummaryMode || 'day');
@@ -1836,7 +1881,7 @@ chips: [entityType && entityType !== 'Unknown' ? hcChip(String(entityType)) : ''
 amount: fmtAmt(safeValue(transaction.amount)), tag: isIn ? 'In' : 'Out', tagTone: isIn ? 'good' : 'bad',
 metrics: [{ label: 'Description', value: esc(transaction.description || 'No description'), wide: true }],
 actions: deleteButton
-}, { className: isSettled ? 'is-settled-record' : '', attrs: { 'data-date': transaction.date } });
+}, { className: isSettled ? 'is-settled-record' : '', attrs: { 'data-date': transaction.date, 'data-entity': String(entityName || '').trim().toLowerCase() } });
 _phFrag.appendChild(card);
 }
 if (sortedTransactions.length === 0) {
@@ -2155,7 +2200,10 @@ window.Dropdown.show(resultsDiv, input);
 }
 
 export function selectExpense(name, type) {
-document.getElementById('expenseName').value = name;
+const _nameInput = document.getElementById('expenseName');
+_nameInput.value = name;
+_nameInput.dataset.histCustomer = String(name || '').trim().toLowerCase();
+applyPaymentHistoryFilter();
 window.Dropdown.hide(document.getElementById('expense-search-results'));
 if (!name || typeof name !== 'string') {
 document.getElementById('expenseAmount').focus();
@@ -2247,6 +2295,9 @@ grp.appendChild(b);
 
 function _resetExpenseForm() {
 ['expenseName', 'expenseAmount', 'expenseDescription'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+const nameInput = document.getElementById('expenseName');
+if (nameInput) nameInput.dataset.histCustomer = '';
+applyPaymentHistoryFilter();
 }
 
 async function applyPaymentEdit(ed, v) {
@@ -2351,6 +2402,7 @@ const cat = t.isExpense ? 'operating' : t.type;
 selectExpenseCategory(cat, document.getElementById('btn-category-' + (cat === 'operating' ? 'operating' : cat.toLowerCase())));
 const set = (eid, val) => { const el = document.getElementById(eid); if (el) el.value = val; };
 set('expenseName', t.entityName || '');
+applyPaymentHistoryFilter();
 set('expenseAmount', t.amount);
 set('expenseDate', editDateValue(t));
 set('expenseDescription', t.description || '');
@@ -4063,7 +4115,10 @@ window.notifyBlocking('Failed to delete expense. Please try again.', 'error', 'S
 }
 
 export function clearExpenseForm() {
-document.getElementById('expenseName').value = '';
+const _nameInput = document.getElementById('expenseName');
+_nameInput.value = '';
+_nameInput.dataset.histCustomer = '';
+applyPaymentHistoryFilter();
 document.getElementById('expenseAmount').value = '';
 document.getElementById('expenseDescription').value = '';
 document.getElementById('expenseDate').value = localDateStr();
@@ -6191,6 +6246,9 @@ calculateRepCustomerStatsForDisplay(value);
 }
 if (input) input.dataset.histCustomer = String(value || '').trim().toLowerCase();
 applyCustomerHistoryFilter('rep');
+} else if (type === 'entity' && (inputId === 'payment-transfer-from-search' || inputId === 'payment-transfer-to-search')) {
+if (input) input.dataset.histCustomer = String(value || '').trim().toLowerCase();
+applyPaymentTransferFilter();
 } else if (type === 'name' && inputId === 'cust-add-search') {
 if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 } else if (type === 'repName' && inputId === 'rep-cust-add-search') {
@@ -6842,8 +6900,8 @@ if (dateInput && !dateInput.value) {
 const d = new Date();
 dateInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
-const fromSearch = document.getElementById('payment-transfer-from-search'); if (fromSearch) { fromSearch.value = ''; fromSearch.removeAttribute('data-entity-id'); }
-const toSearch = document.getElementById('payment-transfer-to-search'); if (toSearch) { toSearch.value = ''; toSearch.removeAttribute('data-entity-id'); }
+const fromSearch = document.getElementById('payment-transfer-from-search'); if (fromSearch) { fromSearch.value = ''; fromSearch.dataset.histCustomer = ''; fromSearch.removeAttribute('data-entity-id'); }
+const toSearch = document.getElementById('payment-transfer-to-search'); if (toSearch) { toSearch.value = ''; toSearch.dataset.histCustomer = ''; toSearch.removeAttribute('data-entity-id'); }
 const fromHidden = document.getElementById('payment-transfer-from-value'); if (fromHidden) fromHidden.value = '';
 const toHidden = document.getElementById('payment-transfer-to-value'); if (toHidden) toHidden.value = '';
 const fromResults = document.getElementById('payment-transfer-from-results'); if (fromResults) window.Dropdown.hide(fromResults);
@@ -6976,6 +7034,7 @@ const fs = document.getElementById('payment-transfer-from-search'); if (fs) fs.s
 set('payment-transfer-to-value', inn.entityId);
 set('payment-transfer-to-search', inn.entityName);
 const ts = document.getElementById('payment-transfer-to-search'); if (ts) ts.setAttribute('data-entity-id', inn.entityId);
+applyPaymentTransferFilter();
 set('payment-transfer-date', editDateValue(out));
 set('payment-transfer-amount', out.amount);
 const prefix = `Transfer to ${inn.entityName}: `;
@@ -7040,10 +7099,11 @@ chips: [photoBtn],
 amount: fmtAmt(t.amount), tag: 'Transfer', tagTone: 'info',
 metrics: [{ label: 'Description', value: t.description ? esc(t.description) : '', wide: true }],
 actions: actionRowHtml('paytransfer', t.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>`)
-}, { className: 'transfer-card', attrs: { 'data-date': t.date } }));
+}, { className: 'transfer-card', attrs: { 'data-date': t.date, 'data-from': String(t.entityName || '').trim().toLowerCase(), 'data-to': String(t.transferPeerEntityName || '').trim().toLowerCase() } }));
 if (t.id) photoIds.push([photoBadgeId, 'expense:' + t.id]);
 });
 list.replaceChildren(fragment);
+applyPaymentTransferFilter();
 if (photoIds.length) {
 sqliteStore.get('photos').then(ph => {
 photoIds.forEach(([badgeId, key]) => {
@@ -7141,6 +7201,9 @@ window.refreshAllDisplays = refreshAllDisplays;
 window._filterFactoryHistoryByMode = _filterFactoryHistoryByMode;
 window._filterPaymentHistoryByPeriod = _filterPaymentHistoryByPeriod;
 window._filterHistoryByPeriod = _filterHistoryByPeriod;
+window.applyPaymentHistoryFilter = applyPaymentHistoryFilter;
+window.applyStockTransferFilter = applyStockTransferFilter;
+window.applyPaymentTransferFilter = applyPaymentTransferFilter;
 window.setSalesSummaryMode = setSalesSummaryMode;
 window.setPerfOverviewMode = setPerfOverviewMode;
 window.setOverviewMode = setOverviewMode;

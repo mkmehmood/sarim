@@ -19,7 +19,7 @@ const doc = {
 const win = { setDisplay: (el, v) => { el.shown = v !== 'none'; } };
 
 const biz = extractFunctions('modules/business.js', ['selectedCustomerFilter', 'customerHistoryMatcher'], { document: doc });
-const pay = extractFunctions('modules/utilities-payments.js', ['_filterHistoryByPeriod', '_cardInPeriod', '_showHistoryFilterEmpty'], {
+const pay = extractFunctions('modules/utilities-payments.js', ['_filterHistoryByPeriod', '_cardInPeriod', '_showHistoryFilterEmpty', '_showFilterEmpty'], {
   document: doc, window: win, customerHistoryMatcher: biz.customerHistoryMatcher, hcEmptyHtml: (m) => `<div>${m}</div>`
 });
 const visible = (mode) => { pay._filterHistoryByPeriod('#custHistoryList', '2026-10-28', mode); return cards.filter((c) => c.shown).map((c) => `${c.customer}@${c.date}`); };
