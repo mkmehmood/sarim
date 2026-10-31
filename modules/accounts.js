@@ -74,18 +74,35 @@ export function renderNewAccountRoles() {
   });
 }
 
+export function resetAccountForm() {
+  ['acct-new-email', 'acct-new-password', 'acct-new-name'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  _newRoles.clear();
+  renderNewAccountRoles();
+}
+
 export function toggleNewAccountRole(role) {
   if (!ROLE_KEYS.includes(role)) return;
   if (_newRoles.has(role)) _newRoles.delete(role); else _newRoles.add(role);
   renderNewAccountRoles();
 }
 
-function _setMsg(text, tone) {
-  const el = document.getElementById('acct-add-msg');
-  if (!el) return;
-  el.textContent = text;
-  el.classList.remove('acct-msg-ok', 'acct-msg-err', 'acct-msg-info');
-  if (tone) el.classList.add('acct-msg-' + tone);
+function _warn(title, message) {
+  window.notifyBlocking(message, 'warning', title);
+}
+
+function _fail(title, message) {
+  window.notifyBlocking(message, 'error', title);
+}
+
+function _who(acct) {
+  return (acct && (acct.name || acct.email)) || 'this account';
+}
+
+function _roleNames(roles) {
+  return cleanRoles(roles).map(r => ROLE_LABELS[r]).join(', ') || 'none';
 }
 
 export function adminAddAccount(...a) {
@@ -105,15 +122,14 @@ async function _adminAddAccountRaw() {
   const password = passEl.value;
   const name = nameEl.value.trim();
   const roles = cleanRoles([..._newRoles]);
-  if (!email) { _setMsg('Enter an email address.', 'err'); return; }
-  if (password.length < MIN_PASSWORD) { _setMsg(`Password must be at least ${MIN_PASSWORD} characters.`, 'err'); return; }
-  if (!name) { _setMsg('Enter a name.', 'err'); return; }
-  if (roles.length === 0) { _setMsg('Select at least one role.', 'err'); return; }
-  if (!navigator.onLine) { _setMsg('Internet required to create accounts.', 'err'); return; }
-  if (!currentUser || !firebaseDB) { _setMsg('Sign in again to manage accounts.', 'err'); return; }
+  if (!email) { _warn('Email Required', 'Enter an email address for the new account.'); return; }
+  if (password.length < MIN_PASSWORD) { _warn('Password Too Short', `The password must be at least ${MIN_PASSWORD} characters.`); return; }
+  if (!name) { _warn('Name Required', 'Enter the name of the person who will use this account.'); return; }
+  if (roles.length === 0) { _warn('Select a Role', 'Choose at least one role. The account sees only the tabs of the roles you select.'); return; }
+  if (!navigator.onLine) { _warn('No Internet', 'Internet is required to create or change accounts.'); return; }
+  if (!currentUser || !firebaseDB) { _warn('Sign In Again', 'Sign in again to manage accounts.'); return; }
   if (!(await window.gcCommit({}))) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
-  _setMsg('Saving account...', 'info');
   const wsUid = dataRootUid();
   let secondaryAuth = null;
   try {
@@ -131,7 +147,7 @@ async function _adminAddAccountRaw() {
         uid = cred.user.uid;
         adopted = true;
       } catch (_signInErr) {
-        _setMsg('This email is already registered and the password does not match its existing login.', 'err');
+        _warn('Email Already Registered', 'This email already has a login, and the password you entered does not match it. Enter that login\'s current password to add it to your workspace.');
         return;
       }
     }
@@ -142,10 +158,15 @@ async function _adminAddAccountRaw() {
       existing = snap && snap.exists ? snap.data() : null;
       const known = new Set((await _readAccountsIndex().catch(() => [])).map(x => x.uid));
       const verdict = canAdoptAccount(existing, uid, wsUid, known);
-      if (!verdict.ok) { _setMsg('This login belongs to another workspace and cannot be added here.', 'err'); return; }
+      if (!verdict.ok) { _warn('Belongs to Another Workspace', 'This login is part of a different workspace, so it cannot be added here.'); return; }
+      const proceed = await showGlassConfirm(
+        `${email} already has a login.\n\nName: ${name}\nRoles: ${_roleNames(roles)}\n\nIt keeps its password and data and gets these roles in your workspace.`,
+        { title: 'Add Existing Login', confirmText: 'Add to Workspace', cancelText: 'Cancel' }
+      );
+      if (!proceed) return;
     }
     const isOwnerAcct = uid === wsUid || uid === currentUser.uid;
-    if (isOwnerAcct && !roles.includes('admin')) { _setMsg('Your own account must keep the Admin role.', 'err'); return; }
+    if (isOwnerAcct && !roles.includes('admin')) { _warn('Admin Role Required', 'Your own account must keep the Admin role.'); return; }
     const FV = firebase.firestore.FieldValue;
     const payload = { email, displayName: name, roles, approved: true, role: FV.delete() };
     if (!isOwnerAcct) payload.ownerUid = wsUid;
@@ -161,15 +182,14 @@ async function _adminAddAccountRaw() {
     nameEl.value = '';
     _newRoles.clear();
     renderNewAccountRoles();
-    _setMsg(adopted ? 'Existing login added to your workspace.' : 'Account created successfully.', 'ok');
-    showToast((adopted ? 'Account updated: ' : 'Account created: ') + email, 'success');
+    showToast((adopted ? 'Existing login added: ' : 'Account created: ') + email + (roles.includes('rep') ? ' (added to the rep list)' : ''), 'success');
     await loadAccountsList();
   } catch (err) {
     const code = (err && err.code) || '';
-    if (code === 'auth/invalid-email') _setMsg('Invalid email address.', 'err');
-    else if (code === 'auth/weak-password') _setMsg('Password too weak.', 'err');
-    else if (code === 'permission-denied') _setMsg('Permission denied. Only an active Admin can manage accounts.', 'err');
-    else _setMsg('Failed: ' + ((err && err.message) || code), 'err');
+    if (code === 'auth/invalid-email') _warn('Invalid Email', 'That email address is not valid.');
+    else if (code === 'auth/weak-password') _warn('Weak Password', 'Choose a stronger password.');
+    else if (code === 'permission-denied') _fail('Permission Denied', 'Only an active Admin of this workspace can manage accounts.');
+    else _fail('Account Not Saved', (err && err.message) || code || 'Something went wrong.');
     console.error('adminAddAccount error:', _safeErr(err));
   } finally {
     if (secondaryAuth) secondaryAuth.signOut().catch(() => {});
@@ -204,7 +224,7 @@ export function prefillRepAccount(name) {
   _newRoles.add('rep');
   renderNewAccountRoles();
   if (emailEl) emailEl.focus();
-  _setMsg('Enter the rep\'s email and password. If the email already has a login, use its current password to adopt it.', 'info');
+  showToast('Enter the rep\'s email and password. For an existing login, use its current password.', 'info', 4000);
 }
 
 function _protectedUid(uid) {
@@ -286,27 +306,38 @@ export async function adminSetAccountRole(uid, role) {
   if (!acct || !ROLE_KEYS.includes(role)) return;
   const next = toggleRole(acct.roles, role);
   if (_protectedUid(uid) && !next.includes('admin')) {
-    window.notifyBlocking('The Admin role cannot be removed from your own account or the workspace owner.', 'warning', 'Warning');
+    _warn('Admin Role Required', 'The Admin role cannot be removed from your own account or the workspace owner.');
     return;
   }
-  if (!navigator.onLine) { window.notifyBlocking('Internet required to change roles.', 'warning', 'Warning'); return; }
+  if (!navigator.onLine) { _warn('No Internet', 'Internet is required to change roles.'); return; }
+  if (role === 'admin') {
+    const granting = next.includes('admin');
+    const ok = await showGlassConfirm(
+      granting
+        ? `Give ${_who(acct)} full Admin access?\n\nAdmins see every tab and all money figures and can manage accounts.`
+        : `Remove Admin access from ${_who(acct)}?\n\nThey keep only their other roles.`,
+      { title: granting ? 'Grant Admin Access' : 'Remove Admin Access', confirmText: granting ? 'Grant Admin' : 'Remove Admin', cancelText: 'Cancel', danger: granting }
+    );
+    if (!ok) return;
+  }
   const previous = acct.roles;
   acct.roles = next;
   renderAccountsList();
   try {
     await firebaseDB.collection('users').doc(uid).set({ roles: next, role: firebase.firestore.FieldValue.delete() }, { merge: true });
     await _patchAccountsIndex(uid, { ...acct, roles: next });
-    if (next.includes('rep') && !previous.includes('rep')) await ensureRepInList(acct.name || (acct.email || '').split('@')[0]);
+    const addedRep = next.includes('rep') && !previous.includes('rep') && await ensureRepInList(acct.name || (acct.email || '').split('@')[0]);
+    showToast(`${_who(acct)}: ${_roleNames(next)}${addedRep ? ' (added to the rep list)' : ''}`, 'success', 2200);
   } catch (err) {
     acct.roles = previous;
     renderAccountsList();
-    window.notifyBlocking('Failed to update roles.', 'error', 'Something went wrong');
+    _fail('Roles Not Updated', 'The role change could not be saved. Check your connection and try again.');
     console.error('adminSetAccountRole:', _safeErr(err));
   }
 }
 
 export async function adminToggleApproval(uid, email, currentlyApproved) {
-  if (_protectedUid(uid)) { window.notifyBlocking('You cannot suspend your own account or the workspace owner.', 'warning', 'Warning'); return; }
+  if (_protectedUid(uid)) { _warn('Not Allowed', 'You cannot suspend your own account or the workspace owner.'); return; }
   const confirmed = await showGlassConfirm(
     (currentlyApproved ? 'Suspend' : 'Reinstate') + ' the account for ' + email + '?' +
     (currentlyApproved ? '\n\nThey will be signed out immediately.' : '\n\nThey will be able to sign in again.'),
@@ -323,14 +354,15 @@ export async function adminToggleApproval(uid, email, currentlyApproved) {
     const acct = _accounts.find(a => a.uid === uid);
     if (acct) { acct.approved = !currentlyApproved; await _patchAccountsIndex(uid, { ...acct }); }
     renderAccountsList();
+    showToast(currentlyApproved ? `Suspended: ${email}` : `Reinstated: ${email}`, 'success', 2200);
   } catch (err) {
-    window.notifyBlocking('Failed to update account.', 'error', 'Something went wrong');
+    _fail('Account Not Updated', 'The change could not be saved. Check your connection and try again.');
     console.error('adminToggleApproval:', _safeErr(err));
   }
 }
 
 export async function adminRemoveAccount(uid, email) {
-  if (_protectedUid(uid)) { window.notifyBlocking('You cannot remove your own account or the workspace owner.', 'warning', 'Warning'); return; }
+  if (_protectedUid(uid)) { _warn('Not Allowed', 'You cannot remove your own account or the workspace owner.'); return; }
   const confirmed = await showGlassConfirm(
     'Remove ' + email + '?\n\nThey are signed out immediately and lose access. Workspace data is kept.\n\nTheir login still exists in Firebase Authentication; adding the same email again re-uses it.',
     { title: 'Remove Account', confirmText: 'Remove', cancelText: 'Cancel', danger: true }
@@ -343,8 +375,9 @@ export async function adminRemoveAccount(uid, email) {
     await _patchAccountsIndex(uid, null);
     _accounts = _accounts.filter(a => a.uid !== uid);
     renderAccountsList();
+    showToast(`Removed: ${email}`, 'success', 2200);
   } catch (err) {
-    window.notifyBlocking('Failed to remove account.', 'error', 'Something went wrong');
+    _fail('Account Not Removed', 'The account could not be removed. Check your connection and try again.');
     console.error('adminRemoveAccount:', _safeErr(err));
   }
 }
@@ -432,6 +465,7 @@ window._accountsIndexRef = _accountsIndexRef;
 window._readAccountsIndex = _readAccountsIndex;
 window._writeAccountsIndex = _writeAccountsIndex;
 window.toggleNewAccountRole = toggleNewAccountRole;
+window.resetAccountForm = resetAccountForm;
 window.adminAddAccount = adminAddAccount;
 window.loadAccountsList = loadAccountsList;
 window.adminSetAccountRole = adminSetAccountRole;

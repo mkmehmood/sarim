@@ -6718,7 +6718,7 @@ export const _overlayStack = (() => {
     'formula-store-edit-screen':   { closeFn: () => closeStandaloneScreen('formula-store-edit-screen'), contentSel: '.screen-body' },
     'raw-material-screen':         { closeFn: () => closeStandaloneScreen('raw-material-screen'),     contentSel: '.screen-body' },
     'add-entity-screen':           { closeFn: () => closeStandaloneScreen('add-entity-screen'),       contentSel: '.screen-body' },
-    'app-accounts-screen':         { closeFn: () => closeStandaloneScreen('app-accounts-screen'),     contentSel: '.screen-body' },
+    'app-accounts-screen':         { closeFn: () => { if (typeof window.resetAccountForm === 'function') window.resetAccountForm(); closeStandaloneScreen('app-accounts-screen'); },     contentSel: '.screen-body' },
     'sync-data-screen':            { closeFn: () => closeStandaloneScreen('sync-data-screen'),        contentSel: '.screen-body' },
     'backup-restore-screen':       { closeFn: () => closeStandaloneScreen('backup-restore-screen'),   contentSel: '.screen-body' },
     'recycle-bin-screen':          { closeFn: () => closeStandaloneScreen('recycle-bin-screen'),      contentSel: '.screen-body' },

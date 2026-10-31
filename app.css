@@ -3881,7 +3881,6 @@ body.offline-page button { background: var(--accent-teal); color: var(--white); 
 .u-6068d65 { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
 .u-a0d4a03 { margin-bottom: 14px; }
 .u-39ae4db { margin-bottom: 10px; }
-.u-04b7f5f { font-size: 0.75rem; min-height: 18px; margin-bottom: 8px; }
 .u-3e0b028 { border-top: 1px solid var(--glass-border); padding-top: 14px; }
 .u-79e0958 { align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .u-540eca8 { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -5617,6 +5616,3 @@ html.is-android *, html.is-android *::before, html.is-android *::after { backdro
 .acct-suspend { color: var(--accent-gold); }
 .acct-reinstate { color: var(--accent-emerald); }
 .acct-remove { color: var(--danger); }
-.acct-msg-ok { color: var(--accent-emerald); }
-.acct-msg-err { color: var(--danger); }
-.acct-msg-info { color: var(--accent); }
