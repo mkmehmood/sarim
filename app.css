@@ -5603,3 +5603,5 @@ html.is-android *, html.is-android *::before, html.is-android *::after { backdro
 .acct-suspend { color: var(--accent-gold); }
 .acct-reinstate { color: var(--accent-emerald); }
 .acct-remove { color: var(--danger); }
+
+.acct-badge { margin-left: 8px; min-width: 20px; padding: 1px 7px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; text-align: center; background: var(--danger); color: #fff; }

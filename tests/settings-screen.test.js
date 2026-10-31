@@ -70,7 +70,7 @@ describe('settings screen', () => {
     assert.deepEqual(groups, [
       ['Data & Sync', ['Sync Data', 'Backup & Restore', 'Recycle Bin', 'Database Structure']],
       ['Appearance & Device', ['Theme', 'Sound & Haptics']],
-      ['Security', ['Fingerprint Lock', 'App Accounts']],
+      ['Security', ['Fingerprint Lock', 'App Accounts', 'Approvals']],
       ['Business', ['Store Manager']],
       ['Danger Zone', ['Close Financial Year']]
     ]);

@@ -1055,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   }
   try {
     await loadAllData();
-    setTimeout(() => { cleanupOldDeletions().catch(e => console.warn('[startup] deletion cleanup failed:', _safeErr(e))); }, 5000);
+    setTimeout(() => { if (typeof window.isGatedSession === 'function' && window.isGatedSession()) return; cleanupOldDeletions().catch(e => console.warn('[startup] deletion cleanup failed:', _safeErr(e))); }, 5000);
     if (typeof OfflineQueue !== 'undefined') await OfflineQueue.init();
     loadFirestoreStats();
     try { sessionStorage.setItem('_gznd_bootstrap_ran', '1'); } catch(_) {}
@@ -4117,6 +4117,7 @@ export function closeDataMenu() {
 export const _recoveredThisSession = new Set();
 
 export async function purgeRecoveredId(id, collectionName, cleanRecord, newId) {
+  if (typeof window.isGatedSession === 'function' && window.isGatedSession()) return;
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   const sid    = String(id);
@@ -4282,6 +4283,7 @@ async function _clearErasedIds(ids) {
 }
 
 export async function flushErasedTombstones() {
+  if (typeof window.isGatedSession === 'function' && window.isGatedSession()) return;
   try {
     const pending = ensureArray(await sqliteStore.get('erased')).map(String);
     if (!pending.length || !firebaseDB || !currentUser) return;
@@ -5167,6 +5169,10 @@ window.emptyRecycleBin = emptyRecycleBin;
 
 export async function hardDeleteRecord(id, collectionName, _isPairDelete = false) {
   if (isMoneyRestricted() && !isRecycleRecordAllowed({ collection: collectionName })) return false;
+  if (typeof window.isGatedSession === 'function' && window.isGatedSession()) {
+    window.notifyBlocking('Only an admin can delete a record permanently.', 'warning', 'Admin Required');
+    return false;
+  }
   if (!id || !collectionName) return false;
   const sid = String(id);
   try {
@@ -6719,6 +6725,7 @@ export const _overlayStack = (() => {
     'raw-material-screen':         { closeFn: () => closeStandaloneScreen('raw-material-screen'),     contentSel: '.screen-body' },
     'add-entity-screen':           { closeFn: () => closeStandaloneScreen('add-entity-screen'),       contentSel: '.screen-body' },
     'app-accounts-screen':         { closeFn: () => { if (typeof window.resetAccountForm === 'function') window.resetAccountForm(); closeStandaloneScreen('app-accounts-screen'); },     contentSel: '.screen-body' },
+    'approvals-screen':            { closeFn: () => closeStandaloneScreen('approvals-screen'),        contentSel: '.screen-body' },
     'sync-data-screen':            { closeFn: () => closeStandaloneScreen('sync-data-screen'),        contentSel: '.screen-body' },
     'backup-restore-screen':       { closeFn: () => closeStandaloneScreen('backup-restore-screen'),   contentSel: '.screen-body' },
     'recycle-bin-screen':          { closeFn: () => closeStandaloneScreen('recycle-bin-screen'),      contentSel: '.screen-body' },

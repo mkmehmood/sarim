@@ -408,6 +408,10 @@ throw new Error('Database or user not available');
 }
 const { collection, docId, data, action } = operation;
 const userRef = dataRootRef();
+if (typeof window.gatesCollection === 'function' && window.gatesCollection(collection)) {
+await window.submitPending(collection, docId, action === 'delete' ? 'delete' : 'set', action === 'delete' ? null : { ...(data && typeof data === 'object' ? data : {}), id: docId });
+return;
+}
 switch (action) {
 case 'set': {
 const setData = (data && typeof data === 'object') ? { ...data } : data;

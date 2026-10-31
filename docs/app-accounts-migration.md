@@ -46,3 +46,27 @@ rep's name, and the name is carried over exactly.
 - The rep's name in the list equals the name on their old sales (`salesRep`). If a
   history looks empty, the name was typed differently: add the account again using
   the name tapped from the panel.
+
+## Approvals (admin sign-off for team accounts)
+Actions from non-admin accounts (Rep, Production, Factory, Payments, Sales) wait for
+the admin before they become shared records. Admins and stand-alone accounts are
+not affected.
+
+- **What waits:** new, changed and deleted records in sales, rep sales, payments,
+  expenses, production, factory, customers, returns, raw materials, entities and
+  calculations.
+- **Admin:** Settings, then Security, then **Approvals** (a red count shows how many
+  are waiting; a device notification arrives for each new one). Each row has
+  **Approve** and **Discard**, each with a confirmation dialog. **Approve all** and
+  **Discard all** handle the whole queue.
+- **Team member:** keeps working as before and sees "Sent to the admin for approval".
+  When the admin decides, the device shows the result. A discarded action is undone
+  on that device (a new record is removed, an edit or delete is restored).
+- **Not allowed for team accounts:** permanent delete in the recycle bin, and
+  changes to shared settings, categories, stores and formulas (they stay on that device).
+
+### Rollout order
+1. Update every device to this app version first.
+2. Then publish `firestore.rules`. Devices still on an older version would be refused
+   when they save, so do not publish the rules before they update.
+3. Sign in as admin and open Approvals to check the queue is empty.

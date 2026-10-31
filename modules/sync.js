@@ -12,6 +12,8 @@ import { showGlassConfirm, showToast } from './customers.js';
 import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './accounts.js';
 import { clearRolesCache, readRolesCache, writeRolesCache } from './roles.js';
 import { findRemoteActivity, planNotifications } from './remote-activity.js';
+import { gates, isGatedSession, submitPending, submitPendingBatch, watchOwnPending, watchPendingApprovals } from './approvals.js';
+import { isGatedCollection } from './approvals-core.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -78,6 +80,12 @@ try {
 const userRef = dataRootRef();
 const docRef = userRef.collection(collectionName).doc(String(record.id));
 const now = Date.now();
+if (gates(collectionName)) {
+  const pendingData = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
+  if (!pendingData.createdAt) pendingData.createdAt = now;
+  await submitPending(collectionName, String(record.id), 'set', pendingData);
+  return true;
+}
 const sanitized = sanitizeForFirestore({ ...record, syncedAt: new Date().toISOString() });
 if (!sanitized.createdAt) sanitized.createdAt = now;
 if (!record.isMerged) sanitized.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -139,6 +147,10 @@ return true;
 }
 try {
 const userRef = dataRootRef();
+if (gates(collectionName)) {
+  await submitPending(collectionName, String(recordId), 'delete', null);
+  return true;
+}
 const batch = firebaseDB.batch();
 batch.delete(userRef.collection(collectionName).doc(String(recordId)));
 batch.set(userRef.collection('deletions').doc(String(recordId)), {
@@ -1343,7 +1355,7 @@ lastWrite: { ts: firebase.firestore.FieldValue.serverTimestamp(), collections: c
 }
 
 export async function startSyncUpdatesCleanup() {
-  if (!firebaseDB || !currentUser) return;
+  if (!firebaseDB || !currentUser || isGatedSession()) return;
   const runCleanup = async () => {
     if (!firebaseDB || !currentUser) return;
     try {
@@ -1626,6 +1638,8 @@ export async function subscribeToRealtime() {
     }, _selfError);
     realtimeRefs.push(userDocUnsub);
     if (!sharedRoot) realtimeRefs.push(userRef.onSnapshot(_handlePing, _selfError));
+    if (isGatedSession()) realtimeRefs.push(watchOwnPending(userRef));
+    else if (appMode === 'admin') realtimeRefs.push(watchPendingApprovals(userRef));
     const _handleSettingsSnapshot = async (doc) => {
       try {
         if (!doc.exists || doc.metadata.hasPendingWrites) return;
@@ -2973,6 +2987,7 @@ export async function _syncSettings(cloudData) {
 }
 
 export async function _uploadChanges(userRef) {
+  const gated = isGatedSession();
   const isRealRecord = item => item && item.id && !item._placeholder && item.id !== '_placeholder_';
   const _keys = [
   'production','sales','rep','clients','customers',
@@ -3032,6 +3047,15 @@ export async function _uploadChanges(userRef) {
       if (!docId || docId.includes('/')) continue;
       const sanitizedItem = sanitizeForFirestore(item);
       if (!sanitizedItem || Object.keys(sanitizedItem).length === 0) continue;
+      if (gated && isGatedCollection(collectionName)) {
+        if (sanitizedItem.id && typeof sanitizedItem.id !== 'string') sanitizedItem.id = String(sanitizedItem.id);
+        submitPendingBatch(getOrNewBatch(), userRef, collectionName, docId, 'set', sanitizedItem);
+        operationCount++;
+        totalItemsToWrite++;
+        _pendingUploadMarks.push({ collectionName, id: item.id });
+        collectionsUploaded.add(collectionName);
+        continue;
+      }
       sanitizedItem.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
       if (sanitizedItem.id && typeof sanitizedItem.id !== 'string') sanitizedItem.id = String(sanitizedItem.id);
       getOrNewBatch().set(userRef.collection(collectionName).doc(docId), sanitizedItem, { merge: true });
@@ -3051,7 +3075,7 @@ export async function _uploadChanges(userRef) {
   const lastFactorySync = await DeltaSync.getLastSyncTimestamp('formulas');
   const factorySettingsDirty = [localFormulaTs, localCostsTs, localFactorTs, localUnitTs, localStoreTs]
     .some(ts => ts && (!lastFactorySync || ts > lastFactorySync));
-  if (factorySettingsDirty) {
+  if (!gated && factorySettingsDirty) {
     const [_fdf, _fac, _fcaf, _fut, _ffs] = await Promise.all([
       sqliteStore.get('defaults'),
       sqliteStore.get('costs'),
@@ -3077,7 +3101,7 @@ export async function _uploadChanges(userRef) {
   }
   const localSettingsTs = await sqliteStore.get('settings_timestamp');
   const lastSettingsSync = await DeltaSync.getLastSyncTimestamp('settings');
-  if (localSettingsTs && (!lastSettingsSync || localSettingsTs > lastSettingsSync)) {
+  if (!gated && localSettingsTs && (!lastSettingsSync || localSettingsTs > lastSettingsSync)) {
     const _ds = await sqliteStore.get('settings');
     configBatch.set(
       userRef.collection('settings').doc('config'),
@@ -3089,7 +3113,7 @@ export async function _uploadChanges(userRef) {
   }
   const localExpCatTs = await sqliteStore.get('categories_timestamp');
   const lastExpCatSync = await DeltaSync.getLastSyncTimestamp('categories');
-  if (localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
+  if (!gated && localExpCatTs && (!lastExpCatSync || localExpCatTs > lastExpCatSync)) {
     const _ec = await sqliteStore.get('categories');
     configBatch.set(
       userRef.collection('categories').doc('list'),
@@ -3101,7 +3125,7 @@ export async function _uploadChanges(userRef) {
   }
   const localLedgerTs = await sqliteStore.get('daily_ledger_timestamp');
   const lastLedgerSync = await DeltaSync.getLastSyncTimestamp('daily_ledger');
-  if (localLedgerTs && (!lastLedgerSync || localLedgerTs > lastLedgerSync)) {
+  if (!gated && localLedgerTs && (!lastLedgerSync || localLedgerTs > lastLedgerSync)) {
     const _dl = await sqliteStore.get('daily_ledger');
     configBatch.set(
       userRef.collection('daily_ledger').doc('entries'),
@@ -3114,7 +3138,7 @@ export async function _uploadChanges(userRef) {
   for (const catKey of CATEGORY_LIST_KEYS) {
     const localCatTs = await sqliteStore.get(`${catKey}_timestamp`);
     const lastCatSync = await DeltaSync.getLastSyncTimestamp(catKey);
-    if (localCatTs && (!lastCatSync || localCatTs > lastCatSync)) {
+    if (!gated && localCatTs && (!lastCatSync || localCatTs > lastCatSync)) {
       const _cl = await sqliteStore.get(catKey);
       configBatch.set(
         userRef.collection(catKey).doc('list'),
@@ -3127,7 +3151,7 @@ export async function _uploadChanges(userRef) {
   }
   const localStoresTs = await sqliteStore.get('stores_timestamp');
   const lastStoresSync = await DeltaSync.getLastSyncTimestamp('stores');
-  if (localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
+  if (!gated && localStoresTs && (!lastStoresSync || localStoresTs > lastStoresSync)) {
     let _as = await sqliteStore.get('stores');
     if (!lastStoresSync) {
       try {
@@ -3378,6 +3402,12 @@ export async function _doPushDataToCloud(silent = false) {
       let dOps = 0;
       for (const dr of unsyncedDeletions) {
         if (!dr.id) continue;
+        if (isGatedSession()) {
+          if (isGatedCollection(dr.collection)) { submitPendingBatch(dBatch, userRef, dr.collection, String(dr.id), 'delete', null); dOps++; }
+          dr.syncedToCloud = true;
+          if (dOps >= 450) break;
+          continue;
+        }
         const deletedAtMs = typeof dr.deletedAt === 'number' && dr.deletedAt > 0 ? dr.deletedAt : Date.now();
         const deletionsRef = userRef.collection('deletions').doc(String(dr.id));
         dBatch.set(deletionsRef, {

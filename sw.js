@@ -46,6 +46,8 @@ const ASSETS_TO_CACHE = [
   './modules/accounts.js',
   './modules/roles.js',
   './modules/remote-activity.js',
+  './modules/approvals-core.js',
+  './modules/approvals.js',
   './manifest.json',
   './192.png',
   './512.png',

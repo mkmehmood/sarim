@@ -509,6 +509,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 3.5L30 8V18C30 25.5 24.5 30.5 18 33C11.5 30.5 6 25.5 6 18V8Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><rect x="12.7" y="16.8" width="10.6" height="8.6" rx="2.2" fill="var(--accent-gold)" fill-opacity="0.32" stroke="var(--accent-gold)" stroke-width="1.6" stroke-linejoin="round"/><path d="M15 16.8V14.7A3 3 0 0 1 21 14.7V16.8" stroke="var(--accent-gold)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="21" r="1.2" fill="var(--accent-gold)"/></svg>
       App Accounts
     </button>
+    <button class="sidebar-item" onclick="openStandaloneScreen('approvals-screen');if(typeof renderApprovals==='function')renderApprovals()">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="12.5" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7"/><path d="M12.5 18.5L16.5 22.5L24 14" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Approvals <span class="acct-badge d-none" data-approvals-count></span>
+    </button>
     </div>
     <div class="card u-d8ddece st-border-bottom__e54b2f">
       <p class="settings-group-label">Business</p>
@@ -1118,6 +1122,19 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
     </div>
+  </div>
+</div>
+<div id="approvals-screen" class="standalone-screen d-none">
+  <div class="shell-bar screen-topbar">
+    <h2 class="screen-title">Approvals</h2>
+  </div>
+  <div class="screen-body">
+    <div class="acct-sub" id="approvals-summary">Nothing is waiting for approval.</div>
+    <div id="approvals-bulk" class="acct-actions d-none">
+      <button type="button" class="btn btn-theme acct-action acct-remove" onclick="discardAllPending()">Discard all</button>
+      <button type="button" class="btn btn-theme acct-action acct-reinstate" onclick="approveAllPending()">Approve all</button>
+    </div>
+    <div id="approvals-list"><div class="u-ed93e92">All caught up.</div></div>
   </div>
 </div>
 <div id="feedback-screen" class="standalone-screen d-none">

@@ -80,16 +80,49 @@ service cloud.firestore {
         && managedByMe(resource.data, uid);
     }
 
-    // The account list holds everyone's email, so only admins read or write it.
-    function dataAccess(owner, subcollection, docId) {
+    // Members (non-admin accounts) may read the shared data but not write it:
+    // their changes go to /pending and take effect only when an admin approves.
+    // The account list holds everyone's email, so only admins read it; pending
+    // items hold other people's records, so a member reads only their own.
+    function canRead(owner, subcollection, docId) {
       return inWorkspace(owner)
-        && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
+        && (isAdmin()
+            || (subcollection != 'pending'
+                && !(subcollection == 'settings' && docId == 'accounts')));
+    }
+
+    function canWrite(owner, subcollection) {
+      return inWorkspace(owner) && (isAdmin() || subcollection == 'photos');
+    }
+
+    function validPending(pid) {
+      let d = request.resource.data;
+      return d.status == 'pending'
+        && d.id == pid
+        && d.submittedBy.uid == request.auth.uid
+        && d.action in ['set', 'delete']
+        && d.collection in ['production', 'sales', 'rep', 'clients', 'customers', 'calculator',
+                            'inventory', 'factory', 'entities', 'transactions', 'expenses', 'returns'];
+    }
+
+    match /users/{uid}/pending/{pid} {
+      allow read: if inWorkspace(uid)
+        && (isAdmin() || resource.data.submittedBy.uid == request.auth.uid);
+      allow create: if inWorkspace(uid) && (isAdmin() || validPending(pid));
+      allow update: if inWorkspace(uid)
+        && (isAdmin()
+            || (validPending(pid)
+                && (resource.data.status != 'pending'
+                    || resource.data.submittedBy.uid == request.auth.uid)));
+      allow delete: if inWorkspace(uid)
+        && (isAdmin() || resource.data.submittedBy.uid == request.auth.uid);
     }
 
     match /users/{uid}/{subcollection}/{docId} {
       allow read, write: if isOwner(uid) && notSuspended()
         && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
-      allow read, write: if dataAccess(uid, subcollection, docId);
+      allow read: if canRead(uid, subcollection, docId);
+      allow write: if canWrite(uid, subcollection);
       allow read, write: if isAdmin() && subcollection in ['devices','settings']
         && managedByMe(targetUser(uid), uid);
     }
@@ -97,7 +130,8 @@ service cloud.firestore {
     match /users/{uid}/{subcollection}/{docId}/{rest=**} {
       allow read, write: if isOwner(uid) && notSuspended()
         && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
-      allow read, write: if dataAccess(uid, subcollection, docId);
+      allow read: if canRead(uid, subcollection, docId);
+      allow write: if canWrite(uid, subcollection);
       allow read, write: if isAdmin() && subcollection in ['devices','settings']
         && managedByMe(targetUser(uid), uid);
     }
