@@ -5582,7 +5582,8 @@ html.theme-switching *::after {
   .hc-card, .hc-body, .hc-lead { transition: none; }
   .hc-card:hover, .hc-card.is-open { transform: none; }
 }
-html[data-money-locked] [data-money] { display: none; }
+html[data-money-locked]:not([data-rep-own]) [data-money],
+html[data-money-locked][data-rep-own] [data-money]:not([data-money-rep]) { display: none; }
 html.kb-open * { backdrop-filter: none; -webkit-backdrop-filter: none; }
 html.kb-open .liquid-bg-element { display: none; }
 html.is-android body { background-attachment: scroll; }

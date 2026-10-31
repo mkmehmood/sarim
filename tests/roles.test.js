@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { extractFunctions } from './_extract.js';
 import { ROLE_KEYS, canAdoptAccount, cleanRoles, deriveSession, isLegacyAccount, normalizeRoles, resolveOwnerUid, tabsForRoles, toggleRole } from '../modules/roles.js';
 
 describe('roles array', () => {
@@ -49,5 +50,19 @@ describe('workspace and adoption', () => {
     assert.equal(canAdoptAccount({ ownerUid: 'X' }, 'U', 'W', []).ok, false);
     assert.equal(canAdoptAccount({ role: 'admin' }, 'U', 'W', []).ok, false);
     assert.equal(canAdoptAccount({ role: 'user' }, 'U', 'W', ['U']).ok, true);
+  });
+});
+
+describe('existing rep migration', () => {
+  const { unlinkedReps } = extractFunctions('modules/accounts.js', ['_repKey', 'unlinkedReps'], {});
+  it('lists reps with no linked Rep account, case-insensitively and once', () => {
+    const accounts = [
+      { name: 'Noran Shah', email: 'n@x.com', roles: ['rep'] },
+      { name: 'Ali', email: 'ali@x.com', roles: ['sales'] },
+    ];
+    assert.deepEqual(unlinkedReps(['NORAN SHAH', 'NOMAN SHAH', 'noman shah', 'ALI'], accounts), ['NOMAN SHAH', 'ALI']);
+  });
+  it('is empty once every rep has an account', () => {
+    assert.deepEqual(unlinkedReps(['A'], [{ name: 'a', email: '', roles: ['rep'] }]), []);
   });
 });

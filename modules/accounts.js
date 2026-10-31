@@ -177,6 +177,36 @@ async function _adminAddAccountRaw() {
   }
 }
 
+export function unlinkedReps(reps, accounts) {
+  const linked = new Set(accounts.filter(a => a.roles.includes('rep')).map(a => _repKey(a.name || String(a.email || '').split('@')[0])));
+  const seen = new Set();
+  return (Array.isArray(reps) ? reps : []).map(_repKey).filter(r => r && !linked.has(r) && !seen.has(r) && seen.add(r));
+}
+
+export function renderExistingReps() {
+  const box = document.getElementById('acct-existing-reps');
+  if (!box) return;
+  const pending = unlinkedReps(salesRepsList, _accounts);
+  if (pending.length === 0) { box.classList.add('d-none'); box.replaceChildren(); return; }
+  box.classList.remove('d-none');
+  box.innerHTML = '<div class="acct-sub">Existing reps without a login. Tap a name to create or adopt their account; the name is kept exactly so their sales history stays theirs.</div>' +
+    '<div class="acct-roles">' + pending.map(name =>
+      `<button type="button" class="toggle-opt acct-role-btn" data-rep="${esc(name)}" onclick="prefillRepAccount(this.dataset.rep)">${esc(name)}</button>`
+    ).join('') + '</div>';
+}
+
+export function prefillRepAccount(name) {
+  const nameEl = document.getElementById('acct-new-name');
+  const emailEl = document.getElementById('acct-new-email');
+  if (!nameEl) return;
+  nameEl.value = _repKey(name);
+  _newRoles.clear();
+  _newRoles.add('rep');
+  renderNewAccountRoles();
+  if (emailEl) emailEl.focus();
+  _setMsg('Enter the rep\'s email and password. If the email already has a login, use its current password to adopt it.', 'info');
+}
+
 function _protectedUid(uid) {
   return !!currentUser && (uid === currentUser.uid || uid === dataRootUid());
 }
@@ -184,6 +214,7 @@ function _protectedUid(uid) {
 export function renderAccountsList() {
   const listEl = document.getElementById('manage-accounts-list');
   if (!listEl) return;
+  renderExistingReps();
   if (_accounts.length === 0) {
     listEl.innerHTML = '<div class="u-ed93e92">No accounts found.</div>';
     return;
@@ -396,6 +427,7 @@ window.toggleNewAccountRole = toggleNewAccountRole;
 window.adminAddAccount = adminAddAccount;
 window.loadAccountsList = loadAccountsList;
 window.adminSetAccountRole = adminSetAccountRole;
+window.prefillRepAccount = prefillRepAccount;
 window.adminToggleApproval = adminToggleApproval;
 window.adminRemoveAccount = adminRemoveAccount;
 window.applyAccountSession = applyAccountSession;

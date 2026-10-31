@@ -1099,6 +1099,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="screen-body">
     <div class="u-a0d4a03">
       <label class="u-5250855 d-block">Add Account</label>
+      <div id="acct-existing-reps" class="d-none"></div>
       <div class="grid-inputs u-39ae4db">
         <div class="field"><label>Email</label><input class="form-ctl" type="email" id="acct-new-email" placeholder="user@example.com" autocomplete="off"></div>
         <div class="field"><label>Password</label><input class="form-ctl" type="password" id="acct-new-password" placeholder="min 8 characters" autocomplete="new-password"></div>
@@ -1582,7 +1583,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 </div>
 </div>
-<div data-money id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
+<div data-money data-money-rep id="rep-customer-info-display" class="hidden u-5c8103b st-background__2cf90b st-border-bottom__e54b2f">
 <div class="u-25351ff d-flex">
 <span class="u-cb45723">Current Debt:</span>
 <span id="rep-customer-current-credit" class="u-a5b525a">0.00</span>
@@ -1638,7 +1639,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 </div>
 </div>
-<div data-money id="rep-customers-card" class="card">
+<div data-money data-money-rep id="rep-customers-card" class="card">
 <div class="section-header u-4053333">
 <h3 class="u-3b741c2">Customer List</h3>
 <input type="text" id="rep-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
@@ -1657,7 +1658,7 @@ oninput="renderRepCustomerTable()">
 </div>
 
 </div>
-<div data-money id="repHistoryList" class="history-list report-grid"></div>
+<div data-money data-money-rep id="repHistoryList" class="history-list report-grid"></div>
 </div>
 <div id="tab-prod">
 <header id="prod-tab-header" class="u-cfe00e0 d-flex">

@@ -1,7 +1,7 @@
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
-import { isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
+import { hidesPaymentHistory, isMoneyRestricted, isRecycleRecordAllowed, recycleAmountText, recycleFilters, redactMoney } from './money-privacy.js';
 import { sxSplit, sxMargin, sxTile, sxGrid, sxHero } from './summary-kit.js';
 import { getSaleBlockReason, getTransferDeleteBlockReason, getExpiredDeleteBlockReason, getRecoverBlockReason, getPendingAllocationCount, detachChildPayment, getRecoverLinkBlockReason, getSettleToggleBlockReason, getLiveRecoveryRefs, cascadeEntityRename, applyRecoveryLinks, resolveSnapshotLinks, applyRenameOnRecovery, findLiveSameNameRecord, getExpenseLinkedTxBlockReason } from './link-guards.js';
 import { smCalcHtml, smBarHtml, smExpensesHtml } from './summary-card.js';
@@ -1808,6 +1808,10 @@ console.error('calculateCashTracker error:', _safeErr(e));
 }
 const historyList = document.getElementById('paymentHistoryList');
 if (!historyList) {
+return;
+}
+if (hidesPaymentHistory()) {
+historyList.replaceChildren();
 return;
 }
 const _phFrag = document.createDocumentFragment();
@@ -5707,7 +5711,9 @@ if (us) window.setDisplay(us, 'none');
 const ph = document.getElementById('payment-history-section');
 if (ph) window.setDisplay(ph, 'none');
 const pl = document.getElementById('paymentHistoryList');
-if (pl) window.setDisplay(pl, 'none');
+if (pl) { pl.replaceChildren(); window.setDisplay(pl, 'none'); }
+const ps = document.getElementById('payment-search');
+if (ps) window.setDisplay(ps.closest('.field') || ps, 'none');
 }
 if (assignedTabs.length > 0 && typeof showTab === 'function') {
 showTab(assignedTabs[0]);
