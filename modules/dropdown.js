@@ -6,7 +6,7 @@
   const EDGE = 8;
   const MIN_H = 96;
   const MAX_H = 280;
-  const SUGGEST_SEL = '.u-327750f, .u-search-dropdown';
+  const SUGGEST_SEL = '.u-327750f, .u-search-dropdown, .dd-suggest';
   const open = new Map();
   let layer = null;
   let frame = 0;
@@ -39,6 +39,33 @@
     }
     const field = parent.querySelector('input[type="text"], input:not([type]), textarea');
     return field ? (field.closest('.pf-control') || field) : parent;
+  }
+
+  function isSuggest(el) {
+    return el.matches(SUGGEST_SEL);
+  }
+
+  function inputOf(anchor) {
+    if (!anchor) return null;
+    return anchor.matches('input, textarea') ? anchor : anchor.querySelector('input, textarea');
+  }
+
+  function highlight(el, anchor) {
+    const input = inputOf(anchor);
+    const q = input ? input.value.trim().toLowerCase() : '';
+    if (!q) return;
+    el.querySelectorAll('strong').forEach((node) => {
+      if (node.children.length || node.dataset.ddHit === q) return;
+      const text = node.textContent;
+      const i = text.toLowerCase().indexOf(q);
+      node.dataset.ddHit = q;
+      if (i < 0) return;
+      const mark = document.createElement('mark');
+      mark.className = 'dd-hit';
+      mark.textContent = text.slice(i, i + q.length);
+      node.textContent = '';
+      node.append(text.slice(0, i), mark, text.slice(i + q.length));
+    });
   }
 
   function place(rec) {
@@ -88,17 +115,24 @@
       const home = document.createComment('dd');
       if (el.parentNode) el.parentNode.insertBefore(home, el);
       const a = anchor || (el._ddAnchor) || findAnchor(home);
-      if (!a) return;
+      if (!a) { if (home.parentNode) home.remove(); return; }
+      if (isSuggest(el) && inputOf(a) && !inputOf(a).value.trim()) {
+        if (home.parentNode) home.remove();
+        el.classList.add('hidden');
+        return;
+      }
       rec = { el, anchor: a, home, align: opts.align || 'start', onClose: opts.onClose || null };
       open.set(el, rec);
       el._ddAnchor = a;
     } else {
       if (anchor) rec.anchor = anchor;
       if (opts.align) rec.align = opts.align;
+      if (isSuggest(el) && inputOf(rec.anchor) && !inputOf(rec.anchor).value.trim()) { hide(el); return; }
     }
     el.classList.remove('hidden', 'd-none');
     if (el.parentNode !== getLayer()) getLayer().appendChild(el);
     el.classList.add('dd-open');
+    if (isSuggest(el)) highlight(el, rec.anchor);
     place(rec);
     requestAnimationFrame(() => {
       if (open.has(el)) {
@@ -238,6 +272,11 @@
       window.visualViewport.addEventListener('resize', reposition);
       window.visualViewport.addEventListener('scroll', reposition);
     }
+    document.addEventListener('input', (e) => {
+      open.forEach((rec, el) => {
+        if (isSuggest(el) && inputOf(rec.anchor) === e.target && !e.target.value.trim()) hide(el);
+      });
+    }, true);
     document.addEventListener('focusin', () => {
       setTimeout(reposition, 120);
       setTimeout(reposition, 350);

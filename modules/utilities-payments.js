@@ -6012,7 +6012,7 @@ const input = document.getElementById(inputId);
 const resultsDiv = document.getElementById(resultsId);
 if (!input || !resultsDiv) return;
 const query = input.value || '';
-if ((!query || query.length < 1) && !String(dataSource).startsWith('ledger-') && dataSource !== 'field-expense-category' && dataSource !== 'commission-category') {
+if (!String(query).trim()) {
 window.Dropdown.hide(resultsDiv);
 return;
 }

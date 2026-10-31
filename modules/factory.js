@@ -247,6 +247,7 @@ renderFactoryMaterialSummary(null, []);
 const inventory = ensureArray(await sqliteStore.get('inventory'));
 _factoryMatList = materialRecords(inventory);
 const typed = input.value.trim();
+if (!typed) { window.Dropdown.hide(box); return; }
 const matches = searchMaterials(inventory, typed).slice(0, 8);
 const exact = typed && findMaterialByName(inventory, typed);
 let html = matches.map((m) => `<div class="u-cf7d8a2 st-background__356c02 hv-highlight" onmousedown="pickFactoryMaterial('${rlJsArg(m.id)}')"><strong>${esc(m.name)}</strong> <span class="rl-muted">${fmtNum(Number(m.quantity) || 0)} kg in stock</span></div>`).join('');
