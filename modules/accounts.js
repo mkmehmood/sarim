@@ -395,13 +395,21 @@ export async function syncAccountSession(user, preloaded) {
   if (!user || !user.uid) return null;
   let data = preloaded || null;
   if (!data && navigator.onLine && firebaseDB) {
-    try {
-      const snap = await Promise.race([
-        firebaseDB.collection('users').doc(user.uid).get(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), SESSION_FETCH_TIMEOUT_MS)),
-      ]);
-      if (snap.exists) data = snap.data();
-    } catch (e) { console.warn('[accounts] could not load account doc:', _safeErr(e)); }
+    const deadline = Date.now() + SESSION_FETCH_TIMEOUT_MS;
+    for (let attempt = 0; attempt < 4 && !data; attempt++) {
+      try {
+        const snap = await Promise.race([
+          firebaseDB.collection('users').doc(user.uid).get(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), Math.max(1000, deadline - Date.now()))),
+        ]);
+        if (snap.exists) data = snap.data();
+        break;
+      } catch (e) {
+        const transient = /offline|unavailable/i.test(String((e && (e.code || e.message)) || ''));
+        if (!transient || attempt === 3 || Date.now() >= deadline) { console.warn('[accounts] could not load account doc:', _safeErr(e)); break; }
+        await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+      }
+    }
   }
   if (data) {
     const info = accountInfoFromDoc(data, user);
