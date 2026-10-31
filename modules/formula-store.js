@@ -162,9 +162,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   searchInput.autocomplete = 'off';
   searchInput.classList.add('u-4c8551b');
   const dropdown = document.createElement('div');
-  dropdown.className = 'factory-mat-dropdown hidden u-search-dropdown';
-  dropdown.classList.add('st-position__bb6a43', 'st-max-height__914b95', 'u-8f31856');
-  dropdown.classList.add('has-overflow', 'scroll-y');
+  dropdown.className = 'factory-mat-dropdown dd-menu hidden';
   const costInput = document.createElement('input');
   costInput.type = 'number';
   costInput.className = 'form-ctl factory-mat-cost';
@@ -183,7 +181,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     } else {
       dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610 st-background__356c02" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}">${esc(i.name)}</div>`).join('') + customOpt;
     }
-    dropdown.classList.remove('hidden');
+    window.Dropdown.show(dropdown, searchInput);
     dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {
       opt.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -193,7 +191,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
           searchInput.dataset.custom = '1';
           searchInput.dataset.matCost = '0';
           costInput.value = 0;
-          dropdown.classList.add('hidden');
+          window.Dropdown.hide(dropdown);
           notify();
           return;
         }
@@ -202,7 +200,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
         searchInput.dataset.matId = opt.dataset.id;
         searchInput.dataset.matCost = opt.dataset.cost;
         costInput.value = opt.dataset.cost;
-        dropdown.classList.add('hidden');
+        window.Dropdown.hide(dropdown);
         notify();
       });
     });
@@ -213,7 +211,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     renderDropdown(searchInput.value);
   });
   searchInput.addEventListener('blur', () => {
-    setTimeout(() => dropdown.classList.add('hidden'), 150);
+    setTimeout(() => window.Dropdown.hide(dropdown), 150);
     if (!searchInput.dataset.matId) {
       const typed = searchInput.value.trim();
       if (typed) {

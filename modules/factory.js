@@ -225,7 +225,7 @@ renderFactoryMaterialSummary(null, []);
 
 export function hideFactoryMaterialResults() {
 const box = _el('factory-material-search-results');
-if (box) box.classList.add('hidden');
+if (box) window.Dropdown.hide(box);
 }
 
 export async function searchFactoryMaterials() {
@@ -251,9 +251,9 @@ const matches = searchMaterials(inventory, typed).slice(0, 8);
 const exact = typed && findMaterialByName(inventory, typed);
 let html = matches.map((m) => `<div class="u-cf7d8a2 st-background__356c02 hv-highlight" onmousedown="pickFactoryMaterial('${rlJsArg(m.id)}')"><strong>${esc(m.name)}</strong> <span class="rl-muted">${fmtNum(Number(m.quantity) || 0)} kg in stock</span></div>`).join('');
 if (typed && !exact) html += `<div class="u-cf7d8a2 st-background__356c02 hv-highlight" onmousedown="pickNewFactoryMaterial()"><strong>+ Add "${esc(typed)}"</strong> <span class="rl-muted">as a new material</span></div>`;
-if (!html) { box.classList.add('hidden'); return; }
+if (!html) { window.Dropdown.hide(box); return; }
 box.innerHTML = html;
-box.classList.remove('hidden');
+window.Dropdown.show(box, input);
 }
 
 export function pickNewFactoryMaterial() {

@@ -2093,7 +2093,7 @@ const input = document.getElementById('expenseName');
 const resultsDiv = document.getElementById('expense-search-results');
 const query = input.value.trim().toLowerCase();
 if (!query || query.length < 1) {
-resultsDiv.classList.add('hidden');
+window.Dropdown.hide(resultsDiv);
 return;
 }
 const expenseMatches = expenseCategories.filter(name => {
@@ -2147,12 +2147,12 @@ ${txnCount > 0 ? txnCount + ' transactions' : ''}
 html += `<div class="u-02d7412">No matching entities — will create new</div>`;
 }
 resultsDiv.innerHTML = html;
-resultsDiv.classList.remove('hidden');
+window.Dropdown.show(resultsDiv, input);
 }
 
 export function selectExpense(name, type) {
 document.getElementById('expenseName').value = name;
-document.getElementById('expense-search-results').classList.add('hidden');
+window.Dropdown.hide(document.getElementById('expense-search-results'));
 if (!name || typeof name !== 'string') {
 document.getElementById('expenseAmount').focus();
 return;
@@ -2187,7 +2187,7 @@ document.getElementById('expenseAmount').focus();
 }
 
 export function hideExpenseSearch() {
-document.getElementById('expense-search-results').classList.add('hidden');
+window.Dropdown.hide(document.getElementById('expense-search-results'));
 document.getElementById('expenseAmount').focus();
 }
 
@@ -4063,7 +4063,7 @@ document.getElementById('expenseName').value = '';
 document.getElementById('expenseAmount').value = '';
 document.getElementById('expenseDescription').value = '';
 document.getElementById('expenseDate').value = localDateStr();
-document.getElementById('expense-search-results').classList.add('hidden');
+window.Dropdown.hide(document.getElementById('expense-search-results'));
 selectExpenseCategory('OUT', document.getElementById('btn-category-out'));
 ['btn-category-operating','btn-category-in','btn-category-out'].forEach(id => {
 const btn = document.getElementById(id);
@@ -5984,7 +5984,7 @@ const resultsDiv = document.getElementById(resultsId);
 if (!input || !resultsDiv) return;
 const query = input.value || '';
 if ((!query || query.length < 1) && !String(dataSource).startsWith('ledger-') && dataSource !== 'field-expense-category' && dataSource !== 'commission-category') {
-resultsDiv.classList.add('hidden');
+window.Dropdown.hide(resultsDiv);
 return;
 }
 let matches = [];
@@ -6065,7 +6065,7 @@ html = `<div class="empty is-compact" >
 No match found. "${esc(query)}" will be created as new.
 </div>`;
 } else {
-resultsDiv.classList.add('hidden');
+window.Dropdown.hide(resultsDiv);
 return;
 }
 break;
@@ -6087,7 +6087,7 @@ html = `<div class="empty is-compact" >
 No match found. "${esc(query)}" will be created as new.
 </div>`;
 } else {
-resultsDiv.classList.add('hidden');
+window.Dropdown.hide(resultsDiv);
 return;
 }
 break;
@@ -6151,7 +6151,7 @@ break;
 }
 }
 resultsDiv.innerHTML = html;
-resultsDiv.classList.remove('hidden');
+window.Dropdown.show(resultsDiv, input);
 }
 
 export function selectFromUniversalSearch(inputId, resultsId, value, type, id) {
@@ -6169,7 +6169,7 @@ if (valueField) valueField.value = id;
 }
 }
 if (resultsDiv) {
-resultsDiv.classList.add('hidden');
+window.Dropdown.hide(resultsDiv);
 }
 if (type === 'name' && inputId === 'cust-name') {
 if (typeof calculateCustomerStatsForDisplay === 'function') {
@@ -6235,8 +6235,8 @@ const input = document.getElementById(item.input);
 const resultsDiv = document.getElementById(item.results);
 if (input && resultsDiv) {
 const container = input.parentElement;
-if (container && !container.contains(e.target)) {
-resultsDiv.classList.add('hidden');
+if (container && !container.contains(e.target) && !resultsDiv.contains(e.target)) {
+window.Dropdown.hide(resultsDiv);
 }
 }
 });
@@ -6840,8 +6840,8 @@ const fromSearch = document.getElementById('payment-transfer-from-search'); if (
 const toSearch = document.getElementById('payment-transfer-to-search'); if (toSearch) { toSearch.value = ''; toSearch.removeAttribute('data-entity-id'); }
 const fromHidden = document.getElementById('payment-transfer-from-value'); if (fromHidden) fromHidden.value = '';
 const toHidden = document.getElementById('payment-transfer-to-value'); if (toHidden) toHidden.value = '';
-const fromResults = document.getElementById('payment-transfer-from-results'); if (fromResults) fromResults.classList.add('hidden');
-const toResults = document.getElementById('payment-transfer-to-results'); if (toResults) toResults.classList.add('hidden');
+const fromResults = document.getElementById('payment-transfer-from-results'); if (fromResults) window.Dropdown.hide(fromResults);
+const toResults = document.getElementById('payment-transfer-to-results'); if (toResults) window.Dropdown.hide(toResults);
 const amtInput = document.getElementById('payment-transfer-amount'); if (amtInput) amtInput.value = '';
 const noteInput = document.getElementById('payment-transfer-note'); if (noteInput) noteInput.value = '';
 if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(null);

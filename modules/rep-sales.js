@@ -197,7 +197,7 @@ updateRepCollectionPreview();
 
 export function selectRepCustomer(name) {
 document.getElementById('rep-cust-name').value = name;
-document.getElementById('rep-customer-search-results').classList.add('hidden');
+window.Dropdown.hide(document.getElementById('rep-customer-search-results'));
 calculateRepCustomerStats(name);
 }
 

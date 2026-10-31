@@ -35,6 +35,7 @@ const ASSETS_TO_CACHE = [
   './modules/rep-sales.js',
   './modules/admin-data.js',
   './modules/custom-date-picker.js',
+  './modules/dropdown.js',
   './modules/link-guards.js',
   './modules/link-graph.js',
   './modules/daily-ledger.js',

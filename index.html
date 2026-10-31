@@ -129,48 +129,6 @@
 </script><script src="vendor/leaflet/leaflet.js" defer></script><script>
 window._swConfirmed = false;
 window._custStats={day:{q:0,v:0,cash:0,credit:0,profit:0},week:{q:0,v:0,cash:0,credit:0,profit:0},month:{q:0,v:0,cash:0,credit:0,profit:0},year:{q:0,v:0,cash:0,credit:0,profit:0},all:{q:0,v:0,cash:0,credit:0,profit:0}};
-window._mkPopover=function(anchor,popId,items,onSelect,opts){
-  opts=opts||{};
-  var existing=document.getElementById(popId);
-  if(existing){window.setDisplay(existing,window.getDisplay(existing)==='none'?'block':'none');return;}
-  var pop=document.createElement('div');pop.id=popId;
-  pop.classList.add('st-position__bb6a43', 'st-background__e02427', 'st-border__e54b2f', 'st-border-radius__e609a2', 'st-box-shadow__d82b48', 'st-padding__cc9967', 'u-5f74efd',...(opts.fullWidth?['st-max-height__590a94','u-f59246f']:['u-49c91a4']));
-  var mark=function(v){
-    if(opts.selected===undefined)return;
-    Array.prototype.forEach.call(pop.children,function(row){
-      var on=row.dataset.val===String(v);
-      window.setStyle(row,'color',on?'st-color__a80552':'st-color__5c5d8f');
-      var c=row.querySelector('[data-check]');if(c)window.setStyle(c,'visibility',on?'st-visibility__8a20bb':'st-visibility__e77555');
-    });
-  };
-  items.forEach(function(item){
-    var d=document.createElement('div');d.dataset.val=item.value;
-    if(item.desc){
-      d.classList.add('st-padding__8bfeea', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'd-flex', 'st-align-items__7c6197', 'u-4d20c0a');
-      var txt=document.createElement('div');
-      var t=document.createElement('div');t.textContent=item.label;t.classList.add('st-font-size__370c86', 'st-font-weight__eed0f8');
-      var sub=document.createElement('div');sub.textContent=item.desc;sub.classList.add('st-font-size__8e87b7', 'st-color__5872de', 'st-font-weight__7e3a94', 'st-margin-top__7a21c6');
-      txt.appendChild(t);txt.appendChild(sub);d.appendChild(txt);
-      var chk=document.createElement('span');chk.setAttribute('data-check','');chk.textContent='\u2713';chk.classList.add('st-visibility__e77555', 'st-font-weight__e3ec02');d.appendChild(chk);
-    }else{
-      d.textContent=item.label;
-      d.classList.add('st-padding__560b8f', 'st-font-size__474a30', 'st-cursor__3b6a3a', 'st-color__5c5d8f', 'u-1cd2eeb');
-    }
-    d.classList.add('hv-pop');
-    d.onclick=function(){
-      var btn=anchor.querySelector('button');
-      if(btn){var sp=btn.querySelector('span');if(sp)sp.textContent=item.label;}
-      onSelect(item.value,item.label,d);
-      mark(item.value);
-      window.setDisplay(pop,'none');
-    };
-    pop.appendChild(d);
-  });
-  mark(opts.selected);
-  window.setStyle(anchor,'position','st-position__d461c9');anchor.appendChild(pop);
-  document.addEventListener('click',function h(e){if(!anchor.contains(e.target)){if(pop)window.setDisplay(pop,'none');}},true);
-};
-
 function _showUpdateDialog(reg) {
   if (window._swDialogShown) return;
   if (sessionStorage.getItem('_swJustUpdated')) { sessionStorage.removeItem('_swJustUpdated'); return; }
