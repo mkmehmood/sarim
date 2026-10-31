@@ -2585,14 +2585,6 @@ padding-right: 2px;
 #manage-accounts-list {
 padding-right: 2px;
 }
-#manage-userrole-list,
-#manage-reps-list {
-max-height: min(280px, 36dvh);
-overflow-y: auto;
--webkit-overflow-scrolling: touch;
-overscroll-behavior-y: contain;
-touch-action: pan-y;
-}
 .standalone-screen .screen-topbar + .screen-body {
 padding-top: 16px;
 }
