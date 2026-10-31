@@ -2407,23 +2407,23 @@ animation: none !important;
 .u-heading-accent { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--accent); }
 .dd-layer { --dd-surface: var(--soft-card); --dd-line: var(--glass-border-strong); --dd-radius: var(--radius-lg, 18px); --dd-shadow: var(--shadow-lg); position: fixed; inset: 0; z-index: 10400; pointer-events: none; }
 .dd-layer > * { pointer-events: auto; }
-.dd-menu, .dd-layer > .u-327750f, .dd-layer > .u-search-dropdown, .dd-layer > .dd-suggest { position: fixed; top: var(--dd-top, 0); left: var(--dd-left, 0); right: auto; bottom: auto; width: var(--dd-w, auto); min-width: 0; max-height: var(--dd-mh, 280px); margin: 0; padding: 6px; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; scrollbar-color: var(--well-line) transparent; background: var(--dd-surface); border: 1px solid var(--dd-line); border-radius: var(--dd-radius); box-shadow: var(--dd-shadow); backdrop-filter: var(--backdrop-blur); -webkit-backdrop-filter: var(--backdrop-blur); opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top center; transition: opacity 0.14s ease, transform 0.14s ease; }
+.dd-menu, .dd-layer > .u-327750f, .dd-layer > .u-search-dropdown, .dd-layer > .dd-suggest { position: fixed; top: var(--dd-top, 0); left: var(--dd-left, 0); right: auto; bottom: auto; width: var(--dd-w, auto); min-width: 0; max-height: var(--dd-mh, 280px); margin: 0; padding: 4px; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; scrollbar-color: var(--well-line) transparent; background: var(--dd-surface); border: 1px solid var(--dd-line); border-radius: var(--dd-radius); box-shadow: var(--dd-shadow); backdrop-filter: var(--backdrop-blur); -webkit-backdrop-filter: var(--backdrop-blur); opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top center; transition: opacity 0.14s ease, transform 0.14s ease; }
 .dd-layer > .is-flipped { transform: translateY(6px) scale(0.98); transform-origin: bottom center; }
 .dd-layer > .is-in { opacity: 1; transform: none; }
-.dd-item, .dd-layer .u-cf7d8a2 { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 12px; box-sizing: border-box; border: 0; border-radius: 12px; background: transparent; color: var(--text-main); font-size: 0.86rem; line-height: 1.25; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.12s ease; }
-.dd-layer .u-cf7d8a2 + .u-cf7d8a2, .dd-item + .dd-item { margin-top: 2px; }
+.dd-item, .dd-layer .u-cf7d8a2 { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 10px; box-sizing: border-box; border: 0; border-radius: 10px; background: transparent; color: var(--text-main); font-size: 0.84rem; line-height: 1.2; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background 0.12s ease; }
+.dd-layer .u-cf7d8a2 + .u-cf7d8a2, .dd-item + .dd-item { margin-top: 1px; }
 .dd-item:hover, .dd-item.is-active, .dd-layer .u-cf7d8a2:hover, .dd-layer .u-cf7d8a2.is-active { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
 .dd-item:active, .dd-layer .u-cf7d8a2:active { background: var(--highlight-border); }
 .dd-body { flex: 1 1 auto; min-width: 0; }
 .dd-title, .dd-layer .u-cf7d8a2 strong { font-weight: 600; overflow-wrap: anywhere; }
-.dd-desc { margin-top: 2px; font-size: 0.74rem; color: var(--text-muted); opacity: 0.72; }
+.dd-desc { margin-top: 1px; font-size: 0.74rem; color: var(--text-muted); opacity: 0.72; }
 .dd-tick { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--on-accent-dark, #000); font-size: 0.7rem; font-weight: 800; visibility: hidden; }
 .dd-item.is-selected { background: var(--accent-dim); color: var(--accent); }
 .dd-item.is-selected .dd-title { font-weight: 700; }
 .dd-item.is-selected .dd-tick { visibility: visible; }
 .dd-hit { padding: 0 2px; margin: 0 -2px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); font-weight: 800; }
 .dd-layer .u-cf7d8a2 > span { flex: none; margin-left: auto; padding: 2px 9px; border-radius: var(--radius-full, 9999px); border: 1px solid var(--well-line); background: var(--hover-bg); color: var(--text-muted); font-size: 0.68rem; font-weight: 600; }
-.dd-layer .empty.is-compact { padding: 12px; border-radius: 12px; color: var(--text-muted); font-size: 0.8rem; text-align: left; }
+.dd-layer .empty.is-compact { padding: 8px 10px; border-radius: 12px; color: var(--text-muted); font-size: 0.8rem; text-align: left; }
 @media (prefers-reduced-motion: reduce) { .dd-menu, .dd-layer > * { transition: none; } }
 .u-search-dropdown { position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; max-height: 200px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; touch-action: pan-y; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 14px; margin-top: 5px; box-shadow: var(--shadow); }
 .u-debt-header { flex-shrink: 0; }
