@@ -39,7 +39,7 @@ function lockPage() {
   document.body.classList.add('scroll-locked');
   document.documentElement.classList.add('scroll-locked');
   Array.from(document.body.children).forEach((node) => {
-    if (node.classList && node.classList.contains('dlg-overlay')) return;
+    if (node.classList && (node.classList.contains('dlg-overlay') || node.classList.contains('dd-layer'))) return;
     if (node.tagName === 'SCRIPT' || node.hasAttribute('inert')) return;
     node.setAttribute('inert', '');
     lockState.inert.push(node);

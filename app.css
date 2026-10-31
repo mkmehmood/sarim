@@ -2583,20 +2583,7 @@ scroll-padding-bottom: 16px;
 padding-right: 2px;
 }
 #manage-accounts-list {
-max-height: min(320px, 40dvh);
-overflow-y: auto;
--webkit-overflow-scrolling: touch;
-overscroll-behavior-y: contain;
-touch-action: pan-y;
 padding-right: 2px;
-}
-#manage-userrole-list,
-#manage-reps-list {
-max-height: min(280px, 36dvh);
-overflow-y: auto;
--webkit-overflow-scrolling: touch;
-overscroll-behavior-y: contain;
-touch-action: pan-y;
 }
 .standalone-screen .screen-topbar + .screen-body {
 padding-top: 16px;
