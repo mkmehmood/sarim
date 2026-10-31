@@ -144,7 +144,7 @@ function openPopup(kind) {
           await rememberCategory(kind, label);
           syncInput(kind, true);
           overlay.querySelector(`#${pre}-list`).innerHTML = listHtml(kind);
-          overlay.querySelector(`#${cfg.resultsId}`).classList.add('hidden');
+          window.Dropdown.hide(overlay.querySelector(`#${cfg.resultsId}`));
           nameEl.value = '';
           amountEl.value = '';
           toast(`${label} saved`, 'success');

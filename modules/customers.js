@@ -30,7 +30,7 @@ if(input) {
 input.value = name;
 }
 if(resultsDiv) {
-resultsDiv.classList.add('hidden');
+window.Dropdown.hide(resultsDiv);
 }
 if(typeof calculateCustomerStatsForDisplay === 'function') {
 calculateCustomerStatsForDisplay(name);
