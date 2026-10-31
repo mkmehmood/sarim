@@ -1,6 +1,6 @@
 import { formatDayMonthYear } from './date-format.js';
 import { hcCardHtml, hcEmptyHtml } from './history-card.js';
-import { sqliteStore, esc, fmtAmt, generateUUID, localDateStr } from './business.js';
+import { sqliteStore, esc, fmtAmt, generateUUID, localDateStr, customerHistoryMatcher } from './business.js';
 import { openDialog, showGlassConfirm } from './dialog.js';
 import { triggerAutoSync, loadScript } from './utilities-core.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
@@ -50,19 +50,24 @@ function syncForm() {
   el('btn-save-daily-ledger').textContent = state.editId ? 'Update Entry' : (isT ? 'Record Transfer' : isOut ? 'Add Cash Out' : 'Add Cash In');
   el('btn-cancel-daily-ledger').classList.toggle('d-none', !state.editId);
 }
+function partyRows(rows) {
+  const match = state.type === 'TRANSFER' ? null : customerHistoryMatcher('dl-party');
+  return match ? rows.filter((t) => match(String(t.party || '').trim().toLowerCase())) : rows;
+}
 function renderSummary() {
-  const s = computeSummary(_rows);
-  el('dl-hero-amt').textContent = fmtAmt(s.inHand);
-  el('dl-bal-cash').textContent = fmtAmt(s.cash);
-  el('dl-bal-bank').textContent = fmtAmt(s.bank);
-  el('dl-bal-other').textContent = fmtAmt(s.others);
+  const all = computeSummary(_rows);
+  const s = computeSummary(partyRows(_rows));
+  el('dl-hero-amt').textContent = fmtAmt(all.inHand);
+  el('dl-bal-cash').textContent = fmtAmt(all.cash);
+  el('dl-bal-bank').textContent = fmtAmt(all.bank);
+  el('dl-bal-other').textContent = fmtAmt(all.others);
   el('dl-sum-in').textContent = fmtAmt(s.totalIn);
   el('dl-sum-out').textContent = fmtAmt(s.totalOut);
   el('dl-sum-net').textContent = signed(s.net);
   el('dl-cnt-in').textContent = `${s.inCount} entries`;
   el('dl-cnt-out').textContent = `${s.outCount} entries`;
   el('dl-net-tag').textContent = s.net >= 0 ? 'Surplus' : 'Deficit';
-  const modes = Object.entries(s.byMode).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+  const modes = Object.entries(all.byMode).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
   el('dl-modes-block').classList.toggle('d-none', !modes.length);
   el('dl-modes-card').innerHTML = modes.map(([m, n]) => `<button type="button" class="line dl-row-line" data-v="${esc(m)}" onclick="dailyLedgerOpenMode(this.dataset.v)"><span>${esc(m)}</span><strong class="${n >= 0 ? 'dl-amt-in' : 'dl-amt-out'}">${signed(n)}</strong></button>`).join('');
   const cats = Object.entries(s.byCategory).sort((a, b) => b[1] - a[1]);
@@ -103,7 +108,7 @@ function rowHtml(t) {
   }, { attrs: { 'data-date': t.date } });
 }
 function visibleRows() {
-  return filterRows(sortNewestFirst(_rows), { query: state.query });
+  return filterRows(sortNewestFirst(partyRows(_rows)), { query: state.query });
 }
 function renderList() {
   const rows = visibleRows();
@@ -125,6 +130,7 @@ function resetForm(keepType = true) {
   if (!keepType) state.type = 'IN';
   el('dl-amount').value = '';
   el('dl-party').value = '';
+  el('dl-party').dataset.histCustomer = '';
   el('dl-note').value = '';
   el('dl-ref').value = '';
   el('dl-date').value = localDateStr();
@@ -142,6 +148,10 @@ export async function prepareDailyLedgerScreen() {
 export function dailyLedgerSetType(type) {
   state.type = type;
   syncForm();
+  renderAll();
+}
+export function dailyLedgerSetParty() {
+  renderAll();
 }
 export async function dailyLedgerSearchItems(source, query) {
   if (!_loaded) await load();
@@ -153,7 +163,12 @@ export async function dailyLedgerSearchItems(source, query) {
   else items = _lists.income.map((value) => ({ value }));
   return items.filter((it) => !q || it.value.toLowerCase().includes(q)).slice(0, 12);
 }
-export function dailyLedgerOnPick(inputId) {
+export function dailyLedgerOnPick(inputId, value) {
+  if (inputId === 'dl-party') {
+    el('dl-party').dataset.histCustomer = String(value || '').trim().toLowerCase();
+    renderAll();
+    return;
+  }
   if (_dialogHook) _dialogHook(inputId);
 }
 export function dailyLedgerSetQuery(value) {
@@ -287,6 +302,7 @@ export async function dailyLedgerEdit(id) {
   el('dl-note').value = t.note || '';
   el('dl-ref').value = t.ref || '';
   syncForm();
+  renderAll();
   el('dl-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 export function dailyLedgerCancelEdit() { resetForm(true); }
@@ -469,4 +485,4 @@ export async function dailyLedgerExportPdf() {
     toast(`Error generating PDF: ${e.message}`, 'error');
   }
 }
-Object.assign(window, { restoreLedgerEntry, refreshDailyLedger, prepareDailyLedgerScreen, dailyLedgerSetType, dailyLedgerSearchItems, dailyLedgerOnPick, dailyLedgerSetQuery, dailyLedgerOpenMode, dailyLedgerSave, dailyLedgerEdit, dailyLedgerCancelEdit, dailyLedgerDelete, dailyLedgerCopyVoucher, dailyLedgerExportPdf });
+Object.assign(window, { restoreLedgerEntry, refreshDailyLedger, prepareDailyLedgerScreen, dailyLedgerSetType, dailyLedgerSetParty, dailyLedgerSearchItems, dailyLedgerOnPick, dailyLedgerSetQuery, dailyLedgerOpenMode, dailyLedgerSave, dailyLedgerEdit, dailyLedgerCancelEdit, dailyLedgerDelete, dailyLedgerCopyVoucher, dailyLedgerExportPdf });

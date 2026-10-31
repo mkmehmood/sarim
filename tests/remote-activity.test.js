@@ -53,6 +53,29 @@ describe('findRemoteActivity', () => {
   });
 });
 
+describe('tapping a notification opens the record', () => {
+  it('rep, sales, payments, expenses and production carry a target; factory and customers do not', () => {
+    const local = { rep: [{ id: 'o' }], factory: [{ id: 'o' }], production: [{ id: 'o' }] };
+    const merged = {
+      rep: [fresh({ id: 'r', salesRep: 'ALI', customerName: 'Z', totalValue: 1 })],
+      factory: [fresh({ id: 'f', managedBy: 'Fay', units: 2 })],
+      production: [fresh({ id: 'p', managedBy: 'Pat', net: 1 })],
+    };
+    const plan = planNotifications(findRemoteActivity(local, merged, fmt, NOW));
+    const byKey = Object.fromEntries(plan.map(n => [n.key, n.target]));
+    assert.deepEqual(byKey.r, { k: 'rep', id: 'r' });
+    assert.deepEqual(byKey.p, { k: 'production', id: 'p' });
+    assert.equal(byKey.f, undefined);
+  });
+  it('the summary notification has no target', () => {
+    const items = Array.from({ length: REMOTE_MAX_NOTIFICATIONS + 1 }, (_, i) => ({ id: 'i' + i, k: 'rep', title: 'T', body: 'B' }));
+    assert.equal(planNotifications(items).at(-1).target, undefined);
+  });
+  it('sync passes the target to the device notification', () => {
+    assert.match(readFileSync(new URL('../modules/sync.js', import.meta.url), 'utf8'), /sendDeviceNotification\(n\.title, n\.body, n\.tag, \{ key: n\.key, target: n\.target \}\)/);
+  });
+});
+
 describe('planNotifications', () => {
   it('caps the individual notifications and summarises the rest', () => {
     const items = Array.from({ length: REMOTE_MAX_NOTIFICATIONS + 3 }, (_, i) => ({ id: 'i' + i, title: 'T', body: 'B' }));

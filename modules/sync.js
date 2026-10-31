@@ -2524,7 +2524,7 @@ export function notifyAdminOfRemoteActivity(localBatch, merged) {
   if (appMode !== 'admin') return;
   const items = findRemoteActivity(localBatch, merged, fmtAmt);
   planNotifications(items).forEach(n => {
-    sendDeviceNotification(n.title, n.body, n.tag, { key: n.key }).catch(() => {});
+    sendDeviceNotification(n.title, n.body, n.tag, { key: n.key, target: n.target }).catch(() => {});
   });
 }
 
@@ -2575,7 +2575,7 @@ function _notifyLocalTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ ...item, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id }).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id, target: { k: key, id: item.id } }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
 
@@ -2585,7 +2585,7 @@ function _notifyEditedTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ title: item.title + ' updated', body: 'Details were changed: ' + item.body, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id }).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id, target: { k: key, id: item.id } }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
 

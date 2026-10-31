@@ -639,12 +639,12 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
         <div class="field">
           <label>From Store</label>
           <input type="hidden" id="stock-transfer-from-value" value="">
-          <button type="button" id="stockTransferFromBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfFrom',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-from-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability();});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="stockTransferFromBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfFrom',(window._stockTransferStoreOpts||[]),function(v,l){var h=document.getElementById('stock-transfer-from-value');h.value=v;h.dataset.histPicked='1';var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';if(typeof applyStockTransferFilter==='function')applyStockTransferFilter();if(typeof updateStockTransferAvailability==='function')updateStockTransferAvailability();});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="field">
           <label>To Store</label>
           <input type="hidden" id="stock-transfer-to-value" value="">
-          <button type="button" id="stockTransferToBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfTo',(window._stockTransferStoreOpts||[]),function(v,l){document.getElementById('stock-transfer-to-value').value=v;var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" id="stockTransferToBtn" class="form-ctl u-e17a8ec d-flex" onclick="(function(b){window._mkPopover(b.parentNode,'_pop_stockTrfTo',(window._stockTransferStoreOpts||[]),function(v,l){var h=document.getElementById('stock-transfer-to-value');h.value=v;h.dataset.histPicked='1';var sp=b.querySelector('span');if(sp)sp.textContent=l+' ';if(typeof applyStockTransferFilter==='function')applyStockTransferFilter();});})(this)"><span>Select Store </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>
       <div class="grid-inputs u-mb-15">
@@ -687,7 +687,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             type="text"
             id="payment-transfer-from-search"
             placeholder="Search entity..."
-            oninput="handleUniversalSearch('payment-transfer-from-search','payment-transfer-from-results','entities');document.getElementById('payment-transfer-from-value').value=''"
+            oninput="handleUniversalSearch('payment-transfer-from-search','payment-transfer-from-results','entities');document.getElementById('payment-transfer-from-value').value='';applyPaymentTransferFilter()"
             autocomplete="off"
             class="form-ctl u-13f34eb"
           >
@@ -700,7 +700,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
             type="text"
             id="payment-transfer-to-search"
             placeholder="Search entity..."
-            oninput="handleUniversalSearch('payment-transfer-to-search','payment-transfer-to-results','entities');document.getElementById('payment-transfer-to-value').value=''"
+            oninput="handleUniversalSearch('payment-transfer-to-search','payment-transfer-to-results','entities');document.getElementById('payment-transfer-to-value').value='';applyPaymentTransferFilter()"
             autocomplete="off"
             class="form-ctl u-13f34eb"
           >
@@ -791,7 +791,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div class="field u-a8a9035 u-mb-15" id="dl-party-wrap">
         <label>Party / Customer / Vendor (optional)</label>
-        <input class="form-ctl" type="text" id="dl-party" placeholder="e.g. Ali Store" maxlength="80" autocomplete="off" oninput="handleUniversalSearch('dl-party','dl-party-results','ledger-party')" onfocus="handleUniversalSearch('dl-party','dl-party-results','ledger-party')">
+        <input class="form-ctl" type="text" id="dl-party" placeholder="e.g. Ali Store" maxlength="80" autocomplete="off" oninput="handleUniversalSearch('dl-party','dl-party-results','ledger-party'); dailyLedgerSetParty()" onfocus="handleUniversalSearch('dl-party','dl-party-results','ledger-party')">
         <div id="dl-party-results" class="hidden u-327750f has-overflow st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
       </div>
       <div class="grid-inputs u-mb-15">
@@ -2359,7 +2359,7 @@ onchange="setCashTrackerMode(currentCashTrackerMode || 'day'); calculateNetCash(
 type="text"
 id="expenseName"
 placeholder="Search expenses or entities..."
-oninput="handleExpenseSearch()"
+oninput="handleExpenseSearch(); applyPaymentHistoryFilter()"
 autocomplete="off" class="form-ctl u-13f34eb"
 >
 <div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>

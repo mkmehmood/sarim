@@ -1159,6 +1159,12 @@ updateFactorySummaryCard();
 _filterFactoryHistoryByMode(mode);
 }
 
+export function refreshFactoryFormulaFilter() {
+_filterFactoryHistoryByMode(currentFactorySummaryMode || 'all');
+return updateFactorySummaryCard();
+}
+window.refreshFactoryFormulaFilter = refreshFactoryFormulaFilter;
+
 export async function setFactoryAvailableStore(pool) {
 if (typeof window.syncFactoryAvailPicker === 'function') window.syncFactoryAvailPicker(pool);
 await updateFactoryUnitsAvailableStats();
@@ -1220,7 +1226,7 @@ metrics: [
 ],
 body: matsBreakdownHtml,
 actions: entry.isMerged ? '' : actionRowHtml('factory', entry.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteFactoryEntry('${entry.id}')">Delete & Restore</button>`)
-}, { attrs: { 'data-date': entry.date } });
+}, { attrs: { 'data-date': entry.date, 'data-formula': entry.formulaId || '' } });
 _fhFrag.appendChild(div);
 }
 list.replaceChildren(_fhFrag);

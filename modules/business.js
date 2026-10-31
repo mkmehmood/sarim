@@ -74,6 +74,18 @@ export function customerHistoryMatcher(inputId) {
   const picked = selectedCustomerFilter(inputId);
   return picked ? (name) => name === picked : (name) => name.includes(typed);
 }
+export function selectedValueFilter(inputId) {
+  const input = document.getElementById(inputId);
+  return input ? String(input.value || '').trim().toLowerCase() : '';
+}
+export function routeHistoryMatcher(fromInputId, toInputId) {
+  const picked = (id) => { const input = document.getElementById(id); return input && input.dataset.histPicked ? selectedValueFilter(id) : ''; };
+  const from = picked(fromInputId);
+  const to = picked(toInputId);
+  if (!from && !to) return null;
+  const same = (a, b) => String(a || '').trim().toLowerCase() === b;
+  return (fromValue, toValue) => (!from || same(fromValue, from)) && (!to || same(toValue, to));
+}
 export const oldDebtNote = (notes) => {
   const text = String(notes == null ? '' : notes).trim();
   return !text || /^(previous balance brought forward|brought forward from previous records)$/i.test(text) ? 'Previous balance' : text;
@@ -2252,6 +2264,17 @@ export function readNum(id) {
 export async function loadCollections(...names) {
   const out = {};
   for (const name of names) out[name] = ensureArray(await sqliteStore.get(name));
+  return out;
+}
+
+export async function loadDeletedIds() {
+  return new Set(ensureArray(await sqliteStore.get('deleted')).map(String));
+}
+
+export async function loadAliveCollections(...names) {
+  const gone = await loadDeletedIds();
+  const out = await loadCollections(...names);
+  for (const n of names) out[n] = out[n].filter((r) => !(r && r.id != null && gone.has(String(r.id))));
   return out;
 }
 

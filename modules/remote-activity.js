@@ -1,6 +1,7 @@
 export const REMOTE_KEYS = ['rep', 'sales', 'transactions', 'expenses', 'production', 'factory', 'clients'];
 export const REMOTE_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const REMOTE_MAX_NOTIFICATIONS = 5;
+const OPENABLE_KEYS = ['sales', 'rep', 'transactions', 'expenses', 'production'];
 
 function authorOf(r) {
   return String(r.managedBy || r.createdBy || '').trim();
@@ -56,14 +57,17 @@ export function findRemoteActivity(localBatch, merged, fmt, now = Date.now()) {
     for (const r of get(merged, key)) {
       if (!r || known.has(String(r.id))) continue;
       const item = describeRemote(key, r, fmt, now);
-      if (item) items.push({ ...item, id: r.id });
+      if (item) items.push({ ...item, id: r.id, k: key });
     }
   }
   return items;
 }
 
 export function planNotifications(items) {
-  const shown = items.slice(0, REMOTE_MAX_NOTIFICATIONS).map(i => ({ title: i.title, body: i.body, tag: 'tx-' + i.id, key: i.id }));
+  const shown = items.slice(0, REMOTE_MAX_NOTIFICATIONS).map(i => ({
+    title: i.title, body: i.body, tag: 'tx-' + i.id, key: i.id,
+    target: OPENABLE_KEYS.includes(i.k) ? { k: i.k, id: i.id } : undefined,
+  }));
   if (items.length > REMOTE_MAX_NOTIFICATIONS) {
     shown.push({
       title: 'More new activity',
