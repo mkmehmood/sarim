@@ -2267,6 +2267,17 @@ export async function loadCollections(...names) {
   return out;
 }
 
+export async function loadDeletedIds() {
+  return new Set(ensureArray(await sqliteStore.get('deleted')).map(String));
+}
+
+export async function loadAliveCollections(...names) {
+  const gone = await loadDeletedIds();
+  const out = await loadCollections(...names);
+  for (const n of names) out[n] = out[n].filter((r) => !(r && r.id != null && gone.has(String(r.id))));
+  return out;
+}
+
 export async function repairStoredRecords(name, records, extraFix) {
   if (!Array.isArray(records) || records.length === 0) return records;
   let fixedCount = 0;

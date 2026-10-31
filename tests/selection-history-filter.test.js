@@ -241,3 +241,19 @@ describe('selection filter wiring', () => {
     assert.match(payments, /window\.updateCustomerCharts\(\)/);
   });
 });
+
+describe('universal search skips deleted records', () => {
+  const stores = { deleted: ['c1', 5], customers: [{ id: 'c1', name: 'Gone' }, { id: 'c2', name: 'Kept' }, { name: 'NoId' }] };
+  const mod = extractFunctions('modules/business.js', ['ensureArray', 'loadCollections', 'loadDeletedIds', 'loadAliveCollections'], {
+    sqliteStore: { get: async (k) => stores[k] }
+  });
+  it('drops tombstoned ids and keeps the rest, including records without an id', async () => {
+    const { customers } = await mod.loadAliveCollections('customers');
+    assert.deepEqual(customers.map((c) => c.name), ['Kept', 'NoId']);
+  });
+  it('the search handlers use the alive loader', () => {
+    const payments = read('modules/utilities-payments.js');
+    assert.match(payments, /loadAliveCollections\('rep', 'sales', 'clients', 'customers', 'entities'\)/);
+    assert.match(payments, /loadAliveCollections\('entities', 'transactions'\);\nconst input = document\.getElementById\('expenseName'\)/);
+  });
+});

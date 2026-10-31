@@ -13,7 +13,7 @@ import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryM
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, routeHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections } from './business.js';
+import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, routeHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
@@ -2137,7 +2137,7 @@ renderRecentExpenses();
 export async function handleExpenseSearch() {
 const expenses = ensureArray(await sqliteStore.get('expenses'));
 const expenseCategories = ensureArray(await sqliteStore.get('categories'));
-const { entities, transactions } = await loadCollections('entities', 'transactions');
+const { entities, transactions } = await loadAliveCollections('entities', 'transactions');
 const input = document.getElementById('expenseName');
 const resultsDiv = document.getElementById('expense-search-results');
 const query = input.value.trim().toLowerCase();
@@ -5998,7 +5998,7 @@ window.notifyBlocking('Failed to delete transaction. Please try again.', 'error'
 }
 
 export async function handleCustomerInput(query, mode) {
-const { rep, sales, clients, customers } = await loadCollections('rep', 'sales', 'clients', 'customers');
+const { rep, sales, clients, customers } = await loadAliveCollections('rep', 'sales', 'clients', 'customers');
 if (!query) query = '';
 if (typeof query !== 'string') query = String(query);
 const isRep = mode === 'rep';
@@ -6039,7 +6039,9 @@ phoneContainer.classList.add('hidden');
 }
 
 export async function handleUniversalSearch(inputId, resultsId, dataSource) {
-const { rep, sales, clients, customers, entities } = await loadCollections('rep', 'sales', 'clients', 'customers', 'entities');
+const { rep, sales, clients, customers, entities } = await loadAliveCollections('rep', 'sales', 'clients', 'customers', 'entities');
+const _gone = await loadDeletedIds();
+const _alive = (r) => r && !(r.id != null && _gone.has(String(r.id)));
 const input = document.getElementById(inputId);
 const resultsDiv = document.getElementById(resultsId);
 if (!input || !resultsDiv) return;
@@ -6053,7 +6055,7 @@ let html = '';
 switch(dataSource) {
 case 'customers': {
 let _freshSalesReg = [];
-try { _freshSalesReg = await sqliteStore.get('customers', []) || []; } catch(e) {}
+try { _freshSalesReg = (await sqliteStore.get('customers', []) || []).filter(_alive); } catch(e) {}
 const _salesRegMap = new Map((_freshSalesReg).filter(c => c && c.id).map(c => [c.id, c]));
 if (Array.isArray(customers)) customers.forEach(c => { if (c && c.id && !_salesRegMap.has(c.id)) _salesRegMap.set(c.id, c); });
 const _mergedSalesReg = Array.from(_salesRegMap.values());
@@ -6180,7 +6182,7 @@ No matching suppliers found
 break;
 case 'clients': {
 let _freshRepReg = [];
-try { _freshRepReg = await sqliteStore.get('clients', []) || []; } catch(e) {}
+try { _freshRepReg = (await sqliteStore.get('clients', []) || []).filter(_alive); } catch(e) {}
 const _repRegMap = new Map((_freshRepReg).filter(c => c && c.id).map(c => [c.id, c]));
 if (Array.isArray(clients)) clients.forEach(c => { if (c && c.id && !_repRegMap.has(c.id)) _repRegMap.set(c.id, c); });
 const _mergedRepReg = Array.from(_repRegMap.values());
