@@ -69,9 +69,10 @@
   }
 
   function place(rec) {
-    const { el, anchor, align } = rec;
+    const { el, anchor } = rec;
     if (!anchor.isConnected) return false;
-    const r = anchor.getBoundingClientRect();
+    const field = rec.menu ? (anchor.querySelector('button') || anchor) : anchor;
+    const r = field.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) return false;
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const below = viewBottom() - r.bottom - GAP - EDGE;
@@ -80,13 +81,8 @@
     const flip = below < Math.min(want, 180) && above > below;
     const room = Math.max(MIN_H, Math.min(MAX_H, flip ? above : below));
     const h = Math.min(room, want);
-    let w = r.width;
-    let left = r.left;
-    if (align === 'end') {
-      w = Math.max(168, el.offsetWidth || 168);
-      left = r.right - w;
-    }
-    left = Math.max(EDGE, Math.min(left, vw - w - EDGE));
+    const w = Math.min(r.width, vw - EDGE * 2);
+    const left = Math.max(EDGE, Math.min(r.left, vw - w - EDGE));
     const top = flip ? Math.max(viewTop() + EDGE, r.top - GAP - h) : r.bottom + GAP;
     const s = el.style;
     s.setProperty('--dd-top', Math.round(top) + 'px');
@@ -121,12 +117,11 @@
         el.classList.add('hidden');
         return;
       }
-      rec = { el, anchor: a, home, align: opts.align || 'start', onClose: opts.onClose || null };
+      rec = { el, anchor: a, home, menu: el.classList.contains('dd-menu') && !el.classList.contains('dd-suggest'), onClose: opts.onClose || null };
       open.set(el, rec);
       el._ddAnchor = a;
     } else {
       if (anchor) rec.anchor = anchor;
-      if (opts.align) rec.align = opts.align;
       if (isSuggest(el) && inputOf(rec.anchor) && !inputOf(rec.anchor).value.trim()) { hide(el); return; }
     }
     el.classList.remove('hidden', 'd-none');
@@ -160,7 +155,6 @@
 
   function menu(cfg) {
     const { id, anchor, items, onSelect } = cfg;
-    const wide = !!cfg.wide;
     let el = document.getElementById(id);
     if (el && open.has(el)) { hide(el); return el; }
     hideAll();
@@ -168,7 +162,7 @@
       el = document.createElement('div');
       el.id = id;
       el.setAttribute('role', 'listbox');
-      el.className = 'dd-menu' + (wide ? ' dd-wide' : '');
+      el.className = 'dd-menu';
       (anchor || document.body).appendChild(el);
     }
     el.textContent = '';
@@ -211,7 +205,7 @@
       });
       el.appendChild(row);
     });
-    show(el, anchor, { align: wide ? 'start' : 'end' });
+    show(el, anchor);
     const sel = el.querySelector('.is-selected');
     if (sel) sel.scrollIntoView({ block: 'nearest' });
     return el;
