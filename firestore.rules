@@ -31,16 +31,6 @@ service cloud.firestore {
       return notSuspended() && dataIsAdmin(getUserData());
     }
 
-    // Checks if user has a specific role or is an admin
-    function hasRole(roleName) {
-      let data = getUserData();
-      return notSuspended() && (
-        isAdmin() ||
-        roleName in data.get('roles', []) ||
-        data.get('role', '') == roleName
-      );
-    }
-
     // Workspace = the owner's uid. Owners have no ownerUid; members point at it.
     function wsOwner() { return getUserData().get('ownerUid', request.auth.uid); }
     function inWorkspace(owner) { return notSuspended() && wsOwner() == owner; }
@@ -71,7 +61,9 @@ service cloud.firestore {
         // admin managing someone else in their workspace (never the owner)
         if (isAdmin() && uid != request.auth.uid && uid != wsOwner()
             && managedByMe(resource.data, uid)
-            && request.resource.data.get('ownerUid', null) == wsOwner())
+            && (request.resource.data.get('ownerUid', null) == wsOwner()
+                || request.resource.data.get('ownerUid', null)
+                   == resource.data.get('ownerUid', null)))
         // admin editing themselves may not drop their own admin status
         || (isAdmin() && isOwner(uid) && dataIsAdmin(request.resource.data)
             && request.resource.data.get('ownerUid', null) == resource.data.get('ownerUid', null))
@@ -103,7 +95,8 @@ service cloud.firestore {
     }
 
     match /users/{uid}/{subcollection}/{docId}/{rest=**} {
-      allow read, write: if isOwner(uid) && notSuspended();
+      allow read, write: if isOwner(uid) && notSuspended()
+        && (isAdmin() || !(subcollection == 'settings' && docId == 'accounts'));
       allow read, write: if dataAccess(uid, subcollection, docId);
       allow read, write: if isAdmin() && subcollection in ['devices','settings']
         && managedByMe(targetUser(uid), uid);

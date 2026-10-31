@@ -9,8 +9,7 @@ describe('firestore.rules', () => {
     assert.match(rules, /'admin' in data\.get\('roles', \[\]\)/);
     assert.match(rules, /data\.get\('role', 'user'\) == 'admin'/);
   });
-  it('defines hasRole and blocks suspended users', () => {
-    assert.match(rules, /function hasRole\(roleName\)/);
+  it('blocks suspended users', () => {
     assert.match(rules, /get\('approved', true\) != false/);
   });
   it('lets owners edit only harmless fields on their own user doc', () => {
