@@ -162,7 +162,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   searchInput.autocomplete = 'off';
   searchInput.classList.add('u-4c8551b');
   const dropdown = document.createElement('div');
-  dropdown.className = 'factory-mat-dropdown dd-menu hidden';
+  dropdown.className = 'factory-mat-dropdown dd-menu dd-suggest hidden';
   const costInput = document.createElement('input');
   costInput.type = 'number';
   costInput.className = 'form-ctl factory-mat-cost';
@@ -174,6 +174,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     const q = (query || '').toLowerCase();
     const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;
     const typed = (query || '').trim();
+    if (!typed) { window.Dropdown.hide(dropdown); return; }
     const exact = typed && inventory.some((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
     const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom u-d7ba50a" data-custom="1" data-name="${esc(typed)}">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
     if (!filtered.length) {
