@@ -113,6 +113,7 @@
     if (!rec) {
       const home = document.createComment('dd');
       if (el.parentNode) el.parentNode.insertBefore(home, el);
+      if (!el.classList.contains('dd-menu') && !el.classList.contains('dd-suggest')) el.classList.add('dd-suggest');
       const a = anchor || (el._ddAnchor) || findAnchor(home);
       if (!a) { if (home.parentNode) home.remove(); return; }
       if (isSuggest(el) && inputOf(a) && !inputOf(a).value.trim()) {
@@ -127,6 +128,7 @@
       if (anchor) rec.anchor = anchor;
       if (isSuggest(el) && inputOf(rec.anchor) && !inputOf(rec.anchor).value.trim()) { hide(el); return; }
     }
+    if (!el.classList.contains('dd-menu') && !el.classList.contains('dd-suggest')) el.classList.add('dd-suggest');
     el.classList.remove('hidden', 'd-none');
     if (el.parentNode !== getLayer()) getLayer().appendChild(el);
     el.classList.add('dd-open');

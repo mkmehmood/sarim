@@ -176,9 +176,10 @@ function pickCategoryDialog({ type, amount, category, scope }) {
     return '';
   };
   const start = category || defaultCategory(type, scope);
-  const scopeSelect = isOut ? '<div class="dlg-field d-none" id="dl-dlg-scope-wrap"><select id="dl-dlg-scope" class="form-ctl dlg-input"><option value="BUSINESS">New category is a Business Expense</option><option value="HOME">New category is a Home / Personal Expense</option></select></div>' : '';
+  const chev = '<svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const scopeSelect = isOut ? `<div class="dlg-field d-none" id="dl-dlg-scope-wrap"><button type="button" id="dl-dlg-scope-btn" class="form-ctl dlg-input u-e17a8ec d-flex"><span>New category is a Business Expense</span>${chev}</button><select id="dl-dlg-scope" class="form-ctl d-none"><option value="BUSINESS">New category is a Business Expense</option><option value="HOME">New category is a Home / Personal Expense</option></select></div>` : '';
   const search = "handleUniversalSearch('dl-dlg-new','dl-dlg-results','ledger-category')";
-  const body = `<div class="dlg-field"><input type="text" id="dl-dlg-new" class="form-ctl dlg-input" value="${esc(start)}" placeholder="Search or type a category" maxlength="60" autocomplete="off" oninput="${search}" onfocus="${search}"><div id="dl-dlg-results" class="hidden dl-results st-background__e02427 st-border-bottom__e54b2f"></div></div>${scopeSelect}<div class="dlg-error" id="dl-dlg-err" role="alert" aria-live="polite"></div>`;
+  const body = `<div class="dlg-field"><input type="text" id="dl-dlg-new" class="form-ctl dlg-input" value="${esc(start)}" placeholder="Search or type a category" maxlength="60" autocomplete="off" oninput="${search}" onfocus="${search}"><div id="dl-dlg-results" class="hidden dd-suggest"></div></div>${scopeSelect}<div class="dlg-error" id="dl-dlg-err" role="alert" aria-live="polite"></div>`;
   const guard = async (overlay) => {
     const typed = overlay.querySelector('#dl-dlg-new').value.trim();
     const err = overlay.querySelector('#dl-dlg-err');
@@ -204,9 +205,18 @@ function pickCategoryDialog({ type, amount, category, scope }) {
   const scopeWrap = overlay.querySelector('#dl-dlg-scope-wrap');
   const scopeSel = overlay.querySelector('#dl-dlg-scope');
   let touched = false;
+  const scopeBtn = overlay.querySelector('#dl-dlg-scope-btn');
+  const syncScope = () => {
+    const label = scopeBtn && scopeBtn.querySelector('span');
+    if (label && scopeSel) label.textContent = scopeSel.options[scopeSel.selectedIndex].text;
+  };
   if (scopeSel) {
     scopeSel.value = scope === 'HOME' ? 'HOME' : 'BUSINESS';
-    scopeSel.addEventListener('change', () => { touched = true; });
+    syncScope();
+    scopeBtn.addEventListener('click', () => {
+      const opts = Array.from(scopeSel.options).map((o) => ({ value: o.value, label: o.text }));
+      window._mkPopover(scopeBtn.parentNode, '_pop_dlScope', opts, (v) => { touched = true; scopeSel.value = v; syncScope(); }, { selected: scopeSel.value });
+    });
   }
   const refresh = () => {
     err.textContent = '';
@@ -214,7 +224,7 @@ function pickCategoryDialog({ type, amount, category, scope }) {
     const typed = input.value.trim();
     const fresh = !!typed && !scopeOf(typed);
     scopeWrap.classList.toggle('d-none', !fresh);
-    if (fresh && !touched) scopeSel.value = isHomeExpense(typed) ? 'HOME' : 'BUSINESS';
+    if (fresh && !touched) { scopeSel.value = isHomeExpense(typed) ? 'HOME' : 'BUSINESS'; syncScope(); }
   };
   input.addEventListener('input', refresh);
   _dialogHook = refresh;

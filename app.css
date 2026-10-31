@@ -4785,7 +4785,6 @@ input[type="radio"] { width: 16px; min-width: 16px; max-height: 16px; border-rad
 .dl-row-line:not(._) { padding: 8px 0; background: none; border: none; font-family: inherit; color: var(--text-main); text-align: left; }
 .dl-row-line:last-child { border-bottom: none; }
 button.dl-row-line { cursor: pointer; }
-.dl-results { max-height: 30vh; overflow-y: auto; border-radius: 10px; margin-top: 6px; }
 .cm-summary { margin-bottom: 12px; padding: 14px 16px; }
 .cm-sum-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
 .cm-sum-debt { font-family: var(--font-num); font-size: 1.85rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
