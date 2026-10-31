@@ -11,6 +11,7 @@ import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory
 import { showGlassConfirm, showToast } from './customers.js';
 import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './accounts.js';
 import { clearRolesCache, readRolesCache, writeRolesCache } from './roles.js';
+import { findRemoteActivity, planNotifications } from './remote-activity.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -2519,45 +2520,12 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
   };
 }
 
-const _REMOTE_TX_WINDOW_MS = 15 * 60 * 1000;
-const _REMOTE_TX_KEYS = ['rep', 'sales', 'transactions', 'expenses'];
-
-function _describeRemoteTx(key, r) {
-  if (!r || !r.id || r.isMerged === true || String(r.id) === '_placeholder_') return null;
-  const created = Number(r.createdAt || r.timestamp || 0);
-  if (!created || Date.now() - created > _REMOTE_TX_WINDOW_MS) return null;
-  if (key === 'rep') {
-    const rep = r.salesRep;
-    if (!rep || rep === 'NONE' || rep === 'admin') return null;
-    return r.isCollection ? { title: 'New collection', body: `${rep} collected ${fmtAmt(r.totalValue)} from ${r.customerName || 'customer'}` } : { title: 'New sale', body: `${rep} sold to ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
-  }
-  const who = r.createdBy;
-  if (!who) return null;
-  if (key === 'sales') return { title: 'New sale', body: `${who} added a sale: ${r.customerName || 'customer'} — ${fmtAmt(r.totalValue)}` };
-  if (key === 'transactions') {
-    if (r.isExpense) return null;
-    return { title: 'New payment', body: `${who} recorded a payment ${r.type === 'IN' ? 'received from' : 'paid to'} ${r.entityName || 'entity'} — ${fmtAmt(r.amount)}` };
-  }
-  return { title: 'New expense', body: `${who} added an expense: ${r.name || r.description || 'expense'} — ${fmtAmt(r.amount)}` };
-}
-
-function _pushTxNotification(item) {
-  sendDeviceNotification(item.title, item.body, 'tx-' + item.id, { key: item.id }).catch(() => {});
-}
-
-export function notifyAdminOfRemoteTransactions(localBatch, merged) {
+export function notifyAdminOfRemoteActivity(localBatch, merged) {
   if (appMode !== 'admin') return;
-  const items = [];
-  for (const key of _REMOTE_TX_KEYS) {
-    const known = new Set(ensureArray(localBatch.get(key)).map(r => String(r && r.id)));
-    for (const r of ensureArray(merged[key])) {
-      if (!r || known.has(String(r.id))) continue;
-      const item = _describeRemoteTx(key, r);
-      if (item) items.push({ ...item, id: r.id });
-    }
-  }
-  items.slice(0, 5).forEach(_pushTxNotification);
-  if (items.length > 5) _pushTxNotification({ title: 'More new transactions', body: `${items.length - 5} more transactions were recorded. Open the app to see them all.`, id: 'more' });
+  const items = findRemoteActivity(localBatch, merged, fmtAmt);
+  planNotifications(items).forEach(n => {
+    sendDeviceNotification(n.title, n.body, n.tag, { key: n.key }).catch(() => {});
+  });
 }
 
 const _LOCAL_TX_KEYS = new Set(['rep', 'sales', 'transactions', 'expenses', 'production']);
@@ -2621,7 +2589,7 @@ function _notifyEditedTransactions(key, records) {
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
 
-window.notifyAdminOfRemoteTransactions = notifyAdminOfRemoteTransactions;
+window.notifyAdminOfRemoteActivity = notifyAdminOfRemoteActivity;
 
 async function _applyFormulaStoreFromCloud(cloud) {
   if (!cloud || typeof cloud !== 'object') return;
@@ -2827,7 +2795,7 @@ export async function _mergeAndPersist(cloudData) {
   ...Object.entries(_merged).map(([k, v]) => [k, v]),
   ['synced', new Date().toISOString()],
   ]);
-  try { notifyAdminOfRemoteTransactions(_localBatch, _merged); } catch (_) {}
+  try { notifyAdminOfRemoteActivity(_localBatch, _merged); } catch (_) {}
   const _colMap = {
   production: data.production, sales: data.sales,
   calculator: data.calculator, transactions: data.transactions,

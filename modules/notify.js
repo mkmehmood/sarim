@@ -222,7 +222,6 @@ const _EXPLAIN = [
   [/location confirmed for (.+?) after/i, (m) => ['Customer location confirmed', m[1] + '\u2019s location was saved after 3 consistent visits.']],
   [/unlinked from (.+)/i, (m) => ['Supplier unlinked', 'The material is no longer linked to ' + m[1] + '.']],
   [/linked to (.+)/i, (m) => ['Supplier linked', 'The material is now linked to ' + m[1] + '.']],
-  [/remote command sent:\s*(.+)/i, (m) => ['Command sent', 'A request to switch to ' + m[1] + ' was sent to the device.']],
   [/encryption failed/i, () => ['Encryption failed', 'Your data could not be encrypted, so nothing was exported. Open the app and try again.']],
   [/error generating pdf/i, () => ['PDF could not be created', 'The statement was not generated. Open the app and try again.']],
   [/address lookup failed/i, () => ['Address lookup failed', 'The street address could not be found, so GPS coordinates were saved instead.']],

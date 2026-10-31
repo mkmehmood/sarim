@@ -45,6 +45,7 @@ const ASSETS_TO_CACHE = [
   './modules/settings-screen.js',
   './modules/accounts.js',
   './modules/roles.js',
+  './modules/remote-activity.js',
   './manifest.json',
   './192.png',
   './512.png',
