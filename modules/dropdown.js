@@ -5,6 +5,7 @@
   const GAP = 6;
   const EDGE = 8;
   const MIN_H = 96;
+  const MIN_W = 200;
   const MAX_H = 280;
   const SUGGEST_SEL = '.u-327750f, .u-search-dropdown, .dd-suggest';
   const open = new Map();
@@ -81,8 +82,9 @@
     const flip = below < Math.min(want, 180) && above > below;
     const room = Math.max(MIN_H, Math.min(MAX_H, flip ? above : below));
     const h = Math.min(room, want);
-    const w = Math.min(r.width, vw - EDGE * 2);
-    const left = Math.max(EDGE, Math.min(r.left, vw - w - EDGE));
+    const w = Math.min(Math.max(r.width, MIN_W), vw - EDGE * 2);
+    const start = w > r.width ? r.right - w : r.left;
+    const left = Math.max(EDGE, Math.min(start, vw - w - EDGE));
     const top = flip ? Math.max(viewTop() + EDGE, r.top - GAP - h) : r.bottom + GAP;
     const s = el.style;
     s.setProperty('--dd-top', Math.round(top) + 'px');
@@ -98,7 +100,8 @@
     frame = requestAnimationFrame(() => {
       frame = 0;
       open.forEach((rec, el) => {
-        if (!el.isConnected || !place(rec)) hide(el);
+        if (!el.isConnected) { open.delete(el); return; }
+        if (!place(rec)) hide(el);
       });
     });
   }

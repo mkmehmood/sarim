@@ -2415,7 +2415,7 @@ animation: none !important;
 .dd-item:hover, .dd-item.is-active, .dd-layer :is(.dd-suggest, .u-search-dropdown, .u-327750f) > div:not(.u-423ed18, .empty):hover, .dd-layer :is(.dd-suggest, .u-search-dropdown, .u-327750f) > div:not(.u-423ed18, .empty).is-active { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
 .dd-item:active, .dd-layer :is(.dd-suggest, .u-search-dropdown, .u-327750f) > div:not(.u-423ed18, .empty):active { background: var(--highlight-border); }
 .dd-body { flex: 1 1 auto; min-width: 0; }
-.dd-title, .dd-layer :is(.dd-suggest, .u-search-dropdown, .u-327750f) > div:not(.u-423ed18, .empty) strong { font-weight: 600; overflow-wrap: anywhere; }
+.dd-title, .dd-layer :is(.dd-suggest, .u-search-dropdown, .u-327750f) > div:not(.u-423ed18, .empty) strong { font-weight: 600; overflow-wrap: break-word; }
 .dd-desc { margin-top: 1px; font-size: 0.74rem; color: var(--text-muted); opacity: 0.72; }
 .dd-tick { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--on-accent-dark, #000); font-size: 0.7rem; font-weight: 800; visibility: hidden; }
 .dd-item.is-selected { background: var(--accent-dim); color: var(--accent); }
@@ -4273,7 +4273,6 @@ body.offline-page button { background: var(--accent-teal); color: var(--white); 
 .u-4597eb5 { font-family: var(--font-mono); flex-shrink: 0; }
 .u-66682c1 { left: 50%; }
 .u-23fc511 { inset: 0; }
-.u-2febf94 { left: 0; }
 .u-45da04f { gap: 3px; white-space: nowrap; }
 .st-opacity__c6e797 { opacity: 1; }
 .st-cursor__3b6a3a { cursor: pointer; }
@@ -4300,7 +4299,6 @@ body.offline-page button { background: var(--accent-teal); color: var(--white); 
 .st-color__497726 { color: var(--danger); }
 .st-color__a80552 { color: var(--accent); }
 .st-position__d461c9 { position: relative; }
-.st-max-height__936545 { max-height: 220px; }
 .st-border-color__38fcbe { border-color: var(--accent); }
 .st-border-color__aa2589 { border-color: var(--glass-border); }
 .st-animation__aa0082 { animation: auth-fade-out 0.22s ease forwards; }

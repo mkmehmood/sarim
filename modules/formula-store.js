@@ -429,23 +429,14 @@ export async function setStoreFormulaSelection(id) {
 }
 
 export async function openStoreFormulaPicker(btn) {
-  const old = document.getElementById('_pop_storeFormula');
-  const wasOpen = !!old && window.getDisplay(old) !== 'none';
-  if (old) old.remove();
-  if (wasOpen) return;
+  const pop = document.getElementById('_pop_storeFormula');
+  if (pop && window.Dropdown.isOpen(pop)) { window.Dropdown.hide(pop); return; }
   const list = await getFormulaStore();
   if (!list.length) { showToast('Add a formula in the Formula Store first', 'warning'); return; }
   window._mkPopover(btn.parentNode, '_pop_storeFormula', list.map((f) => ({ value: String(f.id), label: f.name || 'Untitled' })), (v) => {
     const input = _el('store-formula-select');
     if (input) input.value = v;
   });
-  const pop = document.getElementById('_pop_storeFormula');
-  if (pop) {
-    pop.classList.add('u-2febf94');
-    window.setStyle(pop, 'max-height', 'st-max-height__936545');
-    pop.classList.add('overflow-y-auto');
-    pop.classList.add('has-overflow', 'scroll-y');
-  }
 }
 
 function _items(view, order) {

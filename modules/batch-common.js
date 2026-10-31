@@ -30,14 +30,9 @@ export async function loadFormulas() {
 }
 export function pickFormula(btn, popId, formulas, onPick) {
   const old = el(popId);
-  const wasOpen = !!old && window.getDisplay(old) !== 'none';
-  if (old) old.remove();
-  if (wasOpen || !formulas.length) return;
+  if (old && window.Dropdown.isOpen(old)) { window.Dropdown.hide(old); return; }
+  if (!formulas.length) return;
   window._mkPopover(btn.parentNode, popId, formulas.map((f) => ({ value: String(f.id), label: f.name || 'Untitled' })), onPick);
-  const pop = el(popId);
-  if (pop) {
-    pop.classList.add('u-2febf94', 'st-max-height__936545', 'overflow-y-auto');
-  }
 }
 export function setPickerLabel(btnId, inputId, formula) {
   const input = el(inputId);
