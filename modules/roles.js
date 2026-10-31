@@ -9,6 +9,15 @@ export const ROLE_LABELS = {
   sales: 'Sales',
 };
 
+export const ROLE_ACCESS = {
+  admin: 'every tab, all money figures and account management',
+  rep: 'the Rep tab with their own customers and history, and a place in the rep list',
+  production: 'the Production tab (entry only)',
+  factory: 'the Factory tab (entry only)',
+  payments: 'the Payments tab for entering transactions; payment history and money figures stay hidden',
+  sales: 'the Sales tab; money figures stay hidden',
+};
+
 const ROLE_TAB = { rep: 'rep', production: 'prod', factory: 'factory', payments: 'payments', sales: 'sales' };
 const TAB_ORDER = ['prod', 'factory', 'sales', 'payments', 'rep'];
 const MONEY_TABS = ['payments', 'sales'];
@@ -112,4 +121,27 @@ export function writeRolesCache(info) {
 
 export function clearRolesCache() {
   try { localStorage.removeItem(CACHE_KEY); } catch (_) { }
+}
+
+export function describeRoleChange({ name, self }, role, before, after) {
+  const label = ROLE_LABELS[role];
+  const adding = cleanRoles(after).includes(role);
+  const now = cleanRoles(after).map(r => ROLE_LABELS[r]).join(', ') || 'none';
+  const when = self ? 'Your session reloads to apply it.' : 'It takes effect on their device within seconds.';
+  if (adding) {
+    return {
+      title: `Assign ${label} Role`,
+      confirmText: `Assign ${label}`,
+      danger: role === 'admin',
+      message: `Give ${name} the ${label} role?\n\nThey will get ${ROLE_ACCESS[role]}.\n\nRoles after this change: ${now}.\n\n${when}`,
+    };
+  }
+  const none = cleanRoles(after).length === 0;
+  return {
+    title: `Remove ${label} Role`,
+    confirmText: `Remove ${label}`,
+    danger: none || role === 'admin',
+    message: `Remove the ${label} role from ${name}?\n\nThey will lose ${ROLE_ACCESS[role]}.\n\nRoles after this change: ${now}.` +
+      (none ? '\n\nThey will have no access until another role is assigned.' : '') + `\n\n${when}`,
+  };
 }

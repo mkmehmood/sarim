@@ -3,7 +3,7 @@ import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { firebaseConfig } from './utilities-sales.js';
 import {
-  ROLE_KEYS, ROLE_LABELS, canAdoptAccount, cleanRoles, deriveSession, isLegacyAccount, normalizeRoles,
+  ROLE_KEYS, ROLE_LABELS, canAdoptAccount, cleanRoles, deriveSession, describeRoleChange, isLegacyAccount, normalizeRoles,
   readRolesCache, resolveOwnerUid, structureKey, toggleRole, writeRolesCache,
 } from './roles.js';
 
@@ -11,6 +11,7 @@ const MIN_PASSWORD = 8;
 const SESSION_FETCH_TIMEOUT_MS = 8000;
 const _newRoles = new Set();
 let _accounts = [];
+const _roleBusy = new Set();
 
 export function _accountsIndexRef() {
   return dataRootRef().collection('settings').doc('accounts');
@@ -310,16 +311,11 @@ export async function adminSetAccountRole(uid, role) {
     return;
   }
   if (!navigator.onLine) { _warn('No Internet', 'Internet is required to change roles.'); return; }
-  if (role === 'admin') {
-    const granting = next.includes('admin');
-    const ok = await showGlassConfirm(
-      granting
-        ? `Give ${_who(acct)} full Admin access?\n\nAdmins see every tab and all money figures and can manage accounts.`
-        : `Remove Admin access from ${_who(acct)}?\n\nThey keep only their other roles.`,
-      { title: granting ? 'Grant Admin Access' : 'Remove Admin Access', confirmText: granting ? 'Grant Admin' : 'Remove Admin', cancelText: 'Cancel', danger: granting }
-    );
-    if (!ok) return;
-  }
+  if (_roleBusy.has(uid)) return;
+  const change = describeRoleChange({ name: _who(acct), self: !!currentUser && uid === currentUser.uid }, role, acct.roles, next);
+  const ok = await showGlassConfirm(change.message, { title: change.title, confirmText: change.confirmText, cancelText: 'Cancel', danger: change.danger });
+  if (!ok) return;
+  _roleBusy.add(uid);
   const previous = acct.roles;
   acct.roles = next;
   renderAccountsList();
@@ -333,6 +329,8 @@ export async function adminSetAccountRole(uid, role) {
     renderAccountsList();
     _fail('Roles Not Updated', 'The role change could not be saved. Check your connection and try again.');
     console.error('adminSetAccountRole:', _safeErr(err));
+  } finally {
+    _roleBusy.delete(uid);
   }
 }
 

@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractFunctions } from './_extract.js';
-import { ROLE_KEYS, canAdoptAccount, cleanRoles, deriveSession, isLegacyAccount, normalizeRoles, resolveOwnerUid, tabsForRoles, toggleRole } from '../modules/roles.js';
+import { describeRoleChange, ROLE_KEYS, canAdoptAccount, cleanRoles, deriveSession, isLegacyAccount, normalizeRoles, resolveOwnerUid, tabsForRoles, toggleRole } from '../modules/roles.js';
 
 describe('roles array', () => {
   it('has the six roles and filters junk', () => {
@@ -65,4 +65,24 @@ describe('existing rep migration', () => {
   it('is empty once every rep has an account', () => {
     assert.deepEqual(unlinkedReps(['A'], [{ name: 'a', email: '', roles: ['rep'] }]), []);
   });
+});
+
+describe('role change dialogs', () => {
+  const who = { name: 'Sam', self: false };
+  it('describes an assignment with what the person gets', () => {
+    const c = describeRoleChange(who, 'rep', [], ['rep']);
+    assert.equal(c.title, 'Assign Rep Role');
+    assert.match(c.message, /own customers and history/);
+    assert.match(c.message, /Roles after this change: Rep/);
+    assert.equal(c.danger, false);
+  });
+  it('flags granting Admin as dangerous', () => assert.equal(describeRoleChange(who, 'admin', [], ['admin']).danger, true));
+  it('warns when the last role is removed', () => {
+    const c = describeRoleChange(who, 'sales', ['sales'], []);
+    assert.equal(c.title, 'Remove Sales Role');
+    assert.match(c.message, /no access until another role/);
+    assert.equal(c.danger, true);
+  });
+  it('removing one of several roles is not dangerous', () => assert.equal(describeRoleChange(who, 'sales', ['sales', 'rep'], ['rep']).danger, false));
+  it('tells the admin that their own session reloads', () => assert.match(describeRoleChange({ name: 'You', self: true }, 'rep', ['admin'], ['admin', 'rep']).message, /session reloads/));
 });

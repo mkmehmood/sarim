@@ -63,9 +63,20 @@ describe('add-account validation raises a warning dialog', () => {
   });
 });
 
+describe('every role toggle is confirmed with a dialog', () => {
+  const body = SRC.slice(SRC.indexOf('export async function adminSetAccountRole'), SRC.indexOf('export async function adminToggleApproval'));
+  it('asks before writing and blocks double taps', () => {
+    assert.ok(body.indexOf('showGlassConfirm') < body.indexOf('.set({ roles'));
+    assert.match(body, /_roleBusy\.has\(uid\)/);
+    assert.match(body, /finally \{\s*_roleBusy\.delete\(uid\)/);
+  });
+  it('no longer special-cases Admin', () => assert.equal(/role === 'admin'/.test(body), false));
+});
+
 describe('sensitive actions are confirmed', () => {
   it('granting or removing Admin asks first and a suspension or removal asks first', () => {
-    assert.match(SRC, /title: granting \? 'Grant Admin Access' : 'Remove Admin Access'/);
+    assert.match(SRC, /describeRoleChange\(/);
+    assert.match(SRC, /showGlassConfirm\(change\.message, \{ title: change\.title/);
     assert.match(SRC, /title: currentlyApproved \? 'Suspend Account' : 'Reinstate Account'/);
     assert.match(SRC, /title: 'Remove Account'/);
     assert.match(SRC, /title: 'Add Existing Login'/);
