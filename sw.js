@@ -36,6 +36,8 @@ const ASSETS_TO_CACHE = [
   './modules/admin-data.js',
   './modules/custom-date-picker.js',
   './modules/dropdown.js',
+  './modules/notify-open.js',
+  './modules/notify-target.js',
   './modules/link-guards.js',
   './modules/link-graph.js',
   './modules/daily-ledger.js',
@@ -584,8 +586,15 @@ self.addEventListener('fetch', function (event) {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const data = event.notification.data;
+  const target = data && data.target && data.target.k && data.target.id != null ? data.target : null;
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-    for (const c of list) { if ('focus' in c) return c.focus(); }
-    if (self.clients.openWindow) return self.clients.openWindow('./');
+    for (const c of list) {
+      if ('focus' in c) {
+        if (target) c.postMessage({ type: 'OPEN_NOTIFICATION_TARGET', target });
+        return c.focus();
+      }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(target ? './?open=' + encodeURIComponent(target.k + ':' + target.id) : './');
   }));
 });

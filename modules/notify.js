@@ -25,9 +25,10 @@ async function _ensureWebPermission() {
   try { return (await Notification.requestPermission()) === 'granted'; } catch (_) { return false; }
 }
 
-async function _showWeb(title, body, tag) {
+async function _showWeb(title, body, tag, target) {
   if (!(await _ensureWebPermission())) return;
   const options = { body, tag, icon: '192.png', badge: '192.png', renotify: true };
+  if (target) options.data = { target };
   try {
     const reg = navigator.serviceWorker && navigator.serviceWorker.getRegistration ? await navigator.serviceWorker.getRegistration() : null;
     if (reg && reg.showNotification) { await reg.showNotification(title, options); return; }
@@ -35,7 +36,7 @@ async function _showWeb(title, body, tag) {
   try { new Notification(title, options); } catch (_) {}
 }
 
-async function _showNative(title, body, tone) {
+async function _showNative(title, body, tone, target) {
   const { LocalNotifications } = _plugins();
   if (!LocalNotifications) return;
   if (!(await _ensureNativePermission(LocalNotifications))) return;
@@ -45,7 +46,7 @@ async function _showNative(title, body, tone) {
     const lines = String(body).split('\n');
     if (lines.some((l) => l.trim() === summary)) body = lines.filter((l) => l.trim() !== summary).join('\n');
   }
-  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: summary, schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
+  try { await LocalNotifications.schedule({ notifications: [{ id: _seq, title, body, largeBody: body, summaryText: summary, extra: target ? { k: target.k, id: String(target.id) } : undefined, schedule: { at: new Date(Date.now() + 250) } }] }); } catch (_) {}
 }
 
 const _SUMMARY = { success: 'All done', warning: 'Needs your attention', error: 'The action could not be completed' };
@@ -104,10 +105,10 @@ function _enqueue(entry) {
   _flushTimer = setTimeout(_flush, wait);
 }
 
-async function _emit(title, body, tag, tone) {
+async function _emit(title, body, tag, tone, target) {
   try {
-    if (_isNative()) await _showNative(title, body, tone);
-    else await _showWeb(title, body, tag || 'app-toast');
+    if (_isNative()) await _showNative(title, body, tone, target);
+    else await _showWeb(title, body, tag || 'app-toast', target);
   } catch (_) {}
 }
 
@@ -123,11 +124,12 @@ export function _flush() {
   q.filter((e) => e.kind === 'event').forEach((e) => {
     const g = e.key ? byKey.get(e.key) : null;
     if (!g) {
-      const ng = { title: e.title, tag: e.tag, tone: e.tone, priority: e.priority, bodies: [e.body], details: [] };
+      const ng = { title: e.title, tag: e.tag, tone: e.tone, priority: e.priority, bodies: [e.body], details: [], target: e.target || null };
       groups.push(ng);
       if (e.key) byKey.set(e.key, ng);
       return;
     }
+    if (!g.target && e.target) g.target = e.target;
     if (e.priority > g.priority) { g.title = e.title; g.tag = e.tag; g.tone = e.tone || g.tone; g.priority = e.priority; g.bodies.unshift(e.body); }
     else g.bodies.push(e.body);
   });
@@ -145,7 +147,7 @@ export function _flush() {
   });
   groups.forEach((g) => {
     const body = g.standalone ? g.bodies[0] : _mergeLines([...g.bodies, ...g.details.map((d) => _mergeLines([d], { skipNoise: true }))]);
-    _emit(g.title, body, g.tag, g.tone);
+    _emit(g.title, body, g.tag, g.tone, g.target);
   });
 }
 
@@ -161,12 +163,12 @@ export async function notifyAction(a) {
   }
   const key = a.key != null ? String(a.key) : '';
   if (kind !== 'dialog' && !key && _isDuplicate(title, text, a.tag)) return;
-  _enqueue({ kind, title, body: text, tag: a.tag || 'app-toast', key, priority: Number(a.priority) || 1, tone: a.tone });
+  _enqueue({ kind, title, body: text, tag: a.tag || 'app-toast', key, priority: Number(a.priority) || 1, tone: a.tone, target: a.target && a.target.k && a.target.id != null ? { k: String(a.target.k), id: String(a.target.id) } : null });
 }
 
 export function sendDeviceNotification(title, body, tag, opts) {
   const o = opts || {};
-  return notifyAction({ title, body, tag, key: o.key, priority: o.priority, tone: o.tone, kind: o.dialog ? 'dialog' : (o.fromToast ? 'toast' : 'event') });
+  return notifyAction({ title, body, tag, key: o.key, priority: o.priority, tone: o.tone, target: o.target, kind: o.dialog ? 'dialog' : (o.fromToast ? 'toast' : 'event') });
 }
 
 export function primeNotificationPermission() {

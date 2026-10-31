@@ -2542,7 +2542,7 @@ function _describeRemoteTx(key, r) {
 }
 
 function _pushTxNotification(item) {
-  sendDeviceNotification(item.title, item.body, 'tx-' + item.id, { key: item.id }).catch(() => {});
+  sendDeviceNotification(item.title, item.body, 'tx-' + item.id, { key: item.id, target: item.k ? { k: item.k, id: item.id } : undefined }).catch(() => {});
 }
 
 export function notifyAdminOfRemoteTransactions(localBatch, merged) {
@@ -2553,7 +2553,7 @@ export function notifyAdminOfRemoteTransactions(localBatch, merged) {
     for (const r of ensureArray(merged[key])) {
       if (!r || known.has(String(r.id))) continue;
       const item = _describeRemoteTx(key, r);
-      if (item) items.push({ ...item, id: r.id });
+      if (item) items.push({ ...item, id: r.id, k: key });
     }
   }
   items.slice(0, 5).forEach(_pushTxNotification);
@@ -2607,7 +2607,7 @@ function _notifyLocalTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ ...item, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id }).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id, target: { k: key, id: item.id } }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
 }
 
@@ -2617,7 +2617,7 @@ function _notifyEditedTransactions(key, records) {
     const item = _describeLocalTx(key, r);
     if (item) items.push({ title: item.title + ' updated', body: 'Details were changed: ' + item.body, id: r.id });
   });
-  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id }).catch(() => {}));
+  items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id, target: { k: key, id: item.id } }).catch(() => {}));
   if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
 }
 
