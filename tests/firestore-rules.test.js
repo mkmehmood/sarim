@@ -21,7 +21,20 @@ describe('firestore.rules', () => {
     assert.match(rules, /allow delete: if isAdmin\(\)/);
   });
   it('gives workspace members access through ownerUid', () => {
-    assert.match(rules, /get\('ownerUid', ''\) == ownerUid/);
+    assert.match(rules, /function inWorkspace\(owner\)/);
+    assert.match(rules, /wsOwner\(\) == owner/);
+  });
+  it('scopes admins to their own workspace and protects the owner and themselves', () => {
+    assert.match(rules, /function managedByMe\(data, uid\)/);
+    assert.match(rules, /uid != request\.auth\.uid && uid != wsOwner\(\)/);
+    assert.match(rules, /dataIsAdmin\(request\.resource\.data\)/);
+  });
+  it('keeps the account list admin-only and ties the doc to the login email', () => {
+    assert.match(rules, /subcollection == 'settings' && docId == 'accounts'/);
+    assert.match(rules, /request\.auth\.token\.email\.lower\(\)/);
+  });
+  it('requires new accounts to join the creating admin\'s workspace', () => {
+    assert.match(rules, /allow create: if isAdmin\(\)\s*&& request\.resource\.data\.get\('ownerUid', null\) == wsOwner\(\)/);
   });
   it('has no device collection screens or roles left in the app', () => {
     const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
