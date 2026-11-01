@@ -6,6 +6,7 @@ const NOTIFY_GAP_MS = 15000;
 const RETRY_DELAYS_MS = [0, 3000, 8000];
 
 let _listening = false;
+let _tapListening = false;
 let _lastNotifyAt = 0;
 let _tokenDocId = null;
 
@@ -37,9 +38,20 @@ function deviceId() {
   } catch (_) { return 'device'; }
 }
 
-export function openApprovalsFromPush() {
+export function openApprovalsFromPush(action) {
+  const data = action && action.notification && action.notification.data;
+  const id = data && data.pendingId ? String(data.pendingId) : null;
+  if (typeof window.openApprovalFromPush === 'function') { window.openApprovalFromPush(id); return; }
   if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen('approvals-screen');
   if (typeof window.renderApprovals === 'function') window.renderApprovals();
+}
+
+function ensureTapListener() {
+  if (_tapListening) return;
+  const p = pushPlugin();
+  if (!p || typeof p.addListener !== 'function') return;
+  _tapListening = true;
+  p.addListener('pushNotificationActionPerformed', (action) => { openApprovalsFromPush(action); });
 }
 
 async function saveToken(token) {
@@ -58,12 +70,12 @@ export async function registerAdminPush() {
   if (!isAndroidPushApp() || appMode !== 'admin' || !currentUser) return;
   const p = pushPlugin();
   try {
+    ensureTapListener();
     await p.createChannel({ id: 'approvals', name: 'Approvals', description: 'Items waiting for your approval', importance: 4, visibility: 1 }).catch(() => {});
     if (!_listening) {
       _listening = true;
       p.addListener('registration', (t) => { saveToken(t && t.value).catch((e) => console.warn('[push] could not save token:', (e && e.message) || e)); });
       p.addListener('registrationError', (e) => { window._pushActive = false; console.warn('[push] registration failed:', (e && e.error) || e); });
-      p.addListener('pushNotificationActionPerformed', () => { openApprovalsFromPush(); });
     }
     let perm = await p.checkPermissions();
     if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await p.requestPermissions();
@@ -123,6 +135,7 @@ export async function notifyAdminsPush(pendingId) {
 }
 
 if (typeof window !== 'undefined') {
+  if (isAndroidPushApp()) ensureTapListener();
   window.registerAdminPush = registerAdminPush;
   window.removePushToken = removePushToken;
 }

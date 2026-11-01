@@ -20,3 +20,9 @@ export function createPingCoalescer({ queue, pull, delayMs = 500, setTimer = set
     return true;
   };
 }
+
+export async function runInWaves(tasks, size = 4) {
+  for (let i = 0; i < tasks.length; i += size) {
+    await Promise.all(tasks.slice(i, i + size).map(task => task()));
+  }
+}

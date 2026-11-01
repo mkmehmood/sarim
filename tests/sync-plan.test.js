@@ -81,3 +81,38 @@ describe('sync.js wiring', () => {
     assert.match(sync, /if \(_returningCached && hasInitialized\) return 'returning';/);
   });
 });
+
+import { runInWaves } from '../modules/sync-plan.js';
+
+describe('runInWaves', () => {
+  it('runs tasks in parallel waves of the given size and keeps going in order', async () => {
+    let running = 0; let peak = 0; const done = [];
+    const task = (n) => async () => {
+      running++; peak = Math.max(peak, running);
+      await new Promise(r => setTimeout(r, 5));
+      running--; done.push(n);
+    };
+    await runInWaves([1, 2, 3, 4, 5, 6, 7].map(task), 3);
+    assert.equal(peak, 3);
+    assert.equal(done.length, 7);
+  });
+  it('stops at the first failing wave so nothing is marked uploaded', async () => {
+    const ran = [];
+    const ok = (n) => async () => { ran.push(n); };
+    const bad = async () => { throw new Error('commit failed'); };
+    await assert.rejects(runInWaves([ok(1), bad, ok(3), ok(4)], 2), /commit failed/);
+    assert.deepEqual(ran.includes(4), false);
+  });
+});
+
+describe('upload path wiring', () => {
+  it('loads only the collections that have local changes', () => {
+    assert.match(sync, /const _dirtyKeys = _keys\.filter\(k => DeltaSync\.isDirty\(k\)\);/);
+    assert.match(sync, /const _batch = _dirtyKeys\.length \? await sqliteStore\.getBatch\(_dirtyKeys\) : new Map\(\);/);
+  });
+  it('commits batches in parallel waves instead of one at a time', () => {
+    assert.match(sync, /await runInWaves\(batches\.map\(batch => \(\) => batch\.commit\(\)\)\);/);
+    assert.match(sync, /await runInWaves\(photoBatches\.map/);
+    assert.doesNotMatch(sync, /for \(const batch of batches\) \{\n\s*await batch\.commit\(\);/);
+  });
+});

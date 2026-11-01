@@ -15,7 +15,7 @@ import { findRemoteActivity, planNotifications } from './remote-activity.js';
 import { gates, isGatedSession, submitPending, submitPendingBatch, watchOwnPending, watchPendingApprovals } from './approvals.js';
 import { isGatedCollection } from './approvals-core.js';
 import { removePushToken } from './push.js';
-import { collectionNeedsMerge, createPingCoalescer, shouldFullPass } from './sync-plan.js';
+import { collectionNeedsMerge, createPingCoalescer, runInWaves, shouldFullPass } from './sync-plan.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -3021,7 +3021,8 @@ export async function _uploadChanges(userRef) {
   'calculator','inventory','factory',
   'entities','transactions','expenses','returns',
   ];
-  const _batch = await sqliteStore.getBatch(_keys);
+  const _dirtyKeys = _keys.filter(k => DeltaSync.isDirty(k));
+  const _batch = _dirtyKeys.length ? await sqliteStore.getBatch(_dirtyKeys) : new Map();
   const collections = {
   production:         ensureArray(_batch.get('production')).filter(isRealRecord),
   sales:              ensureArray(_batch.get('sales')).filter(isRealRecord),
@@ -3244,10 +3245,8 @@ export async function _uploadChanges(userRef) {
     }
   } catch(_photoUploadErr) { console.warn('[uploadChanges] photos upload error', _photoUploadErr); }
   if (operationCount > 0) batches.push(currentBatch);
-  for (const batch of batches) {
-    await batch.commit();
-  }
-  for (const { batch, keys } of photoBatches) {
+  await runInWaves(batches.map(batch => () => batch.commit()));
+  await runInWaves(photoBatches.map(({ batch, keys }) => async () => {
     try {
       await batch.commit();
       _uploadedPhotoKeys.push(...keys);
@@ -3255,7 +3254,7 @@ export async function _uploadChanges(userRef) {
     } catch (_pbErr) {
       console.warn('[uploadChanges] photo batch commit failed; will retry next sync', _pbErr);
     }
-  }
+  }), 3);
   for (const { collectionName, id } of _pendingUploadMarks) {
     if (typeof UUIDSyncRegistry !== 'undefined') {
       UUIDSyncRegistry.markUploaded(collectionName, id);
