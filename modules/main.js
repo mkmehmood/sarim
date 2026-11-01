@@ -36,5 +36,5 @@ import './daily-ledger.js';
 import './phone-actions.js';
 import './field-expenses.js';
 import './settings-screen.js';
-import './background-mode.js';
+import './desktop-startup.js';
 import './push.js';
