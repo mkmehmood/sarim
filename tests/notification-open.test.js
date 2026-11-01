@@ -22,7 +22,7 @@ globalThis.window = {
 globalThis.Notification = FakeNotification;
 globalThis.document = { addEventListener() {}, removeEventListener() {} };
 const notify = await import('../modules/notify.js');
-const { parseTarget, resolveView, LEDGER_SCREEN } = await import('../modules/notify-target.js');
+const { parseTarget, resolveView, LEDGER_SCREEN, tabForKey, isViewTarget } = await import('../modules/notify-target.js');
 notify.setNotificationWindow(5, 50);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -62,6 +62,31 @@ describe('notification target', () => {
     assert.deepEqual(resolveView({ k: 'factory', id: 'f1' }, {}), { type: 'factory', card: 'f1' });
     assert.deepEqual(resolveView({ k: 'clients', id: 'c1' }, { name: 'Noman' }), { type: 'ledger', kind: 'rep', owner: 'Noman', row: '' });
     assert.deepEqual(parseTarget({ k: 'factory', id: 'f1' }), { k: 'factory', id: 'f1' });
+  });
+  it('links calculator entries and daily ledger entries to their history cards', () => {
+    assert.deepEqual(resolveView({ k: 'calculator', id: 'c9' }, {}), { type: 'calc', card: 'c9' });
+    const entry = resolveView({ k: 'daily_ledger', id: 'l1' }, {});
+    assert.equal(entry.screen, 'daily-ledger-screen');
+    assert.equal(entry.card, 'l1');
+  });
+  it('links notifications that are not about one record to the screen they concern', () => {
+    assert.deepEqual(parseTarget({ k: 'view', id: 'recycle-bin' }), { k: 'view', id: 'recycle-bin' });
+    assert.equal(parseTarget({ k: 'view', id: 'nowhere' }), null);
+    assert.equal(isViewTarget({ k: 'view', id: 'recycle-bin' }), true);
+    assert.deepEqual(resolveView({ k: 'view', id: 'recycle-bin' }, null), { type: 'call', fn: 'openRecycleBin' });
+    assert.deepEqual(resolveView({ k: 'view', id: 'store-manager' }, null), { type: 'call', fn: 'openStoreManagerScreen' });
+    assert.equal(resolveView({ k: 'view', id: 'formula-store' }, null).screen, 'formula-store-screen');
+    assert.equal(resolveView({ k: 'view', id: 'daily-ledger' }, null).screen, 'daily-ledger-screen');
+    assert.equal(resolveView({ k: 'view', id: 'approvals' }, null).screen, 'approvals-screen');
+    assert.deepEqual(resolveView({ k: 'view', id: 'tab:payments' }, null), { type: 'tab', tab: 'payments' });
+  });
+  it('maps every record store to the tab that lists it', () => {
+    assert.equal(tabForKey('sales'), 'sales');
+    assert.equal(tabForKey('transactions'), 'payments');
+    assert.equal(tabForKey('expenses'), 'payments');
+    assert.equal(tabForKey('production'), 'prod');
+    assert.equal(tabForKey('calculator'), 'calc');
+    assert.equal(tabForKey('rep'), 'rep');
   });
   it('knows the screen that holds each ledger', () => {
     assert.equal(LEDGER_SCREEN.cust, 'customer-management-screen');

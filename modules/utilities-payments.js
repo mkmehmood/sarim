@@ -273,7 +273,7 @@ sections: [
 ],
 body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt) + hcExpensesHtml(sortedExpenseEntries(data.commissionItems), fmtAmt, 'Commission breakdown'),
 actions: isMerged ? '' : actionRowHtml('calc', id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`)
-}, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate } });
+}, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate, 'data-rec': data.id } });
 }
 
 export function _calcSaleDay(sale) {
@@ -5154,7 +5154,7 @@ const deletionRecords = ensureArray(await sqliteStore.get('deletions'));
   ))) return;
   const ok = await recoverRecord(id, collectionName);
   if (ok) {
-    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label + ' was restored from the recycle bin.', 'recover-' + id, { key: id, priority: 2 }).catch(() => {});
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Record recovered', label + ' was restored from the recycle bin.', 'recover-' + id, { key: id, priority: 2, target: ['sales', 'rep', 'transactions', 'expenses', 'production', 'factory', 'calculator'].includes(collectionName) ? { k: collectionName, id } : { k: 'view', id: 'recycle-bin' } }).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();
@@ -5216,7 +5216,7 @@ async function _emptyRecycleBinImpl() {
   if (failCount > 0) {
     window.notifyBlocking(`Emptied recycle bin with ${failCount} error${failCount !== 1 ? 's' : ''}. Some records may need a retry.`, 'warning', 'Warning');
   } else {
-    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Recycle bin emptied', targets.length + ' record' + (targets.length !== 1 ? 's were' : ' was') + ' permanently deleted and cannot be recovered.', 'recycle-emptied').catch(() => {});
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Recycle bin emptied', targets.length + ' record' + (targets.length !== 1 ? 's were' : ' was') + ' permanently deleted and cannot be recovered.', 'recycle-emptied', { target: { k: 'view', id: 'recycle-bin' } }).catch(() => {});
   }
 }
 
@@ -5375,7 +5375,7 @@ async function _attemptHardDeleteImpl(id, collectionName) {
     ok = await hardDeleteRecord(id, collectionName);
   }
   if (ok) {
-    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Permanently deleted', label + ' was permanently deleted and cannot be recovered.', 'hard-del-' + id).catch(() => {});
+    if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Permanently deleted', label + ' was permanently deleted and cannot be recovered.', 'hard-del-' + id, { target: { k: 'view', id: 'recycle-bin' } }).catch(() => {});
     notifyDataChange('all');
     if (typeof calculateNetCash === 'function') calculateNetCash();
     if (typeof calculateCashTracker === 'function') calculateCashTracker();

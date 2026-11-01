@@ -360,7 +360,7 @@ if (!(await window.gcCommit({}))) return false;
     list.push({ id: _editingId, ...c, createdAt: now, updatedAt: now });
   }
   await _saveFormulaStore(list, _feedWrites(list, now));
-  sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `"${c.name}" was saved with ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}.`, 'formula-' + _editingId).catch(() => {});
+  sendDeviceNotification(idx >= 0 ? 'Formula updated' : 'Formula created', `"${c.name}" was saved with ${c.ingredients.length} ingredient${c.ingredients.length === 1 ? '' : 's'}.`, 'formula-' + _editingId, { target: { k: 'view', id: 'formula-store' } }).catch(() => {});
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
   return true;
 }
@@ -380,7 +380,7 @@ export async function deleteFormulaStoreEntry() {
   const list = fullList.filter((f) => String(f.id) !== String(_editingId));
   if (removed) await trashRecord('formulas', removed);
   await _saveFormulaStore(list, _feedWrites(list, getTimestamp()));
-  sendDeviceNotification('Formula deleted', removed && removed.name ? `"${removed.name}" was removed from your formulas.` : 'A formula was removed.', 'formula-del-' + _editingId).catch(() => {});
+  sendDeviceNotification('Formula deleted', removed && removed.name ? `"${removed.name}" was removed from your formulas.` : 'A formula was removed.', 'formula-del-' + _editingId, { target: { k: 'view', id: 'formula-store' } }).catch(() => {});
   _editingId = null;
   if (typeof window.closeStandaloneScreen === 'function') window.closeStandaloneScreen('formula-store-edit-screen');
 }

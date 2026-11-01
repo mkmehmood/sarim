@@ -1,6 +1,7 @@
 import { ensureArray, sqliteStore } from './business.js';
 import { hcToggle } from './history-card.js';
-import { LEDGER_SCREEN, parseTarget, resolveView } from './notify-target.js';
+import { appMode } from './business.js';
+import { LEDGER_SCREEN, isViewTarget, parseTarget, resolveView } from './notify-target.js';
 
 const WAIT_MS = 60000;
 const RETRY_MS = 500;
@@ -76,6 +77,15 @@ async function openView(plan) {
   if (plan.type === 'transfer') {
     if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen(plan.screen);
     if (typeof window[plan.prepare] === 'function') await window[plan.prepare]();
+    return plan.card ? openCard(plan.card) : true;
+  }
+  if (plan.type === 'call') {
+    if (typeof window[plan.fn] !== 'function') return false;
+    await window[plan.fn]();
+    return true;
+  }
+  if (plan.type === 'calc') {
+    if (typeof window.showTab === 'function') await window.showTab('calc');
     return openCard(plan.card);
   }
   if (plan.type === 'factory') {
@@ -104,6 +114,14 @@ async function attempt(startedAt) {
     }
     timer = setTimeout(() => attempt(startedAt), RETRY_MS);
   };
+  if (isViewTarget(target)) {
+    if (!appMode || typeof window.openStandaloneScreen !== 'function') { retry(); return; }
+    pending = null;
+    let shown = false;
+    try { shown = await openView(resolveView(target, null)); } catch (_) { shown = false; }
+    if (!shown) toast('Could not open that screen.', 'warning');
+    return;
+  }
   let rows = [];
   try { rows = ensureArray(await sqliteStore.get(target.k)); } catch (_) { rows = []; }
   if (!rows.length || typeof window.openStandaloneScreen !== 'function') { retry(); return; }

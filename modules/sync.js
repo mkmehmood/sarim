@@ -11,7 +11,8 @@ import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory
 import { showGlassConfirm, showToast } from './customers.js';
 import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './accounts.js';
 import { clearRolesCache, readRolesCache, writeRolesCache } from './roles.js';
-import { findRemoteActivity, planNotifications } from './remote-activity.js';
+import { findRemoteActivity, planNotifications, describeLedgerEntry } from './remote-activity.js';
+import { tabForKey } from './notify-target.js';
 import { gates, isGatedSession, submitPending, submitPendingBatch, watchOwnPending, watchPendingApprovals } from './approvals.js';
 import { isGatedCollection } from './approvals-core.js';
 import { removePushToken } from './push.js';
@@ -261,7 +262,7 @@ function _notifyDeletion(key, r) {
       if (amt != null && amt !== '' && !isNaN(Number(amt))) parts.push(fmtAmt(amt));
       else if (r.net != null && !isNaN(Number(r.net))) parts.push(Math.abs(Number(r.net)) + ' kg');
     }
-    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now()), { key: r && r.id ? r.id : '' }).catch(() => {});
+    sendDeviceNotification(label + ' deleted', (parts.length ? parts.join(' — ') + ' — ' : '') + 'removed from your records.', 'del-' + key + '-' + (r && r.id ? r.id : Date.now()), { key: r && r.id ? r.id : '', target: { k: 'view', id: 'recycle-bin' } }).catch(() => {});
   } catch (_) {}
 }
 
@@ -1889,7 +1890,7 @@ _cleanUnitPools
           if (typeof _invalidateStoresCache === 'function') _invalidateStoresCache();
           emitSyncUpdate({ stores: null });
           if (typeof window.refreshFormulaDependentUI === 'function') window.refreshFormulaDependentUI();
-          if (localTs) sendDeviceNotification('Stores updated', 'Another phone changed store prices or formulas. They are now updated on this phone too.', 'stores-remote').catch(() => {});
+          if (localTs) sendDeviceNotification('Stores updated', 'Another phone changed store prices or formulas. They are now updated on this phone too.', 'stores-remote', { target: { k: 'view', id: 'store-manager' } }).catch(() => {});
           flashLivePulse();
         }
         recordSuccessfulConnection();
@@ -2603,7 +2604,7 @@ function _notifyLocalTransactions(key, records) {
     if (item) items.push({ ...item, id: r.id });
   });
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title + ' recorded', item.body, 'tx-' + item.id, { key: item.id, target: { k: key, id: item.id } }).catch(() => {}));
-  if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more').catch(() => {});
+  if (items.length > 3) sendDeviceNotification('More transactions recorded', `${items.length - 3} more transactions were saved. Open the app to see them all.`, 'tx-more', { target: { k: 'view', id: 'tab:' + tabForKey(key) } }).catch(() => {});
 }
 
 function _notifyEditedTransactions(key, records) {
@@ -2613,7 +2614,7 @@ function _notifyEditedTransactions(key, records) {
     if (item) items.push({ title: item.title + ' updated', body: 'Details were changed: ' + item.body, id: r.id });
   });
   items.slice(0, 3).forEach(item => sendDeviceNotification(item.title, item.body, 'tx-edit-' + item.id + '-' + Date.now(), { key: item.id, target: { k: key, id: item.id } }).catch(() => {}));
-  if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more').catch(() => {});
+  if (items.length > 3) sendDeviceNotification('More transactions updated', `${items.length - 3} more transactions had their details changed. Open the app to review them.`, 'tx-edit-more', { target: { k: 'view', id: 'tab:' + tabForKey(key) } }).catch(() => {});
 }
 
 window.notifyAdminOfRemoteActivity = notifyAdminOfRemoteActivity;
@@ -2659,6 +2660,11 @@ async function _applyDailyLedgerFromCloud(cloud) {
   const cloudList = cloud.daily_ledger.filter(r => r && r.id);
   const lastSync = await DeltaSync.getLastSyncTimestamp('daily_ledger');
   const unsynced = localHas ? localList.filter(r => r && r.id && (Number(r.updatedAt || r.timestamp) || 0) > (lastSync || 0) && !cloudList.some(c => String(c.id) === String(r.id))) : [];
+  if (localHas && appMode === 'admin') {
+    const known = new Set(localList.map(r => String(r && r.id)));
+    const fresh = cloudList.filter(r => !known.has(String(r.id))).map(r => describeLedgerEntry(r, fmtAmt)).filter(Boolean);
+    planNotifications(fresh).forEach(n => sendDeviceNotification(n.title, n.body, n.tag, { key: n.key, target: n.target }).catch(() => {}));
+  }
   const next = unsynced.length ? [...cloudList, ...unsynced] : cloudList;
   await sqliteStore.setBatch([['daily_ledger', next], ['daily_ledger_timestamp', unsynced.length ? Date.now() : (cloudTs || Date.now())]]);
   if (unsynced.length && typeof triggerAutoSync === 'function') triggerAutoSync();

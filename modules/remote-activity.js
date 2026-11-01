@@ -1,7 +1,7 @@
-export const REMOTE_KEYS = ['rep', 'sales', 'transactions', 'expenses', 'production', 'factory', 'clients'];
+export const REMOTE_KEYS = ['rep', 'sales', 'transactions', 'expenses', 'production', 'factory', 'clients', 'calculator'];
 export const REMOTE_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const REMOTE_MAX_NOTIFICATIONS = 5;
-const OPENABLE_KEYS = ['sales', 'rep', 'transactions', 'expenses', 'production', 'factory', 'clients'];
+const OPENABLE_KEYS = ['sales', 'rep', 'transactions', 'expenses', 'production', 'factory', 'clients', 'calculator', 'daily_ledger'];
 
 function authorOf(r) {
   return String(r.managedBy || r.createdBy || '').trim();
@@ -36,6 +36,9 @@ export function describeRemote(key, r, fmt, now = Date.now()) {
     if (r.isTransfer) return r.transferDirection === 'out' ? { title: 'Stock transfer', body: `${who} transferred ${kg} kg` } : null;
     if (r.isReturn) return { title: 'Stock return', body: `${who} returned ${kg} kg` };
     return { title: 'New production', body: `${who} recorded ${kg} kg produced` };
+  }
+  if (key === 'calculator') {
+    return { title: 'New calculator entry', body: `${who} saved a calculator entry${r.seller ? ' for ' + r.seller : ''} — ${fmt(r.revenue)}` };
   }
   if (key === 'factory') {
     const units = Number(r.units) || 0;
@@ -76,4 +79,16 @@ export function planNotifications(items) {
     });
   }
   return shown;
+}
+
+export function describeLedgerEntry(r, fmt, now = Date.now()) {
+  if (!r || !r.id) return null;
+  const created = Number(r.timestamp || 0);
+  if (!created || now - created > REMOTE_WINDOW_MS) return null;
+  const who = authorOf(r) || 'A teammate';
+  const amount = fmt(r.amount);
+  let body;
+  if (r.type === 'TRANSFER') body = `${who} moved ${amount} from ${r.mode} to ${r.toMode}`;
+  else body = `${who} recorded ${r.type === 'OUT' ? 'cash out' : 'cash in'} ${amount}${r.category ? ' — ' + r.category : ''}${r.party ? ' (' + r.party + ')' : ''}`;
+  return { title: 'New ledger entry', body, id: String(r.id), k: 'daily_ledger' };
 }

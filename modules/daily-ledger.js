@@ -105,7 +105,7 @@ function rowHtml(t) {
     tag: isT ? 'Transfer' : isOut ? (home ? 'Home' : 'Biz') : 'In', tagTone: isT ? 'info' : isOut ? (home ? 'warn' : 'bad') : 'good',
     metrics,
     actions: `<button class="btn btn-theme btn-sm" onclick="(async()=>{await dailyLedgerCopyVoucher('${id}')})()">Copy Voucher</button><button class="btn btn-theme btn-sm" onclick="dailyLedgerEdit('${id}')">Edit</button><button class="btn btn-danger btn-sm" onclick="dailyLedgerDelete('${id}')">Delete</button>`
-  }, { attrs: { 'data-date': t.date } });
+  }, { attrs: { 'data-date': t.date, 'data-rec': t.id } });
 }
 function visibleRows() {
   return filterRows(sortNewestFirst(partyRows(_rows)), { query: state.query });

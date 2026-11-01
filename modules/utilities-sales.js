@@ -4766,7 +4766,7 @@ if (data.photos && typeof data.photos === 'object' && !Array.isArray(data.photos
   } catch(e) { console.warn('[restore] photos merge failed', e); }
 }
 window.showGlassAlert(`Restore complete${syncMessage}! ${statsMessage}`, { tone: 'success', title: 'Restore Complete' });
-if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Backup restored', 'Your data was restored from the backup file. Open the app to check your records.', 'backup-restored').catch(() => {});
+if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Backup restored', 'Your data was restored from the backup file. Open the app to check your records.', 'backup-restored', { target: { k: 'view', id: 'tab:sales' } }).catch(() => {});
 }
 
 export async function _doYearCloseRestore(data, honourPostCloseDeletions = true) {

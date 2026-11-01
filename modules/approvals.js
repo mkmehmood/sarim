@@ -140,7 +140,7 @@ export function watchPendingApprovals(userRef) {
       added.forEach((c) => {
         const p = c.doc.data();
         const s = summarizePending(p, fmtAmt);
-        window.sendDeviceNotification('Approval needed', `${describeSubmitter(p)}: ${s.title} — ${s.body}`, 'approval-' + p.id, { key: 'approval-needed' }).catch(() => {});
+        window.sendDeviceNotification('Approval needed', `${describeSubmitter(p)}: ${s.title} — ${s.body}`, 'approval-' + p.id, { key: 'approval-needed', target: { k: 'view', id: 'approvals' } }).catch(() => {});
       });
     }
     _firstSnapshot = false;

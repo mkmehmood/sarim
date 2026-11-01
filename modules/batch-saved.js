@@ -39,7 +39,7 @@ export function renderSavedList(records, editFn, deleteFn) {
       metrics: _metrics(rec, f, u),
       sections: [{ title: isFix ? 'Ingredients to add' : 'Required ingredients', metrics: _ingredients(rec, f, u) }],
       actions: `<div class="tbl-action-row"><button type="button" class="btn btn-theme btn-sm" onclick="${editFn}('${id}')">Edit</button><button type="button" class="btn btn-danger btn-sm" onclick="${deleteFn}('${id}')">Delete</button></div>`
-    }, { attrs: { 'data-id': rec.id } });
+    }, { attrs: { 'data-id': rec.id, 'data-rec': rec.id } });
   }).join('');
 }
 export function setSaveButtons(btnId, cancelId, editing, noun) {

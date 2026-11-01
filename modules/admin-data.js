@@ -1322,7 +1322,7 @@ if (completeSection) {
   </div>`;
   window.setDisplay(completeSection, 'block');
   window.showGlassAlert('Financial Year closed successfully!', { tone: 'success', title: 'Financial Year Closed' });
-  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close finished. Balances were carried forward and old records were merged.', 'year-closed').catch(() => {});
+  if (typeof window.sendDeviceNotification === 'function') window.sendDeviceNotification('Financial year closed', 'The year-end close finished. Balances were carried forward and old records were merged.', 'year-closed', { target: { k: 'view', id: 'daily-ledger' } }).catch(() => {});
 }
 } catch (error) {
 if (error.name !== 'AbortError') {
