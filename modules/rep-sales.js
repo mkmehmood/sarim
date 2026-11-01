@@ -975,7 +975,9 @@ export async function deleteCurrentRepCustomer(nameArg) {
 const { rep, clients } = await loadCollections('rep', 'clients');
 const name = (typeof nameArg === 'string' && nameArg.trim()) ? nameArg : currentManagingRepCustomer;
 if (!name) return;
-const txs = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
+const _lcName = name.trim().toLowerCase();
+const _sameName = (n) => String(n || '').trim().toLowerCase() === _lcName;
+const txs = rep.filter(s => s && _sameName(s.customerName) && s.salesRep === currentRepProfile);
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'rep', { ignoreChildren: true });
 if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
@@ -992,20 +994,17 @@ msg += `\n\nAll rep sales history for this customer will be permanently deleted.
 msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: 'Delete Rep Customer', confirmText: 'Delete Permanently', danger: true }))) return;
 try {
-const _lcDelName = name.toLowerCase();
 const _repCustGroup = newGroupId('repcust');
-const contactIdx = clients.findIndex(c => {
-if (!c || !c.name) return false;
-if (c.name.toLowerCase() !== _lcDelName) return false;
+const _mineContacts = clients.filter(c => {
+if (!c || !c.name || !_sameName(c.name)) return false;
 if (c.salesRep) return c.salesRep === currentRepProfile;
-return rep.some(s => s && s.salesRep === currentRepProfile && s.customerName && s.customerName.toLowerCase() === _lcDelName);
+return rep.some(s => s && s.salesRep === currentRepProfile && _sameName(s.customerName));
 });
-if (contactIdx !== -1) {
-const contactRecord = stampGroup(clients[contactIdx], _repCustGroup);
-const contactId = contactRecord.id;
-const filteredContacts = clients.filter((_, i) => i !== contactIdx);
-await unifiedDelete('clients', filteredContacts, contactId, { strict: true }, contactRecord);
-clients.splice(contactIdx, 1);
+let remainingClients = clients.slice();
+for (const contact of _mineContacts) {
+const contactRecord = stampGroup(contact, _repCustGroup);
+remainingClients = remainingClients.filter(c => c !== contact);
+await unifiedDelete('clients', remainingClients, contactRecord.id, { strict: true }, contactRecord);
 }
 const repTxsToDelete = txs.slice();
 let prunedRepSales = rep.slice();

@@ -257,9 +257,9 @@ export async function deleteCurrentCustomer(nameArg) {
 const { sales, customers } = await loadCollections('sales', 'customers');
 const name = (typeof nameArg === 'string' && nameArg.trim()) ? nameArg : currentManagingCustomer;
 if (!name) return;
-const txs = sales.filter(s =>
-s && s.customerName === name
-);
+const _lcName = name.trim().toLowerCase();
+const _sameName = (n) => String(n || '').trim().toLowerCase() === _lcName;
+const txs = sales.filter(s => s && _sameName(s.customerName));
 for (const _t of txs) {
 const _blk = await getSaleBlockReason(_t.id, 'customer', { ignoreChildren: true });
 if (_blk) { window.notifyBlocking(`Cannot delete "${name}": ${_blk}`, 'warning', 'Action not allowed'); return; }
@@ -278,13 +278,11 @@ msg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(msg, { title: 'Delete Customer', confirmText: 'Delete Permanently', danger: true }))) return;
 try {
 const _custGroup = newGroupId('cust');
-const contactIdx = customers.findIndex(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
-if (contactIdx !== -1) {
-const contactRecord = stampGroup(customers[contactIdx], _custGroup);
-const contactId = contactRecord.id;
-const filteredContacts = customers.filter((_, i) => i !== contactIdx);
-await unifiedDelete('customers', filteredContacts, contactId, { strict: true }, contactRecord);
-customers.splice(contactIdx, 1);
+let remainingContacts = customers.slice();
+for (const contact of customers.filter(c => c && c.name && _sameName(c.name))) {
+const contactRecord = stampGroup(contact, _custGroup);
+remainingContacts = remainingContacts.filter(c => c !== contact);
+await unifiedDelete('customers', remainingContacts, contactRecord.id, { strict: true }, contactRecord);
 }
 const txsToDelete = txs.slice();
 const idsToDelete = new Set(txsToDelete.map(t => t.id));

@@ -257,3 +257,21 @@ describe('universal search skips deleted records', () => {
     assert.match(payments, /loadAliveCollections\('entities', 'transactions'\);\nconst input = document\.getElementById\('expenseName'\)/);
   });
 });
+
+describe('deleting a name removes every trace of it', () => {
+  const customers = read('modules/customers.js');
+  const rep = read('modules/rep-sales.js');
+  const core = read('modules/utilities-core.js');
+  it('customer delete matches names ignoring case and spaces, and removes every duplicate registry entry', () => {
+    assert.match(customers, /const _sameName = \(n\) => String\(n \|\| ''\)\.trim\(\)\.toLowerCase\(\) === _lcName/);
+    assert.match(customers, /for \(const contact of customers\.filter\(c => c && c\.name && _sameName\(c\.name\)\)\)/);
+    assert.doesNotMatch(customers, /s && s\.customerName === name\n\)/);
+  });
+  it('rep customer delete does the same for the rep registry', () => {
+    assert.match(rep, /_sameName\(s\.customerName\) && s\.salesRep === currentRepProfile/);
+    assert.match(rep, /for \(const contact of _mineContacts\)/);
+  });
+  it('entity delete also unlinks materials that only carry the supplier name', () => {
+    assert.match(core, /String\(m\.supplierName \|\| ''\)\.trim\(\)\.toLowerCase\(\) === _lcEntityName/);
+  });
+});

@@ -2343,7 +2343,9 @@ if (_entDelBlock) { window.notifyBlocking(_entDelBlock, 'warning', 'Warning'); r
 const _entityTxs = transactions.filter(t => String(t.entityId) === String(currentEntityId));
 const _totalIn = _entityTxs.filter(t => t.type === 'IN' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
 const _totalOut = _entityTxs.filter(t => t.type === 'OUT' && !t.isPayable).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
-const _linkedMaterials = inventory.filter(m => String(m.supplierId) === String(currentEntityId));
+const _lcEntityName = String(_entityToDel.name || '').trim().toLowerCase();
+const _linkedMaterials = inventory.filter(m => String(m.supplierId) === String(currentEntityId) ||
+(_lcEntityName && String(m.supplierName || '').trim().toLowerCase() === _lcEntityName && (!m.supplierId || !entities.some(e => String(e.id) === String(m.supplierId)))));
 let msg = `Permanently delete "${_entityName}"?`;
 if (_entityTxs.length > 0) {
 msg += `\n\n\u26a0 This entity has ${_entityTxs.length} transaction${_entityTxs.length !== 1 ? 's' : ''} on record`;
