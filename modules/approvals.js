@@ -14,6 +14,8 @@ import { notifyAdminsPush, registerAdminPush } from './push.js';
 
 let _pending = [];
 let _firstSnapshot = true;
+let _loaded = false;
+let _wantedId = null;
 let _lastToastAt = 0;
 const _busy = new Set();
 
@@ -122,12 +124,16 @@ function _updateBadge() {
 
 export function watchPendingApprovals(userRef) {
   _firstSnapshot = true;
+  _loaded = false;
   registerAdminPush().catch(() => {});
+  if (_wantedId) { _showApprovalsScreen(); _fetchWanted(_wantedId); }
   return userRef.collection('pending').where('status', '==', 'pending').onSnapshot((snap) => {
     if (snap.metadata.fromCache) return;
     _pending = snap.docs.map(d => d.data()).sort((a, b) => _ms(a.submittedAt) - _ms(b.submittedAt));
+    _loaded = true;
     _updateBadge();
     renderApprovals();
+    _resolveWanted(true);
     _enrichDeletes().catch(() => {});
     const added = snap.docChanges().filter(c => c.type === 'added');
     if (!_firstSnapshot && added.length && typeof window.sendDeviceNotification === 'function' && !(window._pushActive && document.hidden)) {
@@ -141,6 +147,59 @@ export function watchPendingApprovals(userRef) {
   }, (e) => console.warn('[approvals] pending listener:', _safeErr(e)));
 }
 
+function _showApprovalsScreen() {
+  if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen('approvals-screen');
+}
+
+function _wantedGroup() {
+  if (!_wantedId) return null;
+  return _groups().find(g => groupMembers(g).some(p => p.id === _wantedId)) || null;
+}
+
+function _resolveWanted(serverSnapshot = false) {
+  if (!_wantedId) return;
+  const g = _wantedGroup();
+  if (g) {
+    _wantedId = null;
+    openApprovalSheet(g.id);
+    return;
+  }
+  if (serverSnapshot) {
+    _wantedId = null;
+    showToast('That approval was already handled', 'info', 3000);
+  }
+}
+
+async function _fetchWanted(id) {
+  if (!currentUser || appMode !== 'admin') return;
+  try {
+    const snap = await dataRootRef().collection('pending').doc(id).get();
+    if (_wantedId !== id) return;
+    const p = snap.exists ? snap.data() : null;
+    if (!p || p.status !== 'pending') {
+      _wantedId = null;
+      showToast('That approval was already handled', 'info', 3000);
+      return;
+    }
+    if (!_pending.some(x => x.id === p.id)) {
+      _pending = [..._pending, p].sort((a, b) => _ms(a.submittedAt) - _ms(b.submittedAt));
+      _updateBadge();
+      renderApprovals();
+    }
+    _resolveWanted();
+  } catch (e) {
+    console.warn('[approvals] could not fetch the notified item:', _safeErr(e));
+  }
+}
+
+export function openApprovalFromPush(pendingId) {
+  _wantedId = pendingId ? String(pendingId) : null;
+  if (!currentUser || appMode !== 'admin') return;
+  _showApprovalsScreen();
+  renderApprovals();
+  if (_wantedId) { _resolveWanted(); if (_wantedId) _fetchWanted(_wantedId); }
+}
+
 function _ms(ts) {
   if (!ts) return 0;
   if (typeof ts.toMillis === 'function') return ts.toMillis();
@@ -151,14 +210,35 @@ function _decider() {
   return { uid: currentUser.uid, name: window._assignedManagerName || (currentUser.displayName) || String(currentUser.email || '').split('@')[0] };
 }
 
-async function _upsertLocal(p) {
-  const key = getSQLiteKey(p.collection);
-  const arr = ensureArray(await sqliteStore.get(key));
-  const rec = { ...p.data, id: p.docId };
-  const i = arr.findIndex(r => r && String(r.id) === p.docId);
-  if (i >= 0) arr[i] = { ...arr[i], ...rec }; else arr.push(rec);
-  await sqliteStore.set(key, arr);
-  _markSubmitted(p.collection, p.docId);
+async function _upsertLocalMany(list) {
+  const byKey = new Map();
+  list.filter(p => p.action !== 'delete').forEach((p) => {
+    const key = getSQLiteKey(p.collection);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(p);
+  });
+  for (const [key, items] of byKey) {
+    const arr = ensureArray(await sqliteStore.get(key));
+    const index = new Map();
+    arr.forEach((r, i) => { if (r && r.id != null) index.set(String(r.id), i); });
+    for (const p of items) {
+      const rec = { ...p.data, id: p.docId };
+      const i = index.get(p.docId);
+      if (i !== undefined) arr[i] = { ...arr[i], ...rec };
+      else index.set(p.docId, arr.push(rec) - 1);
+      _markSubmitted(p.collection, p.docId);
+    }
+    await sqliteStore.set(key, arr);
+  }
+}
+
+async function _commitInChunks(list, opsPerItem, build) {
+  const size = Math.max(1, Math.floor(450 / opsPerItem));
+  for (let i = 0; i < list.length; i += size) {
+    const batch = firebaseDB.batch();
+    list.slice(i, i + size).forEach(p => build(batch, p));
+    await batch.commit();
+  }
 }
 
 const _cloudCache = new Map();
@@ -199,18 +279,14 @@ function _writeApproval(batch, userRef, p) {
 
 export async function approveMany(list) {
   const userRef = dataRootRef();
-  const batch = firebaseDB.batch();
-  list.forEach(p => _writeApproval(batch, userRef, p));
-  await batch.commit();
-  for (const p of list) { if (p.action !== 'delete') await _upsertLocal(p); }
+  await _commitInChunks(list, 3, (batch, p) => _writeApproval(batch, userRef, p));
+  await _upsertLocalMany(list);
 }
 
 export async function discardMany(list) {
   const userRef = dataRootRef();
   const FV = firebase.firestore.FieldValue;
-  const batch = firebaseDB.batch();
-  list.forEach(p => batch.set(userRef.collection('pending').doc(p.id), { status: 'discarded', decidedBy: _decider(), decidedAt: FV.serverTimestamp() }, { merge: true }));
-  await batch.commit();
+  await _commitInChunks(list, 1, (batch, p) => batch.set(userRef.collection('pending').doc(p.id), { status: 'discarded', decidedBy: _decider(), decidedAt: FV.serverTimestamp() }, { merge: true }));
 }
 
 export function approveOne(p) { return approveMany([p]); }
@@ -321,6 +397,7 @@ export function renderApprovals() {
   if (bulk) bulk.classList.toggle('d-none', _pending.length === 0);
   if (!list) return;
   const groups = _groups();
+  if (!groups.length && !_loaded) { list.className = ''; list.innerHTML = '<div class="empty is-boxed"><div class="empty-title">Loading approvals…</div><p>Checking for items waiting for you.</p></div>'; return; }
   if (!groups.length) { list.className = ''; list.innerHTML = '<div class="empty is-boxed"><div class="empty-title">All caught up</div><p>Nothing is waiting for approval.</p></div>'; return; }
   const ctx = _ctx();
   list.className = 'cm-list';
@@ -329,10 +406,13 @@ export function renderApprovals() {
 
 export function stopApprovalState() {
   _pending = [];
+  _loaded = false;
+  _wantedId = null;
   _updateBadge();
 }
 
 window.openApprovalSheet = openApprovalSheet;
+window.openApprovalFromPush = openApprovalFromPush;
 window.decideApproval = decideApproval;
 window.decideAllApprovals = decideAllApprovals;
 window.approveAllPending = approveAllPending;

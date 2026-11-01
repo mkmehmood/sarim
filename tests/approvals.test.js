@@ -154,7 +154,7 @@ function adminHarness() {
     DeltaSync: { markUploaded() {} },
     UUIDSyncRegistry: { markUploaded() {} },
   };
-  const fns = extractFunctions('modules/approvals.js', ['_decider', '_markSubmitted', '_upsertLocal', '_writeApproval', 'approveMany', 'discardMany', 'approveOne', 'discardOne'], scope);
+  const fns = extractFunctions('modules/approvals.js', ['_decider', '_markSubmitted', '_upsertLocalMany', '_commitInChunks', '_writeApproval', 'approveMany', 'discardMany', 'approveOne', 'discardOne'], scope);
   return { fns, ops, store };
 }
 
@@ -275,5 +275,16 @@ describe('firestore.rules enforce the approval', () => {
   });
   it('pending items can only target the gated data collections', () => {
     for (const c of GATED_COLLECTIONS) assert.ok(rules.includes(`'${c}'`), c);
+  });
+});
+
+describe('large approvals', () => {
+  it('splits more than 150 approvals into several batches and still saves every record locally once', async () => {
+    const { fns, ops, store } = adminHarness();
+    const many = Array.from({ length: 160 }, (_, i) => mk({ docId: `r${i}`, id: `rep__r${i}`, data: { n: i } }));
+    await fns.approveMany(many);
+    assert.equal(ops.filter(o => o[0] === 'commit').length, 2);
+    assert.equal(ops.filter(o => o[0] === 'set' && String(o[1]).startsWith('pending/')).length, 160);
+    assert.equal(store.get('rep').filter(r => String(r.id).startsWith('r')).length, 160);
   });
 });
