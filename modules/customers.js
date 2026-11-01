@@ -291,6 +291,7 @@ for (const tx of txsToDelete) {
 prunedSales = prunedSales.filter(s => s.id !== tx.id);
 await unifiedDelete('sales', prunedSales, tx.id, { strict: true }, stampGroup(tx, _custGroup));
 }
+if (typeof window.forgetLedgerParty === 'function') { try { await window.forgetLedgerParty(name); } catch (_) {} }
 notifyDataChange('sales');
 triggerAutoSync();
 closeCustomerEditModal();

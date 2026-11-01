@@ -2405,6 +2405,7 @@ await sqliteStore.set('photodirty', _delEntDk);
 if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_) {} }
 }
 } catch(_delEntPhErr) { console.warn('[deleteCurrentEntity] photo cleanup failed', _delEntPhErr); }
+if (typeof window.forgetLedgerParty === 'function') { try { await window.forgetLedgerParty(_entityName); } catch (_) {} }
 notifyDataChange('entities');
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('add-entity-screen');
 closeEntityDetailsOverlay();

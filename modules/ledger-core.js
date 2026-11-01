@@ -138,6 +138,17 @@ export function buildLists(rows) {
     parties: uniqCI(sortNewestFirst(rows).map((t) => t.party)).slice(0, 20)
   };
 }
+export function clearParty(rows, name) {
+  const target = low(name);
+  if (!target) return { rows, changed: 0 };
+  let changed = 0;
+  const next = rows.map((t) => {
+    if (t.type === 'TRANSFER' || low(t.party) !== target) return t;
+    changed++;
+    return { ...t, party: '' };
+  });
+  return { rows: changed ? next : rows, changed };
+}
 export function suggest(pool, typed, limit = 8) {
   const q = low(typed);
   const list = q ? pool.filter((v) => low(v).includes(q) && low(v) !== q) : pool;

@@ -5,7 +5,7 @@ import { openDialog, showGlassConfirm } from './dialog.js';
 import { triggerAutoSync, loadScript } from './utilities-core.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { mergeRestored, trashRecord } from './store-recycle.js';
-import { TYPE_LABEL, buildEntry, buildLists, buildStatement, checkPeriod, computeSummary, defaultCategory, filterRows, impactText, isHomeExpense, normalizeRows, parseAmount, periodStatement, savedMessage, sortNewestFirst, transferPrompt, voucherText } from './ledger-core.js';
+import { TYPE_LABEL, buildEntry, buildLists, buildStatement, checkPeriod, clearParty, computeSummary, defaultCategory, filterRows, impactText, isHomeExpense, normalizeRows, parseAmount, periodStatement, savedMessage, sortNewestFirst, transferPrompt, voucherText } from './ledger-core.js';
 const KEY = 'daily_ledger';
 const TS_KEY = 'daily_ledger_timestamp';
 const state = { type: 'IN', editId: '', editCategory: '', editScope: 'BUSINESS', query: '', pdfFrom: '', pdfTo: '' };
@@ -351,6 +351,18 @@ export async function refreshDailyLedger() {
   await load();
   renderAll();
 }
+export async function forgetLedgerParty(name) {
+  await load();
+  const res = clearParty(_rows, name);
+  if (!res.changed) return 0;
+  _rows = res.rows;
+  await persist();
+  await load();
+  const party = el('dl-party');
+  if (party && String(party.value || '').trim().toLowerCase() === String(name || '').trim().toLowerCase()) { party.value = ''; party.dataset.histCustomer = ''; }
+  if (el('dailyLedgerList')) renderAll();
+  return res.changed;
+}
 export async function restoreLedgerEntry(record) {
   if (!record || !record.id) return false;
   await load();
@@ -485,4 +497,4 @@ export async function dailyLedgerExportPdf() {
     toast(`Error generating PDF: ${e.message}`, 'error');
   }
 }
-Object.assign(window, { restoreLedgerEntry, refreshDailyLedger, prepareDailyLedgerScreen, dailyLedgerSetType, dailyLedgerSetParty, dailyLedgerSearchItems, dailyLedgerOnPick, dailyLedgerSetQuery, dailyLedgerOpenMode, dailyLedgerSave, dailyLedgerEdit, dailyLedgerCancelEdit, dailyLedgerDelete, dailyLedgerCopyVoucher, dailyLedgerExportPdf });
+Object.assign(window, { forgetLedgerParty, restoreLedgerEntry, refreshDailyLedger, prepareDailyLedgerScreen, dailyLedgerSetType, dailyLedgerSetParty, dailyLedgerSearchItems, dailyLedgerOnPick, dailyLedgerSetQuery, dailyLedgerOpenMode, dailyLedgerSave, dailyLedgerEdit, dailyLedgerCancelEdit, dailyLedgerDelete, dailyLedgerCopyVoucher, dailyLedgerExportPdf });

@@ -1026,6 +1026,7 @@ if (!_rcDk.includes(_rcPhKey)) _rcDk.push(_rcPhKey);
 await sqliteStore.set('photodirty', _rcDk);
 }
 } catch(_rcPhErr) { console.warn('[deleteCurrentRepCustomer] photo cleanup failed', _rcPhErr); }
+if (typeof window.forgetLedgerParty === 'function') { try { await window.forgetLedgerParty(name); } catch (_) {} }
 notifyDataChange('rep');
 triggerAutoSync();
 closeRepCustomerEditModal();

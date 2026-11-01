@@ -275,3 +275,26 @@ describe('deleting a name removes every trace of it', () => {
     assert.match(core, /String\(m\.supplierName \|\| ''\)\.trim\(\)\.toLowerCase\(\) === _lcEntityName/);
   });
 });
+
+describe('deleting a name clears it from the daily ledger', () => {
+  const { clearParty } = extractFunctions('modules/ledger-core.js', ['clearParty'], { low: (v) => String(v == null ? '' : v).trim().toLowerCase() });
+  const rows = [
+    { id: 1, type: 'IN', amount: 500, party: 'Ali Store', category: 'Sales' },
+    { id: 2, type: 'OUT', amount: 90, party: ' ali store ', category: 'Fuel' },
+    { id: 3, type: 'IN', amount: 70, party: 'Sara', category: 'Sales' },
+    { id: 4, type: 'TRANSFER', amount: 10, party: 'Ali Store', mode: 'Cash', toMode: 'Bank' }
+  ];
+  it('blanks only the matching party, ignoring case and spaces, and keeps every amount', () => {
+    const r = clearParty(rows, 'ALI STORE');
+    assert.equal(r.changed, 2);
+    assert.deepEqual(r.rows.map((t) => t.party), ['', '', 'Sara', 'Ali Store']);
+    assert.deepEqual(r.rows.map((t) => t.amount), [500, 90, 70, 10]);
+  });
+  it('returns the same rows untouched when nothing matches or the name is empty', () => {
+    assert.equal(clearParty(rows, 'Nobody').rows, rows);
+    assert.equal(clearParty(rows, '  ').changed, 0);
+  });
+  it('all three delete paths call it', () => {
+    for (const f of ['customers', 'rep-sales', 'utilities-core']) assert.match(read(`modules/${f}.js`), /window\.forgetLedgerParty\(/);
+  });
+});
