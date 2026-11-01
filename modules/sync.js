@@ -15,6 +15,7 @@ import { findRemoteActivity, planNotifications } from './remote-activity.js';
 import { gates, isGatedSession, submitPending, submitPendingBatch, watchOwnPending, watchPendingApprovals } from './approvals.js';
 import { isGatedCollection } from './approvals-core.js';
 import { removePushToken } from './push.js';
+import { collectionNeedsMerge, createPingCoalescer, shouldFullPass } from './sync-plan.js';
 import { RECORD_STORES, dedupDeletionRecords, keepUnsyncedCalcs, mergeStringLists } from './link-graph.js';
 
 export async function saveWithTracking(key, data, specificRecord = null, specificIds = null) {
@@ -1033,6 +1034,9 @@ showToast(' Cloud sync unavailable. App will work offline.', 'warning');
 }
 }
 
+let _lastFullPassAt = 0;
+let _returningCached = false;
+
 export const _syncQueue = (() => {
   let _chain = Promise.resolve();
   return {
@@ -1046,6 +1050,11 @@ export const _syncQueue = (() => {
 })();
 
 window._syncQueue = _syncQueue;
+
+const _onPingPull = createPingCoalescer({
+  queue: _syncQueue,
+  pull: () => _doPullDataFromCloud(true, false),
+});
 
 export const SYNC_COLLECTIONS = [
   {
@@ -1585,9 +1594,7 @@ export async function subscribeToRealtime() {
         if (pingTs > lastSeenPing + 1000) {
           window._lastSeenPingTs = pingTs;
           if (!window._lastEmitPingAt || Math.abs(pingTs - window._lastEmitPingAt) > 3000) {
-            setTimeout(() => {
-              if (typeof pullDataFromCloud === 'function') pullDataFromCloud(true).catch(() => {});
-            }, 500);
+            _onPingPull();
           }
         }
       }
@@ -2414,6 +2421,7 @@ export function mergeArrays(localArray, cloudArray, collectionName) {
 
 export async function _detectUserType(userRef) {
   const hasInitialized = await sqliteStore.get('dbready');
+  if (_returningCached && hasInitialized) return 'returning';
   const sqliteArrays = await Promise.all([
     sqliteStore.get('production', []), sqliteStore.get('sales', []), sqliteStore.get('rep', []),
     sqliteStore.get('calculator', []), sqliteStore.get('transactions', []), sqliteStore.get('entities', []),
@@ -2421,7 +2429,7 @@ export async function _detectUserType(userRef) {
     sqliteStore.get('returns', []), sqliteStore.get('clients', []), sqliteStore.get('expenses', []),
   ]);
   const totalLocal = sqliteArrays.reduce((s, a) => s + (Array.isArray(a) ? a.length : 0), 0);
-  if (hasInitialized && totalLocal > 0) return 'returning';
+  if (hasInitialized && totalLocal > 0) { _returningCached = true; return 'returning'; }
   try {
     const checks = await Promise.all([
       userRef.collection('production').limit(20).get(),
@@ -2455,6 +2463,19 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     const lastSync = await DeltaSync.getLastSyncFirestoreTimestamp(collectionName);
     return lastSync ? collection.where('updatedAt', '>', lastSync).get() : collection.get();
   };
+  const photosPromise = (async () => {
+    try {
+      const lastPhotoSync = await DeltaSync.getLastSyncFirestoreTimestamp('photos');
+      return lastPhotoSync && !forceDownload
+        ? await userRef.collection('photos').where('updatedAt', '>', lastPhotoSync).get()
+        : await userRef.collection('photos').get();
+    } catch (_phe) { console.warn('[downloadDeltas] photos fetch error', _phe); return null; }
+  })();
+  const ledgerPromise = userRef.collection('daily_ledger').doc('entries').get()
+    .catch((_dle) => { console.warn('[downloadDeltas] daily ledger fetch error', _dle); return null; });
+  const categoryPromises = CATEGORY_LIST_KEYS.map((catKey) => userRef.collection(catKey).doc('list').get()
+    .then((snap) => [catKey, snap])
+    .catch((_cle) => { console.warn('[downloadDeltas] category list fetch error', catKey, _cle); return null; }));
   const [
     settingsSnap, factorySettingsSnap, expenseCategoriesSnap, appStoresSnap,
     productionSnap, salesSnap, calcHistorySnap,
@@ -2488,25 +2509,15 @@ export async function _downloadDeltas(userRef, userType, forceDownload = false) 
     if (snap && typeof snap.query !== 'undefined') realCollectionReads++;
   });
   trackFirestoreRead(realCollectionReads);
-  let personPhotosSnap = null;
-  try {
-    const lastPhotoSync = await DeltaSync.getLastSyncFirestoreTimestamp('photos');
-    personPhotosSnap = lastPhotoSync && !forceDownload
-      ? await userRef.collection('photos').where('updatedAt', '>', lastPhotoSync).get()
-      : await userRef.collection('photos').get();
-    if (personPhotosSnap && !personPhotosSnap.empty) trackFirestoreRead(personPhotosSnap.docs.length);
-  } catch(_phe) { console.warn('[downloadDeltas] photos fetch error', _phe); }
-  let dailyLedgerSnap = null;
-  try {
-    dailyLedgerSnap = await userRef.collection('daily_ledger').doc('entries').get();
-    trackFirestoreRead(1);
-  } catch(_dle) { console.warn('[downloadDeltas] daily ledger fetch error', _dle); }
+  const personPhotosSnap = await photosPromise;
+  if (personPhotosSnap && !personPhotosSnap.empty) trackFirestoreRead(personPhotosSnap.docs.length);
+  const dailyLedgerSnap = await ledgerPromise;
+  if (dailyLedgerSnap) trackFirestoreRead(1);
   const categoryListSnaps = {};
-  for (const catKey of CATEGORY_LIST_KEYS) {
-    try {
-      categoryListSnaps[catKey] = await userRef.collection(catKey).doc('list').get();
-      trackFirestoreRead(1);
-    } catch(_cle) { console.warn('[downloadDeltas] category list fetch error', catKey, _cle); }
+  for (const entry of await Promise.all(categoryPromises)) {
+    if (!entry) continue;
+    categoryListSnaps[entry[0]] = entry[1];
+    trackFirestoreRead(1);
   }
   const extract = (snap) => snap
     ? snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => !d._placeholder)
@@ -2661,7 +2672,8 @@ const _cleanFeedCosts = (o) => _mapEntries(o, (v) => parseFloat(v) || 0);
 const _cleanFeedFactors = (o) => _mapEntries(o, (v) => parseFloat(v) || 1);
 const _cleanUnitPools = (o) => _mapEntries(o, (d) => ({ produced: parseFloat(d?.produced) || 0, consumed: parseFloat(d?.consumed) || 0, available: parseFloat(d?.available) || 0, unitCostHistory: Array.isArray(d?.unitCostHistory) ? d.unitCostHistory : [] }));
 
-export async function _mergeAndPersist(cloudData) {
+export async function _mergeAndPersist(cloudData, { fullPass = true } = {}) {
+  if (fullPass) {
   try {
     if (typeof window.flushErasedTombstones === 'function') await window.flushErasedTombstones();
     const _erasedIds = new Set(ensureArray(await sqliteStore.get('erased')).map(String));
@@ -2689,11 +2701,15 @@ export async function _mergeAndPersist(cloudData) {
     let localDels = await sqliteStore.get('deletions') || [];
     if (!Array.isArray(localDels)) localDels = [];
     const mergedDels = [...localDels];
+    const _delIndex = new Map();
+    mergedDels.forEach((ld, i) => {
+      _delIndex.set(String(ld.id), i);
+      if (ld.recordId != null && !_delIndex.has(String(ld.recordId))) _delIndex.set(String(ld.recordId), i);
+    });
     cloudDels.forEach(cd => {
-      const dupIdx = mergedDels.findIndex(ld =>
-        String(ld.id) === String(cd.id) || String(ld.recordId) === String(cd.id)
-      );
+      const dupIdx = _delIndex.has(String(cd.id)) ? _delIndex.get(String(cd.id)) : -1;
       if (dupIdx === -1) {
+        _delIndex.set(String(cd.id), mergedDels.length);
         mergedDels.push(cd);
       } else {
         const local = mergedDels[dupIdx];
@@ -2720,6 +2736,7 @@ export async function _mergeAndPersist(cloudData) {
   } catch (_delErr) {
   console.warn('[Sync] Failed to refresh deletions:', _safeErr(_delErr));
   }
+  }
   const { data } = cloudData;
   const _localKeys = [
   'production','sales','calculator','rep','clients',
@@ -2727,8 +2744,8 @@ export async function _mergeAndPersist(cloudData) {
   'inventory','factory','returns','expenses',
   ];
   const _localBatch = await sqliteStore.getBatch(_localKeys);
-  const _deletedArr = ensureArray(await sqliteStore.get('deleted'));
-  const _notDeleted = item => !_deletedArr.includes(item.id);
+  const _deletedSetNow = new Set(ensureArray(await sqliteStore.get('deleted')));
+  const _notDeleted = item => !_deletedSetNow.has(item.id);
   const _yearCloseCollectionKeys = [
     ['production',                'production'],
     ['sales',             'sales'],
@@ -2770,12 +2787,17 @@ export async function _mergeAndPersist(cloudData) {
     const cloudArr = data[cloudKey] || [];
     _preFilter[localKey] = _applyYearCloseCompaction(localArr, cloudArr);
   }
-  const _m = (key, col, cloudKey) =>
-    mergeArrays(
-      ensureArray(_preFilter[key] !== undefined ? _preFilter[key] : _localBatch.get(key)),
-      data[cloudKey] || [],
-      col
-    ).filter(_notDeleted);
+  const _unchanged = new Set();
+  const _m = (key, col, cloudKey) => {
+    const localArr = ensureArray(_localBatch.get(key));
+    const baseArr = ensureArray(_preFilter[key] !== undefined ? _preFilter[key] : localArr);
+    const cloudArr = data[cloudKey] || [];
+    if (!collectionNeedsMerge({ fullPass, cloudCount: cloudArr.length, compacted: baseArr.length !== localArr.length })) {
+      _unchanged.add(key);
+      return localArr;
+    }
+    return mergeArrays(baseArr, cloudArr, col).filter(_notDeleted);
+  };
   const _merged = {
   production:                _m('production',                'production',       'production'),
   sales:             _m('sales',             'sales',             'sales'),
@@ -2808,7 +2830,7 @@ export async function _mergeAndPersist(cloudData) {
   _mark('inventory', data.inventory); _mark('factory', data.factory);
   _mark('returns', data.returns);         _mark('expenses', data.expenses);
   await sqliteStore.setBatch([
-  ...Object.entries(_merged).map(([k, v]) => [k, v]),
+  ...Object.entries(_merged).filter(([k]) => !_unchanged.has(k)).map(([k, v]) => [k, v]),
   ['synced', new Date().toISOString()],
   ]);
   try { notifyAdminOfRemoteActivity(_localBatch, _merged); } catch (_) {}
@@ -2826,7 +2848,10 @@ export async function _mergeAndPersist(cloudData) {
     await sqliteStore.set(`lastDownload_${col}`, Date.now());
   }
   }
-  await DeltaSync.setLastSyncTimestamp('deletions');
+  if (fullPass) {
+    await DeltaSync.setLastSyncTimestamp('deletions');
+    _lastFullPassAt = Date.now();
+  }
 }
 
 export async function _syncSettings(cloudData) {
@@ -3315,7 +3340,7 @@ export async function _doOneClickSync(silent = false) {
     if (userType === 'existing' && typeof UUIDSyncRegistry !== 'undefined') {
       UUIDSyncRegistry.setNewDeviceRestore(true);
     }
-    await _mergeAndPersist(cloudData);
+    await _mergeAndPersist(cloudData, { fullPass: shouldFullPass({ forceDownload: syncForceDownload, lastFullPassAt: _lastFullPassAt }) });
     if (userType === 'existing' && typeof UUIDSyncRegistry !== 'undefined') {
       UUIDSyncRegistry.setNewDeviceRestore(false);
     }
@@ -3483,7 +3508,7 @@ export async function _doPullDataFromCloud(silent = false, forceDownload = false
       return;
     }
     if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(true);
-    await _mergeAndPersist(cloudData);
+    await _mergeAndPersist(cloudData, { fullPass: shouldFullPass({ forceDownload, lastFullPassAt: _lastFullPassAt }) });
     if (typeof UUIDSyncRegistry !== 'undefined') UUIDSyncRegistry.setNewDeviceRestore(false);
     await _syncSettings(cloudData);
     await sqliteStore.set('dbready', true);
