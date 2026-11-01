@@ -6,7 +6,7 @@ export const TYPE_LABEL = { IN: 'Cash In', OUT: 'Cash Out', TRANSFER: 'Transfer'
 const HOME_WORDS = ['home', 'grocer', 'school', 'tuition', 'maid', 'doctor', 'medical', 'clothing', 'personal', 'family', 'kitchen', 'house', 'gas', 'water', 'ration', 'sabzi', 'milk', 'child', 'domestic', 'food', 'shopping', 'charity', 'gift'];
 const low = (v) => String(v == null ? '' : v).trim().toLowerCase();
 export const isCashMode = (m) => ['cash', 'cash in hand', 'petty cash'].includes(low(m));
-export const isBankMode = (m) => ['bank transfer', 'bank', 'bank_transfer', 'cheque', 'online'].includes(low(m));
+export const isBankMode = (m) => low(m).includes('bank') || ['cheque', 'online'].includes(low(m));
 export const isDefaultMode = (m) => isCashMode(m) || isBankMode(m);
 export function normalizeType(t) {
   const v = String(t || '').toUpperCase();

@@ -10,6 +10,10 @@ describe('payment mode classification matches the reference', () => {
     assert.ok(isBankMode('bank_transfer'));
     assert.equal(isDefaultMode('Easypaisa'), false);
     assert.equal(isBankMode('Online Transfer'), false);
+    assert.ok(isBankMode('HBL Bank'));
+    assert.ok(isBankMode('MEEZAN BANK'));
+    assert.ok(isBankMode('bank alfalah'));
+    assert.equal(isDefaultMode('Faysal Bank'), true);
   });
 });
 describe('home expense detection', () => {
