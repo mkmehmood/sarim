@@ -354,3 +354,59 @@ export function ledgerSheet(group, ctx) {
     note: m.note,
   };
 }
+
+export const TYPE_ORDER = ['sales', 'payments', 'expenses', 'production', 'factory', 'stock', 'customers', 'other'];
+
+export const TYPE_LABELS = {
+  sales: 'Sales', payments: 'Payments', expenses: 'Expenses', production: 'Production',
+  factory: 'Factory', stock: 'Stock', customers: 'Customers', other: 'Other',
+};
+
+export function typeOf(collection) {
+  if (collection === 'rep' || collection === 'sales') return 'sales';
+  if (collection === 'transactions') return 'payments';
+  if (collection === 'expenses') return 'expenses';
+  if (collection === 'production') return 'production';
+  if (collection === 'factory') return 'factory';
+  if (collection === 'inventory') return 'stock';
+  if (collection === 'clients' || collection === 'customers' || collection === 'entities') return 'customers';
+  return 'other';
+}
+
+export function filterGroups(groups, { type = 'all', person = 'all', q = '' } = {}, ctx) {
+  const needle = String(q || '').trim().toLowerCase();
+  return groups.filter((g) => {
+    if (type !== 'all' && typeOf(g.main.collection) !== type) return false;
+    if (person !== 'all' && describeSubmitter(g.main) !== person) return false;
+    if (!needle) return true;
+    const r = ledgerRow(g, ctx);
+    return `${r.title} ${r.sub} ${r.amount} ${describeSubmitter(g.main)}`.toLowerCase().includes(needle);
+  });
+}
+
+export function typeChips(groups) {
+  const counts = new Map();
+  groups.forEach(g => { const t = typeOf(g.main.collection); counts.set(t, (counts.get(t) || 0) + 1); });
+  return [{ key: 'all', label: 'All', count: groups.length }].concat(
+    TYPE_ORDER.filter(t => counts.has(t)).map(t => ({ key: t, label: TYPE_LABELS[t], count: counts.get(t) })));
+}
+
+export function personChips(groups) {
+  const counts = new Map();
+  groups.forEach(g => { const n = describeSubmitter(g.main); counts.set(n, (counts.get(n) || 0) + 1); });
+  if (counts.size < 2) return [];
+  return [...counts.entries()].map(([name, count]) => ({ name, initial: (name.trim()[0] || '?').toUpperCase(), count }));
+}
+
+export function heroModel(groups) {
+  const records = groups.reduce((n, g) => n + groupMembers(g).length, 0);
+  const people = [...new Set(groups.map(g => describeSubmitter(g.main)))];
+  return {
+    count: groups.length,
+    records,
+    people,
+    subtitle: groups.length === 0
+      ? 'Nothing needs your approval right now.'
+      : `From ${people.length <= 2 ? people.join(' and ') : `${people.slice(0, 2).join(', ')} and ${people.length - 2} more`}${records > groups.length ? ` · ${records} records` : ''}`,
+  };
+}

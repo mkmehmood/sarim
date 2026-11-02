@@ -42,3 +42,26 @@ export function ledgerSheetHtml(m, actions) {
     `<div class="cm-sheet-body"><div class="cust-history-info">${lines}${typeLine}${sect}</div><div class="u-fs-sm2 u-text-muted">${esc(m.note)}</div></div>` +
     `${strip}<div class="cm-sheet-actions">${actions}</div>`;
 }
+
+const CHECK_ICON = '<svg class="apv-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>';
+
+export function heroHtml(h) {
+  if (h.loading) {
+    return `<div class="apv-hero"><span class="apv-hero-ico">${CHECK_ICON}</span><div><div class="apv-hero-title">Loading approvals…</div><div class="apv-hero-sub">Checking for items waiting for you.</div></div></div>`;
+  }
+  if (h.count === 0) {
+    return `<div class="apv-hero is-clear"><span class="apv-hero-ico">${CHECK_ICON}</span><div><div class="apv-hero-title">All caught up</div><div class="apv-hero-sub">${esc(h.subtitle)}</div></div></div>`;
+  }
+  return '<div class="apv-hero">' +
+    `<div class="apv-hero-count">${h.count}</div>` +
+    `<div><div class="apv-hero-title">waiting for approval</div><div class="apv-hero-sub">${esc(h.subtitle)}</div></div></div>`;
+}
+
+export function typeChipsHtml(chips, active) {
+  if (chips.length <= 2) return '';
+  return chips.map(c => `<button type="button" class="apv-chip${active === c.key ? ' is-active' : ''}" data-key="${esc(c.key)}" onclick="setApprovalType(this.dataset.key)">${esc(c.label)} <b>${c.count}</b></button>`).join('');
+}
+
+export function personChipsHtml(chips, active) {
+  return chips.map(c => `<button type="button" class="apv-chip apv-chip-person${active === c.name ? ' is-active' : ''}" data-name="${esc(c.name)}" onclick="setApprovalPerson(this.dataset.name)"><span class="apv-avatar sm">${esc(c.initial)}</span>${esc(c.name)} <b>${c.count}</b></button>`).join('');
+}
