@@ -39,6 +39,8 @@ const ASSETS_TO_CACHE = [
   './modules/notify-open.js',
   './modules/notify-target.js',
   './modules/link-guards.js',
+  './modules/ledger-repair.js',
+  './modules/ledger-migrate.js',
   './modules/link-graph.js',
   './modules/daily-ledger.js',
   './modules/ledger-core.js',

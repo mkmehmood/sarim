@@ -1056,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   try {
     await loadAllData();
     setTimeout(() => { if (typeof window.isGatedSession === 'function' && window.isGatedSession()) return; cleanupOldDeletions().catch(e => console.warn('[startup] deletion cleanup failed:', _safeErr(e))); }, 5000);
+    setTimeout(() => { if (typeof window.isGatedSession === 'function' && window.isGatedSession()) return; if (typeof window.runLedgerRepair === 'function') window.runLedgerRepair().catch(e => console.warn('[startup] ledger repair failed:', _safeErr(e))); }, 8000);
     if (typeof OfflineQueue !== 'undefined') await OfflineQueue.init();
     loadFirestoreStats();
     try { sessionStorage.setItem('_gznd_bootstrap_ran', '1'); } catch(_) {}

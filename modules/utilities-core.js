@@ -6,7 +6,7 @@ import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from 
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords, collectionCollected } from './link-graph.js';
-import { collectionExpiredLeft } from './finance.js';
+import { ledgerDelta, ledgerSplit, allocatedToSale } from './finance.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
@@ -2568,8 +2568,17 @@ const _URDU_TITLES = {
   'Rep Customer Account Statement': 'ریپ کسٹمر اکاؤنٹ اسٹیٹمنٹ'
 };
 
+const _URDU_MONTHS = { JAN: 'جنوری', FEB: 'فروری', MAR: 'مارچ', APR: 'اپریل', MAY: 'مئی', JUN: 'جون', JUL: 'جولائی', AUG: 'اگست', SEP: 'ستمبر', OCT: 'اکتوبر', NOV: 'نومبر', DEC: 'دسمبر' };
+
 const _URDU_VALUE_RULES = [
   [/^[\u21a9\u2714]\s*(Credit Purchase|Supplier Pmt)\s*/i, ''],
+  [/\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/g, (m) => _URDU_MONTHS[m]],
+  [/Settled by collection/gi, 'وصولی سے ادا'],
+  [/Expired credit/gi, 'ایکسپائرڈ کریڈٹ'],
+  [/\bRs\.?\s*(\d[\d,]*(?:\.\d+)?)/g, '$1 روپے'],
+  [/\breceived\b/gi, 'وصول'],
+  [/\bReturn\b/gi, 'واپسی'],
+  [/\bPayment\b/gi, 'ادائیگی'],
   [/^Opening Balance$/i, 'سابقہ بقایا'],
   [/^(Previous balance|Previous balance brought forward|Brought forward from previous records)$/i, 'سابقہ بقایا'],
   [/Cash payment received/i, 'نقد رقم وصول'],
@@ -2616,11 +2625,11 @@ export function _buildStatementText({ title, name, phone, rangeName, tables }) {
   const lines = [];
   const add = (t) => lines.push(t === '' ? '' : _RLM + t);
   add('*گل اینڈ زبیر نسوار ڈیلرز*');
-  add(`${_URDU_TITLES[title] || title} \u00b7 ${_URDU_RANGES[rangeName] || rangeName}`);
+  add(`${_URDU_TITLES[title] || title} \u00b7 ${_urduValue(_URDU_RANGES[rangeName] || rangeName)}`);
   add('');
   add(`نام: ${_bidiValue(name)}`);
   if (phone && phone !== 'N/A') add(`فون: ${_ltr(phone)}`);
-  add(`تاریخ اجراء: ${_ltr(formatDayMonthYear(new Date()))}`);
+  add(`تاریخ اجراء: ${_urduValue(formatDayMonthYear(new Date()))}`);
   let closing = '';
   (tables || []).forEach(t => {
     const headRaw = Array.isArray(t.head) && Array.isArray(t.head[0]) ? t.head[0].map(_stmtCellText) : [];
@@ -3127,20 +3136,10 @@ let transactions = custPeriodCutoff
     })
   : (_periodEnd ? allCustTxns.filter(t => t.transactionType === 'OLD_DEBT' || (t.date && new Date(t.date) <= _periodEnd)) : allCustTxns);
 const custOpeningBalance = custPriorTxns.reduce((bal, t) => {
-  const pt = t.paymentType || 'CASH';
-  const isOldDebt = t.transactionType === 'OLD_DEBT';
-  let debit = 0, credit = 0;
-  if (isOldDebt) {
-    debit = parseFloat(t.totalValue) || 0;
-    credit = parseFloat(t.partialPaymentReceived) || 0;
-  } else if (pt === 'CASH' || (pt === 'CREDIT' && t.creditReceived)) {
-  } else if (pt === 'CREDIT' && !t.creditReceived) {
-    debit = parseFloat(t.totalValue) || 0;
-    credit = parseFloat(t.partialPaymentReceived) || 0;
-  } else if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT') {
-    credit = parseFloat(t.totalValue) || 0;
-  }
-  return bal + (debit - credit);
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN') return bal;
+  const gv = parseFloat(t.totalValue) || 0;
+  if (t.isMerged) return bal + ((t.paymentType || 'CASH') === 'CREDIT' && !t.creditReceived ? gv - (parseFloat(t.partialPaymentReceived) || 0) : 0);
+  return bal + ledgerDelta(t, gv);
 }, 0);
 transactions.sort((a, b) => {
 if (a.isMerged && !b.isMerged) return -1;
@@ -3199,8 +3198,7 @@ const buildSaleRow = async (t, runBal) => {
   const isOldDebt = t.transactionType === 'OLD_DEBT';
   let debit = 0, credit = 0, typeLabel = '', detailLabel = '', extraDetail = '', displayDate = formatDisplayDate(t.date);
   if (isOldDebt) {
-    debit = parseFloat(t.totalValue) || 0;
-    credit = parseFloat(t.partialPaymentReceived) || 0;
+    ({ debit, credit } = ledgerSplit(t, parseFloat(t.totalValue) || 0));
     typeLabel = 'OLD DEBT';
     detailLabel = oldDebtNote(t.notes);
     displayDate = '';
@@ -3212,39 +3210,39 @@ const buildSaleRow = async (t, runBal) => {
   } else if (pt === 'CREDIT' && !t.creditReceived) {
     const val = await getSaleTransactionValue(t);
     const partial = parseFloat(t.partialPaymentReceived) || 0;
-    debit = val; credit = partial;
+    ({ debit, credit } = ledgerSplit(t, val));
     typeLabel = partial > 0 ? 'CREDIT\n(PARTIAL)' : 'CREDIT';
     detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 ${fmtAmt(await getSalePrice(t))}`;
     if (partial > 0) detailLabel += `\nPaid: ${fmtAmt(partial)} | Due: ${fmtAmt(val-partial)}`;
   } else if (pt === 'CREDIT' && t.creditReceived) {
     const val = await getSaleTransactionValue(t);
-    debit = val; credit = val;
+    ({ debit, credit } = ledgerSplit(t, val));
     typeLabel = 'CREDIT\n(PAID)';
     detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 ${fmtAmt(await getSalePrice(t))}`;
+    if (allocatedToSale(t) > 0) detailLabel += '\nSettled by collection';
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'REP_RETURN') {
     typeLabel = 'REP RETURN';
     {
       const _rrE = Number(t.expiredQty) || 0, _rrR = Number(t.returnedQty) || 0, _rrP = Number(t.returnUnitPrice) > 0 ? ` @${fmtAmt(Number(t.returnUnitPrice))}` : '';
       detailLabel = '';
-      extraDetail = _rrE > 0 ? `Return ${fmtAmt(_rrR)} kg | Expired credit ${fmtAmt(_rrE)} kg${_rrP}` : `Return ${fmtAmt(_rrR)} kg${_rrP}`;
+      extraDetail = (_rrE > 0 ? `Return ${fmtAmt(_rrR)} kg | Expired credit ${fmtAmt(_rrE)} kg${_rrP}` : `Return ${fmtAmt(_rrR)} kg${_rrP}`) + (Number(t.returnValue) > 0 ? ` = ${fmtAmt(Number(t.returnValue))}` : '');
     }
     if (Number(t.returnValue) > 0 && !_rrSet.has(t.id)) { credit = Number(t.returnValue); }
     displayDate = formatDisplayDate(t.date);
   } else if (pt === 'COLLECTION') {
-    credit = parseFloat(t.totalValue) || 0;
+    ({ credit } = ledgerSplit(t, 0));
     typeLabel = 'COLLECTION';
     {
       const _cPay = collectionCollected(t), _cExp = Number(t.expiredValue) || 0;
       const _cHasPay = _cPay > 0 || !(Number(t.expiredQty) > 0), _cHasExp = _cExp > 0;
-      const _cExpTxt = _cHasExp ? `Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(_cExp)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : '';
+      const _cExpTxt = _cHasExp ? `Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(_cExp)}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}${Number(t.expiredQty) > 0 ? ` = ${fmtAmt(_cExp)}` : ''}` : '';
       detailLabel = '';
       extraDetail = [_cHasPay ? `Payment ${fmtAmt(_cPay)}` : '', _cExpTxt].filter(Boolean).join(' | ');
-      if (_cHasExp) credit += collectionExpiredLeft(t);
     }
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {
-    credit = parseFloat(t.totalValue) || 0;
+    ({ credit } = ledgerSplit(t, 0));
     typeLabel = 'PARTIAL\nPAYMENT';
     detailLabel = 'Partial payment received';
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);

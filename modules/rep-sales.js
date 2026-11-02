@@ -8,12 +8,12 @@ import { editDateValue } from './edit-date.js';
 import { newGroupId, stampGroup, planEditSettlement, applySettlement, collectionCollected, planGoodsCredit } from './link-graph.js';
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, selectedCustomerFilter, readNum, repairStoredRecords, loadCollections } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ledgerDelta, ledgerSplit, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, selectedCustomerFilter, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
 import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory.js';
-import { periodTotals, periodQuantity, netSoldQuantity, collectionExpiredLeft, rowReceived } from './finance.js';
+import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, allocatedToSale } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
 import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast, fetchLocationInto } from './customers.js';
@@ -1056,7 +1056,7 @@ console.error('Rep sales operation failed.', _safeErr(e));
 showToast('Rep sales operation failed.', 'error');
 transactions = rep.filter(s => s.customerName === name && s.salesRep === currentRepProfile);
 }
-const _repDelta = (t) => debtDelta(t, t.totalValue);
+const _repDelta = (t) => ledgerDelta(t, t.totalValue);
 const _runBal = new Map();
 const _deltaMap = new Map();
 let _runTotal = 0;
@@ -1141,7 +1141,7 @@ info = `
 `;
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
 rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${fmtNum(Number(t.expiredQty) || 0)} kg${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Bulk payment');
-rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
+rAmt = _pay + _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
@@ -1427,20 +1427,10 @@ let transactions = repPeriodCutoff
     })
   : (_periodEnd ? allRepCustTxns.filter(t => t.transactionType === 'OLD_DEBT' || (t.date && new Date(t.date) <= _periodEnd)) : allRepCustTxns);
 const repOpeningBalance = repPriorTxns.reduce((bal, t) => {
-  const pt = t.paymentType || 'CASH';
-  const isOldDebt = t.transactionType === 'OLD_DEBT';
-  let debit = 0, credit = 0;
-  if (isOldDebt) {
-    debit = parseFloat(t.totalValue) || 0;
-    credit = parseFloat(t.partialPaymentReceived) || 0;
-  } else if (pt === 'CASH' || (pt === 'CREDIT' && t.creditReceived)) {
-  } else if (pt === 'CREDIT' && !t.creditReceived) {
-    debit = parseFloat(t.totalValue) || 0;
-    credit = parseFloat(t.partialPaymentReceived) || 0;
-  } else if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT') {
-    credit = (parseFloat(t.totalValue) || 0) + collectionExpiredLeft(t);
-  }
-  return bal + (debit - credit);
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN') return bal;
+  const gv = parseFloat(t.totalValue) || 0;
+  if (t.isMerged) return bal + ((t.paymentType || 'CASH') === 'CREDIT' && !t.creditReceived ? gv - (parseFloat(t.partialPaymentReceived) || 0) : 0);
+  return bal + ledgerDelta(t, gv);
 }, 0);
 transactions.sort((a, b) => {
 if (a.isMerged && !b.isMerged) return -1;
@@ -1496,8 +1486,7 @@ const isOldDebt = t.transactionType === 'OLD_DEBT';
 let debit = 0, credit = 0, typeLabel = '', detailLabel = '', displayDate = formatDisplayDate(t.date);
 const unitPrice = lockedUnitPrice(t) > 0 ? lockedUnitPrice(t) : await getSalePriceForStore(t.supplyStore || getDefaultStoreKey());
 if (isOldDebt) {
-debit = parseFloat(t.totalValue) || 0;
-credit = parseFloat(t.partialPaymentReceived) || 0;
+({ debit, credit } = ledgerSplit(t, parseFloat(t.totalValue) || 0));
 typeLabel = 'OLD DEBT';
 detailLabel = oldDebtNote(t.notes);
 displayDate = '';
@@ -1509,24 +1498,25 @@ detailLabel = `${fmtAmt(t.quantity||0)} kg × Rs ${fmtAmt(unitPrice)}`;
 } else if (pt === 'CREDIT' && !t.creditReceived) {
 const val = t.totalValue || 0;
 const partial = parseFloat(t.partialPaymentReceived) || 0;
-debit = val; credit = partial;
+({ debit, credit } = ledgerSplit(t, val));
 typeLabel = partial > 0 ? 'CREDIT\n(PARTIAL)' : 'CREDIT';
 detailLabel = `${fmtAmt(t.quantity||0)} kg × Rs ${fmtAmt(unitPrice)}`;
 if (partial > 0) detailLabel += `\nPaid: Rs ${fmtAmt(partial)} | Due: Rs ${fmtAmt(val-partial)}`;
 } else if (pt === 'CREDIT' && t.creditReceived) {
 const val = t.totalValue || 0;
-debit = val; credit = val;
+({ debit, credit } = ledgerSplit(t, val));
 typeLabel = 'CREDIT\n(PAID)';
 detailLabel = `${fmtAmt(t.quantity||0)} kg × Rs ${fmtAmt(unitPrice)}`;
+if (allocatedToSale(t) > 0) detailLabel += '\nSettled by collection';
 displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
 } else if (pt === 'COLLECTION') {
-credit = (parseFloat(t.totalValue) || 0) + collectionExpiredLeft(t);
+({ credit } = ledgerSplit(t, 0));
 typeLabel = 'COLLECTION';
 detailLabel = (t.allocations && t.allocations.length) ? `Rs ${fmtAmt(t.collectedAmount)} received` : (collectionCollected(t) > 0 || !(Number(t.expiredQty) > 0) ? 'Cash payment received' : '');
-if (Number(t.expiredValue) > 0) detailLabel += `${detailLabel ? ' | ' : ''}Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(Number(t.expiredValue))}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}`;
+if (Number(t.expiredValue) > 0) detailLabel += `${detailLabel ? ' | ' : ''}Expired credit ${Number(t.expiredQty) > 0 ? `${fmtAmt(Number(t.expiredQty))} kg` : fmtAmt(Number(t.expiredValue))}${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}${Number(t.expiredQty) > 0 ? ` = ${fmtAmt(Number(t.expiredValue))}` : ''}`;
 displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
 } else if (pt === 'PARTIAL_PAYMENT') {
-credit = parseFloat(t.totalValue) || 0;
+({ credit } = ledgerSplit(t, 0));
 typeLabel = 'PARTIAL\nPAYMENT';
 detailLabel = 'Partial payment received';
 displayDate = formatDisplayDate(t.creditReceivedDate || t.date);

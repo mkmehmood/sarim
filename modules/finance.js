@@ -77,6 +77,34 @@ export function debtDelta(t, grossValue, opts) {
   return 0;
 }
 
+const _allocSum = (list) => round2((Array.isArray(list) ? list : []).reduce((n, a) => n + Math.max(0, num(a && a.amount, 0)), 0));
+
+export function allocatedToSale(t) {
+  return t ? _allocSum(t.collectionAllocs) : 0;
+}
+
+export function allocatedByCollection(t) {
+  return t ? _allocSum(t.allocations) : 0;
+}
+
+export function ledgerDelta(t, grossValue, opts) {
+  if (!t) return 0;
+  const d = debtDelta(t, grossValue, opts);
+  if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return round2(d - allocatedByCollection(t));
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.isMerged) return d;
+  return round2(d + allocatedToSale(t));
+}
+
+export function ledgerSplit(t, grossValue, opts) {
+  const delta = ledgerDelta(t, grossValue, opts);
+  if (!t || t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') {
+    return { debit: delta > 0 ? delta : 0, credit: delta < 0 ? -delta : 0, delta };
+  }
+  const gross = Math.max(0, num(grossValue, 0));
+  const credit = round2(Math.max(0, gross - delta));
+  return { debit: round2(delta + credit), credit, delta };
+}
+
 export function rowReceived(t, value) {
   const z = { sale: 0, collection: 0, returns: 0, cash: 0, paid: 0, received: 0 };
   if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') return z;

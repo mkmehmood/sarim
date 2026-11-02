@@ -2,7 +2,7 @@ import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, rec
 import { isMoneyRestricted } from './money-privacy.js';
 import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, ledgerDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
 import { periodTotals, periodQuantity, netSoldQuantity, receivedPercent, rowReceived } from './finance.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -339,7 +339,7 @@ s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 }
 const _rrDone = await getReconciledRepReturnIds();
-const _custDelta = async (t) => debtDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone });
+const _custDelta = async (t) => ledgerDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone });
 const _runBal = new Map();
 let _runTotal = 0;
 const _ascTx = historyTxns.map((t, i) => ({ t, i })).sort((a, b) => txDeviceCompare(a.t, b.t) || (a.i - b.i));
@@ -478,7 +478,7 @@ rAmt = Number(t.returnValue) || 0; rIn = true; rKind = 'in'; rCat = 'pay';
 const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
 rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${fmtNum(Number(t.expiredQty) || 0)} kg${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Amount received');
-rAmt = _pay > 0 ? _pay : _expV; rIn = true; rKind = 'in'; rCat = 'pay';
+rAmt = _pay + _expV; rIn = true; rKind = 'in'; rCat = 'pay';
 } else if (isOldDebt) {
 rTitle = 'Old debt'; rSub = oldDebtNote(t.notes) || 'Previous balance';
 rAmt = Number(t.totalValue) || 0; rKind = 'cr'; rCat = 'credit';
