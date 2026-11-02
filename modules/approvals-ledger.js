@@ -58,7 +58,7 @@ export function heroHtml(h) {
 }
 
 export function typeChipsHtml(chips, active) {
-  if (chips.length <= 2) return '';
+  if (chips.length <= 1) return '';
   return chips.map(c => `<button type="button" class="apv-chip${active === c.key ? ' is-active' : ''}" data-key="${esc(c.key)}" onclick="setApprovalType(this.dataset.key)">${esc(c.label)} <b>${c.count}</b></button>`).join('');
 }
 

@@ -34,8 +34,9 @@ describe('chips and hero model', () => {
     const chips = typeChips(groups);
     assert.deepEqual(chips.map(c => `${c.key}:${c.count}`), ['all:4', 'sales:2', 'payments:1', 'expenses:1']);
   });
-  it('lists people only when more than one person submitted', () => {
-    assert.equal(personChips(groupPending([items[0], items[2]])).length, 0);
+  it('lists people whenever anything is pending, and none when nothing is', () => {
+    assert.equal(personChips([]).length, 0);
+    assert.equal(personChips(groupPending([items[0], items[2]])).length, 1);
     const people = personChips(groups);
     assert.deepEqual(people.map(p => `${p.name}:${p.count}:${p.initial}`).sort(), ['Imran:1:I', 'Sara:3:S']);
   });
@@ -73,8 +74,26 @@ describe('header markup', () => {
     const html = personChipsHtml([{ name: '<b>x</b>', initial: 'X', count: 2 }], '<b>x</b>');
     assert.ok(!html.includes('<b>x</b> <b>'));
     assert.match(html, /is-active/);
-    assert.equal(typeChipsHtml([{ key: 'all', label: 'All', count: 1 }, { key: 'sales', label: 'Sales', count: 1 }], 'all'), '');
+    assert.equal(typeChipsHtml(typeChips([]), 'all'), '');
+    assert.match(typeChipsHtml(typeChips(groupPending([items[0]])), 'all'), /apv-chip is-active" data-key="all"[\s\S]*data-key="sales"/);
     assert.match(typeChipsHtml(typeChips(groups), 'sales'), /apv-chip is-active" data-key="sales"/);
+  });
+});
+
+describe('visibility follows pending items', () => {
+  it('shows the filters for a single pending item and hides them when nothing is pending', () => {
+    const one = groupPending([items[0]]);
+    assert.equal(typeChips(one).length, 2);
+    assert.notEqual(typeChipsHtml(typeChips(one), 'all'), '');
+    assert.notEqual(personChipsHtml(personChips(one), 'all'), '');
+    assert.equal(typeChipsHtml(typeChips([]), 'all'), '');
+    assert.equal(personChipsHtml(personChips([]), 'all'), '');
+  });
+  it('hides the search box and chips together when the list is empty', () => {
+    const ui = read('../modules/approvals.js');
+    assert.match(ui, /searchWrap\.classList\.toggle\('d-none', !all\.length\)/);
+    assert.match(ui, /typesEl\.classList\.toggle\('d-none', !typesEl\.innerHTML\)/);
+    assert.match(ui, /peopleEl\.classList\.toggle\('d-none', !peopleEl\.innerHTML\)/);
   });
 });
 
