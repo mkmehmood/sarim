@@ -28,9 +28,9 @@ describe('opening the exact approval from a notification', () => {
   it('says so when the item was already handled', () => {
     assert.match(approvals, /That approval was already handled/);
   });
-  it('shows a loading state until the first server list arrives, not "All caught up"', () => {
-    assert.match(approvals, /!groups\.length && !_loaded/);
-    assert.match(approvals, /Loading approvals…/);
+  it('shows a loading card until the first server list arrives, not "All caught up"', () => {
+    assert.match(approvals, /loading: !_loaded && !all\.length/);
+    assert.match(read('../modules/approvals-ledger.js'), /Loading approvals…/);
     assert.match(approvals, /_loaded = true;/);
   });
 });

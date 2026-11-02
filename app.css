@@ -5630,3 +5630,22 @@ html[data-needs-approval] #rep-cust-edit-save-btn::after,
 html[data-needs-approval] [onclick*="saveEntity()"]::after,
 html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content: 'Send for Admin Approval'; font-size: 0.9rem; font-weight: 700; }
 .acct-approval-row { width: 100%; text-align: left; cursor: pointer; gap: 2px; }
+
+.apv-body { display: flex; flex-direction: column; gap: 12px; }
+.apv-hero { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 22px; border: 1px solid var(--glass-border); background: linear-gradient(135deg, var(--accent-dim), transparent 70%), var(--glass-raised); }
+.apv-hero-count { min-width: 56px; height: 56px; padding: 0 12px; display: flex; align-items: center; justify-content: center; border-radius: 17px; font-family: var(--font-num); font-size: 1.8rem; font-weight: 800; background: var(--accent-dim); color: var(--accent); }
+.apv-hero-ico { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 15px; background: var(--accent-dim); color: var(--accent); }
+.apv-hero-ico .apv-svg { width: 26px; height: 26px; }
+.apv-hero-title { font-size: 1rem; font-weight: 800; color: var(--text-main); }
+.apv-hero-sub { margin-top: 2px; font-size: 0.78rem; opacity: 0.72; }
+.apv-search { width: 100%; height: 42px; border-radius: 14px; }
+.apv-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.apv-chips::-webkit-scrollbar { display: none; }
+.apv-chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid var(--glass-border); background: var(--glass-raised); color: var(--text-main); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.apv-chip b { font-size: 0.72rem; padding: 1px 7px; border-radius: 10px; background: var(--glass-border); }
+.apv-chip.is-active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+.apv-chip.is-active b { background: var(--accent); color: var(--on-accent-dark); }
+.apv-chip-person { padding-left: 5px; }
+.apv-avatar { width: 38px; height: 38px; flex: 0 0 38px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: 800; color: var(--on-accent-dark); background: linear-gradient(135deg, var(--accent-cyan), var(--accent-emerald)); }
+.apv-avatar.sm { width: 26px; height: 26px; flex-basis: 26px; font-size: 0.72rem; }
+.apv-svg { width: 22px; height: 22px; }

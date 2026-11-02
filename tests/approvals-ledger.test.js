@@ -103,7 +103,7 @@ describe('the approval sheet follows the ledger transaction sheet', () => {
   it('the screen uses these builders with the ledger list class', () => {
     const ui = readFileSync(new URL('../modules/approvals.js', import.meta.url), 'utf8');
     assert.match(ui, /list\.className = 'cm-list';/);
-    assert.match(ui, /ledgerListHtml\(groups\.map\(\(g\) => ledgerRow\(g, ctx\)\)\)/);
+    assert.match(ui, /ledgerListHtml\(shown\.map\(\(g\) => ledgerRow\(g, ctx\)\)\)/);
     assert.match(ui, /ledgerSheetHtml\(m,/);
   });
 });

@@ -1132,9 +1132,12 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   <div class="shell-bar screen-topbar">
     <h2 class="screen-title">Approvals</h2>
   </div>
-  <div class="screen-body">
-    <div class="acct-sub" id="approvals-summary">Nothing is waiting for approval.</div>
-    <div id="approvals-list"><div class="u-ed93e92">All caught up.</div></div>
+  <div class="screen-body apv-body">
+    <div id="approvals-hero"></div>
+    <div class="apv-search-wrap d-none"><input id="approvals-search" class="form-ctl apv-search" type="search" placeholder="Search by name, item or amount" autocomplete="off" oninput="setApprovalSearch(this.value)"></div>
+    <div id="approvals-types" class="apv-chips d-none"></div>
+    <div id="approvals-people" class="apv-chips d-none"></div>
+    <div id="approvals-list"></div>
   </div>
 </div>
 <div id="feedback-screen" class="standalone-screen d-none">

@@ -6,15 +6,16 @@ import { DeltaSync, UUIDSyncRegistry, getStoreLabel } from './utilities-sales.js
 import { formatDisplayDateTime } from './utilities-payments.js';
 import { getSQLiteKey } from './sync.js';
 import {
-  bulkSheetModel, buildPendingDoc, describeSubmitter, groupMembers, groupPending, ledgerRow, ledgerSheet,
-  isGatedCollection, pendingSummaryLine, resolutionNotice, summarizePending,
+  bulkSheetModel, buildPendingDoc, describeSubmitter, filterGroups, groupMembers, groupPending, heroModel, ledgerRow, ledgerSheet,
+  isGatedCollection, personChips, resolutionNotice, summarizePending, typeChips,
 } from './approvals-core.js';
-import { ledgerListHtml, ledgerSheetHtml } from './approvals-ledger.js';
+import { heroHtml, ledgerListHtml, ledgerSheetHtml, personChipsHtml, typeChipsHtml } from './approvals-ledger.js';
 import { notifyAdminsPush, registerAdminPush } from './push.js';
 
 let _pending = [];
 let _firstSnapshot = true;
 let _loaded = false;
+const _filter = { type: 'all', person: 'all', q: '' };
 let _wantedId = null;
 let _lastToastAt = 0;
 const _busy = new Set();
@@ -389,23 +390,61 @@ export function discardAllPending() { openBulkSheet('discard'); }
 export function approveDayPending(day) { openBulkSheet('approve', day); }
 export function discardDayPending(day) { openBulkSheet('discard', day); }
 
-export function renderApprovals() {
+function _renderApprovalsList(all) {
   const list = document.getElementById('approvals-list');
-  const summary = document.getElementById('approvals-summary');
-  const bulk = document.getElementById('approvals-bulk');
-  if (summary) summary.textContent = pendingSummaryLine(_pending);
-  if (bulk) bulk.classList.toggle('d-none', _pending.length === 0);
   if (!list) return;
-  const groups = _groups();
-  if (!groups.length && !_loaded) { list.className = ''; list.innerHTML = '<div class="empty is-boxed"><div class="empty-title">Loading approvals…</div><p>Checking for items waiting for you.</p></div>'; return; }
-  if (!groups.length) { list.className = ''; list.innerHTML = '<div class="empty is-boxed"><div class="empty-title">All caught up</div><p>Nothing is waiting for approval.</p></div>'; return; }
+  if (!all.length) { list.className = ''; list.innerHTML = ''; return; }
   const ctx = _ctx();
+  const shown = filterGroups(all, _filter, ctx);
+  if (!shown.length) {
+    list.className = '';
+    list.innerHTML = '<div class="empty is-boxed"><div class="empty-title">No matches</div><p>Nothing matches your search or filter.</p></div>';
+    return;
+  }
   list.className = 'cm-list';
-  list.innerHTML = ledgerListHtml(groups.map((g) => ledgerRow(g, ctx)));
+  list.innerHTML = ledgerListHtml(shown.map((g) => ledgerRow(g, ctx)));
+}
+
+export function renderApprovals() {
+  const all = _groups();
+  const types = typeChips(all);
+  const people = personChips(all);
+  if (!types.some(c => c.key === _filter.type)) _filter.type = 'all';
+  if (!people.some(c => c.name === _filter.person)) _filter.person = 'all';
+  if (!all.length) _filter.q = '';
+  const hero = document.getElementById('approvals-hero');
+  if (hero) hero.innerHTML = heroHtml({ ...heroModel(all), loading: !_loaded && !all.length });
+  const searchWrap = document.querySelector('.apv-search-wrap');
+  if (searchWrap) {
+    searchWrap.classList.toggle('d-none', !all.length);
+    const input = document.getElementById('approvals-search');
+    if (input && input.value !== _filter.q) input.value = _filter.q;
+  }
+  const typesEl = document.getElementById('approvals-types');
+  if (typesEl) { typesEl.innerHTML = typeChipsHtml(types, _filter.type); typesEl.classList.toggle('d-none', !typesEl.innerHTML); }
+  const peopleEl = document.getElementById('approvals-people');
+  if (peopleEl) { peopleEl.innerHTML = personChipsHtml(people, _filter.person); peopleEl.classList.toggle('d-none', !peopleEl.innerHTML); }
+  _renderApprovalsList(all);
+}
+
+export function setApprovalType(key) {
+  _filter.type = key;
+  renderApprovals();
+}
+
+export function setApprovalPerson(name) {
+  _filter.person = _filter.person === name ? 'all' : name;
+  renderApprovals();
+}
+
+export function setApprovalSearch(q) {
+  _filter.q = String(q || '');
+  _renderApprovalsList(_groups());
 }
 
 export function stopApprovalState() {
   _pending = [];
+  _filter.type = 'all'; _filter.person = 'all'; _filter.q = '';
   _loaded = false;
   _wantedId = null;
   _updateBadge();
@@ -420,6 +459,9 @@ window.discardAllPending = discardAllPending;
 window.approveDayPending = approveDayPending;
 window.discardDayPending = discardDayPending;
 window.renderApprovals = renderApprovals;
+window.setApprovalType = setApprovalType;
+window.setApprovalPerson = setApprovalPerson;
+window.setApprovalSearch = setApprovalSearch;
 window.isGatedSession = isGatedSession;
 window.submitPending = submitPending;
 window.gatesCollection = gates;
