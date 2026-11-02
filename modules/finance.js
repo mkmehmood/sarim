@@ -77,27 +77,59 @@ export function debtDelta(t, grossValue, opts) {
   return 0;
 }
 
-const _allocSum = (list) => round2((Array.isArray(list) ? list : []).reduce((n, a) => n + Math.max(0, num(a && a.amount, 0)), 0));
+const _amt = (a) => Math.max(0, num(a && a.amount, 0));
+const _isCol = (t) => !!t && (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT');
 
-export function allocatedToSale(t) {
-  return t ? _allocSum(t.collectionAllocs) : 0;
+export function allocHonor(records) {
+  const list = (Array.isArray(records) ? records : []).filter(t => t && t.id && !t.deletedAt);
+  const byId = new Map(list.map(t => [t.id, t]));
+  const perSale = new Map();
+  const gaps = [];
+  list.forEach(c => {
+    if (!_isCol(c) || !Array.isArray(c.allocations)) return;
+    c.allocations.forEach(a => {
+      if (!a) return;
+      const s = byId.get(a.saleId);
+      const e = s && Array.isArray(s.collectionAllocs) ? s.collectionAllocs.find(x => x && x.cid === c.id) : null;
+      if (!e) { gaps.push({ cid: c.id, sid: a.saleId, claimed: _amt(a), honored: 0, why: s ? 'sale has no link back' : 'sale missing' }); return; }
+      if (!perSale.has(s.id)) perSale.set(s.id, []);
+      perSale.get(s.id).push({ cid: c.id, claimed: _amt(a), amt: Math.min(_amt(a), _amt(e)) });
+    });
+  });
+  const bySale = new Map();
+  const byCol = new Map();
+  perSale.forEach((pairs, sid) => {
+    const s = byId.get(sid);
+    const cap = s.creditReceived ? (num(s.totalValue, 0) > 0 ? num(s.totalValue, 0) : Infinity) : Math.max(0, num(s.partialPaymentReceived, 0));
+    const sum = pairs.reduce((n, p) => n + p.amt, 0);
+    const f = sum > cap && sum > 0 ? cap / sum : 1;
+    pairs.forEach(p => {
+      const h = round2(p.amt * f);
+      bySale.set(sid, round2((bySale.get(sid) || 0) + h));
+      byCol.set(p.cid, round2((byCol.get(p.cid) || 0) + h));
+      if (p.claimed - h > 0.01) gaps.push({ cid: p.cid, sid, claimed: p.claimed, honored: h, why: 'sale is not settled by this amount' });
+    });
+  });
+  return { bySale, byCol, gaps };
 }
 
-export function allocatedByCollection(t) {
-  return t ? _allocSum(t.allocations) : 0;
+export function honoredToSale(honor, t) {
+  return honor && t ? (honor.bySale.get(t.id) || 0) : 0;
 }
 
 export function ledgerDelta(t, grossValue, opts) {
   if (!t) return 0;
   const d = debtDelta(t, grossValue, opts);
-  if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return round2(d - allocatedByCollection(t));
+  const honor = opts && opts.honor;
+  if (!honor) return d;
+  if (_isCol(t)) return round2(d - (honor.byCol.get(t.id) || 0));
   if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.isMerged) return d;
-  return round2(d + allocatedToSale(t));
+  return round2(d + (honor.bySale.get(t.id) || 0));
 }
 
 export function ledgerSplit(t, grossValue, opts) {
   const delta = ledgerDelta(t, grossValue, opts);
-  if (!t || t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') {
+  if (!t || t.isRepReturn === true || t.paymentType === 'REP_RETURN' || _isCol(t)) {
     return { debit: delta > 0 ? delta : 0, credit: delta < 0 ? -delta : 0, delta };
   }
   const gross = Math.max(0, num(grossValue, 0));

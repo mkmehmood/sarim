@@ -2,7 +2,7 @@ import { getSaleBlockReason, getSettleToggleBlockReason, detachChildPayment, rec
 import { isMoneyRestricted } from './money-privacy.js';
 import { txEffectiveDate, txDeviceDate, txDeviceCompare, pinOpeningDays } from './tx-date.js';
 import { newGroupId, stampGroup, planCreditToggle, applySettlement, collectionCollected } from './link-graph.js';
-import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, ledgerDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
+import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, balanceAfterHtml, debtDelta, ledgerDelta, allocHonor, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, sqliteStore, validateUUID, oldDebtNote, readNum, loadCollections } from './business.js';
 import { periodTotals, periodQuantity, netSoldQuantity, receivedPercent, rowReceived } from './finance.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync } from './utilities-core.js';
@@ -339,7 +339,8 @@ s && s.currentRepProfile === 'admin' && s.customerName === name
 );
 }
 const _rrDone = await getReconciledRepReturnIds();
-const _custDelta = async (t) => ledgerDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone });
+const _honor = allocHonor(sales);
+const _custDelta = async (t) => ledgerDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrDone, honor: _honor });
 const _runBal = new Map();
 let _runTotal = 0;
 const _ascTx = historyTxns.map((t, i) => ({ t, i })).sort((a, b) => txDeviceCompare(a.t, b.t) || (a.i - b.i));

@@ -6,7 +6,7 @@ import { renderLedger, menuButtonHtml, resetLedgerFilter, applyCmFilters } from 
 import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.js';
 import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords, collectionCollected } from './link-graph.js';
-import { ledgerDelta, ledgerSplit, allocatedToSale } from './finance.js';
+import { ledgerDelta, ledgerSplit, allocHonor, honoredToSale } from './finance.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
@@ -3117,6 +3117,7 @@ await new Promise(r => setTimeout(r, 200));
 }
 if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("Failed to load PDF library. Please refresh and try again.");
 const allCustTxns = sales.filter(s => s && s.customerName === customerName);
+const custHonor = allocHonor(sales);
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const custPeriodCutoff = _rb.start;
@@ -3139,7 +3140,7 @@ const custOpeningBalance = custPriorTxns.reduce((bal, t) => {
   if (t.isRepReturn === true || t.paymentType === 'REP_RETURN') return bal;
   const gv = parseFloat(t.totalValue) || 0;
   if (t.isMerged) return bal + ((t.paymentType || 'CASH') === 'CREDIT' && !t.creditReceived ? gv - (parseFloat(t.partialPaymentReceived) || 0) : 0);
-  return bal + ledgerDelta(t, gv);
+  return bal + ledgerDelta(t, gv, { honor: custHonor });
 }, 0);
 transactions.sort((a, b) => {
 if (a.isMerged && !b.isMerged) return -1;
@@ -3198,7 +3199,7 @@ const buildSaleRow = async (t, runBal) => {
   const isOldDebt = t.transactionType === 'OLD_DEBT';
   let debit = 0, credit = 0, typeLabel = '', detailLabel = '', extraDetail = '', displayDate = formatDisplayDate(t.date);
   if (isOldDebt) {
-    ({ debit, credit } = ledgerSplit(t, parseFloat(t.totalValue) || 0));
+    ({ debit, credit } = ledgerSplit(t, parseFloat(t.totalValue) || 0, { honor: custHonor }));
     typeLabel = 'OLD DEBT';
     detailLabel = oldDebtNote(t.notes);
     displayDate = '';
@@ -3210,16 +3211,16 @@ const buildSaleRow = async (t, runBal) => {
   } else if (pt === 'CREDIT' && !t.creditReceived) {
     const val = await getSaleTransactionValue(t);
     const partial = parseFloat(t.partialPaymentReceived) || 0;
-    ({ debit, credit } = ledgerSplit(t, val));
+    ({ debit, credit } = ledgerSplit(t, val, { honor: custHonor }));
     typeLabel = partial > 0 ? 'CREDIT\n(PARTIAL)' : 'CREDIT';
     detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 ${fmtAmt(await getSalePrice(t))}`;
     if (partial > 0) detailLabel += `\nPaid: ${fmtAmt(partial)} | Due: ${fmtAmt(val-partial)}`;
   } else if (pt === 'CREDIT' && t.creditReceived) {
     const val = await getSaleTransactionValue(t);
-    ({ debit, credit } = ledgerSplit(t, val));
+    ({ debit, credit } = ledgerSplit(t, val, { honor: custHonor }));
     typeLabel = 'CREDIT\n(PAID)';
     detailLabel = `${fmtAmt(t.quantity||0)} kg \xd7 ${fmtAmt(await getSalePrice(t))}`;
-    if (allocatedToSale(t) > 0) detailLabel += '\nSettled by collection';
+    if (honoredToSale(custHonor, t) > 0) detailLabel += '\nSettled by collection';
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'REP_RETURN') {
     typeLabel = 'REP RETURN';
@@ -3231,7 +3232,7 @@ const buildSaleRow = async (t, runBal) => {
     if (Number(t.returnValue) > 0 && !_rrSet.has(t.id)) { credit = Number(t.returnValue); }
     displayDate = formatDisplayDate(t.date);
   } else if (pt === 'COLLECTION') {
-    ({ credit } = ledgerSplit(t, 0));
+    ({ credit } = ledgerSplit(t, 0, { honor: custHonor }));
     typeLabel = 'COLLECTION';
     {
       const _cPay = collectionCollected(t), _cExp = Number(t.expiredValue) || 0;
@@ -3242,7 +3243,7 @@ const buildSaleRow = async (t, runBal) => {
     }
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
   } else if (pt === 'PARTIAL_PAYMENT') {
-    ({ credit } = ledgerSplit(t, 0));
+    ({ credit } = ledgerSplit(t, 0, { honor: custHonor }));
     typeLabel = 'PARTIAL\nPAYMENT';
     detailLabel = 'Partial payment received';
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
