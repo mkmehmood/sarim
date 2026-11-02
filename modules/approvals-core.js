@@ -394,7 +394,7 @@ export function typeChips(groups) {
 export function personChips(groups) {
   const counts = new Map();
   groups.forEach(g => { const n = describeSubmitter(g.main); counts.set(n, (counts.get(n) || 0) + 1); });
-  if (counts.size < 2) return [];
+  if (!counts.size) return [];
   return [...counts.entries()].map(([name, count]) => ({ name, initial: (name.trim()[0] || '?').toUpperCase(), count }));
 }
 
