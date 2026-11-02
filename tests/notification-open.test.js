@@ -37,8 +37,8 @@ describe('notification target', () => {
     assert.equal(parseTarget('nocolon'), null);
   });
   it('opens a customer sale in that customer\'s ledger and selects the transaction', () => {
-    assert.deepEqual(resolveView({ k: 'sales', id: 's1' }, { customerName: 'RYAZ KTK' }), { type: 'ledger', kind: 'cust', owner: 'RYAZ KTK', row: 's1' });
-    assert.deepEqual(resolveView({ k: 'rep', id: 'r1' }, { customerName: 'Noman' }), { type: 'ledger', kind: 'rep', owner: 'Noman', row: 'r1' });
+    assert.deepEqual(resolveView({ k: 'sales', id: 's1' }, { customerName: 'RYAZ KTK' }), { type: 'ledger', kind: 'cust', owner: 'RYAZ KTK', row: 's1', profile: '' });
+    assert.deepEqual(resolveView({ k: 'rep', id: 'r1' }, { customerName: 'Noman', salesRep: 'NORAN' }), { type: 'ledger', kind: 'rep', owner: 'Noman', row: 'r1', profile: 'NORAN' });
   });
   it('opens a payment in the entity ledger and a transfer in the transfer history', () => {
     assert.deepEqual(resolveView({ k: 'transactions', id: 't1' }, { entityId: 'e9' }), { type: 'ledger', kind: 'ent', owner: 'e9', row: 't1' });
@@ -48,7 +48,7 @@ describe('notification target', () => {
     assert.equal(transfer.card, 'p1');
   });
   it('opens production in its history card and stock transfers in the transfer history', () => {
-    assert.deepEqual(resolveView({ k: 'production', id: 'p5' }, {}), { type: 'prod', card: 'p5' });
+    assert.deepEqual(resolveView({ k: 'production', id: 'p5' }, { date: '2026-10-30' }), { type: 'prod', card: 'p5', date: '2026-10-30', store: '' });
     const transfer = resolveView({ k: 'production', id: 'p6' }, { isTransfer: true, transferPairId: 'sp1' });
     assert.equal(transfer.screen, 'stock-transfer-screen');
     assert.equal(transfer.card, 'sp1');
@@ -60,7 +60,7 @@ describe('notification target', () => {
   });
   it('opens a factory entry in its history card and a new rep customer in their ledger', () => {
     assert.deepEqual(resolveView({ k: 'factory', id: 'f1' }, {}), { type: 'factory', card: 'f1' });
-    assert.deepEqual(resolveView({ k: 'clients', id: 'c1' }, { name: 'Noman' }), { type: 'ledger', kind: 'rep', owner: 'Noman', row: '' });
+    assert.deepEqual(resolveView({ k: 'clients', id: 'c1' }, { name: 'Noman' }), { type: 'ledger', kind: 'rep', owner: 'Noman', row: '', profile: '' });
     assert.deepEqual(parseTarget({ k: 'factory', id: 'f1' }), { k: 'factory', id: 'f1' });
   });
   it('links calculator entries and daily ledger entries to their history cards', () => {

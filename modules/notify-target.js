@@ -42,7 +42,7 @@ export function resolveView(target, record) {
   const r = record || {};
   if (target.k === 'sales' || target.k === 'rep') {
     const kind = target.k === 'rep' ? 'rep' : 'cust';
-    if (r.customerName) return { type: 'ledger', kind, owner: String(r.customerName), row: id };
+    if (r.customerName) return { type: 'ledger', kind, owner: String(r.customerName), row: id, profile: kind === 'rep' && r.salesRep ? String(r.salesRep) : '' };
     return { type: 'tab', tab: target.k === 'rep' ? 'rep' : 'sales' };
   }
   if (target.k === 'transactions') {
@@ -53,13 +53,13 @@ export function resolveView(target, record) {
   if (target.k === 'expenses') return { type: 'expense', expenseId: id };
   if (target.k === 'production') {
     if (r.isTransfer === true && r.transferPairId) return { type: 'transfer', screen: 'stock-transfer-screen', prepare: 'prepareStockTransferScreen', card: String(r.transferPairId) };
-    return { type: 'prod', card: id };
+    return { type: 'prod', card: id, date: r.date ? String(r.date) : '', store: r.store ? String(r.store) : '' };
   }
   if (target.k === 'factory') return { type: 'factory', card: id };
   if (target.k === 'calculator') return { type: 'calc', card: id };
   if (target.k === 'daily_ledger') return { type: 'transfer', screen: 'daily-ledger-screen', prepare: 'prepareDailyLedgerScreen', card: id };
   if (target.k === 'clients') {
-    if (r.name) return { type: 'ledger', kind: 'rep', owner: String(r.name), row: '' };
+    if (r.name) return { type: 'ledger', kind: 'rep', owner: String(r.name), row: '', profile: r.salesRep ? String(r.salesRep) : '' };
     return { type: 'tab', tab: 'rep' };
   }
   return null;

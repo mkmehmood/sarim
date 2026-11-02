@@ -273,7 +273,7 @@ sections: [
 ],
 body: hcExpensesHtml(sortedExpenseEntries(data.fieldExpItems), fmtAmt) + hcExpensesHtml(sortedExpenseEntries(data.commissionItems), fmtAmt, 'Commission breakdown'),
 actions: isMerged ? '' : actionRowHtml('calc', id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteSalesEntry('${esc(id)}')">Delete</button>`)
-}, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate, 'data-rec': data.id } });
+}, { className: isHighlight ? 'highlight-card' : '', attrs: { 'data-date': data._rawDate, 'data-rec': id } });
 }
 
 export function _calcSaleDay(sale) {

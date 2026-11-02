@@ -28,6 +28,7 @@ async function openLedger(plan) {
   const openers = { cust: window.openCustomerManagement, rep: window.openRepCustomerManagement, ent: window.openEntityDetailsOverlay };
   const open = openers[plan.kind];
   if (typeof open !== 'function') return false;
+  if (plan.profile && window.currentRepProfile !== plan.profile && typeof window.adminSwitchRepProfile === 'function') window.adminSwitchRepProfile(plan.profile);
   await open(plan.owner);
   if (!plan.row) return true;
   const screen = LEDGER_SCREEN[plan.kind];
@@ -93,7 +94,17 @@ async function openView(plan) {
     return openCard(plan.card);
   }
   if (plan.type === 'prod') {
+    const dateInput = document.getElementById('sys-date');
+    if (plan.date && dateInput && dateInput.value !== plan.date) dateInput.value = plan.date;
+    if (plan.store) {
+      const factory = await import('./factory.js');
+      factory._set_currentStore(plan.store);
+      const selector = document.getElementById('storeSelector');
+      if (selector && Array.from(selector.options).some((o) => o.value === plan.store)) selector.value = plan.store;
+    }
+    if (typeof window.setProductionView === 'function') window.setProductionView('store');
     if (typeof window.showTab === 'function') await window.showTab('prod');
+    if (typeof window.refreshUI === 'function') await window.refreshUI();
     return openCard(plan.card);
   }
   if (plan.type === 'tab') {
