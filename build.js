@@ -63,7 +63,7 @@ const cssOut  = `app.${cssHash}.css`;
 copyFileSync(cssMinTmp, join(DIST, cssOut));
 rmSync(cssMinTmp);
 
-for (const f of ['manifest.json', '192.png', '512.png', 'sql-wasm.js', 'sql-wasm.wasm', 'sql.js', 'brand-logo.jpg']) {
+for (const f of ['manifest.json', '192.png', '512.png', 'sql-wasm.js', 'sql-wasm.wasm', 'sql.js', 'brand-logo.jpg', '_headers']) {
   copyFileSync(join(ROOT, f), join(DIST, f));
 }
 
