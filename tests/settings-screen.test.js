@@ -68,7 +68,7 @@ describe('settings screen', () => {
   it('holds every moved button in the planned groups', () => {
     const groups = settings.split('<p class="settings-group-label">').slice(1).map((g) => [g.slice(0, g.indexOf('</p>')).replace(/&amp;/g, '&'), labelOf(g)]);
     assert.deepEqual(groups, [
-      ['Data & Sync', ['Sync Data', 'Backup & Restore', 'Ledger Check', 'Recycle Bin', 'Database Structure']],
+      ['Data & Sync', ['Sync Data', 'Backup & Restore', 'Recycle Bin', 'Database Structure']],
       ['Appearance & Device', ['Theme', 'Sound & Haptics', 'Start with Computer: Off']],
       ['Security', ['Fingerprint Lock', 'App Accounts']],
       ['Business', ['Store Manager']],

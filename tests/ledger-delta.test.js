@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { debtDelta, ledgerDelta, ledgerSplit, allocHonor, honoredToSale, round2 } from '../modules/finance.js';
-import { planCollectionAllocation, applyCollectionAlloc, sortForCollection, collectionEligible } from '../modules/link-graph.js';
+import { planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, sortForCollection, collectionEligible } from '../modules/link-graph.js';
 
 const day = (n) => `2026-10-${String(n).padStart(2, '0')}`;
 const sale = (id, d, value, extra = {}) => ({ id, date: day(d), timestamp: Date.parse(day(d)) + 1, paymentType: 'CREDIT', creditReceived: false, totalValue: value, ...extra });
@@ -123,8 +123,6 @@ describe('ledgerDelta never trusts a link the sale does not confirm', () => {
     const owed = all.reduce((n, t) => n + debtDelta(t, t.totalValue), 0);
     const ledger = all.reduce((n, t) => n + ledgerDelta(t, t.totalValue, { honor }), 0);
     assert.equal(ledger, owed);
-    assert.equal(honor.gaps.length, 2);
-    assert.match(honor.gaps[0].why, /not settled/);
   });
   it('a link with no matching link on the other side is ignored', () => {
     const a = sale('a', 5, 100, { creditReceived: true, collectionAllocs: [{ cid: 'x', amount: 100, full: true }] });
@@ -149,6 +147,33 @@ describe('ledgerDelta never trusts a link the sale does not confirm', () => {
       const owed = all.reduce((n, t) => n + debtDelta(t, t.totalValue), 0);
       const ledger = all.reduce((n, t) => n + ledgerDelta(t, t.totalValue, { honor }), 0);
       assert.ok(Math.abs(owed - ledger) < 0.011, `run ${run}`);
+    }
+  });
+});
+
+describe('ledger stays consistent through any sequence of app operations', () => {
+  it('apply, revert and re-apply collections: ledger always equals outstanding and no sale exceeds its value', () => {
+    let seed = 99;
+    const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+    for (let run = 0; run < 200; run++) {
+      const sales = [];
+      for (let i = 0; i < 3 + rnd(6); i++) sales.push(sale(`s${i}`, 1 + rnd(10), 10 * (1 + rnd(150))));
+      const cols = [];
+      for (let step = 0; step < 4 + rnd(8); step++) {
+        if (cols.length && rnd(3) === 0) {
+          const c = cols.splice(rnd(cols.length), 1)[0];
+          (c.allocations || []).forEach(a => revertCollectionAlloc(sales.find(s => s.id === a.saleId), c.id));
+        } else {
+          cols.push(collect(sales, `c${run}_${step}`, 11 + rnd(15), 10 * (1 + rnd(200)), rnd(5) === 0 ? 10 * (1 + rnd(30)) : 0));
+        }
+        const all = rows(sales, cols);
+        const honor = allocHonor(all);
+        const owed = all.reduce((n, t) => n + debtDelta(t, t.totalValue), 0);
+        const ledger = all.reduce((n, t) => n + ledgerDelta(t, t.totalValue, { honor }), 0);
+        assert.ok(Math.abs(owed - ledger) < 0.011, `run ${run} step ${step}: ${owed} vs ${ledger}`);
+        sales.forEach(t => assert.ok(ledgerDelta(t, t.totalValue, { honor }) <= t.totalValue + 0.011));
+        cols.forEach(t => assert.ok(ledgerDelta(t, 0, { honor }) <= 0.001));
+      }
     }
   });
 });

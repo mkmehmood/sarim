@@ -84,16 +84,15 @@ export function allocHonor(records) {
   const list = (Array.isArray(records) ? records : []).filter(t => t && t.id && !t.deletedAt);
   const byId = new Map(list.map(t => [t.id, t]));
   const perSale = new Map();
-  const gaps = [];
   list.forEach(c => {
     if (!_isCol(c) || !Array.isArray(c.allocations)) return;
     c.allocations.forEach(a => {
       if (!a) return;
       const s = byId.get(a.saleId);
       const e = s && Array.isArray(s.collectionAllocs) ? s.collectionAllocs.find(x => x && x.cid === c.id) : null;
-      if (!e) { gaps.push({ cid: c.id, sid: a.saleId, claimed: _amt(a), honored: 0, why: s ? 'sale has no link back' : 'sale missing' }); return; }
+      if (!e) return;
       if (!perSale.has(s.id)) perSale.set(s.id, []);
-      perSale.get(s.id).push({ cid: c.id, claimed: _amt(a), amt: Math.min(_amt(a), _amt(e)) });
+      perSale.get(s.id).push({ cid: c.id, amt: Math.min(_amt(a), _amt(e)) });
     });
   });
   const bySale = new Map();
@@ -107,10 +106,9 @@ export function allocHonor(records) {
       const h = round2(p.amt * f);
       bySale.set(sid, round2((bySale.get(sid) || 0) + h));
       byCol.set(p.cid, round2((byCol.get(p.cid) || 0) + h));
-      if (p.claimed - h > 0.01) gaps.push({ cid: p.cid, sid, claimed: p.claimed, honored: h, why: 'sale is not settled by this amount' });
     });
   });
-  return { bySale, byCol, gaps };
+  return { bySale, byCol };
 }
 
 export function honoredToSale(honor, t) {

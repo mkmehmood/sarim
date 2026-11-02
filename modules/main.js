@@ -16,7 +16,6 @@ import './batch-common.js';
 import './batch-saved.js';
 import './batch-mix.js';
 import './batch-fix.js';
-import './ledger-migrate.js';
 let _factoryLoad = null;
 let _repLoad = null;
 
