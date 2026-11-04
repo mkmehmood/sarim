@@ -292,6 +292,27 @@ function applyStatusBar() {
   } catch (_) {}
 }
 
+function cssColorToHex(value) {
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#000000';
+  ctx.fillStyle = value;
+  const out = String(ctx.fillStyle);
+  if (/^#[0-9a-f]{6}$/i.test(out)) return out.toUpperCase();
+  const m = out.match(/\d+(\.\d+)?/g);
+  if (!m || m.length < 3) return null;
+  return '#' + m.slice(0, 3).map(n => Math.round(Number(n)).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function applyWindowBackground() {
+  const { WindowBackground } = P();
+  if (!WindowBackground || typeof WindowBackground.set !== 'function') return;
+  try {
+    const hex = cssColorToHex(getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
+    if (hex) WindowBackground.set({ color: hex }).catch(() => {});
+  } catch (_) {}
+}
+
 async function requestStartupPermissions() {
   try {
     let asked = false;
@@ -361,7 +382,8 @@ if (isNative) {
   if (App && typeof App.addListener === 'function') App.addListener('backButton', handleBack);
   installKeyboardGuard();
   applyStatusBar();
-  new MutationObserver(applyStatusBar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  applyWindowBackground();
+  new MutationObserver(() => { applyStatusBar(); applyWindowBackground(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   let nativeSplashHidden = false;
   const markNativeSplashGone = () => {
     window.__nativeSplashHidden = true;
