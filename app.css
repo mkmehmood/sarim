@@ -614,6 +614,7 @@ color-scheme: light;
 --ip-dot: var(--warning);
 }
 html {
+background-color: var(--bg);
 scroll-behavior: smooth;
 -webkit-overflow-scrolling: touch;
 overscroll-behavior-y: none;
@@ -2403,8 +2404,7 @@ animation: none !important;
 .u-heading-main { color: var(--text-main); margin: 0; }
 .u-heading-bold { color: var(--text-main); font-weight: 800; margin: 0; }
 .u-heading-accent { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--accent); }
-.dd-layer { --dd-surface: var(--soft-card); --dd-line: var(--glass-border-strong); --dd-radius: var(--radius-lg, 18px); --dd-shadow: var(--shadow-lg); position: fixed; inset: 0; z-index: 10400; pointer-events: none; }
-.dd-layer > * { pointer-events: auto; }
+.dd-layer { --dd-surface: var(--soft-card); --dd-line: var(--glass-border-strong); --dd-radius: var(--radius-lg, 18px); --dd-shadow: var(--shadow-lg); position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 10400; }
 .dd-menu, .dd-layer > .u-327750f, .dd-layer > .u-search-dropdown, .dd-layer > .dd-suggest { position: fixed; top: var(--dd-top, 0); left: var(--dd-left, 0); right: auto; bottom: auto; width: var(--dd-w, auto); min-width: 0; max-height: var(--dd-mh, 280px); margin: 0; padding: 4px; box-sizing: border-box; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; scrollbar-color: var(--well-line) transparent; background: var(--dd-surface); border: 1px solid var(--dd-line); border-radius: var(--dd-radius); box-shadow: var(--dd-shadow); backdrop-filter: var(--backdrop-blur); -webkit-backdrop-filter: var(--backdrop-blur); opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top center; transition: opacity 0.14s ease, transform 0.14s ease; }
 .dd-layer > .is-flipped { transform: translateY(6px) scale(0.98); transform-origin: bottom center; }
 .dd-layer > .is-in { opacity: 1; transform: none; }
@@ -5574,6 +5574,8 @@ html[data-money-locked]:not([data-rep-own]) [data-money],
 html[data-money-locked][data-rep-own] [data-money]:not([data-money-rep]) { display: none; }
 html.kb-open * { backdrop-filter: none; -webkit-backdrop-filter: none; }
 html.kb-open .liquid-bg-element { display: none; }
+html.kb-open body { background-attachment: scroll; }
+html.kb-open .dd-menu, html.kb-open .dd-layer > * { transition: none; transform: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
 html.is-android body { background-attachment: scroll; }
 html.is-android .liquid-bg-element { display: none; }
 html.is-android *, html.is-android *::before, html.is-android *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
