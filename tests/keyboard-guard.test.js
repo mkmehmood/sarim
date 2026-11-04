@@ -26,3 +26,24 @@ describe('Android window keyboard handling', () => {
     assert.match(src, /Build\.VERSION_CODES\.R/);
   });
 });
+
+describe('Android keyboard black screen', () => {
+  const html = readSource('index.html');
+  it('ships the viewport without viewport-fit=cover so Capacitor SystemBars pads natively instead of passing the keyboard inset through twice', () => {
+    const meta = html.match(/<meta name="viewport"[^>]*>/)[0];
+    assert.match(meta, /id="app-viewport"/);
+    assert.doesNotMatch(meta, /viewport-fit/);
+    assert.doesNotMatch(meta, /interactive-widget/);
+  });
+  it('restores viewport-fit=cover and interactive-widget for the web and installed PWA only', () => {
+    const script = html.match(/<script>\(function\(\)\{var c=window\.Capacitor[^<]*<\/script>/)[0];
+    assert.match(script, /isNativePlatform/);
+    assert.match(script, /;\\s\*wv\\\)/);
+    assert.match(script, /if\(n\)return;/);
+    assert.match(script, /viewport-fit=cover, interactive-widget=resizes-visual/);
+  });
+  it('runs before any other script so it is applied before the first paint', () => {
+    assert.ok(html.indexOf('id="app-viewport"') < html.indexOf('<script>'));
+    assert.ok(html.indexOf('var c=window.Capacitor') < html.indexOf('window.setDisplay'));
+  });
+});
