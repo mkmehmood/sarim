@@ -55,7 +55,7 @@ export function resolveView(target, record) {
     if (r.isTransfer === true && r.transferPairId) return { type: 'transfer', screen: 'stock-transfer-screen', prepare: 'prepareStockTransferScreen', card: String(r.transferPairId) };
     return { type: 'prod', card: id, date: r.date ? String(r.date) : '', store: r.store ? String(r.store) : '' };
   }
-  if (target.k === 'factory') return { type: 'factory', card: id };
+  if (target.k === 'factory') return { type: 'factory', card: id, date: r.date ? String(r.date) : '' };
   if (target.k === 'calculator') return { type: 'calc', card: id };
   if (target.k === 'daily_ledger') return { type: 'transfer', screen: 'daily-ledger-screen', prepare: 'prepareDailyLedgerScreen', card: id };
   if (target.k === 'clients') {

@@ -59,7 +59,7 @@ describe('notification target', () => {
     assert.deepEqual(resolveView({ k: 'expenses', id: 'x1' }, {}), { type: 'expense', expenseId: 'x1' });
   });
   it('opens a factory entry in its history card and a new rep customer in their ledger', () => {
-    assert.deepEqual(resolveView({ k: 'factory', id: 'f1' }, {}), { type: 'factory', card: 'f1' });
+    assert.deepEqual(resolveView({ k: 'factory', id: 'f1' }, { date: '2026-10-30' }), { type: 'factory', card: 'f1', date: '2026-10-30' });
     assert.deepEqual(resolveView({ k: 'clients', id: 'c1' }, { name: 'Noman' }), { type: 'ledger', kind: 'rep', owner: 'Noman', row: '', profile: '' });
     assert.deepEqual(parseTarget({ k: 'factory', id: 'f1' }), { k: 'factory', id: 'f1' });
   });

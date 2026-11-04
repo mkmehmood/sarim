@@ -45,13 +45,25 @@ async function openLedger(plan) {
   return true;
 }
 
-async function openCard(id) {
-  const card = await waitFor(() => Array.from(document.querySelectorAll('.hc-card[data-rec]')).find((c) => c.getAttribute('data-rec') === id));
+async function openCard(id, refresh) {
+  const find = () => Array.from(document.querySelectorAll('.hc-card[data-rec]')).find((c) => c.getAttribute('data-rec') === id);
+  let card = await waitFor(find, 1500);
+  for (let i = 0; !card && refresh && i < 4; i += 1) {
+    try { await refresh(); } catch (_) {}
+    card = await waitFor(find, 1500);
+  }
   if (!card) return false;
-  card.classList.remove('d-none', 'hidden');
-  if (!card.classList.contains('is-open')) hcToggle(card);
-  card.scrollIntoView({ block: 'center' });
-  return true;
+  for (let i = 0; i < 4; i += 1) {
+    card = find() || card;
+    card.classList.remove('d-none', 'hidden');
+    if (typeof window.setDisplay === 'function') window.setDisplay(card, '');
+    if (!card.classList.contains('is-open')) hcToggle(card);
+    card.scrollIntoView({ block: 'center' });
+    await sleep(700);
+    const again = find();
+    if (again && again.classList.contains('is-open')) return true;
+  }
+  return false;
 }
 
 async function openExpense(plan) {
@@ -78,7 +90,8 @@ async function openView(plan) {
   if (plan.type === 'transfer') {
     if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen(plan.screen);
     if (typeof window[plan.prepare] === 'function') await window[plan.prepare]();
-    return plan.card ? openCard(plan.card) : true;
+    const redo = () => (typeof window[plan.prepare] === 'function' ? window[plan.prepare]() : null);
+    return plan.card ? openCard(plan.card, redo) : true;
   }
   if (plan.type === 'call') {
     if (typeof window[plan.fn] !== 'function') return false;
@@ -87,11 +100,13 @@ async function openView(plan) {
   }
   if (plan.type === 'calc') {
     if (typeof window.showTab === 'function') await window.showTab('calc');
-    return openCard(plan.card);
+    return openCard(plan.card, () => (typeof window.refreshUI === 'function' ? window.refreshUI() : null));
   }
   if (plan.type === 'factory') {
+    const factoryDate = document.getElementById('factory-date');
+    if (plan.date && factoryDate && factoryDate.value !== plan.date) factoryDate.value = plan.date;
     if (typeof window.showTab === 'function') await window.showTab('factory');
-    return openCard(plan.card);
+    return openCard(plan.card, () => (typeof window.renderFactoryHistory === 'function' ? window.renderFactoryHistory() : null));
   }
   if (plan.type === 'prod') {
     const dateInput = document.getElementById('sys-date');
@@ -100,12 +115,13 @@ async function openView(plan) {
       const factory = await import('./factory.js');
       factory._set_currentStore(plan.store);
       const selector = document.getElementById('storeSelector');
-      if (selector && Array.from(selector.options).some((o) => o.value === plan.store)) selector.value = plan.store;
+      if (selector && (!selector.options || Array.from(selector.options).some((o) => o.value === plan.store))) selector.value = plan.store;
     }
     if (typeof window.setProductionView === 'function') window.setProductionView('store');
     if (typeof window.showTab === 'function') await window.showTab('prod');
+    await sleep(300);
     if (typeof window.refreshUI === 'function') await window.refreshUI();
-    return openCard(plan.card);
+    return openCard(plan.card, () => (typeof window.refreshUI === 'function' ? window.refreshUI() : null));
   }
   if (plan.type === 'tab') {
     if (typeof window.showTab === 'function') await window.showTab(plan.tab);
@@ -141,7 +157,7 @@ async function attempt(startedAt) {
   if (!record) { toast('That transaction is no longer available.', 'warning'); return; }
   const plan = resolveView(target, record);
   let opened = false;
-  try { opened = plan ? await openView(plan) : false; } catch (_) { opened = false; }
+  try { opened = plan ? await openView(plan) : false; } catch (error) { opened = false; window.__notifyOpenError = String(error && error.stack || error); console.warn('[notify-open]', error); }
   if (!opened) toast('Opened the list, but could not find that transaction.', 'warning');
 }
 
