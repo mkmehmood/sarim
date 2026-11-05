@@ -37,5 +37,4 @@ import './phone-actions.js';
 import './field-expenses.js';
 import './settings-screen.js';
 import './desktop-startup.js';
-import './virtual-keyboard.js';
 import './push.js';

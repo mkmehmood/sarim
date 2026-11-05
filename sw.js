@@ -46,7 +46,6 @@ const ASSETS_TO_CACHE = [
   './modules/screen-order.js',
   './modules/settings-screen.js',
   './modules/desktop-startup.js',
-  './modules/virtual-keyboard.js',
   './modules/push.js',
   './modules/accounts.js',
   './modules/rep-data.js',

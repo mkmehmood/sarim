@@ -1,4 +1,4 @@
-const ALWAYS_VISIBLE = new Set(['sidebar-btn-sync', 'sidebar-btn-recycle', 'sidebar-btn-theme', 'startup-btn', 'vk-toggle-btn']);
+const ALWAYS_VISIBLE = new Set(['sidebar-btn-sync', 'sidebar-btn-recycle', 'sidebar-btn-theme', 'startup-btn']);
 export function prepareSettingsScreen() {
   const screen = document.getElementById('settings-screen');
   if (!screen) return;
@@ -12,7 +12,6 @@ export function prepareSettingsScreen() {
   });
   if (typeof window.syncBiometricButton === 'function') window.syncBiometricButton();
   if (typeof window.syncStartupButton === 'function') window.syncStartupButton().catch(() => {});
-  if (typeof window.syncKeyboardButton === 'function') window.syncKeyboardButton();
 }
 window.prepareSettingsScreen = prepareSettingsScreen;
 export function closeSettingsScreen() {

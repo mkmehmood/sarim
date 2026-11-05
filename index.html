@@ -504,10 +504,6 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/></svg>
       Sound &amp; Haptics
     </button>
-    <button id="vk-toggle-btn" class="sidebar-item d-none" onclick="toggleVirtualKeyboard()">
-      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="9" width="28" height="18" rx="4" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7"/><path d="M9 14H11M14 14H16M19 14H21M24 14H27M10 18H12M15 18H17M20 18H22M25 18H27M12 22H24" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"/></svg>
-      <span id="vk-toggle-label">Virtual Keyboard: On</span>
-    </button>
     <button id="startup-btn" class="sidebar-item d-none" onclick="toggleStartWithComputer()">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="7" width="26" height="17" rx="3" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7"/><path d="M13 30H23M18 24V30" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"/></svg>
       <span id="startup-label">Start with Computer: Off</span>
@@ -673,7 +669,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </div>
       <div class="field u-mb-15">
         <label>Note (optional)</label>
-        <input class="form-ctl" type="text" id="stock-transfer-note" placeholder="e.g. Balancing stock ahead of weekend rush" maxlength="120" data-keyboard="native">
+        <input class="form-ctl" type="text" id="stock-transfer-note" placeholder="e.g. Balancing stock ahead of weekend rush" maxlength="120">
       </div>
       <div id="stockTransferAvailability" class="u-48fd985"></div>
       <button class="btn btn-main u-mt-8 u-16000cc" id="btn-save-stock-transfer" onclick="(async()=>{await saveStockTransfer()})()">Transfer Stock</button>
@@ -734,7 +730,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="field u-mb-15">
         <label>Note (optional)</label>
         <div class="u-832bae1 d-flex">
-          <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" class="form-ctl u-634a28b" data-keyboard="native">
+          <input type="text" id="payment-transfer-note" placeholder="e.g. Settling shared supplier bill" maxlength="120" class="form-ctl u-634a28b">
           <button id="payment-transfer-photo-btn" title="Attach photo" onclick="openPaymentTransferPhotoCapture()" class="btn btn-theme btn-icon">
             <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
             <span id="payment-transfer-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d"></span>
@@ -811,11 +807,11 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <div class="grid-inputs u-mb-15">
         <div class="field">
           <label>Bill / Ref #</label>
-          <input class="form-ctl" type="text" id="dl-ref" placeholder="Optional" maxlength="40" autocomplete="off" data-keyboard="native">
+          <input class="form-ctl" type="text" id="dl-ref" placeholder="Optional" maxlength="40" autocomplete="off">
         </div>
         <div class="field">
           <label>Remarks / Note</label>
-          <input class="form-ctl" type="text" id="dl-note" placeholder="Optional" maxlength="120" data-keyboard="native">
+          <input class="form-ctl" type="text" id="dl-note" placeholder="Optional" maxlength="120">
         </div>
       </div>
       <div class="btn-split">
@@ -1139,7 +1135,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
   <div class="screen-body apv-body">
     <div id="approvals-hero"></div>
-    <div class="apv-search-wrap d-none"><input id="approvals-search" class="form-ctl apv-search" type="search" placeholder="Search by name, item or amount" autocomplete="off" oninput="setApprovalSearch(this.value)" data-keyboard="native"></div>
+    <div class="apv-search-wrap d-none"><input id="approvals-search" class="form-ctl apv-search" type="search" placeholder="Search by name, item or amount" autocomplete="off" oninput="setApprovalSearch(this.value)"></div>
     <div id="approvals-types" class="apv-chips d-none"></div>
     <div id="approvals-people" class="apv-chips d-none"></div>
     <div id="approvals-list"></div>
@@ -1299,7 +1295,7 @@ window._showLogoutConfirmDialog = async function() {
         </div>
         <div class="field pf-field">
           <label>Wallet / account details</label>
-          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 11.5A3.5 3.5 0 0 1 8.5 8H27V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="11.5" width="26" height="19" rx="3.5" stroke="currentColor" stroke-width="2.2"/><circle cx="24.5" cy="21" r="1.8" fill="currentColor"/></svg></span><input class="form-ctl" type="text" id="entityWallet" placeholder="JazzCash, Easypaisa or bank account" data-keyboard="native"></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 11.5A3.5 3.5 0 0 1 8.5 8H27V12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><rect x="5" y="11.5" width="26" height="19" rx="3.5" stroke="currentColor" stroke-width="2.2"/><circle cx="24.5" cy="21" r="1.8" fill="currentColor"/></svg></span><input class="form-ctl" type="text" id="entityWallet" placeholder="JazzCash, Easypaisa or bank account"></div>
         </div>
       </section>
     </div>
@@ -1336,7 +1332,7 @@ window._showLogoutConfirmDialog = async function() {
         </div>
         <div class="field u-field-flex-1-5b">
           <label>Description (optional)</label>
-          <input class="form-ctl u-w-full" type="text" id="quickExpenseDescription" placeholder="e.g. Monthly rent" data-keyboard="native">
+          <input class="form-ctl u-w-full" type="text" id="quickExpenseDescription" placeholder="e.g. Monthly rent">
         </div>
         <button class="btn btn-main u-mt-8 u-quick-btn" onclick="(async()=>{await saveQuickExpenseEntry()})()">Save Expense</button>
       </div>
@@ -1400,7 +1396,7 @@ window._showLogoutConfirmDialog = async function() {
         </div>
         <div class="field pf-field">
           <label>Address / location</label>
-          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="edit-cust-address" placeholder="Area, shop no., etc." data-keyboard="native"><button class="btn pf-locate d-flex" onclick="fetchDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="edit-cust-address" placeholder="Area, shop no., etc."><button class="btn pf-locate d-flex" onclick="fetchDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
           <div id="location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
@@ -1474,7 +1470,7 @@ window._showLogoutConfirmDialog = async function() {
         </div>
         <div class="field pf-field">
           <label>Address / location</label>
-          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="rep-edit-cust-address" placeholder="Area, shop no., etc." data-keyboard="native"><button class="btn pf-locate d-flex" onclick="fetchRepDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
+          <div class="form-ctl pf-control pf-has-icon"><span class="pf-icon d-flex"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 30.5C18 30.5 7 21 7 14A11 11 0 0 1 29 14C29 21 18 30.5 18 30.5Z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="14" r="4" stroke="currentColor" stroke-width="2.2"/></svg></span><input class="form-ctl" type="text" id="rep-edit-cust-address" placeholder="Area, shop no., etc."><button class="btn pf-locate d-flex" onclick="fetchRepDeviceLocation()" title="Fetch current location" aria-label="Fetch current location"><svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="6.5" stroke="currentColor" stroke-width="2.2"/><circle cx="18" cy="18" r="2" fill="currentColor"/><path d="M18 3V8M18 28V33M3 18H8M28 18H33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button></div>
           <div id="rep-location-status" class="pf-hint pf-status"></div>
         </div>
       </section>
@@ -2408,7 +2404,8 @@ min="0" class="form-ctl u-b58d92a"
     type="text"
     id="expenseDescription"
     placeholder="Add details..."
-    class="form-ctl u-5d90a7b" data-keyboard="native">
+    class="form-ctl u-5d90a7b"
+  >
   <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" class="btn btn-theme btn-icon">
     <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
     <span id="expense-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d"></span>
