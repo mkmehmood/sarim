@@ -1,16 +1,24 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
+import { moduleFiles, readSource } from './helpers/source.js';
 const root = new URL('../', import.meta.url);
+const STYLE_INJECTOR = 'modules/screen-loader.js';
 const files = [
   'index.html',
   'sw.js',
-  ...readdirSync(new URL('modules/', root)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n),
+  ...moduleFiles(),
   ...readdirSync(new URL('desktop/', root)).filter((n) => /\.(js|html)$/.test(n)).map((n) => 'desktop/' + n),
 ];
-const read = (f) => readFileSync(new URL(f, root), 'utf8');
+const read = (f) => readSource(f);
 const line = (text, index) => text.slice(0, index).split('\n').length;
 describe('all CSS lives in app.css', () => {
+  it('puts a <style> element only in screens/*.screen.html and in the screen loader that injects them', () => {
+    const loader = read(STYLE_INJECTOR);
+    assert.equal((loader.match(/createElement\(\s*['"`]style['"`]\s*\)/g) || []).length, 1);
+    const screens = readdirSync(new URL('screens/', root)).filter((n) => n.endsWith('.screen.html'));
+    for (const n of screens) assert.equal((read('screens/' + n).match(/<style>/g) || []).length, 1, n);
+  });
   it('has no <style> element in any app file', () => {
     const found = [];
     for (const f of files) {
@@ -22,6 +30,7 @@ describe('all CSS lives in app.css', () => {
   it('creates no style elements or sheets from JS', () => {
     const found = [];
     for (const f of files) {
+      if (f === STYLE_INJECTOR) continue;
       const text = read(f);
       for (const m of text.matchAll(/createElement\(\s*['"`]style['"`]\s*\)|\binsertRule\s*\(|adoptedStyleSheets|new CSSStyleSheet|setAttribute\(\s*['"]style['"]/g)) found.push(`${f}:${line(text, m.index)} ${m[0]}`);
     }

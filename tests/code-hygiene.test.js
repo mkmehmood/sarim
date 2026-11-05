@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import * as acorn from 'acorn';
 import { readSource } from './_extract.js';
+import { moduleFiles } from './helpers/source.js';
 
 const ROOT_JS = ['sw.js', 'build.js', 'build-key.js', 'eslint.config.js', 'desktop/main.js', 'desktop/preload.js'];
 
 function listJs() {
-  const dirs = ['modules', 'scripts', 'tests'];
+  const dirs = ['scripts', 'tests'];
   const files = dirs.flatMap(d => readdirSync(new URL(`../${d}/`, import.meta.url)).filter(f => f.endsWith('.js')).map(f => `${d}/${f}`));
-  return [...files, ...ROOT_JS].sort();
+  return [...files, ...moduleFiles(), ...ROOT_JS].sort();
 }
 
 function parseJs(src) {

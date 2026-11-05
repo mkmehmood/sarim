@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+import { moduleFiles, readSource } from './helpers/source.js';
+const html = readSource('../index.html');
 const tag = html.match(/<script>\(function\(\)\{var V=[\s\S]*?<\/script>/)[0];
 const source = tag.replace(/^<script>/, '').replace(/<\/script>$/, '');
 function makeEl() {
@@ -51,16 +51,16 @@ describe('display helpers', () => {
     assert.ok(set.has('st-color-scheme__bbbbbb'));
   });
   it('defines a class for every st-* name the code can set', () => {
-    const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+    const css = readSource('../app.css');
     const used = new Set();
     for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js', 'modules/sync.js', 'modules/rep-sales.js', 'modules/factory.js', 'modules/formula-store.js', 'modules/prod-photos.js']) {
-      for (const m of readFileSync(new URL('../' + f, import.meta.url), 'utf8').matchAll(/st-[a-z-]+__[0-9a-f]{6}/g)) used.add(m[0]);
+      for (const m of readSource('../' + f).matchAll(/st-[a-z-]+__[0-9a-f]{6}/g)) used.add(m[0]);
     }
     assert.ok(used.size > 20);
     for (const c of used) assert.ok(new RegExp('\\.' + c + '(?::not\\((?:\\._|#_)\\))* \\{').test(css), c);
   });
   it('has a utility class for every display value the helper can set', () => {
-    const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+    const css = readSource('../app.css');
     for (const v of ['none', 'block', 'inline', 'inline-block', 'flex', 'inline-flex', 'grid', 'inline-grid', 'table', 'table-row', 'table-cell', 'contents', 'list-item', 'flow-root']) {
       assert.ok(css.includes(`.d-${v} { display: ${v}; }`), v);
     }
@@ -68,14 +68,14 @@ describe('display helpers', () => {
   it('keeps cssText only for the one rule that needs !important', () => {
     let count = 0;
     for (const f of ['index.html', 'modules/admin-data.js', 'modules/factory.js', 'modules/formula-store.js', 'modules/sync.js', 'modules/utilities-core.js', 'modules/utilities-payments.js', 'modules/utilities-sales.js']) {
-      count += (readFileSync(new URL('../' + f, import.meta.url), 'utf8').match(/\.style\.cssText/g) || []).length;
+      count += (readSource('../' + f).match(/\.style\.cssText/g) || []).length;
     }
     assert.equal(count, 1);
   });
   it('keeps only custom properties in style attributes built at run time', () => {
     const bad = [];
-    for (const f of ['index.html', ...readdirSync(new URL('../modules/', import.meta.url)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)]) {
-      const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+    for (const f of ['index.html', ...moduleFiles()]) {
+      const text = readSource('../' + f);
       for (const m of text.matchAll(/\sstyle="([^"]*)"/g)) {
         if (!/\$\{|'\s*\+|\+\s*'/.test(m[1])) continue;
         const props = m[1].split(';').map((x) => x.trim()).filter(Boolean).map((x) => x.split(':')[0].trim());
@@ -87,14 +87,14 @@ describe('display helpers', () => {
   it('writes inline styles from JS only for run-time geometry and timing', () => {
     const allowed = new Set(['left', 'right', 'top', 'bottom', 'width', 'height', 'minHeight', 'transform', 'animationDuration', 'cssText']);
     const found = new Set();
-    for (const f of ['index.html', ...readdirSync(new URL('../modules/', import.meta.url)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)]) {
-      const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+    for (const f of ['index.html', ...moduleFiles()]) {
+      const text = readSource('../' + f);
       for (const m of text.matchAll(/\.style\.([a-zA-Z]+)\s*=(?!=)/g)) found.add(m[1]);
     }
     assert.deepEqual([...found].filter((p) => !allowed.has(p)), []);
   });
   it('keeps app.css flat: only the vendor import is layered', () => {
-    const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+    const css = readSource('../app.css');
     assert.ok(css.trimStart().startsWith("@import url('vendor/leaflet/leaflet.css') layer(vendor);"));
     assert.equal(/@layer\b/.test(css.replace(/layer\(vendor\)/, '')), false);
   });
@@ -104,7 +104,7 @@ describe('display helpers', () => {
   });
   it('leaves no direct style.display writes in the app code', () => {
     for (const f of ['index.html', 'modules/utilities-core.js', 'modules/utilities-sales.js', 'modules/utilities-payments.js', 'modules/admin-data.js', 'modules/customers.js']) {
-      const text = readFileSync(new URL('../' + f, import.meta.url), 'utf8').replace(tag, '');
+      const text = readSource('../' + f).replace(tag, '');
       assert.equal(/\.style\.display/.test(text), false, f);
     }
   });

@@ -1,12 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
 import { readSource } from './_extract.js';
+import { moduleNames } from './helpers/source.js';
 
 const WINDOW_LINES = 8;
 const DUPLICATE_WINDOW_BUDGET = 50;
 
-const modules = readdirSync(new URL('../modules/', import.meta.url)).filter(f => f.endsWith('.js')).sort();
+const modules = moduleNames();
 const TRIVIAL = /^(\}|\}\)|\}\);|\]|\);|\)|\},|\],|else \{|\} else \{|try \{|return;|\} catch.*)$/;
 const IGNORED = /^(import |export \{|window\.\w+ = )/;
 const SEPARATELY_STYLED_TABLES = ['utilities-core.js', 'daily-ledger.js'];

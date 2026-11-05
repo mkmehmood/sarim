@@ -1,13 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { moduleFiles, readSource } from './helpers/source.js';
 
-const root = new URL('../', import.meta.url);
 const files = [
   'index.html',
-  ...readdirSync(new URL('modules/', root)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n),
+  ...moduleFiles(),
 ];
-const read = (f) => readFileSync(new URL(f, root), 'utf8');
+const read = (f) => readSource(f);
 const SKIP_TYPES = new Set(['hidden', 'file', 'checkbox', 'radio', 'range', 'color', 'button', 'submit', 'reset', 'image']);
 
 function tagEnd(src, start) {

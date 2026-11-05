@@ -106,6 +106,9 @@ function jsItems(text, src) {
     else fromDecl(n).forEach(x => decl.add(x));
   }
   for (const m of text.matchAll(/\bwindow\.([A-Za-z_$][\w$]*)\s*=(?!=)/g)) win.add(m[1]);
+  // Object.assign(window, { a, b: fn, ... }) also publishes globals
+  for (const m of text.matchAll(/Object\.assign\(\s*window\s*,\s*\{([\s\S]*?)\}\s*\)/g))
+    for (const k of m[1].matchAll(/(?:^|[,{\s])([A-Za-z_$][\w$]*)\s*(?=[,:}]|$)/g)) win.add(k[1]);
   return { decl: [...decl], win: [...win], exp: [...exp] };
 }
 

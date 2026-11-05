@@ -1,11 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import postcss from 'postcss';
-import { readFileSync, readdirSync } from 'node:fs';
+import { moduleFiles, readSource } from './helpers/source.js';
 
-const root = new URL('../', import.meta.url);
-const read = (f) => readFileSync(new URL(f, root), 'utf8');
-const markup = ['index.html', ...readdirSync(new URL('modules/', root)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)];
+const read = (f) => readSource(f);
+const markup = ['index.html', ...moduleFiles()];
 const src = markup.map(read).join('\n');
 const sheet = postcss.parse(read('app.css'));
 

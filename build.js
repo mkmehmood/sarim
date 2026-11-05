@@ -8,7 +8,9 @@ import {
 
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { build as esbuildBuild } from 'esbuild';
 import { computeBuildKey, replaceOrThrow } from './build-key.js';
+import { screenPlugin } from './scripts/screen-compile.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT  = __dirname;
 const DIST  = join(ROOT, 'dist');
@@ -30,13 +32,14 @@ rmSync(DIST, { recursive: true, force: true });
 mkdirSync(DIST, { recursive: true });
 const metafile = join(DIST, 'meta.json');
 
-run([
-  join(ROOT, 'modules/main.js'),
-  '--bundle', '--splitting', '--format=esm',
-  '--minify', '--platform=browser', '--target=es2018',
-  `--outdir=${DIST}`, '--entry-names=[name]-[hash]',
-  `--metafile=${metafile}`,
-]);
+const _bundle = await esbuildBuild({
+  entryPoints: [join(ROOT, 'modules/main.js')],
+  bundle: true, splitting: true, format: 'esm', minify: true,
+  platform: 'browser', target: 'es2018',
+  outdir: DIST, entryNames: '[name]-[hash]',
+  metafile: true, plugins: [screenPlugin(ROOT)], logLevel: 'info',
+});
+writeFileSync(metafile, JSON.stringify(_bundle.metafile));
 
 const meta = JSON.parse(read(metafile));
 let mainOut = null, factoryOut = null, repOut = null;

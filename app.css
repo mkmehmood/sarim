@@ -5590,13 +5590,8 @@ html.is-android *, html.is-android *::before, html.is-android *::after { backdro
 
 .dl-type-row { display: flex; gap: 8px; }
 .dl-type-btn { flex: 1; min-height: 40px; padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 800; cursor: pointer; border: 1.5px solid var(--dl-c); color: var(--dl-c); background: color-mix(in srgb, var(--dl-c) 14%, transparent); transition: background .15s, color .15s, box-shadow .15s; }
-.dl-type-in { --dl-c: #16a34a; }
-.dl-type-out { --dl-c: #dc2626; }
-.dl-type-transfer { --dl-c: #2563eb; }
 .dl-type-btn.active { background: var(--dl-c); color: #fff; box-shadow: 0 6px 14px -8px var(--dl-c); }
 .dl-type-btn:hover { background: color-mix(in srgb, var(--dl-c) 24%, transparent); }
-.dl-type-btn.active:hover { background: var(--dl-c); }
-
 .acct-row { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; margin-bottom: 8px; border-radius: var(--radius-lg); background: var(--glass-raised); border-bottom: 1px solid var(--glass-border); }
 .acct-row.is-suspended { opacity: 0.7; }
 .acct-head { display: flex; align-items: center; gap: 8px; min-width: 0; }

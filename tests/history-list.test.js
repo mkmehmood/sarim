@@ -1,9 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readSource } from './helpers/source.js';
 
-const root = new URL('../', import.meta.url);
-const read = (f) => readFileSync(new URL(f, root), 'utf8');
+const read = (f) => readSource(f);
 const html = read('index.html');
 const css = read('app.css');
 

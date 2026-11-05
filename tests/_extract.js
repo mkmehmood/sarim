@@ -1,10 +1,8 @@
-import { readFileSync } from 'node:fs';
 import * as acorn from 'acorn';
-
-const root = new URL('../', import.meta.url);
+import { readSource as readAppSource } from './helpers/source.js';
 
 export function readSource(relPath) {
-  return readFileSync(new URL(relPath, root), 'utf8');
+  return readAppSource(relPath);
 }
 
 export function extractFunctions(relPath, names, scope = {}) {

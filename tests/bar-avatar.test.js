@@ -1,10 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { moduleFiles, readSource } from './helpers/source.js';
 
-const root = new URL('../', import.meta.url);
-const read = (f) => readFileSync(new URL(f, root), 'utf8');
-const files = ['index.html', ...readdirSync(new URL('modules/', root)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)];
+const read = (f) => readSource(f);
+const files = ['index.html', ...moduleFiles()];
 const css = read('app.css');
 
 describe('shared bar and avatar', () => {

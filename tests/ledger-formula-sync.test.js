@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { AUX_STATE, collectAuxBackupFields, applyAuxBackupFields, mergeNewestById, mergeFormulaLists, keepUnsyncedCalcs } from '../modules/link-graph.js';
-const read = (f) => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
+import { readModule } from './helpers/source.js';
+const read = (f) => readModule(f);
 function memStore(init = {}) {
   const m = new Map(Object.entries(init));
   return { async get(k) { return m.has(k) ? m.get(k) : undefined; }, async set(k, v) { m.set(k, v); }, _m: m };

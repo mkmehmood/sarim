@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/serve.js",
-    "lint": "node --check modules/*.js scripts/*.js tests/*.test.js sw.js build.js && node scripts/verify.js && eslint . --quiet",
+    "lint": "node --check modules/*.js scripts/*.js tests/*.test.js sw.js build.js && node scripts/verify.js && eslint . --quiet && node scripts/screens-lint.mjs",
     "build": "node build.js",
     "verify": "node scripts/verify.js",
     "split:snapshot": "node scripts/split-manifest.mjs snapshot",

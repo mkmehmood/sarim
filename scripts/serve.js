@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve, dirname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { compileScreenFile } from './screen-compile.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', process.argv[2] || '.');
 const port = Number(process.argv[3] || process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
@@ -20,6 +21,12 @@ createServer(async (req, res) => {
     let file = join(root, p);
     if (!file.startsWith(root)) { res.writeHead(403).end(); return; }
     const s = await stat(file).catch(() => null);
+    if (!s && /\.screen\.js$/.test(file)) {
+      const js = compileScreenFile(root, file);
+      res.writeHead(200, { 'Content-Type': TYPES['.js'], 'Cache-Control': 'no-cache' });
+      res.end(js);
+      return;
+    }
     if (s?.isDirectory()) file = join(file, 'index.html');
     else if (!s && !extname(file)) file = join(root, 'index.html');
     const data = await readFile(file);

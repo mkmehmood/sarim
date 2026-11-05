@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phase 0 done** (inventory, baseline, "nothing lost" checker). Phases 1–4 not started.
+Status: **Phase 0 and Phase 1 done; Phase 2 started (3 of ~14 screens moved).** Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -71,7 +71,7 @@ Highest risk: `showTab` sets state on several tabs, edit flows (e.g. `startEditS
 - every HTML element id (700) and inline handler call (191)
 - the whitespace-normalised markup of every screen root (53 blocks)
 - every CSS rule/at-rule, counted as a multiset (2,417) – moving a rule between files passes, dropping or editing one fails
-- every top-level JS declaration (2,102), export (1,480) and `window.*` assignment (907)
+- every top-level JS declaration (2,102), export (1,480) and `window.*` assignment (976, including `Object.assign(window, {...})`)
 
 Self-tested: a pure move into `screens/` passes; a dropped CSS rule, a renamed id, a removed export and a removed `window.*` assignment each fail.
 
@@ -79,3 +79,30 @@ Per-phase gate: `npm run lint && npm test && npm run build && npm run verify -- 
 
 ## 6. What this cannot prove (needs a person or a browser)
 The checker proves no code was lost; it cannot prove a lazily loaded screen *behaves* the same. Each phase needs a manual pass on a device or emulator: open each moved screen online and offline, first open vs. second open, and the flows that cross screens (edit from ledger, notification deep-link, role-restricted login). A headless-browser smoke test would be worth adding in Phase 1.
+
+## 7. Progress log
+
+### Phase 1 – done
+- `screens/<name>.screen.html`: `<template>` + `<style>` + `<script type="module">`. The script keeps imports relative to `modules/`.
+- `scripts/screen-compile.mjs` compiles a screen to one JS module. The same code is used by the esbuild plugin (`build.js` now uses the esbuild API), the dev server (`scripts/serve.js` serves `modules/<name>.screen.js` from the screen file) and `scripts/screens-lint.mjs`.
+- `modules/screen-loader.js`: loads a screen once, injects its style once, swaps the `data-lazy-screen` placeholder for the real markup, then calls the screen's `onMount()` if it has one. It also wraps `window.openStandaloneScreen` so a lazy screen is mounted before it is shown, and installs `window.*` stubs that load the screen and then call the real function.
+- `modules/screen-registry.js`: one entry per screen (literal `import()` so each gets its own chunk, plus its `globals`). `tests/screen-registry.test.js` fails if the registry, the screen file, the placeholder in `index.html`, the service-worker list or the published `window.*` names drift apart.
+- Offline: the build lists every screen chunk in the service worker's precache automatically, and `npm run verify -- dist` checks each one exists.
+- Tests: `tests/helpers/source.js` reads the app as one document again (placeholders re-expanded, screen styles appended to `app.css`, folded modules found by marker). `tests/_extract.js` now goes through it, and 13 scanning tests use `moduleFiles()` so a moved module is still scanned by every rule it was before.
+
+### Rules that changed on purpose
+- "All CSS lives in app.css" (`tests/no-inline-css.test.js`) now allows exactly two exceptions: one `<style>` per `screens/*.screen.html`, and the single `createElement('style')` in `modules/screen-loader.js`. The CSP already allows this (`style-src 'self' 'unsafe-inline'`).
+- The "no comments" and "no repeated blank lines" rules still apply, and now cover code that lives in screen files.
+
+### CSS is moved conservatively
+A rule moves into a screen file only if (a) every selector uses an id or class that exists only in that screen, (b) it has no `!important`, and (c) no rule that stays in `app.css`, appears later and has the **same specificity** sets any of the same property families, because injecting the screen style after `app.css` would flip that winner. Anything else stays in `app.css`. Result so far: daily-ledger moved 4 rules and kept 11 for cascade safety; batch-mix and batch-fix moved none. Expect screen files to carry little CSS until the shared rules are untangled in a later pass.
+
+### Phase 2 – moved so far
+daily-ledger, batch-mix, batch-fix. Main entry chunk went from 52.3 KB to 36.5 KB; the three screens load on first open (31.5 KB, 8.4 KB, 10.5 KB).
+
+Not yet moved, and why: `approvals` and `accounts` are also imported by `sync.js` (it must reach them through the registry first); `formula-store`, `batch-saved`, `batch-common` are imported by several modules (shared code, stays in core); `cm-ledger` is shared by three screens. The remaining standalone screens (settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material, db-structure, close-financial-year, feedback) keep their logic inside the large modules and belong to Phase 3.
+
+### How to move the next screen
+`node scripts/screen-extract.mjs <screen-id> <name> [module.js ...]` (add `--dry` to preview), then:
+`npm run lint && npm test && npm run build && npm run verify -- dist && npm run split:check`.
+A module may only be folded in if nothing else imports it. A screen's script must not touch its own DOM at top level; put start-up DOM work in `export function onMount() {}`.

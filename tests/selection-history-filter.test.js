@@ -1,9 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { extractFunctions } from './_extract.js';
+import { readSource } from './helpers/source.js';
 
-const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+const read = (f) => readSource(`../${f}`);
 const mkCard = (attrs) => ({ attrs, shown: true, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; } });
 
 let lists; let inputs; let emptyNodes;

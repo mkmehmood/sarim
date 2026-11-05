@@ -1,11 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import postcss from 'postcss';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
+import { moduleFiles, readSource } from './helpers/source.js';
 
 const root = new URL('../', import.meta.url);
-const read = (f) => readFileSync(new URL(f, root), 'utf8');
-const markup = ['index.html', ...readdirSync(new URL('modules/', root)).filter((n) => n.endsWith('.js')).map((n) => 'modules/' + n)];
+const read = (f) => readSource(f);
+const markup = ['index.html', ...moduleFiles()];
 const src = markup.map(read).join('\n');
 const css = read('app.css');
 const sheet = postcss.parse(css);
@@ -100,7 +101,7 @@ describe('shared overlay surface', () => {
     for (const c of ['cm-menu', 'cdp-popover', 'cm-sheet']) {
       assert.ok(!ownDecls(c).some((p) => /^(background|border|backdrop-filter|-webkit-backdrop-filter):/.test(p)), `${c} repeats the overlay surface`);
     }
-    assert.ok(!/\.factory-overlay-card\s*\{/.test(readFileSync(new URL('app.css', root), 'utf8')));
+    assert.ok(!/\.factory-overlay-card\s*\{/.test(readSource('app.css')));
   });
 });
 
@@ -117,7 +118,7 @@ describe('shared list row', () => {
       const props = ownDecls(c);
       assert.ok(!props.some((p) => /^(background|border|border-bottom|color|text-align):/.test(p)), `${c} repeats row styling`);
     }
-    assert.ok(!/\.cm-row \+ \.cm-row|\.rl-row:last-child/.test(readFileSync(new URL('app.css', root), 'utf8')));
+    assert.ok(!/\.cm-row \+ \.cm-row|\.rl-row:last-child/.test(readSource('app.css')));
   });
 });
 
@@ -126,7 +127,7 @@ describe('shared title', () => {
     let n = 0;
     sheet.walkRules((r) => { if (r.selector.trim() === '.title') n++; });
     assert.equal(n, 1);
-    assert.ok(/\.title-sm \{/.test(readFileSync(new URL('app.css', root), 'utf8')) && /\.title-md \{/.test(readFileSync(new URL('app.css', root), 'utf8')));
+    assert.ok(/\.title-sm \{/.test(readSource('app.css')) && /\.title-md \{/.test(readSource('app.css')));
   });
   it('card, sheet, queue and dialog titles carry .title and do not repeat its weight', () => {
     for (const c of ['hc-title', 'cm-sheet-title', 'dl-queue-title', 'dlg-title']) {
@@ -134,12 +135,12 @@ describe('shared title', () => {
       assert.ok(re.test(src), c + ' markup carries title');
       assert.ok(!ownDecls(c).some((p) => /^(font-weight|letter-spacing):/.test(p)), c + ' repeats title weight');
     }
-    assert.ok(!/overview-title/.test(readFileSync(new URL('app.css', root), 'utf8')));
+    assert.ok(!/overview-title/.test(readSource('app.css')));
   });
 });
 
 describe('shared stat tile', () => {
-  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const cssText = readSource('app.css');
   it('one .stat rule with label, value and sub, declared after .card', () => {
     assert.equal((cssText.match(/^\.stat \{/gm) || []).length, 1);
     for (const c of ['.stat-label', '.stat-value', '.stat-sub']) assert.ok(cssText.includes(c + ' {') || cssText.includes(c + ':not'), c);
@@ -154,7 +155,7 @@ describe('shared stat tile', () => {
 });
 
 describe('settings pickers reuse the settings list item', () => {
-  const htmlText = readFileSync(new URL('index.html', root), 'utf8');
+  const htmlText = readSource('index.html');
   it('fb-select buttons carry card and settings-list-item', () => {
     const tags = [...htmlText.matchAll(/<button[^>]*class="([^"]*\bfb-select\b[^"]*)"/g)].map((m) => m[1].split(/\s+/));
     assert.ok(tags.length >= 2);
@@ -172,17 +173,17 @@ describe('settings pickers reuse the settings list item', () => {
 });
 
 describe('daily ledger summary tiles use .stat', () => {
-  const htmlText = readFileSync(new URL('index.html', root), 'utf8');
+  const htmlText = readSource('index.html');
   it('dl-stat is gone and the tiles carry stat-label / stat-value', () => {
     assert.ok(!/dl-stat(?![\w-]*s\b)(?!s)/.test(htmlText.replace(/dl-stats/g, '')));
-    assert.ok(!/\.dl-stat(?![\w-])/.test(readFileSync(new URL('app.css', root), 'utf8')));
+    assert.ok(!/\.dl-stat(?![\w-])/.test(readSource('app.css')));
     const tiles = htmlText.match(/<div class="stat"><span class="stat-label">/g) || [];
     assert.equal(tiles.length, 6);
   });
 });
 
 describe('shared panel and callout', () => {
-  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const cssText = readSource('app.css');
   const PANELS = ['cm-summary', 'hc-more', 'dl-queue-row', 'formula-unit-display', 'production-unit-info'];
   const CALLOUTS = ['txn-preclose-panel', 'warning-message', 'cost-display', 'cy-result-card', 'formula-display', 'edit-mode-banner', 'discrepancy-alert', 'discrepancy-ok'];
   it('one .panel and one .callout rule', () => {
@@ -205,7 +206,7 @@ describe('shared panel and callout', () => {
 
 describe('dead css removed', () => {
   it('unreferenced chart, checkbox and toggle-track classes are gone', () => {
-    const cssText = readFileSync(new URL('app.css', root), 'utf8');
+    const cssText = readSource('app.css');
     for (const n of ['sc-bar-chart', 'sc-pie-svg', 'sc-legend', 'sc-donut-total', 'credit-checkbox', 'theme-toggle-track', 'theme-toggle-switch', 'sm-combined', 'sx-overview', 'scroll-x']) {
       assert.ok(!new RegExp('\\.' + n + '(?![\\w-])').test(cssText), n + ' is back');
     }
@@ -244,7 +245,7 @@ describe('last small families use shared classes', () => {
 });
 
 describe('shared menu item and line', () => {
-  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const cssText = readSource('app.css');
   it('one .menu-item and one .line rule', () => {
     assert.equal((cssText.match(/^\.menu-item \{/gm) || []).length, 1);
     assert.equal((cssText.match(/^\.line \{/gm) || []).length, 1);
@@ -263,7 +264,7 @@ describe('shared menu item and line', () => {
 });
 
 describe('themed dialog, auth and fullscreen surfaces use the shared classes through tokens', () => {
-  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const cssText = readSource('app.css');
   it('.overlay, .panel and .scrim read their values from override tokens', () => {
     assert.ok(/\.overlay \{[^}]*var\(--overlay-bg, var\(--soft-card\)\)/.test(cssText));
     assert.ok(/\.panel \{[^}]*var\(--panel-bg, var\(--glass-raised\)\)/.test(cssText));
@@ -289,7 +290,7 @@ describe('themed dialog, auth and fullscreen surfaces use the shared classes thr
 });
 
 describe('final near-miss families', () => {
-  const cssText = readFileSync(new URL('app.css', root), 'utf8');
+  const cssText = readSource('app.css');
   const need = (cls, shared) => {
     const bad = [];
     for (const m of src.matchAll(/class=\\?"([^"\\]*)\\?"/g)) { const t = m[1].split(/\s+/); if (t.includes(cls) && !shared.every((s) => t.includes(s))) bad.push(m[1]); }
