@@ -1,0 +1,81 @@
+# Plan: one file per screen (HTML + CSS + JS), loaded when first opened
+
+Status: **Phase 0 done** (inventory, baseline, "nothing lost" checker). Phases 1–4 not started.
+Everything below is measured from the repo at `3168d72`, not estimated.
+
+## 1. What exists today
+
+| Area | Size | Notes |
+|---|---|---|
+| `index.html` | 217 KB | 6 tabs + 24 standalone screens = **~150 KB (69%)**; the rest is shell, splash, nav, dialogs |
+| `app.css` | 249 KB, 2,417 rules | single global file |
+| `modules/*.js` | 72 files, ~44.7k lines | all statically imported by `main.js`, except `factory.js` and `rep-sales.js` (already lazy) |
+| Inline handlers | 216 `onclick=` in HTML, 191 distinct calls | all resolve through `window.*` |
+| `window.*` assignments | 907 | this is the real public surface between screens |
+| Tests | 68 files read `index.html`, `app.css` or `modules/*.js` as text | will break on any move unless fixed first |
+
+### Screens (33 roots found)
+Tabs: `tab-prod` 7 KB, `tab-sales` 11 KB, `tab-calc` 14 KB, `tab-factory` 7 KB, `tab-payments` 14 KB, `tab-rep` 9 KB.
+Standalone (24): settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, daily-ledger, raw-material, formula-store, formula-store-edit, batch-mix, batch-fix, app-accounts, approvals, feedback, close-financial-year, db-structure, entity-details, add-entity, expense-details, customer-management, customer-edit, rep-customer-management, rep-customer-edit.
+
+### The two facts that shape the whole plan
+
+1. **CSS is mostly shared.** Of 236 KB of rule bytes only **24 KB (~10%)** belong exclusively to one screen (a rule counts as exclusive only if every selector uses an id/class that appears in that one screen and nowhere else in HTML or JS). The other ~90% is design system, themes, components and overrides. Most screens will end up with *small* CSS in their file; the shared base stays in a `core.css`.
+   Largest exclusive CSS: payments 6.4 KB, calc 2.5 KB, prod 2.4 KB, factory 1.8 KB, raw-material 1.4 KB, formula-store 1.3 KB, daily-ledger 1.1 KB.
+2. **JS is concentrated in five multi-screen monoliths**: `utilities-payments.js` (7.3k lines), `utilities-sales.js` (6.9k), `utilities-core.js` (4.5k), `sync.js` (4.5k), `admin-data.js` (2.8k) = **26k of 44.7k lines**. They reference several tabs at once (e.g. `utilities-sales.js` touches `tab-calc`, the sales tab, rep inputs, expense search…). Splitting these is the only hard part; everything else is mechanical.
+
+Cleanly single-screen modules (safe first movers): `daily-ledger.js` (501 lines, 1 importer), `batch-fix.js`, `batch-mix.js`, `accounts.js`, `approvals.js`, `formula-store.js`, `cm-ledger.js` (shared by 3 customer screens). Core modules that look screen-specific but are not: `feedback.js` is the global tap/haptic engine used by `native.js` and `dialog.js`.
+
+## 2. Target design
+
+One file per screen: `screens/<name>.screen.html`
+
+```html
+<template>   …the screen's markup, verbatim…   </template>
+<style>      …rules used only by this screen…    </style>
+<script type="module"> …this screen's logic…   </script>
+```
+
+- **Build**: an esbuild step compiles each file to one JS chunk exporting `{ html, css, mount }`. Content-hashed like today's chunks. `scripts/serve.js` (dev) parses the same file at runtime so no build is needed while developing.
+- **Runtime ("runs once when called")**: `openScreen(id)` memoises one `import()` per screen. First call: inject CSS, insert markup, run the module once, then show. Later calls just show. A screen's listeners are attached once, at mount.
+- **Compatibility layer** (generated from the manifest): for every `window.X` a screen owns, a stub `window.X = (...a) => load().then(() => window.X(...a))` is installed at startup. This keeps the 191 inline handlers and the cross-screen `typeof window.fn === 'function'` calls working before the screen has loaded.
+- **Core stays core**: shell, nav, dialogs, sync, storage, design-system CSS (`core.css`), shared helpers.
+
+## 3. Phases (each ends with all checks green and its own commit)
+
+**Phase 1 – Loader and safety net** (no screen moved yet)
+- `screens/` format, esbuild plugin, dev-server support, `openScreen`, stub generator.
+- `sw.js` `ASSETS_TO_CACHE` and `scripts/verify.js` must list/validate screen chunks. **Offline-first matters here:** a screen not in the precache would fail to open offline on first use.
+- Add `tests/helpers/source.js` (`readAppSource()` = `index.html` + all screen templates/styles/scripts) and switch the 68 source-reading tests to it, so tests assert on the app, not on one file.
+- Capacitor/Android: confirm chunks are inside `dist/` before `cap sync`.
+
+**Phase 2 – Standalone screens that already own their module**
+daily-ledger, batch-mix, batch-fix, approvals, accounts, formula-store + edit, store-manager, db-structure, close-financial-year, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material. HTML + exclusive CSS + the module go into one file each.
+
+**Phase 3 – Screens whose logic lives in monoliths**
+customer-management / customer-edit / entity-details / rep-customer-* / add-entity / expense-details / settings. Move their functions out of the monoliths using the `window.*` manifest as the ownership map. `cm-ledger.js` becomes shared code imported by three screen files.
+
+**Phase 4 – The six tabs**
+Highest risk: `showTab` sets state on several tabs, edit flows (e.g. `startEditSale`, `startEditRepReturn`) require the sales tab DOM to exist, and `utilities-payments.js` holds a screen registry (`closeFn`/`contentSel`). Tabs mount lazily except `tab-prod` (default) — and any tab another flow targets must `await openScreen()` first.
+
+## 4. Known hazards to design for
+- Code that reads or writes another screen's DOM before it has mounted (sync updates, notification deep-links via `notify-target.js` `prepare:` hooks, `showTab` toggling all six tabs).
+- Modules that do `getElementById(...)` / attach listeners at import time.
+- `money-privacy.js` `RESTRICTED_SCREENS` and role gating (`isScreenAllowed`) use screen ids – must apply before a screen mounts.
+- Load order of CSS: screen CSS is injected after `core.css`; only rules that are *exclusive* move, so cascade order cannot change for shared rules.
+- Circular imports when carving the monoliths – resolve by moving shared helpers to a core module first.
+
+## 5. How "nothing lost" is verified
+
+`node scripts/split-manifest.mjs check` compares the tree to `docs/screen-split/baseline.json` (taken before any change) and fails if any of these disappear or change:
+- every HTML element id (700) and inline handler call (191)
+- the whitespace-normalised markup of every screen root (53 blocks)
+- every CSS rule/at-rule, counted as a multiset (2,417) – moving a rule between files passes, dropping or editing one fails
+- every top-level JS declaration (2,102), export (1,480) and `window.*` assignment (907)
+
+Self-tested: a pure move into `screens/` passes; a dropped CSS rule, a renamed id, a removed export and a removed `window.*` assignment each fail.
+
+Per-phase gate: `npm run lint && npm test && npm run build && npm run verify -- dist && npm run split:check`.
+
+## 6. What this cannot prove (needs a person or a browser)
+The checker proves no code was lost; it cannot prove a lazily loaded screen *behaves* the same. Each phase needs a manual pass on a device or emulator: open each moved screen online and offline, first open vs. second open, and the flows that cross screens (edit from ledger, notification deep-link, role-restricted login). A headless-browser smoke test would be worth adding in Phase 1.
