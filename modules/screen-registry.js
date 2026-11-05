@@ -13,4 +13,8 @@ registerScreens({
     load: () => import('./batch-fix.screen.js'),
     globals: ['cancelBatchFixEdit', 'deleteBatchFixSaved', 'editBatchFixSaved', 'openBatchFix', 'openBatchFixFormulaPicker', 'recomputeBatchFix', 'resetBatchFixManual', 'saveBatchFix', 'setBatchFixAdd', 'setBatchFixTotal', 'setBatchFixUnit'],
   },
+  'app-accounts-screen': {
+    load: () => import('./app-accounts.screen.js'),
+    globals: ['_accountsIndexRef', '_readAccountsIndex', '_writeAccountsIndex', 'adminAddAccount', 'adminRemoveAccount', 'adminSetAccountRole', 'adminToggleApproval', 'loadAccountsList', 'resetAccountForm', 'toggleNewAccountRole'],
+  },
 });

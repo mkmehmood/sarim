@@ -1,9 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { repDataCount, repRemovalPlan, withoutRep, repKey } from '../modules/rep-data.js';
+import { readSource } from './helpers/source.js';
 
-const accounts = readFileSync(new URL('../modules/accounts.js', import.meta.url), 'utf8');
+const accounts = readSource('modules/accounts.js');
 
 describe('repDataCount', () => {
   it('counts records tagged with the rep, ignoring case and spacing', () => {

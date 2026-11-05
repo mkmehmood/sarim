@@ -9,7 +9,7 @@ import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, tr
 import { _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable } from './utilities-payments.js';
 import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
 import { showGlassConfirm, showToast } from './customers.js';
-import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './accounts.js';
+import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './account-session.js';
 import { clearRolesCache, readRolesCache, writeRolesCache } from './roles.js';
 import { findRemoteActivity, planNotifications, describeLedgerEntry } from './remote-activity.js';
 import { tabForKey } from './notify-target.js';

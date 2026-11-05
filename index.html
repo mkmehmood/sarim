@@ -904,33 +904,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
   </div>
 </div>
-<div id="app-accounts-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">App Accounts</h2>
-  </div>
-  <div class="screen-body">
-    <div class="u-a0d4a03">
-      <label class="u-5250855 d-block">Add Account</label>
-      <div class="grid-inputs u-39ae4db">
-        <div class="field"><label>Email</label><input class="form-ctl" type="email" id="acct-new-email" placeholder="user@example.com" autocomplete="off"></div>
-        <div class="field"><label>Password</label><input class="form-ctl" type="password" id="acct-new-password" placeholder="min 8 characters" autocomplete="new-password"></div>
-        <div class="field"><label>Name</label><input class="form-ctl" type="text" id="acct-new-name" placeholder="full name" autocomplete="off"></div>
-      </div>
-      <div class="u-39ae4db">
-        <label class="u-6068d65 d-block">Roles</label>
-        <div class="acct-roles"><button type="button" id="acct-role-admin" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('admin')">Admin</button><button type="button" id="acct-role-rep" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('rep')">Rep</button><button type="button" id="acct-role-production" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('production')">Production</button><button type="button" id="acct-role-factory" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('factory')">Factory</button><button type="button" id="acct-role-payments" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('payments')">Payments</button><button type="button" id="acct-role-sales" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('sales')">Sales</button></div>
-      </div>
-      <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="adminAddAccount()" id="acct-add-btn">Add Account</button>
-    </div>
-    <div class="u-3e0b028">
-      <div class="u-79e0958 d-flex">
-        <label class="u-540eca8">Registered Accounts</label>
-        <button class="btn btn-theme u-f984b84 text-xs" onclick="loadAccountsList()">&#8635; Refresh</button>
-      </div>
-      <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
-    </div>
-  </div>
-</div>
+<div id="app-accounts-screen" class="standalone-screen d-none" data-lazy-screen></div>
 <div id="approvals-screen" class="standalone-screen d-none">
   <div class="shell-bar screen-topbar">
     <h2 class="screen-title">Approvals</h2>

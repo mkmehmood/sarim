@@ -1,40 +1,62 @@
+<template><div id="app-accounts-screen" class="standalone-screen d-none">
+  <div class="shell-bar screen-topbar">
+    <h2 class="screen-title">App Accounts</h2>
+  </div>
+  <div class="screen-body">
+    <div class="u-a0d4a03">
+      <label class="u-5250855 d-block">Add Account</label>
+      <div class="grid-inputs u-39ae4db">
+        <div class="field"><label>Email</label><input class="form-ctl" type="email" id="acct-new-email" placeholder="user@example.com" autocomplete="off"></div>
+        <div class="field"><label>Password</label><input class="form-ctl" type="password" id="acct-new-password" placeholder="min 8 characters" autocomplete="new-password"></div>
+        <div class="field"><label>Name</label><input class="form-ctl" type="text" id="acct-new-name" placeholder="full name" autocomplete="off"></div>
+      </div>
+      <div class="u-39ae4db">
+        <label class="u-6068d65 d-block">Roles</label>
+        <div class="acct-roles"><button type="button" id="acct-role-admin" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('admin')">Admin</button><button type="button" id="acct-role-rep" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('rep')">Rep</button><button type="button" id="acct-role-production" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('production')">Production</button><button type="button" id="acct-role-factory" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('factory')">Factory</button><button type="button" id="acct-role-payments" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('payments')">Payments</button><button type="button" id="acct-role-sales" class="toggle-opt acct-role-btn" onclick="toggleNewAccountRole('sales')">Sales</button></div>
+      </div>
+      <button class="btn btn-main u-h-42 u-fs-md2 u-fw-700" onclick="adminAddAccount()" id="acct-add-btn">Add Account</button>
+    </div>
+    <div class="u-3e0b028">
+      <div class="u-79e0958 d-flex">
+        <label class="u-540eca8">Registered Accounts</label>
+        <button class="btn btn-theme u-f984b84 text-xs" onclick="loadAccountsList()">&#8635; Refresh</button>
+      </div>
+      <div id="manage-accounts-list"><div class="u-ed93e92">Loading...</div></div>
+    </div>
+  </div>
+</div></template>
+<style>
+</style>
+<script type="module">
+// ==== module: accounts.js ====
 import { _safeErr, _set_salesRepsList, currentUser, dataRootRef, dataRootUid, ensureArray, esc, firebaseDB, salesRepsList, sqliteStore } from './business.js';
 import { REP_DATA_STORES, repRemovalPlan, withoutRep } from './rep-data.js';
 import { confirmGuard } from './confirm-guard.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { firebaseConfig } from './utilities-sales.js';
-import {
-  ROLE_KEYS, ROLE_LABELS, canAdoptAccount, cleanRoles, deriveSession, describeRoleChange, isLegacyAccount, normalizeRoles,
-  readRolesCache, resolveOwnerUid, structureKey, toggleRole, writeRolesCache,
-} from './roles.js';
+import { ROLE_KEYS, ROLE_LABELS, canAdoptAccount, cleanRoles, describeRoleChange, normalizeRoles, toggleRole } from './roles.js';
 
 const MIN_PASSWORD = 8;
-const SESSION_FETCH_TIMEOUT_MS = 8000;
 const _newRoles = new Set();
 let _accounts = [];
 const _roleBusy = new Set();
-
 export function _accountsIndexRef() {
   return dataRootRef().collection('settings').doc('accounts');
 }
-
 export async function _readAccountsIndex() {
   const snap = await _accountsIndexRef().get();
   if (!snap.exists) return [];
   const data = snap.data() || {};
   return Array.isArray(data.accounts) ? data.accounts : [];
 }
-
 export async function _writeAccountsIndex(accounts) {
   await _accountsIndexRef().set({ accounts, updatedAt: Date.now() }, { merge: false });
 }
-
 async function _patchAccountsIndex(uid, entry) {
   const list = await _readAccountsIndex().catch(() => []);
   const rest = list.filter(a => a.uid !== uid);
   await _writeAccountsIndex(entry ? [...rest, entry] : rest);
 }
-
 function _entryFromDoc(uid, d) {
   return {
     uid,
@@ -47,11 +69,9 @@ function _entryFromDoc(uid, d) {
     createdBy: d.createdBy || '',
   };
 }
-
 function _repKey(name) {
   return String(name || '').trim().toUpperCase();
 }
-
 export async function ensureRepInList(name) {
   const rep = _repKey(name);
   if (!rep) return false;
@@ -61,17 +81,14 @@ export async function ensureRepInList(name) {
   if (typeof window.saveSalesRepsList === 'function') await window.saveSalesRepsList();
   return true;
 }
-
 function _repNameOf(acct) {
   return acct.name || String(acct.email || '').split('@')[0];
 }
-
 async function _repRemovalPlan(acct) {
   const stores = {};
   for (const key of REP_DATA_STORES) stores[key] = ensureArray(await sqliteStore.get(key));
   return repRemovalPlan(_repNameOf(acct), stores, salesRepsList);
 }
-
 async function _dropRepFromList(acct) {
   const next = withoutRep(salesRepsList, _repNameOf(acct));
   if (next.length === (Array.isArray(salesRepsList) ? salesRepsList.length : 0)) return false;
@@ -79,25 +96,21 @@ async function _dropRepFromList(acct) {
   if (typeof window.saveSalesRepsList === 'function') await window.saveSalesRepsList();
   return true;
 }
-
 function _blockedRepMessage(acct, plan) {
   return `${_who(acct)} has ${plan.count} record${plan.count === 1 ? '' : 's'} as a sales rep (sales, customers or payments), so the Sales Rep role cannot be removed. Remove or reassign those records first.`;
 }
-
 function _roleButtons(activeRoles, attrs, handler) {
   const active = new Set(activeRoles);
   return ROLE_KEYS.map(role =>
     `<button type="button" class="toggle-opt acct-role-btn${active.has(role) ? ' active' : ''}" ${attrs} data-role="${role}" onclick="${handler}">${ROLE_LABELS[role]}</button>`
   ).join('');
 }
-
 export function renderNewAccountRoles() {
   ROLE_KEYS.forEach(role => {
     const btn = document.getElementById('acct-role-' + role);
     if (btn) btn.classList.toggle('active', _newRoles.has(role));
   });
 }
-
 export function resetAccountForm() {
   ['acct-new-email', 'acct-new-password', 'acct-new-name'].forEach(id => {
     const el = document.getElementById(id);
@@ -106,36 +119,29 @@ export function resetAccountForm() {
   _newRoles.clear();
   renderNewAccountRoles();
 }
-
 export function toggleNewAccountRole(role) {
   if (!ROLE_KEYS.includes(role)) return;
   if (_newRoles.has(role)) _newRoles.delete(role); else _newRoles.add(role);
   renderNewAccountRoles();
 }
-
 function _warn(title, message) {
   window.notifyBlocking(message, 'warning', title);
 }
-
 function _fail(title, message) {
   window.notifyBlocking(message, 'error', title);
 }
-
 function _who(acct) {
   return (acct && (acct.name || acct.email)) || 'this account';
 }
-
 function _roleNames(roles) {
   return cleanRoles(roles).map(r => ROLE_LABELS[r]).join(', ') || 'none';
 }
-
 export function adminAddAccount(...a) {
   return confirmGuard('adminAddAccount', () => _adminAddAccountRaw(...a), {
     label: 'Account', late: true, verb: 'Add',
     fields: [['acct-new-email', 'Email'], ['acct-new-name', 'Name'], [() => cleanRoles([..._newRoles]).map(r => ROLE_LABELS[r]).join(', '), 'Roles']],
   });
 }
-
 async function _adminAddAccountRaw() {
   const emailEl = document.getElementById('acct-new-email');
   const passEl = document.getElementById('acct-new-password');
@@ -220,11 +226,9 @@ async function _adminAddAccountRaw() {
     if (btn) { btn.disabled = false; btn.textContent = 'Add Account'; }
   }
 }
-
 function _protectedUid(uid) {
   return !!currentUser && (uid === currentUser.uid || uid === dataRootUid());
 }
-
 export function renderAccountsList() {
   const listEl = document.getElementById('manage-accounts-list');
   if (!listEl) return;
@@ -254,7 +258,6 @@ export function renderAccountsList() {
       '</div>';
   }).join('');
 }
-
 export async function loadAccountsList() {
   const listEl = document.getElementById('manage-accounts-list');
   renderNewAccountRoles();
@@ -293,7 +296,6 @@ export async function loadAccountsList() {
     console.error('loadAccountsList:', _safeErr(err));
   }
 }
-
 export async function adminSetAccountRole(uid, role) {
   const acct = _accounts.find(a => a.uid === uid);
   if (!acct || !ROLE_KEYS.includes(role)) return;
@@ -331,7 +333,6 @@ export async function adminSetAccountRole(uid, role) {
     _roleBusy.delete(uid);
   }
 }
-
 export async function adminToggleApproval(uid, email, currentlyApproved) {
   if (_protectedUid(uid)) { _warn('Not Allowed', 'You cannot suspend your own account or the workspace owner.'); return; }
   const confirmed = await showGlassConfirm(
@@ -356,7 +357,6 @@ export async function adminToggleApproval(uid, email, currentlyApproved) {
     console.error('adminToggleApproval:', _safeErr(err));
   }
 }
-
 export async function adminRemoveAccount(uid, email) {
   if (_protectedUid(uid)) { _warn('Not Allowed', 'You cannot remove your own account or the workspace owner.'); return; }
   const target = _accounts.find(a => a.uid === uid);
@@ -384,86 +384,6 @@ export async function adminRemoveAccount(uid, email) {
     console.error('adminRemoveAccount:', _safeErr(err));
   }
 }
-
-export function accountInfoFromDoc(data, user) {
-  const d = data || {};
-  const uid = user.uid;
-  const fallbackName = String(user.email || '').split('@')[0];
-  return {
-    uid,
-    email: String(user.email || '').toLowerCase(),
-    name: String(d.displayName || user.displayName || fallbackName || '').trim(),
-    roles: normalizeRoles(d),
-    ownerUid: resolveOwnerUid(d, uid),
-    legacy: isLegacyAccount(d, uid),
-    approved: d.approved !== false,
-  };
-}
-
-export function applyAccountSession(info) {
-  window._userRoles = info.roles;
-  window._workspaceOwnerUid = info.ownerUid || null;
-  if (info.legacy) return info;
-  const session = deriveSession(info.roles);
-  const key = structureKey(session, info.ownerUid);
-  const applied = window._appliedSession;
-  if (applied === key) {
-    window._assignedManagerName = info.name || null;
-    if (typeof window.updateSystemName === 'function') window.updateSystemName();
-    return info;
-  }
-  const freshAdmin = !applied && session.mode === 'admin' && window.appMode === 'admin';
-  if (typeof window.applySessionState === 'function') window.applySessionState(session, info.name);
-  if (freshAdmin) return info;
-  let alreadyReloaded = false;
-  try {
-    alreadyReloaded = sessionStorage.getItem('_gznd_roles_reload') === key;
-    sessionStorage.setItem('_gznd_roles_reload', key);
-  } catch (_) { }
-  if (!alreadyReloaded) {
-    showToast('Your access was updated. Applying…', 'info', 2000);
-    setTimeout(() => { window.location.reload(); }, 1200);
-  }
-  return info;
-}
-
-export async function syncAccountSession(user, preloaded) {
-  if (!user || !user.uid) return null;
-  let data = preloaded || null;
-  if (!data && navigator.onLine && firebaseDB) {
-    const deadline = Date.now() + SESSION_FETCH_TIMEOUT_MS;
-    for (let attempt = 0; attempt < 4 && !data; attempt++) {
-      try {
-        const snap = await Promise.race([
-          firebaseDB.collection('users').doc(user.uid).get(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), Math.max(1000, deadline - Date.now()))),
-        ]);
-        if (snap.exists) data = snap.data();
-        break;
-      } catch (e) {
-        const transient = /offline|unavailable/i.test(String((e && (e.code || e.message)) || ''));
-        if (!transient || attempt === 3 || Date.now() >= deadline) { console.warn('[accounts] could not load account doc:', _safeErr(e)); break; }
-        await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
-      }
-    }
-  }
-  if (data) {
-    const info = accountInfoFromDoc(data, user);
-    writeRolesCache(info);
-    return applyAccountSession(info);
-  }
-  return applyCachedAccountSession(user.email, user.uid);
-}
-
-export function applyCachedAccountSession(email, uid) {
-  const cached = readRolesCache();
-  if (!cached) return null;
-  const sameEmail = email && cached.email === String(email).toLowerCase();
-  const sameUid = uid && cached.uid === uid;
-  if (!sameEmail && !sameUid) return null;
-  return applyAccountSession(cached);
-}
-
 window._accountsIndexRef = _accountsIndexRef;
 window._readAccountsIndex = _readAccountsIndex;
 window._writeAccountsIndex = _writeAccountsIndex;
@@ -474,6 +394,4 @@ window.loadAccountsList = loadAccountsList;
 window.adminSetAccountRole = adminSetAccountRole;
 window.adminToggleApproval = adminToggleApproval;
 window.adminRemoveAccount = adminRemoveAccount;
-window.applyAccountSession = applyAccountSession;
-window.syncAccountSession = syncAccountSession;
-window.accountInfoFromDoc = accountInfoFromDoc;
+</script>

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { extractFunctions } from './_extract.js';
 import { ROLE_LABELS, cleanRoles } from '../modules/roles.js';
+import { readSource } from './helpers/source.js';
 
-const SRC = readFileSync(new URL('../modules/accounts.js', import.meta.url), 'utf8');
+const SRC = readSource('modules/accounts.js');
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 function harness(values, roles = [], extra = {}) {

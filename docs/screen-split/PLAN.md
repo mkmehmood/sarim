@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phase 0 and Phase 1 done; Phase 2 started (3 of ~14 screens moved).** Progress log at the end.
+Status: **Phase 0 and Phase 1 done; Phase 2 in progress (4 of ~14 screens moved).** Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -101,6 +101,18 @@ A rule moves into a screen file only if (a) every selector uses an id or class t
 daily-ledger, batch-mix, batch-fix. Main entry chunk went from 52.3 KB to 36.5 KB; the three screens load on first open (31.5 KB, 8.4 KB, 10.5 KB).
 
 Not yet moved, and why: `approvals` and `accounts` are also imported by `sync.js` (it must reach them through the registry first); `formula-store`, `batch-saved`, `batch-common` are imported by several modules (shared code, stays in core); `cm-ledger` is shared by three screens. The remaining standalone screens (settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material, db-structure, close-financial-year, feedback) keep their logic inside the large modules and belong to Phase 3.
+
+### Splitting a module before moving it
+`node scripts/module-split.mjs <module.js> <new-core.js> <name> ...` moves named top-level declarations (and the `window.X = name` lines that publish them) into a new core module, recomputes both files' imports, and re-points other modules that imported those names. It refuses if the moved code depends on something that stays behind, so it cannot create an import cycle.
+
+Used for `accounts.js`: the five session functions that `sync.js` calls at sign-in (`syncAccountSession`, `applyAccountSession`, `applyCachedAccountSession`, `accountInfoFromDoc`, `SESSION_FETCH_TIMEOUT_MS`) became `modules/account-session.js` and stay in core; the 366-line admin UI became the lazy `app-accounts` screen (14.3 KB chunk). Main entry chunk is now 36.8 KB.
+
+### `approvals` is not a pure move (needs a design decision)
+`sync.js` needs two groups from it. The **submit side** (`gates`, `isGatedSession`, `submitPending`, `submitPendingBatch`, `pendingWrite`, `revertLocal`, `watchOwnPending`) is self-contained and could go to core with `module-split`. The **admin watcher** is the problem: `watchPendingApprovals` runs for every admin at sign-in and, on each snapshot, updates the badge, calls `renderApprovals()` (UI), resolves a notification deep link via `openApprovalSheet()` (UI) and may open the screen. The UI and watcher also share mutable state (`_pending`, `_loaded`, `_filter`, `_wantedId`). Moving the UI therefore needs:
+1. a small `approvals-state.js` holding that shared state, imported by both halves;
+2. the watcher calling the UI only when it is mounted (`isScreenMounted('approvals-screen')`), and `openApprovalFromPush` / `_showApprovalsScreen` going through `loadScreen`;
+3. a decision on whether a push deep link may wait for the screen chunk to download (offline it would fail after the first precache).
+Those change behaviour, so this should be reviewed rather than done mechanically. Estimated size: about 60 lines of glue, 3 tests.
 
 ### How to move the next screen
 `node scripts/screen-extract.mjs <screen-id> <name> [module.js ...]` (add `--dry` to preview), then:
