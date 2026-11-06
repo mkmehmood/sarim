@@ -1,22 +1,20 @@
 import { dialogFeedback } from './feedback.js';
 
-const TEXT_TYPES = ['', 'text', 'search', 'tel', 'url', 'email', 'password', 'number'];
+const TEXT_TYPES = ['', 'text', 'search', 'tel', 'number'];
+const SYSTEM_MODES = ['email', 'url'];
 const NUMERIC_MODES = ['numeric', 'decimal', 'tel'];
-const DOUBLE_TAP_MS = 350;
 const HOLD_DELAY_MS = 420;
 const REPEAT_MS = 55;
 const HIDE_DELAY_MS = 250;
 
 export const FIELD_SELECTOR = 'input, textarea, [contenteditable=""], [contenteditable="true"]';
 export const LETTER_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
-export const SYMBOL_ROWS = ['1234567890', '@#$_&-+()/', '*"\':;!?%='];
 export const PAD_ROWS = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']];
 
 const ICONS = {
-  shift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l8 9h-5v7H9v-7H4z"/></svg>',
-  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9l4 6M17 9l-4 6"/></svg>',
-  enter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6v6a2 2 0 0 1-2 2H5"/><path d="M9 10l-4 4 4 4"/></svg>',
-  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+  shift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5M6 11l6-6 6 6"/></svg>',
+  space: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7h8M8 17h8m-9-5h10"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9l4 6M17 9l-4 6"/></svg>'
 };
 
 const attr = (el, name) => (el && typeof el.getAttribute === 'function' ? el.getAttribute(name) : null);
@@ -30,10 +28,16 @@ export function isTextLike(el) {
   return el.isContentEditable === true;
 }
 
+export function usesSystemKeyboard(el) {
+  if (attr(el, 'data-vk') === 'off') return true;
+  const mode = String(attr(el, 'data-vk-mode') || attr(el, 'inputmode') || '').toLowerCase();
+  return SYSTEM_MODES.includes(mode);
+}
+
 export function isTextField(el) {
   if (!isTextLike(el)) return false;
   if (el.disabled || el.readOnly) return false;
-  return attr(el, 'data-vk') !== 'off';
+  return !usesSystemKeyboard(el);
 }
 
 export function layoutFor(el) {
@@ -45,34 +49,8 @@ export function layoutFor(el) {
   return 'qwerty';
 }
 
-export function padExtra(el) {
-  const type = typeOf(el);
-  if (type === 'tel') return '+';
-  if (type === 'number') {
-    const min = attr(el, 'min');
-    if (min === null || min === '' || Number(min) < 0) return '-';
-  }
-  return '';
-}
-
-export function labelFor(el) {
-  const label = el && el.labels && el.labels[0];
-  const text = label ? String(label.textContent || '').trim() : '';
-  return text || attr(el, 'aria-label') || attr(el, 'placeholder') || '';
-}
-
-export function casedKey(ch, shift) {
-  return shift === 'off' ? ch.toLowerCase() : ch.toUpperCase();
-}
-
-export function nextShift(state, gapMs) {
-  if (state === 'lock') return 'off';
-  if (state === 'once') return gapMs < DOUBLE_TAP_MS ? 'lock' : 'off';
-  return 'once';
-}
-
-export function afterLetter(state) {
-  return state === 'once' ? 'off' : state;
+export function casedKey(ch, shifted) {
+  return shifted ? ch.toUpperCase() : ch.toLowerCase();
 }
 
 export function insertAt(value, start, end, text, max) {
@@ -94,7 +72,7 @@ export function deleteBack(value, start, end) {
 export function applyFieldPolicy(el) {
   if (!isTextLike(el) || attr(el, 'data-vk') === 'off') return false;
   const current = attr(el, 'inputmode');
-  if (current === 'none') return false;
+  if (current === 'none' || SYSTEM_MODES.includes(String(current || '').toLowerCase())) return false;
   if (current) el.setAttribute('data-vk-mode', current);
   el.setAttribute('inputmode', 'none');
   return true;
@@ -118,19 +96,17 @@ export function installVirtualKeyboard(opts = {}) {
   };
 
   const key = (def) => {
-    const b = node('button', (def.main ? 'btn btn-main' : 'btn btn-theme') + ' vk-key' + (def.cls ? ` ${def.cls}` : ''));
+    const b = node('button', `btn btn-theme vk-key${def.cls ? ` ${def.cls}` : ''}`);
     b.type = 'button';
     b.tabIndex = -1;
     b.setAttribute('data-feedback', 'manual');
     if (def.act) b.setAttribute('data-vk-act', def.act);
     if (def.ch != null) b.setAttribute('data-vk-ch', def.ch);
     if (def.letter) b.setAttribute('data-vk-letter', def.ch);
-    if (def.icon) {
-      b.innerHTML = ICONS[def.icon];
-      b.setAttribute('aria-label', def.aria || def.icon);
-    } else {
-      b.textContent = def.text != null ? def.text : def.ch;
-    }
+    if (def.aria) b.setAttribute('aria-label', def.aria);
+    if (def.icon) b.innerHTML = ICONS[def.icon];
+    else if (def.html) b.innerHTML = def.html;
+    else b.textContent = def.text != null ? def.text : def.ch;
     return b;
   };
 
@@ -140,68 +116,42 @@ export function installVirtualKeyboard(opts = {}) {
     return r;
   };
 
-  const letter = (ch) => key({ ch, letter: true });
-  const bottom = (text, act) => row([
-    key({ act, text, cls: 'is-wide' }),
-    key({ ch: ',' }),
-    key({ act: 'space', ch: ' ', text: 'space', cls: 'is-space' }),
-    key({ ch: '.' }),
-    key({ act: 'enter', icon: 'enter', aria: 'Enter', main: true, cls: 'is-wide' })
-  ]);
+  const letter = (ch) => key({ ch, letter: true, text: ch.toUpperCase(), cls: 'is-letter' });
+  const back = () => key({ act: 'back', icon: 'back', aria: 'Backspace', cls: 'is-back' });
+  const dot = () => key({ ch: '.', cls: 'is-dot' });
 
-  const pane = (name, rows, cls) => {
-    const p = node('div', cls ? `vk-pane ${cls}` : 'vk-pane');
-    p.setAttribute('data-vk-pane', name);
-    rows.forEach((r) => p.appendChild(r));
-    return p;
-  };
+  const dotEl = node('span', 'vk-dot');
+  const badge = node('span', 'vk-shift-badge d-none', 'SHIFT');
+  const head = node('div', 'vk-head');
+  head.appendChild(dotEl);
+  head.appendChild(badge);
 
-  const lettersPane = pane('letters', [
+  const shiftKey = key({ act: 'shift', icon: 'shift', aria: 'Shift', cls: 'is-shift' });
+  const lettersPane = node('div', 'vk-pane');
+  lettersPane.setAttribute('data-vk-pane', 'letters');
+  [
+    head,
     row([...LETTER_ROWS[0]].map(letter)),
-    row([...LETTER_ROWS[1]].map(letter), 'is-inset'),
-    row([key({ act: 'shift', icon: 'shift', aria: 'Shift', cls: 'is-wide' }), ...[...LETTER_ROWS[2]].map(letter), key({ act: 'back', icon: 'back', aria: 'Backspace', cls: 'is-wide is-back' })]),
-    bottom('?123', 'symbols')
-  ]);
+    row([...LETTER_ROWS[1]].map(letter)),
+    row([...LETTER_ROWS[2]].map(letter)),
+    row([shiftKey, key({ act: 'space', ch: ' ', html: `${ICONS.space}<span>Space</span>`, aria: 'Space', cls: 'is-space' }), dot(), back()])
+  ].forEach((r) => lettersPane.appendChild(r));
 
-  const symbolsPane = pane('symbols', [
-    row([...SYMBOL_ROWS[0]].map((ch) => key({ ch }))),
-    row([...SYMBOL_ROWS[1]].map((ch) => key({ ch }))),
-    row([...SYMBOL_ROWS[2]].map((ch) => key({ ch })).concat(key({ act: 'back', icon: 'back', aria: 'Backspace', cls: 'is-wide is-back' }))),
-    bottom('ABC', 'letters')
-  ]);
-
-  const extraKey = key({ ch: '-', cls: 'is-extra' });
-  const padKeys = [
-    ...PAD_ROWS[0].map((ch) => key({ ch })),
-    key({ act: 'back', icon: 'back', aria: 'Backspace', cls: 'is-back' }),
-    ...PAD_ROWS[1].map((ch) => key({ ch })),
-    key({ act: 'enter', icon: 'enter', aria: 'Enter', main: true, cls: 'is-enter' }),
-    ...PAD_ROWS[2].map((ch) => key({ ch })),
-    key({ ch: '00' }),
-    key({ ch: '0' }),
-    key({ ch: '.' }),
-    extraKey
-  ];
-  const padPane = node('div', 'vk-pane vk-pad');
+  const padPane = node('div', 'vk-pane');
   padPane.setAttribute('data-vk-pane', 'pad');
-  padKeys.forEach((k) => padPane.appendChild(k));
-
-  const labelEl = node('span', 'vk-label');
-  const bar = node('div', 'vk-bar');
-  bar.appendChild(labelEl);
-  bar.appendChild(key({ act: 'hide', icon: 'down', aria: 'Hide keyboard', cls: 'vk-hide' }));
+  PAD_ROWS.forEach((r) => padPane.appendChild(row(r.map((ch) => key({ ch, cls: 'is-digit' })), 'is-pad')));
+  padPane.appendChild(row([key({ ch: '00', cls: 'is-double' }), key({ ch: '0', cls: 'is-digit' }), dot(), back()], 'is-pad'));
 
   const dock = node('div', 'overlay vk-dock d-none');
   dock.id = 'vk-dock';
   dock.setAttribute('role', 'group');
   dock.setAttribute('aria-label', 'Keyboard');
-  [bar, lettersPane, symbolsPane, padPane].forEach((p) => dock.appendChild(p));
+  dock.appendChild(lettersPane);
+  dock.appendChild(padPane);
 
-  const panes = { letters: lettersPane, symbols: symbolsPane, pad: padPane };
+  const panes = { letters: lettersPane, pad: padPane };
   let active = null;
-  let current = 'letters';
-  let shift = 'off';
-  let lastShiftAt = 0;
+  let shifted = false;
   let hideTimer = 0;
   let holdTimer = 0;
   let repeatTimer = 0;
@@ -219,22 +169,14 @@ export function installVirtualKeyboard(opts = {}) {
     syncDropdown();
   };
 
-  const renderLetters = () => {
-    lettersPane.querySelectorAll('[data-vk-letter]').forEach((b) => {
-      b.textContent = casedKey(b.getAttribute('data-vk-letter'), shift);
-    });
-    const shiftBtn = lettersPane.querySelector('[data-vk-act="shift"]');
-    if (shiftBtn) {
-      shiftBtn.classList.toggle('is-on', shift !== 'off');
-      shiftBtn.classList.toggle('is-lock', shift === 'lock');
-    }
+  const showPane = (name) => {
+    Object.keys(panes).forEach((k) => panes[k].classList.toggle('d-none', k !== name));
+    if (isOpen()) measure();
   };
 
-  const showPane = (name) => {
-    current = name;
-    Object.keys(panes).forEach((k) => panes[k].classList.toggle('d-none', k !== name));
-    renderLetters();
-    if (isOpen()) measure();
+  const renderShift = () => {
+    shiftKey.classList.toggle('is-on', shifted);
+    badge.classList.toggle('d-none', !shifted);
   };
 
   const insert = (text) => {
@@ -306,20 +248,10 @@ export function installVirtualKeyboard(opts = {}) {
   const open = (field) => {
     win.clearTimeout(hideTimer);
     hideNative();
-    const changed = active !== field;
     active = field;
-    if (changed) shift = 'off';
-    const extra = padExtra(field);
-    extraKey.classList.toggle('d-none', !extra);
-    if (extra) {
-      extraKey.setAttribute('data-vk-ch', extra);
-      extraKey.textContent = extra;
-    }
-    labelEl.textContent = labelFor(field);
     dock.classList.remove('d-none');
     root.classList.add('vk-open');
-    const wantPad = layoutFor(field) === 'numpad';
-    showPane(wantPad ? 'pad' : (changed || current === 'pad' ? 'letters' : current));
+    showPane(layoutFor(field) === 'numpad' ? 'pad' : 'letters');
     measure();
     win.requestAnimationFrame(() => {
       if (active !== field) return;
@@ -328,36 +260,15 @@ export function installVirtualKeyboard(opts = {}) {
     });
   };
 
-  const enter = () => {
-    const t = active;
-    if (!t) return;
-    const init = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
-    const proceed = t.dispatchEvent(new win.KeyboardEvent('keydown', init));
-    t.dispatchEvent(new win.KeyboardEvent('keypress', init));
-    t.dispatchEvent(new win.KeyboardEvent('keyup', init));
-    if (!proceed) return;
-    if (String(t.tagName).toUpperCase() === 'TEXTAREA') insert('\n');
-    else hide(true);
-  };
-
   const press = (k) => {
     const act = k.getAttribute('data-vk-act');
     const ch = k.getAttribute('data-vk-ch');
     if (act === 'shift') {
-      const now = Date.now();
-      shift = nextShift(shift, now - lastShiftAt);
-      lastShiftAt = now;
-      renderLetters();
-    } else if (act === 'symbols') showPane('symbols');
-    else if (act === 'letters') showPane('letters');
-    else if (act === 'hide') hide(true);
-    else if (act === 'enter') enter();
-    else if (act === 'back') backspace();
-    else if (k.hasAttribute('data-vk-letter')) {
-      insert(casedKey(ch, shift));
-      const after = afterLetter(shift);
-      if (after !== shift) { shift = after; renderLetters(); }
-    } else if (ch != null) insert(ch);
+      shifted = !shifted;
+      renderShift();
+    } else if (act === 'back') backspace();
+    else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, shifted));
+    else if (ch != null) insert(ch);
     try { dialogFeedback('select'); } catch (_) {}
   };
 
