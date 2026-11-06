@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move (4 screens); Phase 3 analysed, 1 screen moved (5 lazy screens in total).** Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done. 6 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -125,8 +125,19 @@ Why the 19 are blocked (the same two causes keep recurring):
 
 Size of what is *owned* but not yet movable (so the prize is real): settings 1,729 lines, raw-material 346, expense-details 295, add-entity 272, customer-edit 231 and rep-customer-edit 231, plus smaller ones.
 
+### Phase 3a – done: the inline scripts
+`index.html` had nine inline scripts. Eight are tiny early-boot scripts (theme, splash, update dialog) and stay inline so they run before first paint. The ninth (388 lines) held three things: the navigation core, screen code, and a `DOMContentLoaded` block. It is now 155 lines: navigation core (`openSidebar`, `openStandaloneScreen`, `popstate`, `sidebarNav`) plus the `DOMContentLoaded` block, which must exist before modules load. Everything else moved, verbatim, into modules imported **first** in `main.js` so they still run before the rest of the app:
+- `store-manager.js` (open/render/reset/edit/delete/save), `add-entity.js` (`prepareAddEntityScreen`), `raw-material.js` (`prepareRawMaterialScreen`), `db-structure.js` (`loadDbStructureScreen`, since folded into the lazy `db-structure` screen).
+- Names the old inline code reached through the global scope are now written `window.NAME`, which is the same lookup.
+
+**Load order mattered, and one thing was deleted.** Inline scripts run before the deferred modules, so any `window.X = …` that a module also assigns was already being overwritten. Moving those into a module would have changed which version wins, so they were not moved. Nine inline definitions were provably dead and were removed: `openDataMenu`, `closeDataMenu`, `openRecycleBin`, `closeRecycleBin`, `openEntityManagement`, `closeEntityManagement`, `openFactoryInventoryModal`, `closeFactoryInventoryModal` (each is published by a module, and for the last two by `factory.js`, which is the only place that can open the raw-material screen) and `_origOpenFactoryInventoryModal` (always assigned `undefined`; nothing reads it). `tests/inline-script-split.test.js` pins this: every one of those names must still be published by a module and must not be assigned inline, the moved code must be gone from the inline script, and the navigation core must stay inline.
+
+Other things that changed: the split checker now also looks for inline `on*="…"` handlers inside JS strings (the store list builds `editStore(…)`/`deleteStore(…)` buttons that way); the `cssText` policy test now looks in the new module/screen for the single allowed `!important` rule.
+
+Effect: main entry chunk 44.4 KB (36.9 KB before 3a; the moved code is now countable, and 5.7 KB of it is the lazy `db-structure` chunk). The remaining blockers for `store-manager`, `raw-material` and `add-entity` are the shared-opener problem below, not inline code.
+
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
-- **3a. Move the inline `index.html` scripts into modules** (prerequisite; also a safety gain). Classic-script function declarations are implicit globals, so every name that an inline handler or another script uses must be published on `window` explicitly.
+- **3a. Move the inline `index.html` scripts into modules.** Done, see above.
 - **3b. Make openers wait for the screen.** Add `ensureScreen(id)` (an exported wrapper over `loadScreen`) and have each core opener `await` it before touching the screen's elements; sync openers must become async.
 - **3c. First render on mount.** Each screen exports `onMount()` that does the initial render that used to happen at startup, so the first open is not empty.
 - **3d. Fix the remaining cross-boundary variables** the tool reports as HAZARDS (formula-store-edit, add-entity, expense-details, customer-edit).

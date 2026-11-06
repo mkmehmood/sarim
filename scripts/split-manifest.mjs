@@ -121,6 +121,10 @@ export function snapshot() {
       for (const c of m[1].matchAll(/([A-Za-z_$][\w$.]*)\s*\(/g)) handlers.add(c[1]);
     Object.assign(roots, screenRoots(h.text));
   }
+  for (const j of js) {
+    for (const m of j.text.matchAll(/\bon[a-z]+=\\?"([^"\\]*)\\?"/g))
+      for (const c of m[1].matchAll(/([A-Za-z_$][\w$.]*)\s*\(/g)) handlers.add(c[1]);
+  }
   const cssAll = css.flatMap(c => cssItems(c.text));
   const cssCount = {};
   cssAll.forEach(k => { cssCount[k] = (cssCount[k] || 0) + 1; });

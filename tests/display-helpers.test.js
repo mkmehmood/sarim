@@ -67,7 +67,7 @@ describe('display helpers', () => {
   });
   it('keeps cssText only for the one rule that needs !important', () => {
     let count = 0;
-    for (const f of ['index.html', 'modules/admin-data.js', 'modules/factory.js', 'modules/formula-store.js', 'modules/sync.js', 'modules/utilities-core.js', 'modules/utilities-payments.js', 'modules/utilities-sales.js']) {
+    for (const f of ['index.html', 'modules/db-structure.js', 'modules/admin-data.js', 'modules/factory.js', 'modules/formula-store.js', 'modules/sync.js', 'modules/utilities-core.js', 'modules/utilities-payments.js', 'modules/utilities-sales.js']) {
       count += (readSource('../' + f).match(/\.style\.cssText/g) || []).length;
     }
     assert.equal(count, 1);

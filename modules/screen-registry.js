@@ -21,4 +21,8 @@ registerScreens({
     load: () => import('./backup-restore.screen.js'),
     globals: ['triggerLocalBackup'],
   },
+  'db-structure-screen': {
+    load: () => import('./db-structure.screen.js'),
+    globals: ['loadDbStructureScreen'],
+  },
 });
