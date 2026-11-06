@@ -2,6 +2,7 @@ import { dialogFeedback } from './feedback.js';
 
 const TEXT_TYPES = ['', 'text', 'search', 'tel', 'number'];
 const SYSTEM_MODES = ['email', 'url'];
+const SYSTEM_SCOPES = '.auth-screen, #app-accounts-screen';
 const NUMERIC_MODES = ['numeric', 'decimal', 'tel'];
 const HOLD_DELAY_MS = 420;
 const REPEAT_MS = 55;
@@ -30,6 +31,7 @@ export function isTextLike(el) {
 
 export function usesSystemKeyboard(el) {
   if (attr(el, 'data-vk') === 'off') return true;
+  if (el && typeof el.closest === 'function' && el.closest(SYSTEM_SCOPES)) return true;
   const mode = String(attr(el, 'data-vk-mode') || attr(el, 'inputmode') || '').toLowerCase();
   return SYSTEM_MODES.includes(mode);
 }
@@ -70,7 +72,7 @@ export function deleteBack(value, start, end) {
 }
 
 export function applyFieldPolicy(el) {
-  if (!isTextLike(el) || attr(el, 'data-vk') === 'off') return false;
+  if (!isTextLike(el) || usesSystemKeyboard(el)) return false;
   const current = attr(el, 'inputmode');
   if (current === 'none' || SYSTEM_MODES.includes(String(current || '').toLowerCase())) return false;
   if (current) el.setAttribute('data-vk-mode', current);
@@ -309,6 +311,12 @@ export function installVirtualKeyboard(opts = {}) {
     else scheduleHide();
   }, true);
   doc.addEventListener('focusout', scheduleHide, true);
+  doc.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!isOpen() || !t || dock.contains(t)) return;
+    if (t === active || isTextField(t) || (t.closest && t.closest('label'))) return;
+    hide(true);
+  }, true);
   doc.addEventListener('visibilitychange', () => { if (doc.hidden) hide(true); });
   win.addEventListener('resize', () => { if (isOpen()) measure(); });
 

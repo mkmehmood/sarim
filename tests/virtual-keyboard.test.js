@@ -11,9 +11,12 @@ const field = (attrs = {}, extra = {}) => {
     type: attrs.type === undefined ? 'text' : attrs.type,
     getAttribute: (k) => (map.has(k) ? map.get(k) : null),
     setAttribute: (k, v) => map.set(k, String(v)),
+    closest: () => null,
     ...extra
   };
 };
+
+const insideScreen = (selector) => ({ closest: (sel) => (sel.includes(selector) ? {} : null) });
 
 describe('field rules', () => {
   it('opens for text, search, phone and number fields and for textareas', () => {
@@ -26,6 +29,17 @@ describe('field rules', () => {
     assert.equal(isTextField(field({ type: 'text', 'data-vk-mode': 'url', inputmode: 'none' })), false);
     assert.equal(usesSystemKeyboard(field({ type: 'text', inputmode: 'email' })), true);
     assert.equal(usesSystemKeyboard(field({ type: 'text', inputmode: 'decimal' })), false);
+  });
+  it('keeps the login and accounts screens on the device keyboard', () => {
+    const login = field({ type: 'text' }, insideScreen('.auth-screen'));
+    const accounts = field({ type: 'text' }, insideScreen('#app-accounts-screen'));
+    for (const f of [login, accounts]) {
+      assert.equal(usesSystemKeyboard(f), true);
+      assert.equal(isTextField(f), false);
+      assert.equal(applyFieldPolicy(f), false);
+      assert.equal(f.getAttribute('inputmode'), null);
+    }
+    assert.equal(usesSystemKeyboard(field({ type: 'text' })), false);
   });
   it('leaves pickers, files, checkboxes and hidden inputs alone', () => {
     for (const type of ['date', 'month', 'file', 'checkbox', 'radio', 'hidden', 'button', 'range', 'color']) assert.equal(isTextField(field({ type })), false, type);
@@ -434,6 +448,55 @@ describe('virtual keyboard in the Android app', () => {
     assert.equal(t.win.__vkInset, 0);
   });
 
+  it('never opens for the login and accounts screens', async () => {
+    const t = await boot();
+    t.focus(t.input({ type: 'text' }, insideScreen('.auth-screen')));
+    assert.ok(t.isHidden());
+    t.focus(t.input({ type: 'number' }, insideScreen('#app-accounts-screen')));
+    assert.ok(t.isHidden());
+    assert.equal(t.hidden.length, 0);
+  });
+
+  it('closes when tapping anywhere outside the keyboard and the field', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    const tap = (target) => t.docListeners.click.forEach((fn) => fn({ target }));
+    tap(new Node('button'));
+    assert.ok(t.isHidden());
+    assert.equal(f.blurred, true);
+    assert.ok(!t.classes.has('vk-open'));
+    assert.equal(t.win.__vkInset, 0);
+  });
+
+  it('stays open when tapping a key, the same field, another text field or a label', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    const tap = (target) => t.docListeners.click.forEach((fn) => fn({ target }));
+    tap(t.keyByCh(t.pane('letters'), 'q'));
+    assert.ok(!t.isHidden());
+    tap(f);
+    assert.ok(!t.isHidden());
+    tap(t.input({ type: 'number' }));
+    assert.ok(!t.isHidden());
+    tap({ closest: (sel) => (sel === 'label' ? {} : null) });
+    assert.ok(!t.isHidden());
+  });
+
+  it('closes when tapping a control that is not a text field, and ignores taps while closed', async () => {
+    const t = await boot();
+    const tap = (target) => t.docListeners.click.forEach((fn) => fn({ target }));
+    tap(new Node('div'));
+    assert.ok(t.isHidden());
+    t.focus(t.input({ type: 'text' }));
+    tap(t.input({ type: 'checkbox' }));
+    assert.ok(t.isHidden());
+    t.focus(t.input({ type: 'text' }));
+    tap(t.input({ type: 'text' }, { readOnly: true }));
+    assert.ok(t.isHidden());
+  });
+
   it('ignores focus on non-text controls', async () => {
     const t = await boot();
     t.focus(t.input({ type: 'checkbox' }));
@@ -514,18 +577,28 @@ describe('virtual keyboard wiring', () => {
     assert.match(css, /\.vk-row \{ display: flex; justify-content: center; gap: 6px;/);
   });
 
-  it('pads the page, login screen, dialogs and sheets while the keyboard is open', () => {
+  it('pads the page, accounts and other screens, dialogs and sheets while the keyboard is open', () => {
     assert.match(css, /html\.vk-open body \{ padding-bottom: var\(--vk-h, 0px\); \}/);
-    assert.match(css, /html\.vk-open \.standalone-screen, html\.vk-open \.dlg-overlay, html\.vk-open \.auth-screen \{ padding-bottom: var\(--vk-h, 0px\);/);
+    assert.match(css, /html\.vk-open \.standalone-screen, html\.vk-open \.dlg-overlay \{ padding-bottom: var\(--vk-h, 0px\);/);
+    assert.doesNotMatch(css, /html\.vk-open[^{]*\.auth-screen/);
     assert.match(css, /html\.vk-open \.cm-sheet \{ bottom: var\(--vk-h, 0px\); \}/);
   });
 
-  it('sits above the login screen, dialogs, sheets and suggestion lists but below toasts', () => {
+  it('sits above dialogs, sheets and suggestion lists', () => {
     const z = [...css.matchAll(/z-index: (\d+)/g)].map((m) => Number(m[1]));
-    const dock = 100000;
-    assert.match(css, /\.vk-dock \{ position: fixed;[^}]*z-index: 100000;/);
-    assert.ok(Math.max(...z.filter((n) => n < 2147483000 && n !== dock)) < dock);
-    assert.ok(z.filter((n) => n > dock).every((n) => n >= 2147483000));
-    assert.match(css, /\.auth-screen \{\n  position: fixed; inset: 0; z-index: 99999;/);
+    assert.match(css, /\.vk-dock \{ position: fixed;[^}]*z-index: 10450;/);
+    assert.ok(Math.max(...z.filter((n) => n < 10450)) < 10450);
+    assert.ok(z.filter((n) => n > 10450).every((n) => n >= 99999));
+  });
+
+  it('keeps the login screen and the accounts screen on the device keyboard', () => {
+    assert.match(kb, /const SYSTEM_SCOPES = '\.auth-screen, #app-accounts-screen';/);
+    assert.match(kb, /el\.closest\(SYSTEM_SCOPES\)/);
+    assert.match(readSource('modules/sync.js'), /overlay\.className = 'auth-screen';/);
+    assert.match(readSource('index.html'), /<div id="app-accounts-screen"/);
+  });
+
+  it('closes on any tap outside the keyboard', () => {
+    assert.match(kb, /doc\.addEventListener\('click', \(e\) => \{[\s\S]*hide\(true\);\n  \}, true\);/);
   });
 });
