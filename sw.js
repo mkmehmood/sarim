@@ -6,6 +6,7 @@ const ASSETS_TO_CACHE = [
   './index.html',
   './app.css',
   './modules/main.js',
+  './modules/backup-restore.screen.js',
   './modules/app-accounts.screen.js',
   './modules/batch-fix.screen.js',
   './modules/batch-mix.screen.js',

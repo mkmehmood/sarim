@@ -13,14 +13,13 @@ import { runExclusive, planSkipReattach, hasLiveSupplierInvoice, expandRecoveryM
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, _triggerFileDownload, appMode, CryptoEngine, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, routeHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
+import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, routeHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, getSQLiteKey, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, defaultSettings, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
-import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, promptVerifiedBackupPassword, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { OfflineQueue, _reconcileSupplierLinkAfterRecovery, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _captureRecordSnapshot, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, invalidateAllCaches, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
+import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { calculateRepCustomerStatsForDisplay, checkBiometricLock, openRepCustomerEditModal, syncBiometricButton, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
-import { collectAuxBackupFields } from './link-graph.js';
 import { isBinStore, recoverStoreRecord } from './store-recycle.js';
 import { deriveSession, readRolesCache, structureKey } from './roles.js';
 import { confirmGuard } from './confirm-guard.js';
@@ -5392,58 +5391,6 @@ async function _attemptHardDeleteImpl(id, collectionName) {
 window.hardDeleteRecord = hardDeleteRecord;
 window.attemptHardDeleteRecord = attemptHardDeleteRecord;
 
-export async function triggerLocalBackup() {
-const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
-const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
-const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
-const factoryCostAdjustmentFactor = (await sqliteStore.get('adjustment')) || {};
-const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-const appStoresSnapshot = ensureArray(await sqliteStore.get('stores'));
-const { production, transactions, entities, returns, inventory, factory } = await loadCollections('production', 'transactions', 'entities', 'returns', 'inventory', 'factory');
-closeDataMenu();
-if (!currentUser) {
-showToast('Please sign in to create a backup.', 'error');
-showAuthOverlay();
-return;
-}
-const data = {
-production: production,
-calculator: await sqliteStore.get('calculator', []),
-sales: await sqliteStore.get('sales', []),
-rep: await sqliteStore.get('rep', []),
-clients: await sqliteStore.get('clients', []),
-customers: await sqliteStore.get('customers', []),
-inventory: inventory,
-factory: factory,
-defaults: factoryDefaultFormulas,
-costs: factoryAdditionalCosts,
-adjustment: factoryCostAdjustmentFactor,
-tracking: factoryUnitTracking,
-stores: appStoresSnapshot,
-entities: entities,
-transactions: transactions,
-expenses: await sqliteStore.get('expenses', []),
-returns: returns,
-settings: await sqliteStore.get('settings', defaultSettings),
-deleted: Array.from(deletedRecordIds),
-...(await collectAuxBackupFields(sqliteStore)),
-_meta: { encryptedFor: currentUser.email, encryptedUid: currentUser.uid, createdAt: Date.now(), version: 4 }
-};
-const encPassword = await promptVerifiedBackupPassword({ inputId: 'enc_local_bkp_pwd' });
-if (!encPassword) {
-return;
-}
-try {
-const encryptedBlob = await CryptoEngine.encrypt(data, currentUser.email, encPassword, currentUser.uid);
-const timestamp = localDateStr();
-_triggerFileDownload(encryptedBlob, `NaswarDealers_SecureBackup_${timestamp}.gznd`);
-window.showGlassAlert('Encrypted backup saved! Only your account and credentials can restore this file.', { tone: 'success', title: 'Backup Saved' });
-} catch(encErr) {
-console.error('Encryption failed:', _safeErr(encErr));
-window.notifyBlocking('Encryption failed: ' + encErr.message, 'error', 'Something went wrong');
-}
-}
-
 const _nativeBio = () => {
 const C = window.Capacitor;
 if (!(C && typeof C.isNativePlatform === 'function' && C.isNativePlatform())) return null;
@@ -7282,7 +7229,6 @@ window.attemptRecoverRecord = attemptRecoverRecord;
 window.emptyRecycleBin = emptyRecycleBin;
 window.hardDeleteRecord = hardDeleteRecord;
 window.attemptHardDeleteRecord = attemptHardDeleteRecord;
-window.triggerLocalBackup = triggerLocalBackup;
 window.BiometricAuth = BiometricAuth;
 window.updateSystemName = updateSystemName;
 window.lockToRepMode = lockToRepMode;

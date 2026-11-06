@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phase 0 and Phase 1 done; Phase 2 in progress (4 of ~14 screens moved).** Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move (4 screens); Phase 3 analysed, 1 screen moved (5 lazy screens in total).** Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -100,7 +100,7 @@ A rule moves into a screen file only if (a) every selector uses an id or class t
 ### Phase 2 – moved so far
 daily-ledger, batch-mix, batch-fix. Main entry chunk went from 52.3 KB to 36.5 KB; the three screens load on first open (31.5 KB, 8.4 KB, 10.5 KB).
 
-Not yet moved, and why: `approvals` and `accounts` are also imported by `sync.js` (it must reach them through the registry first); `formula-store`, `batch-saved`, `batch-common` are imported by several modules (shared code, stays in core); `cm-ledger` is shared by three screens. The remaining standalone screens (settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material, db-structure, close-financial-year, feedback) keep their logic inside the large modules and belong to Phase 3.
+Not yet moved, and why (see Phase 3 below for the rest): `approvals` and `accounts` are also imported by `sync.js` (it must reach them through the registry first); `formula-store`, `batch-saved`, `batch-common` are imported by several modules (shared code, stays in core); `cm-ledger` is shared by three screens. The remaining standalone screens (settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material, db-structure, close-financial-year, feedback) keep their logic inside the large modules and belong to Phase 3.
 
 ### Splitting a module before moving it
 `node scripts/module-split.mjs <module.js> <new-core.js> <name> ...` moves named top-level declarations (and the `window.X = name` lines that publish them) into a new core module, recomputes both files' imports, and re-points other modules that imported those names. It refuses if the moved code depends on something that stays behind, so it cannot create an import cycle.
@@ -113,6 +113,24 @@ Used for `accounts.js`: the five session functions that `sync.js` calls at sign-
 2. the watcher calling the UI only when it is mounted (`isScreenMounted('approvals-screen')`), and `openApprovalFromPush` / `_showApprovalsScreen` going through `loadScreen`;
 3. a decision on whether a push deep link may wait for the screen chunk to download (offline it would fail after the first precache).
 Those change behaviour, so this should be reviewed rather than done mechanically. Estimated size: about 60 lines of glue, 3 tests.
+
+### Phase 3 – what the analysis found
+`node scripts/screen-carve.mjs <screen-id> <name> [--dry]` works out which top-level statements (across every module) belong only to one screen: a statement is owned when it touches the screen's element ids or is called only from the screen's inline handlers, **and every place that uses it is itself owned** (greatest fixed point, so shared helpers stay and are imported back). Without `--dry` it moves them into `modules/<name>.js`, publishes their globals from there, trims only the imports the move made unused (syntax-tree based, so strings never count), and records the origin in `docs/screen-split/carved.json` so tests can still find the code under its old file name. It refuses if a variable is assigned from both sides of the boundary.
+
+Its most useful output is the **LAZY-SAFE** verdict. A screen is safe to mount lazily only if no code left behind reads or writes its elements, because that code would run against an empty placeholder. Result for the 20 remaining standalone screens: **1 safe (backup-restore, now moved)**, 19 not.
+
+Why the 19 are blocked (the same two causes keep recurring):
+1. **Core functions that stay behind write into the screen.** The opener and the render function are shared: `openRecycleBin`/`renderRecycleBin`, `prepareStockTransferScreen`/`applyStockTransferFilter`, `applyPaymentTransferFilter`/`selectFromUniversalSearch`, `renderFormulaStoreList`, `renderApprovals`, `openCustomerManagement`/`renderCustomerTransactions` (and the rep equivalent), `openOperatingExpenseOverlay`, `openEntityDetailsOverlay`, `syncFeedbackSettings`, `updateCloseYearProgress`, and so on. These are called from other modules and from refresh hooks, often right after `openStandaloneScreen(...)`.
+2. **Code that lives in `index.html` inline `<script>` blocks (711 lines of classic script).** `store-manager` (8 ids), `raw-material` (6), `add-entity` (5) and `db-structure` (1) are driven from there, and the first version of this analysis missed it. That produced two false "safe" verdicts, which is why the check now reads inline scripts too.
+
+Size of what is *owned* but not yet movable (so the prize is real): settings 1,729 lines, raw-material 346, expense-details 295, add-entity 272, customer-edit 231 and rep-customer-edit 231, plus smaller ones.
+
+### What each blocked screen needs (small, per screen, but behaviour-changing)
+- **3a. Move the inline `index.html` scripts into modules** (prerequisite; also a safety gain). Classic-script function declarations are implicit globals, so every name that an inline handler or another script uses must be published on `window` explicitly.
+- **3b. Make openers wait for the screen.** Add `ensureScreen(id)` (an exported wrapper over `loadScreen`) and have each core opener `await` it before touching the screen's elements; sync openers must become async.
+- **3c. First render on mount.** Each screen exports `onMount()` that does the initial render that used to happen at startup, so the first open is not empty.
+- **3d. Fix the remaining cross-boundary variables** the tool reports as HAZARDS (formula-store-edit, add-entity, expense-details, customer-edit).
+Each of 3b/3c needs a manual first-open test on a device, which is why they are not done mechanically here.
 
 ### How to move the next screen
 `node scripts/screen-extract.mjs <screen-id> <name> [module.js ...]` (add `--dry` to preview), then:

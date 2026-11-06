@@ -17,4 +17,8 @@ registerScreens({
     load: () => import('./app-accounts.screen.js'),
     globals: ['_accountsIndexRef', '_readAccountsIndex', '_writeAccountsIndex', 'adminAddAccount', 'adminRemoveAccount', 'adminSetAccountRole', 'adminToggleApproval', 'loadAccountsList', 'resetAccountForm', 'toggleNewAccountRole'],
   },
+  'backup-restore-screen': {
+    load: () => import('./backup-restore.screen.js'),
+    globals: ['triggerLocalBackup'],
+  },
 });

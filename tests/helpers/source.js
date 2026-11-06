@@ -32,8 +32,21 @@ export function readAppCss() {
 }
 
 // The text of modules/<file>, wherever it lives now. `file` may be 'x.js' or 'modules/x.js'.
+function carvedInto(name) {
+  const p = join(ROOT, 'docs/screen-split/carved.json');
+  if (!existsSync(p)) return [];
+  const map = JSON.parse(readFileSync(p, 'utf8'));
+  return Object.entries(map).filter(([, origins]) => origins.includes(name)).map(([n]) => n);
+}
+
 export function readModule(file) {
   const name = basename(file);
+  const base = readModuleOwn(name);
+  const extra = carvedInto(name).map(n => readModuleOwn(n));
+  return extra.length ? base + '\n' + extra.join('\n') : base;
+}
+
+function readModuleOwn(name) {
   if (existsSync(join(ROOT, 'modules', name))) return rd('modules/' + name);
   for (const f of screenFiles()) {
     const { js } = sections(rd('screens/' + f));

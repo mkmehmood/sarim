@@ -1,12 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readModule } from './helpers/source.js';
 import {
   RECORD_STORES, AUX_STATE,
   collectAuxBackupFields, applyAuxBackupFields, isSupportedBackup, RECORD_KEYS,
   mergeStringLists, mergeById,
 } from '../modules/link-graph.js';
-const read = f => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
+const read = f => readModule(f);
 const sync = read('sync.js');
 const sales = read('utilities-sales.js');
 const payments = read('utilities-payments.js');
