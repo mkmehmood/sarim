@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import postcss from 'postcss';
 import { readFileSync } from 'node:fs';
-import { moduleFiles, readSource } from './helpers/source.js';
+import { moduleFiles, readIndexHtml, readSource } from './helpers/source.js';
 
 const root = new URL('../', import.meta.url);
 const read = (f) => readSource(f);
@@ -53,7 +53,7 @@ describe('shared pill button shape', () => {
 });
 
 describe('buttons converted off one-off classes', () => {
-  const html = readFileSync(new URL('index.html', root), 'utf8');
+  const html = readIndexHtml();
   it('recycle-bin, photo and refresh buttons use the shared base', () => {
     for (const id of ['recycleBinEmptyBtn', 'payment-transfer-photo-btn', 'expense-photo-btn']) {
       const m = html.match(new RegExp('<button[^>]*id="' + id + '"[^>]*>'));

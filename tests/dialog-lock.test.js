@@ -2,8 +2,9 @@ import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { isRecycleRecordAllowed, isScreenAllowed, moneyLine, recycleAmountText, recycleCollections, recycleFilters, redactMoney, sanitizeConfirmExtra } from '../modules/money-privacy.js';
+import { readIndexHtml, readSource } from './helpers/source.js';
 
-const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const HTML = readIndexHtml();
 const read = (f) => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
 
 afterEach(() => { delete globalThis.window; });
@@ -134,7 +135,7 @@ describe('recycle bin scope for restricted roles', () => {
 });
 
 describe('recycle bin wiring', () => {
-  const pay = read('utilities-payments.js');
+  const pay = readSource('modules/recycle-bin.js');
 
   it('is reachable from settings for restricted roles', () => {
     assert.doesNotMatch(HTML, /data-money[^>]*id="sidebar-btn-recycle"|id="sidebar-btn-recycle"[^>]*data-money/);

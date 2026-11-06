@@ -17,12 +17,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const flag = f => argv.includes(f);
 const opt = f => { const i = argv.indexOf(f); return i >= 0 ? (argv[i + 1] || '').split(',').filter(Boolean) : []; };
-const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--also', '--keep'].includes(argv[i - 1])));
+const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--also', '--keep', '--within'].includes(argv[i - 1])));
 const [screenId, name] = pos;
 if (!screenId || !name) { console.error('usage: screen-carve.mjs <screen-id> <name> [--dry] [--also a,b] [--keep c]'); process.exit(2); }
 const DRY = flag('--dry');
 const ALSO = new Set(opt('--also'));
 const KEEP = new Set(opt('--keep'));
+const WITHIN = new Set(opt('--within'));
+const inScope = u => WITHIN.size === 0 || WITHIN.has(u.mod);
 
 const rd = p => readFileSync(join(ROOT, p), 'utf8');
 const MODS = readdirSync(join(ROOT, 'modules')).filter(f => f.endsWith('.js')).sort();
@@ -43,6 +45,24 @@ const handlerNames = new Set([...block.matchAll(/\bon[a-z]+="([^"]*)"/g)].flatMa
 const idents = text => {
   const out = new Set();
   for (const m of text.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*/g)) out.add(m[0]);
+  return out;
+};
+const astIdents = node => {
+  const out = new Set();
+  const visit = (n, parent, key) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(x => visit(x, parent, key)); return; }
+    if (typeof n.type !== 'string') return;
+    if (n.type === 'Identifier') {
+      const skip = (parent && parent.type === 'MemberExpression' && key === 'property' && !parent.computed)
+        || (parent && parent.type === 'Property' && key === 'key' && !parent.computed && !parent.shorthand)
+        || (parent && (parent.type === 'MethodDefinition' || parent.type === 'PropertyDefinition') && key === 'key' && !parent.computed);
+      if (!skip) out.add(n.name);
+      return;
+    }
+    for (const k of Object.keys(n)) if (k !== 'type' && k !== 'start' && k !== 'end') visit(n[k], n, k);
+  };
+  visit(node, null, null);
   return out;
 };
 const rangeNames = n => {
@@ -70,7 +90,7 @@ for (const mod of MODS) {
       continue;
     }
     const text = src.slice(n.start, n.end);
-    const u = { id: `${mod}:${n.start}`, mod, node: n, start: n.start, end: n.end, text, names: rangeNames(n), exported: n.type === 'ExportNamedDeclaration', idents: idents(text) };
+    const u = { id: `${mod}:${n.start}`, mod, node: n, start: n.start, end: n.end, text, names: rangeNames(n), exported: n.type === 'ExportNamedDeclaration', idents: astIdents(n) };
     const m = /^window\.([\w$]+)\s*=\s*([\w$]+);?$/.exec(text);
     if (m) u.publish = { keys: [m[1]], values: [m[2]], kind: 'assign' };
     const oa = /^Object\.assign\(\s*window\s*,\s*\{([\s\S]*?)\}\s*\);?$/.exec(text);
@@ -113,12 +133,12 @@ const idHit = u => innerIds.some(id => u.text.includes(`'${id}'`) || u.text.incl
 const stringRef = new Set();
 for (const u of units) for (const m of u.text.matchAll(/['"`]([A-Za-z_$][\w$]*)['"`]/g)) if (nameUnits.has(m[1]) && !u.names.includes(m[1])) stringRef.add(m[1]);
 
-const seeds = new Set(units.filter(u => !u.publish && u.names.length && !u.names.some(n => KEEP.has(n)) && (idHit(u) || u.names.some(n => handlerOnly.has(n) || ALSO.has(n)))));
+const seeds = new Set(units.filter(u => inScope(u) && !u.publish && u.names.length && !u.names.some(n => KEEP.has(n)) && (idHit(u) || u.names.some(n => handlerOnly.has(n) || ALSO.has(n)))));
 const S = new Set(seeds);
 const queue = [...seeds];
 while (queue.length) {
   const u = queue.pop();
-  for (const id of u.idents) for (const t of nameUnits.get(id) || []) if (t !== u && !S.has(t) && t.names.length && !t.publish && !t.names.some(n => KEEP.has(n))) { S.add(t); queue.push(t); }
+  for (const id of u.idents) for (const t of nameUnits.get(id) || []) if (t !== u && !S.has(t) && inScope(t) && t.names.length && !t.publish && !t.names.some(n => KEEP.has(n))) { S.add(t); queue.push(t); }
 }
 let changed = true;
 while (changed) {
@@ -155,6 +175,7 @@ const lines = owned.reduce((a, u) => a + u.text.split('\n').length, 0);
 console.log(`${screenId}: ${innerIds.length} ids, ${handlerOnly.size} handler-only names`);
 console.log(`  seeds ${seeds.size}, owned ${owned.length} statements / ${lines} lines`);
 for (const [m, us] of Object.entries(byMod)) console.log(`    ${m.padEnd(26)} ${String(us.length).padStart(3)} statements  ${us.reduce((a, u) => a + u.text.split('\n').length, 0)} lines`);
+if (flag('--names')) console.log('  owned names: ' + owned.flatMap(u => u.names).join(', '));
 const droppedSeeds = [...seeds].filter(u => !S.has(u));
 const touchers = droppedSeeds.filter(u => idHit(u) || u.text.includes(`'${screenId}'`));
 const inlineScripts = [...outsideHtml.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
@@ -201,8 +222,8 @@ for (const [id, su] of needFromStay) add('./' + su.mod, id);
 for (const s of importSpecs.values()) add(s.from, s.imported === s.local ? s.local : `${s.imported} as ${s.local}`);
 const coreImports = [...groups.entries()].map(([from, ss]) => `import { ${ss.join(', ')} } from '${from}';`);
 
-const publishKeys = pubStays.flatMap(p => p.moved);
-const coreBody = owned.map(u => u.text).join('\n');
+const publishKeys = [...new Set(pubStays.flatMap(p => p.moved))];
+const coreBody = owned.map(u => u.text).join('\n\n');
 const publishStmt = publishKeys.length ? `\nObject.assign(window, { ${publishKeys.join(', ')} });` : '';
 const exportsForNeeded = [...ownedNames].filter(n => units.some(x => !S.has(x) && !x.publish && x.idents.has(n)));
 if (exportsForNeeded.length) { console.error('internal error: owned name used outside: ' + exportsForNeeded.join(', ')); process.exit(1); }

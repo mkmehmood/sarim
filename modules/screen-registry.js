@@ -25,4 +25,8 @@ registerScreens({
     load: () => import('./db-structure.screen.js'),
     globals: ['loadDbStructureScreen'],
   },
+  'recycle-bin-screen': {
+    load: () => import('./recycle-bin.screen.js'),
+    globals: ['_findPairedTransferTombstone', 'attemptHardDeleteRecord', 'attemptRecoverRecord', 'emptyRecycleBin', 'hardDeleteRecord', 'openRecycleBin', 'recoverRecord', 'renderRecycleBin'],
+  },
 });

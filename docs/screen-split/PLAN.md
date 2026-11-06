@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done. 6 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure). Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 7 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -135,6 +135,18 @@ Size of what is *owned* but not yet movable (so the prize is real): settings 1,7
 Other things that changed: the split checker now also looks for inline `on*="…"` handlers inside JS strings (the store list builds `editStore(…)`/`deleteStore(…)` buttons that way); the `cssText` policy test now looks in the new module/screen for the single allowed `!important` rule.
 
 Effect: main entry chunk 44.4 KB (36.9 KB before 3a; the moved code is now countable, and 5.7 KB of it is the lazy `db-structure` chunk). The remaining blockers for `store-manager`, `raw-material` and `add-entity` are the shared-opener problem below, not inline code.
+
+### Phase 3b/3c – recycle-bin (first screen done this way)
+`openRecycleBin`, `renderRecycleBin` and the recover / hard-delete / empty-bin code (1,007 lines, 25 statements) moved out of `utilities-payments.js` into the lazy `recycle-bin` screen (36.5 KB chunk). No per-opener rewrite was needed: the opener itself moved, so its `window` stub loads and mounts the screen first and then runs the real function, which renders the first content. The sidebar button, the notification deep link (`type: 'call'`) and the filter popover all reach it through `window`, which the stub covers (`tests/screen-registry.test.js` now checks that every function a notification target names is either published eagerly or stubbed).
+
+What the analysis taught us, now built into `screen-carve`:
+- **Function names inside strings are not code uses.** `fn: 'openRecycleBin'` or `onclick="attemptRecoverRecord(...)"` in a template string are looked up through `window`, so they no longer pin a function in core. Uses are now read from the syntax tree, not by scanning text. Use `--also a,b` for functions that are only referenced from button HTML (here `attemptRecoverRecord`, `attemptHardDeleteRecord`, `hardDeleteRecord`).
+- **Never move shared integrity code just because the screen is its only caller today.** Without a limit, the closure reached 1,780 lines of `link-graph.js`, `link-guards.js` and `money-privacy.js`, which `sync` and many tests depend on. `--within utilities-payments.js` confines a carve to the screen's own file; the helpers stay in core and are imported back (the tool exports them).
+- **Data globals must not get function stubs.** The `RECYCLE_*` tables are published on `window` as data. The registry now stubs only published *functions* (`scripts/screen-globals.mjs`); data globals are still published when the screen loads, which is only acceptable when nothing reads them earlier (verified: no outside consumers).
+- Two bugs found and fixed in the tool: duplicate keys in the generated `Object.assign(window, …)` when a name was published twice, and moved statements being joined without blank lines.
+- Tests: `readModule(name)` returns a module plus anything carved out of it (imports stripped so it still parses); `readSource` stays exact so the scanning tests do not count moved code twice. Five tests that inspected recycle-bin code were pointed at `modules/recycle-bin.js`.
+
+Next candidates for the same treatment: `stock-transfer` (shared `prepareStockTransferScreen` / filter) and `payment-transfer`; `store-manager`, `raw-material` and `add-entity` once their openers are looked at the same way. Each still needs a first-open test on a device.
 
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.

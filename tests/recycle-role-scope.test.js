@@ -4,7 +4,7 @@ import { extractFunctions, readSource } from './_extract.js';
 import * as mp from '../modules/money-privacy.js';
 import { formatDateTime } from '../modules/date-format.js';
 
-const SRC = readSource('modules/utilities-payments.js');
+const SRC = readSource('modules/recycle-bin.js');
 const constant = (name) => {
   const m = SRC.match(new RegExp(`export const ${name} = ([\\s\\S]*?);\\n\\n`));
   if (!m) throw new Error(`constant ${name} not found`);
@@ -55,9 +55,9 @@ function env(mode, tabs, tombs = TOMBS()) {
     RECYCLE_TAB_LABELS: constant('RECYCLE_TAB_LABELS'),
     RECYCLE_RECOVERABLE_COLLECTIONS: constant('RECYCLE_RECOVERABLE_COLLECTIONS'),
   };
-  const { _recycleDenied } = extractFunctions('modules/utilities-payments.js', ['_recycleDenied'], scope);
+  const { _recycleDenied } = extractFunctions('modules/recycle-bin.js', ['_recycleDenied'], scope);
   scope._recycleDenied = _recycleDenied;
-  const { renderRecycleBin } = extractFunctions('modules/utilities-payments.js', ['renderRecycleBin'], scope);
+  const { renderRecycleBin } = extractFunctions('modules/recycle-bin.js', ['renderRecycleBin'], scope);
   return { scope, renderRecycleBin, store };
 }
 
@@ -149,7 +149,7 @@ describe('recycle actions are refused outside the assigned tabs', () => {
 
   it('delete forever on a group that includes another tab never reaches the confirm', async () => {
     const { scope } = env('userrole', ['sales'], grouped());
-    const { _attemptHardDeleteImpl } = extractFunctions('modules/utilities-payments.js', ['_attemptHardDeleteImpl'], actionScope(scope, grouped()));
+    const { _attemptHardDeleteImpl } = extractFunctions('modules/recycle-bin.js', ['_attemptHardDeleteImpl'], actionScope(scope, grouped()));
     await _attemptHardDeleteImpl('s1', 'sales');
     assert.equal(confirms.length, 0);
     assert.equal(hardDeleted.length, 0);
@@ -159,7 +159,7 @@ describe('recycle actions are refused outside the assigned tabs', () => {
 
   it('the same delete reaches the confirm when both tabs are assigned', async () => {
     const { scope } = env('userrole', ['sales', 'payments'], grouped());
-    const { _attemptHardDeleteImpl } = extractFunctions('modules/utilities-payments.js', ['_attemptHardDeleteImpl'], actionScope(scope, grouped()));
+    const { _attemptHardDeleteImpl } = extractFunctions('modules/recycle-bin.js', ['_attemptHardDeleteImpl'], actionScope(scope, grouped()));
     await _attemptHardDeleteImpl('s1', 'sales');
     assert.equal(confirms.length, 1);
     assert.equal(notices.length, 0);
@@ -167,7 +167,7 @@ describe('recycle actions are refused outside the assigned tabs', () => {
 
   it('a direct call for an unassigned collection is refused before any work', async () => {
     const { scope } = env('userrole', ['sales']);
-    const fns = extractFunctions('modules/utilities-payments.js', ['hardDeleteRecord', 'recoverRecord'], scope);
+    const fns = extractFunctions('modules/recycle-bin.js', ['hardDeleteRecord', 'recoverRecord'], scope);
     assert.equal(await fns.hardDeleteRecord('t1', 'transactions'), false);
     assert.equal(await fns.recoverRecord('t1', 'transactions'), false);
     assert.equal(await fns.hardDeleteRecord('e1', 'entities'), false);
@@ -175,7 +175,7 @@ describe('recycle actions are refused outside the assigned tabs', () => {
 
   it('empty bin refuses when expanding groups pulls in another tab', async () => {
     const { scope } = env('userrole', ['sales'], grouped());
-    const { _emptyRecycleBinImpl } = extractFunctions('modules/utilities-payments.js', ['_emptyRecycleBinImpl'], actionScope(scope, grouped()));
+    const { _emptyRecycleBinImpl } = extractFunctions('modules/recycle-bin.js', ['_emptyRecycleBinImpl'], actionScope(scope, grouped()));
     scope.window._recycleBinCurrentFiltered = [grouped()[0]];
     scope.window._recycleBinCurrentFilterKey = 'all';
     await _emptyRecycleBinImpl();

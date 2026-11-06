@@ -14,6 +14,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postcss from 'postcss';
 import * as acorn from 'acorn';
+import { publishedGlobals } from './screen-globals.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const rd = p => readFileSync(join(ROOT, p), 'utf8');
@@ -121,13 +122,11 @@ const css = rd('app.css');
 const plan = cssPlan(css, html, block, ownMods.map(m => m.text), otherTexts);
 const movedText = plan.moved.map(r => css.slice(r.source.start.offset, r.source.end.offset + 1));
 
-// window.* globals published by the module(s)
+// window.* globals published by the module(s): only functions get lazy stubs
 const globals = new Set();
 for (const m of ownMods) {
   acorn.parse(m.text, { ecmaVersion: 'latest', sourceType: 'module' });
-  for (const x of m.text.matchAll(/\bwindow\.([A-Za-z_$][\w$]*)\s*=(?!=)/g)) globals.add(x[1]);
-  for (const x of m.text.matchAll(/Object\.assign\(\s*window\s*,\s*\{([\s\S]*?)\}\s*\)/g))
-    for (const k of x[1].matchAll(/(?:^|[,{\s])([A-Za-z_$][\w$]*)\s*(?=[,:}]|$)/g)) globals.add(k[1]);
+  for (const g of publishedGlobals(m.text).functions) globals.add(g);
 }
 
 console.log(`${screenId}: markup ${block.length} B, css ${plan.moved.length} rule(s) move (${plan.keptCount} candidate(s) kept for cascade safety), ` +

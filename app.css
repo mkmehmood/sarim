@@ -2539,9 +2539,6 @@ overscroll-behavior: contain;
 touch-action: pan-y;
 scroll-padding-top: 4px;
 }
-#recycleBinList {
-scroll-padding-bottom: 16px;
-}
 #manage-userrole-list { padding-right: 2px; }
 .sc-host {
   position: relative;
@@ -2584,9 +2581,6 @@ scroll-padding-bottom: 16px;
 }
 .system-controls {
   gap: 12px;
-}
-#recycle-bin-screen .screen-body #recycleBinList {
-padding-right: 2px;
 }
 #manage-accounts-list {
 padding-right: 2px;

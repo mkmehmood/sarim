@@ -1,5 +1,8 @@
 {
   "backup-restore.js": [
     "utilities-payments.js"
+  ],
+  "recycle-bin.js": [
+    "utilities-payments.js"
   ]
 }

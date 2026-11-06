@@ -42,7 +42,7 @@ function carvedInto(name) {
 export function readModule(file) {
   const name = basename(file);
   const base = readModuleOwn(name);
-  const extra = carvedInto(name).map(n => readModuleOwn(n));
+  const extra = carvedInto(name).map(n => readModuleOwn(n).replace(/^import .* from '[^']+';\n/gm, ''));
   return extra.length ? base + '\n' + extra.join('\n') : base;
 }
 
@@ -77,6 +77,6 @@ export function readSource(rel) {
   const clean = rel.replace(/^(\.\.\/)+/, '');
   if (clean === 'index.html') return readIndexHtml();
   if (clean === 'app.css') return readAppCss();
-  if (clean.startsWith('modules/') && !existsSync(join(ROOT, clean))) return readModule(clean);
+  if (clean.startsWith('modules/') && !existsSync(join(ROOT, clean))) return readModuleOwn(basename(clean));
   return rd(clean);
 }

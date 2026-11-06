@@ -908,7 +908,7 @@ export function planExpenseNameRename(entity, oldName, newName, expenses) {
   return (Array.isArray(expenses) ? expenses : []).filter(e => e && !e.deletedAt && e.name && String(e.name).trim().toLowerCase() === o).map(e => e.id);
 }
 
-const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, jsVar: key, label, tab, desc });
+export const rec = (key, label, tab, desc) => ({ key, sqlite: key, collection: key, jsVar: key, label, tab, desc });
 
 export const RECORD_STORES = Object.freeze([
   rec('production',   'Production',           'production', 'Factory production batches'),

@@ -576,40 +576,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
 </div>
 <div id="backup-restore-screen" class="standalone-screen d-none" data-lazy-screen></div>
-<div id="recycle-bin-screen" class="standalone-screen d-none">
-  <div class="shell-bar screen-topbar">
-    <h2 class="screen-title">Recycle Bin</h2>
-  </div>
-  <div class="screen-body">
-    <div class="u-c15e648 d-flex">
-      <div id="recycleBinStats" class="u-d8853f1"></div>
-      <div class="u-611b408 d-flex">
-        <div class="u-a8a9035">
-          <button id="recycleBinFilterBtn" class="form-ctl u-a5ce510 d-flex st-border-bottom__e54b2f st-background__356c02" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'},{value:'tab_ledger',label:'Daily Ledger'},{value:'tab_formulas',label:'Formula Store'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <select id="recycleBinFilter" class="form-ctl d-none">
-            <option value="all">All Tabs</option>
-            <option value="tab_sales">Sales Tab</option>
-            <option value="tab_rep">Rep Tab</option>
-            <option value="tab_production">Manufacturing Tab</option>
-            <option value="tab_calculator">Calculator Tab</option>
-            <option value="tab_factory">Factory Tab</option>
-            <option value="tab_payments">Payments Tab</option>
-            <option value="tab_ledger">Daily Ledger</option>
-            <option value="tab_formulas">Formula Store</option>
-          </select>
-        </div>
-        <button class="btn btn-danger btn-sm d-flex" id="recycleBinEmptyBtn" onclick="(async()=>{await emptyRecycleBin()})()">
-          <svg width="13" height="13" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 10L10.6 30.2A2.5 2.5 0 0 0 13.1 32.5H22.9A2.5 2.5 0 0 0 25.4 30.2L27 10Z" fill="currentColor" fill-opacity="0.15" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M5.5 10H30.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M13.5 10V7A1.8 1.8 0 0 1 15.3 5.2H20.7A1.8 1.8 0 0 1 22.5 7V10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 15V27.5M21.2 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/><path d="M18 15V27.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/></svg>
-          <span id="recycleBinEmptyBtnLabel">Empty Bin</span>
-        </button>
-      </div>
-    </div>
-    <div class="u-3e56df8 st-background__3b4003 st-border-bottom__81d82c">
-      Restore puts the record back to its original collection. Records expire after <strong class="u-786051d">90 days</strong>. Use <strong class="u-ddfd606">Delete Forever</strong> to erase a record immediately and permanently.
-    </div>
-    <div id="recycleBinList"></div>
-  </div>
-</div>
+<div id="recycle-bin-screen" class="standalone-screen d-none" data-lazy-screen></div>
 <div id="stock-transfer-screen" class="standalone-screen d-none">
   <div class="shell-bar screen-topbar">
     <h2 class="screen-title">Stock Transfer</h2>

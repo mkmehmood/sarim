@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { extractFunctions } from './_extract.js';
+import { readModule } from './helpers/source.js';
 import {
   GATED_COLLECTIONS, buildPendingDoc, bulkSheetModel, groupBySubmitter, groupPending, groupRowSummary,
   isGatedCollection, pendingId, pendingSummaryLine, resolutionNotice, sheetModel, summarizePending,
@@ -208,7 +209,7 @@ describe('every non-admin write is diverted to pending', () => {
     assert.match(sync, /submitPendingBatch\(dBatch, userRef, dr\.collection, String\(dr\.id\), 'delete', null\)/);
   });
   it('recycle-bin writes are blocked for gated sessions', () => {
-    const pay = read('modules/utilities-payments.js');
+    const pay = readModule('utilities-payments.js');
     for (const fn of ['purgeRecoveredId', 'flushErasedTombstones', 'hardDeleteRecord']) {
       const i = pay.indexOf('export async function ' + fn);
       assert.match(pay.slice(i, i + 600), /isGatedSession/, fn);

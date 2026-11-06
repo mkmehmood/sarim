@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
+import { readModule } from './helpers/source.js';
 
 test('every calculator record builder sets all three link arrays', () => {
   const sales = readSource('modules/utilities-sales.js');
@@ -12,7 +13,7 @@ test('every calculator record builder sets all three link arrays', () => {
 });
 
 test('a recovered calculator entry only keeps return links that are live and unclaimed', () => {
-  const pay = readSource('modules/utilities-payments.js');
+  const pay = readSource('modules/recycle-bin.js');
   assert.match(pay, /rec\.linkedRepReturnIds = .*filter\(i => _live\.has\(i\) && !_taken\.has\(i\)\)/);
 });
 
@@ -23,5 +24,5 @@ test('a rep return record carries every field the calculator matching needs', ()
 });
 
 test('the one-time relink migrations are gone', () => {
-  assert.doesNotMatch(readSource('modules/utilities-payments.js'), /runCalcRelinkMigration|runRepReturnRelinkMigration|CALC_RELINK_FLAG/);
+  assert.doesNotMatch(readModule('utilities-payments.js'), /runCalcRelinkMigration|runRepReturnRelinkMigration|CALC_RELINK_FLAG/);
 });
