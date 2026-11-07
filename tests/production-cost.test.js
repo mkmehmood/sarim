@@ -1,8 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readModule } from './helpers/source.js';
 
-const src = readFileSync(new URL('../modules/factory.js', import.meta.url), 'utf8');
+const src = readModule('factory.js');
 function grab(name) {
   const start = src.indexOf(`export async function ${name}(`);
   assert.ok(start >= 0, `${name} not found`);

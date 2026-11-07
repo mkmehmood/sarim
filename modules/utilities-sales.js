@@ -22,7 +22,7 @@ import { _set_restoring, _set_closing } from './admin-data.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _restorePayableFromDeletedTransaction, _recomputeSupplierPayables, _set_custPaymentChart, _set_custSalesChart, _set_defaultSettings, _set_indPerformanceChart, _set_mfgBarChart, _set_mfgPieChart, _set_storeComparisonChart, custPaymentChart, custSalesChart, defaultSettings, indPerformanceChart, invalidateAllCaches, loadScript, mfgBarChart, mfgPieChart, notifyDataChange, storeComparisonChart, syncCalculatorTab, syncFactoryTab, syncPaymentsTab, syncProductionTab, syncRepTab, syncSalesTab, triggerAutoSync } from './utilities-core.js';
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getPendingRepDeliveries, getPendingRepReturns, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
-import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getFormulaUnitsValue, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, getGoodsCreditUnitPrice, getReconciledRepReturnIds, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
+import { calculateFactoryProduction, getCostPerUnit, getFormulaUnitsValue, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, getGoodsCreditUnitPrice, getReconciledRepReturnIds, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory-core.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
 import { getPosition } from './geo.js';
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
@@ -530,7 +530,7 @@ if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 if (typeof calculateCashTracker === 'function') calculateCashTracker();
 if (isPayable) {
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
+if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.();
 }
 if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1);
 message = `Payment ${type === 'IN' ? 'received from' : 'made to'} ${entity.name}`;
@@ -1804,7 +1804,7 @@ const _collHead = _ed
 : (amount > 0 ? ` Collection of ${fmtAmt(amount)} recorded for ${name}` : ` Collection recorded for ${name}`);
 showToast(`${_collHead}${_allocNote}${_expNote}`, 'success');
 if (typeof window.shareInvoiceAfterSave === 'function') window.shareInvoiceAfterSave('cust', { name: savedName, date, render: () => window.renderCustomerTransactions(savedName) });
-if (expired > 0 || _expDelta !== 0) { if (typeof renderFactoryInventory === 'function') renderFactoryInventory(); }
+if (expired > 0 || _expDelta !== 0) { if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.(); }
 } catch (error) {
 await _undoChora();
 if (_alloc) _alloc.undo();
@@ -3199,7 +3199,7 @@ if (entry.returned > 0 && (entry.returnStore || entry.returnRep)) {
 if (typeof refreshUI === 'function') await refreshUI();
 }
 if (entry.expired > 0) {
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
+if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.();
 }
 } catch (error) {
 if (_persisted) {
@@ -3822,7 +3822,7 @@ month: {q:0, p:0, c:0, v:0, fu:0, fc:0},
 year: {q:0, p:0, c:0, v:0, fu:0, fc:0},
 all: {q:0, p:0, c:0, v:0, fu:0, fc:0}
 };
-let filteredData = currentProductionView === 'combined' ? production : production.filter(item => item.store === currentStore);
+let filteredData = currentProductionView === 'combined' ? production : production.filter(item => item.store === window.currentStore);
 const sortedDb = [...filteredData].sort((a, b) => {
 if (a.date === selectedDate && b.date !== selectedDate) return -1;
 if (a.date !== selectedDate && b.date === selectedDate) return 1;
@@ -5369,7 +5369,7 @@ if (isMoneyRestricted()) return;
 const { production } = await loadCollections('production');
 if(mfgBarChart) mfgBarChart.destroy();
 if(mfgPieChart) mfgPieChart.destroy();
-let filteredData = currentProductionView === 'combined' ? production : production.filter(item => item.store === currentStore);
+let filteredData = currentProductionView === 'combined' ? production : production.filter(item => item.store === window.currentStore);
 let labels = [], dataQty = [];
 let totalCost = 0, totalProfit = 0, totalValue = 0;
 const selectedDate = document.getElementById('sys-date').value;
@@ -5594,7 +5594,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const { inventory, production: _allProduction } = await loadCollections('inventory', 'production');
 const production = _allProduction.filter(_fsMatch);
-const mode = currentFactorySummaryMode || 'all';
+const mode = window.currentFactorySummaryMode || 'all';
 const selectedDateVal = document.getElementById('factory-date').value || localDateStr();
 const selectedDate = new Date(selectedDateVal);
 const selectedYear = selectedDate.getFullYear();
@@ -5769,8 +5769,8 @@ currentFactoryDate = factoryDateInput.value; window.currentFactoryDate = current
 }
 updateFactoryUnitsAvailableStats();
 updateFactorySummaryCard();
-renderFactoryHistory();
-await renderFactoryInventory();
+window.renderFactoryHistory?.();
+await window.renderFactoryInventory?.();
 calculateFactoryProduction();
 }
 

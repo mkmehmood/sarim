@@ -1,0 +1,10 @@
+{
+  "declarations": {
+    "currentStore": "mirror of the UI-state registry in utilities-core.js; window.currentStore (registry accessor) is the source of truth",
+    "currentFactorySummaryMode": "mirror of the UI-state registry (default 'daily'); window accessor is the source of truth",
+    "editingFactoryInventoryId": "mirror of the UI-state registry (default null); window accessor is the source of truth",
+    "_set_currentStore": "only caller was notify-open.js, now assigns window.currentStore directly",
+    "_set_currentFactorySummaryMode": "no callers; assigned window.currentFactorySummaryMode which factory.js now writes directly",
+    "_set_editingFactoryInventoryId": "no callers; assigned window.editingFactoryInventoryId which factory.js now writes directly"
+  }
+}

@@ -1,9 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readModule } from './helpers/source.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const factory = readFileSync(new URL('../modules/factory.js', import.meta.url), 'utf8');
+const factory = readModule('factory.js');
 const screen = html.slice(html.indexOf('id="raw-material-screen"'), html.indexOf('id="formula-store-screen"'));
 
 describe('raw material screen', () => {
@@ -45,7 +46,8 @@ describe('raw material screen', () => {
     assert.match(factory, /getElementById\('factoryTotalCollectedKg'\)/);
   });
   it('unlinking a supplier saves the changed record, not a stale copy of the list', () => {
-    const fn = factory.slice(factory.indexOf('export async function unlinkSupplierFromMaterial('), factory.indexOf('export async function createSupplierFromMaterial'));
+    const start = factory.indexOf('export async function unlinkSupplierFromMaterial(');
+    const fn = factory.slice(start, factory.indexOf('\nexport ', start + 10));
     assert.match(fn, /inventory\[_liveIdx\] = material/);
   });
   it('keeps stock records and cash purchases out of the unlinked payables on the balance sheet', () => {

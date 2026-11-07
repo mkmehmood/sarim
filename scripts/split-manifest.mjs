@@ -145,7 +145,14 @@ function diffSet(label, base, now, problems) {
   return [...n].filter(x => !b.has(x)).length;
 }
 
+function intentionalRemovals() {
+  try { return Object.keys(JSON.parse(readFileSync(join(ROOT, 'docs/screen-split/intentional-removals.json'), 'utf8')).declarations || {}); } catch { return []; }
+}
+
 export function compare(base, now) {
+  const allowed = new Set(intentionalRemovals());
+  const without = list => list.filter(x => !allowed.has(x));
+  base = { ...base, js: { ...base.js, declarations: without(base.js.declarations), exports: without(base.js.exports) } };
   const problems = [];
   const added = {};
   added.ids = diffSet('html ids', base.html.ids, now.html.ids, problems);

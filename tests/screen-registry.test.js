@@ -73,9 +73,28 @@ for (const e of lazyEntries) {
   test(`lazy module ${e.id}: hooks are only ever called optionally, so they do nothing until it is loaded`, () => {
     for (const f of readdirSync(new URL('modules/', root)).filter(n => n.endsWith('.js') && n !== e.file)) {
       const text = read(`modules/${f}`);
-      for (const h of e.hooks) assert.ok(!new RegExp(`window\\.${h}\\(`).test(text), `${f} calls window.${h}( without ?.`);
+      for (const h of e.hooks) {
+        for (const line of text.split('\n')) {
+          if (!new RegExp(`window\\.${h}\\(`).test(line)) continue;
+          assert.ok(new RegExp(`typeof window\\.${h} === 'function'`).test(line), `${f} calls window.${h}( without ?. or a typeof guard: ${line.trim()}`);
+        }
+      }
     }
   });
 }
 
 test('the lazy module list is not empty', () => assert.ok(lazyEntries.length >= 1));
+
+test('every late-bound wrapper in core points at a function that is published, stubbed or a declared hook', () => {
+  const eager = new Set();
+  const mods = readdirSync(new URL('modules/', root)).filter(n => n.endsWith('.js'));
+  for (const f of mods) for (const g of publishedGlobals(read(`modules/${f}`)).functions) eager.add(g);
+  const known = new Set([...eager, ...entries.flatMap(e => e.globals), ...lazyEntries.flatMap(e => [...e.globals, ...e.hooks])]);
+  const problems = [];
+  for (const f of mods) {
+    for (const m of read(`modules/${f}`).matchAll(/\(\.\.\.(\w+)\) => window\.([\w$]+)\??\.?\(\.\.\.\1\)/g)) {
+      if (!known.has(m[2])) problems.push(`${f}: wrapper calls window.${m[2]}, which nothing publishes or stubs`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});

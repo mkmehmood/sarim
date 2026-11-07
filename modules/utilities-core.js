@@ -15,7 +15,7 @@ import { dataRootRef, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSync
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, deletePaymentTransfer, editEntityBasicInfo, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, toSafeDate } from './utilities-payments.js';
-import { calculateDynamicCost, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
+import { calculateDynamicCost, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory-core.js';
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formatDayMonthYear, formatDateTime } from './date-format.js';
@@ -960,8 +960,8 @@ if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductio
 if (typeof window.calculateFactoryProduction === 'function') window.calculateFactoryProduction();
 if (typeof updateFactoryUnitsAvailableStats === 'function') updateFactoryUnitsAvailableStats();
 if (typeof updateFactorySummaryCard === 'function') updateFactorySummaryCard();
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
-if (typeof renderFactoryHistory === 'function') renderFactoryHistory();
+if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.();
+if (typeof window.renderFactoryHistory === 'function') window.renderFactoryHistory?.();
 } catch (error) {
 console.error('Failed to render data.', _safeErr(error));
 showToast('Factory tab failed to render: ' + (_safeErr(error).message || 'please reload the app'), 'error');
@@ -2245,7 +2245,7 @@ return changed || saved.length > 0;
 export async function _refreshSupplierLinkViews() {
 try { notifyDataChange('all'); } catch (_) {}
 try { if (typeof syncFactoryProductionStats === 'function') await syncFactoryProductionStats(); } catch (_) {}
-try { if (typeof renderFactoryInventory === 'function') await renderFactoryInventory(); } catch (_) {}
+try { if (typeof window.renderFactoryInventory === 'function') await window.renderFactoryInventory?.(); } catch (_) {}
 try { if (typeof updateFactorySummaryCard === 'function') updateFactorySummaryCard(); } catch (_) {}
 try { if (typeof updateFactoryUnitsAvailableStats === 'function') updateFactoryUnitsAvailableStats(); } catch (_) {}
 try { if (typeof refreshPaymentTab === 'function') await refreshPaymentTab(true); } catch (_) {}

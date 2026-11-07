@@ -5,7 +5,7 @@ import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToClou
 import { defaultSettings } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, getStorePool, trackFirestoreWrite, verifyAccountPassword } from './utilities-sales.js';
 import { refreshAllDisplays } from './utilities-payments.js';
-import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory.js';
+import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePriceForStore } from './factory-core.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { collectAuxBackupFields, isSupportedBackup, RECORD_STORES, DATASET_BY_KEY } from './link-graph.js';
 import { getDefaultStoreKey, storeLabelFor } from './store-keys.js';

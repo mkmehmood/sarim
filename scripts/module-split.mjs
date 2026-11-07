@@ -96,7 +96,26 @@ for (const f of readdirSync(join(ROOT, 'modules')).filter(f => f.endsWith('.js')
   rewrites.push({ f, text: t.replace(m[0], lines.join('')) });
   console.log(`  re-point ${f}: ${toCore.join(', ')}`);
 }
+const screenRewrites = [];
+if (existsSync(join(ROOT, 'screens'))) {
+  for (const f of readdirSync(join(ROOT, 'screens')).filter(n => n.endsWith('.screen.html'))) {
+    const t = readFileSync(join(ROOT, 'screens', f), 'utf8');
+    const re = new RegExp(`import \\{([^}]*)\\} from '\\./${orig.replace('.', '\\.')}';\\n`);
+    const m = re.exec(t);
+    if (!m) continue;
+    const list = m[1].split(',').map(x => x.trim()).filter(Boolean);
+    const toCore = list.filter(x => movedExports.includes(x.split(' as ')[0]));
+    if (!toCore.length) continue;
+    const stay = list.filter(x => !toCore.includes(x));
+    const lines = [];
+    if (stay.length) lines.push(`import { ${stay.join(', ')} } from './${orig}';\n`);
+    lines.push(`import { ${toCore.join(', ')} } from './${core}';\n`);
+    screenRewrites.push({ f, text: t.replace(m[0], lines.join('')) });
+    console.log(`  re-point screens/${f}: ${toCore.join(', ')}`);
+  }
+}
 if (DRY) process.exit(0);
+for (const r of screenRewrites) writeFileSync(join(ROOT, 'screens', r.f), r.text);
 writeFileSync(join(ROOT, 'modules', core), coreSrc);
 writeFileSync(join(ROOT, 'modules', orig), origSrc);
 for (const r of rewrites) writeFileSync(join(ROOT, 'modules', r.f), r.text);

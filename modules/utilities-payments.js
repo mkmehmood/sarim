@@ -16,7 +16,7 @@ import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionE
 import { createAuthOverlay, emitSyncUpdate, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
-import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
+import { calculatePaymentSummaries, getCostPriceForStore, getSalePriceForStore, syncFactoryProductionStats, unlinkSupplierFromMaterial } from './factory-core.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { checkBiometricLock, syncBiometricButton } from './app-lock.js';
 import { deriveSession, readRolesCache, structureKey } from './roles.js';
@@ -1400,7 +1400,7 @@ await loadSalesData(currentCompMode);
 await refreshCustomerSales();
 if (typeof refreshUI === 'function') await refreshUI();
 if (entryToDelete.expired > 0) {
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
+if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.();
 }
 updateAllStoresOverview(currentOverviewMode);
 notifyDataChange('calculator');
@@ -1800,8 +1800,8 @@ showToast('Economic health calculation failed: ' + (_safeErr(e).message || 'plea
 console.error('calculateNetCash error:', _safeErr(e));
 }
 try {
-if (typeof updateFactoryInventoryDisplay === 'function') {
-updateFactoryInventoryDisplay();
+if (typeof window.updateFactoryInventoryDisplay === 'function') {
+window.updateFactoryInventoryDisplay?.();
 }
 } catch (e) {
 console.error('updateFactoryInventoryDisplay error:', _safeErr(e));
@@ -1924,18 +1924,18 @@ default: return 'Metric';
 
 export async function deleteFactoryInventoryItem() {
 const { inventory, transactions } = await loadCollections('inventory', 'transactions');
-if (editingFactoryInventoryId) {
-if (!validateUUID(String(editingFactoryInventoryId))) {
+if (window.editingFactoryInventoryId) {
+if (!validateUUID(String(window.editingFactoryInventoryId))) {
 window.notifyBlocking('Invalid inventory item ID', 'error', 'Something went wrong');
 return;
 }
-const _diMat = inventory.find(i => i.id === editingFactoryInventoryId);
+const _diMat = inventory.find(i => i.id === window.editingFactoryInventoryId);
 const _diName = _diMat?.name || 'this item';
 const _diQty = (_diMat?.quantity || 0).toFixed(2);
 const _diVal = fmtAmt(_diMat?.totalValue || 0);
 const _diSupplier = _diMat?.supplierName || null;
-const _diPaidTx = _diMat?.supplierId ? transactions.filter(t => t && t.isPayable === true && t.type === 'OUT' && (String(t.materialId) === String(editingFactoryInventoryId) || (Array.isArray(t.materialIds) && t.materialIds.map(String).includes(String(editingFactoryInventoryId))))) : [];
-const _diLinkedTx = _diMat?.supplierId ? transactions.filter(t => String(t.materialId) === String(editingFactoryInventoryId) && t.isPayable === true) : [];
+const _diPaidTx = _diMat?.supplierId ? transactions.filter(t => t && t.isPayable === true && t.type === 'OUT' && (String(t.materialId) === String(window.editingFactoryInventoryId) || (Array.isArray(t.materialIds) && t.materialIds.map(String).includes(String(window.editingFactoryInventoryId))))) : [];
+const _diLinkedTx = _diMat?.supplierId ? transactions.filter(t => String(t.materialId) === String(window.editingFactoryInventoryId) && t.isPayable === true) : [];
 let _diMsg = `Permanently delete inventory item "${_diName}" and all its purchase history?`;
 _diMsg += `\nCurrent Stock: ${_diQty} kg`;
 _diMsg += `\nTotal Value: ${_diVal}`;
@@ -1955,9 +1955,9 @@ _diMsg += `\n\n\u26a0 If this material is used in production formulas, those for
 _diMsg += `\n\nThis cannot be undone.`;
 if (await showGlassConfirm(_diMsg, { title: `Delete "${_diName}"`, confirmText: "Delete", danger: true })) {
 try {
-const material = inventory.find(i => i.id === editingFactoryInventoryId);
+const material = inventory.find(i => i.id === window.editingFactoryInventoryId);
 const _materialToDelete = material ? { ...material } : null;
-const _purchaseLots = inventory.filter(i => i && i.isPurchaseLot === true && String(i.materialRefId) === String(editingFactoryInventoryId));
+const _purchaseLots = inventory.filter(i => i && i.isPurchaseLot === true && String(i.materialRefId) === String(window.editingFactoryInventoryId));
 const _matGroup = ((material && material.supplierId) || _purchaseLots.some(l => l.supplierId)) ? newGroupId('mat') : null;
 if (material && material.supplierId) {
 await unlinkSupplierFromMaterial(material, false, true, _matGroup);
@@ -1967,12 +1967,12 @@ if (_lot.supplierId) await unlinkSupplierFromMaterial(_lot, false, true, _matGro
 const _rest = inventory.filter(i => i.id !== _lot.id);
 await unifiedDelete('inventory', _rest, _lot.id, { strict: true }, _matGroup ? stampGroup(_lot, _matGroup) : _lot);
 }
-const filteredForDelete = inventory.filter(i => i.id !== editingFactoryInventoryId && !_purchaseLots.some(l => l.id === i.id));
-await unifiedDelete('inventory', filteredForDelete, editingFactoryInventoryId, { strict: true }, _matGroup ? stampGroup(_materialToDelete, _matGroup) : _materialToDelete);
+const filteredForDelete = inventory.filter(i => i.id !== window.editingFactoryInventoryId && !_purchaseLots.some(l => l.id === i.id));
+await unifiedDelete('inventory', filteredForDelete, window.editingFactoryInventoryId, { strict: true }, _matGroup ? stampGroup(_materialToDelete, _matGroup) : _materialToDelete);
 notifyDataChange('inventory');
 triggerAutoSync();
-closeFactoryInventoryModal();
-if (typeof renderFactoryInventory === 'function') renderFactoryInventory();
+window.closeFactoryInventoryModal?.();
+if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.();
 if (typeof calculateNetCash === 'function') calculateNetCash();
 } catch (error) {
 window.notifyBlocking('Failed to delete item. Please try again.', 'error', 'Something went wrong');
@@ -2692,9 +2692,9 @@ console.error('Payment tab refresh failed.', _safeErr(e));
 window.notifyBlocking('Economic health calculation failed: ' + (_safeErr(e).message || 'please reload the app'), 'error', 'Something went wrong');
 }
 }
-if (typeof renderFactoryInventory === 'function') {
+if (typeof window.renderFactoryInventory === 'function') {
 try {
-renderFactoryInventory();
+window.renderFactoryInventory?.();
 } catch (e) {
 console.error('Payment tab refresh failed.', _safeErr(e));
 window.notifyBlocking('Factory inventory failed to render: ' + (_safeErr(e).message || 'please reload the app'), 'error', 'Something went wrong');

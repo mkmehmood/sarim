@@ -11,5 +11,8 @@
   ],
   "payment-transfer.js": [
     "utilities-payments.js"
+  ],
+  "factory-core.js": [
+    "factory.js"
   ]
 }

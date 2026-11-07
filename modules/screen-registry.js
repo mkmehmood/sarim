@@ -49,4 +49,9 @@ registerLazyModules({
     globals: ['_selectRepCustomerBase', 'adminSwitchRepProfile', 'autoUpdateCustomerLocation', 'calculateRepCustomerStats', 'calculateRepCustomerStatsForDisplay', 'closeRepCustomerEditModal', 'closeRepCustomerManagement', 'deg2rad', 'deleteCurrentRepCustomer', 'exportRepCustomerToPDF', 'fetchRepDeviceLocation', 'getDistanceFromLatLonInMeters', 'initRepMap', 'openRepCustomerEditModal', 'openRepCustomerManagement', 'saveRepCustomerDetails', 'saveRepTransaction', 'selectRepCustomer', 'setRepAnalyticsMode', 'setRepMode', 'updateRepCollectionPreview'],
     hooks: ['calculateRepAnalytics', 'refreshRepUI', 'renderRepCustomerTable', 'renderRepCustomerTransactions', 'renderRepHistory', 'updateRepLiveMap', 'calculateRepSalePreview'],
   },
+  'factory': {
+    load: () => import('./factory.js'),
+    globals: ['calcNet', 'calculateFactoryInventoryValue', 'clearFactoryInventoryForm', 'createSupplierFromMaterial', 'deleteFactoryEntry', 'deleteFactoryPurchase', 'deleteProdEntry', 'editFactoryInventoryItem', 'editFactoryPurchase', 'getStorePricing', 'hideFactoryMaterialResults', 'linkMaterialToSupplier', 'loadExistingSuppliers', 'openFactoryInventoryModal', 'pickFactoryMaterial', 'pickNewFactoryMaterial', 'refreshFactoryFormulaFilter', 'saveFactoryInventoryItem', 'saveFactoryProductionEntry', 'searchFactoryMaterials', 'selectFactoryFormula', 'setFactoryAvailableStore', 'setFactorySummaryMode', 'setFactorySupplierType', 'showSupplierUnlinkOption', 'sortFactoryInventory', 'toggleSupplierFields', 'unlinkFactoryOpeningSupplier', 'unlinkSupplierConfirmation', 'unlinkSupplierFromMaterialById', 'updateFactoryKgCalculation'],
+    hooks: ['renderFactoryInventory', 'renderFactoryHistory', 'updateFactoryInventoryDisplay', 'closeFactoryInventoryModal'],
+  },
 });

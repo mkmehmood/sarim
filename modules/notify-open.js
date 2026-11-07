@@ -112,8 +112,7 @@ async function openView(plan) {
     const dateInput = document.getElementById('sys-date');
     if (plan.date && dateInput && dateInput.value !== plan.date) dateInput.value = plan.date;
     if (plan.store) {
-      const factory = await import('./factory.js');
-      factory._set_currentStore(plan.store);
+      window.currentStore = plan.store;
       const selector = document.getElementById('storeSelector');
       if (selector && (!selector.options || Array.from(selector.options).some((o) => o.value === plan.store))) selector.value = plan.store;
     }

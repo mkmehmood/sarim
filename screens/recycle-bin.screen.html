@@ -48,7 +48,7 @@ import { ensureArray, sqliteStore, _safeErr, generateUUID, validateUUID, getTime
 import { showToast } from './customers.js';
 import { orderForRestore, expandRecoveryMembers, planGroupRecovery, rec, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSkipReattach, expandGroups, findGroupMembers } from './link-graph.js';
 import { getRecoverBlockReason, getRecoverLinkBlockReason, getLiveRecoveryRefs, applyRenameOnRecovery, findLiveSameNameRecord, applyRecoveryLinks, resolveSnapshotLinks } from './link-guards.js';
-import { syncFactoryProductionStats } from './factory.js';
+import { syncFactoryProductionStats } from './factory-core.js';
 import { reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries, processReturnToProduction, _recreateCalcTransferSale, processExpiredToChora, _calcOriginalMoment, _claimRepSalesForCalc, purgeRecoveredId, _recoveredThisSession, _clearErasedIds } from './utilities-payments.js';
 import { unifiedDelete, unifiedSave, getSQLiteKey } from './sync.js';
 import { revertRepSalesEntries, markAllPendingCreditSalesAsCash, calculateNetCash, calculateCashTracker, trackFirestoreWrite, getStoreLabel } from './utilities-sales.js';

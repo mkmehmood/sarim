@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 10 screens and the rep tab are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 10 screens, the rep tab and the factory tab are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -190,6 +190,22 @@ How, in the order it was done:
 What to check on a device: first Rep tab open as admin and as rep (online and offline), editing a rep customer from a payments search, opening a rep customer from a notification, exporting a rep customer to PDF, deleting a rep entry (the delete refreshes the rep UI), and the biometric toggle in the sidebar.
 
 Same job still open for `factory.js` (46 KB): it holds core calculations that sales, payments and sync import (`calculatePaymentSummaries`, `getCostPerUnit`, `getSaleTransactionValue`, `getGoodsCreditUnitPrice`, `getReconciledRepReturnIds`, `getFormulaUnitsValue`), so those have to move to core first (step 1 above, but for money logic), then the references can be classified the same way.
+
+### factory.js made genuinely lazy (38.3 KB chunk)
+`factory.js` is not only the Factory tab: it also holds the **Production tab's** units-available indicator, production cost calculator and tracking update (`syncFactoryProductionStats` recalculates and persists `tracking` after every production entry), plus all the pricing, credit and payment-summary calculations that sales, payments, customers, admin-data, rep-sales and sync import. The Production tab is the default, so that code must exist at start-up. Only the Factory-tab and raw-material UI can be lazy.
+
+Measured with scope analysis: the part core needs is **22 names / 340 lines**; the other **54 names / 1,050 lines (75%)** are lazy. Done in this order:
+1. **State mirrors removed.** `currentStore`, `currentFactorySummaryMode` and `editingFactoryInventoryId` were local copies of values the UI-state registry in `utilities-core.js` already owns (it defines `window.X` accessors with the defaults `'daily'` and `null`), kept in step by `_set_*` helpers and a `__uiSyncers` push. `factory.js` now reads and writes `window.X` directly and core does the same. The six removed names (3 variables, 3 `_set_*` helpers) are listed with their reasons in `docs/screen-split/intentional-removals.json`; `split-manifest` treats exactly those as allowed and everything else as lost. `notify-open.js` assigns `window.currentStore` instead of calling `_set_currentStore`.
+2. **Core closure moved** with `module-split` to `modules/factory-core.js`: `getSalePriceForStore`, `getEffectiveSalePriceForCustomer`, `getSaleTransactionValue`, `getGoodsCreditUnitPrice`, `getRepGoodsCreditUnitPrice`, `getCostPriceForStore`, `getCostPerUnit`, `getFormulaUnitsValue`, `calculateDynamicCost`, `calculateSalesCostPerKg`, `calculatePaymentSummaries`, `getReconciledRepReturnIds`, `validateFormulaAvailability`, `unlinkSupplierFromMaterial`, `updateFormulaInventory`, `syncFactoryProductionStats`, `updateUnitsAvailableIndicator`, `updateProductionCostOnStoreChange`, `calculateFactoryProduction`, `calculateDynamicProductionCost` and their helpers. These are verbatim moves; no calculation was edited. `registerEditHandler('factory', …)` now lives in core and loads the module on demand with `import('./factory.js')`.
+3. **Remaining imports rewritten** with `lazy-module`: four render hooks (`renderFactoryInventory`, `renderFactoryHistory`, `updateFactoryInventoryDisplay`, `closeFactoryInventoryModal`) do nothing until the chunk is loaded; the other 31 published functions are start-up stubs that load it on first call.
+
+Start-up JS (gzip): 397 KB on `main` → 355 KB after rep-sales → **345 KB**. About 76 KB gzip is now lazy (10 screens, rep tab, factory tab).
+
+Two defects were found only because of review and the build, and each now has a test:
+- A late-bound edit handler called `window.startEditFactoryEntry(...)`, which is not published. It would have thrown if Edit were tapped before the chunk loaded. `tests/screen-registry.test.js` now checks that every `(...args) => window.X(...args)` wrapper in core points at something published, stubbed or declared a hook.
+- The two earlier screens (`recycle-bin`, `stock-transfer`) imported a function that moved. Lint does not resolve imports and my split tools only rewrote `modules/`, so only the production build caught it. `tests/imports-resolve.test.js` now checks every named import in every module and screen script against the target's real exports, and `module-split` now also repoints imports inside `screens/*.screen.html`. `lazy-module` still only rewrites `modules/` (no screen currently needs it; the new test would flag one that did).
+
+What to check on a device: Production tab (store switch, units available badge, cost and profit, save and delete a production entry), Factory tab first open online and offline, editing a factory entry from its history card, the raw-material screen (add, edit, delete, link and unlink a supplier), a payment recorded for a sale (summaries), customer and rep ledgers (prices and credit), and a notification that opens a factory or production card.
 
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.

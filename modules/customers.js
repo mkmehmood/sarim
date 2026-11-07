@@ -9,7 +9,7 @@ import { getPersonPhoto, loadPersonPhotoIntoEditor, notifyDataChange, renderPers
 import { renderLedger, applyCmFilters, resetLedgerFilter, menuButtonHtml } from './cm-ledger.js';
 import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLabel, refreshCustomerSales, updateCollectionPreview } from './utilities-sales.js';
 import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, reverseExpiredFromChora, safeValue } from './utilities-payments.js';
-import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, getReconciledRepReturnIds, updateUnitsAvailableIndicator } from './factory.js';
+import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, getReconciledRepReturnIds, updateUnitsAvailableIndicator } from './factory-core.js';
 import { confirmGuard } from './confirm-guard.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';

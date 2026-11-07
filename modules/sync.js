@@ -7,7 +7,7 @@ import { _set_restoring, _set_closing, closeYearInProgress, restoring, closing }
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
 import { _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable } from './utilities-payments.js';
-import { renderFactoryInventory, updateUnitsAvailableIndicator } from './factory.js';
+import { updateUnitsAvailableIndicator } from './factory-core.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { accountInfoFromDoc, applyAccountSession, applyCachedAccountSession, syncAccountSession } from './account-session.js';
 import { clearRolesCache, readRolesCache, writeRolesCache } from './roles.js';
@@ -1201,8 +1201,8 @@ arr = arr.filter(item => item.id !== rid);
 await _setColData(col.sqliteKey, arr);
 await DeltaSync.setLastSyncTimestamp(col.firestoreId);
 emitSyncUpdate({ [col.sqliteKey]: null});
-if (col.tabSyncFn === 'syncFactoryTab' && typeof renderFactoryInventory === 'function') {
-renderFactoryInventory();
+if (col.tabSyncFn === 'syncFactoryTab' && typeof window.renderFactoryInventory === 'function') {
+window.renderFactoryInventory?.();
 } else if ((col.tabSyncFn === 'syncPaymentsTab' || col.tabSyncFn === 'refreshPaymentTab') && typeof renderUnifiedTable === 'function') {
 await renderUnifiedTable();
 } else if (col.tabSyncFn && typeof window[col.tabSyncFn] === 'function') {
