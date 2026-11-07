@@ -2,14 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import * as acorn from 'acorn';
-import { parseScreen, compileScreen } from '../scripts/screen-compile.mjs';
+import { parseScreen, compileScreen, compileScreenStatic } from '../scripts/screen-compile.mjs';
 import { publishedGlobals } from '../scripts/screen-globals.mjs';
 import { readIndexHtml } from './helpers/source.js';
 
 const root = new URL('../', import.meta.url);
 const read = p => readFileSync(new URL(p, root), 'utf8');
 const registry = read('modules/screen-registry.js');
-const entries = [...registry.matchAll(/'([\w-]+)': \{\s*load: \(\) => import\('\.\/([\w-]+)\.screen\.js'\),\s*globals: \[([^\]]*)\],/g)]
+const entries = [...registry.matchAll(/'([\w-]+)': \{\s*load: \(\) => import\('\.\.\/screens\/compiled\/([\w-]+)\.screen\.js'\),\s*globals: \[([^\]]*)\],/g)]
   .map(m => ({ id: m[1], name: m[2], globals: [...m[3].matchAll(/'([^']+)'/g)].map(x => x[1]) }));
 const lazyBlock = registry.slice(registry.indexOf('registerLazyModules({'));
 const lazyEntries = [...lazyBlock.matchAll(/'([\w-]+)': \{\s*load: \(\) => import\('\.\/([\w-]+)\.js'\),\s*globals: \[([^\]]*)\],\s*hooks: \[([^\]]*)\],/g)]
@@ -33,7 +33,7 @@ for (const e of entries) {
     assert.equal((raw.match(new RegExp(`id="${e.id}"`, 'g')) || []).length, 1, 'only the placeholder carries the id');
     assert.deepEqual([...e.globals].sort(), published(js), 'registry globals match the screen script');
     acorn.parse(compileScreen(text, e.name), { ecmaVersion: 'latest', sourceType: 'module' });
-    assert.ok(read('sw.js').includes(`'./modules/${e.name}.screen.js'`), 'service worker precaches the screen');
+    assert.ok(read('sw.js').includes(`'./screens/compiled/${e.name}.screen.js'`), 'service worker precaches the screen');
   });
 }
 
@@ -97,4 +97,22 @@ test('every late-bound wrapper in core points at a function that is published, s
     }
   }
   assert.deepEqual(problems, []);
+});
+
+test('every compiled screen file exists, is current, and has a screen file behind it (a source-served site needs them)', () => {
+  const compiled = readdirSync(new URL('screens/compiled/', root)).filter(f => f.endsWith('.screen.js')).map(f => f.replace('.screen.js', '')).sort();
+  assert.deepEqual(compiled, [...files].sort());
+  for (const name of files) {
+    assert.equal(read(`screens/compiled/${name}.screen.js`), compileScreenStatic(read(`screens/${name}.screen.html`), name), `screens/compiled/${name}.screen.js is stale: run npm run screens`);
+  }
+});
+
+test('compiled screens only import real modules', () => {
+  for (const name of files) {
+    const code = read(`screens/compiled/${name}.screen.js`);
+    for (const m of code.matchAll(/from '(\.\.\/\.\.\/modules\/[\w-]+\.js)'/g)) {
+      assert.ok(readFileSync(new URL(m[1].replace('../../', ''), root), 'utf8').length > 0, `${name}: ${m[1]}`);
+    }
+    assert.ok(!/from '\.\//.test(code), `${name}: a relative import was not rewritten`);
+  }
 });

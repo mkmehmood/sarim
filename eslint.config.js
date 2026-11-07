@@ -40,7 +40,7 @@ export const errorRules = {
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'vendor/**', 'android/**', 'desktop/node_modules/**', 'desktop/app/**', 'desktop/release/**', 'sql.js', 'sql-wasm.js'],
+    ignores: ['dist/**', 'screens/compiled/**', 'node_modules/**', 'vendor/**', 'android/**', 'desktop/node_modules/**', 'desktop/app/**', 'desktop/release/**', 'sql.js', 'sql-wasm.js'],
   },
   {
     files: ['**/*.js'],

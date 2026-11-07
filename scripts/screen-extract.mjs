@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import postcss from 'postcss';
 import * as acorn from 'acorn';
 import { publishedGlobals } from './screen-globals.mjs';
+import { writeCompiledScreens } from './screen-compile.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const rd = p => readFileSync(join(ROOT, p), 'utf8');
@@ -160,13 +161,14 @@ for (const m of ownMods) {
   main = main.replace(new RegExp(`import '\\./${m.file.replace('.', '\\.')}';\\n`), '');
   sw = sw.replace(new RegExp(`  './modules/${m.file.replace('.', '\\.')}',\\n`), '');
 }
-sw = sw.replace("  './modules/main.js',\n", `  './modules/main.js',\n  './modules/${name}.screen.js',\n`);
+sw = sw.replace("  './modules/main.js',\n", `  './modules/main.js',\n  './screens/compiled/${name}.screen.js',\n`);
 writeFileSync(join(ROOT, 'modules/main.js'), main);
 writeFileSync(join(ROOT, 'sw.js'), sw);
 
 let reg = rd('modules/screen-registry.js');
-const entry = `  '${screenId}': {\n    load: () => import('./${name}.screen.js'),\n    globals: [${[...globals].sort().map(g => `'${g}'`).join(', ')}],\n  },\n`;
+const entry = `  '${screenId}': {\n    load: () => import('../screens/compiled/${name}.screen.js'),\n    globals: [${[...globals].sort().map(g => `'${g}'`).join(', ')}],\n  },\n`;
 const tail = reg.lastIndexOf('\n});');
 reg = reg.slice(0, tail + 1) + entry + reg.slice(tail + 1);
 writeFileSync(join(ROOT, 'modules/screen-registry.js'), reg);
-console.log(`wrote screens/${name}.screen.html and updated index.html, app.css, main.js, sw.js, screen-registry.js`);
+writeCompiledScreens(ROOT);
+console.log(`wrote screens/${name}.screen.html (and screens/compiled/${name}.screen.js) and updated index.html, app.css, main.js, sw.js, screen-registry.js`);

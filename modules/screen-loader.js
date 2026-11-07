@@ -33,11 +33,15 @@ export function loadScreen(id) {
   return pending.get(id);
 }
 
+function reportLoadFailure() {
+  if (typeof window.showToast === 'function') window.showToast('Could not load this screen. Check your connection and try again.', 'error', 4000);
+}
+
 function installStubs(id, globals) {
   for (const name of globals || []) {
     if (typeof window[name] === 'function') continue;
     const stub = function (...args) {
-      return loadScreen(id).then(() => {
+      return loadScreen(id).catch(err => { reportLoadFailure(); throw err; }).then(() => {
         const real = window[name];
         return real === stub || typeof real !== 'function' ? undefined : real.apply(this, args);
       });
@@ -52,9 +56,7 @@ function installOpenGate() {
   if (typeof orig !== 'function' || orig.__screenGate) return;
   const gate = function (id) {
     if (defs.has(id) && !mounted.has(id)) {
-      loadScreen(id).then(() => orig(id)).catch(() => {
-        if (typeof window.showToast === 'function') window.showToast('Could not load this screen. Check your connection and try again.', 'error', 4000);
-      });
+      loadScreen(id).then(() => orig(id)).catch(reportLoadFailure);
       return;
     }
     return orig(id);

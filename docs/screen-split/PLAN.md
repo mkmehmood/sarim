@@ -207,6 +207,18 @@ Two defects were found only because of review and the build, and each now has a 
 
 What to check on a device: Production tab (store switch, units available badge, cost and profit, save and delete a production entry), Factory tab first open online and offline, editing a factory entry from its history card, the raw-material screen (add, edit, delete, link and unlink a supplier), a payment recorded for a sale (summaries), customer and rep ledgers (prices and credit), and a notification that opens a factory or production card.
 
+### Incident: lazy screens 404 on a site that serves the source tree
+Reported from a device: every lazy screen failed with `404` on `modules/<name>.screen.js` and `Failed to fetch dynamically imported module`. Cause: the site was serving the **source tree** (unbundled `sync.js` in the console, `.nojekyll` in the repo), not the build. `modules/<name>.screen.js` existed only virtually (the esbuild plugin and the dev server created it), so a static host had nothing to serve. The same missing files were also in the service worker's precache list; a service worker whose precache list contains a 404 fails to install, so offline/PWA install was broken there as well. The test suite, lint and the production build all passed, because none of them ever served the source tree.
+
+Fix: compiled copies are now real, committed files.
+- `screens/compiled/<name>.screen.js`, generated from `screens/<name>.screen.html` by `npm run screens` (`scripts/screens-build.mjs`). They sit outside `modules/` so the hygiene and duplicate-code scanners do not see the code twice, and ESLint ignores them (the screen scripts are linted from their source by `screens-lint`). Relative imports are rewritten to `../../modules/…` using the syntax tree.
+- `modules/screen-registry.js` and `sw.js` point at `screens/compiled/…`. The build still resolves them from the `.screen.html` source, so `dist` is unchanged; the dev server regenerates them on the fly.
+- `screens/compiled/` must never be edited by hand. `tests/screen-registry.test.js` fails when any compiled file is stale (`run npm run screens`) or has no source behind it; `scripts/screen-extract.mjs` regenerates it automatically.
+- A failed load now shows "Could not load this screen. Check your connection and try again." for stub calls too (before, only the open path did).
+- **`tests/source-served.test.js`** starts a plain static server over the repository, crawls every static and dynamic import from `modules/main.js`, and checks every service-worker precache entry. It reproduces the incident exactly on the previous commit (10 screens plus the precache entries missing) and passes now. Any future change that needs a build step to resolve a file will fail it.
+
+Deployment note: `deploy.yml` publishes `dist` from `main` after `npm run check`, which was never affected. The incident only affects a site serving a branch's source directly (for example, Pages set to "deploy from a branch").
+
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.
 - **3b. Make openers wait for the screen.** Add `ensureScreen(id)` (an exported wrapper over `loadScreen`) and have each core opener `await` it before touching the screen's elements; sync openers must become async.

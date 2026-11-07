@@ -8,8 +8,6 @@ let checked = 0;
 
 function check(ref, from) {
   checked++;
-  const m = /^modules\/([\w-]+)\.screen\.js$/.exec(ref);
-  if (m && base === root && existsSync(join(base, 'screens', `${m[1]}.screen.html`))) return;
   if (!existsSync(join(base, ref))) missing.push(`${ref}  (from ${from})`);
 }
 
