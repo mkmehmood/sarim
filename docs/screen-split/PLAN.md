@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 10 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 10 screens and the rep tab are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -175,6 +175,21 @@ Tests that read these functions now read them from `modules/stock-transfer.js` /
 | customers, link-graph, link-guards, cm-ledger | 39, 30, 20, 18 KB |
 
 So the biggest remaining payoff is not more small screens. It is (1) breaking the static imports that pin `factory.js` and `rep-sales.js` (about 95 KB raw, and the `raw-material` screen code lives inside `factory.js`), then (2) carving the tab code out of the five monoliths (Phase 4).
+
+### rep-sales made genuinely lazy (first real start-up saving)
+`main.js` always loaded `rep-sales.js` with `import()`, but four modules also imported it statically, so it shipped in the start-up chunk. It is now its own 47.8 KB chunk, precached for offline use, that loads when the Rep tab is first shown (the existing `_lazyLoadRep` path: `showTab('rep')` awaits the load, then `syncRepTab()` and `handleRepTabUI()` render). Measured start-up JS (gzip): 397 KB on `main` → 355 KB.
+
+How, in the order it was done:
+1. **Move what was never a rep feature into core.** `getPosition` (GPS, used when saving sales) → `modules/geo.js`; the biometric app lock (`checkBiometricLock`, `syncBiometricButton`, `_bioIsOn`) → `modules/app-lock.js`; `toggleBiometricLock` / `enableBiometricLock` / `disableBiometricLock` → `modules/biometric-toggle.js` (imported by `main.js`, because nothing else imports it). `app-lock.js` and `utilities-payments.js` import each other (`BiometricAuth` is only used inside functions at call time, so the cycle is safe).
+2. **Classify every remaining reference with `scripts/lazy-module.mjs`** (scope analysis, so only real uses of the imported binding change):
+   - **Seven refresh hooks, silent until loaded:** `refreshRepUI`, `renderRepCustomerTable`, `renderRepCustomerTransactions`, `renderRepHistory`, `calculateRepAnalytics`, `updateRepLiveMap`, `calculateRepSalePreview` become `window.f?.(x)`. With no rep UI loaded there is nothing to refresh, and the tab renders in full when it first loads.
+   - **Everything else is an entry point and gets a start-up stub** (21 functions, listed in `modules/screen-registry.js` under `registerLazyModules`), so notification links, the rep customer edit form, PDF export, the rep search picks and `fetchRepDeviceLocation` load the module on demand.
+   - **`repMap`** is a reassigned variable, so `window.repMap = repMap` would have published a stale `null`. It is now `Object.defineProperty(window, 'repMap', { get })` and readers use `window.repMap`. The split checker also counts `defineProperty(window, …)` as a publish.
+3. **Tests** (`tests/screen-registry.test.js`): every published function of a lazy module is either stubbed or a declared hook (and never both); nothing imports it statically; no module calls a hook without `?.`; notification targets resolve to an eager or stubbed global.
+
+What to check on a device: first Rep tab open as admin and as rep (online and offline), editing a rep customer from a payments search, opening a rep customer from a notification, exporting a rep customer to PDF, deleting a rep entry (the delete refreshes the rep UI), and the biometric toggle in the sidebar.
+
+Same job still open for `factory.js` (46 KB): it holds core calculations that sales, payments and sync import (`calculatePaymentSummaries`, `getCostPerUnit`, `getSaleTransactionValue`, `getGoodsCreditUnitPrice`, `getReconciledRepReturnIds`, `getFormulaUnitsValue`), so those have to move to core first (step 1 above, but for money logic), then the references can be classified the same way.
 
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.

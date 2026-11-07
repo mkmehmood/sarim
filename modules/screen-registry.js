@@ -1,4 +1,4 @@
-import { registerScreens } from './screen-loader.js';
+import { registerScreens, registerLazyModules } from './screen-loader.js';
 
 registerScreens({
   'daily-ledger-screen': {
@@ -40,5 +40,13 @@ registerScreens({
   'store-manager-screen': {
     load: () => import('./store-manager.screen.js'),
     globals: ['deleteStore', 'editStore', 'openStoreManagerScreen', 'renderStoreList', 'resetStoreForm', 'saveStoreFromForm'],
+  },
+});
+
+registerLazyModules({
+  'rep-sales': {
+    load: () => import('./rep-sales.js'),
+    globals: ['_selectRepCustomerBase', 'adminSwitchRepProfile', 'autoUpdateCustomerLocation', 'calculateRepCustomerStats', 'calculateRepCustomerStatsForDisplay', 'closeRepCustomerEditModal', 'closeRepCustomerManagement', 'deg2rad', 'deleteCurrentRepCustomer', 'exportRepCustomerToPDF', 'fetchRepDeviceLocation', 'getDistanceFromLatLonInMeters', 'initRepMap', 'openRepCustomerEditModal', 'openRepCustomerManagement', 'saveRepCustomerDetails', 'saveRepTransaction', 'selectRepCustomer', 'setRepAnalyticsMode', 'setRepMode', 'updateRepCollectionPreview'],
+    hooks: ['calculateRepAnalytics', 'refreshRepUI', 'renderRepCustomerTable', 'renderRepCustomerTransactions', 'renderRepHistory', 'updateRepLiveMap', 'calculateRepSalePreview'],
   },
 });

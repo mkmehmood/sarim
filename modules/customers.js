@@ -10,7 +10,6 @@ import { renderLedger, applyCmFilters, resetLedgerFilter, menuButtonHtml } from 
 import { calculateCashTracker, calculateNetCash, custTransactionMode, getStoreLabel, refreshCustomerSales, updateCollectionPreview } from './utilities-sales.js';
 import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, refreshEntityBalances, refreshPaymentTab, reverseExpiredFromChora, safeValue } from './utilities-payments.js';
 import { calculatePaymentSummaries, getEffectiveSalePriceForCustomer, getSaleTransactionValue, getReconciledRepReturnIds, updateUnitsAvailableIndicator } from './factory.js';
-import { renderRepCustomerTable, renderRepCustomerTransactions } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
@@ -564,7 +563,7 @@ await unifiedSave('rep', rep, rep[idx]);
 notifyDataChange('rep');
 triggerAutoSync();
 if (typeof refreshPaymentTab === 'function') await refreshPaymentTab();
-renderRepCustomerTransactions(currentManagingRepCustomer);
+window.renderRepCustomerTransactions?.(currentManagingRepCustomer);
 refreshAllCalculations();
 }
 } catch (e) {
@@ -729,15 +728,15 @@ _rMsg += `\n\nThis cannot be undone.`;
 if (!(await showGlassConfirm(_rMsg, { title: _rTitle || `Delete ${_rType}`, confirmText: 'Delete', danger: true }))) return;
 try {
 const item = rep.find(s => s.id === id);
-if (!item) { renderRepCustomerTransactions(currentManagingRepCustomer); return; }
+if (!item) { window.renderRepCustomerTransactions?.(currentManagingRepCustomer); return; }
 await detachChildPayment('rep', item, rep);
 const repSalesFiltered = rep.filter(s => s.id !== id);
 await unifiedDelete('rep', repSalesFiltered, id, { strict: true }, item);
 if (item.paymentType === 'COLLECTION' && Number(item.expiredQty) > 0 && item.expiredApplied !== false) {
 await reverseExpiredFromChora(Number(item.expiredQty), item.date);
 }
-renderRepCustomerTransactions(currentManagingRepCustomer);
-renderRepCustomerTable();
+window.renderRepCustomerTransactions?.(currentManagingRepCustomer);
+window.renderRepCustomerTable?.();
 notifyDataChange('rep');
 triggerAutoSync();
 } catch (e) {

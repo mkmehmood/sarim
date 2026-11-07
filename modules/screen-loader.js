@@ -70,3 +70,5 @@ export function registerScreens(map) {
   }
   installOpenGate();
 }
+
+export const registerLazyModules = registerScreens;

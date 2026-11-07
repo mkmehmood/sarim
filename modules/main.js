@@ -2,6 +2,7 @@ import './add-entity.js';
 import './raw-material.js';
 import './native.js';
 import './screen-registry.js';
+import './biometric-toggle.js';
 import './notify.js';
 import './constants.js';
 import './business.js';

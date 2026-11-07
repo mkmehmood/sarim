@@ -18,7 +18,6 @@ import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSu
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
-import { calculateRepCustomerStatsForDisplay, openRepCustomerEditModal, refreshRepUI, renderRepCustomerTable, renderRepCustomerTransactions, renderRepHistory } from './rep-sales.js';
 import { checkBiometricLock, syncBiometricButton } from './app-lock.js';
 import { deriveSession, readRolesCache, structureKey } from './roles.js';
 import { confirmGuard } from './confirm-guard.js';
@@ -940,8 +939,8 @@ await Promise.all([
   (() => {
     try {
       if (appMode === 'rep') {
-        if (typeof renderRepHistory === 'function') renderRepHistory();
-        if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
+        if (typeof window.renderRepHistory === 'function') window.renderRepHistory?.();
+        if (typeof window.renderRepCustomerTable === 'function') window.renderRepCustomerTable?.();
       }
     } catch (e) { console.error('Rep tab refresh failed.', _safeErr(e)); }
   })(),
@@ -1103,8 +1102,8 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
     updateAllTabsWithFactoryCosts();
     await refreshAllDisplays();
   if (appMode === 'rep') {
-    if (typeof renderRepHistory === 'function') renderRepHistory();
-    if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
+    if (typeof window.renderRepHistory === 'function') window.renderRepHistory?.();
+    if (typeof window.renderRepCustomerTable === 'function') window.renderRepCustomerTable?.();
   }
   loadSalesRepsList();
   setTimeout(() => {
@@ -1237,7 +1236,7 @@ _showFilterEmpty(listSelector, total, shown, msg);
 }
 
 export function applyCustomerHistoryFilter(mode) {
-if (mode === 'rep') { if (typeof renderRepHistory === 'function') renderRepHistory(); return; }
+if (mode === 'rep') { if (typeof window.renderRepHistory === 'function') window.renderRepHistory?.(); return; }
 if (typeof window.updateCustomerCharts === 'function') Promise.resolve(window.updateCustomerCharts()).catch(() => {});
 if (typeof window.recomputeCustomerSummary === 'function' && window.recomputeCustomerSummary()) return;
 const refDate = (document.getElementById('cust-date') || {}).value || localDateStr();
@@ -4528,7 +4527,7 @@ const adminAnalytics = document.getElementById('admin-rep-analytics');
 if (adminAnalytics) { adminAnalytics.classList.add('hidden'); window.setDisplay(adminAnalytics, 'none'); }
 const newTransCard = document.getElementById('rep-new-transaction-card');
 if (newTransCard) window.setDisplay(newTransCard, 'block');
-if (typeof refreshRepUI === 'function') refreshRepUI();
+if (typeof window.refreshRepUI === 'function') window.refreshRepUI?.();
 }
 
 export function lockToProductionMode() {
@@ -4826,7 +4825,7 @@ return;
 }
 const transaction = rep.find(t => t.id === id);
 if (!transaction) {
-await refreshRepUI(true);
+await window.refreshRepUI?.(true);
 return;
 }
 if (transaction.isMerged) {
@@ -4885,9 +4884,9 @@ await unifiedDelete('rep', repSalesFiltered, id, { strict: true }, transaction);
 if (wasCollection && Number(transaction.expiredQty) > 0 && transaction.expiredApplied !== false) {
 await reverseExpiredFromChora(Number(transaction.expiredQty), transaction.date);
 }
-await refreshRepUI(true);
-if (currentManagingRepCustomer && typeof renderRepCustomerTransactions === 'function') {
-await renderRepCustomerTransactions(currentManagingRepCustomer);
+await window.refreshRepUI?.(true);
+if (currentManagingRepCustomer && typeof window.renderRepCustomerTransactions === 'function') {
+await window.renderRepCustomerTransactions?.(currentManagingRepCustomer);
 }
 notifyDataChange('rep');
 triggerAutoSync();
@@ -5148,8 +5147,8 @@ applyCustomerHistoryFilter('admin');
 const _phoneContainer = document.getElementById('new-customer-phone-container');
 if (_phoneContainer) _phoneContainer.classList.add('hidden');
 } else if (type === 'repName' && inputId === 'rep-cust-name') {
-if (typeof calculateRepCustomerStatsForDisplay === 'function') {
-calculateRepCustomerStatsForDisplay(value);
+if (typeof window.calculateRepCustomerStatsForDisplay === 'function') {
+window.calculateRepCustomerStatsForDisplay(value);
 }
 if (input) input.dataset.histCustomer = String(value || '').trim().toLowerCase();
 applyCustomerHistoryFilter('rep');
@@ -5159,11 +5158,11 @@ window.applyPaymentTransferFilter();
 } else if (type === 'name' && inputId === 'cust-add-search') {
 if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 } else if (type === 'repName' && inputId === 'rep-cust-add-search') {
-if (typeof openRepCustomerEditModal === 'function') openRepCustomerEditModal(value);
+if (typeof window.openRepCustomerEditModal === 'function') window.openRepCustomerEditModal(value);
 } else if (type === 'name' && inputId === 'edit-cust-name') {
 if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 } else if (type === 'repName' && inputId === 'rep-edit-cust-name') {
-if (typeof openRepCustomerEditModal === 'function') openRepCustomerEditModal(value);
+if (typeof window.openRepCustomerEditModal === 'function') window.openRepCustomerEditModal(value);
 } else if (type === 'ledger' && typeof window.dailyLedgerOnPick === 'function') {
 window.dailyLedgerOnPick(inputId, value);
 } else if (type === 'category-pick' && typeof window.expenseCategoryOnPick === 'function') {
@@ -5454,7 +5453,7 @@ if (typeof renderEntityTable === 'function') {
 }
 if (typeof renderExpenseTable === 'function') {
 }
-if (typeof renderRepCustomerTable === 'function') {
+if (typeof window.renderRepCustomerTable === 'function') {
 }
 })();
 

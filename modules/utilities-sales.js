@@ -24,7 +24,6 @@ import { SarimChart, _describeSupplierLinkImpact, _refreshSupplierLinkViews, _re
 import { _filterHistoryByPeriod, calculateComparisonData, calculateEntityBalances, currentCompMode, currentSalesSummaryMode, deletePaymentTransfer, formatCurrency, formatDisplayDate, formatDisplayDateTime, getCalcCycleSelection, getPendingRepDeliveries, getPendingRepReturns, getMetricLabel, getMetricValue, loadSalesData, phoneActionHTML, processExpiredToChora, processReturnToProduction, refreshAllDisplays, refreshPaymentTab, renderUnifiedTable, safeValue, renderReturnTargets, setSalesSummaryMode, updateSalesCharts, reverseReturnFromProduction, reverseExpiredFromChora, revertSpecificSalesEntries } from './utilities-payments.js';
 import { calculateFactoryProduction, currentFactorySummaryMode, currentStore, getCostPerUnit, getFormulaUnitsValue, getCostPriceForStore, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, getGoodsCreditUnitPrice, getReconciledRepReturnIds, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateProductionCostOnStoreChange, updateUnitsAvailableIndicator } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingCustomer, renderCustomerTransactions, renderCustomersTable, showGlassConfirm, showPasswordConfirm, showToast } from './customers.js';
-import { calculateRepAnalytics, calculateRepSalePreview, refreshRepUI, renderRepCustomerTable, repMap, updateRepLiveMap } from './rep-sales.js';
 import { getPosition } from './geo.js';
 import { isSupportedBackup, collectAuxBackupFields, applyAuxBackupFields } from './link-graph.js';
 import { confirmGuard } from './confirm-guard.js';
@@ -2040,7 +2039,7 @@ export function selectRepPaymentType(btn, value) {
 document.querySelectorAll('#btn-rep-pay-credit, #btn-rep-pay-cash').forEach(b => b.classList.remove('active'));
 btn.classList.add('active');
 document.getElementById('rep-payment-value').value = value;
-calculateRepSalePreview();
+window.calculateRepSalePreview?.();
 }
 
 export function autoFillCustomerName() {
@@ -5153,17 +5152,17 @@ if (mainDate && adminDate) {
 adminDate.value = mainDate.value;
 }
 if (newTransCard) window.setDisplay(newTransCard, 'block');
-if (typeof calculateRepAnalytics === 'function') {
-calculateRepAnalytics();
+if (typeof window.calculateRepAnalytics === 'function') {
+window.calculateRepAnalytics?.();
 }
 requestAnimationFrame(() => {
 setTimeout(() => {
-if (typeof updateRepLiveMap === 'function') {
+if (typeof window.updateRepLiveMap === 'function') {
 const mapContainer = document.getElementById('rep-map-container');
-if (mapContainer && repMap) {
-repMap.invalidateSize();
+if (mapContainer && window.repMap) {
+window.repMap.invalidateSize();
 }
-updateRepLiveMap();
+window.updateRepLiveMap?.();
 }
 }, 100);
 });
@@ -5171,8 +5170,8 @@ updateRepLiveMap();
 if (adminControls) window.setDisplay(adminControls, 'none');
 if (adminAnalytics) window.setDisplay(adminAnalytics, 'none');
 if (newTransCard) window.setDisplay(newTransCard, 'block');
-if (typeof renderRepCustomerTable === 'function') {
-renderRepCustomerTable();
+if (typeof window.renderRepCustomerTable === 'function') {
+window.renderRepCustomerTable?.();
 }
 }
 }
@@ -5347,12 +5346,12 @@ const mainInput = document.getElementById('rep-date');
 if(mainInput) {
 mainInput.value = val;
 }
-refreshRepUI();
-if (typeof updateRepLiveMap === 'function') {
-updateRepLiveMap();
+window.refreshRepUI?.();
+if (typeof window.updateRepLiveMap === 'function') {
+window.updateRepLiveMap?.();
 }
-if (typeof calculateRepAnalytics === 'function') {
-calculateRepAnalytics();
+if (typeof window.calculateRepAnalytics === 'function') {
+window.calculateRepAnalytics?.();
 }
 }
 

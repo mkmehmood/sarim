@@ -11,7 +11,7 @@ import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ledgerDelta, ledgerSplit, allocHonor, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, selectedCustomerFilter, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
-import { BiometricAuth, formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
+import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
 import { getCostPriceForStore, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory.js';
 import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
@@ -21,7 +21,6 @@ import { confirmGuard } from './confirm-guard.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { getDefaultStoreKey } from './store-keys.js';
 import { getPosition } from './geo.js';
-import { _bioIsOn, syncBiometricButton } from './app-lock.js';
 
 export let repTransactionMode = 'sale';
 window.repTransactionMode = repTransactionMode;
@@ -33,36 +32,6 @@ export function _set_currentRepAnalyticsMode(v) { currentRepAnalyticsMode = v; w
   try { const v = window.currentRepAnalyticsMode; if (v !== undefined) currentRepAnalyticsMode = v; } catch (_) {}
   try { const v = window.repTransactionMode; if (v !== undefined) repTransactionMode = v; } catch (_) {}
 });
-export async function toggleBiometricLock() {
-let on = false;
-try { on = _bioIsOn(await sqliteStore.get('bio_enabled')); } catch (_) {}
-if (on) await disableBiometricLock();
-else await enableBiometricLock();
-await syncBiometricButton();
-}
-export async function enableBiometricLock() {
-try {
-const success = await BiometricAuth.register("Manager");
-if (success) {
-if (window.__setBioHint) window.__setBioHint(true);
-showToast("Biometric Lock Enabled! ", "success");
-await syncBiometricButton();
-}
-} catch (e) {
-if (!(e && e.name === 'NotAllowedError')) showToast("Setup failed: " + e.message, "error");
-}
-}
-export async function disableBiometricLock() {
-const _bioMsg = `Remove the biometric (fingerprint / Face ID) lock from this app?\n\nAfter removal:\n • Anyone with access to this device can open the app without biometric verification\n • To re-enable, tap Fingerprint Lock in the sidebar again\n\nYour data will not be affected.`;
-if (await showGlassConfirm(_bioMsg, { title: "Remove Biometric Lock", confirmText: "Remove Lock", danger: true })) {
-await sqliteStore.set('bio_enabled', 'false');
-await sqliteStore.remove('bio_cred_id');
-window.__appLocked = false;
-if (window.__setBioHint) window.__setBioHint(false);
-try { await sqliteStore.flush(); } catch (_) {}
-await syncBiometricButton();
-}
-}
 function _resetRepForm() {
 ['rep-cust-name', 'rep-quantity', 'rep-amount-collected', 'rep-expired-qty', 'rep-new-cust-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 const pc = document.getElementById('rep-new-customer-phone-container'); if (pc) pc.classList.add('hidden');
@@ -1582,9 +1551,6 @@ setTimeout(updateRepLiveMap, 200);
 }
 }
 }
-window.enableBiometricLock = enableBiometricLock;
-window.disableBiometricLock = disableBiometricLock;
-window.toggleBiometricLock = toggleBiometricLock;
 window.setRepMode = setRepMode;
 window.selectRepCustomer = selectRepCustomer;
 window.calculateRepCustomerStatsForDisplay = calculateRepCustomerStatsForDisplay;
@@ -1595,7 +1561,7 @@ window.saveRepTransaction = saveRepTransaction;
 window.getDistanceFromLatLonInMeters = getDistanceFromLatLonInMeters;
 window.deg2rad = deg2rad;
 window.autoUpdateCustomerLocation = autoUpdateCustomerLocation;
-window.repMap = repMap;
+Object.defineProperty(window, 'repMap', { configurable: true, get: () => repMap });
 window.repMapMarkers = repMapMarkers;
 window.repPolyline = repPolyline;
 window.initRepMap = initRepMap;

@@ -17,7 +17,6 @@ import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCas
 import { autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, deletePaymentTransfer, editEntityBasicInfo, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, renderFactoryHistory, renderFactoryInventory, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory.js';
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
-import { calculateRepAnalytics, refreshRepUI, renderRepCustomerTable } from './rep-sales.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formatDayMonthYear, formatDateTime } from './date-format.js';
 import { getDefaultStoreKey, DEFAULT_STORE_KEYS } from './store-keys.js';
@@ -1006,12 +1005,12 @@ if (typeof refreshCustomerSales === 'function') setTimeout(refreshCustomerSales,
 
 export async function syncRepTab() {
 try {
-if (typeof renderRepCustomerTable === 'function') await renderRepCustomerTable();
-if (typeof calculateRepAnalytics === 'function') calculateRepAnalytics();
+if (typeof window.renderRepCustomerTable === 'function') await window.renderRepCustomerTable?.();
+if (typeof window.calculateRepAnalytics === 'function') window.calculateRepAnalytics?.();
 } catch (error) {
 console.error('Rep tab refresh failed.', _safeErr(error));
 showToast('Rep tab failed to refresh: ' + (_safeErr(error).message || 'please reload the app'), 'error');
-if (typeof renderRepCustomerTable === 'function') setTimeout(renderRepCustomerTable, 500);
+if (typeof window.renderRepCustomerTable === 'function') setTimeout(((...args) => window.renderRepCustomerTable?.(...args)), 500);
 }
 }
 
@@ -1079,7 +1078,7 @@ if (typeof refreshPaymentTab === 'function') refreshPaymentTab();
 
 window.debouncedRefreshRepUI = function() {
 RefreshDebouncer.debounce('rep', () => {
-if (typeof refreshRepUI === 'function') refreshRepUI();
+if (typeof window.refreshRepUI === 'function') window.refreshRepUI?.();
 });
 };
 

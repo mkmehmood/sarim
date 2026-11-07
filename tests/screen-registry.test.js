@@ -11,6 +11,9 @@ const read = p => readFileSync(new URL(p, root), 'utf8');
 const registry = read('modules/screen-registry.js');
 const entries = [...registry.matchAll(/'([\w-]+)': \{\s*load: \(\) => import\('\.\/([\w-]+)\.screen\.js'\),\s*globals: \[([^\]]*)\],/g)]
   .map(m => ({ id: m[1], name: m[2], globals: [...m[3].matchAll(/'([^']+)'/g)].map(x => x[1]) }));
+const lazyBlock = registry.slice(registry.indexOf('registerLazyModules({'));
+const lazyEntries = [...lazyBlock.matchAll(/'([\w-]+)': \{\s*load: \(\) => import\('\.\/([\w-]+)\.js'\),\s*globals: \[([^\]]*)\],\s*hooks: \[([^\]]*)\],/g)]
+  .map(m => ({ id: m[1], file: m[2] + '.js', globals: [...m[3].matchAll(/'([^']+)'/g)].map(x => x[1]), hooks: [...m[4].matchAll(/'([^']+)'/g)].map(x => x[1]) }));
 const files = readdirSync(new URL('screens/', root)).filter(f => f.endsWith('.screen.html')).map(f => f.replace('.screen.html', ''));
 
 const published = js => publishedGlobals(js).functions;
@@ -49,7 +52,30 @@ test('every function a notification target calls by name is published eagerly or
   for (const f of readdirSync(new URL('modules/', root)).filter(n => n.endsWith('.js'))) {
     for (const g of publishedGlobals(read(`modules/${f}`)).functions) eager.add(g);
   }
-  const stubbed = new Set(entries.flatMap(e => e.globals));
+  const stubbed = new Set([...entries.flatMap(e => e.globals), ...lazyEntries.flatMap(e => e.globals)]);
   assert.ok(wanted.size > 0);
   for (const n of wanted) assert.ok(eager.has(n) || stubbed.has(n), `${n} is neither published nor stubbed`);
 });
+
+for (const e of lazyEntries) {
+  test(`lazy module ${e.id}: every published function is either stubbed or a deliberate hook`, () => {
+    const published = publishedGlobals(read(`modules/${e.file}`)).functions;
+    assert.deepEqual([...e.globals, ...e.hooks].sort(), published);
+    assert.deepEqual(e.globals.filter(g => e.hooks.includes(g)), []);
+  });
+
+  test(`lazy module ${e.id}: nothing imports it statically`, () => {
+    for (const f of readdirSync(new URL('modules/', root)).filter(n => n.endsWith('.js'))) {
+      assert.ok(!new RegExp(`from '\\./${e.file.replace('.', '\\.')}'`).test(read(`modules/${f}`)), `${f} imports ${e.file}`);
+    }
+  });
+
+  test(`lazy module ${e.id}: hooks are only ever called optionally, so they do nothing until it is loaded`, () => {
+    for (const f of readdirSync(new URL('modules/', root)).filter(n => n.endsWith('.js') && n !== e.file)) {
+      const text = read(`modules/${f}`);
+      for (const h of e.hooks) assert.ok(!new RegExp(`window\\.${h}\\(`).test(text), `${f} calls window.${h}( without ?.`);
+    }
+  });
+}
+
+test('the lazy module list is not empty', () => assert.ok(lazyEntries.length >= 1));
