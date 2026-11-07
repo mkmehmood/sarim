@@ -27,7 +27,7 @@
   function viewBottom() {
     const vv = window.visualViewport;
     const bottom = vv ? Math.min(window.innerHeight, vv.offsetTop + vv.height) : window.innerHeight;
-    return bottom - (window.__vkInset || 0);
+    return Math.min(bottom, window.innerHeight - (window.__vkInset || 0));
   }
 
   function findAnchor(home) {

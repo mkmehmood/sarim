@@ -1,19 +1,23 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
-import { FIELD_SELECTOR, LETTER_ROWS, PAD_ROWS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, usesSystemKeyboard } from '../modules/virtual-keyboard.js';
+import { FIELD_SELECTOR, LETTER_ROWS, PAD_ROWS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard } from '../modules/virtual-keyboard.js';
 
 const field = (attrs = {}, extra = {}) => {
   const map = new Map(Object.entries(attrs));
-  return {
+  const f = {
     nodeType: 1,
     tagName: attrs.tag || 'INPUT',
     type: attrs.type === undefined ? 'text' : attrs.type,
     getAttribute: (k) => (map.has(k) ? map.get(k) : null),
-    setAttribute: (k, v) => map.set(k, String(v)),
+    setAttribute: (k, v) => {
+      map.set(k, String(v));
+      if (k === 'type') f.type = String(v);
+    },
     closest: () => null,
     ...extra
   };
+  return f;
 };
 
 const insideScreen = (selector) => ({ closest: (sel) => (sel.includes(selector) ? {} : null) });
@@ -71,6 +75,39 @@ describe('field rules', () => {
     assert.equal(plain.getAttribute('inputmode'), 'none');
     assert.equal(plain.getAttribute('data-vk-mode'), null);
   });
+  it('turns number fields into text fields, because Android ignores inputmode none on number inputs', () => {
+    const n = field({ type: 'number', step: '0.001' });
+    assert.equal(applyFieldPolicy(n), true);
+    assert.equal(n.type, 'text');
+    assert.equal(n.getAttribute('data-vk-type'), 'number');
+    assert.equal(n.getAttribute('data-vk-mode'), 'decimal');
+    assert.equal(n.getAttribute('inputmode'), 'none');
+    assert.equal(layoutFor(n), 'numpad');
+    assert.equal(applyFieldPolicy(n), false);
+    const d = field({ type: 'number', inputmode: 'numeric' });
+    applyFieldPolicy(d);
+    assert.equal(d.getAttribute('data-vk-mode'), 'numeric');
+    assert.equal(d.type, 'text');
+  });
+  it('turns phone fields into text fields that still open the numpad', () => {
+    const t = field({ type: 'tel', inputmode: 'tel' });
+    assert.equal(applyFieldPolicy(t), true);
+    assert.equal(t.type, 'text');
+    assert.equal(t.getAttribute('data-vk-type'), 'tel');
+    assert.equal(t.getAttribute('data-vk-mode'), 'tel');
+    assert.equal(layoutFor(t), 'numpad');
+    const bare = field({ type: 'tel' });
+    applyFieldPolicy(bare);
+    assert.equal(bare.getAttribute('data-vk-mode'), 'tel');
+  });
+  it('converts a field whose type becomes number later', () => {
+    const f = field({ type: 'text', inputmode: 'none' });
+    assert.equal(applyFieldPolicy(f), false);
+    f.setAttribute('type', 'number');
+    assert.equal(applyFieldPolicy(f), true);
+    assert.equal(f.type, 'text');
+    assert.equal(layoutFor(f), 'numpad');
+  });
   it('does not touch fields that keep the system keyboard', () => {
     const mail = field({ type: 'text', inputmode: 'email' });
     assert.equal(applyFieldPolicy(mail), false);
@@ -84,6 +121,19 @@ describe('field rules', () => {
     assert.match(FIELD_SELECTOR, /input/);
     assert.match(FIELD_SELECTOR, /textarea/);
     assert.match(FIELD_SELECTOR, /contenteditable/);
+  });
+});
+
+describe('number filtering', () => {
+  it('keeps digits, one decimal point and a leading minus', () => {
+    assert.equal(sanitizeNumber('12.5'), '12.5');
+    assert.equal(sanitizeNumber('a1b2.c3.4'), '12.34');
+    assert.equal(sanitizeNumber('-5'), '-5');
+    assert.equal(sanitizeNumber('5-3'), '53');
+    assert.equal(sanitizeNumber('--7'), '-7');
+    assert.equal(sanitizeNumber('1,000'), '1000');
+    assert.equal(sanitizeNumber(''), '');
+    assert.equal(sanitizeNumber(null), '');
   });
 });
 
@@ -497,6 +547,28 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(t.isHidden());
   });
 
+  it('cleans pasted or odd characters out of number fields but leaves phone fields alone', async () => {
+    const t = await boot();
+    const n = t.input({ type: 'text', 'data-vk-type': 'number' }, { value: 'a1.2.3-4' });
+    t.docListeners.input[0]({ target: n });
+    assert.equal(n.value, '1.234');
+    const p = t.input({ type: 'text', 'data-vk-type': 'tel' }, { value: '+92 300-1234567' });
+    t.docListeners.input[0]({ target: p });
+    assert.equal(p.value, '+92 300-1234567');
+    const x = t.input({ type: 'text' }, { value: 'abc' });
+    t.docListeners.input[0]({ target: x });
+    assert.equal(x.value, 'abc');
+  });
+
+  it('converts a focused number field before opening so the system keyboard stays shut', async () => {
+    const t = await boot();
+    const n = t.input({ type: 'number' });
+    t.focus(n);
+    assert.equal(n.type, 'text');
+    assert.equal(n.getAttribute('inputmode'), 'none');
+    assert.ok(!t.pane('pad').classList.contains('d-none'));
+  });
+
   it('ignores focus on non-text controls', async () => {
     const t = await boot();
     t.focus(t.input({ type: 'checkbox' }));
@@ -544,6 +616,11 @@ describe('virtual keyboard wiring', () => {
     assert.deepEqual(importers, []);
   });
 
+  it('hides the system keyboard if it ever appears while the in-app keyboard is open', () => {
+    assert.match(native, /Keyboard\.addListener\('keyboardWillShow', \(\) => \{ set\(true\); if \(window\.VirtualKeyboard && window\.VirtualKeyboard\.isOpen\(\)\) hideNativeKeyboard\(\); \}\);/);
+    assert.match(native, /Keyboard\.addListener\('keyboardDidShow', \(\) => \{ if \(window\.VirtualKeyboard && window\.VirtualKeyboard\.isOpen\(\)\) hideNativeKeyboard\(\); \}\);/);
+  });
+
   it('asks the native keyboard to hide as a safety net', () => {
     assert.match(native, /function hideNativeKeyboard\(\)/);
     assert.match(native, /Keyboard\.hide\(\)/);
@@ -560,7 +637,7 @@ describe('virtual keyboard wiring', () => {
 
   it('tapping a key does not close the suggestion list, and lists stay above the keyboard', () => {
     assert.match(dropdown, /function onPointer\(e\) \{\n    if \(e\.target && e\.target\.closest && e\.target\.closest\('\.vk-dock'\)\) return;/);
-    assert.match(dropdown, /return bottom - \(window\.__vkInset \|\| 0\);/);
+    assert.match(dropdown, /return Math\.min\(bottom, window\.innerHeight - \(window\.__vkInset \|\| 0\)\);/);
   });
 
   it('uses the app theme tokens for the tinted keys, with no separate stylesheet or CDN', () => {
