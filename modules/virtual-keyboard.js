@@ -71,13 +71,34 @@ export function deleteBack(value, start, end) {
   return { value: value.slice(0, s - 1) + value.slice(s), caret: s - 1 };
 }
 
+export function sanitizeNumber(value) {
+  let out = '';
+  let dot = false;
+  for (const ch of String(value)) {
+    if (ch >= '0' && ch <= '9') out += ch;
+    else if (ch === '.' && !dot) { out += ch; dot = true; }
+    else if (ch === '-' && out === '') out += ch;
+  }
+  return out;
+}
+
 export function applyFieldPolicy(el) {
   if (!isTextLike(el) || usesSystemKeyboard(el)) return false;
+  let changed = false;
   const current = attr(el, 'inputmode');
-  if (current === 'none' || SYSTEM_MODES.includes(String(current || '').toLowerCase())) return false;
-  if (current) el.setAttribute('data-vk-mode', current);
-  el.setAttribute('inputmode', 'none');
-  return true;
+  if (current !== 'none') {
+    if (current) el.setAttribute('data-vk-mode', current);
+    el.setAttribute('inputmode', 'none');
+    changed = true;
+  }
+  const type = typeOf(el);
+  if (type === 'number' || type === 'tel') {
+    el.setAttribute('data-vk-type', type);
+    if (!attr(el, 'data-vk-mode')) el.setAttribute('data-vk-mode', type === 'tel' ? 'tel' : 'decimal');
+    el.setAttribute('type', 'text');
+    changed = true;
+  }
+  return changed;
 }
 
 let controller = null;
@@ -311,6 +332,12 @@ export function installVirtualKeyboard(opts = {}) {
     else scheduleHide();
   }, true);
   doc.addEventListener('focusout', scheduleHide, true);
+  doc.addEventListener('input', (e) => {
+    const t = e.target;
+    if (attr(t, 'data-vk-type') !== 'number' || typeof t.value !== 'string') return;
+    const clean = sanitizeNumber(t.value);
+    if (clean !== t.value) t.value = clean;
+  }, true);
   doc.addEventListener('click', (e) => {
     const t = e.target;
     if (!isOpen() || !t || dock.contains(t)) return;

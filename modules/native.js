@@ -371,7 +371,8 @@ function installKeyboardGuard() {
   document.addEventListener('focusout', () => setTimeout(() => { if (!editing()) set(false); }, 150));
   const { Keyboard } = P();
   if (Keyboard && typeof Keyboard.addListener === 'function') {
-    Keyboard.addListener('keyboardWillShow', () => set(true));
+    Keyboard.addListener('keyboardWillShow', () => { set(true); if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) hideNativeKeyboard(); });
+    Keyboard.addListener('keyboardDidShow', () => { if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) hideNativeKeyboard(); });
     Keyboard.addListener('keyboardDidHide', () => set(false));
   }
 }
