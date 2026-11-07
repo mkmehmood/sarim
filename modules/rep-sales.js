@@ -20,31 +20,19 @@ import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, c
 import { confirmGuard } from './confirm-guard.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { getDefaultStoreKey } from './store-keys.js';
+import { getPosition } from './geo.js';
+import { _bioIsOn, syncBiometricButton } from './app-lock.js';
+
 export let repTransactionMode = 'sale';
 window.repTransactionMode = repTransactionMode;
 export function _set_repTransactionMode(v) { repTransactionMode = v; window.repTransactionMode = v; }
 export let currentRepAnalyticsMode = 'day';
 window.currentRepAnalyticsMode = currentRepAnalyticsMode;
 export function _set_currentRepAnalyticsMode(v) { currentRepAnalyticsMode = v; window.currentRepAnalyticsMode = v; }
-
 (window.__uiSyncers = window.__uiSyncers || []).push(() => {
   try { const v = window.currentRepAnalyticsMode; if (v !== undefined) currentRepAnalyticsMode = v; } catch (_) {}
   try { const v = window.repTransactionMode; if (v !== undefined) repTransactionMode = v; } catch (_) {}
 });
-
-const _bioIsOn = (v) => v === true || v === 'true';
-
-export async function syncBiometricButton() {
-const btn = document.getElementById('bio-toggle-btn');
-if (!btn) return;
-let on = false;
-try { on = _bioIsOn(await sqliteStore.get('bio_enabled')); } catch (_) {}
-const lbl = document.getElementById('bio-toggle-label');
-if (lbl) lbl.textContent = on ? 'Disable Fingerprint Lock' : 'Enable Fingerprint Lock';
-btn.classList.toggle('active', on);
-btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-}
-
 export async function toggleBiometricLock() {
 let on = false;
 try { on = _bioIsOn(await sqliteStore.get('bio_enabled')); } catch (_) {}
@@ -52,7 +40,6 @@ if (on) await disableBiometricLock();
 else await enableBiometricLock();
 await syncBiometricButton();
 }
-
 export async function enableBiometricLock() {
 try {
 const success = await BiometricAuth.register("Manager");
@@ -65,7 +52,6 @@ await syncBiometricButton();
 if (!(e && e.name === 'NotAllowedError')) showToast("Setup failed: " + e.message, "error");
 }
 }
-
 export async function disableBiometricLock() {
 const _bioMsg = `Remove the biometric (fingerprint / Face ID) lock from this app?\n\nAfter removal:\n • Anyone with access to this device can open the app without biometric verification\n • To re-enable, tap Fingerprint Lock in the sidebar again\n\nYour data will not be affected.`;
 if (await showGlassConfirm(_bioMsg, { title: "Remove Biometric Lock", confirmText: "Remove Lock", danger: true })) {
@@ -77,75 +63,11 @@ try { await sqliteStore.flush(); } catch (_) {}
 await syncBiometricButton();
 }
 }
-
-export async function checkBiometricLock() {
-const isEnabled = await sqliteStore.get('bio_enabled');
-syncBiometricButton();
-const resolved = () => { window.__lockResolved = true; if (typeof window.__splashTryHide === 'function') window.__splashTryHide(); };
-if (!(isEnabled === 'true' || isEnabled === true)) { window.__appLocked = false; if (window.__setBioHint) window.__setBioHint(false); resolved(); return; }
-if (window.__setBioHint) window.__setBioHint(true);
-const splash = document.getElementById('splash-screen');
-if (!splash) { resolved(); return; }
-window.__appLocked = true;
-window.__lockResolved = true;
-splash.classList.add('splash-locked');
-const isNativeApp = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-const whenSettled = () => new Promise(resolve => {
-const started = Date.now();
-const ready = () => window.__splashPainted && (!isNativeApp || window.__nativeSplashHidden);
-const tick = () => {
-if (ready() || Date.now() - started > 3000) { setTimeout(resolve, 350); return; }
-setTimeout(tick, 60);
-};
-tick();
-});
-let busy = false;
-let failures = 0;
-let retryTimer = null;
-const scheduleRetry = (delay) => {
-if (retryTimer) clearTimeout(retryTimer);
-retryTimer = setTimeout(() => { retryTimer = null; unlock(); }, delay);
-};
-const unlock = async () => {
-if (busy || !window.__appLocked) return;
-busy = true;
-try {
-await BiometricAuth.authenticate();
-window.__appLocked = false;
-failures = 0;
-if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-splash.classList.remove('splash-locked');
-splash.classList.add('splash-out');
-window.setStyle(splash, 'pointer-events', 'st-pointer-events__8b1364');
-if (window.__restoreThemeColor) window.__restoreThemeColor();
-setTimeout(() => { window.setDisplay(splash, 'none'); }, 620);
-} catch (e) {
-const errName = e && e.name ? e.name : '';
-failures++;
-if (errName !== 'NotAllowedError' && failures === 1) {
-window.notifyBlocking((e && e.message) ? e.message : 'Authentication failed', 'error', 'Something went wrong');
-}
-if (failures < 5) scheduleRetry(errName === 'NotAllowedError' ? 1200 : 2000);
-} finally {
-busy = false;
-}
-};
-window.triggerUnlock = unlock;
-if (!splash.__unlockBound) {
-splash.__unlockBound = true;
-document.addEventListener('visibilitychange', () => {
-if (document.visibilityState === 'visible' && window.__appLocked) { failures = 0; scheduleRetry(250); }
-});
-}
-whenSettled().then(unlock);
-}
-
 function _resetRepForm() {
 ['rep-cust-name', 'rep-quantity', 'rep-amount-collected', 'rep-expired-qty', 'rep-new-cust-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 const pc = document.getElementById('rep-new-customer-phone-container'); if (pc) pc.classList.add('hidden');
 setRepMode('sale');
 }
-
 export async function startEditRepSale(id) {
 const rep = ensureArray(await sqliteStore.get('rep'));
 const rec = rep.find(s => s && String(s.id) === String(id));
@@ -174,9 +96,7 @@ set('rep-new-cust-phone', rec.customerPhone);
 }
 beginEditMode('repsale', rec, { buttonId: 'btn-save-rep-transaction', watchIds: ['rep-cust-name','rep-quantity','rep-amount-collected','rep-expired-qty','rep-date','rep-new-cust-phone'], label: 'Update Transaction', anchorId: 'rep-cust-name', cancelFn: _resetRepForm });
 }
-
 registerEditHandler('repsale', startEditRepSale);
-
 export function setRepMode(mode) {
 repTransactionMode = mode; window.repTransactionMode = repTransactionMode;
 const _setRep = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
@@ -194,19 +114,15 @@ _setRep('rep-result-label', "New Balance After Collection:");
 updateRepCollectionPreview();
 }
 }
-
 export function selectRepCustomer(name) {
 document.getElementById('rep-cust-name').value = name;
 window.Dropdown.hide(document.getElementById('rep-customer-search-results'));
 calculateRepCustomerStats(name);
 }
-
 window._selectRepCustomerBase = selectRepCustomer;
-
 export async function calculateRepCustomerStatsForDisplay(name) {
 calculateRepCustomerStats(name);
 }
-
 export async function calculateRepCustomerStats(name) {
 const { rep } = await loadCollections('rep');
 if(salesRepsList.includes(name)) {
@@ -229,7 +145,6 @@ if(repTransactionMode === 'collection') {
 updateRepCollectionPreview(debt);
 }
 }
-
 let _repPreviewSeq = 0;
 export function updateRepCollectionPreview(debtOverride) {
 if (repTransactionMode !== 'collection') return;
@@ -256,7 +171,6 @@ paint(Math.max(0, round2(debt - inputAmt - plan.value)));
 } catch (_) {}
 })();
 }
-
 export async function calculateRepSalePreview() {
 if(repTransactionMode === 'sale') {
 const qty = readNum('rep-quantity');
@@ -265,9 +179,7 @@ const _repTVS = document.getElementById('rep-total-value');
 if (_repTVS) _repTVS.innerText = "" + fmtAmt(safeNumber(qty * salePrice, 0));
 }
 }
-
 export function saveRepTransaction(...a) { return confirmGuard('saveRepTransaction', () => _saveRepTransactionRaw(...a), { label: 'Rep Sale', late: true, fields: [['rep-date', 'Date'], ['rep-cust-name', 'Customer'], ['rep-quantity', 'Quantity'], ['rep-amount-collected', 'Collected'], ['rep-expired-qty', 'Expired (kg)']], editKinds: ['repsale'], share: { kind: 'rep' } }); }
-
 async function _saveRepTransactionRaw() {
 const _ed = getEditCtx('repsale');
 let _gcWarn = null;
@@ -554,7 +466,6 @@ window.notifyBlocking('Failed to save transaction. Please try again.', 'error', 
 restoreBtn();
 }
 }
-
 export function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 const R = 6371e3;
 const dLat = deg2rad(lat2 - lat1);
@@ -566,11 +477,9 @@ Math.sin(dLon / 2) * Math.sin(dLon / 2);
 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 return R * c;
 }
-
 export function deg2rad(deg) {
 return deg * (Math.PI / 180);
 }
-
 export async function autoUpdateCustomerLocation(customerName, currentGps) {
 const { clients, rep } = await loadCollections('clients', 'rep');
 if (!currentGps || !currentGps.lat || !currentGps.lng) return;
@@ -622,31 +531,9 @@ if (typeof showToast === 'function') {
 showToast(`Location confirmed for ${customerName} after 3 consistent visits.`, 'success');
 }
 }
-
 export let repMap = null;
 export let repMapMarkers = [];
 export let repPolyline = null;
-
-export function getPosition() {
-return new Promise((resolve, reject) => {
-if (!navigator.geolocation) {
-resolve(null);
-return;
-}
-navigator.geolocation.getCurrentPosition(
-(position) => resolve({
-lat: position.coords.latitude,
-lng: position.coords.longitude,
-accuracy: position.coords.accuracy
-}),
-(error) => {
-resolve(null);
-},
-{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-);
-});
-}
-
 export function initRepMap() {
 if (repMap) return;
 const mapContainer = document.getElementById('rep-map-container');
@@ -661,7 +548,6 @@ repMap.invalidateSize();
 }
 }, 100);
 }
-
 export async function updateRepLiveMap() {
 const rep = ensureArray(await sqliteStore.get('rep'));
 if (typeof L === 'undefined') return;
@@ -733,7 +619,6 @@ const group = new L.featureGroup(repMapMarkers);
 repMap.fitBounds(group.getBounds().pad(0.1));
 }
 }
-
 export function adminSwitchRepProfile(newProfile) {
 if (appMode !== 'admin') return;
 _set_currentRepProfile(newProfile);
@@ -749,7 +634,6 @@ if(typeof showToast === 'function') {
 showToast(`Viewing dashboard for ${newProfile}`, 'info');
 }
 }
-
 export function setRepAnalyticsMode(mode) {
 currentRepAnalyticsMode = mode; window.currentRepAnalyticsMode = currentRepAnalyticsMode;
 document.querySelectorAll('#admin-rep-analytics .toggle-group .toggle-opt').forEach(opt => {
@@ -758,7 +642,6 @@ opt.classList.remove('active');
 document.getElementById(`rep-analytics-${mode}-btn`).classList.add('active');
 calculateRepAnalytics();
 }
-
 export async function calculateRepAnalytics() {
 const { rep } = await loadCollections('rep');
 if (appMode !== 'admin') return;
@@ -823,7 +706,6 @@ if (repBarEl) repBarEl.innerHTML = smBarHtml([
 { label: 'Credit sales', value: creditSales, text: fmtAmt(creditSales), tone: 'warn' }
 ]);
 }
-
 export async function renderRepCustomerTable(page = 1) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 const _rrctAlive = (item) => item && item.id && !deletedRecordIds.has(String(item.id));
@@ -939,7 +821,6 @@ _setRepH('rep-customers-total-credit', fmtAmt(totalOutstanding));
 _setRepH('rep-customers-total-credit-sales', fmtAmt(repTotalCreditSales));
 _setRepH('rep-customers-total-collections', fmtAmt(repTotalCollections));
 }
-
 export async function openRepCustomerManagement(customerName) {
 _set_currentManagingRepCustomer(customerName);
 resetLedgerFilter('rep');
@@ -948,7 +829,6 @@ const _repMCT = document.getElementById('repManageCustomerTitle'); if (_repMCT) 
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-customer-management-screen');
 await renderRepCustomerTransactions(customerName);
 }
-
 export async function closeRepCustomerManagement() {
 if (typeof window.closeCustomerTxnSheet === 'function') window.closeCustomerTxnSheet();
 const rep = ensureArray(await sqliteStore.get('rep'));
@@ -970,7 +850,6 @@ console.warn('closeRepCustomerManagement SQLite error', _safeErr(e));
 if (typeof renderRepCustomerTable === 'function') renderRepCustomerTable();
 }, 100);
 }
-
 export async function deleteCurrentRepCustomer(nameArg) {
 const { rep, clients } = await loadCollections('rep', 'clients');
 const name = (typeof nameArg === 'string' && nameArg.trim()) ? nameArg : currentManagingRepCustomer;
@@ -1035,7 +914,6 @@ closeRepCustomerManagement();
 window.notifyBlocking('Failed to delete rep customer. Please try again.', 'error', 'Something went wrong');
 }
 }
-
 export async function renderRepCustomerTransactions(name) {
 const { rep, clients } = await loadCollections('rep', 'clients');
 const list = document.getElementById('repCustomerManagementHistoryList');
@@ -1185,7 +1063,6 @@ _entries.push({
 }
 await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _nAll, 'rep'), money: formatCurrency });
 }
-
 export async function openRepCustomerEditModal(customerName) {
 customerName = customerName || '';
 const isAddMode = !customerName;
@@ -1241,13 +1118,10 @@ const _repPhotoKey = 'rep-cust:' + (currentRepProfile || '') + ':' + customerNam
 await loadPersonPhotoIntoEditor('rep-cust', _repPhotoKey);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-customer-edit-screen');
 }
-
 export function closeRepCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('rep-customer-edit-screen');
 }
-
 export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['rep-edit-cust-name', 'Name'], ['rep-edit-cust-phone', 'Phone'], ['rep-edit-cust-address', 'Address'], ['rep-edit-cust-old-debit', 'Old Debit']], isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
-
 async function _saveRepCustomerDetailsRaw() {
 const { rep, clients } = await loadCollections('rep', 'clients');
 const nameInput = document.getElementById('rep-edit-cust-name');
@@ -1387,11 +1261,9 @@ triggerAutoSync();
 window.notifyBlocking('Failed to save rep customer details. Please try again.', 'error', 'Something went wrong');
 }
 }
-
 export async function fetchRepDeviceLocation() {
 return fetchLocationInto('rep-location-status', 'rep-edit-cust-address', 'fetchRepDeviceLocation');
 }
-
 export async function exportRepCustomerToPDF(opts = {}) {
 const { rep, clients } = await loadCollections('rep', 'clients');
 if (!currentManagingRepCustomer) { showToast('No rep customer selected', 'warning'); return; }
@@ -1636,7 +1508,6 @@ if (_textMode) {
 showToast('Error generating PDF: ' + error.message, 'error');
 }
 }
-
 export async function renderRepHistory() {
 const rep = ensureArray(await sqliteStore.get('rep'));
 const list = document.getElementById('repHistoryList');
@@ -1678,7 +1549,6 @@ actions: (item.isMerged || item.isSettled || isOldDebt) ? '' : actionRowHtml('re
 const tableHTML = `<div class="hc-list-head"><span class="hc-list-title">${esc(headerText)}</span><span class="hc-list-count">${fmtNum(periodQuantity(activityData.map((t) => ({ t }))))} kg</span></div><div class="hc-list">${cardsHtml}</div>`;
 list.innerHTML = tableHTML;
 }
-
 export async function refreshRepUI(force = false) {
 const deletedRecordIds = new Set(ensureArray(await sqliteStore.get('deleted')));
 if (sqliteStore && sqliteStore.getBatch) {
@@ -1712,12 +1582,9 @@ setTimeout(updateRepLiveMap, 200);
 }
 }
 }
-
 window.enableBiometricLock = enableBiometricLock;
 window.disableBiometricLock = disableBiometricLock;
 window.toggleBiometricLock = toggleBiometricLock;
-window.syncBiometricButton = syncBiometricButton;
-window.checkBiometricLock = checkBiometricLock;
 window.setRepMode = setRepMode;
 window.selectRepCustomer = selectRepCustomer;
 window.calculateRepCustomerStatsForDisplay = calculateRepCustomerStatsForDisplay;
@@ -1731,7 +1598,6 @@ window.autoUpdateCustomerLocation = autoUpdateCustomerLocation;
 window.repMap = repMap;
 window.repMapMarkers = repMapMarkers;
 window.repPolyline = repPolyline;
-window.getPosition = getPosition;
 window.initRepMap = initRepMap;
 window.updateRepLiveMap = updateRepLiveMap;
 window.adminSwitchRepProfile = adminSwitchRepProfile;
