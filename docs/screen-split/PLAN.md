@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 7 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin). Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 9 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -146,7 +146,16 @@ What the analysis taught us, now built into `screen-carve`:
 - Two bugs found and fixed in the tool: duplicate keys in the generated `Object.assign(window, …)` when a name was published twice, and moved statements being joined without blank lines.
 - Tests: `readModule(name)` returns a module plus anything carved out of it (imports stripped so it still parses); `readSource` stays exact so the scanning tests do not count moved code twice. Five tests that inspected recycle-bin code were pointed at `modules/recycle-bin.js`.
 
-Next candidates for the same treatment: `stock-transfer` (shared `prepareStockTransferScreen` / filter) and `payment-transfer`; `store-manager`, `raw-material` and `add-entity` once their openers are looked at the same way. Each still needs a first-open test on a device.
+Next candidates for the same treatment: `store-manager`, `raw-material` and `add-entity` (their code is now in modules after 3a), then `formula-store`, `formula-store-edit`, `expense-details`, `entity-details` and the customer screens. Each still needs a first-open test on a device.
+
+### Phase 3b/3c – stock-transfer and payment-transfer
+Both moved with the same method; their lazy chunks are 13.5 KB and 14.4 KB. The analysis showed what actually pins a screen in core, and `screen-carve` now handles each case explicitly:
+- **A core function calls a screen function directly** (`--via-window a,b`). The call is rewritten so it is late-bound: `f(x)` becomes `window.f(x)`, `typeof f` becomes `typeof window.f`, and a function passed *as a value* (for example `registerEditHandler('stocktransfer', startEditStockTransfer, …)`) becomes `((...args) => window.startEditStockTransfer(...args))`, never a bare `window.f`, because that would capture `undefined` if the registry had not run yet. The lazy stub then loads the screen when the call happens. Used for: the edit-mode registrations, `deleteProdEntry` calling `deleteStockTransfer`, camera delivery calling `_applyPaymentTransferPendingPhoto`, universal search calling `applyPaymentTransferFilter`, and `deletePaymentTransfer` calling `renderPaymentTransferHistory`.
+- **A shared function only looks owned** (`--keep a,b`). `computeStoreStockSnapshot` (read by `factory.js` and `link-guards.js` through `window`), `routeHistoryMatcher` (shared helper in `business.js`), `openCustomerEditModal`, `openRepCustomerEditModal`, `calculateRepCustomerStatsForDisplay` and `selectFromUniversalSearch` stay in core. `deletePaymentTransfer` also stays: three core delete flows call it, so it is data logic, and only its trailing render call moved behind `window`.
+- **Button-only references** (`--also deleteStockTransfer`), and `--why name` to print what pins a function.
+- **References are now computed with scope analysis** (`eslint-scope`), not by listing identifiers. A local variable named `n` is no longer mistaken for a top-level `n` in another module (the earlier version exported a single-letter `n` from `inventory-note.js` for this reason; that was caught in review and removed). Imports for moved code resolve in the right order: a declaration in the same module, then that module's own import, then a unique global (this fixed a missed `getStoreLabel`, which is also a local helper name in `prod-photos.js`).
+
+Tests that read these functions now read them from `modules/stock-transfer.js` / `modules/payment-transfer.js`, or use `readModule('utilities-sales.js')` / `readModule('utilities-payments.js')` when they need the origin file plus what was carved out of it.
 
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.

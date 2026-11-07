@@ -29,4 +29,12 @@ registerScreens({
     load: () => import('./recycle-bin.screen.js'),
     globals: ['_findPairedTransferTombstone', 'attemptHardDeleteRecord', 'attemptRecoverRecord', 'emptyRecycleBin', 'hardDeleteRecord', 'openRecycleBin', 'recoverRecord', 'renderRecycleBin'],
   },
+  'stock-transfer-screen': {
+    load: () => import('./stock-transfer.screen.js'),
+    globals: ['applyStockTransferFilter', 'deleteStockTransfer', 'prepareStockTransferScreen', 'renderStockTransferHistory', 'saveStockTransfer', 'startEditStockTransfer', 'updateStockTransferAvailability'],
+  },
+  'payment-transfer-screen': {
+    load: () => import('./payment-transfer.screen.js'),
+    globals: ['_applyPaymentTransferPendingPhoto', 'applyPaymentTransferFilter', 'handlePaymentTransferPhotoFile', 'openPaymentTransferPhotoCapture', 'prepareEntityTransferScreen', 'renderPaymentTransferHistory', 'saveEntityTransfer', 'startEditPaymentTransfer'],
+  },
 });

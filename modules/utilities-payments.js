@@ -11,10 +11,10 @@ import { editDateValue } from './edit-date.js';
 import { runExclusive, hasLiveSupplierInvoice, planCreditToggle, applySettlement, newGroupId, stampGroup, isOrphanSupplierTx, GROUP_FIELD, DELETE_ORIGIN_FIELD, planSupplierCreditConsumption, getTxLinkIssue } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
-import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
-import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, routeHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
+import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditCtx, registerEditHandler } from './edit-mode.js';
+import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
-import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, openPhotoCapture, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
+import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, closeFactoryInventoryModal, editingFactoryInventoryId, getCostPriceForStore, getSalePriceForStore, renderFactoryInventory, syncFactoryProductionStats, unlinkSupplierFromMaterial, updateFactoryInventoryDisplay } from './factory.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
@@ -1187,32 +1187,6 @@ export function applyPaymentHistoryFilter() {
 _filterPaymentHistoryByPeriod();
 }
 
-export function applyStockTransferFilter() {
-const match = routeHistoryMatcher('stock-transfer-from-value', 'stock-transfer-to-value');
-let total = 0, shown = 0;
-document.querySelectorAll('#stockTransferHistoryList .card').forEach(card => {
-total++;
-const show = !match || match(card.getAttribute('data-from'), card.getAttribute('data-to'));
-if (show) shown++;
-window.setDisplay(card, show ? '' : 'none');
-});
-_showFilterEmpty('#stockTransferHistoryList', total, shown, 'No transfers match the selected stores. Change the stores to see more.');
-}
-
-export function applyPaymentTransferFilter() {
-const matchFrom = customerHistoryMatcher('payment-transfer-from-search');
-const matchTo = customerHistoryMatcher('payment-transfer-to-search');
-let total = 0, shown = 0;
-document.querySelectorAll('#paymentTransferHistoryList .card').forEach(card => {
-total++;
-const show = (!matchFrom || matchFrom(String(card.getAttribute('data-from') || ''))) &&
-(!matchTo || matchTo(String(card.getAttribute('data-to') || '')));
-if (show) shown++;
-window.setDisplay(card, show ? '' : 'none');
-});
-_showFilterEmpty('#paymentTransferHistoryList', total, shown, 'No transfers match the selected entities. Clear the names to see all.');
-}
-
 export function _filterHistoryByPeriod(listSelector, refDateStr, mode) {
 const refDate = new Date(refDateStr);
 if (isNaN(refDate.getTime())) return;
@@ -1244,7 +1218,7 @@ if (mode === 'year') return cd.getFullYear() === refDate.getFullYear();
 return true;
 }
 
-function _showFilterEmpty(listSelector, total, shown, message) {
+export function _showFilterEmpty(listSelector, total, shown, message) {
 const list = document.querySelector(listSelector);
 if (!list || !list.querySelectorAll) return;
 list.querySelectorAll('.hist-filter-empty').forEach(n => n.remove());
@@ -5180,7 +5154,7 @@ if (input) input.dataset.histCustomer = String(value || '').trim().toLowerCase()
 applyCustomerHistoryFilter('rep');
 } else if (type === 'entity' && (inputId === 'payment-transfer-from-search' || inputId === 'payment-transfer-to-search')) {
 if (input) input.dataset.histCustomer = String(value || '').trim().toLowerCase();
-applyPaymentTransferFilter();
+window.applyPaymentTransferFilter();
 } else if (type === 'name' && inputId === 'cust-add-search') {
 if (typeof openCustomerEditModal === 'function') openCustomerEditModal(value);
 } else if (type === 'repName' && inputId === 'rep-cust-add-search') {
@@ -5822,234 +5796,9 @@ return result;
 
 window.getDeviceId = getDeviceId;
 
-export async function prepareEntityTransferScreen() {
-if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-showToast('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 3000);
-if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('payment-transfer-screen');
-return;
-}
-const dateInput = document.getElementById('payment-transfer-date');
-if (dateInput && !dateInput.value) {
-const d = new Date();
-dateInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-const fromSearch = document.getElementById('payment-transfer-from-search'); if (fromSearch) { fromSearch.value = ''; fromSearch.dataset.histCustomer = ''; fromSearch.removeAttribute('data-entity-id'); }
-const toSearch = document.getElementById('payment-transfer-to-search'); if (toSearch) { toSearch.value = ''; toSearch.dataset.histCustomer = ''; toSearch.removeAttribute('data-entity-id'); }
-const fromHidden = document.getElementById('payment-transfer-from-value'); if (fromHidden) fromHidden.value = '';
-const toHidden = document.getElementById('payment-transfer-to-value'); if (toHidden) toHidden.value = '';
-const fromResults = document.getElementById('payment-transfer-from-results'); if (fromResults) window.Dropdown.hide(fromResults);
-const toResults = document.getElementById('payment-transfer-to-results'); if (toResults) window.Dropdown.hide(toResults);
-const amtInput = document.getElementById('payment-transfer-amount'); if (amtInput) amtInput.value = '';
-const noteInput = document.getElementById('payment-transfer-note'); if (noteInput) noteInput.value = '';
-if (typeof _applyPaymentTransferPendingPhoto === 'function') _applyPaymentTransferPendingPhoto(null);
-await renderPaymentTransferHistory();
-}
+registerEditHandler('paytransfer', ((...args) => window.startEditPaymentTransfer(...args)), { keepScreens: ['payment-transfer-screen'] });
 
-window.prepareEntityTransferScreen = prepareEntityTransferScreen;
-export function saveEntityTransfer(...a) { return confirmGuard('saveEntityTransfer', () => runExclusive('saveEntityTransfer', () => _saveEntityTransferImpl(...a)), { label: 'Transfer', late: true, fields: [['payment-transfer-from-search', 'From'], ['payment-transfer-to-search', 'To'], ['payment-transfer-amount', 'Amount'], ['payment-transfer-date', 'Date'], ['payment-transfer-note', 'Note']], skipKinds: ['paytransfer'] }); }
-
-async function _saveEntityTransferImpl() {
-const _ed = getEditCtx('paytransfer');
-if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('payments')) {
-window.notifyBlocking('Access Denied — Payment Transfer not in your assigned tabs', 'warning', 'Payment warning');
-return;
-}
-const { entities, transactions } = await loadCollections('entities', 'transactions');
-const fromId = (document.getElementById('payment-transfer-from-value') || {}).value;
-const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
-const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
-const date = (document.getElementById('payment-transfer-date') || {}).value;
-const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
-if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
-if (!fromId || !toId) { window.notifyBlocking('Please search and select both entities from the list.', 'warning', 'Warning'); return; }
-if (String(fromId) === String(toId)) { window.notifyBlocking('From and To entities must be different.', 'warning', 'Warning'); return; }
-if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning', 'Warning'); return; }
-const fromEntity = entities.find(e => String(e.id) === String(fromId));
-const toEntity = entities.find(e => String(e.id) === String(toId));
-if (!fromEntity || !toEntity) { window.notifyBlocking('Selected entity not found.', 'error', 'Something went wrong'); return; }
-if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { window.notifyBlocking('Expense-only entities cannot be used in a transfer.', 'warning', 'Warning'); return; }
-const _oOut = _ed ? _ed.original.records.find(r => r.type === 'OUT') : null;
-const _oIn = _ed ? _ed.original.records.find(r => r.type === 'IN') : null;
-if (_ed) {
-const avail = await getAvailableCashInHand();
-if (avail < 0) { window.notifyBlocking('Cash position is negative; fix that before editing transfers.', 'warning', 'Warning'); return; }
-const _oo = _ed.original.records.find(r => r.type === 'OUT');
-const _ok = await confirmEditChanges([
-{ label: 'From', from: _oo?.entityName || '', to: fromEntity.name },
-{ label: 'To', from: _oIn?.entityName || '', to: toEntity.name },
-{ label: 'Amount', from: fmtAmt(_oo?.amount || 0), to: fmtAmt(amount) },
-{ label: 'Date', from: _oo?.date || '', to: date }
-], 'Update Transfer?');
-if (!_ok) return;
-}
-if (!(await window.gcCommit({}))) return;
-let pairId = _ed ? _ed.original.pairId : generateUUID('trfpair');
-if (!validateUUID(pairId)) pairId = generateUUID('trfpair');
-const createdAt = getTimestamp();
-let outId = _oOut ? _oOut.id : generateUUID('pay');
-if (!validateUUID(outId)) outId = generateUUID('pay');
-let inId = _oIn ? _oIn.id : generateUUID('pay');
-if (!validateUUID(inId)) inId = generateUUID('pay');
-const createdBy = (appMode === 'userrole' && window._assignedManagerName) ? window._assignedManagerName : null;
-let outTx = {
-id: outId, entityId: fromEntity.id, entityName: fromEntity.name, amount: amount, type: 'OUT', date: date,
-description: note ? `Transfer to ${toEntity.name}: ${note}` : `Transfer to ${toEntity.name}`,
-isPayable: false, isExpense: false, isTransfer: true, transferPairId: pairId,
-transferPeerEntityId: toEntity.id, transferPeerEntityName: toEntity.name,
-createdBy: createdBy
-};
-let inTx = {
-id: inId, entityId: toEntity.id, entityName: toEntity.name, amount: amount, type: 'IN', date: date,
-description: note ? `Transfer from ${fromEntity.name}: ${note}` : `Transfer from ${fromEntity.name}`,
-isPayable: false, isExpense: false, isTransfer: true, transferPairId: pairId,
-transferPeerEntityId: fromEntity.id, transferPeerEntityName: fromEntity.name,
-createdBy: createdBy
-};
-if (_ed) {
-if (_oOut) { stampEdit(outTx, _oOut); outTx.time = _oOut.time; }
-if (_oIn) { stampEdit(inTx, _oIn); inTx.time = _oIn.time; }
-}
-const _trfLinkIssue = getTxLinkIssue(outTx, { entities }) || getTxLinkIssue(inTx, { entities });
-if (_trfLinkIssue) { window.notifyBlocking(_trfLinkIssue, 'warning', 'Warning'); return; }
-outTx = ensureRecordIntegrity(outTx, !!_ed);
-inTx = ensureRecordIntegrity(inTx, !!_ed);
-if (_ed) { replaceRecord(transactions, outTx); replaceRecord(transactions, inTx); } else { transactions.push(outTx, inTx); }
-await unifiedSave('transactions', transactions, null, [outTx.id, inTx.id]);
-if (window._paymentTransferPendingPhoto) {
-try {
-const _storedPh = (await sqliteStore.get('photos')) || {};
-const _compressed = await _compressPhoto(window._paymentTransferPendingPhoto, 1280, 0.75);
-_storedPh['expense:' + outTx.id] = _compressed;
-_storedPh['expense:' + inTx.id] = _compressed;
-await sqliteStore.set('photos', _storedPh);
-const _phTs = (await sqliteStore.get('photostamps')) || {};
-_phTs['expense:' + outTx.id] = Date.now();
-_phTs['expense:' + inTx.id] = Date.now();
-await sqliteStore.set('photostamps', _phTs);
-const _dk = (await sqliteStore.get('photodirty')) || [];
-if (!_dk.includes('expense:' + outTx.id)) _dk.push('expense:' + outTx.id);
-if (!_dk.includes('expense:' + inTx.id)) _dk.push('expense:' + inTx.id);
-await sqliteStore.set('photodirty', _dk);
-await sqliteStore.set('photos_timestamp', Date.now());
-} catch (_pe) { console.warn('Payment transfer photo save failed', _pe); }
-}
-notifyDataChange('payments');
-emitSyncUpdate({ transactions: null });
-if (_ed) endEditMode();
-showToast(`${_ed ? 'Transfer updated' : 'Transferred'} ${fmtAmt(amount)}: ${fromEntity.name} → ${toEntity.name}`, 'success');
-if (typeof prepareEntityTransferScreen === 'function') await prepareEntityTransferScreen();
-if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(true); } catch (_) {} }
-if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
-triggerAutoSync();
-}
-
-window.saveEntityTransfer = saveEntityTransfer;
-
-function _resetPaymentTransferForm() {
-['payment-transfer-amount', 'payment-transfer-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-}
-
-export async function startEditPaymentTransfer(pairId) {
-const txs = ensureArray(await sqliteStore.get('transactions'));
-const records = txs.filter(r => r && r.isTransfer === true && r.transferPairId === pairId);
-const out = records.find(r => r.type === 'OUT');
-const inn = records.find(r => r.type === 'IN');
-if (!out || !inn || out.isMerged || inn.isMerged) { showToast('This transfer cannot be edited.', 'warning'); return; }
-const scr = document.getElementById('payment-transfer-screen');
-if (scr && getComputedStyle(scr).display === 'none') {
-if (typeof openStandaloneScreen === 'function') openStandaloneScreen('payment-transfer-screen');
-await prepareEntityTransferScreen();
-}
-const set = (eid, v) => { const el = document.getElementById(eid); if (el) el.value = v; };
-set('payment-transfer-from-value', out.entityId);
-set('payment-transfer-from-search', out.entityName);
-const fs = document.getElementById('payment-transfer-from-search'); if (fs) fs.setAttribute('data-entity-id', out.entityId);
-set('payment-transfer-to-value', inn.entityId);
-set('payment-transfer-to-search', inn.entityName);
-const ts = document.getElementById('payment-transfer-to-search'); if (ts) ts.setAttribute('data-entity-id', inn.entityId);
-applyPaymentTransferFilter();
-set('payment-transfer-date', editDateValue(out));
-set('payment-transfer-amount', out.amount);
-const prefix = `Transfer to ${inn.entityName}: `;
-set('payment-transfer-note', (out.description || '').startsWith(prefix) ? out.description.slice(prefix.length) : '');
-beginEditMode('paytransfer', { id: out.id, pairId, records: JSON.parse(JSON.stringify(records)), createdAt: out.createdAt }, { buttonId: 'btn-save-payment-transfer', watchIds: ['payment-transfer-from-value','payment-transfer-to-value','payment-transfer-date','payment-transfer-amount','payment-transfer-note'], label: 'Update Transfer', anchorId: 'payment-transfer-amount', cancelFn: _resetPaymentTransferForm });
-}
-
-registerEditHandler('paytransfer', startEditPaymentTransfer, { keepScreens: ['payment-transfer-screen'] });
-
-export function openPaymentTransferPhotoCapture() {
-openPhotoCapture('paytransfer');
-}
-
-window.openPaymentTransferPhotoCapture = openPaymentTransferPhotoCapture;
-
-export function handlePaymentTransferPhotoFile(event) {
-const file = event.target.files && event.target.files[0];
-if (!file) return;
-const reader = new FileReader();
-reader.onload = (e) => _applyPaymentTransferPendingPhoto(e.target.result);
-reader.readAsDataURL(file);
-event.target.value = '';
-}
-
-window.handlePaymentTransferPhotoFile = handlePaymentTransferPhotoFile;
 window._paymentTransferPendingPhoto = null;
-
-export function _applyPaymentTransferPendingPhoto(dataUrl) {
-window._paymentTransferPendingPhoto = dataUrl || null;
-const dot = document.getElementById('payment-transfer-photo-dot');
-const btn = document.getElementById('payment-transfer-photo-btn');
-if (dot) window.setDisplay(dot, dataUrl ? '' : 'none');
-if (btn) {
-window.setStyle(btn, 'border-color', dataUrl ? 'st-border-color__38fcbe' : 'st-border-color__aa2589');
-btn.title = dataUrl ? 'Photo attached — click to replace' : 'Attach photo';
-}
-}
-
-window._applyPaymentTransferPendingPhoto = _applyPaymentTransferPendingPhoto;
-
-export async function renderPaymentTransferHistory() {
-const list = document.getElementById('paymentTransferHistoryList');
-if (!list) return;
-const transactions = ensureArray(await sqliteStore.get('transactions'));
-const transfers = transactions.filter(t => t.isTransfer === true && t.type === 'OUT')
-.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-if (transfers.length === 0) {
-list.innerHTML = hcEmptyHtml('No payment transfers recorded yet.');
-return;
-}
-const fragment = document.createDocumentFragment();
-const photoIds = [];
-transfers.forEach(t => {
-const safeId = String(t.id).replace(/'/g, "\\'");
-const photoBadgeId = 'ph-badge-trf-' + String(t.id).replace(/[^a-z0-9]/gi, '');
-const photoBtn = `<button type="button" id="${photoBadgeId}" title="View photo" class="badge badge-tint d-none" onclick="_toggleEntityTxnPanel(this,'','${safeId}','${safeId}')">Photo</button>`;
-fragment.appendChild(hcCard({
-tone: 'info', icon: 'transfer',
-titleHtml: `${esc(t.entityName)} &rarr; ${esc(t.transferPeerEntityName)}`,
-sub: esc(formatDisplayDateTime(t.date, t.time || null)),
-chips: [photoBtn],
-amount: fmtAmt(t.amount), tag: 'Transfer', tagTone: 'info',
-metrics: [{ label: 'Description', value: t.description ? esc(t.description) : '', wide: true }],
-actions: actionRowHtml('paytransfer', t.transferPairId, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deletePaymentTransfer('${esc(t.transferPairId)}') })()">Delete</button>`)
-}, { className: 'transfer-card', attrs: { 'data-date': t.date, 'data-rec': t.transferPairId, 'data-from': String(t.entityName || '').trim().toLowerCase(), 'data-to': String(t.transferPeerEntityName || '').trim().toLowerCase() } }));
-if (t.id) photoIds.push([photoBadgeId, 'expense:' + t.id]);
-});
-list.replaceChildren(fragment);
-applyPaymentTransferFilter();
-if (photoIds.length) {
-sqliteStore.get('photos').then(ph => {
-photoIds.forEach(([badgeId, key]) => {
-if (ph && ph[key]) {
-const badge = document.getElementById(badgeId);
-if (badge) window.setDisplay(badge, 'inline-flex');
-}
-});
-}).catch(() => {});
-}
-}
-
-window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 
 export async function deletePaymentTransfer(pairId, skipConfirm = false, opts = {}) {
 const transactions = ensureArray(await sqliteStore.get('transactions'));
@@ -6092,7 +5841,7 @@ if (typeof triggerAutoSync === 'function') { try { triggerAutoSync(); } catch(_)
 }
 } catch (_trfPhErr) { console.warn('[deletePaymentTransfer] photo cleanup failed', _trfPhErr); }
 notifyDataChange('payments');
-if (typeof renderPaymentTransferHistory === 'function') await renderPaymentTransferHistory();
+if (typeof window.renderPaymentTransferHistory === 'function') await window.renderPaymentTransferHistory();
 if (typeof refreshPaymentTab === 'function') { try { await refreshPaymentTab(true); } catch (_) {} }
 if (typeof calculateNetCash === 'function') { try { calculateNetCash(); } catch (_) {} }
 } catch (e) {
@@ -6135,8 +5884,6 @@ window._filterFactoryHistoryByMode = _filterFactoryHistoryByMode;
 window._filterPaymentHistoryByPeriod = _filterPaymentHistoryByPeriod;
 window._filterHistoryByPeriod = _filterHistoryByPeriod;
 window.applyPaymentHistoryFilter = applyPaymentHistoryFilter;
-window.applyStockTransferFilter = applyStockTransferFilter;
-window.applyPaymentTransferFilter = applyPaymentTransferFilter;
 window.setSalesSummaryMode = setSalesSummaryMode;
 window.setPerfOverviewMode = setPerfOverviewMode;
 window.setOverviewMode = setOverviewMode;
@@ -6221,10 +5968,4 @@ window.saveSalesRepsList = saveSalesRepsList;
 window.renderAllRepUI = renderAllRepUI;
 window._overlayStack = _overlayStack;
 window.phoneActionHTML = phoneActionHTML;
-window.prepareEntityTransferScreen = prepareEntityTransferScreen;
-window.saveEntityTransfer = saveEntityTransfer;
-window.openPaymentTransferPhotoCapture = openPaymentTransferPhotoCapture;
-window.handlePaymentTransferPhotoFile = handlePaymentTransferPhotoFile;
-window._applyPaymentTransferPendingPhoto = _applyPaymentTransferPendingPhoto;
-window.renderPaymentTransferHistory = renderPaymentTransferHistory;
 window.deletePaymentTransfer = deletePaymentTransfer;

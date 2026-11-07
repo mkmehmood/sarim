@@ -4,5 +4,12 @@
   ],
   "recycle-bin.js": [
     "utilities-payments.js"
+  ],
+  "stock-transfer.js": [
+    "utilities-payments.js",
+    "utilities-sales.js"
+  ],
+  "payment-transfer.js": [
+    "utilities-payments.js"
   ]
 }

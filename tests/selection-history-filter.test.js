@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractFunctions } from './_extract.js';
-import { readSource } from './helpers/source.js';
+import { readModule, readSource } from './helpers/source.js';
 
 const read = (f) => readSource(`../${f}`);
 const mkCard = (attrs) => ({ attrs, shown: true, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; } });
@@ -16,9 +16,14 @@ const doc = {
 const win = { setDisplay: (el, v) => { el.shown = v !== 'none'; } };
 
 const biz = extractFunctions('modules/business.js', ['selectedCustomerFilter', 'customerHistoryMatcher', 'selectedValueFilter', 'routeHistoryMatcher'], { document: doc });
-const pay = extractFunctions('modules/utilities-payments.js',
-  ['_showFilterEmpty', '_filterPaymentHistoryByPeriod', '_filterFactoryHistoryByMode', 'applyPaymentHistoryFilter', 'applyStockTransferFilter', 'applyPaymentTransferFilter'],
-  { document: doc, window: win, localDateStr: () => '2026-10-31', hcEmptyHtml: (m) => `<div>${m}</div>`, ...biz });
+const payScope = { document: doc, window: win, localDateStr: () => '2026-10-31', hcEmptyHtml: (m) => `<div>${m}</div>`, ...biz };
+const payFns = extractFunctions('modules/utilities-payments.js',
+  ['_showFilterEmpty', '_filterPaymentHistoryByPeriod', '_filterFactoryHistoryByMode', 'applyPaymentHistoryFilter'], payScope);
+const pay = {
+  ...payFns,
+  ...extractFunctions('modules/stock-transfer.js', ['applyStockTransferFilter'], { ...payScope, ...payFns }),
+  ...extractFunctions('modules/payment-transfer.js', ['applyPaymentTransferFilter'], { ...payScope, ...payFns }),
+};
 
 const shownOf = (sel, attr) => lists[sel].filter((c) => c.shown).map((c) => c.attrs[attr]);
 
@@ -198,8 +203,8 @@ describe('payment transfer history follows the entities', () => {
 });
 
 describe('selection filter wiring', () => {
-  const payments = read('modules/utilities-payments.js');
-  const sales = read('modules/utilities-sales.js');
+  const payments = readModule('utilities-payments.js');
+  const sales = readModule('utilities-sales.js');
   const factory = read('modules/factory.js');
   const formulaStore = read('modules/formula-store.js');
   const ledger = read('modules/daily-ledger.js');
@@ -252,7 +257,7 @@ describe('universal search skips deleted records', () => {
     assert.deepEqual(customers.map((c) => c.name), ['Kept', 'NoId']);
   });
   it('the search handlers use the alive loader', () => {
-    const payments = read('modules/utilities-payments.js');
+    const payments = readModule('utilities-payments.js');
     assert.match(payments, /loadAliveCollections\('rep', 'sales', 'clients', 'customers', 'entities'\)/);
     assert.match(payments, /loadAliveCollections\('entities', 'transactions'\);\nconst input = document\.getElementById\('expenseName'\)/);
   });

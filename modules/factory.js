@@ -7,7 +7,7 @@ import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHand
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, lockedSaleValue, round2, safeNumber, sqliteStore, validateUUID, readNum, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _refreshSupplierLinkViews, _recomputeSupplierPayables, notifyDataChange, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
-import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, deleteStockTransfer, getAppStores, getStorePool, getStoreLabel, refreshFactoryTab, refreshUI, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
+import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, getAppStores, getStorePool, getStoreLabel, refreshFactoryTab, refreshUI, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { getFormulaNames, getSelectedFormula } from './formula-store.js';
@@ -1437,7 +1437,7 @@ const entryToDelete = production.find(item => item.id === id);
 if (!entryToDelete) return;
 if (entryToDelete.isMerged) { window.notifyBlocking('Merged opening balance records cannot be deleted', 'warning', 'Action not allowed'); return; }
 if (entryToDelete.isTransfer === true) {
-if (typeof deleteStockTransfer === 'function') await deleteStockTransfer(entryToDelete.transferPairId);
+if (typeof window.deleteStockTransfer === 'function') await window.deleteStockTransfer(entryToDelete.transferPairId);
 return;
 }
 const isReturn = entryToDelete.isReturn === true;

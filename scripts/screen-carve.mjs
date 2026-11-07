@@ -12,18 +12,20 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as acorn from 'acorn';
+import * as eslintScope from 'eslint-scope';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const flag = f => argv.includes(f);
 const opt = f => { const i = argv.indexOf(f); return i >= 0 ? (argv[i + 1] || '').split(',').filter(Boolean) : []; };
-const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--also', '--keep', '--within'].includes(argv[i - 1])));
+const pos = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && ['--also', '--keep', '--within', '--via-window', '--why'].includes(argv[i - 1])));
 const [screenId, name] = pos;
 if (!screenId || !name) { console.error('usage: screen-carve.mjs <screen-id> <name> [--dry] [--also a,b] [--keep c]'); process.exit(2); }
 const DRY = flag('--dry');
 const ALSO = new Set(opt('--also'));
 const KEEP = new Set(opt('--keep'));
 const WITHIN = new Set(opt('--within'));
+const VIA = new Set(opt('--via-window'));
 const inScope = u => WITHIN.size === 0 || WITHIN.has(u.mod);
 
 const rd = p => readFileSync(join(ROOT, p), 'utf8');
@@ -82,15 +84,25 @@ const units = [];
 const modInfo = {};
 for (const mod of MODS) {
   const src = rd('modules/' + mod);
-  const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module' });
+  const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module', ranges: true });
   const info = { src, imports: [], units: [] };
+  const sm = eslintScope.analyze(ast, { ecmaVersion: 2022, sourceType: 'module', range: true });
+  const refsByPos = [];
+  const walkScopes = sc => {
+    for (const r of sc.references) {
+      const v = r.resolved;
+      if (!v || v.scope.type === 'module') refsByPos.push({ pos: r.identifier.start, name: r.identifier.name });
+    }
+    sc.childScopes.forEach(walkScopes);
+  };
+  walkScopes(sm.globalScope);
   for (const n of ast.body) {
     if (n.type === 'ImportDeclaration') {
       info.imports.push({ node: n, specs: n.specifiers.map(s => ({ local: s.local.name, imported: s.imported ? s.imported.name : 'default', type: s.type })), from: n.source.value });
       continue;
     }
     const text = src.slice(n.start, n.end);
-    const u = { id: `${mod}:${n.start}`, mod, node: n, start: n.start, end: n.end, text, names: rangeNames(n), exported: n.type === 'ExportNamedDeclaration', idents: astIdents(n) };
+    const u = { id: `${mod}:${n.start}`, mod, node: n, start: n.start, end: n.end, text, names: rangeNames(n), exported: n.type === 'ExportNamedDeclaration', idents: new Set(refsByPos.filter(r => r.pos >= n.start && r.pos < n.end).map(r => r.name)) };
     const m = /^window\.([\w$]+)\s*=\s*([\w$]+);?$/.exec(text);
     if (m) u.publish = { keys: [m[1]], values: [m[2]], kind: 'assign' };
     const oa = /^Object\.assign\(\s*window\s*,\s*\{([\s\S]*?)\}\s*\);?$/.exec(text);
@@ -124,7 +136,7 @@ for (const u of units) {
   for (const id of u.idents) {
     const us = nameUnits.get(id);
     if (!us) continue;
-    for (const t of us) if (t !== u) usersOf.get(t).add(u);
+    for (const t of us) if (t !== u && !t.names.every(n => VIA.has(n))) usersOf.get(t).add(u);
   }
 }
 const publishedVals = new Set(units.filter(u => u.publish).flatMap(u => u.publish.values));
@@ -175,6 +187,13 @@ const lines = owned.reduce((a, u) => a + u.text.split('\n').length, 0);
 console.log(`${screenId}: ${innerIds.length} ids, ${handlerOnly.size} handler-only names`);
 console.log(`  seeds ${seeds.size}, owned ${owned.length} statements / ${lines} lines`);
 for (const [m, us] of Object.entries(byMod)) console.log(`    ${m.padEnd(26)} ${String(us.length).padStart(3)} statements  ${us.reduce((a, u) => a + u.text.split('\n').length, 0)} lines`);
+for (const w of opt('--why')) {
+  for (const u of units.filter(x => x.names.includes(w))) {
+    const out = [...usersOf.get(u)].filter(x => !S.has(x)).map(x => `${x.mod}::${x.names[0] || '(stmt) ' + x.text.slice(0, 60).replace(/\n/g, ' ')}`);
+    const ext = (extBlock.has(w) ? ' [other screen script/sw]' : '') + (extSoft.has(w) && !publishedVals.has(w) ? ' [html handler, unpublished]' : '') + (stringRef.has(w) && !publishedVals.has(w) ? ' [string ref, unpublished]' : '');
+    console.log(`  why ${w}: ${out.join(' | ') || '(no outside code users)'}${ext}`);
+  }
+}
 if (flag('--names')) console.log('  owned names: ' + owned.flatMap(u => u.names).join(', '));
 const droppedSeeds = [...seeds].filter(u => !S.has(u));
 const touchers = droppedSeeds.filter(u => idHit(u) || u.text.includes(`'${screenId}'`));
@@ -201,16 +220,21 @@ const importSpecs = new Map();
 const localNames = new Set();
 for (const u of owned) for (const id of u.idents) {
   if (ownedNames.has(id)) continue;
+  const localDecl = modInfo[u.mod].units.find(x => x !== u && x.names.includes(id));
+  if (localDecl) {
+    if (!S.has(localDecl) && !needFromStay.has(id)) needFromStay.set(id, localDecl);
+    continue;
+  }
+  const imp = modInfo[u.mod].imports.flatMap(i => i.specs.map(sp => ({ ...sp, from: i.from }))).find(sp => sp.local === id);
+  if (imp) {
+    if (importSpecs.has(id) && importSpecs.get(id).from !== imp.from) { console.error(`conflicting import for ${id}`); process.exit(1); }
+    importSpecs.set(id, imp);
+    continue;
+  }
   const us = nameUnits.get(id);
   if (us && us.length === 1 && !S.has(us[0])) {
     if (!needFromStay.has(id)) needFromStay.set(id, us[0]);
     continue;
-  }
-  const imp = modInfo[u.mod].imports.flatMap(i => i.specs.map(s => ({ ...s, from: i.from }))).find(s => s.local === id);
-  if (imp) {
-    const k = imp.local;
-    if (importSpecs.has(k) && importSpecs.get(k).from !== imp.from) { console.error(`conflicting import for ${k}`); process.exit(1); }
-    importSpecs.set(k, imp);
   }
   localNames.add(id);
 }
@@ -222,10 +246,10 @@ for (const [id, su] of needFromStay) add('./' + su.mod, id);
 for (const s of importSpecs.values()) add(s.from, s.imported === s.local ? s.local : `${s.imported} as ${s.local}`);
 const coreImports = [...groups.entries()].map(([from, ss]) => `import { ${ss.join(', ')} } from '${from}';`);
 
-const publishKeys = [...new Set(pubStays.flatMap(p => p.moved))];
+const publishKeys = [...new Set([...pubStays.flatMap(p => p.moved), ...[...VIA].filter(n => ownedNames.has(n))])];
 const coreBody = owned.map(u => u.text).join('\n\n');
 const publishStmt = publishKeys.length ? `\nObject.assign(window, { ${publishKeys.join(', ')} });` : '';
-const exportsForNeeded = [...ownedNames].filter(n => units.some(x => !S.has(x) && !x.publish && x.idents.has(n)));
+const exportsForNeeded = [...ownedNames].filter(n => !VIA.has(n) && units.some(x => !S.has(x) && !x.publish && x.idents.has(n)));
 if (exportsForNeeded.length) { console.error('internal error: owned name used outside: ' + exportsForNeeded.join(', ')); process.exit(1); }
 writeFileSync(join(ROOT, 'modules', name + '.js'), `${coreImports.join('\n')}\n\n${coreBody}\n${publishStmt}\n`.replace(/\n{3,}/g, '\n\n'));
 
@@ -239,6 +263,29 @@ for (const p of pubStays) {
 const exportNeeded = new Map();
 for (const [id, su] of needFromStay) if (!su.exported) { if (!exportNeeded.has(su)) exportNeeded.set(su, []); exportNeeded.get(su).push(id); }
 for (const su of exportNeeded.keys()) push(su.mod, { start: su.start, end: su.start, text: 'export ' });
+for (const u of units) {
+  if (S.has(u) || u.publish) continue;
+  const hit = [...VIA].filter(n => ownedNames.has(n) && u.idents.has(n));
+  if (!hit.length) continue;
+  const visit = (n, parent, key) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(x => visit(x, parent, key)); return; }
+    if (typeof n.type !== 'string') return;
+    if (n.type === 'Identifier' && hit.includes(n.name)) {
+      const prop = parent && parent.type === 'MemberExpression' && key === 'property' && !parent.computed;
+      const objKey = parent && parent.type === 'Property' && key === 'key' && !parent.computed && !parent.shorthand;
+      if (parent && parent.type === 'Property' && parent.shorthand) { console.error(`cannot rewrite shorthand use of ${n.name} in ${u.mod}`); process.exit(1); }
+      if (!prop && !objKey) {
+        const callee = (parent && parent.type === 'CallExpression' && key === 'callee') || (parent && parent.type === 'UnaryExpression' && parent.operator === 'typeof');
+        if (callee) push(u.mod, { start: n.start, end: n.start, text: 'window.' });
+        else push(u.mod, { start: n.start, end: n.end, text: `((...args) => window.${n.name}(...args))` });
+      }
+      return;
+    }
+    for (const k of Object.keys(n)) if (k !== 'type' && k !== 'start' && k !== 'end') visit(n[k], n, k);
+  };
+  visit(u.node, null, null);
+}
 for (const [mod, es] of Object.entries(edits)) {
   let s = modInfo[mod].src;
   for (const e of es.sort((a, b) => b.start - a.start)) {
