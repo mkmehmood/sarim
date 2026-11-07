@@ -33,7 +33,6 @@ test('the inline navigation script keeps what must exist before modules load', (
 test('each moved module publishes its globals as soon as it is evaluated', async () => {
   globalThis.window = globalThis.window || globalThis;
   const expected = {
-    'store-manager': ['openStoreManagerScreen', 'renderStoreList', 'resetStoreForm', 'editStore', 'deleteStore', 'saveStoreFromForm'],
     'add-entity': ['prepareAddEntityScreen'],
     'raw-material': ['prepareRawMaterialScreen'],
   };

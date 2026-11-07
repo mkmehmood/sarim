@@ -37,4 +37,8 @@ registerScreens({
     load: () => import('./payment-transfer.screen.js'),
     globals: ['_applyPaymentTransferPendingPhoto', 'applyPaymentTransferFilter', 'handlePaymentTransferPhotoFile', 'openPaymentTransferPhotoCapture', 'prepareEntityTransferScreen', 'renderPaymentTransferHistory', 'saveEntityTransfer', 'startEditPaymentTransfer'],
   },
+  'store-manager-screen': {
+    load: () => import('./store-manager.screen.js'),
+    globals: ['deleteStore', 'editStore', 'openStoreManagerScreen', 'renderStoreList', 'resetStoreForm', 'saveStoreFromForm'],
+  },
 });

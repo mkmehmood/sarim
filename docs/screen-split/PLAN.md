@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 9 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer). Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 10 screens are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -156,6 +156,25 @@ Both moved with the same method; their lazy chunks are 13.5 KB and 14.4 KB. The 
 - **References are now computed with scope analysis** (`eslint-scope`), not by listing identifiers. A local variable named `n` is no longer mistaken for a top-level `n` in another module (the earlier version exported a single-letter `n` from `inventory-note.js` for this reason; that was caught in review and removed). Imports for moved code resolve in the right order: a declaration in the same module, then that module's own import, then a unique global (this fixed a missed `getStoreLabel`, which is also a local helper name in `prod-photos.js`).
 
 Tests that read these functions now read them from `modules/stock-transfer.js` / `modules/payment-transfer.js`, or use `readModule('utilities-sales.js')` / `readModule('utilities-payments.js')` when they need the origin file plus what was carved out of it.
+
+### store-manager, and what the build says about the real payoff
+`store-manager` needed no carve: its module was created in 3a and is single-screen (the tool cannot see functions published as `window.X = async function…`, which is why it reported "not lazy-safe"). The only outside reference is a guarded `typeof window.renderStoreList === 'function' && getDisplay(_el('store-manager-screen')) !== 'none'` in `formula-store.js`, which stays correct with the placeholder (hidden and unmounted means skipped).
+
+**Measured result so far** (gzipped JS that loads at start-up, excluding the lazy screens): 397 KB on `main` → 369 KB here, about 7%. Ten screens (about 148 KB raw) now load on demand. The reason the saving is modest is that one shared chunk is 1.07 MB, and nearly all of it is the five monoliths plus code that is *meant* to be lazy but is pinned by static imports:
+
+| module in the always-loaded chunk | size |
+|---|---|
+| utilities-sales | 167 KB |
+| utilities-payments | 157 KB |
+| utilities-core | 130 KB |
+| sync | 107 KB |
+| admin-data | 98 KB |
+| business | 50 KB |
+| **rep-sales** (loaded with `import()` in `main.js`, but imported statically elsewhere) | 49 KB |
+| **factory** (same) | 46 KB |
+| customers, link-graph, link-guards, cm-ledger | 39, 30, 20, 18 KB |
+
+So the biggest remaining payoff is not more small screens. It is (1) breaking the static imports that pin `factory.js` and `rep-sales.js` (about 95 KB raw, and the `raw-material` screen code lives inside `factory.js`), then (2) carving the tab code out of the five monoliths (Phase 4).
 
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.

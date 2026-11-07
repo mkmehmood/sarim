@@ -1,4 +1,3 @@
-import './store-manager.js';
 import './add-entity.js';
 import './raw-material.js';
 import './native.js';
