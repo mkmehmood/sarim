@@ -54,4 +54,8 @@ registerLazyModules({
     globals: ['calcNet', 'calculateFactoryInventoryValue', 'clearFactoryInventoryForm', 'createSupplierFromMaterial', 'deleteFactoryEntry', 'deleteFactoryPurchase', 'deleteProdEntry', 'editFactoryInventoryItem', 'editFactoryPurchase', 'getStorePricing', 'hideFactoryMaterialResults', 'linkMaterialToSupplier', 'loadExistingSuppliers', 'openFactoryInventoryModal', 'pickFactoryMaterial', 'pickNewFactoryMaterial', 'refreshFactoryFormulaFilter', 'saveFactoryInventoryItem', 'saveFactoryProductionEntry', 'searchFactoryMaterials', 'selectFactoryFormula', 'setFactoryAvailableStore', 'setFactorySummaryMode', 'setFactorySupplierType', 'showSupplierUnlinkOption', 'sortFactoryInventory', 'toggleSupplierFields', 'unlinkFactoryOpeningSupplier', 'unlinkSupplierConfirmation', 'unlinkSupplierFromMaterialById', 'updateFactoryKgCalculation'],
     hooks: ['renderFactoryInventory', 'renderFactoryHistory', 'updateFactoryInventoryDisplay', 'closeFactoryInventoryModal'],
   },
+  'formula-store-edit-screen': {
+    load: () => import('../screens/compiled/formula-store-edit.screen.js'),
+    globals: ['addFormulaIngredientRow', 'deleteFormulaStoreEntry', 'openFormulaStoreEditor', 'saveFormulaStoreEntry', 'updateFormulaStoreSummary'],
+  },
 });

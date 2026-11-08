@@ -120,7 +120,7 @@ for (const u of units) for (const n of u.names) { if (!nameUnits.has(n)) nameUni
 const ambiguous = new Set([...nameUnits].filter(([, v]) => v.length > 1).map(([k]) => k));
 for (const n of ambiguous) nameUnits.delete(n);
 
-const otherScreens = existsSync(join(ROOT, 'screens')) ? readdirSync(join(ROOT, 'screens')).map(f => rd('screens/' + f)).join('\n') : '';
+const otherScreens = existsSync(join(ROOT, 'screens')) ? readdirSync(join(ROOT, 'screens')).filter(f => f.endsWith('.screen.html')).map(f => rd('screens/' + f)).join('\n') : '';
 const otherScript = otherScreens.split('<script type="module">').slice(1).join('\n');
 const otherTemplate = otherScreens.replace(/<script type="module">[\s\S]*?<\/script>/g, '');
 const extBlock = idents(otherScript + '\n' + rd('sw.js'));

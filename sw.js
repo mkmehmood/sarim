@@ -6,6 +6,7 @@ const ASSETS_TO_CACHE = [
   './index.html',
   './app.css',
   './modules/main.js',
+  './screens/compiled/formula-store-edit.screen.js',
   './screens/compiled/store-manager.screen.js',
   './screens/compiled/payment-transfer.screen.js',
   './screens/compiled/stock-transfer.screen.js',

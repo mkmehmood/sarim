@@ -14,5 +14,8 @@
   ],
   "factory-core.js": [
     "factory.js"
+  ],
+  "formula-store-edit.js": [
+    "formula-store.js"
   ]
 }

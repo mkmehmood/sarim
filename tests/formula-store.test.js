@@ -28,7 +28,7 @@ function load(initial = {}) {
     getAppStores: async () => { const s = data.get('stores'); return Array.isArray(s) && s.length ? structuredClone(s) : structuredClone(DEFAULTS); },
     window, document, getDefaultStoreKey, formulaIdOf, feedsFromFormulas,
   };
-  const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function');
+  const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function').replace(/^export (const|let|var) /gm, '$1 ');
   const ctx = vm.createContext({ ...stubs, console, structuredClone, Promise, Number, String, Array, Math, Date, JSON });
   vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, updateFormulaCalcs, getFormulaStore, getFormulaNames, getStoreFormulaNames };', ctx);
   return { api: ctx.api, data, writes, notes };
