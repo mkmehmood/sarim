@@ -704,17 +704,18 @@ describe('virtual keyboard wiring', () => {
 
   it('uses the app theme tokens for the keys, with no separate stylesheet or CDN', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
-    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*linear-gradient\(135deg, var\(--accent\), var\(--accent-cyan\)\)/);
-    assert.match(css, /--vk-pebble: linear-gradient\(180deg, color-mix\(in srgb, var\(--white\) 22%, transparent\) 0%, transparent 55%\), linear-gradient\(135deg, color-mix\(in srgb, var\(--accent\) 30%, var\(--surface\)\), color-mix\(in srgb, var\(--accent-cyan\) 24%, var\(--surface\)\)\)/);
+    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*background: var\(--toggle-opt-active-bg\); border-color: var\(--toggle-opt-active-border\); color: var\(--toggle-opt-active-color\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
     assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('pebble keys: bold monospace circles on a flush full-width bottom sheet, pill for space, DEL and the wide zero', () => {
+  it('theme keys: bold monospace circles in the app button theme on a flush full-width soft-card sheet, pill for space, DEL and the wide zero', () => {
     assert.match(css, /\.vk-dock \.vk-key \{[^}]*border-radius: 50%;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
     assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*left: 0; right: 0; bottom: 0;[^}]*border-radius: 28px 28px 0 0;/);
-    assert.match(css, /\.vk-dock \.vk-key \{[^}]*background: var\(--vk-pebble\)/);
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 1px solid var\(--glass-border\); border-radius: 50%; background: var\(--soft-bg\)/);
+    assert.match(css, /\.vk-dock\.overlay \{[^}]*background: var\(--soft-card\)/);
+    assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*background: var\(--danger-dim\)/);
     assert.match(css, /html\.vk-open \{ --vk-gap: 0px; \}/);
     assert.match(css, /\[data-vk-pane="pad"\]:not\(\.d-none\) \{ display: grid; grid-template-columns: repeat\(4, 1fr\); grid-auto-rows: var\(--vk-pd\);/);
     assert.match(css, /\.is-zero \{ grid-column: span 2;/);
