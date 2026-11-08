@@ -49,6 +49,7 @@ export function typesLowerCase(el) {
   return LOWER_TYPES.includes(type) || LOWER_TYPES.includes(orig) || LOWER_TYPES.includes(String(attr(el, 'data-vk-mode') || attr(el, 'inputmode') || '').toLowerCase());
 }
 
+const SCROLL_HIDE_PX = 12;
 export const CASE_MODES = ['caps', 'small', 'title'];
 
 export function wantsCapital(value, caret) {
@@ -392,6 +393,22 @@ export function installVirtualKeyboard(opts = {}) {
     if (t === active || isTextField(t) || (t.closest && t.closest('label'))) return;
     hide(true);
   }, true);
+  const scrollsOutside = (t) => !!t && !dock.contains(t) && !(t.closest && t.closest('.dd-layer')) && t !== active && !isTextField(t);
+  let touchStart = null;
+  doc.addEventListener('touchstart', (e) => {
+    const p = e.touches && e.touches[0];
+    touchStart = p && isOpen() ? { x: p.clientX, y: p.clientY, t: e.target } : null;
+  }, { capture: true, passive: true });
+  doc.addEventListener('touchmove', (e) => {
+    const p = e.touches && e.touches[0];
+    if (!touchStart || !p || !isOpen()) return;
+    if (Math.max(Math.abs(p.clientY - touchStart.y), Math.abs(p.clientX - touchStart.x)) < SCROLL_HIDE_PX) return;
+    const t = touchStart.t;
+    touchStart = null;
+    if (scrollsOutside(t)) hide(true);
+  }, { capture: true, passive: true });
+  ['touchend', 'touchcancel'].forEach((n) => doc.addEventListener(n, () => { touchStart = null; }, true));
+  doc.addEventListener('wheel', (e) => { if (isOpen() && scrollsOutside(e.target)) hide(true); }, { capture: true, passive: true });
   doc.addEventListener('visibilitychange', () => { if (doc.hidden) hide(true); });
   win.addEventListener('resize', () => { if (isOpen()) measure(); });
 

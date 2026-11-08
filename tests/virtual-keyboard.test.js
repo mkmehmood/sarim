@@ -704,16 +704,18 @@ describe('virtual keyboard wiring', () => {
 
   it('uses the app theme tokens for the keys, with no separate stylesheet or CDN', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
-    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*background: var\(--accent\)/);
+    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*color-mix\(in srgb, var\(--accent\) 70%, #fff\), var\(--accent\)\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
     assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('circle keys: bold monospace circles in a floating card, pill for space, DEL and the wide zero', () => {
+  it('pebble keys: bold monospace circles on a flush full-width bottom sheet, pill for space, DEL and the wide zero', () => {
     assert.match(css, /\.vk-dock \.vk-key \{[^}]*border-radius: 50%;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
-    assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*border-radius: 30px;/);
-    assert.match(css, /\[data-vk-pane="pad"\]:not\(\.d-none\) \{ display: grid; grid-template-columns: repeat\(4, 64px\);/);
+    assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*left: 0; right: 0; bottom: 0;[^}]*border-radius: 28px 28px 0 0;/);
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*background: var\(--vk-pebble\)/);
+    assert.match(css, /html\.vk-open \{ --vk-gap: 0px; \}/);
+    assert.match(css, /\[data-vk-pane="pad"\]:not\(\.d-none\) \{ display: grid; grid-template-columns: repeat\(4, 1fr\); grid-auto-rows: var\(--vk-pd\);/);
     assert.match(css, /\.is-zero \{ grid-column: span 2;/);
     assert.match(css, /\.is-tall \{ grid-row: span 2;/);
   });
@@ -763,5 +765,24 @@ describe('universal search ignores late results from an older keystroke', () => 
   it('drops a stale result instead of overwriting or re-opening the list', () => {
     const src = readFileSync(new URL('../modules/utilities-payments.js', import.meta.url), 'utf8');
     assert.match(src, /_searchSeq\.get\(resultsId\) !== _mySeq\) return;/);
+  });
+});
+
+describe('keyboard hides when the page is scrolled outside it', () => {
+  const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
+
+  it('listens for touch drags and the mouse wheel outside the keyboard', () => {
+    assert.match(src, /doc\.addEventListener\('touchmove'/);
+    assert.match(src, /doc\.addEventListener\('wheel'/);
+    assert.match(src, /if \(scrollsOutside\(t\)\) hide\(true\);/);
+  });
+
+  it('ignores scrolling inside the keyboard, the suggestion list and the typed field', () => {
+    assert.match(src, /const scrollsOutside = \(t\) => !!t && !dock\.contains\(t\) && !\(t\.closest && t\.closest\('\.dd-layer'\)\) && t !== active && !isTextField\(t\);/);
+  });
+
+  it('needs a real drag (not a tap) before it closes', () => {
+    assert.match(src, /const SCROLL_HIDE_PX = 12;/);
+    assert.match(src, /< SCROLL_HIDE_PX\) return;/);
   });
 });
