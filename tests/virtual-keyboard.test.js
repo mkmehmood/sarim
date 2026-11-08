@@ -650,9 +650,9 @@ describe('virtual keyboard wiring', () => {
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('themed keys: borderless bold UI-font keys split by hairlines, lowercase until shifted', () => {
+  it('themed keys: borderless bold monospace keys split by hairlines, lowercase until shifted', () => {
     assert.match(css, /\.vk-row \{ display: flex; gap: 0; margin: 0; border-bottom: 1px solid var\(--well-line\); \}/);
-    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 0; border-radius: 0; background: transparent;[^}]*font-family: var\(--font-ui\)[^}]*font-weight: 800/);
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 0; border-radius: 0; background: transparent;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
     assert.match(kb, /stroke-width="1\.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/);
     assert.match(css, /\.vk-key\.is-letter \{ text-transform: lowercase; \}/);
     assert.match(css, /\.vk-dock\.is-shifted \.vk-key\.is-letter \{ text-transform: uppercase; \}/);
