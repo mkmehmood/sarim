@@ -7,7 +7,7 @@ import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHand
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, appMode, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getTimestamp, localDateStr, round2, safeNumber, sqliteStore, validateUUID, readNum, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _refreshSupplierLinkViews, _recomputeSupplierPayables, notifyDataChange, triggerAutoSync } from './utilities-core.js';
-import { _set_currentFactoryEntryStore, calculateCashTracker, calculateNetCash, currentFactoryEntryStore, getAppStores, getStorePool, getStoreLabel, refreshFactoryTab, refreshUI, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
+import { calculateCashTracker, calculateNetCash, getAppStores, getStorePool, getStoreLabel, refreshFactoryTab, refreshUI, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { _filterFactoryHistoryByMode, formatCurrency, refreshPaymentTab, renderUnifiedTable, safeValue } from './utilities-payments.js';
 import { showGlassConfirm, showToast } from './customers.js';
 import { getFormulaNames, getSelectedFormula } from './formula-store.js';
@@ -615,7 +615,7 @@ if (!_sffRep) {
 showToast('No store is using this formula.', 'warning', 3000);
 return;
 }
-_set_currentFactoryEntryStore(_sffRep.key);
+window.currentFactoryEntryStore = _sffRep.key;
 if (typeof window.syncFactoryFormulaPicker === 'function') window.syncFactoryFormulaPicker(pool);
 calculateFactoryProduction();
 }
@@ -644,7 +644,7 @@ const _usedEdit = await _usedUnitsOfBatch(rec);
 if (_usedEdit > 0) { window.notifyBlocking(_usedBatchMessage(_usedEdit, rec, 'edit'), 'warning', 'Action not allowed'); return; }
 if (typeof showTab === 'function') showTab('factory');
 const _ft = rec.formulaId;
-_set_currentFactoryEntryStore(rec.store);
+window.currentFactoryEntryStore = rec.store;
 if (typeof window.syncFactoryFormulaPicker === 'function') window.syncFactoryFormulaPicker(_ft);
 const u = document.getElementById('factoryProductionUnits'); if (u) u.value = rec.units;
 if (typeof calculateFactoryProduction === 'function') await calculateFactoryProduction();
@@ -654,7 +654,7 @@ registerEditHandler('factory', startEditFactoryEntry);
 export function saveFactoryProductionEntry(...a) { return confirmGuard('saveFactoryProductionEntry', () => runExclusive('saveFactoryProductionEntry', () => _saveFactoryProductionEntryImpl(...a)), { label: 'Production', late: true, fields: [], editKinds: ['factory'] }); }
 async function _saveFactoryProductionEntryImpl() {
 const _ed = getEditCtx('factory');
-if (!currentFactoryEntryStore) {
+if (!window.currentFactoryEntryStore) {
 window.notifyBlocking('Please select a formula before saving.', 'warning', 'Warning');
 return;
 }
@@ -676,8 +676,8 @@ const inventorySnapshot = JSON.parse(JSON.stringify(inventory));
 const historySnapshot = [...factory];
 let _histSavedRec = null;
 try {
-const _sfpeType = await getStorePool(currentFactoryEntryStore);
-const _freshFormula = await getSelectedFormula(currentFactoryEntryStore);
+const _sfpeType = await getStorePool(window.currentFactoryEntryStore);
+const _freshFormula = await getSelectedFormula(window.currentFactoryEntryStore);
 const settings = _freshFormula.ingredients.filter(i => i.quantity > 0);
 if (!settings || settings.length === 0) {
 window.notifyBlocking('No formula configured for this store. Assign a formula to it in Store Manager first.', 'warning', 'Warning');
@@ -776,12 +776,12 @@ if (!(await window.gcCommit(_gcExtra))) throw new Error('__GC_CANCEL__');
 let factProdId = _ed ? _ed.id : generateUUID('fprod');
 if (!validateUUID(factProdId)) factProdId = generateUUID('fprod');
 const factProdCreatedAt = getTimestamp();
-const _savedFormulaType = await getStorePool(currentFactoryEntryStore);
+const _savedFormulaType = await getStorePool(window.currentFactoryEntryStore);
 const productionRecord = {
 id: factProdId,
 date: localDateStr(),
 time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-store: currentFactoryEntryStore,
+store: window.currentFactoryEntryStore,
 formulaId: _savedFormulaType,
 formulaName: (await getFormulaNames())[_savedFormulaType] || 'Formula',
 units,

@@ -2,7 +2,7 @@ import { ensureArray, esc, getTimestamp, sqliteStore } from './business.js';
 import { showToast } from './customers.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { resolveSelectedFormula } from './link-graph.js';
-import { _invalidateStoresCache, _set_currentFactoryEntryStore, getAppStores } from './utilities-sales.js';
+import { _invalidateStoresCache, getAppStores } from './utilities-sales.js';
 import { getDefaultStoreKey, formulaIdOf } from './store-keys.js';
 import { feedsFromFormulas } from './formula-pools.js';
 import { mergeRestored } from './store-recycle.js';
@@ -217,7 +217,7 @@ export async function refreshFormulaDependentUI() {
   let active = poolOfStore[window.currentFactoryEntryStore || getDefaultStoreKey()];
   if (!entryOrder.includes(active)) active = entryOrder[0] || '';
   const rep = stores.find((s) => poolOfStore[s.key] === active);
-  if (rep && poolOfStore[window.currentFactoryEntryStore] !== active) _set_currentFactoryEntryStore(rep.key);
+  if (rep && poolOfStore[window.currentFactoryEntryStore] !== active) window.currentFactoryEntryStore = rep.key;
   syncFactoryFormulaPicker(active);
   const availInput = _el('factory-avail-value');
   let availPool = availInput ? availInput.value : (availOrder[0] || '');

@@ -42,60 +42,12 @@ function _inPeriod(dateStr, mode, selectedDate, selectedDateObj, selectedYear, s
   return mode === 'all';
 }
 const _cap = (s) => { s = String(s ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); };
-export let currentCashTrackerMode = 'day';
-window.currentCashTrackerMode = currentCashTrackerMode;
-export function _set_currentCashTrackerMode(v) { currentCashTrackerMode = v; window.currentCashTrackerMode = v; }
-export let custTransactionMode = 'sale';
-window.custTransactionMode = custTransactionMode;
-export function _set_custTransactionMode(v) { custTransactionMode = v; window.custTransactionMode = v; }
-export let currentIndMode = 'week';
-window.currentIndMode = currentIndMode;
-export function _set_currentIndMode(v) { currentIndMode = v; window.currentIndMode = v; }
-export let currentIndMetric = 'weight';
-window.currentIndMetric = currentIndMetric;
-export function _set_currentIndMetric(v) { currentIndMetric = v; window.currentIndMetric = v; }
-export let currentStoreComparisonMetric = 'weight';
-window.currentStoreComparisonMetric = currentStoreComparisonMetric;
-export function _set_currentStoreComparisonMetric(v) { currentStoreComparisonMetric = v; window.currentStoreComparisonMetric = v; }
-export let currentActiveTab = 'prod';
-window.currentActiveTab = currentActiveTab;
-export function _set_currentActiveTab(v) { currentActiveTab = v; window.currentActiveTab = v; }
-export let currentMfgMode = 'week';
-window.currentMfgMode = currentMfgMode;
-export function _set_currentMfgMode(v) { currentMfgMode = v; window.currentMfgMode = v; }
-export let currentFactoryDate = localDateStr();
-window.currentFactoryDate = currentFactoryDate;
-export function _set_currentFactoryDate(v) { currentFactoryDate = v; window.currentFactoryDate = v; }
-export let currentFactoryEntryStore = getDefaultStoreKey();
-window.currentFactoryEntryStore = currentFactoryEntryStore;
-export function _set_currentFactoryEntryStore(v) { currentFactoryEntryStore = v; window.currentFactoryEntryStore = v; }
-export let currentProductionView = 'store';
-window.currentProductionView = currentProductionView;
-export function _set_currentProductionView(v) { currentProductionView = v; window.currentProductionView = v; }
-export let currentOverviewMode = 'day';
-window.currentOverviewMode = currentOverviewMode;
-export function _set_currentOverviewMode(v) { currentOverviewMode = v; window.currentOverviewMode = v; }
-export let currentCustomerChartMode = 'week';
-window.currentCustomerChartMode = currentCustomerChartMode;
-export function _set_currentCustomerChartMode(v) { currentCustomerChartMode = v; window.currentCustomerChartMode = v; }
 
 (window.__uiSyncers = window.__uiSyncers || []).push(() => {
-  try { const v = window.currentMfgMode; if (v !== undefined) currentMfgMode = v; } catch (_) {}
-  try { const v = window.currentCustomerChartMode; if (v !== undefined) currentCustomerChartMode = v; } catch (_) {}
-  try { const v = window.currentStoreComparisonMetric; if (v !== undefined) currentStoreComparisonMetric = v; } catch (_) {}
-  try { const v = window.currentIndMode; if (v !== undefined) currentIndMode = v; } catch (_) {}
-  try { const v = window.currentIndMetric; if (v !== undefined) currentIndMetric = v; } catch (_) {}
-  try { const v = window.currentOverviewMode; if (v !== undefined) currentOverviewMode = v; } catch (_) {}
-  try { const v = window.currentProductionView; if (v !== undefined) currentProductionView = v; } catch (_) {}
-  try { const v = window.currentFactoryEntryStore; if (v !== undefined) currentFactoryEntryStore = v; } catch (_) {}
-  try { const v = window.currentCashTrackerMode; if (v !== undefined) currentCashTrackerMode = v; } catch (_) {}
-  try { const v = window.currentActiveTab; if (v !== undefined) currentActiveTab = v; } catch (_) {}
-  try { const v = window.custTransactionMode; if (v !== undefined) custTransactionMode = v; } catch (_) {}
-  try { const v = window.currentFactoryDate; if (v !== undefined) currentFactoryDate = v; } catch (_) {}
 });
 
 export function setCashTrackerMode(mode) {
-currentCashTrackerMode = mode; window.currentCashTrackerMode = currentCashTrackerMode;
+window.currentCashTrackerMode = mode;
 document.querySelectorAll('#tab-payments .toggle-group .toggle-opt').forEach(opt => {
 opt.classList.remove('active');
 });
@@ -121,15 +73,15 @@ let startDate = new Date(selectedDate);
 let endDate = new Date(selectedDate);
 startDate.setHours(0,0,0,0);
 endDate.setHours(23,59,59,999);
-if (currentCashTrackerMode === 'week') {
+if (window.currentCashTrackerMode === 'week') {
 startDate.setDate(selectedDateObj.getDate() - 6);
-} else if (currentCashTrackerMode === 'month') {
+} else if (window.currentCashTrackerMode === 'month') {
 startDate = new Date(selectedYear, selectedMonth, 1);
 endDate = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
-} else if (currentCashTrackerMode === 'year') {
+} else if (window.currentCashTrackerMode === 'year') {
 startDate = new Date(selectedYear, 0, 1);
 endDate = new Date(selectedYear, 11, 31, 23, 59, 59);
-} else if (currentCashTrackerMode === 'all') {
+} else if (window.currentCashTrackerMode === 'all') {
 startDate = new Date('2000-01-01');
 endDate = new Date('2100-12-31');
 }
@@ -714,7 +666,7 @@ const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 let cncStartDate = new Date('2000-01-01');
 let cncEndDate = new Date('2100-12-31');
-const _cncMode = typeof currentCashTrackerMode !== 'undefined' ? currentCashTrackerMode : 'all';
+const _cncMode = typeof window.currentCashTrackerMode !== 'undefined' ? window.currentCashTrackerMode : 'all';
 if (_cncMode === 'day') {
 cncStartDate = new Date(selectedDate);
 cncStartDate.setHours(0,0,0,0);
@@ -990,7 +942,7 @@ return null;
 }
 
 export function updateEconomicDashboard(indicators) {
-const _econMode = typeof currentCashTrackerMode !== 'undefined' ? currentCashTrackerMode : 'all';
+const _econMode = typeof window.currentCashTrackerMode !== 'undefined' ? window.currentCashTrackerMode : 'all';
 const netCashValueElement = document.getElementById('netCashValue');
 if (netCashValueElement) {
 netCashValueElement.textContent = `${fmtAmt(safeValue(indicators.cashInHand))}`;
@@ -1410,7 +1362,7 @@ export function setSaleMode(mode) {
 const _hasRep = !!_repSelectedValue();
 if (mode === 'collection' && _hasRep) mode = 'return';
 else if (mode === 'return' && !_hasRep) mode = 'collection';
-custTransactionMode = mode; window.custTransactionMode = custTransactionMode;
+window.custTransactionMode = mode;
 const isSale = mode === 'sale';
 const isReturn = mode === 'return';
 const isColl = mode === 'collection';
@@ -1454,7 +1406,7 @@ calculateCustomerSale();
 }
 
 export function updateRepReturnPreview() {
-if (custTransactionMode !== 'return') return;
+if (window.custTransactionMode !== 'return') return;
 const exp = parseFloat((document.getElementById('rep-return-expired') || {}).value) || 0;
 const ret = parseFloat((document.getElementById('rep-return-qty') || {}).value) || 0;
 const balEl = document.getElementById('cust-coll-balance');
@@ -1587,7 +1539,7 @@ return Math.max(0, total);
 
 let _previewSeq = 0;
 export function updateCollectionPreview() {
-if (custTransactionMode !== 'collection') return;
+if (window.custTransactionMode !== 'collection') return;
 const seq = ++_previewSeq;
 const creditEl = document.getElementById('customer-current-credit');
 const collRes  = document.getElementById('cust-coll-result');
@@ -1614,7 +1566,7 @@ try {
 const name = nameEl ? nameEl.value.trim() : '';
 const unit = await getGoodsCreditUnitPrice(name);
 const plan = planGoodsCredit(expired, unit, Math.max(0, currentDebt - collected));
-if (seq !== _previewSeq || custTransactionMode !== 'collection') return;
+if (seq !== _previewSeq || window.custTransactionMode !== 'collection') return;
 paint(Math.max(0, round2(currentDebt - collected - plan.value)));
 } catch (_) {}
 })();
@@ -1818,12 +1770,12 @@ restoreBtn();
 }
 }
 
-export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [[() => (custTransactionMode === 'sale' ? ((document.getElementById('supply-store-value') || {}).value || '') : ''), 'Store'], [() => (custTransactionMode === 'sale' ? ((document.getElementById('cust-quantity') || {}).value || '') : ''), 'Quantity'], [() => (custTransactionMode === 'return' ? _repSelectedValue() : ''), 'Rep'], [() => (custTransactionMode === 'return' ? ((document.getElementById('rep-return-expired') || {}).value || '') : ''), 'Expired (kg)'], [() => (custTransactionMode === 'return' ? ((document.getElementById('rep-return-qty') || {}).value || '') : ''), 'Returned (kg)'], [() => (custTransactionMode === 'collection' ? ((document.getElementById('cust-amount-collected') || {}).value || '') : ''), 'Amount'], [() => (custTransactionMode === 'collection' ? ((document.getElementById('cust-expired-qty') || {}).value || '') : ''), 'Expired (kg)'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'], share: { kind: 'cust', when: () => custTransactionMode !== 'return' } }); }
+export function saveCustomerTransaction(...a) { return confirmGuard('saveCustomerTransaction', () => _saveCustomerTransactionRaw(...a), { label: 'Transaction', late: true, fields: [[() => (window.custTransactionMode === 'sale' ? ((document.getElementById('supply-store-value') || {}).value || '') : ''), 'Store'], [() => (window.custTransactionMode === 'sale' ? ((document.getElementById('cust-quantity') || {}).value || '') : ''), 'Quantity'], [() => (window.custTransactionMode === 'return' ? _repSelectedValue() : ''), 'Rep'], [() => (window.custTransactionMode === 'return' ? ((document.getElementById('rep-return-expired') || {}).value || '') : ''), 'Expired (kg)'], [() => (window.custTransactionMode === 'return' ? ((document.getElementById('rep-return-qty') || {}).value || '') : ''), 'Returned (kg)'], [() => (window.custTransactionMode === 'collection' ? ((document.getElementById('cust-amount-collected') || {}).value || '') : ''), 'Amount'], [() => (window.custTransactionMode === 'collection' ? ((document.getElementById('cust-expired-qty') || {}).value || '') : ''), 'Expired (kg)'], ['cust-date', 'Date']], editKinds: ['sale', 'collection'], share: { kind: 'cust', when: () => window.custTransactionMode !== 'return' } }); }
 
 async function _saveCustomerTransactionRaw() {
-if (custTransactionMode === 'collection') {
+if (window.custTransactionMode === 'collection') {
 await saveCustomerCollection();
-} else if (custTransactionMode === 'return') {
+} else if (window.custTransactionMode === 'return') {
 await saveRepReturn();
 } else {
 await saveCustomerSale();
@@ -1952,7 +1904,7 @@ totalValue: quantity * salePricePerKg
 export async function calculateCustomerSale() {
 const { production, returns, sales } = await loadCollections('production', 'returns', 'sales');
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-if (typeof custTransactionMode !== 'undefined' && (custTransactionMode === 'collection' || custTransactionMode === 'return')) {
+if (typeof window.custTransactionMode !== 'undefined' && (window.custTransactionMode === 'collection' || window.custTransactionMode === 'return')) {
 const _staleNote = document.getElementById('inventory-warning');
 if (_staleNote) _staleNote.className = 'stock-tile d-none';
 return;
@@ -2012,8 +1964,8 @@ if (btn) btn.classList.add('active');
 document.getElementById('sales-rep-value').value = value;
 autoFillCustomerName();
 const _hasRep = !!(value && value !== 'NONE');
-if (_hasRep && custTransactionMode === 'collection') setSaleMode('return');
-else if (!_hasRep && custTransactionMode === 'return') setSaleMode('collection');
+if (_hasRep && window.custTransactionMode === 'collection') setSaleMode('return');
+else if (!_hasRep && window.custTransactionMode === 'return') setSaleMode('collection');
 else _syncRepReturnLabel();
 calculateCustomerSale();
 }
@@ -3534,7 +3486,7 @@ updateSalesCharts(comp);
 }
 
 export async function setIndChartMode(mode) {
-currentIndMode = mode; window.currentIndMode = currentIndMode;
+window.currentIndMode = mode;
 document.getElementById('ind-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
 document.getElementById('ind-month-btn').className = `toggle-opt ${mode === 'month' ? 'active' : ''}`;
 document.getElementById('ind-year-btn').className = `toggle-opt ${mode === 'year' ? 'active' : ''}`;
@@ -3543,7 +3495,7 @@ await updateIndChart();
 }
 
 export async function setIndChartMetric(metric) {
-currentIndMetric = metric; window.currentIndMetric = currentIndMetric;
+window.currentIndMetric = metric;
 await updateIndChart();
 }
 
@@ -3560,7 +3512,7 @@ const selectedMonth = now.getMonth();
 const selectedDay = now.getDate();
 let labels = [];
 let data = [];
-if (currentIndMode === 'week') {
+if (window.currentIndMode === 'week') {
 for(let i=6; i>=0; i--) {
 const d = new Date(now);
 d.setDate(now.getDate() - i);
@@ -3569,12 +3521,12 @@ labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
 let metricValue = 0;
 sellerHistory.forEach(h => {
 if(h.date === dateStr) {
-metricValue += getMetricValue(h, currentIndMetric);
+metricValue += getMetricValue(h, window.currentIndMetric);
 }
 });
 data.push(metricValue);
 }
-} else if (currentIndMode === 'month') {
+} else if (window.currentIndMode === 'month') {
 const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
 data = new Array(daysInMonth).fill(0);
@@ -3582,10 +3534,10 @@ sellerHistory.forEach(h => {
 const d = new Date(h.date);
 if(d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
 const day = d.getDate();
-data[day - 1] += getMetricValue(h, currentIndMetric);
+data[day - 1] += getMetricValue(h, window.currentIndMetric);
 }
 });
-} else if (currentIndMode === 'year') {
+} else if (window.currentIndMode === 'year') {
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 labels = months;
 data = new Array(12).fill(0);
@@ -3593,10 +3545,10 @@ sellerHistory.forEach(h => {
 const d = new Date(h.date);
 if(d.getFullYear() === now.getFullYear()) {
 const month = d.getMonth();
-data[month] += getMetricValue(h, currentIndMetric);
+data[month] += getMetricValue(h, window.currentIndMetric);
 }
 });
-} else if (currentIndMode === 'all') {
+} else if (window.currentIndMode === 'all') {
 const allMonths = [];
 const monthData = {};
 sellerHistory.forEach(h => {
@@ -3609,7 +3561,7 @@ label: monthLabel,
 value: 0
 };
 }
-monthData[monthYear].value += getMetricValue(h, currentIndMetric);
+monthData[monthYear].value += getMetricValue(h, window.currentIndMetric);
 });
 const sortedMonths = Object.keys(monthData).sort();
 sortedMonths.forEach(monthKey => {
@@ -3634,7 +3586,7 @@ type: 'bar',
 data: {
 labels: labels,
 datasets: [{
-label: getMetricLabel(currentIndMetric),
+label: getMetricLabel(window.currentIndMetric),
 data: data,
 backgroundColor: sellerColor + '80',
 borderColor: sellerColor,
@@ -3649,7 +3601,7 @@ plugins: {
 legend: { display: false },
 title: {
 display: true,
-text: `${getMetricLabel(currentIndMetric)} - ${currentIndMode === 'all' ? 'All Times' : _cap(currentIndMode) + 'ly'} View`,
+text: `${getMetricLabel(window.currentIndMetric)} - ${window.currentIndMode === 'all' ? 'All Times' : _cap(window.currentIndMode) + 'ly'} View`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
 }
@@ -3672,14 +3624,14 @@ export function setStoreComparisonMetric(metric, event) {
 if (event) {
 event.preventDefault();
 }
-currentStoreComparisonMetric = metric; window.currentStoreComparisonMetric = currentStoreComparisonMetric;
+window.currentStoreComparisonMetric = metric;
 document.querySelectorAll('.store-comparison-toggle .toggle-opt').forEach(btn => {
 btn.classList.remove('active');
 });
 if (event && event.target) {
 event.target.classList.add('active');
 }
-updateStoreComparisonChart(currentOverviewMode);
+updateStoreComparisonChart(window.currentOverviewMode);
 }
 
 export async function updateStoreComparisonChart(mode = 'day') {
@@ -3732,9 +3684,9 @@ storeData.cost += (item.totalCost || 0);
 storeData.profit += (item.profit || 0);
 }
 });
-data.push(storeData[currentStoreComparisonMetric]);
+data.push(storeData[window.currentStoreComparisonMetric]);
 });
-switch(currentStoreComparisonMetric) {
+switch(window.currentStoreComparisonMetric) {
 case 'weight': metricLabel = 'Weight (kg)'; break;
 case 'value': metricLabel = 'Total Value ()'; break;
 case 'cost': metricLabel = 'Total Cost ()'; break;
@@ -3822,7 +3774,7 @@ month: {q:0, p:0, c:0, v:0, fu:0, fc:0},
 year: {q:0, p:0, c:0, v:0, fu:0, fc:0},
 all: {q:0, p:0, c:0, v:0, fu:0, fc:0}
 };
-let filteredData = currentProductionView === 'combined' ? production : production.filter(item => item.store === window.currentStore);
+let filteredData = window.currentProductionView === 'combined' ? production : production.filter(item => item.store === window.currentStore);
 const sortedDb = [...filteredData].sort((a, b) => {
 if (a.date === selectedDate && b.date !== selectedDate) return -1;
 if (a.date !== selectedDate && b.date === selectedDate) return 1;
@@ -3854,7 +3806,7 @@ stats.year.v += (item.totalSale || 0); stats.year.fu += (item.formulaUnits || 0)
 stats.all.q += (item.net || 0); stats.all.p += (item.profit || 0); stats.all.c += (item.totalCost || 0);
 stats.all.v += (item.totalSale || 0); stats.all.fu += (item.formulaUnits || 0); stats.all.fc += (item.formulaCost || 0);
 });
-const histMode = (currentProductionView === 'store') ? 'day' : (currentOverviewMode || 'day');
+const histMode = (window.currentProductionView === 'store') ? 'day' : (window.currentOverviewMode || 'day');
 const filteredProduction = sortedDb.filter(item => {
 if (!item.date) return true;
 const [rowY, rowM, rowD] = item.date.split('-').map(Number);
@@ -3887,7 +3839,7 @@ mergedBadge = _mergedBadgeHtml(item, {inline:true});
 }
 const delBtn = `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="(async () => { await deleteProdEntry('${esc(item.id)}') })()">Delete</button>`;
 const prodSub = `${esc(dateDisplay)}${mergedBadge}${item.managedBy ? `<span class="badge managed-by-badge">${esc(item.managedBy)}</span>` : ''}${item.createdBy && typeof _creatorBadgeHtml === 'function' ? _creatorBadgeHtml(item) : ''}`;
-const storeChip = currentProductionView === 'combined' ? hcChip(storeLabel, 'info') : '';
+const storeChip = window.currentProductionView === 'combined' ? hcChip(storeLabel, 'info') : '';
 let cardOpts;
 if (item.isTransfer) {
 const isOutSide = item.transferDirection === 'out';
@@ -3956,8 +3908,8 @@ updateStats('month', stats.month);
 updateStats('year', stats.year);
 updateStats('all', stats.all);
 updateMfgCharts();
-if (currentProductionView === 'combined') {
-updateAllStoresOverview(currentOverviewMode);
+if (window.currentProductionView === 'combined') {
+updateAllStoresOverview(window.currentOverviewMode);
 }
 if (typeof syncFactoryProductionStats === 'function') {
 syncFactoryProductionStats().then(() => {
@@ -5052,7 +5004,7 @@ let factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
 }
 
 export async function showTab(tab) {
-currentActiveTab = tab; window.currentActiveTab = currentActiveTab;
+window.currentActiveTab = tab;
 requestAnimationFrame(() => {
 const tabs = ['tab-prod', 'tab-sales', 'tab-calc', 'tab-factory', 'tab-payments', 'tab-rep'];
 tabs.forEach(id => {
@@ -5356,7 +5308,7 @@ window.calculateRepAnalytics?.();
 }
 
 export function setMfgChartMode(mode) {
-currentMfgMode = mode; window.currentMfgMode = currentMfgMode;
+window.currentMfgMode = mode;
 document.getElementById('mfg-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
 document.getElementById('mfg-month-btn').className = `toggle-opt ${mode === 'month' ? 'active' : ''}`;
 document.getElementById('mfg-year-btn').className = `toggle-opt ${mode === 'year' ? 'active' : ''}`;
@@ -5369,7 +5321,7 @@ if (isMoneyRestricted()) return;
 const { production } = await loadCollections('production');
 if(mfgBarChart) mfgBarChart.destroy();
 if(mfgPieChart) mfgPieChart.destroy();
-let filteredData = currentProductionView === 'combined' ? production : production.filter(item => item.store === window.currentStore);
+let filteredData = window.currentProductionView === 'combined' ? production : production.filter(item => item.store === window.currentStore);
 let labels = [], dataQty = [];
 let totalCost = 0, totalProfit = 0, totalValue = 0;
 const selectedDate = document.getElementById('sys-date').value;
@@ -5381,7 +5333,7 @@ const colors = {
 text: themeColor('--text-muted'),
 grid: themeColor('--text-main', 10)
 };
-if (currentMfgMode === 'week') {
+if (window.currentMfgMode === 'week') {
 for(let i=6; i>=0; i--) {
 const d = new Date(selectedDateObj);
 d.setDate(selectedDay - i);
@@ -5395,7 +5347,7 @@ dayQty += (item.net || 0);
 });
 dataQty.push(dayQty);
 }
-} else if (currentMfgMode === 'month') {
+} else if (window.currentMfgMode === 'month') {
 const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
 labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
 dataQty = new Array(daysInMonth).fill(0);
@@ -5405,7 +5357,7 @@ if(d.getMonth() === selectedMonth && d.getFullYear() === selectedYear) {
 dataQty[d.getDate() - 1] += (item.net || 0);
 }
 });
-} else if (currentMfgMode === 'year') {
+} else if (window.currentMfgMode === 'year') {
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 labels = months;
 dataQty = new Array(12).fill(0);
@@ -5415,7 +5367,7 @@ if(d.getFullYear() === selectedYear) {
 dataQty[d.getMonth()] += (item.net || 0);
 }
 });
-} else if (currentMfgMode === 'all') {
+} else if (window.currentMfgMode === 'all') {
 const monthData = {};
 filteredData.forEach(item => {
 const d = new Date(item.date);
@@ -5445,14 +5397,14 @@ const dYear = d.getFullYear();
 const dMonth = d.getMonth();
 const dDay = d.getDate();
 let include = false;
-if(currentMfgMode === 'week') {
+if(window.currentMfgMode === 'week') {
 const weekStart = new Date(selectedDateObj);
 weekStart.setDate(selectedDay - 6);
 if(d >= weekStart && d <= selectedDateObj) include = true;
 }
-if(currentMfgMode === 'month' && dYear === selectedYear && dMonth === selectedMonth) include = true;
-if(currentMfgMode === 'year' && dYear === selectedYear) include = true;
-if(currentMfgMode === 'all') include = true;
+if(window.currentMfgMode === 'month' && dYear === selectedYear && dMonth === selectedMonth) include = true;
+if(window.currentMfgMode === 'year' && dYear === selectedYear) include = true;
+if(window.currentMfgMode === 'all') include = true;
 if(include) {
 totalCost += (item.totalCost || 0);
 totalProfit += (item.profit || 0);
@@ -5481,14 +5433,14 @@ plugins: {
 legend: { labels: { color: colors.text } },
 title: {
 display: true,
-text: `Production Quantity (${currentMfgMode === 'all' ? 'All Times' : _cap(currentMfgMode)})`,
+text: `Production Quantity (${window.currentMfgMode === 'all' ? 'All Times' : _cap(window.currentMfgMode)})`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
 }
 },
 scales: {
 y: { grid: { color: colors.grid }, ticks: { color: colors.text }, beginAtZero: true },
-x: { ticks: { color: colors.text, maxRotation: currentMfgMode === 'all' ? 45 : 0 } }
+x: { ticks: { color: colors.text, maxRotation: window.currentMfgMode === 'all' ? 45 : 0 } }
 }
 }
 }));
@@ -5513,7 +5465,7 @@ plugins: {
 legend: { position:'bottom', labels: { color: colors.text, font: { size: 10 } } },
 title: {
 display: true,
-text: `Financials: ${fmtAmt(safeValue(totalValue))} Total - ${currentMfgMode === 'all' ? 'All Times' : _cap(currentMfgMode)}`,
+text: `Financials: ${fmtAmt(safeValue(totalValue))} Total - ${window.currentMfgMode === 'all' ? 'All Times' : _cap(window.currentMfgMode)}`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
 }
@@ -5763,9 +5715,9 @@ const factoryDateInput = document.getElementById('factory-date');
 if (!factoryDateInput.value) {
 const today = localDateStr();
 factoryDateInput.value = today;
-currentFactoryDate = today; window.currentFactoryDate = currentFactoryDate;
+window.currentFactoryDate = today;
 } else {
-currentFactoryDate = factoryDateInput.value; window.currentFactoryDate = currentFactoryDate;
+window.currentFactoryDate = factoryDateInput.value;
 }
 updateFactoryUnitsAvailableStats();
 updateFactorySummaryCard();
@@ -5798,9 +5750,9 @@ const factoryDateInput = document.getElementById('factory-date');
 if (!factoryDateInput.value) {
 const today = localDateStr();
 factoryDateInput.value = today;
-currentFactoryDate = today; window.currentFactoryDate = currentFactoryDate;
+window.currentFactoryDate = today;
 }
-currentFactoryEntryStore = getDefaultStoreKey(); window.currentFactoryEntryStore = currentFactoryEntryStore;
+window.currentFactoryEntryStore = getDefaultStoreKey();
 document.querySelectorAll('#tab-factory .toggle-group .toggle-opt').forEach((opt, index) => {
 if (index === 0) opt.classList.add('active');
 else opt.classList.remove('active');
@@ -5810,7 +5762,7 @@ refreshFactoryTab();
 }
 
 export function setProductionView(view, event) {
-currentProductionView = view; window.currentProductionView = currentProductionView;
+window.currentProductionView = view;
 document.querySelectorAll('#prod-toggle-container .toggle-opt').forEach(btn => btn.classList.remove('active'));
 if (event && event.target) event.target.classList.add('active');
 const entrySection = document.getElementById('production-entry-section');
@@ -5833,7 +5785,7 @@ if (combinedChart) combinedChart.classList.remove('hidden');
 if (analyticsSection) analyticsSection.classList.remove('hidden');
 if (historyHeader) historyHeader.classList.remove('hidden');
 if (searchBar) searchBar.classList.remove('hidden');
-updateAllStoresOverview(currentOverviewMode);
+updateAllStoresOverview(window.currentOverviewMode);
 }
 refreshUI();
 }
@@ -5843,7 +5795,7 @@ if (isMoneyRestricted()) return;
 const { calculator, production, sales } = await loadCollections('calculator', 'production', 'sales');
 const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
-currentOverviewMode = mode; window.currentOverviewMode = currentOverviewMode;
+window.currentOverviewMode = mode;
 const selectedDate = document.getElementById('sys-date').value;
 const selectedDateObj = new Date(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
@@ -6015,7 +5967,7 @@ updateStoreComparisonChart(mode);
 }
 
 export function setCustomerChartMode(mode) {
-currentCustomerChartMode = mode; window.currentCustomerChartMode = currentCustomerChartMode;
+window.currentCustomerChartMode = mode;
 document.getElementById('cust-week-btn').className = `toggle-opt ${mode === 'week' ? 'active' : ''}`;
 document.getElementById('cust-month-btn').className = `toggle-opt ${mode === 'month' ? 'active' : ''}`;
 document.getElementById('cust-year-btn').className = `toggle-opt ${mode === 'year' ? 'active' : ''}`;
@@ -6042,7 +5994,7 @@ const colors = {
 text: themeColor('--text-muted'),
 grid: themeColor('--text-main', 10)
 };
-if (currentCustomerChartMode === 'week') {
+if (window.currentCustomerChartMode === 'week') {
 for(let i=6; i>=0; i--) {
 const d = new Date(selectedDateObj);
 d.setDate(selectedDay - i);
@@ -6067,7 +6019,7 @@ dayCash += item.totalValue;
 cashData.push(dayCash);
 creditData.push(dayCredit);
 }
-} else if (currentCustomerChartMode === 'month') {
+} else if (window.currentCustomerChartMode === 'month') {
 const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
 labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
 cashData = new Array(daysInMonth).fill(0);
@@ -6088,7 +6040,7 @@ cashData[d.getDate() - 1] += item.totalValue;
 }
 }
 });
-} else if (currentCustomerChartMode === 'year') {
+} else if (window.currentCustomerChartMode === 'year') {
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 labels = months;
 cashData = new Array(12).fill(0);
@@ -6109,7 +6061,7 @@ cashData[d.getMonth()] += item.totalValue;
 }
 }
 });
-} else if (currentCustomerChartMode === 'all') {
+} else if (window.currentCustomerChartMode === 'all') {
 const monthData = {};
 sales.forEach(item => {
 const d = new Date(item.date);
@@ -6152,14 +6104,14 @@ const dYear = d.getFullYear();
 const dMonth = d.getMonth();
 const dDay = d.getDate();
 let include = false;
-if(currentCustomerChartMode === 'week') {
+if(window.currentCustomerChartMode === 'week') {
 const weekStart = new Date(selectedDateObj);
 weekStart.setDate(selectedDay - 6);
 if(d >= weekStart && d <= selectedDateObj) include = true;
 }
-if(currentCustomerChartMode === 'month' && dYear === selectedYear && dMonth === selectedMonth) include = true;
-if(currentCustomerChartMode === 'year' && dYear === selectedYear) include = true;
-if(currentCustomerChartMode === 'all') include = true;
+if(window.currentCustomerChartMode === 'month' && dYear === selectedYear && dMonth === selectedMonth) include = true;
+if(window.currentCustomerChartMode === 'year' && dYear === selectedYear) include = true;
+if(window.currentCustomerChartMode === 'all') include = true;
 if(include) {
 const isRepLinked = item.salesRep && item.salesRep !== 'NONE';
 if (item.isMerged && item.mergedSummary) {
@@ -6206,7 +6158,7 @@ plugins: {
 legend: { labels: { color: colors.text, font: { size: 10 } } },
 title: {
 display: true,
-text: `Sales by Payment Type (${currentCustomerChartMode === 'all' ? 'All Times' : _cap(currentCustomerChartMode)})`,
+text: `Sales by Payment Type (${window.currentCustomerChartMode === 'all' ? 'All Times' : _cap(window.currentCustomerChartMode)})`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
 }
@@ -6220,7 +6172,7 @@ beginAtZero: true
 },
 x: {
 stacked: true,
-ticks: { color: colors.text, maxRotation: currentCustomerChartMode === 'all' ? 45 : 0 }
+ticks: { color: colors.text, maxRotation: window.currentCustomerChartMode === 'all' ? 45 : 0 }
 }
 }
 }
@@ -6246,7 +6198,7 @@ plugins: {
 legend: { position:'bottom', labels: { color: colors.text, font: { size: 10 } } },
 title: {
 display: true,
-text: `Total: ${fmtAmt(safeValue(totalCash + totalCredit))} - ${currentCustomerChartMode === 'all' ? 'All Times' : _cap(currentCustomerChartMode)}`,
+text: `Total: ${fmtAmt(safeValue(totalCash + totalCredit))} - ${window.currentCustomerChartMode === 'all' ? 'All Times' : _cap(window.currentCustomerChartMode)}`,
 color: colors.text,
 font: { size: 13, weight: 'bold' }
 }

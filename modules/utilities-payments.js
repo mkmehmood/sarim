@@ -15,7 +15,7 @@ import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditC
 import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
-import { handleReturnQtyInput, handleExpiredQtyInput, _set_currentFactoryDate, _set_currentOverviewMode, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, currentOverviewMode, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { handleReturnQtyInput, handleExpiredQtyInput, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
 import { calculatePaymentSummaries, getCostPriceForStore, getSalePriceForStore, syncFactoryProductionStats, unlinkSupplierFromMaterial } from './factory-core.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { checkBiometricLock, syncBiometricButton } from './app-lock.js';
@@ -1083,12 +1083,12 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
     if (el) el.value = today;
   });
   updateCalcRangeLabel();
-  _set_currentFactoryDate(today);
+  window.currentFactoryDate = today;
   syncBiometricButton();
   const factoryDateEl = document.getElementById('factory-date');
   if (factoryDateEl) {
     factoryDateEl.addEventListener('change', function() {
-      _set_currentFactoryDate(this.value);
+      window.currentFactoryDate = this.value;
     });
   }
   const sellerSelect = document.getElementById('sellerSelect');
@@ -1294,7 +1294,7 @@ _filterHistoryByPeriod('#historyList', refDate, mode);
 }
 
 export function setOverviewMode(mode) {
-_set_currentOverviewMode(mode);
+window.currentOverviewMode = mode;
 const buttons = ['day', 'week', 'month', 'year', 'all'];
 buttons.forEach(btnMode => {
 const btn = document.getElementById(`overview-${btnMode}-btn`);
@@ -1402,7 +1402,7 @@ if (typeof refreshUI === 'function') await refreshUI();
 if (entryToDelete.expired > 0) {
 if (typeof window.renderFactoryInventory === 'function') window.renderFactoryInventory?.();
 }
-updateAllStoresOverview(currentOverviewMode);
+updateAllStoresOverview(window.currentOverviewMode);
 notifyDataChange('calculator');
 let successMsg = ' Record deleted successfully!';
 if (revertedSalesCount > 0) {

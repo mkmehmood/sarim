@@ -13,7 +13,7 @@ import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { dataRootRef, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, salesRepsList, sqliteStore, validateTimestamp, validateUUID, readFileAsDataUrl, oldDebtNote, balanceAfterHtml, formatTime12, loadCollections } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
-import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, currentActiveTab, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
+import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, deletePaymentTransfer, editEntityBasicInfo, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory-core.js';
 import { showChoiceDialog, showGlassConfirm, showToast } from './customers.js';
@@ -923,7 +923,7 @@ requestAnimationFrame(() => processSync());
 }
 
 export function getCurrentActiveTab() {
-return currentActiveTab || 'prod';
+return window.currentActiveTab || 'prod';
 }
 
 export function syncCoreDisplays() {

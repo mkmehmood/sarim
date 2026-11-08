@@ -2,7 +2,7 @@ import { stampGroup, weightedUnitPrice } from './link-graph.js';
 import { ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, getTimestamp, localDateStr, lockedSaleValue, round2, sqliteStore, readNum, loadCollections } from './business.js';
 import { unifiedDelete, unifiedSave } from './sync.js';
 import { _refreshSupplierLinkViews, triggerAutoSync, updatePaymentStatusVisibility } from './utilities-core.js';
-import { currentFactoryEntryStore, getAppStores, getStorePool, refreshUI, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
+import { getAppStores, getStorePool, refreshUI, updateFactorySummaryCard, updateFactoryUnitsAvailableStats } from './utilities-sales.js';
 import { formatCurrency, safeValue } from './utilities-payments.js';
 import { showToast } from './customers.js';
 import { getFormulaNames, getSelectedFormula } from './formula-store.js';
@@ -213,7 +213,7 @@ let _cfpToken = 0;
 export async function calculateFactoryProduction() {
 const token = ++_cfpToken;
 const units = parseInt(document.getElementById('factoryProductionUnits').value) || 1;
-const sel = await getSelectedFormula(currentFactoryEntryStore);
+const sel = await getSelectedFormula(window.currentFactoryEntryStore);
 const lines = [];
 let baseCost = 0;
 for (const i of sel.ingredients) {
