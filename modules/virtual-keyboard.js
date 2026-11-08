@@ -200,6 +200,7 @@ export function installVirtualKeyboard(opts = {}) {
   const renderShift = () => {
     shiftKey.classList.toggle('is-on', shifted);
     badge.classList.toggle('d-none', !shifted);
+    dock.classList.toggle('is-shifted', shifted);
   };
 
   const insert = (text) => {

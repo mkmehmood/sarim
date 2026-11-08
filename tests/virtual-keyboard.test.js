@@ -643,16 +643,18 @@ describe('virtual keyboard wiring', () => {
 
   it('uses the app theme tokens for the tinted keys, with no separate stylesheet or CDN', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
-    assert.match(css, /\.vk-key\.is-shift \{[^}]*var\(--accent-indigo\)/);
-    assert.match(css, /\.vk-key\.is-back \{[^}]*var\(--danger\)/);
+    assert.match(css, /\.vk-dock \.vk-key\.is-shift \{[^}]*var\(--accent-indigo\)/);
+    assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
     assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
-    assert.match(css, /\.vk-dot \{[^}]*var\(--accent-emerald\)/);
+    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*var\(--accent-emerald\)/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('letters are one tenth of the row wide so the shorter rows centre like the image', () => {
-    assert.match(css, /\.vk-key\.is-letter \{ flex: 0 0 calc\(\(100% - 54px\) \/ 10\); \}/);
-    assert.match(css, /\.vk-row \{ display: flex; justify-content: center; gap: 6px;/);
+  it('mono style: borderless monospace keys split by hairlines, lowercase until shifted', () => {
+    assert.match(css, /\.vk-row \{ display: flex; gap: 0; margin: 0; border-bottom: 1px solid var\(--well-line\); \}/);
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 0; border-radius: 0; background: transparent;[^}]*font-family: var\(--font-mono\)/);
+    assert.match(css, /\.vk-key\.is-letter \{ text-transform: lowercase; \}/);
+    assert.match(css, /\.vk-dock\.is-shifted \.vk-key\.is-letter \{ text-transform: uppercase; \}/);
   });
 
   it('pads the page, accounts and other screens, dialogs and sheets while the keyboard is open', () => {
@@ -664,7 +666,7 @@ describe('virtual keyboard wiring', () => {
 
   it('sits above dialogs, sheets and suggestion lists', () => {
     const z = [...css.matchAll(/z-index: (\d+)/g)].map((m) => Number(m[1]));
-    assert.match(css, /\.vk-dock \{ position: fixed;[^}]*z-index: 10450;/);
+    assert.match(css, /\.vk-dock\.overlay \{ position: fixed;[^}]*z-index: 10450;/);
     assert.ok(Math.max(...z.filter((n) => n < 10450)) < 10450);
     assert.ok(z.filter((n) => n > 10450).every((n) => n >= 99999));
   });
@@ -701,5 +703,12 @@ describe('universal search ignores late results from an older keystroke', () => 
   it('drops a stale result instead of overwriting or re-opening the list', () => {
     const src = readFileSync(new URL('../modules/utilities-payments.js', import.meta.url), 'utf8');
     assert.match(src, /_searchSeq\.get\(resultsId\) !== _mySeq\) return;/);
+  });
+});
+
+describe('mono keyboard shift case', () => {
+  it('the dock carries is-shifted while Shift is on so letters show in capitals', () => {
+    const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
+    assert.match(src, /dock\.classList\.toggle\('is-shifted', shifted\);/);
   });
 });
