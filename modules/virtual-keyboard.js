@@ -389,6 +389,13 @@ export function installVirtualKeyboard(opts = {}) {
   }, true);
   doc.addEventListener('click', (e) => {
     const t = e.target;
+    if (!t || dock.contains(t) || !isTextField(t)) return;
+    if (isOpen() && active === t) return;
+    applyFieldPolicy(t);
+    open(t);
+  }, true);
+  doc.addEventListener('click', (e) => {
+    const t = e.target;
     if (!isOpen() || !t || dock.contains(t)) return;
     if (t === active || isTextField(t) || (t.closest && t.closest('label'))) return;
     hide(true);

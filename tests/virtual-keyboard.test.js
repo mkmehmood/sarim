@@ -788,3 +788,11 @@ describe('keyboard hides when the page is scrolled outside it', () => {
     assert.match(src, /< SCROLL_HIDE_PX\) return;/);
   });
 });
+
+describe('tapping a field always brings the keyboard back', () => {
+  const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
+
+  it('a tap on a text field opens the keyboard even when the field never lost focus', () => {
+    assert.match(src, /if \(!t \|\| dock\.contains\(t\) \|\| !isTextField\(t\)\) return;\n    if \(isOpen\(\) && active === t\) return;\n    applyFieldPolicy\(t\);\n    open\(t\);/);
+  });
+});
