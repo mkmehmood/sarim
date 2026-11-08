@@ -710,11 +710,11 @@ describe('virtual keyboard wiring', () => {
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('theme keys: bold monospace circles in the app button theme on a flush full-width soft-card sheet, pill for space, DEL and the wide zero', () => {
+  it('theme keys: bold monospace circles in the app button theme with no backing sheet, flush to the bottom, pill for space, DEL and the wide zero', () => {
     assert.match(css, /\.vk-dock \.vk-key \{[^}]*border-radius: 50%;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
-    assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*left: 0; right: 0; bottom: 0;[^}]*border-radius: 28px 28px 0 0;/);
+    assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*left: 0; right: 0; bottom: 0;[^}]*border-radius: 0; background: transparent; box-shadow: none;/);
     assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 1px solid var\(--glass-border\); border-radius: 50%; background: var\(--soft-bg\)/);
-    assert.match(css, /\.vk-dock\.overlay \{[^}]*background: var\(--soft-card\)/);
+    assert.doesNotMatch(css, /\.vk-dock\.overlay \{[^}]*var\(--soft-card\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*background: var\(--danger-dim\)/);
     assert.match(css, /html\.vk-open \{ --vk-gap: 0px; \}/);
     assert.match(css, /\[data-vk-pane="pad"\]:not\(\.d-none\) \{ display: grid; grid-template-columns: repeat\(4, 1fr\); grid-auto-rows: var\(--vk-pd\);/);
