@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
-import { FIELD_SELECTOR, LETTER_ROWS, PAD_ROWS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard } from '../modules/virtual-keyboard.js';
+import { FIELD_SELECTOR, LETTER_ROWS, PAD_KEYS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard } from '../modules/virtual-keyboard.js';
 
 const field = (attrs = {}, extra = {}) => {
   const map = new Map(Object.entries(attrs));
@@ -140,10 +140,10 @@ describe('number filtering', () => {
 
 describe('typing rules', () => {
   it('has exactly the rows from the uploaded layouts', () => {
-    assert.deepEqual(LETTER_ROWS, ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']);
-    assert.deepEqual(PAD_ROWS, [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']]);
+    assert.deepEqual(LETTER_ROWS, ['qwertyu', 'iopasdf', 'ghjklzx', 'cvbnm']);
+    assert.deepEqual(PAD_KEYS, ['1', '2', '3', '-', '4', '5', '6', '.', '7', '8', '9']);
   });
-  it('types lower case unless shift is on', () => {
+  it('types upper case when asked and lower case otherwise', () => {
     assert.equal(casedKey('A', false), 'a');
     assert.equal(casedKey('a', true), 'A');
   });
@@ -316,44 +316,40 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(all.every((k) => k.getAttribute('data-feedback') === 'manual'));
   });
 
-  it('letters layout matches the uploaded image: four rows, nothing else', async () => {
+  it('letters layout matches the reference: 7 per row, 5 on the last, then dot, space and DEL', async () => {
     const t = await boot();
     const rows = rowsOf(t.pane('letters'));
     assert.equal(t.pane('letters').children.length, 5);
-    assert.deepEqual(keysOf(rows[0]), [...'qwertyuiop']);
-    assert.deepEqual(keysOf(rows[1]), [...'asdfghjkl']);
-    assert.deepEqual(keysOf(rows[2]), [...'zxcvbnm']);
-    assert.deepEqual(keysOf(rows[3]), ['shift', ' ', '.', 'back']);
-    assert.equal(t.pane('letters').querySelectorAll('.vk-key').length, 30);
+    assert.deepEqual(rows.slice(0, 4).map(keysOf), [[...'qwertyu'], [...'iopasdf'], [...'ghjklzx'], [...'cvbnm']]);
+    assert.deepEqual(keysOf(rows[4]), ['.', ' ', 'back']);
+    assert.equal(t.pane('letters').querySelectorAll('.vk-key').length, 29);
     assert.deepEqual(t.pane('letters').querySelectorAll('[data-vk-letter]').map((k) => k.textContent).join(''), 'QWERTYUIOPASDFGHJKLZXCVBNM');
-    const space = t.act('space');
-    assert.match(space.innerHTML, /<svg/);
-    assert.match(space.innerHTML, /<span>Space<\/span>/);
+    assert.equal(t.act('space').textContent, 'space');
+    assert.equal(t.act('back').textContent, 'DEL');
   });
 
-  it('numpad layout matches the uploaded image: 3 by 3 digits and a 00, 0, dot, backspace row', async () => {
+  it('numpad layout matches the reference: 1 2 3 -, 4 5 6 ., 7 8 9 with a tall DEL, then 00 and a wide 0', async () => {
     const t = await boot();
-    const rows = rowsOf(t.pane('pad'));
-    assert.equal(t.pane('pad').children.length, 4);
-    assert.deepEqual(rows.map(keysOf), [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['00', '0', '.', 'back']]);
-    assert.equal(t.pane('pad').querySelectorAll('.vk-key').length, 13);
-    assert.ok(t.pane('pad').querySelector('.is-double'));
-    assert.equal(t.pane('pad').querySelector('.vk-dot'), null);
+    const pad = t.pane('pad');
+    assert.deepEqual(pad.children.map((k) => k.getAttribute('data-vk-ch') ?? k.getAttribute('data-vk-act')), ['1', '2', '3', '-', '4', '5', '6', '.', '7', '8', '9', 'back', '00', '0']);
+    assert.equal(pad.querySelectorAll('.vk-key').length, 14);
+    assert.ok(pad.querySelector('.is-double'));
+    assert.ok(pad.querySelector('.is-tall'));
+    assert.ok(pad.querySelector('.is-zero'));
+    assert.equal(t.act('back', pad).textContent, 'DEL');
   });
 
-  it('has a status dot and a hidden SHIFT badge above the letters only', async () => {
+  it('has no shift key, status dot or badge', async () => {
     const t = await boot();
-    const head = t.pane('letters').querySelector('.vk-head');
-    assert.ok(head.querySelector('.vk-dot'));
-    assert.ok(head.querySelector('.vk-shift-badge').classList.contains('d-none'));
-    assert.equal(head.querySelector('.vk-shift-badge').textContent, 'SHIFT');
-    assert.equal(t.dock.querySelectorAll('.vk-dot').length, 1);
+    assert.equal(t.dock.querySelector('.vk-head'), null);
+    assert.equal(t.dock.querySelector('[data-vk-act="shift"]'), null);
+    assert.equal(t.dock.querySelector('.vk-shift-badge'), null);
   });
 
-  it('has no enter, hide, symbols, comma or label keys', async () => {
+  it('has no enter, hide, symbols, comma, plus or label keys', async () => {
     const t = await boot();
     const all = t.dock.querySelectorAll('.vk-key').map((k) => k.getAttribute('data-vk-act') ?? k.getAttribute('data-vk-ch'));
-    for (const banned of ['enter', 'hide', 'symbols', 'letters', ',', '-', '+']) assert.ok(!all.includes(banned), banned);
+    for (const banned of ['enter', 'hide', 'symbols', 'letters', ',', '+']) assert.ok(!all.includes(banned), banned);
     assert.equal(t.dock.querySelector('.vk-label'), null);
     assert.equal(t.dock.querySelector('.vk-bar'), null);
   });
@@ -390,24 +386,16 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(t.isHidden());
   });
 
-  it('types lower case by default and shift is a toggle like the upload', async () => {
+  it('types every letter in capitals', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
     t.focus(f);
     const L = t.pane('letters');
-    t.down(t.keyByCh(L, 'q'));
-    assert.equal(f.value, 'q');
-    t.down(t.act('shift'));
-    assert.ok(t.act('shift').classList.contains('is-on'));
-    assert.ok(!L.querySelector('.vk-shift-badge').classList.contains('d-none'));
     t.down(t.keyByCh(L, 'a'));
     t.down(t.keyByCh(L, 'b'));
-    assert.equal(f.value, 'qAB');
-    t.down(t.act('shift'));
-    assert.ok(!t.act('shift').classList.contains('is-on'));
-    assert.ok(L.querySelector('.vk-shift-badge').classList.contains('d-none'));
+    t.down(t.act('space'));
     t.down(t.keyByCh(L, 'c'));
-    assert.equal(f.value, 'qABc');
+    assert.equal(f.value, 'AB C');
   });
 
   it('types space and the period on the letters keyboard', async () => {
@@ -417,7 +405,7 @@ describe('virtual keyboard in the Android app', () => {
     t.down(t.keyByCh(t.pane('letters'), 'a'));
     t.down(t.act('space'));
     t.down(t.keyByCh(t.pane('letters'), '.'));
-    assert.equal(f.value, 'a .');
+    assert.equal(f.value, 'A .');
   });
 
   it('keeps the field focused when a key is pressed', async () => {
@@ -454,10 +442,10 @@ describe('virtual keyboard in the Android app', () => {
     const f = t.input({ type: 'text' }, { selectionStart: 0, selectionEnd: 0, setSelectionRange() {}, maxLength: -1 });
     t.focus(f);
     t.down(t.keyByCh(t.pane('letters'), 'z'));
-    assert.equal(f.value, 'z');
+    assert.equal(f.value, 'Z');
     assert.equal(f.events.length, 1);
     assert.equal(f.events[0].type, 'input');
-    assert.equal(f.events[0].data, 'z');
+    assert.equal(f.events[0].data, 'Z');
     f.selectionStart = 1;
     f.selectionEnd = 1;
     t.down(t.act('back'));
@@ -641,33 +629,32 @@ describe('virtual keyboard wiring', () => {
     assert.match(dropdown, /return Math\.min\(bottom, window\.innerHeight - \(window\.__vkInset \|\| 0\)\);/);
   });
 
-  it('uses the app theme tokens for the tinted keys, with no separate stylesheet or CDN', () => {
+  it('uses the app theme tokens for the keys, with no separate stylesheet or CDN', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
-    assert.match(css, /\.vk-dock \.vk-key\.is-shift \{[^}]*var\(--accent\)/);
+    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*background: var\(--accent\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
-    assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); background: var\(--warning-dim\); \}/);
-    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*var\(--accent-cyan\)[^}]*var\(--accent-lime\)/);
+    assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('themed keys: borderless bold monospace keys split by hairlines, lowercase until shifted', () => {
-    assert.match(css, /\.vk-row \{ display: flex; gap: 0; margin: 0; border-bottom: 1px solid var\(--well-line\); \}/);
-    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 0; border-radius: 0; background: transparent;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
-    assert.match(kb, /stroke-width="1\.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/);
-    assert.match(css, /\.vk-key\.is-letter \{ text-transform: lowercase; \}/);
-    assert.match(css, /\.vk-dock\.is-shifted \.vk-key\.is-letter \{ text-transform: uppercase; \}/);
+  it('circle keys: bold monospace circles in a floating card, pill for space, DEL and the wide zero', () => {
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border-radius: 50%;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
+    assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*border-radius: 30px;/);
+    assert.match(css, /\[data-vk-pane="pad"\]:not\(\.d-none\) \{ display: grid; grid-template-columns: repeat\(4, 64px\);/);
+    assert.match(css, /\.is-zero \{ grid-column: span 2;/);
+    assert.match(css, /\.is-tall \{ grid-row: span 2;/);
   });
 
   it('pads the page, accounts and other screens, dialogs and sheets while the keyboard is open', () => {
-    assert.match(css, /html\.vk-open body \{ padding-bottom: var\(--vk-h, 0px\); \}/);
-    assert.match(css, /html\.vk-open \.standalone-screen, html\.vk-open \.dlg-overlay \{ padding-bottom: var\(--vk-h, 0px\);/);
+    assert.match(css, /html\.vk-open body \{ padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\); \}/);
+    assert.match(css, /html\.vk-open \.standalone-screen, html\.vk-open \.dlg-overlay \{ padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\);/);
     assert.doesNotMatch(css, /html\.vk-open[^{]*\.auth-screen/);
-    assert.match(css, /html\.vk-open \.cm-sheet \{ bottom: var\(--vk-h, 0px\); \}/);
+    assert.match(css, /html\.vk-open \.cm-sheet \{ bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\); \}/);
   });
 
   it('sits above dialogs, sheets and suggestion lists', () => {
     const z = [...css.matchAll(/z-index: (\d+)/g)].map((m) => Number(m[1]));
-    assert.match(css, /\.vk-dock\.overlay \{ position: fixed;[^}]*z-index: 10450;/);
+    assert.match(css, /\.vk-dock\.overlay \{[^}]*position: fixed;[^}]*z-index: 10450;/);
     assert.ok(Math.max(...z.filter((n) => n < 10450)) < 10450);
     assert.ok(z.filter((n) => n > 10450).every((n) => n >= 99999));
   });
@@ -704,12 +691,5 @@ describe('universal search ignores late results from an older keystroke', () => 
   it('drops a stale result instead of overwriting or re-opening the list', () => {
     const src = readFileSync(new URL('../modules/utilities-payments.js', import.meta.url), 'utf8');
     assert.match(src, /_searchSeq\.get\(resultsId\) !== _mySeq\) return;/);
-  });
-});
-
-describe('mono keyboard shift case', () => {
-  it('the dock carries is-shifted while Shift is on so letters show in capitals', () => {
-    const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
-    assert.match(src, /dock\.classList\.toggle\('is-shifted', shifted\);/);
   });
 });
