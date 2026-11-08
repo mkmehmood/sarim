@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
-import { FIELD_SELECTOR, LETTER_ROWS, PAD_KEYS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard } from '../modules/virtual-keyboard.js';
+import { FIELD_SELECTOR, LETTER_ROWS, PAD_KEYS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard, typesLowerCase, wantsCapital } from '../modules/virtual-keyboard.js';
 
 const field = (attrs = {}, extra = {}) => {
   const map = new Map(Object.entries(attrs));
@@ -28,23 +28,26 @@ describe('field rules', () => {
     for (const type of ['text', 'search', 'tel', 'number']) assert.equal(isTextField(field({ type })), true, type);
     assert.equal(isTextField(field({ tag: 'TEXTAREA', type: 'textarea' })), true);
   });
-  it('leaves email, password and web address fields to the system keyboard, since these keys have no digits or @', () => {
-    for (const type of ['email', 'password', 'url']) assert.equal(isTextField(field({ type })), false, type);
-    assert.equal(isTextField(field({ type: 'text', inputmode: 'email' })), false);
-    assert.equal(isTextField(field({ type: 'text', 'data-vk-mode': 'url', inputmode: 'none' })), false);
-    assert.equal(usesSystemKeyboard(field({ type: 'text', inputmode: 'email' })), true);
-    assert.equal(usesSystemKeyboard(field({ type: 'text', inputmode: 'decimal' })), false);
+  it('uses the app keyboard for email, password and web address fields too', () => {
+    for (const type of ['email', 'password', 'url']) assert.equal(isTextField(field({ type })), true, type);
+    assert.equal(isTextField(field({ type: 'text', inputmode: 'email' })), true);
+    assert.equal(usesSystemKeyboard(field({ type: 'text', inputmode: 'email' })), false);
+    assert.equal(usesSystemKeyboard(field({ type: 'text', 'data-vk': 'off' })), true);
   });
-  it('keeps the login and accounts screens on the device keyboard', () => {
+  it('types credential fields in lower case', () => {
+    for (const type of ['email', 'password', 'url']) assert.equal(typesLowerCase(field({ type })), true, type);
+    assert.equal(typesLowerCase(field({ type: 'text', inputmode: 'email' })), true);
+    assert.equal(typesLowerCase(field({ type: 'text' })), false);
+  });
+  it('uses the app keyboard on the login and accounts screens', () => {
     const login = field({ type: 'text' }, insideScreen('.auth-screen'));
     const accounts = field({ type: 'text' }, insideScreen('#app-accounts-screen'));
     for (const f of [login, accounts]) {
-      assert.equal(usesSystemKeyboard(f), true);
-      assert.equal(isTextField(f), false);
-      assert.equal(applyFieldPolicy(f), false);
-      assert.equal(f.getAttribute('inputmode'), null);
+      assert.equal(usesSystemKeyboard(f), false);
+      assert.equal(isTextField(f), true);
+      assert.equal(applyFieldPolicy(f), true);
+      assert.equal(f.getAttribute('inputmode'), 'none');
     }
-    assert.equal(usesSystemKeyboard(field({ type: 'text' })), false);
   });
   it('leaves pickers, files, checkboxes and hidden inputs alone', () => {
     for (const type of ['date', 'month', 'file', 'checkbox', 'radio', 'hidden', 'button', 'range', 'color']) assert.equal(isTextField(field({ type })), false, type);
@@ -109,12 +112,13 @@ describe('field rules', () => {
     assert.equal(f.type, 'text');
     assert.equal(layoutFor(f), 'numpad');
   });
-  it('does not touch fields that keep the system keyboard', () => {
+  it('only date fields and fields marked data-vk="off" keep the system keyboard', () => {
     const mail = field({ type: 'text', inputmode: 'email' });
-    assert.equal(applyFieldPolicy(mail), false);
-    assert.equal(mail.getAttribute('inputmode'), 'email');
-    assert.equal(applyFieldPolicy(field({ type: 'password' })), false);
-    assert.equal(applyFieldPolicy(field({ type: 'email' })), false);
+    assert.equal(applyFieldPolicy(mail), true);
+    assert.equal(mail.getAttribute('inputmode'), 'none');
+    assert.equal(mail.getAttribute('data-vk-mode'), 'email');
+    assert.equal(applyFieldPolicy(field({ type: 'password' })), true);
+    assert.equal(applyFieldPolicy(field({ type: 'email' })), true);
     assert.equal(applyFieldPolicy(field({ type: 'date' })), false);
     assert.equal(applyFieldPolicy(field({ type: 'text', 'data-vk': 'off' })), false);
   });
@@ -142,6 +146,12 @@ describe('typing rules', () => {
   it('has exactly the rows from the uploaded layouts', () => {
     assert.deepEqual(LETTER_ROWS, ['qwertyu', 'iopasdf', 'ghjklzx', 'cvbnm']);
     assert.deepEqual(PAD_KEYS, ['1', '2', '3', '-', '4', '5', '6', '.', '7', '8', '9']);
+  });
+  it('capitalises at the start of a field and after a space', () => {
+    assert.equal(wantsCapital('', 0), true);
+    assert.equal(wantsCapital('Ali ', 4), true);
+    assert.equal(wantsCapital('Ali', 3), false);
+    assert.equal(wantsCapital('Ali', null), false);
   });
   it('types upper case when asked and lower case otherwise', () => {
     assert.equal(casedKey('A', false), 'a');
@@ -376,16 +386,16 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(!t.pane('letters').classList.contains('d-none'));
   });
 
-  it('stays out of the way of email, password and web address fields', async () => {
+  it('opens the letters keyboard for email, password and web address fields', async () => {
     const t = await boot();
     for (const type of ['email', 'password', 'url']) {
       t.focus(t.input({ type }));
-      assert.ok(t.isHidden(), type);
+      assert.ok(!t.isHidden(), type);
+      assert.ok(!t.pane('letters').classList.contains('d-none'), type);
     }
     t.focus(t.input({ type: 'text', inputmode: 'email' }));
-    assert.ok(t.isHidden());
+    assert.ok(!t.isHidden());
   });
-
   it('types every letter in capitals', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
@@ -405,7 +415,47 @@ describe('virtual keyboard in the Android app', () => {
     t.down(t.keyByCh(t.pane('letters'), 'a'));
     t.down(t.act('space'));
     t.down(t.keyByCh(t.pane('letters'), '.'));
+    t.docListeners.pointerup.forEach((fn) => fn({}));
     assert.equal(f.value, 'A .');
+  });
+
+  const holdDot = (t) => {
+    t.down(t.keyByCh(t.pane('letters'), '.'));
+    const timer = t.timers.filter((x) => x.kind === 'timeout' && String(x.fn).includes('cycleCase')).pop();
+    timer.fn();
+    t.docListeners.pointerup.forEach((fn) => fn({}));
+  };
+
+  it('holding the dot key cycles CAPS, small, Capitalised without typing a dot', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    assert.equal(t.dock.getAttribute('data-vk-case'), 'caps');
+    holdDot(t);
+    assert.equal(t.dock.getAttribute('data-vk-case'), 'small');
+    assert.ok(t.dock.classList.contains('is-lower'));
+    holdDot(t);
+    assert.equal(t.dock.getAttribute('data-vk-case'), 'title');
+    holdDot(t);
+    assert.equal(t.dock.getAttribute('data-vk-case'), 'caps');
+    assert.ok(!t.dock.classList.contains('is-lower'));
+    assert.equal(f.value, '');
+  });
+
+  it('small types lower case and Capitalised types a capital first letter of each word', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    const L = t.pane('letters');
+    holdDot(t);
+    t.down(t.keyByCh(L, 'a'));
+    t.down(t.keyByCh(L, 'b'));
+    assert.equal(f.value, 'ab');
+    holdDot(t);
+    t.down(t.act('space'));
+    t.down(t.keyByCh(L, 'c'));
+    t.down(t.keyByCh(L, 'd'));
+    assert.equal(f.value, 'ab Cd');
   });
 
   it('keeps the field focused when a key is pressed', async () => {
@@ -487,15 +537,39 @@ describe('virtual keyboard in the Android app', () => {
     assert.equal(t.win.__vkInset, 0);
   });
 
-  it('never opens for the login and accounts screens', async () => {
+  it('opens for the login and accounts screens', async () => {
     const t = await boot();
     t.focus(t.input({ type: 'text' }, insideScreen('.auth-screen')));
-    assert.ok(t.isHidden());
+    assert.ok(!t.isHidden());
     t.focus(t.input({ type: 'number' }, insideScreen('#app-accounts-screen')));
-    assert.ok(t.isHidden());
-    assert.equal(t.hidden.length, 0);
+    assert.ok(!t.isHidden());
+    assert.ok(!t.pane('pad').classList.contains('d-none'));
   });
 
+  it('five quick taps on space type an @ instead of the spaces', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    const L = t.pane('letters');
+    t.down(t.keyByCh(L, 'a'));
+    for (let i = 0; i < 4; i += 1) t.down(t.act('space'));
+    assert.equal(f.value, 'A    ');
+    t.down(t.act('space'));
+    assert.equal(f.value, 'A@');
+    t.down(t.act('space'));
+    assert.equal(f.value, 'A@ ');
+  });
+
+  it('types lower case in email and password fields', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'password' });
+    t.focus(f);
+    assert.ok(t.dock.classList.contains('is-lower'));
+    t.down(t.keyByCh(t.pane('letters'), 'q'));
+    assert.equal(f.value, 'q');
+    t.focus(t.input({ type: 'text' }));
+    assert.ok(!t.dock.classList.contains('is-lower'));
+  });
   it('closes when tapping anywhere outside the keyboard and the field', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
@@ -566,16 +640,15 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(t.isHidden());
   });
 
-  it('keeps the system keyboard away from fields already in the page, except email and password', async () => {
+  it('keeps the system keyboard away from every field already in the page', async () => {
     const dec = field({ type: 'text', inputmode: 'decimal' });
     const mail = field({ type: 'email' });
     const t = await boot({ fields: [dec, mail] });
     assert.equal(dec.getAttribute('inputmode'), 'none');
     assert.equal(dec.getAttribute('data-vk-mode'), 'decimal');
-    assert.equal(mail.getAttribute('inputmode'), null);
+    assert.equal(mail.getAttribute('inputmode'), 'none');
     assert.equal(t.kb.isOpen(), false);
   });
-
   it('the Android back button can close the keyboard and blur the field', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
@@ -659,13 +732,12 @@ describe('virtual keyboard wiring', () => {
     assert.ok(z.filter((n) => n > 10450).every((n) => n >= 99999));
   });
 
-  it('keeps the login screen and the accounts screen on the device keyboard', () => {
-    assert.match(kb, /const SYSTEM_SCOPES = '\.auth-screen, #app-accounts-screen';/);
-    assert.match(kb, /el\.closest\(SYSTEM_SCOPES\)/);
+  it('no screen is routed to the device keyboard any more', () => {
+    assert.doesNotMatch(kb, /SYSTEM_SCOPES|SYSTEM_MODES/);
+    assert.match(kb, /return attr\(el, 'data-vk'\) === 'off';/);
     assert.match(readSource('modules/sync.js'), /overlay\.className = 'auth-screen';/);
-    assert.match(readSource('index.html'), /<div id="app-accounts-screen"/);
+    assert.match(readSource('index.html'), /<div id=\"app-accounts-screen\"/);
   });
-
   it('closes on any tap outside the keyboard', () => {
     assert.match(kb, /doc\.addEventListener\('click', \(e\) => \{[\s\S]*hide\(true\);\n  \}, true\);/);
   });

@@ -1,8 +1,9 @@
 import { dialogFeedback } from './feedback.js';
 
-const TEXT_TYPES = ['', 'text', 'search', 'tel', 'number'];
-const SYSTEM_MODES = ['email', 'url'];
-const SYSTEM_SCOPES = '.auth-screen, #app-accounts-screen';
+const TEXT_TYPES = ['', 'text', 'search', 'tel', 'number', 'email', 'url', 'password'];
+const LOWER_TYPES = ['email', 'url', 'password'];
+const SPACE_TAPS_FOR_AT = 5;
+const SPACE_TAP_WINDOW_MS = 600;
 const NUMERIC_MODES = ['numeric', 'decimal', 'tel'];
 const HOLD_DELAY_MS = 420;
 const REPEAT_MS = 55;
@@ -11,7 +12,6 @@ const HIDE_DELAY_MS = 250;
 export const FIELD_SELECTOR = 'input, textarea, [contenteditable=""], [contenteditable="true"]';
 export const LETTER_ROWS = ['qwertyu', 'iopasdf', 'ghjklzx', 'cvbnm'];
 export const PAD_KEYS = ['1', '2', '3', '-', '4', '5', '6', '.', '7', '8', '9'];
-
 
 const attr = (el, name) => (el && typeof el.getAttribute === 'function' ? el.getAttribute(name) : null);
 const typeOf = (el) => String((el && el.type) || attr(el, 'type') || '').toLowerCase();
@@ -25,10 +25,7 @@ export function isTextLike(el) {
 }
 
 export function usesSystemKeyboard(el) {
-  if (attr(el, 'data-vk') === 'off') return true;
-  if (el && typeof el.closest === 'function' && el.closest(SYSTEM_SCOPES)) return true;
-  const mode = String(attr(el, 'data-vk-mode') || attr(el, 'inputmode') || '').toLowerCase();
-  return SYSTEM_MODES.includes(mode);
+  return attr(el, 'data-vk') === 'off';
 }
 
 export function isTextField(el) {
@@ -44,6 +41,20 @@ export function layoutFor(el) {
   const type = typeOf(el);
   if (type === 'number' || type === 'tel' || NUMERIC_MODES.includes(mode)) return 'numpad';
   return 'qwerty';
+}
+
+export function typesLowerCase(el) {
+  const type = typeOf(el);
+  const orig = String(attr(el, 'data-vk-type') || '').toLowerCase();
+  return LOWER_TYPES.includes(type) || LOWER_TYPES.includes(orig) || LOWER_TYPES.includes(String(attr(el, 'data-vk-mode') || attr(el, 'inputmode') || '').toLowerCase());
+}
+
+export const CASE_MODES = ['caps', 'small', 'title'];
+
+export function wantsCapital(value, caret) {
+  const s = String(value == null ? '' : value);
+  const i = caret == null ? s.length : caret;
+  return i <= 0 || /\s/.test(s.charAt(i - 1));
 }
 
 export function casedKey(ch, shifted) {
@@ -158,6 +169,12 @@ export function installVirtualKeyboard(opts = {}) {
 
   const panes = { letters: lettersPane, pad: padPane };
   let active = null;
+  let caseMode = 'caps';
+  let caseHold = 0;
+  let caseFired = false;
+  let dotKeyDown = null;
+  let spaceTaps = 0;
+  let lastSpaceAt = 0;
   let hideTimer = 0;
   let holdTimer = 0;
   let repeatTimer = 0;
@@ -178,6 +195,27 @@ export function installVirtualKeyboard(opts = {}) {
   const showPane = (name) => {
     Object.keys(panes).forEach((k) => panes[k].classList.toggle('d-none', k !== name));
     if (isOpen()) measure();
+  };
+
+  const upperNow = () => {
+    if (!active || typesLowerCase(active)) return false;
+    if (caseMode === 'caps') return true;
+    if (caseMode === 'small') return false;
+    let caret = null;
+    try { caret = active.selectionStart; } catch (_) {}
+    return wantsCapital(active.value, caret);
+  };
+
+  const syncCase = () => {
+    const credential = !!active && typesLowerCase(active);
+    dock.classList.toggle('is-lower', !upperNow());
+    dock.setAttribute('data-vk-case', credential ? 'small' : caseMode);
+  };
+
+  const cycleCase = () => {
+    caseMode = CASE_MODES[(CASE_MODES.indexOf(caseMode) + 1) % CASE_MODES.length];
+    syncCase();
+    try { dialogFeedback('select'); } catch (_) {}
   };
 
   const insert = (text) => {
@@ -252,6 +290,7 @@ export function installVirtualKeyboard(opts = {}) {
     active = field;
     dock.classList.remove('d-none');
     root.classList.add('vk-open');
+    syncCase();
     showPane(layoutFor(field) === 'numpad' ? 'pad' : 'letters');
     measure();
     win.requestAnimationFrame(() => {
@@ -264,9 +303,20 @@ export function installVirtualKeyboard(opts = {}) {
   const press = (k) => {
     const act = k.getAttribute('data-vk-act');
     const ch = k.getAttribute('data-vk-ch');
+    if (act !== 'space') spaceTaps = 0;
     if (act === 'back') backspace();
-    else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, true));
+    else if (act === 'space') {
+      const now = Date.now();
+      spaceTaps = now - lastSpaceAt <= SPACE_TAP_WINDOW_MS ? spaceTaps + 1 : 1;
+      lastSpaceAt = now;
+      if (spaceTaps >= SPACE_TAPS_FOR_AT) {
+        for (let i = 1; i < SPACE_TAPS_FOR_AT; i += 1) backspace();
+        insert('@');
+        spaceTaps = 0;
+      } else insert(' ');
+    } else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, upperNow()));
     else if (ch != null) insert(ch);
+    syncCase();
     try { dialogFeedback('select'); } catch (_) {}
   };
 
@@ -275,8 +325,31 @@ export function installVirtualKeyboard(opts = {}) {
     if (e.button > 0) return;
     const k = e.target && e.target.closest ? e.target.closest('.vk-key') : null;
     if (!k || !dock.contains(k)) return;
+    if (k.classList.contains('is-dot') && lettersPane.contains(k)) {
+      dotKeyDown = k;
+      caseFired = false;
+      win.clearTimeout(caseHold);
+      caseHold = win.setTimeout(() => { caseFired = true; cycleCase(); }, HOLD_DELAY_MS);
+      return;
+    }
     press(k);
     if (k.getAttribute('data-vk-act') === 'back') startRepeat();
+  };
+
+  const onUp = () => {
+    stopRepeat();
+    win.clearTimeout(caseHold);
+    const k = dotKeyDown;
+    dotKeyDown = null;
+    if (k && !caseFired) press(k);
+    caseFired = false;
+  };
+
+  const onCancel = () => {
+    stopRepeat();
+    win.clearTimeout(caseHold);
+    dotKeyDown = null;
+    caseFired = false;
   };
 
   const scheduleHide = () => {
@@ -297,8 +370,8 @@ export function installVirtualKeyboard(opts = {}) {
   dock.addEventListener('pointerdown', onDown);
   dock.addEventListener('mousedown', (e) => e.preventDefault());
   dock.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
-  doc.addEventListener('pointerup', stopRepeat, true);
-  doc.addEventListener('pointercancel', stopRepeat, true);
+  doc.addEventListener('pointerup', onUp, true);
+  doc.addEventListener('pointercancel', onCancel, true);
   doc.addEventListener('focusin', (e) => {
     const t = e.target;
     if (dock.contains(t)) return;
