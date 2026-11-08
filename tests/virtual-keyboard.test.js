@@ -1,4 +1,5 @@
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
 import { FIELD_SELECTOR, LETTER_ROWS, PAD_ROWS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard } from '../modules/virtual-keyboard.js';
@@ -677,5 +678,21 @@ describe('virtual keyboard wiring', () => {
 
   it('closes on any tap outside the keyboard', () => {
     assert.match(kb, /doc\.addEventListener\('click', \(e\) => \{[\s\S]*hide\(true\);\n  \}, true\);/);
+  });
+});
+
+describe('search dropdown stays open while typing on the on-screen keyboard', () => {
+  const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+
+  it('keyboard key clicks do not bubble to the click-outside handlers', () => {
+    assert.match(read('modules/virtual-keyboard.js'), /dock\.addEventListener\('click', \(e\) => \{ e\.preventDefault\(\); e\.stopPropagation\(\); \}\)/);
+  });
+
+  it('the universal search click-outside handler ignores the keyboard dock', () => {
+    assert.match(read('modules/utilities-payments.js'), /closest\('\.vk-dock'\)\) return;/);
+  });
+
+  it('the sales customer field has no native datalist competing with the custom dropdown', () => {
+    assert.doesNotMatch(read('index.html'), /id="cust-name"[^>]*list=/);
   });
 });

@@ -1836,7 +1836,7 @@ Insufficient formula units available! Please reduce formula units used.
 <div class="field"><label>Date</label><input class="form-ctl" type="date" id="cust-date" onchange="refreshCustomerSales(); setSalesSummaryMode(currentSalesSummaryMode || 'day'); if(typeof custTransactionMode==='undefined'||custTransactionMode==='sale'){calculateCustomerSale();} var _epd=document.getElementById('expenseDate'); if(_epd&&!_epd.value){_epd.value=this.value; if(typeof calculateNetCash==='function')calculateNetCash();}"></div>
 <div class="field u-pos-relative" >
 <label>Customer Name</label>
-<input class="form-ctl" type="text" id="cust-name" list="customer-list" placeholder="Search or type new..."
+<input class="form-ctl" type="text" id="cust-name" placeholder="Search or type new..."
 oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customers'); handleCustomerInput(this.value, 'admin')" autocomplete="off">
 <div id="customer-search-results" class="hidden u-search-dropdown" ></div>
 <div id="new-customer-phone-container" class="hidden u-a70476a">
@@ -1847,7 +1847,6 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 </div>
 </div>
-<datalist id="customer-list"></datalist>
 </div>
 </div>
 <div class="field u-mb-15" id="cust-rep-field">

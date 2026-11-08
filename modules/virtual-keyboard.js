@@ -321,7 +321,7 @@ export function installVirtualKeyboard(opts = {}) {
 
   dock.addEventListener('pointerdown', onDown);
   dock.addEventListener('mousedown', (e) => e.preventDefault());
-  dock.addEventListener('click', (e) => e.preventDefault());
+  dock.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
   doc.addEventListener('pointerup', stopRepeat, true);
   doc.addEventListener('pointercancel', stopRepeat, true);
   doc.addEventListener('focusin', (e) => {

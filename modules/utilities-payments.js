@@ -6274,6 +6274,7 @@ window.expenseCategoryOnPick(inputId);
 }
 
 document.addEventListener('click', function(e) {
+if (e.target && e.target.closest && e.target.closest('.vk-dock')) return;
 if (!e.target.closest('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown') &&
     !e.target.closest('button[onclick*="fh-breakdown-"], button[onclick*="sold-breakdown-"], button[onclick*="perf-sum-raw-breakdown"]')) {
   document.querySelectorAll('[id^="fh-breakdown-"], [id^="sold-breakdown-"], #perf-sum-raw-breakdown').forEach(panel => {
