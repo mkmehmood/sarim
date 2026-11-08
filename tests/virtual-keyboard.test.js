@@ -643,16 +643,17 @@ describe('virtual keyboard wiring', () => {
 
   it('uses the app theme tokens for the tinted keys, with no separate stylesheet or CDN', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
-    assert.match(css, /\.vk-dock \.vk-key\.is-shift \{[^}]*var\(--accent-indigo\)/);
+    assert.match(css, /\.vk-dock \.vk-key\.is-shift \{[^}]*var\(--accent\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
-    assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
-    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*var\(--accent-emerald\)/);
+    assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); background: var\(--warning-dim\); \}/);
+    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*var\(--accent-cyan\)[^}]*var\(--accent-lime\)/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('mono style: borderless monospace keys split by hairlines, lowercase until shifted', () => {
+  it('themed keys: borderless bold UI-font keys split by hairlines, lowercase until shifted', () => {
     assert.match(css, /\.vk-row \{ display: flex; gap: 0; margin: 0; border-bottom: 1px solid var\(--well-line\); \}/);
-    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 0; border-radius: 0; background: transparent;[^}]*font-family: var\(--font-mono\)/);
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 0; border-radius: 0; background: transparent;[^}]*font-family: var\(--font-ui\)[^}]*font-weight: 800/);
+    assert.match(kb, /stroke-width="1\.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"/);
     assert.match(css, /\.vk-key\.is-letter \{ text-transform: lowercase; \}/);
     assert.match(css, /\.vk-dock\.is-shifted \.vk-key\.is-letter \{ text-transform: uppercase; \}/);
   });
