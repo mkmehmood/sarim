@@ -704,7 +704,8 @@ describe('virtual keyboard wiring', () => {
 
   it('uses the app theme tokens for the keys, with no separate stylesheet or CDN', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
-    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*color-mix\(in srgb, var\(--accent\) 70%, #fff\), var\(--accent\)\)/);
+    assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*linear-gradient\(135deg, var\(--accent\), var\(--accent-cyan\)\)/);
+    assert.match(css, /--vk-pebble: linear-gradient\(180deg, color-mix\(in srgb, var\(--white\) 22%, transparent\) 0%, transparent 55%\), linear-gradient\(135deg, color-mix\(in srgb, var\(--accent\) 30%, var\(--surface\)\), color-mix\(in srgb, var\(--accent-cyan\) 24%, var\(--surface\)\)\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
     assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
