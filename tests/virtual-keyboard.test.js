@@ -582,6 +582,19 @@ describe('virtual keyboard in the Android app', () => {
     assert.equal(t.win.__vkInset, 0);
   });
 
+  it('stays open when the tap began on a field but the page scrolled so the click landed elsewhere', async () => {
+    const t = await boot();
+    const lower = t.input({ type: 'text' });
+    t.focus(lower);
+    t.docListeners.pointerdown.forEach((fn) => fn({ target: lower }));
+    t.docListeners.click.forEach((fn) => fn({ target: new Node('div') }));
+    assert.ok(!t.isHidden());
+    assert.equal(lower.blurred, false);
+    t.docListeners.pointerdown.forEach((fn) => fn({ target: new Node('div') }));
+    t.docListeners.click.forEach((fn) => fn({ target: new Node('div') }));
+    assert.ok(t.isHidden());
+  });
+
   it('stays open when tapping a key, the same field, another text field or a label', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
