@@ -58,4 +58,9 @@ registerLazyModules({
     load: () => import('../screens/compiled/formula-store-edit.screen.js'),
     globals: ['addFormulaIngredientRow', 'deleteFormulaStoreEntry', 'openFormulaStoreEditor', 'saveFormulaStoreEntry', 'updateFormulaStoreSummary'],
   },
+  'admin-data': {
+    load: () => import('./admin-data.js'),
+    globals: ['_buildMergedBase', '_markRowSyncWarning', '_runUnifiedCleanup', '_showCloseFinancialYearDialog', '_showDeltaSyncDetails', '_storeCodeToLabel', 'closeCloseYearDialog', 'createMergeBackup', 'dbvShowTab', 'deduplicateAllData', 'executeCloseFinancialYear', 'extractTimestampValue', 'generateCloseYearSummary', 'mergeCalculatorData', 'mergeExpensesData', 'mergeFactoryData', 'mergePaymentData', 'mergeProductionData', 'mergeRepSalesData', 'mergeSalesData', 'mergeStockReturnsData', 'restoreFromBackup', 'runUnifiedCleanup', 'showCloseFinancialYearDialog', 'showDeltaSyncDetails', 'updateCloseYearProgress', 'updateDeltaSyncStatsDisplay', 'validateCloseYearInput', 'verifyAndExecuteCloseYear', 'verifyCompleteTimestampConsistency', 'verifyMergeConsistency', 'verifyTimestampConsistency'],
+    hooks: [],
+  },
 });

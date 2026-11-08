@@ -9,6 +9,7 @@ import { calculateSalesCostPerKg, getEffectiveSalePriceForCustomer, getSalePrice
 import { showGlassConfirm, showToast } from './customers.js';
 import { collectAuxBackupFields, isSupportedBackup, RECORD_STORES, DATASET_BY_KEY } from './link-graph.js';
 import { getDefaultStoreKey, storeLabelFor } from './store-keys.js';
+import { adminFlags } from './admin-flags.js';
 
 export async function updateDeltaSyncStatsDisplay() {
   try {
@@ -446,11 +447,8 @@ try {
 }
 }
 
-if (typeof closeYearInProgress === 'undefined') var closeYearInProgress = false;
 if (typeof closeYearAbortController === 'undefined') var closeYearAbortController = null;
 if (typeof _fyVerifiedPassword === 'undefined') var _fyVerifiedPassword = null;
-if (typeof closing === 'undefined') var closing = false;
-if (typeof restoring === 'undefined') var restoring = false;
 if (typeof _hasMergeCommitFailure === 'undefined') var _hasMergeCommitFailure = false;
 
 export function _storeCodeToLabel(c) {
@@ -466,7 +464,7 @@ async function loadCloseYearStores() {
 
 export async function showCloseFinancialYearDialog() {
   const { production, sales, rep, calculator, transactions, returns, expenses, factory } = await loadCloseYearStores();
-if (closeYearInProgress) {
+if (adminFlags.closeYearInProgress) {
 showToast('Close Financial Year is already in progress', 'warning');
 return;
 }
@@ -592,7 +590,7 @@ if (closeYearAbortController) {
 closeYearAbortController.abort();
 closeYearAbortController = null;
 }
-closeYearInProgress = false;
+adminFlags.closeYearInProgress = false;
 }
 
 export function updateCloseYearProgress(stage, percent) {
@@ -1005,8 +1003,8 @@ export async function executeCloseFinancialYear() {
   const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
   const appStoresSnapshot = ensureArray(await sqliteStore.get('stores'));
   const { production, sales, rep, calculator, transactions, returns, expenses, factory, entities } = await loadCollections('production', 'sales', 'rep', 'calculator', 'transactions', 'returns', 'expenses', 'factory', 'entities');
-if (closeYearInProgress) return;
-closeYearInProgress = true;
+if (adminFlags.closeYearInProgress) return;
+adminFlags.closeYearInProgress = true;
 const inputSection  = document.getElementById('close-year-input-section');
 const progressContainer = document.getElementById('close-year-progress-container');
 const phaseBadge    = document.getElementById('cy-phase-badge');
@@ -1082,7 +1080,7 @@ try {
     { title: 'Backup Failed', confirmText: 'Proceed Anyway', cancelText: 'Abort' }
   );
   if (!proceed) {
-    closeYearInProgress = false;
+    adminFlags.closeYearInProgress = false;
     closeCloseYearDialog();
     return;
   }
@@ -1092,7 +1090,7 @@ let backupTimestamp;
 try {
   backupTimestamp = await createMergeBackup();
 } catch (backupErr) {
-  closeYearInProgress = false;
+  adminFlags.closeYearInProgress = false;
   window.notifyBlocking('Failed to create rollback snapshot: ' + backupErr.message, 'error', 'Something went wrong');
   closeCloseYearDialog();
   return;
@@ -1204,11 +1202,11 @@ try {
   const hasSyncWarning = typeof _hasMergeCommitFailure !== 'undefined' && _hasMergeCommitFailure === true;
   if (hasSyncWarning) {
     fyMeta.closing = true;
-    closing = true;
+    adminFlags.closing = true;
     await sqliteStore.set('closing', true);
   } else {
     fyMeta.closing = false;
-    closing = false;
+    adminFlags.closing = false;
     await sqliteStore.set('closing', false);
   }
   const _fyMetaTs = Date.now();
@@ -1340,7 +1338,7 @@ if (error.name !== 'AbortError') {
   closeCloseYearDialog();
 }
 } finally {
-closeYearInProgress = false;
+adminFlags.closeYearInProgress = false;
 closeYearAbortController = null;
 }
 }
@@ -2799,14 +2797,11 @@ window.runUnifiedCleanup = runUnifiedCleanup;
 window._showDeltaSyncDetails = showDeltaSyncDetails;
 window._runUnifiedCleanup = runUnifiedCleanup;
 window._showCloseFinancialYearDialog = showCloseFinancialYearDialog;
-export { closeYearInProgress, closeYearAbortController, _fyVerifiedPassword, closing, restoring, _hasMergeCommitFailure };
+export { closeYearAbortController, _fyVerifiedPassword, _hasMergeCommitFailure };
 window.updateDeltaSyncStatsDisplay = updateDeltaSyncStatsDisplay;
 window.showDeltaSyncDetails = showDeltaSyncDetails;
-window.closeYearInProgress = closeYearInProgress;
 window.closeYearAbortController = closeYearAbortController;
 window._fyVerifiedPassword = _fyVerifiedPassword;
-window.closing = closing;
-window.restoring = restoring;
 window._hasMergeCommitFailure = _hasMergeCommitFailure;
 window._storeCodeToLabel = _storeCodeToLabel;
 window.showCloseFinancialYearDialog = showCloseFinancialYearDialog;
@@ -2835,5 +2830,3 @@ window.dbvShowTab = dbvShowTab;
 window.verifyCompleteTimestampConsistency = verifyCompleteTimestampConsistency;
 window.extractTimestampValue = extractTimestampValue;
 window.runUnifiedCleanup = runUnifiedCleanup;
-export function _set_restoring(v) { restoring = v; }
-export function _set_closing(v) { closing = v; }

@@ -5765,35 +5765,6 @@ const result = await safeInitializeCompleteDatabase(silent);
 return result;
 };
 
-(function() {
-  let _adminLoaded = false;
-  let _adminLoading = null;
-  function _loadAdminModule() {
-    if (_adminLoaded) return Promise.resolve();
-    if (_adminLoading) return _adminLoading;
-    _adminLoading = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'admin-data.js';
-      script.onload = () => { _adminLoaded = true; resolve(); };
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-    return _adminLoading;
-  }
-  window.showDeltaSyncDetails = async function() {
-    await _loadAdminModule();
-    if (typeof window._showDeltaSyncDetails === 'function') {
-      return window._showDeltaSyncDetails();
-    }
-  };
-  window.showCloseFinancialYearDialog = async function() {
-    await _loadAdminModule();
-    if (typeof window._showCloseFinancialYearDialog === 'function') {
-      return window._showCloseFinancialYearDialog();
-    }
-  };
-})();
-
 window.getDeviceId = getDeviceId;
 
 registerEditHandler('paytransfer', ((...args) => window.startEditPaymentTransfer(...args)), { keepScreens: ['payment-transfer-screen'] });

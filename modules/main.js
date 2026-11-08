@@ -6,7 +6,6 @@ import './biometric-toggle.js';
 import './notify.js';
 import './constants.js';
 import './business.js';
-import './admin-data.js';
 import './sync.js';
 import './approvals.js';
 import './utilities-core.js';

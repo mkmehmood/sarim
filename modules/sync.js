@@ -3,7 +3,7 @@ import { wipeAllLocalData } from './data-wipe.js';
 import { APP_CONFIG } from './constants.js';
 import { sendDeviceNotification } from './notify.js';
 import { OfflineAuth, dataRootRef, dataRootUid, SQLiteCrypto, _clearDeviceIdStorage, _safeErr, _set_auth, _set_currentRepProfile, _set_currentUser, _set_database, _set_firebaseDB, _set_isSyncing, _set_salesRepsList, appMode, auth, compareRecordVersions, currentRepProfile, currentUser, database, ensureArray, ensureRecordIntegrity, fmtAmt, firebaseDB, getDeviceId, getTimestamp, initDeviceShard, isSyncing, loadAllData, refreshDeviceIdAnchors, salesRepsList, sqliteStore, validateUUID } from './business.js';
-import { _set_restoring, _set_closing, closeYearInProgress, restoring, closing } from './admin-data.js';
+import { _set_restoring, _set_closing, adminFlags } from './admin-flags.js';
 import { OfflineQueue, _setCloudConnectionState, _set_autoSyncTimeout, _set_defaultSettings, autoSyncTimeout, defaultSettings, invalidateAllCaches, syncState, triggerAutoSync } from './utilities-core.js';
 import { DeltaSync, UUIDSyncRegistry, _invalidateStoresCache, firebaseConfig, trackFirestoreRead, trackFirestoreWrite } from './utilities-sales.js';
 import { _recoveredThisSession, closeDataMenu, refreshAllDisplays, renderAllRepUI, renderUnifiedTable } from './utilities-payments.js';
@@ -1145,7 +1145,7 @@ return async function handleSnapshot(snapshot) {
 try {
 if (snapshot.metadata.hasPendingWrites) return;
 if (snapshot.metadata.fromCache) return;
-if (col.lockOnClose && closeYearInProgress) return;
+if (col.lockOnClose && adminFlags.closeYearInProgress) return;
 const changes = snapshot.docChanges();
 trackFirestoreRead(changes.length);
 if (changes.length === 0) return;
@@ -1426,12 +1426,12 @@ export async function subscribeToRealtime() {
   if (!firebaseDB || !currentUser) return;
   if (window._firestoreNetworkDisabled) return;
   try {
-    if (!closing) {
+    if (!adminFlags.closing) {
       const storedFlag = await sqliteStore.get('closing');
       if (storedFlag === true) _set_closing(true);
     }
   } catch (_flagErr) {  }
-  if (closing && !closeYearInProgress) {
+  if (adminFlags.closing && !adminFlags.closeYearInProgress) {
     try {
       const userRef = dataRootRef();
       const [_db,_cs,_rs,_sh,_pt,_fph,_er,_sr] = await Promise.all([
@@ -1493,13 +1493,13 @@ export async function subscribeToRealtime() {
       }
     } catch (e) { console.warn('closing retry failed:', _safeErr(e)); }
   }
-  if (!restoring) {
+  if (!adminFlags.restoring) {
     try {
       const _storedRestoreFlag = await sqliteStore.get('restoring');
       if (_storedRestoreFlag === true) _set_restoring(true);
     } catch (_rfErr) {}
   }
-  if (restoring) {
+  if (adminFlags.restoring) {
     try {
       showToast('Retrying restore cloud sync...', 'info', 3000);
       const _restoreUserRef = dataRootRef();

@@ -5,6 +5,9 @@
     "editingFactoryInventoryId": "mirror of the UI-state registry (default null); window accessor is the source of truth",
     "_set_currentStore": "only caller was notify-open.js, now assigns window.currentStore directly",
     "_set_currentFactorySummaryMode": "no callers; assigned window.currentFactorySummaryMode which factory.js now writes directly",
-    "_set_editingFactoryInventoryId": "no callers; assigned window.editingFactoryInventoryId which factory.js now writes directly"
+    "_set_editingFactoryInventoryId": "no callers; assigned window.editingFactoryInventoryId which factory.js now writes directly",
+    "closeYearInProgress": "moved into adminFlags (modules/admin-flags.js) so core can read it without loading admin-data.js; window.closeYearInProgress is now a live getter instead of a one-time copy",
+    "closing": "moved into adminFlags (modules/admin-flags.js) so core can read it without loading admin-data.js; window.closing is now a live getter instead of a one-time copy",
+    "restoring": "moved into adminFlags (modules/admin-flags.js) so core can read it without loading admin-data.js; window.restoring is now a live getter instead of a one-time copy"
   }
 }

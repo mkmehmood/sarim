@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 10 screens, the rep tab and the factory tab are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
+Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 11 screens, the rep tab, the factory tab and the admin tools are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -218,6 +218,16 @@ Fix: compiled copies are now real, committed files.
 - **`tests/source-served.test.js`** starts a plain static server over the repository, crawls every static and dynamic import from `modules/main.js`, and checks every service-worker precache entry. It reproduces the incident exactly on the previous commit (10 screens plus the precache entries missing) and passes now. Any future change that needs a build step to resolve a file will fail it.
 
 Deployment note: `deploy.yml` publishes `dist` from `main` after `npm run check`, which was never affected. The incident only affects a site serving a branch's source directly (for example, Pages set to "deploy from a branch").
+
+### admin-data.js made genuinely lazy (99.5 KB chunk)
+`admin-data.js` (2,800 lines: Close Financial Year with all its merge logic, backup and restore, deduplication, delta-sync diagnostics) was loaded at start-up although it is almost entirely admin tools. Only `sync.js` and `utilities-sales.js` imported it, and only for three state flags. There was also a dead "lazy loader" in `utilities-payments.js` (`_loadAdminModule`) that injected a `<script src="admin-data.js">` which does not exist; it only wrapped `showDeltaSyncDetails` and `showCloseFinancialYearDialog`, and was removed.
+
+- **Flags moved to core:** `modules/admin-flags.js` holds `adminFlags = { closeYearInProgress, closing, restoring }`, the `_set_closing` / `_set_restoring` setters and `window.closeYearInProgress` / `window.closing` / `window.restoring` as **live getters** (the old `window.X = X` lines were one-time copies that went stale; nothing outside `admin-data.js` read them). `sync.js` reads `adminFlags.X`; `admin-data.js` reads and writes `adminFlags.X` (rewritten with scope analysis, so `fyMeta.closing` and the string `'closing'` are untouched). The three removed variables are in `docs/screen-split/intentional-removals.json`.
+- **Registered as a lazy module** with all 32 published functions stubbed. The only outside consumers are four user-triggered entry points (`showCloseFinancialYearDialog`, `_showCloseFinancialYearDialog`, `showDeltaSyncDetails`, `_showDeltaSyncDetails`), so no refresh hooks were needed. A scan of the module's load-time statements found only three variable initialisers: nothing is skipped by loading it later.
+
+Start-up JS (gzip): 397 KB on `main` → 345 KB → **317 KB (-20%)**. About 106 KB gzip is now lazy.
+
+What to check on a device: the Close Financial Year button in the sidebar (dialog opens, summary shows; do not run it against live data), Delta Sync details from the DB structure screen, a backup restore (the `restoring` flag now lives in `adminFlags`; sync must pause while it runs and resume after), and an interrupted close or restore picked up again at the next sign-in (`sync.js` reads the stored `closing` / `restoring` flags).
 
 ### What each blocked screen needs (small, per screen, but behaviour-changing)
 - **3a. Move the inline `index.html` scripts into modules.** Done, see above.
