@@ -5661,7 +5661,7 @@ html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content:
 .vk-head { display: none; }
 .vk-row { display: flex; gap: 0; margin: 0; border-bottom: 1px solid var(--well-line); }
 .vk-row:last-child { border-bottom: 0; }
-.vk-dock .vk-key { flex: 1 1 0; min-width: 0; height: 50px; min-height: 50px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--text-main); font-family: var(--font-mono); font-size: 1.2rem; font-weight: 800; touch-action: manipulation; transition: none; }
+.vk-dock .vk-key { flex: 1 1 0; min-width: 0; height: 58px; min-height: 58px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: var(--text-main); font-family: var(--font-mono); font-size: 1.2rem; font-weight: 800; touch-action: manipulation; transition: none; }
 .vk-dock .vk-key:hover { background: transparent; }
 .vk-key svg { width: 22px; height: 22px; pointer-events: none; }
 .vk-key.is-letter { text-transform: lowercase; }
