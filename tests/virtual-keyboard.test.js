@@ -546,18 +546,20 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(!t.pane('pad').classList.contains('d-none'));
   });
 
-  it('five quick taps on space type an @ instead of the spaces', async () => {
+  it('a quick tap on space types a space, a long press types an @ instead', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
     t.focus(f);
-    const L = t.pane('letters');
-    t.down(t.keyByCh(L, 'a'));
-    for (let i = 0; i < 4; i += 1) t.down(t.act('space'));
-    assert.equal(f.value, 'A    ');
+    t.down(t.keyByCh(t.pane('letters'), 'a'));
     t.down(t.act('space'));
-    assert.equal(f.value, 'A@');
+    t.docListeners.pointerup.forEach((fn) => fn({}));
+    assert.equal(f.value, 'A ');
     t.down(t.act('space'));
-    assert.equal(f.value, 'A@ ');
+    assert.equal(f.value, 'A  ');
+    const timer = t.timers.filter((x) => x.kind === 'timeout' && String(x.fn).includes('typeAt')).pop() || t.timers.filter((x) => x.kind === 'timeout').pop();
+    timer.fn();
+    t.docListeners.pointerup.forEach((fn) => fn({}));
+    assert.equal(f.value, 'A @');
   });
 
   it('types lower case in email and password fields', async () => {

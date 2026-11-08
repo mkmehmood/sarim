@@ -2,8 +2,6 @@ import { dialogFeedback } from './feedback.js';
 
 const TEXT_TYPES = ['', 'text', 'search', 'tel', 'number', 'email', 'url', 'password'];
 const LOWER_TYPES = ['email', 'url', 'password'];
-const SPACE_TAPS_FOR_AT = 5;
-const SPACE_TAP_WINDOW_MS = 600;
 const NUMERIC_MODES = ['numeric', 'decimal', 'tel'];
 const HOLD_DELAY_MS = 420;
 const REPEAT_MS = 55;
@@ -174,8 +172,8 @@ export function installVirtualKeyboard(opts = {}) {
   let caseHold = 0;
   let caseFired = false;
   let dotKeyDown = null;
-  let spaceTaps = 0;
-  let lastSpaceAt = 0;
+  let spaceHold = 0;
+  let spaceAdded = false;
   let hideTimer = 0;
   let holdTimer = 0;
   let repeatTimer = 0;
@@ -304,18 +302,8 @@ export function installVirtualKeyboard(opts = {}) {
   const press = (k) => {
     const act = k.getAttribute('data-vk-act');
     const ch = k.getAttribute('data-vk-ch');
-    if (act !== 'space') spaceTaps = 0;
     if (act === 'back') backspace();
-    else if (act === 'space') {
-      const now = Date.now();
-      spaceTaps = now - lastSpaceAt <= SPACE_TAP_WINDOW_MS ? spaceTaps + 1 : 1;
-      lastSpaceAt = now;
-      if (spaceTaps >= SPACE_TAPS_FOR_AT) {
-        for (let i = 1; i < SPACE_TAPS_FOR_AT; i += 1) backspace();
-        insert('@');
-        spaceTaps = 0;
-      } else insert(' ');
-    } else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, upperNow()));
+    else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, upperNow()));
     else if (ch != null) insert(ch);
     syncCase();
     try { dialogFeedback('select'); } catch (_) {}
@@ -333,12 +321,31 @@ export function installVirtualKeyboard(opts = {}) {
       caseHold = win.setTimeout(() => { caseFired = true; cycleCase(); }, HOLD_DELAY_MS);
       return;
     }
+    if (k.getAttribute('data-vk-act') === 'space') {
+      const before = active ? String(active.value == null ? '' : active.value) : '';
+      press(k);
+      spaceAdded = !!active && String(active.value == null ? '' : active.value) !== before;
+      win.clearTimeout(spaceHold);
+      spaceHold = win.setTimeout(typeAt, HOLD_DELAY_MS);
+      return;
+    }
     press(k);
     if (k.getAttribute('data-vk-act') === 'back') startRepeat();
   };
 
+  const typeAt = () => {
+    spaceHold = 0;
+    if (!active) return;
+    if (spaceAdded) backspace();
+    spaceAdded = false;
+    insert('@');
+    syncCase();
+    try { dialogFeedback('select'); } catch (_) {}
+  };
+
   const onUp = () => {
     stopRepeat();
+    win.clearTimeout(spaceHold);
     win.clearTimeout(caseHold);
     const k = dotKeyDown;
     dotKeyDown = null;
@@ -348,6 +355,7 @@ export function installVirtualKeyboard(opts = {}) {
 
   const onCancel = () => {
     stopRepeat();
+    win.clearTimeout(spaceHold);
     win.clearTimeout(caseHold);
     dotKeyDown = null;
     caseFired = false;
