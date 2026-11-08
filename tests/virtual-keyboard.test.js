@@ -696,3 +696,10 @@ describe('search dropdown stays open while typing on the on-screen keyboard', ()
     assert.doesNotMatch(read('index.html'), /id="cust-name"[^>]*list=/);
   });
 });
+
+describe('universal search ignores late results from an older keystroke', () => {
+  it('drops a stale result instead of overwriting or re-opening the list', () => {
+    const src = readFileSync(new URL('../modules/utilities-payments.js', import.meta.url), 'utf8');
+    assert.match(src, /_searchSeq\.get\(resultsId\) !== _mySeq\) return;/);
+  });
+});

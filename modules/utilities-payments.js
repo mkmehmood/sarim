@@ -6045,7 +6045,10 @@ phoneContainer.classList.add('hidden');
 }
 }
 
+const _searchSeq = new Map();
 export async function handleUniversalSearch(inputId, resultsId, dataSource) {
+const _mySeq = (_searchSeq.get(resultsId) || 0) + 1;
+_searchSeq.set(resultsId, _mySeq);
 const { rep, sales, clients, customers, entities } = await loadAliveCollections('rep', 'sales', 'clients', 'customers', 'entities');
 const _gone = await loadDeletedIds();
 const _alive = (r) => r && !(r.id != null && _gone.has(String(r.id)));
@@ -6220,6 +6223,8 @@ No match found. "${query}" will be created.
 break;
 }
 }
+if (_searchSeq.get(resultsId) !== _mySeq) return;
+if (!String(input.value || '').trim()) { window.Dropdown.hide(resultsDiv); return; }
 resultsDiv.innerHTML = html;
 window.Dropdown.show(resultsDiv, input);
 }
