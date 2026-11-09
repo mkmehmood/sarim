@@ -289,6 +289,7 @@ export function installVirtualKeyboard(opts = {}) {
     win.clearTimeout(hideTimer);
     hideNative();
     active = field;
+    dock.removeAttribute('inert');
     dock.classList.remove('d-none');
     root.classList.add('vk-open');
     syncCase();

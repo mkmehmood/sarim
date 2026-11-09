@@ -204,6 +204,7 @@ class Node {
   setAttribute(k, v) { this.attrs.set(k, String(v)); }
   getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }
   hasAttribute(k) { return this.attrs.has(k); }
+  removeAttribute(k) { this.attrs.delete(k); }
   appendChild(c) { c.parent = this; this.children.push(c); return c; }
   addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
 
@@ -847,5 +848,18 @@ describe('dialog fields stay centred above the keyboard', () => {
 
   it('closes the keyboard when the typed field is removed from the page', () => {
     assert.match(src, /if \(active && !active\.isConnected\) \{ hide\(true\); return; \}/);
+  });
+});
+
+describe('the keyboard keeps working while a dialog is open', () => {
+  const dlg = readFileSync(new URL('../modules/dialog.js', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
+
+  it('the dialog page lock never makes the keyboard inert', () => {
+    assert.match(dlg, /node\.classList\.contains\('dd-layer'\) \|\| node\.classList\.contains\('vk-dock'\)\)\) return;/);
+  });
+
+  it('opening the keyboard clears any inert flag left on it', () => {
+    assert.match(src, /active = field;\n    dock\.removeAttribute\('inert'\);/);
   });
 });
