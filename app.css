@@ -5683,5 +5683,6 @@ html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content:
 .vk-key.is-double:active { color: var(--warning); }
 html.vk-open { --vk-gap: 0px; }
 html.vk-open body { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
-html.vk-open .standalone-screen, html.vk-open .dlg-overlay { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); box-sizing: border-box; }
+html.vk-open .standalone-screen { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); box-sizing: border-box; }
+html.vk-open .dlg-overlay { align-items: flex-end; padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap) + 12px); box-sizing: border-box; }
 html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }

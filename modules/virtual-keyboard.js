@@ -278,6 +278,8 @@ export function installVirtualKeyboard(opts = {}) {
 
   const reveal = (field) => {
     if (!field || !field.isConnected || typeof field.getBoundingClientRect !== 'function') return;
+    const box = field.closest && field.closest('.dlg-body');
+    if (box && typeof field.scrollIntoView === 'function') { field.scrollIntoView({ block: 'nearest', inline: 'nearest' }); return; }
     const r = field.getBoundingClientRect();
     const limit = win.innerHeight - (dock.offsetHeight || 0) - 12;
     if ((r.bottom > limit || r.top < 0) && typeof field.scrollIntoView === 'function') field.scrollIntoView({ block: 'center', inline: 'nearest' });
@@ -418,6 +420,7 @@ export function installVirtualKeyboard(opts = {}) {
   if (typeof win.MutationObserver === 'function' && doc.body) {
     new win.MutationObserver((records) => {
       if (!isOpen()) return;
+      if (active && !active.isConnected) { hide(true); return; }
       for (const r of records) {
         for (const n of r.addedNodes) {
           if (isModalNode(n) && !(active && n.contains(active))) { hide(true); return; }
@@ -425,7 +428,8 @@ export function installVirtualKeyboard(opts = {}) {
       }
     }).observe(doc.body, { childList: true });
   }
-  const scrollsOutside = (t) => !!t && !dock.contains(t) && !(t.closest && t.closest('.dd-layer')) && t !== active && !isTextField(t);
+  const inSameDialog = (t) => { const d = active && active.closest ? active.closest('.dlg-overlay') : null; return !!d && d.contains(t); };
+  const scrollsOutside = (t) => !!t && !dock.contains(t) && !(t.closest && t.closest('.dd-layer')) && t !== active && !isTextField(t) && !inSameDialog(t);
   let touchStart = null;
   doc.addEventListener('touchstart', (e) => {
     const p = e.touches && e.touches[0];

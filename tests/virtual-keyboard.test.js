@@ -795,7 +795,7 @@ describe('keyboard hides when the page is scrolled outside it', () => {
   });
 
   it('ignores scrolling inside the keyboard, the suggestion list and the typed field', () => {
-    assert.match(src, /const scrollsOutside = \(t\) => !!t && !dock\.contains\(t\) && !\(t\.closest && t\.closest\('\.dd-layer'\)\) && t !== active && !isTextField\(t\);/);
+    assert.match(src, /const scrollsOutside = \(t\) => !!t && !dock\.contains\(t\) && !\(t\.closest && t\.closest\('\.dd-layer'\)\) && t !== active && !isTextField\(t\) && !inSameDialog\(t\);/);
   });
 
   it('needs a real drag (not a tap) before it closes', () => {
@@ -823,5 +823,27 @@ describe('dialogs close the keyboard instead of sitting under it', () => {
 
   it('does not pop the keyboard back up when a dialog closes and focus would return to a text field', () => {
     assert.match(dlg, /!\(window\.VirtualKeyboard && \/\^\(INPUT\|TEXTAREA\)\$\/\.test\(previous\.tagName\)\)/);
+  });
+});
+
+describe('dialog fields sit directly above the keyboard', () => {
+  const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+
+  it('bottom-aligns the dialog just above the keyboard', () => {
+    assert.match(css, /html\.vk-open \.dlg-overlay \{ align-items: flex-end; padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\) \+ 12px\);/);
+  });
+
+  it('scrolls the typed field into view inside the dialog body', () => {
+    assert.match(src, /field\.closest\('\.dlg-body'\)/);
+    assert.match(src, /field\.scrollIntoView\(\{ block: 'nearest', inline: 'nearest' \}\); return;/);
+  });
+
+  it('does not close the keyboard when scrolling inside the dialog that holds the typed field', () => {
+    assert.match(src, /!isTextField\(t\) && !inSameDialog\(t\);/);
+  });
+
+  it('closes the keyboard when the typed field is removed from the page', () => {
+    assert.match(src, /if \(active && !active\.isConnected\) \{ hide\(true\); return; \}/);
   });
 });
