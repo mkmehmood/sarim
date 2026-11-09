@@ -1,11 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readModule } from './helpers/source.js';
 
 const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 const rep = read('modules/rep-sales.js');
 const pay = read('modules/utilities-payments.js');
-const sales = read('modules/utilities-sales.js');
+const sales = readModule('utilities-sales.js');
 const html = read('index.html');
 
 describe('edit paths', () => {
@@ -20,7 +21,8 @@ describe('edit paths', () => {
     assert.match(pay, /actionRowHtml\('calc', id,/);
   });
   it('calculator edit is registered and its save button switches to Update', () => {
-    assert.match(sales, /registerEditHandler\('calc', startEditCalc\)/);
+    assert.match(sales, /registerEditHandler\('calc', \(\(\.\.\.args\) => window\.startEditCalc\(\.\.\.args\)\)/);
+    assert.match(sales, /Object\.assign\(window, \{[^}]*\bstartEditCalc\b/);
     assert.match(html, /id="btn-save-calculator"/);
   });
   it('seller, date, returned and expired are no longer locked while editing', () => {

@@ -17,5 +17,8 @@
   ],
   "formula-store-edit.js": [
     "formula-store.js"
+  ],
+  "calc-tab.js": [
+    "utilities-sales.js"
   ]
 }

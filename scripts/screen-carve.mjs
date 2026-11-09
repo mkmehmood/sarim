@@ -120,6 +120,22 @@ for (const u of units) for (const n of u.names) { if (!nameUnits.has(n)) nameUni
 const ambiguous = new Set([...nameUnits].filter(([, v]) => v.length > 1).map(([k]) => k));
 for (const n of ambiguous) nameUnits.delete(n);
 
+const resolveRef = (u, id) => {
+  const m = modInfo[u.mod];
+  const local = m.units.find(x => x !== u && x.names.includes(id));
+  if (local) return local;
+  const imp = m.imports.flatMap(i => i.specs.map(sp => ({ ...sp, from: i.from }))).find(sp => sp.local === id);
+  if (imp) {
+    if (imp.from.startsWith('./')) {
+      const t = modInfo[imp.from.slice(2)];
+      return t ? (t.units.find(x => x.names.includes(imp.imported)) || null) : null;
+    }
+    return null;
+  }
+  const us = nameUnits.get(id);
+  return us && us.length === 1 ? us[0] : null;
+};
+
 const otherScreens = existsSync(join(ROOT, 'screens')) ? readdirSync(join(ROOT, 'screens')).filter(f => f.endsWith('.screen.html')).map(f => rd('screens/' + f)).join('\n') : '';
 const otherScript = otherScreens.split('<script type="module">').slice(1).join('\n');
 const otherTemplate = otherScreens.replace(/<script type="module">[\s\S]*?<\/script>/g, '');
@@ -134,9 +150,8 @@ const extUsed = new Set();
 for (const u of units) {
   if (u.publish) continue;
   for (const id of u.idents) {
-    const us = nameUnits.get(id);
-    if (!us) continue;
-    for (const t of us) if (t !== u && !t.names.every(n => VIA.has(n))) usersOf.get(t).add(u);
+    const t = resolveRef(u, id);
+    if (t && t !== u && !t.names.every(n => VIA.has(n))) usersOf.get(t).add(u);
   }
 }
 const publishedVals = new Set(units.filter(u => u.publish).flatMap(u => u.publish.values));
@@ -150,7 +165,7 @@ const S = new Set(seeds);
 const queue = [...seeds];
 while (queue.length) {
   const u = queue.pop();
-  for (const id of u.idents) for (const t of nameUnits.get(id) || []) if (t !== u && !S.has(t) && inScope(t) && t.names.length && !t.publish && !t.names.some(n => KEEP.has(n))) { S.add(t); queue.push(t); }
+  for (const id of u.idents) { const t = resolveRef(u, id); if (t && t !== u && !S.has(t) && inScope(t) && t.names.length && !t.publish && !t.names.some(n => KEEP.has(n))) { S.add(t); queue.push(t); } }
 }
 let changed = true;
 while (changed) {

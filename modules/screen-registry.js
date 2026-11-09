@@ -63,4 +63,9 @@ registerLazyModules({
     globals: ['_buildMergedBase', '_markRowSyncWarning', '_runUnifiedCleanup', '_showCloseFinancialYearDialog', '_showDeltaSyncDetails', '_storeCodeToLabel', 'closeCloseYearDialog', 'createMergeBackup', 'dbvShowTab', 'deduplicateAllData', 'executeCloseFinancialYear', 'extractTimestampValue', 'generateCloseYearSummary', 'mergeCalculatorData', 'mergeExpensesData', 'mergeFactoryData', 'mergePaymentData', 'mergeProductionData', 'mergeRepSalesData', 'mergeSalesData', 'mergeStockReturnsData', 'restoreFromBackup', 'runUnifiedCleanup', 'showCloseFinancialYearDialog', 'showDeltaSyncDetails', 'updateCloseYearProgress', 'updateDeltaSyncStatsDisplay', 'validateCloseYearInput', 'verifyAndExecuteCloseYear', 'verifyCompleteTimestampConsistency', 'verifyMergeConsistency', 'verifyTimestampConsistency'],
     hooks: [],
   },
+  'calc-tab': {
+    load: () => import('./calc-tab.js'),
+    globals: ['filterCalculatorHistory', 'handleExpiredQtyInput', 'handleReturnQtyInput', 'handleTripleTap', 'markRepSalesEntriesAsUsed', 'saveTransaction', 'setIndChartMetric', 'setIndChartMode', 'startEditCalc', 'updateCompositionChart'],
+    hooks: ['calculateSales', 'updateIndChart'],
+  },
 });

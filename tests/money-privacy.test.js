@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { isMoneyRestricted, applyMoneyPrivacy, scrubMoney } from '../modules/money-privacy.js';
+import { readModule } from './helpers/source.js';
 
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const CSS = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
@@ -82,7 +83,7 @@ describe('the lock is enforced in CSS and in the renderers', () => {
   });
 
   it('keeps history lists, summaries, overviews, charts and customer balances out of the DOM', () => {
-    const sales = read('utilities-sales.js');
+    const sales = readModule('utilities-sales.js');
     assert.match(sales, /getElementById\('prodHistoryList'\);\nif \(isMoneyRestricted\(\)\) \{\nhistContainer\.replaceChildren\(\);/);
     assert.match(sales, /getElementById\('custHistoryList'\);\nif \(isMoneyRestricted\(\)\) \{\nhistContainer\.replaceChildren\(\);/);
     for (const fn of ['updateIndChart() {', "updateStoreComparisonChart(mode = 'day') {", 'updateMfgCharts() {', "updateAllStoresOverview(mode = 'day') {", 'updateCustomerCharts() {']) {

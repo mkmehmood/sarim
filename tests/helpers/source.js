@@ -32,7 +32,7 @@ export function readAppCss() {
 }
 
 // The text of modules/<file>, wherever it lives now. `file` may be 'x.js' or 'modules/x.js'.
-function carvedInto(name) {
+export function carvedInto(name) {
   const p = join(ROOT, 'docs/screen-split/carved.json');
   if (!existsSync(p)) return [];
   const map = JSON.parse(readFileSync(p, 'utf8'));

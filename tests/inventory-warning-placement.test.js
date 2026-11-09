@@ -1,8 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readModule } from './helpers/source.js';
 
-const SALES = readFileSync(new URL('../modules/utilities-sales.js', import.meta.url), 'utf8');
+const SALES = readModule('utilities-sales.js');
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 describe('sale inventory notice placement', () => {

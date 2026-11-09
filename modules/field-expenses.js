@@ -52,7 +52,7 @@ function syncInput(kind, recalculate) {
   if (!input) return;
   const total = expenseTotal(lists[kind]);
   input.value = total > 0 ? String(total) : '';
-  if (recalculate && typeof window.calculateSales === 'function') window.calculateSales();
+  if (recalculate && typeof window.calculateSales === 'function') window.calculateSales?.();
 }
 
 export function setFieldExpenseItems(items) {

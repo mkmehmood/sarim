@@ -8,6 +8,7 @@ import {
 } from '../modules/field-expense-items.js';
 import { hcExpensesHtml } from '../modules/history-card.js';
 import { smExpensesHtml, smCalcHtml } from '../modules/summary-card.js';
+import { readModule } from './helpers/source.js';
 
 const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 const fmt = { num: (n) => String(n), amt: (n) => `Rs ${n}`, safe: (n) => Number(n) || 0 };
@@ -110,7 +111,7 @@ describe('calculator tab wiring', () => {
   });
 
   it('saving a calculator entry stores the items and clears them afterwards', () => {
-    const src = read('modules/utilities-sales.js');
+    const src = readModule('utilities-sales.js');
     assert.match(src, /fieldExpenseItems: getFieldExpenseItems\(\)/);
     assert.match(src, /resetFieldExpenses\(\);/);
   });
@@ -149,7 +150,7 @@ describe('commission paid pop-up', () => {
   });
 
   it('saving stores commission items, clears them, and cards show a Commission breakdown', () => {
-    const sales = read('modules/utilities-sales.js');
+    const sales = readModule('utilities-sales.js');
     assert.match(sales, /commissionPaidItems: getCommissionItems\(\)/);
     assert.match(sales, /resetCommissionPaid\(\);/);
     assert.ok(smExpensesHtml([['Advance', 40]], fmt, 'Commission breakdown').includes('Commission breakdown'));

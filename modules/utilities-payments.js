@@ -15,7 +15,7 @@ import { actionRowHtml, beginEditMode, confirmEditChanges, endEditMode, getEditC
 import { allocatePaymentToMaterials, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _applyExpensePendingPhoto, _compressPhoto, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
-import { handleReturnQtyInput, handleExpiredQtyInput, calculateCashTracker, calculateNetCash, calculateSales, closeEntityTransactions, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts, updateIndChart } from './utilities-sales.js';
+import { calculateCashTracker, calculateNetCash, closeEntityTransactions, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts } from './utilities-sales.js';
 import { calculatePaymentSummaries, getCostPriceForStore, getSalePriceForStore, syncFactoryProductionStats, unlinkSupplierFromMaterial } from './factory-core.js';
 import { calculateCustomerStatsForDisplay, currentManagingRepCustomer, openCustomerEditModal, refreshAllCalculations, renderCustomersTable, showGlassConfirm, showToast } from './customers.js';
 import { checkBiometricLock, syncBiometricButton } from './app-lock.js';
@@ -330,8 +330,8 @@ if (pending.length === 0) {
     delete retEl.dataset.repReturnAuto; delete expEl.dataset.repReturnAuto;
     clearAutoFilledField(retEl); clearAutoFilledField(expEl);
     window._returnStore = null;
-    if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
-    if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
+    if (typeof window.handleReturnQtyInput === 'function') window.handleReturnQtyInput();
+    if (typeof window.handleExpiredQtyInput === 'function') window.handleExpiredQtyInput();
   }
   if (hint) { hint.classList.add('hidden'); hint.textContent = ''; }
   return;
@@ -342,8 +342,8 @@ retEl.dataset.repReturnAuto = '1';
 expEl.dataset.repReturnAuto = '1';
 styleAutoFilledField(retEl);
 styleAutoFilledField(expEl);
-if (typeof handleReturnQtyInput === 'function') handleReturnQtyInput();
-if (typeof handleExpiredQtyInput === 'function') handleExpiredQtyInput();
+if (typeof window.handleReturnQtyInput === 'function') window.handleReturnQtyInput();
+if (typeof window.handleExpiredQtyInput === 'function') window.handleExpiredQtyInput();
 }
 
 export function getCalcDateRange(pending) {
@@ -486,7 +486,7 @@ recoveredField.value = safeNumber(recoveredCash, 0).toFixed(2);
 styleAutoFilledField(recoveredField);
 }
 await applyRepReturnsToCalculator(seller, sel.to);
-calculateSales();
+window.calculateSales?.();
 if (typeof renderReturnTargets === 'function') renderReturnTargets();
 }
 
@@ -648,7 +648,7 @@ const rowCls = m.winner ? ' class="winner-cell"' : '';
 return `<tr${rowCls}><td>${m.label}</td>${cells}</tr>`;
 }).join('');
 } else {
-await updateIndChart();
+await window.updateIndChart?.();
 }
 }
 
