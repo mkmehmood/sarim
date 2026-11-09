@@ -1,6 +1,6 @@
 # Plan: one file per screen (HTML + CSS + JS), loaded when first opened
 
-Status: **Phases 0–1 done; Phase 2 done where it is a pure move; Phase 3a done; Phase 3b/3c under way. 11 screens, the rep tab, the factory tab and the admin tools are lazy** (daily-ledger, batch-mix, batch-fix, app-accounts, backup-restore, db-structure, recycle-bin, stock-transfer, payment-transfer, store-manager). Progress log at the end.
+Status: **complete for everything that can be split without changing behaviour.** Final state and the decisions behind it are in section 8 at the end; sections 1-7 are the working log.
 Everything below is measured from the repo at `3168d72`, not estimated.
 
 ## 1. What exists today
@@ -240,3 +240,37 @@ Each of 3b/3c needs a manual first-open test on a device, which is why they are 
 `node scripts/screen-extract.mjs <screen-id> <name> [module.js ...]` (add `--dry` to preview), then:
 `npm run lint && npm test && npm run build && npm run verify -- dist && npm run split:check`.
 A module may only be folded in if nothing else imports it. A screen's script must not touch its own DOM at top level; put start-up DOM work in `export function onMount() {}`.
+
+## 8. Final state
+
+### What loads on demand now (16 chunks, 389 KB raw / 121 KB gzip)
+| chunk | raw | how it is reached |
+|---|---|---|
+| admin-data (Close Financial Year, restore tools, dedupe, delta-sync details) | 99 KB | start-up stubs (32 functions) |
+| rep-sales (Rep tab) | 47 KB | `showTab('rep')`, 21 stubs, 7 silent refresh hooks |
+| factory (Factory tab, raw material, inventory) | 38 KB | `showTab('factory')`, 31 stubs, 4 silent hooks |
+| recycle-bin, daily-ledger, app-accounts, payment-transfer, stock-transfer, batch-fix, formula-store-edit, batch-mix, store-manager, db-structure, backup-restore | 4-36 KB each | lazy screens: placeholder in `index.html`, mounted on first open |
+| payments-tab (expense form, export) | 25 KB | preloaded by `showTab('payments')`, 7 stubs |
+| calc-tab (Calculator save, edit, charts, history filter) | 20 KB | loaded by `showTab('calc')`, 10 stubs, 2 hooks |
+
+**Start-up JS: 983 KB raw / 307 KB gzip, down from 397 KB gzip on `main` (-23%).** Everything is also in the service worker's precache, so a lazy chunk works offline once the app is installed.
+
+### What was deliberately left eager, and why
+- **Sales tab save flows** (`saveCustomerSale`, `saveRepReturn`, `saveCustomerCollection`, `_partyOutstanding`, about 600 lines): the primary money-entry path. In an offline-first app it should not depend on fetching a chunk. `rebuildStoreUI` is also called by the inline start-up script.
+- **Payments refresh path** (`refreshPaymentTab`, `renderUnifiedTable`, filters): `refreshPaymentTab` also repairs stored expenses, entities and transactions, syncs suppliers to entities and recalculates net cash. Every flow depends on that running, so it cannot be a "skip until the tab has loaded" hook. Splitting the data maintenance from the rendering would be a logic change, not a move.
+- **Role security** (`lockToUserRoleMode`, `preventAdminAccess`, `enforceRepModeLock`): runs at start-up by design.
+- **Settings screen**: a menu over core features (theme, biometric lock, desktop startup, sync). `settings-screen.js` is 20 lines. Nothing to move.
+- **sync, business, link-graph, link-guards, dialog, notify, prod-photos and the rest of utilities-core/sales/payments** (about 840 KB raw): record saving, integrity checks, sync and refresh paths needed from the first second.
+- **Customer screens** (`customers.js` + `cm-ledger.js`, 57 KB): `currentManagingCustomer` and `currentManagingRepCustomer` are written from both sides of any split, `CFG` and `renderCustomerTransactions` are shared, and `customers.js` also holds the toast and dialog helpers. About 9 KB raw would move.
+- **rep-customer-edit, raw-material, add-entity, expense-details, entity-details, approvals, feedback**: either their code is already inside a lazy chunk (rep-customer-edit, raw-material), or it is shared with core data logic (add-entity and entity-details with entity rename and delete; approvals with the sync-time watcher, see section 7), or the analysis flags blocking hazards.
+
+### Tools and guards that exist now
+- `scripts/screen-extract.mjs`, `screen-carve.mjs`, `module-split.mjs`, `lazy-module.mjs`, `mirror-remove.mjs`: each refuses when a move could change behaviour (variable written from both sides, import cycle, shorthand uses, value use of a setter).
+- `scripts/split-manifest.mjs` + `docs/screen-split/baseline.json` + `intentional-removals.json`: every id, handler, screen markup block, CSS rule, JS declaration, export and `window.*` publish from the original app is either still present or listed with a reason (45 names, all UI-state mirrors and flags).
+- `npm run screens` regenerates `screens/compiled/*.screen.js`; a test fails if any is stale.
+- Tests that exist because of defects found along the way: every named import in every module and screen resolves; every late-bound `window` wrapper points at something published or stubbed; hooks are only called with `?.` or a `typeof` guard; notification targets resolve; and `tests/source-served.test.js` crawls a plain static server over the source tree (imports, lazy imports, precache).
+
+### Before merging to main
+1. Rebase or merge `refactor/screen-split-plan` onto current `main`; `deploy.yml` builds `dist` and is unaffected.
+2. Test on a device (online and offline, first and second open): every lazy screen; Rep, Factory, Calculator and Payments tabs; Close Financial Year dialog (do not run it on live data); restore; entry editing for calc, factory, stock and payment transfers; notification deep links; the biometric toggle.
+3. If a branch is served directly (not through `deploy.yml`), run `npm run screens` first so `screens/compiled/` is current.
