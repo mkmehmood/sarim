@@ -739,7 +739,8 @@ describe('virtual keyboard wiring', () => {
 
   it('pads the page, accounts and other screens, dialogs and sheets while the keyboard is open', () => {
     assert.match(css, /html\.vk-open body \{ padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\); \}/);
-    assert.match(css, /html\.vk-open \.standalone-screen, html\.vk-open \.dlg-overlay \{ padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\);/);
+    assert.match(css, /html\.vk-open \.standalone-screen \{ padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\);/);
+    assert.match(css, /html\.vk-open \.dlg-overlay \{[^}]*padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\) \+ 12px\);/);
     assert.doesNotMatch(css, /html\.vk-open[^{]*\.auth-screen/);
     assert.match(css, /html\.vk-open \.cm-sheet \{ bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\); \}/);
   });
