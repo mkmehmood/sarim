@@ -585,16 +585,24 @@ describe('virtual keyboard in the Android app', () => {
     assert.equal(t.win.__vkInset, 0);
   });
 
-  it('stays open when the tap began on a field but the page scrolled so the click landed elsewhere', async () => {
+  it('a tap that began on a field stays on that field: the stray click after the layout shifts is swallowed and the keyboard stays', async () => {
     const t = await boot();
     const lower = t.input({ type: 'text' });
     t.focus(lower);
     t.docListeners.pointerdown.forEach((fn) => fn({ target: lower }));
-    t.docListeners.click.forEach((fn) => fn({ target: new Node('div') }));
+    const stray = { target: new Node('div'), stopped: false, prevented: false, stopPropagation() { this.stopped = true; }, preventDefault() { this.prevented = true; } };
+    t.docListeners.click.forEach((fn) => fn(stray));
     assert.ok(!t.isHidden());
+    assert.equal(stray.stopped, true);
+    assert.equal(stray.prevented, true);
     assert.equal(lower.blurred, false);
+  });
+
+  it('a tap that began outside any field closes the keyboard', async () => {
+    const t = await boot();
+    t.focus(t.input({ type: 'text' }));
     t.docListeners.pointerdown.forEach((fn) => fn({ target: new Node('div') }));
-    t.docListeners.click.forEach((fn) => fn({ target: new Node('div') }));
+    t.docListeners.click.forEach((fn) => fn({ target: new Node('div'), stopPropagation() {}, preventDefault() {} }));
     assert.ok(t.isHidden());
   });
 
@@ -704,8 +712,9 @@ describe('virtual keyboard wiring', () => {
     assert.match(native, /Keyboard\.hide\(\)/);
   });
 
-  it('Android back closes the keyboard before anything else', () => {
-    assert.match(native, /function handleBack\(\) \{\n  if \(window\.VirtualKeyboard && window\.VirtualKeyboard\.isOpen\(\)\) \{ window\.VirtualKeyboard\.hide\(\); return; \}/);
+  it('Android back closes the keyboard first and leaves the field focused, like the system keyboard', () => {
+    assert.match(native, /function handleBack\(\) \{\n  if \(window\.VirtualKeyboard && window\.VirtualKeyboard\.isOpen\(\)\) \{ window\.VirtualKeyboard\.hide\(true\); return; \}/);
+    assert.match(kb, /hide: \(keepFocus\) => hide\(!keepFocus\)/);
   });
 
   it('keys do not trigger the generic button haptic on top of their own feedback', () => {
@@ -759,8 +768,18 @@ describe('virtual keyboard wiring', () => {
     assert.match(readSource('modules/sync.js'), /overlay\.className = 'auth-screen';/);
     assert.match(readSource('index.html'), /<div id=\"app-accounts-screen\"/);
   });
-  it('closes on any tap outside the keyboard', () => {
-    assert.match(kb, /doc\.addEventListener\('click', \(e\) => \{[\s\S]*hide\(true\);\n  \}, true\);/);
+  it('closes on a tap outside the keyboard, and a tap on a backdrop closes only the keyboard', () => {
+    assert.match(kb, /doc\.addEventListener\('click', \(e\) => \{[\s\S]*const backdrop = isBackdrop\(t\);\n    hide\(true\);\n    if \(backdrop\) \{ e\.stopPropagation\(\); e\.preventDefault\(\); \}\n  \}, true\);/);
+    assert.match(kb, /e\.key !== 'Escape' \|\| !isOpen\(\)[\s\S]*e\.stopImmediatePropagation\(\);/);
+  });
+
+  it('does not close when the page is scrolled, like the system keyboard', () => {
+    assert.doesNotMatch(kb, /touchmove|'wheel'|scrollsOutside/);
+  });
+
+  it('closes by itself when the typed field is removed, disabled or hidden', () => {
+    assert.match(kb, /if \(isOpen\(\) && !usable\(active\)\) hide\(true\);/);
+    assert.match(kb, /attributeFilter: \['inputmode', 'type', 'disabled', 'readonly', 'hidden', 'class', 'style'\]/);
   });
 });
 
@@ -784,25 +803,6 @@ describe('universal search ignores late results from an older keystroke', () => 
   it('drops a stale result instead of overwriting or re-opening the list', () => {
     const src = readFileSync(new URL('../modules/utilities-payments.js', import.meta.url), 'utf8');
     assert.match(src, /_searchSeq\.get\(resultsId\) !== _mySeq\) return;/);
-  });
-});
-
-describe('keyboard hides when the page is scrolled outside it', () => {
-  const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
-
-  it('listens for touch drags and the mouse wheel outside the keyboard', () => {
-    assert.match(src, /doc\.addEventListener\('touchmove'/);
-    assert.match(src, /doc\.addEventListener\('wheel'/);
-    assert.match(src, /if \(scrollsOutside\(t\)\) hide\(true\);/);
-  });
-
-  it('ignores scrolling inside the keyboard, the suggestion list and the typed field', () => {
-    assert.match(src, /const scrollsOutside = \(t\) => !!t && !dock\.contains\(t\) && !\(t\.closest && t\.closest\('\.dd-layer'\)\) && t !== active && !isTextField\(t\) && !inSameDialog\(t\);/);
-  });
-
-  it('needs a real drag (not a tap) before it closes', () => {
-    assert.match(src, /const SCROLL_HIDE_PX = 12;/);
-    assert.match(src, /< SCROLL_HIDE_PX\) return;/);
   });
 });
 
@@ -840,10 +840,6 @@ describe('dialog fields stay centred above the keyboard', () => {
   it('scrolls the typed field into view inside the dialog body', () => {
     assert.match(src, /field\.closest\('\.dlg-body'\)/);
     assert.match(src, /field\.scrollIntoView\(\{ block: 'nearest', inline: 'nearest' \}\); return;/);
-  });
-
-  it('does not close the keyboard when scrolling inside the dialog that holds the typed field', () => {
-    assert.match(src, /!isTextField\(t\) && !inSameDialog\(t\);/);
   });
 
   it('closes the keyboard when the typed field is removed from the page', () => {

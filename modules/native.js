@@ -259,7 +259,7 @@ function isVisible(el) {
 let lastBack = 0;
 
 function handleBack() {
-  if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) { window.VirtualKeyboard.hide(); return; }
+  if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) { window.VirtualKeyboard.hide(true); return; }
   const cam = document.getElementById('photo-capture-modal');
   if (cam && isVisible(cam) && typeof window.closePhotoCapture === 'function') { window.closePhotoCapture(); return; }
   const gc = document.querySelector('.dlg-overlay:not(.is-closing) [data-dlg-cancel]');

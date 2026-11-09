@@ -47,7 +47,6 @@ export function typesLowerCase(el) {
   return LOWER_TYPES.includes(type) || LOWER_TYPES.includes(orig) || LOWER_TYPES.includes(String(attr(el, 'data-vk-mode') || attr(el, 'inputmode') || '').toLowerCase());
 }
 
-const SCROLL_HIDE_PX = 12;
 export const CASE_MODES = ['caps', 'small', 'title'];
 
 export function wantsCapital(value, caret) {
@@ -412,10 +411,31 @@ export function installVirtualKeyboard(opts = {}) {
     const from = downTarget;
     downTarget = null;
     if (!isOpen() || !t || dock.contains(t)) return;
-    if (from && !dock.contains(from) && (isTextField(from) || (from.closest && from.closest('label')))) return;
+    if (from && !dock.contains(from) && isTextField(from)) {
+      if (t !== from) { e.stopPropagation(); e.preventDefault(); }
+      return;
+    }
+    if (from && !dock.contains(from) && from.closest && from.closest('label')) return;
     if (t === active || isTextField(t) || (t.closest && t.closest('label'))) return;
+    const backdrop = isBackdrop(t);
     hide(true);
+    if (backdrop) { e.stopPropagation(); e.preventDefault(); }
   }, true);
+  doc.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !isOpen()) return;
+    hide(false);
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  const isBackdrop = (n) => {
+    if (!n || n.nodeType !== 1) return false;
+    if (n.matches && n.matches(MODAL_SELECTOR)) return true;
+    try {
+      const cs = win.getComputedStyle(n);
+      const r = n.getBoundingClientRect();
+      return cs.position === 'fixed' && r.width >= win.innerWidth - 1 && r.height >= win.innerHeight - 1;
+    } catch (_) { return false; }
+  };
   const MODAL_SELECTOR = '.dlg-overlay, [aria-modal="true"]';
   const isModalNode = (n) => n && n.nodeType === 1 && ((n.matches && n.matches(MODAL_SELECTOR)) || (n.querySelector && n.querySelector(MODAL_SELECTOR)));
   if (typeof win.MutationObserver === 'function' && doc.body) {
@@ -429,25 +449,9 @@ export function installVirtualKeyboard(opts = {}) {
       }
     }).observe(doc.body, { childList: true });
   }
-  const inSameDialog = (t) => { const d = active && active.closest ? active.closest('.dlg-overlay') : null; return !!d && d.contains(t); };
-  const scrollsOutside = (t) => !!t && !dock.contains(t) && !(t.closest && t.closest('.dd-layer')) && t !== active && !isTextField(t) && !inSameDialog(t);
-  let touchStart = null;
-  doc.addEventListener('touchstart', (e) => {
-    const p = e.touches && e.touches[0];
-    touchStart = p && isOpen() ? { x: p.clientX, y: p.clientY, t: e.target } : null;
-  }, { capture: true, passive: true });
-  doc.addEventListener('touchmove', (e) => {
-    const p = e.touches && e.touches[0];
-    if (!touchStart || !p || !isOpen()) return;
-    if (Math.max(Math.abs(p.clientY - touchStart.y), Math.abs(p.clientX - touchStart.x)) < SCROLL_HIDE_PX) return;
-    const t = touchStart.t;
-    touchStart = null;
-    if (scrollsOutside(t)) hide(true);
-  }, { capture: true, passive: true });
-  ['touchend', 'touchcancel'].forEach((n) => doc.addEventListener(n, () => { touchStart = null; }, true));
-  doc.addEventListener('wheel', (e) => { if (isOpen() && scrollsOutside(e.target)) hide(true); }, { capture: true, passive: true });
   doc.addEventListener('visibilitychange', () => { if (doc.hidden) hide(true); });
-  win.addEventListener('resize', () => { if (isOpen()) measure(); });
+  win.addEventListener('resize', () => { if (isOpen()) { measure(); reveal(active); } });
+  const usable = (f) => !!f && f.isConnected && !f.disabled && !f.readOnly && (typeof f.getClientRects !== 'function' || f.getClientRects().length > 0);
 
   const start = () => {
     doc.body.appendChild(dock);
@@ -457,14 +461,15 @@ export function installVirtualKeyboard(opts = {}) {
         if (m.type === 'attributes') applyFieldPolicy(m.target);
         else m.addedNodes.forEach(sweep);
       });
-    }).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['inputmode', 'type'] });
+      if (isOpen() && !usable(active)) hide(true);
+    }).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['inputmode', 'type', 'disabled', 'readonly', 'hidden', 'class', 'style'] });
     if (isTextField(doc.activeElement)) open(doc.activeElement);
   };
 
   if (doc.body) start();
   else doc.addEventListener('DOMContentLoaded', start, { once: true });
 
-  controller = { isOpen, hide: () => hide(true), open };
+  controller = { isOpen, hide: (keepFocus) => hide(!keepFocus), open };
   win.VirtualKeyboard = controller;
   return controller;
 }
