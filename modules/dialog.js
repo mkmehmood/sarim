@@ -173,7 +173,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
       const remove = () => {
         overlay.remove();
         if (!isDialogOpen()) unlockPage();
-        if (previous && typeof previous.focus === 'function' && document.contains(previous)) {
+        if (previous && typeof previous.focus === 'function' && document.contains(previous) && !(window.VirtualKeyboard && /^(INPUT|TEXTAREA)$/.test(previous.tagName))) {
           try { previous.focus({ preventScroll: true }); } catch (_) {}
         }
       };

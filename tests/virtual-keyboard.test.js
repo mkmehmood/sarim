@@ -811,3 +811,17 @@ describe('tapping a field always brings the keyboard back', () => {
     assert.match(src, /if \(!t \|\| dock\.contains\(t\) \|\| !isTextField\(t\)\) return;\n    if \(isOpen\(\) && active === t\) return;\n    applyFieldPolicy\(t\);\n    open\(t\);/);
   });
 });
+
+describe('dialogs close the keyboard instead of sitting under it', () => {
+  const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
+  const dlg = readFileSync(new URL('../modules/dialog.js', import.meta.url), 'utf8');
+
+  it('hides the keyboard when a dialog is added, unless the dialog holds the typed field', () => {
+    assert.match(src, /const MODAL_SELECTOR = '\.dlg-overlay, \[aria-modal="true"\]';/);
+    assert.match(src, /if \(isModalNode\(n\) && !\(active && n\.contains\(active\)\)\) \{ hide\(true\); return; \}/);
+  });
+
+  it('does not pop the keyboard back up when a dialog closes and focus would return to a text field', () => {
+    assert.match(dlg, /!\(window\.VirtualKeyboard && \/\^\(INPUT\|TEXTAREA\)\$\/\.test\(previous\.tagName\)\)/);
+  });
+});

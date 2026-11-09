@@ -413,6 +413,18 @@ export function installVirtualKeyboard(opts = {}) {
     if (t === active || isTextField(t) || (t.closest && t.closest('label'))) return;
     hide(true);
   }, true);
+  const MODAL_SELECTOR = '.dlg-overlay, [aria-modal="true"]';
+  const isModalNode = (n) => n && n.nodeType === 1 && ((n.matches && n.matches(MODAL_SELECTOR)) || (n.querySelector && n.querySelector(MODAL_SELECTOR)));
+  if (typeof win.MutationObserver === 'function' && doc.body) {
+    new win.MutationObserver((records) => {
+      if (!isOpen()) return;
+      for (const r of records) {
+        for (const n of r.addedNodes) {
+          if (isModalNode(n) && !(active && n.contains(active))) { hide(true); return; }
+        }
+      }
+    }).observe(doc.body, { childList: true });
+  }
   const scrollsOutside = (t) => !!t && !dock.contains(t) && !(t.closest && t.closest('.dd-layer')) && t !== active && !isTextField(t);
   let touchStart = null;
   doc.addEventListener('touchstart', (e) => {
