@@ -2,6 +2,7 @@ import { pickTopScreen } from './screen-order.js';
 import { installGeolocationBridge, requestLocationPermission } from './geolocation-bridge.js';
 import { tapFeedback } from './feedback.js';
 import { toInternationalDigits } from './phone-format.js';
+import { installVirtualKeyboard } from './virtual-keyboard.js';
 const Cap = window.Capacitor;
 export const isNative = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
 const P = () => (window.Capacitor && window.Capacitor.Plugins) || {};
@@ -258,6 +259,7 @@ function isVisible(el) {
 let lastBack = 0;
 
 function handleBack() {
+  if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) { window.VirtualKeyboard.hide(true); return; }
   const cam = document.getElementById('photo-capture-modal');
   if (cam && isVisible(cam) && typeof window.closePhotoCapture === 'function') { window.closePhotoCapture(); return; }
   const gc = document.querySelector('.dlg-overlay:not(.is-closing) [data-dlg-cancel]');
@@ -336,7 +338,7 @@ async function requestStartupPermissions() {
 
 function installHaptics() {
   document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest ? e.target.closest('.btn') : null;
+    const t = e.target && e.target.closest ? e.target.closest('.btn:not([data-feedback="manual"])') : null;
     if (t) tapFeedback();
   }, { passive: true });
 }
@@ -356,6 +358,11 @@ async function unregisterServiceWorkers() {
 
 const TEXT_FIELD = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=range]):not([type=file]), textarea, select, [contenteditable=""], [contenteditable="true"]';
 
+function hideNativeKeyboard() {
+  const { Keyboard } = P();
+  if (Keyboard && typeof Keyboard.hide === 'function') Promise.resolve(Keyboard.hide()).catch(() => {});
+}
+
 function installKeyboardGuard() {
   const root = document.documentElement;
   const set = (open) => root.classList.toggle('kb-open', open);
@@ -364,7 +371,8 @@ function installKeyboardGuard() {
   document.addEventListener('focusout', () => setTimeout(() => { if (!editing()) set(false); }, 150));
   const { Keyboard } = P();
   if (Keyboard && typeof Keyboard.addListener === 'function') {
-    Keyboard.addListener('keyboardWillShow', () => set(true));
+    Keyboard.addListener('keyboardWillShow', () => { set(true); if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) hideNativeKeyboard(); });
+    Keyboard.addListener('keyboardDidShow', () => { if (window.VirtualKeyboard && window.VirtualKeyboard.isOpen()) hideNativeKeyboard(); });
     Keyboard.addListener('keyboardDidHide', () => set(false));
   }
 }
@@ -381,6 +389,7 @@ if (isNative) {
   const { App, SplashScreen } = P();
   if (App && typeof App.addListener === 'function') App.addListener('backButton', handleBack);
   installKeyboardGuard();
+  installVirtualKeyboard({ hideNative: hideNativeKeyboard });
   applyStatusBar();
   applyWindowBackground();
   new MutationObserver(() => { applyStatusBar(); applyWindowBackground(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });

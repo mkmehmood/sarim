@@ -26,7 +26,8 @@
 
   function viewBottom() {
     const vv = window.visualViewport;
-    return vv ? Math.min(window.innerHeight, vv.offsetTop + vv.height) : window.innerHeight;
+    const bottom = vv ? Math.min(window.innerHeight, vv.offsetTop + vv.height) : window.innerHeight;
+    return Math.min(bottom, window.innerHeight - (window.__vkInset || 0));
   }
 
   function findAnchor(home) {
@@ -249,6 +250,7 @@
   }
 
   function onPointer(e) {
+    if (e.target && e.target.closest && e.target.closest('.vk-dock')) return;
     open.forEach((rec, el) => {
       if (el.contains(e.target) || rec.anchor.contains(e.target)) return;
       hide(el);

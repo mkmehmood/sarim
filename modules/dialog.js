@@ -39,7 +39,7 @@ function lockPage() {
   document.body.classList.add('scroll-locked');
   document.documentElement.classList.add('scroll-locked');
   Array.from(document.body.children).forEach((node) => {
-    if (node.classList && (node.classList.contains('dlg-overlay') || node.classList.contains('dd-layer'))) return;
+    if (node.classList && (node.classList.contains('dlg-overlay') || node.classList.contains('dd-layer') || node.classList.contains('vk-dock'))) return;
     if (node.tagName === 'SCRIPT' || node.hasAttribute('inert')) return;
     node.setAttribute('inert', '');
     lockState.inert.push(node);
@@ -173,7 +173,7 @@ export function openDialog({ tone = 'primary', title = '', eyebrow = null, capti
       const remove = () => {
         overlay.remove();
         if (!isDialogOpen()) unlockPage();
-        if (previous && typeof previous.focus === 'function' && document.contains(previous)) {
+        if (previous && typeof previous.focus === 'function' && document.contains(previous) && !(window.VirtualKeyboard && /^(INPUT|TEXTAREA)$/.test(previous.tagName))) {
           try { previous.focus({ preventScroll: true }); } catch (_) {}
         }
       };
