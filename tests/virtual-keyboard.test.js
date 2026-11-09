@@ -827,12 +827,13 @@ describe('dialogs close the keyboard instead of sitting under it', () => {
   });
 });
 
-describe('dialog fields sit directly above the keyboard', () => {
+describe('dialog fields stay centred above the keyboard', () => {
   const src = readFileSync(new URL('../modules/virtual-keyboard.js', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
 
-  it('bottom-aligns the dialog just above the keyboard', () => {
-    assert.match(css, /html\.vk-open \.dlg-overlay \{ align-items: flex-end; padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\) \+ 12px\);/);
+  it('keeps the dialog centred in the free space above the keyboard', () => {
+    assert.match(css, /html\.vk-open \.dlg-overlay \{ padding-bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\) \+ 12px\); box-sizing: border-box; \}/);
+    assert.doesNotMatch(css, /html\.vk-open \.dlg-overlay \{[^}]*align-items/);
   });
 
   it('scrolls the typed field into view inside the dialog body', () => {
