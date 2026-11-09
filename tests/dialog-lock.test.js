@@ -2,7 +2,7 @@ import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { isRecycleRecordAllowed, isScreenAllowed, moneyLine, recycleAmountText, recycleCollections, recycleFilters, redactMoney, sanitizeConfirmExtra } from '../modules/money-privacy.js';
-import { readIndexHtml, readSource } from './helpers/source.js';
+import { readIndexHtml, readModule, readSource } from './helpers/source.js';
 
 const HTML = readIndexHtml();
 const read = (f) => readFileSync(new URL(`../modules/${f}`, import.meta.url), 'utf8');
@@ -94,7 +94,7 @@ describe('wiring', () => {
   });
 
   it('redacts cash-in-hand alerts', () => {
-    assert.equal((read('utilities-payments.js').match(/redactMoney\(`Insufficient cash in hand/g) || []).length, 3);
+    assert.equal((readModule('utilities-payments.js').match(/redactMoney\(`Insufficient cash in hand/g) || []).length, 3);
     assert.match(read('utilities-sales.js'), /redactMoney\(`Insufficient cash in hand/);
   });
 });

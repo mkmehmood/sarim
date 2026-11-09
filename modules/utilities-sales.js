@@ -4439,6 +4439,7 @@ await syncFactoryTab();
 initFactoryTab();
 },
 'payments': async () => {
+await _loadTabModule('payments-tab');
 await syncPaymentsTab();
 await refreshPaymentTab();
 setTimeout(() => { if (typeof renderUnifiedTable === 'function') renderUnifiedTable(1); }, 150);

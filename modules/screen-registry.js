@@ -68,4 +68,9 @@ registerLazyModules({
     globals: ['filterCalculatorHistory', 'handleExpiredQtyInput', 'handleReturnQtyInput', 'handleTripleTap', 'markRepSalesEntriesAsUsed', 'saveTransaction', 'setIndChartMetric', 'setIndChartMode', 'startEditCalc', 'updateCompositionChart'],
     hooks: ['calculateSales', 'updateIndChart'],
   },
+  'payments-tab': {
+    load: () => import('./payments-tab.js'),
+    globals: ['clearExpenseForm', 'createExpenseTransaction', 'exportUnifiedData', 'handleExpenseSearch', 'hideExpenseSearch', 'saveExpense', 'selectExpense'],
+    hooks: [],
+  },
 });

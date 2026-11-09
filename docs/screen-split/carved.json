@@ -20,5 +20,8 @@
   ],
   "calc-tab.js": [
     "utilities-sales.js"
+  ],
+  "payments-tab.js": [
+    "utilities-payments.js"
   ]
 }
