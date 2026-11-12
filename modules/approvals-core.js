@@ -134,6 +134,7 @@ export function groupMembers(group) {
 function saleTitle(d) {
   if (d.paymentType === 'COLLECTION') return 'Collection';
   if (d.paymentType === 'PARTIAL_PAYMENT') return 'Partial payment';
+  if (d.paymentType === 'MONEY_OUT') return 'Money out';
   if (d.paymentType === 'CREDIT') return 'Credit sale';
   if (d.isRepReturn || nz(d.returnedQty) > 0) return 'Return';
   return 'Cash sale';
@@ -171,7 +172,7 @@ export function recordLines(collection, d, c) {
   if (when) lines.push(when);
   if (collection === 'rep' || collection === 'sales') {
     if (d.customerName) lines.push(d.customerName);
-    if (d.paymentType !== 'COLLECTION' && d.paymentType !== 'PARTIAL_PAYMENT') {
+    if (d.paymentType !== 'COLLECTION' && d.paymentType !== 'PARTIAL_PAYMENT' && d.paymentType !== 'MONEY_OUT') {
       lines.push(`${c.num(d.quantity)} kg @ ${c.fmt(unitPrice(d))} = ${c.fmt(nz(d.totalValue))}`);
       if (d.supplyStore) lines.push(`Supply: ${c.store(d.supplyStore)}`);
     }
@@ -287,6 +288,7 @@ function whoOf(d) {
 function rowDetail(collection, d, c) {
   if (collection === 'rep' || collection === 'sales') {
     if (d.paymentType === 'COLLECTION' || d.paymentType === 'PARTIAL_PAYMENT') return 'Payment received';
+    if (d.paymentType === 'MONEY_OUT') return 'Money paid out';
     const store = d.supplyStore ? ` · ${c.store(d.supplyStore)}` : '';
     return `${c.num(d.quantity)} kg @ ${c.fmt(unitPrice(d))}${store}`;
   }

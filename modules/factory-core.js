@@ -162,7 +162,7 @@ export async function getSaleTransactionValue(t) {
 if (!t) return 0;
 if (t.isMerged) return parseFloat(t.totalValue) || 0;
 const pt = t.paymentType || 'CASH';
-if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT') return parseFloat(t.totalValue) || 0;
+if (pt === 'COLLECTION' || pt === 'PARTIAL_PAYMENT' || pt === 'MONEY_OUT') return parseFloat(t.totalValue) || 0;
 if (t.transactionType === 'OLD_DEBT') return parseFloat(t.totalValue) || 0;
 const qty = parseFloat(t.quantity) || 0;
 const locked = lockedSaleValue(t);

@@ -13,6 +13,7 @@ import './utilities-sales.js';
 import './prod-photos.js';
 import './utilities-payments.js';
 import './customers.js';
+import './money-out.js';
 import './formula-store.js';
 import './batch-common.js';
 import './batch-saved.js';

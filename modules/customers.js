@@ -383,6 +383,7 @@ for (const t of historyTxns) {
 const isCredit = t.paymentType === 'CREDIT';
 const isPartialPayment = t.paymentType === 'PARTIAL_PAYMENT';
 const isCollection = t.paymentType === 'COLLECTION';
+const isMoneyOut = t.paymentType === 'MONEY_OUT';
 const isRepReturn = t.isRepReturn === true;
 let statusClass = t.creditReceived ? 'paid' : 'pending';
 let btnText = t.creditReceived ? 'PAID' : 'PENDING';
@@ -412,6 +413,8 @@ toggleBtnHtml = _rrUsed.has(t.id)
 toggleBtnHtml = `<span class="badge status-badge txn-warning">PARTIAL PAYMENT</span>`;
 } else if (isCollection) {
 toggleBtnHtml = `<span class="badge status-badge txn-collect">COLLECTION</span>`;
+} else if (isMoneyOut) {
+toggleBtnHtml = `<span class="badge status-badge txn-warning">MONEY OUT</span>`;
 } else {
 toggleBtnHtml = `<span class="badge status-badge txn-cash">CASH SALE</span>`;
 }
@@ -443,6 +446,12 @@ info = `
     <div class="u-dbdd85e">${[_hasPay ? await formatCurrency(collectionCollected(t)) : '', _hasExp ? `<span class="u-expired-credit">${_expText}</span>` : ''].filter(Boolean).join(' | ')}</div>` : ''}
     ${(Number(t.expiredQty) > 0 && t.expiredApplied === false) ? `<div class="u-fs-sm2 u-text-warning">Expired / Damage: ${fmtNum(Number(t.expiredQty))} kg (CHORA not updated)</div>` : ''}
     <div class="u-5d1cf22 text-xs">${isPartialPayment ? 'Partial Payment' : (collectionCollected(t) > 0 ? (Number(t.expiredValue) > 0 ? 'Payment | Expired credit' : 'Amount Received') : 'Payment | Expired credit')}</div>
+`;
+} else if (isMoneyOut) {
+info = `
+    <div class="u-fs-sm2 u-text-muted">${formatDisplayDateTime(t.date || txEffectiveDate(t), t.time || null)}${(typeof _creatorBadgeHtml === 'function') ? _creatorBadgeHtml(t) : ''}</div>
+    <div class="u-dbdd85e">${await formatCurrency(Number(t.totalValue) || 0)}</div>
+    <div class="u-5d1cf22 text-xs">${esc(t.notes || 'Money paid out to customer')}</div>
 `;
 } else if (isOldDebt) {
 info = `
@@ -479,6 +488,9 @@ const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
 rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${fmtNum(Number(t.expiredQty) || 0)} kg${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Amount received');
 rAmt = _pay + _expV; rIn = true; rKind = 'in'; rCat = 'pay';
+} else if (isMoneyOut) {
+rTitle = 'Money out'; rSub = t.notes ? String(t.notes) : 'Paid out to customer';
+rAmt = Number(t.totalValue) || 0; rKind = 'cr'; rCat = 'credit';
 } else if (isOldDebt) {
 rTitle = 'Old debt'; rSub = oldDebtNote(t.notes) || 'Previous balance';
 rAmt = Number(t.totalValue) || 0; rKind = 'cr'; rCat = 'credit';
@@ -493,8 +505,8 @@ let _debit = 0, _credit = 0;
 if (_dl > 0.005) _debit = _dl; else if (_dl < -0.005) _credit = -_dl;
 else if (rKind === 'cash' || (isCredit && t.creditReceived)) { _debit = _txValue; _credit = _txValue; }
 const _amtText = await formatCurrency(rAmt);
-const _isSale = !isOldDebt && !isCollection && !isPartialPayment && !isRepReturn;
-const _canEdit = !(t.isMerged || isOldDebt || (isRepReturn && _rrUsed.has(t.id)));
+const _isSale = !isOldDebt && !isCollection && !isPartialPayment && !isRepReturn && !isMoneyOut;
+const _canEdit = !(t.isMerged || isOldDebt || isMoneyOut || (isRepReturn && _rrUsed.has(t.id)));
 const _canDelete = !t.isMerged;
 const _tag = (t.isMerged || isCredit || isRepReturn) ? toggleBtnHtml : '';
 const _rowData = { title: rTitle, amtText: _amtText, rIn, info, panelPlaceholder, kebabBtn, canEdit: _canEdit, canDelete: _canDelete, balHtml: await runningBalanceHtml(_bal), safeId: esc(t.id) };
@@ -589,7 +601,7 @@ const _blk = await getSaleBlockReason(id, 'customer');
 if (_blk) { window.notifyBlocking(_blk, 'warning', 'Warning'); return; }
 }
 const _isOldDebt = _txItem?.transactionType === 'OLD_DEBT';
-const _txType = _isOldDebt ? 'Old Debt Record' : _txItem ? (_txItem.paymentType === 'CREDIT' ? 'Credit Sale' : _txItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _txItem.paymentType === 'COLLECTION' ? 'Collection' : 'Cash Sale') : 'Transaction';
+const _txType = _isOldDebt ? 'Old Debt Record' : _txItem ? (_txItem.paymentType === 'CREDIT' ? 'Credit Sale' : _txItem.paymentType === 'PARTIAL_PAYMENT' ? 'Partial Payment' : _txItem.paymentType === 'COLLECTION' ? 'Collection' : _txItem.paymentType === 'MONEY_OUT' ? 'Money Out' : 'Cash Sale') : 'Transaction';
 const _txDate = _txItem ? (_txItem.date || 'Unknown date') : '';
 const _txQty = _txItem ? ((_txItem.quantity || 0) > 0 ? `${_txItem.quantity} kg` : '') : '';
 const _txAmt = _txItem ? ((_txItem.totalValue || 0) > 0 ? ` — ${fmtAmt(_txItem.totalValue||0)}` : '') : '';
@@ -612,6 +624,12 @@ if (Number(_txItem.expiredQty) > 0) _txMsg += `\nExpired / Damage: ${fmtNum(Numb
 if (Number(_txItem.expiredValue) > 0) _txMsg += `\nExpired credit: ${fmtAmt(Number(_txItem.expiredValue))}`;
 if (collectionCollected(_txItem) > 0) _txMsg += `\n\n\u21a9 This collection will be reversed and the customer's outstanding balance restored${(_txItem.allocations||[]).length ? '; the sales it paid become unpaid again' : ''}.`;
 if (Number(_txItem.expiredQty) > 0 && _txItem.expiredApplied !== false) _txMsg += `\n\n\u21a9 ${fmtNum(Number(_txItem.expiredQty))} kg will be removed from CHORA raw material.`;
+} else if (_txItem?.paymentType === 'MONEY_OUT') {
+_txTitle = 'Delete Money Out';
+_txMsg = `Delete this money out entry for ${_txCust || 'customer'}?`;
+if (_txDate) _txMsg += `\nDate: ${_txDate}`;
+_txMsg += `\nAmount: ${fmtAmt(_txItem.totalValue||0)}`;
+_txMsg += `\n\n\u21a9 The amount will be removed from the customer's balance.`;
 } else if (_txItem?.isRepReturn) {
 _txTitle = 'Delete Rep Return';
 _txMsg = `Delete this return logged for ${_txCust || 'the rep'}?`;

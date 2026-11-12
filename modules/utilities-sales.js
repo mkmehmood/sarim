@@ -135,6 +135,9 @@ rawData.salesCredits -= _ctSaleVal;
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 rawData.salesCash += _ctSaleVal;
 rawData.salesCredits -= _ctSaleVal;
+} else if (sale.paymentType === 'MONEY_OUT') {
+rawData.salesCash -= _ctSaleVal;
+rawData.salesCredits += _ctSaleVal;
 }
 }
 }
@@ -612,6 +615,7 @@ _gacSalesCash += collectionPartialCash(sale);
 if (sale.paymentType === 'CASH' || sale.creditReceived) _gacSalesCash += _saleVal;
 else if (sale.paymentType === 'COLLECTION') _gacSalesCash += _saleVal;
 else if (sale.paymentType === 'PARTIAL_PAYMENT') _gacSalesCash += _saleVal;
+else if (sale.paymentType === 'MONEY_OUT') _gacSalesCash -= _saleVal;
 }
 });
 let _gacCalcCash = 0;
@@ -738,6 +742,9 @@ rawData.salesCredits -= _saleVal;
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 rawData.salesCash += _saleVal;
 rawData.salesCredits -= _saleVal;
+} else if (sale.paymentType === 'MONEY_OUT') {
+rawData.salesCash -= _saleVal;
+rawData.salesCredits += _saleVal;
 }
 }
 });
@@ -2756,7 +2763,7 @@ if (sale.isMerged === true) {
   if (sale.date > cust.lastDate) { cust.lastDate = sale.date; cust.lastType = 'MERGED'; }
   return;
 }
-const sp = sale.totalValue && sale.quantity && sale.quantity > 0 && !['COLLECTION','PARTIAL_PAYMENT'].includes(sale.paymentType)
+const sp = sale.totalValue && sale.quantity && sale.quantity > 0 && !['COLLECTION','PARTIAL_PAYMENT','MONEY_OUT'].includes(sale.paymentType)
 ? sale.totalValue / sale.quantity
 : (_pdfStorePriceMap[sale.supplyStore] || 0);
 if (sale.paymentType === 'CREDIT' && !sale.creditReceived) {
@@ -2774,6 +2781,8 @@ cust.debt += val; cust.paid += val; cust.qty += (sale.quantity || 0);
 cust.paid += (sale.totalValue || 0);
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 cust.paid += (sale.totalValue || 0);
+} else if (sale.paymentType === 'MONEY_OUT') {
+cust.debt += (sale.totalValue || 0);
 }
 if (sale.date > cust.lastDate) { cust.lastDate = sale.date; cust.lastType = sale.paymentType; }
 });
@@ -5609,6 +5618,7 @@ sortedSales.forEach(item => {
 if (matchName && !matchName(String(item.customerName || '').trim().toLowerCase())) return;
 const isRepLinked = item.salesRep && item.salesRep !== 'NONE';
 const isAdminCollection = !isRepLinked && item.paymentType === 'COLLECTION' && item.currentRepProfile === 'admin';
+if (item.paymentType === 'MONEY_OUT') return;
 const isOldDebt = item.transactionType === 'OLD_DEBT';
 if (!isRepLinked && !isAdminCollection && !isOldDebt && (item.paymentType === 'PARTIAL_PAYMENT' ||
 item.paymentType === 'COLLECTION')) return;

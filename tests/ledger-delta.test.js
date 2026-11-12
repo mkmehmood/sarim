@@ -177,3 +177,23 @@ describe('ledger stays consistent through any sequence of app operations', () =>
     }
   });
 });
+
+describe('money out to a customer', () => {
+  it('raises the balance by the amount paid out', async () => {
+    const { debtDelta, ledgerDelta, ledgerSplit, rowReceived, soldQuantity, periodTotals } = await import('../modules/finance.js');
+    const t = { id: 'x', paymentType: 'MONEY_OUT', totalValue: 500, quantity: 0 };
+    assert.equal(debtDelta(t, 0), 500);
+    assert.equal(ledgerDelta(t, 0), 500);
+    assert.deepEqual(ledgerSplit(t, 0), { debit: 500, credit: 0, delta: 500 });
+    assert.equal(rowReceived(t, 500).received, 0);
+    assert.equal(rowReceived(t, 500).moneyOut, 500);
+    assert.equal(soldQuantity(t), 0);
+    assert.equal(periodTotals([{ t, value: 500 }]).totalSale, 0);
+  });
+  it('is cancelled by a later collection', async () => {
+    const { debtDelta } = await import('../modules/finance.js');
+    const out = { paymentType: 'MONEY_OUT', totalValue: 500 };
+    const col = { paymentType: 'COLLECTION', totalValue: 500 };
+    assert.equal(debtDelta(out, 0) + debtDelta(col, 0), 0);
+  });
+});

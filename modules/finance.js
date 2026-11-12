@@ -74,6 +74,7 @@ export function debtDelta(t, grossValue, opts) {
   if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') {
     return round2(-(Math.max(0, num(t.totalValue, 0)) + collectionExpiredLeft(t)));
   }
+  if (t.paymentType === 'MONEY_OUT') return round2(Math.max(0, num(t.totalValue, 0)));
   return 0;
 }
 
@@ -127,7 +128,7 @@ export function ledgerDelta(t, grossValue, opts) {
 
 export function ledgerSplit(t, grossValue, opts) {
   const delta = ledgerDelta(t, grossValue, opts);
-  if (!t || t.isRepReturn === true || t.paymentType === 'REP_RETURN' || _isCol(t)) {
+  if (!t || t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'MONEY_OUT' || _isCol(t)) {
     return { debit: delta > 0 ? delta : 0, credit: delta < 0 ? -delta : 0, delta };
   }
   const gross = Math.max(0, num(grossValue, 0));
@@ -136,8 +137,9 @@ export function ledgerSplit(t, grossValue, opts) {
 }
 
 export function rowReceived(t, value) {
-  const z = { sale: 0, collection: 0, returns: 0, cash: 0, paid: 0, received: 0 };
+  const z = { sale: 0, collection: 0, returns: 0, cash: 0, paid: 0, received: 0, moneyOut: 0 };
   if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') return z;
+  if (t.paymentType === 'MONEY_OUT') { z.moneyOut = Math.max(0, num(t.totalValue, 0)); return z; }
   if (t.isRepReturn === true || t.paymentType === 'REP_RETURN') {
     z.returns = Math.max(0, num(t.returnValue, 0));
   } else if (t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') {
@@ -175,7 +177,7 @@ export function periodLine(kg, sold, received) {
 }
 export function soldQuantity(t) {
   if (!t || t.isMerged || t.transactionType === 'OLD_DEBT') return 0;
-  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return 0;
+  if (t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'MONEY_OUT' || t.paymentType === 'COLLECTION' || t.paymentType === 'PARTIAL_PAYMENT') return 0;
   return Math.max(0, num(t.quantity, 0));
 }
 export function returnedQuantity(t) {
