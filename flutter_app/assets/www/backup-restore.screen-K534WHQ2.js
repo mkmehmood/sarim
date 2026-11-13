@@ -1,0 +1,30 @@
+import{Ad as l,Ge as g,He as u,Ke as t,La as r,Le as n,Td as d,U as o,Xe as w,hd as c,rb as a,ve as e,ze as p}from"./chunk-OYWD7JPR.js";async function C(){let v=new Set(n(await t.get("deleted"))),f=await t.get("defaults")||{},m=await t.get("costs")||{},k=await t.get("adjustment")||{},h=await t.get("tracking")||{},y=n(await t.get("stores")),{production:x,transactions:B,entities:_,returns:b,inventory:M,factory:j}=await w("production","transactions","entities","returns","inventory","factory");if(!e){a("Please sign in to create a backup.","error"),l();return}let A={production:x,calculator:await t.get("calculator",[]),sales:await t.get("sales",[]),rep:await t.get("rep",[]),clients:await t.get("clients",[]),customers:await t.get("customers",[]),inventory:M,factory:j,defaults:f,costs:m,adjustment:k,tracking:h,stores:y,entities:_,transactions:B,expenses:await t.get("expenses",[]),returns:b,settings:await t.get("settings",d),deleted:Array.from(v),...await r(t),_meta:{encryptedFor:e.email,encryptedUid:e.uid,createdAt:Date.now(),version:4}},i=await c({inputId:"enc_local_bkp_pwd"});if(i)try{let s=await u.encrypt(A,e.email,i,e.uid),S=o();g(s,`NaswarDealers_SecureBackup_${S}.gznd`),window.showGlassAlert("Encrypted backup saved! Only your account and credentials can restore this file.",{tone:"success",title:"Backup Saved"})}catch(s){console.error("Encryption failed:",p(s)),window.notifyBlocking("Encryption failed: "+s.message,"error","Something went wrong")}}Object.assign(window,{triggerLocalBackup:C});var O=`<div id="backup-restore-screen" class="standalone-screen d-none">
+  <div class="shell-bar screen-topbar">
+    <h2 class="screen-title">Backup &amp; Restore</h2>
+  </div>
+  <div class="screen-body">
+    <p class="settings-group-label">Backup</p>
+    <div class="card settings-list-item" onclick="triggerLocalBackup()">
+      <div class="settings-list-item-icon st-background__fbe8aa">
+        <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 31V17.5M12.8 22.2L18 17 23.2 22.2" stroke="var(--accent-gold)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--accent-gold)"/></svg>
+      </div>
+      <div class="settings-list-item-info">
+        <p class="settings-list-item-title">Backup to Phone</p>
+        <p class="settings-list-item-desc">Save a local copy of all data to your device</p>
+      </div>
+      <svg class="settings-list-item-chevron" width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="currentColor" fill-opacity=".1"/><path d="M15 11.5L21.5 18L15 24.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <p class="settings-group-label">Restore</p>
+    <div class="card settings-list-item" onclick="document.getElementById('restoreInput').click()">
+      <div class="settings-list-item-icon st-background__79f351">
+        <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 27A6.5 6.5 0 0 1 9.2 14.05 9 9 0 0 1 26.6 12.5 7.2 7.2 0 0 1 26 27Z" fill="var(--warning)" fill-opacity="0.14" stroke="var(--warning)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M18 17V31M12.8 25.8L18 31 23.2 25.8" stroke="var(--warning)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path class="ic-sp" d="M31 3.2Q31 6 33.8 6Q31 6 31 8.8Q31 6 28.2 6Q31 6 31 3.2Z" fill="var(--warning)"/></svg>
+      </div>
+      <div class="settings-list-item-info">
+        <p class="settings-list-item-title">Restore from Phone</p>
+        <p class="settings-list-item-desc">Load a previously saved backup file</p>
+      </div>
+      <svg class="settings-list-item-chevron" width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="currentColor" fill-opacity=".1"/><path d="M15 11.5L21.5 18L15 24.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+</div>`,U=`
+`;export{U as __screenCss,O as __screenHtml,C as triggerLocalBackup};

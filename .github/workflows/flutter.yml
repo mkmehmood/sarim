@@ -1,0 +1,31 @@
+name: Flutter APK
+on:
+  push:
+    branches: [flutter-app]
+    paths: ['flutter_app/**', 'modules/**', 'screens/**', 'index.html', 'app.css', 'build.js']
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - run: npm ci
+      - run: node flutter_app/tools/sync_web.mjs --build
+      - run: node flutter_app/tools/verify_parity.mjs
+      - run: bash flutter_app/tools/setup_android.sh
+      - run: flutter pub get
+        working-directory: flutter_app
+      - run: flutter analyze
+        working-directory: flutter_app
+      - run: flutter build apk --release
+        working-directory: flutter_app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarim-flutter-apk
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
