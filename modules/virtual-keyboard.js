@@ -16,26 +16,13 @@ export const PAD_BOTTOM = ['letters', 'symbols', '0', '00', '=', '.', 'enter'];
 export const SYMBOL_ROWS = ['1234567890', '@#$_&-+()/', '*"\':;!?~'];
 export const TOOLS = [
   { act: 'paste', icon: 'clipboard', aria: 'Paste' },
-  { act: 'selectall', icon: 'notes', aria: 'Select all' },
-  { act: 'code', icon: 'code', aria: 'Code', off: true },
-  { act: 'voice', icon: 'mic', aria: 'Voice typing', off: true },
-  { act: 'translate', icon: 'translate', aria: 'Translate', off: true },
-  { act: 'settings', icon: 'gear', aria: 'Keyboard settings', off: true },
-  { act: 'adjust', icon: 'sliders', aria: 'Adjust', off: true }
+  { act: 'selectall', icon: 'notes', aria: 'Select all' }
 ];
 const ICONS = {
-  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
   notes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
-  code: '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
-  mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/>',
-  translate: '<path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>',
-  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
-  sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
   shift: '<path d="m5 12 7-7 7 7M12 19V5"/>',
   backspace: '<path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m18 9-6 6M12 9l6 6"/>',
-  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-  smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
   enter: '<path d="M20 4v7a4 4 0 0 1-4 4H4M9 10l-5 5 5 5"/>',
   keyboard: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>',
   space: '<path d="M4 10v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/>',
@@ -53,14 +40,10 @@ export function isTextLike(el) {
   return el.isContentEditable === true;
 }
 
-export function usesSystemKeyboard(el) {
-  return attr(el, 'data-vk') === 'off';
-}
-
 export function isTextField(el) {
   if (!isTextLike(el)) return false;
   if (el.disabled || el.readOnly) return false;
-  return !usesSystemKeyboard(el);
+  return true;
 }
 
 export function layoutFor(el) {
@@ -118,7 +101,7 @@ export function sanitizeNumber(value) {
 }
 
 export function applyFieldPolicy(el) {
-  if (!isTextLike(el) || usesSystemKeyboard(el)) return false;
+  if (!isTextLike(el)) return false;
   let changed = false;
   const current = attr(el, 'inputmode');
   if (current !== 'none') {
@@ -183,14 +166,7 @@ export function installVirtualKeyboard(opts = {}) {
   const punct = (ch, cls) => key({ ch, cls: `is-fn ${cls || 'fx-10'}` });
 
   const toolsBar = node('div', 'vk-tools');
-  const toolsPill = node('div', 'vk-tools-pill');
-  toolsBar.appendChild(key({ act: 'tools', html: icon('wrench'), aria: 'Tools', cls: 'is-tools is-on' }));
-  TOOLS.forEach((t) => {
-    const b = key({ act: t.act, html: icon(t.icon), aria: t.aria, cls: t.off ? 'is-tool is-off' : 'is-tool' });
-    if (t.off) b.setAttribute('aria-disabled', 'true');
-    toolsPill.appendChild(b);
-  });
-  toolsBar.appendChild(toolsPill);
+  TOOLS.forEach((t) => toolsBar.appendChild(key({ act: t.act, html: icon(t.icon), aria: t.aria, cls: 'is-tool' })));
 
   const lettersPane = node('div', 'vk-pane');
   lettersPane.setAttribute('data-vk-pane', 'letters');
@@ -199,12 +175,10 @@ export function installVirtualKeyboard(opts = {}) {
   lettersPane.appendChild(row([...LETTER_ROWS[1]].map(letter), 'is-home'));
   lettersPane.appendChild(row([shift(), ...[...LETTER_ROWS[2]].map(letter), back()]));
   lettersPane.appendChild(row([
-    iconKey('pad', 'digits', 'Numbers', 'is-fn fx-12'),
-    iconKey('system', 'globe', 'System keyboard', 'is-fn fx-12'),
-    punct(',', 'fx-09'),
+    iconKey('pad', 'digits', 'Numbers', 'is-fn fx-15'),
+    punct(',', 'fx-10'),
     spaceKey(),
-    iconKey('emoji', 'smile', 'Emoji', 'is-fn fx-10'),
-    punct('.', 'fx-09'),
+    punct('.', 'fx-10'),
     enter()
   ], 'is-bottom'));
 
@@ -404,16 +378,6 @@ export function installVirtualKeyboard(opts = {}) {
     hide(true);
   };
 
-  const useSystemKeyboard = () => {
-    const t = active;
-    if (!t) return;
-    t.setAttribute('data-vk', 'off');
-    const mode = attr(t, 'data-vk-mode');
-    if (mode) t.setAttribute('inputmode', mode); else t.removeAttribute('inputmode');
-    hide(false);
-    win.setTimeout(() => { if (t.isConnected) { try { t.blur(); t.focus(); } catch (_) {} } }, 60);
-  };
-
   const paste = async () => {
     try {
       const text = await win.navigator.clipboard.readText();
@@ -428,24 +392,15 @@ export function installVirtualKeyboard(opts = {}) {
     try { if (typeof t.select === 'function') t.select(); else doc.execCommand('selectAll'); } catch (_) {}
   };
 
-  const toggleTools = (k) => {
-    const hidden = toolsPill.classList.toggle('d-none');
-    k.classList.toggle('is-on', !hidden);
-    if (isOpen()) measure();
-  };
-
   const press = (k) => {
-    if (k.getAttribute('aria-disabled') === 'true') return;
     const act = k.getAttribute('data-vk-act');
     const ch = k.getAttribute('data-vk-ch');
     if (act === 'back') backspace();
     else if (act === 'shift') { cycleCase(); return; }
     else if (act === 'enter') doEnter();
     else if (act === 'pad' || act === 'letters' || act === 'symbols') { showPane(act); win.requestAnimationFrame(() => { if (isOpen()) reveal(active); }); }
-    else if (act === 'system' || act === 'emoji') { useSystemKeyboard(); return; }
     else if (act === 'paste') paste();
     else if (act === 'selectall') selectAll();
-    else if (act === 'tools') { toggleTools(k); return; }
     else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, upperNow()));
     else if (ch != null) insert(ch);
     syncCase();

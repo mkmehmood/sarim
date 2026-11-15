@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
-import { FIELD_SELECTOR, LETTER_ROWS, PAD_BOTTOM, PAD_DIGITS, PAD_OPS, PAD_SIDE, SYMBOL_ROWS, TOOLS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard, typesLowerCase, wantsCapital } from '../modules/virtual-keyboard.js';
+import { FIELD_SELECTOR, LETTER_ROWS, PAD_BOTTOM, PAD_DIGITS, PAD_OPS, PAD_SIDE, SYMBOL_ROWS, TOOLS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, typesLowerCase, wantsCapital } from '../modules/virtual-keyboard.js';
 
 const field = (attrs = {}, extra = {}) => {
   const map = new Map(Object.entries(attrs));
@@ -32,8 +32,6 @@ describe('field rules', () => {
   it('uses the app keyboard for email, password and web address fields too', () => {
     for (const type of ['email', 'password', 'url']) assert.equal(isTextField(field({ type })), true, type);
     assert.equal(isTextField(field({ type: 'text', inputmode: 'email' })), true);
-    assert.equal(usesSystemKeyboard(field({ type: 'text', inputmode: 'email' })), false);
-    assert.equal(usesSystemKeyboard(field({ type: 'text', 'data-vk': 'off' })), true);
   });
   it('types credential fields in lower case', () => {
     for (const type of ['email', 'password', 'url']) assert.equal(typesLowerCase(field({ type })), true, type);
@@ -44,7 +42,6 @@ describe('field rules', () => {
     const login = field({ type: 'text' }, insideScreen('.auth-screen'));
     const accounts = field({ type: 'text' }, insideScreen('#app-accounts-screen'));
     for (const f of [login, accounts]) {
-      assert.equal(usesSystemKeyboard(f), false);
       assert.equal(isTextField(f), true);
       assert.equal(applyFieldPolicy(f), true);
       assert.equal(f.getAttribute('inputmode'), 'none');
@@ -53,10 +50,10 @@ describe('field rules', () => {
   it('leaves pickers, files, checkboxes and hidden inputs alone', () => {
     for (const type of ['date', 'month', 'file', 'checkbox', 'radio', 'hidden', 'button', 'range', 'color']) assert.equal(isTextField(field({ type })), false, type);
   });
-  it('skips disabled, read-only and opted-out fields', () => {
+  it('skips disabled and read-only fields', () => {
     assert.equal(isTextField(field({}, { disabled: true })), false);
     assert.equal(isTextField(field({}, { readOnly: true })), false);
-    assert.equal(isTextField(field({ 'data-vk': 'off' })), false);
+    assert.equal(isTextField(field({ 'data-vk': 'off' })), true);
   });
   it('chooses the numpad for number and tel fields, numeric modes and data-layout', () => {
     assert.equal(layoutFor(field({ type: 'number' })), 'numpad');
@@ -113,7 +110,7 @@ describe('field rules', () => {
     assert.equal(f.type, 'text');
     assert.equal(layoutFor(f), 'numpad');
   });
-  it('only date fields and fields marked data-vk="off" keep the system keyboard', () => {
+  it('every text field uses the app keyboard; only date pickers are left alone', () => {
     const mail = field({ type: 'text', inputmode: 'email' });
     assert.equal(applyFieldPolicy(mail), true);
     assert.equal(mail.getAttribute('inputmode'), 'none');
@@ -121,7 +118,7 @@ describe('field rules', () => {
     assert.equal(applyFieldPolicy(field({ type: 'password' })), true);
     assert.equal(applyFieldPolicy(field({ type: 'email' })), true);
     assert.equal(applyFieldPolicy(field({ type: 'date' })), false);
-    assert.equal(applyFieldPolicy(field({ type: 'text', 'data-vk': 'off' })), false);
+    assert.equal(applyFieldPolicy(field({ type: 'text', 'data-vk': 'off' })), true);
   });
   it('selects every kind of text field in the page', () => {
     assert.match(FIELD_SELECTOR, /input/);
@@ -151,7 +148,7 @@ describe('typing rules', () => {
     assert.deepEqual(PAD_SIDE, ['%', 'space', 'back']);
     assert.deepEqual(PAD_BOTTOM, ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
     assert.equal(SYMBOL_ROWS.length, 3);
-    assert.equal(TOOLS.length, 7);
+    assert.equal(TOOLS.length, 2);
   });
   it('capitalises at the start of a field and after a space', () => {
     assert.equal(wantsCapital('', 0), true);
@@ -333,7 +330,7 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(all.every((k) => k.getAttribute('data-feedback') === 'manual'));
   });
 
-  it('letters layout matches the reference: tools row, QWERTY 10/9/7, shift and backspace, then the bottom row', async () => {
+  it('letters layout matches the reference: paste and select-all row, QWERTY 10/9/7, shift and backspace, then the bottom row', async () => {
     const t = await boot();
     const L = t.pane('letters');
     const rows = rowsOf(L);
@@ -342,21 +339,19 @@ describe('virtual keyboard in the Android app', () => {
     assert.deepEqual(rows[1].children.map((k) => k.getAttribute('data-vk-ch')), [...'asdfghjkl']);
     assert.ok(rows[1].classList.contains('is-home'));
     assert.deepEqual(keysOf(rows[2]), ['shift', ...'zxcvbnm', 'back']);
-    assert.deepEqual(keysOf(rows[3]), ['pad', 'system', ',', ' ', 'emoji', '.', 'enter']);
+    assert.deepEqual(keysOf(rows[3]), ['pad', ',', ' ', '.', 'enter']);
     assert.deepEqual(L.querySelectorAll('[data-vk-letter]').map((k) => k.textContent).join(''), 'QWERTYUIOPASDFGHJKLZXCVBNM');
     assert.equal(t.act('space').textContent, 'English');
     assert.ok(t.act('shift').classList.contains('is-accent'));
     assert.ok(t.act('enter').classList.contains('is-accent'));
   });
 
-  it('has the tools button and the pill of seven tools above the letters', async () => {
+  it('has only the two working tools (paste, select all) above the letters, and no dead keys', async () => {
     const t = await boot();
     const bar = t.pane('letters').querySelector('.vk-tools');
-    assert.ok(bar);
-    assert.equal(bar.children[0].getAttribute('data-vk-act'), 'tools');
-    const pill = bar.querySelector('.vk-tools-pill');
-    assert.deepEqual(pill.children.map((k) => k.getAttribute('data-vk-act')), ['paste', 'selectall', 'code', 'voice', 'translate', 'settings', 'adjust']);
-    assert.equal(pill.querySelectorAll('[aria-disabled="true"]').length, 5);
+    assert.deepEqual(bar.children.map((k) => k.getAttribute('data-vk-act')), ['paste', 'selectall']);
+    assert.equal(t.dock.querySelectorAll('[aria-disabled="true"]').length, 0);
+    for (const gone of ['system', 'emoji', 'tools', 'voice', 'code', 'translate', 'settings', 'adjust']) assert.equal(t.act(gone), null, gone);
   });
 
   it('numpad layout matches the reference: + - x / on the left, 1-9, % space and backspace on the right, then the bottom row', async () => {
@@ -756,37 +751,6 @@ describe('new layout keys', () => {
     assert.ok(t.isHidden());
   });
 
-  it('the globe and emoji keys hand the field to the system keyboard', async () => {
-    const t = await boot();
-    const f = t.input({ type: 'text' });
-    t.focus(f);
-    t.down(t.act('system'));
-    assert.equal(f.getAttribute('data-vk'), 'off');
-    assert.equal(f.getAttribute('inputmode'), null);
-    assert.ok(t.isHidden());
-    assert.equal(isTextField(f), false);
-    const g = t.input({ type: 'text' });
-    t.focus(g);
-    t.down(t.act('emoji'));
-    assert.equal(g.getAttribute('data-vk'), 'off');
-  });
-
-  it('the tools button shows and hides the tools pill; unavailable tools do nothing', async () => {
-    const t = await boot();
-    const f = t.input({ type: 'text' }, { value: 'x' });
-    t.focus(f);
-    const pill = t.dock.querySelector('.vk-tools-pill');
-    t.down(t.act('tools'));
-    assert.ok(pill.classList.contains('d-none'));
-    assert.ok(!t.act('tools').classList.contains('is-on'));
-    t.down(t.act('tools'));
-    assert.ok(!pill.classList.contains('d-none'));
-    t.down(t.act('voice'));
-    t.down(t.act('code'));
-    assert.equal(f.value, 'x');
-    assert.deepEqual(t.calls.exec, []);
-  });
-
   it('select all selects the field text', async () => {
     const t = await boot();
     let selected = 0;
@@ -853,7 +817,6 @@ describe('virtual keyboard wiring', () => {
     assert.doesNotMatch(css, /\.vk-dock\.overlay \{[^}]*var\(--soft-card\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-accent \{[^}]*var\(--on-accent-dark\)/);
     assert.match(css, /html\.vk-open \{ --vk-gap: 0px; \}/);
-    assert.match(css, /\.vk-tools-pill\.d-none \{ display: none; \}/);
     assert.match(css, /\[data-vk-pane="pad"\] \.vk-col\.is-digits \{ flex: 4\.65 1 0;/);
   });
 
@@ -874,7 +837,7 @@ describe('virtual keyboard wiring', () => {
 
   it('no screen is routed to the device keyboard any more', () => {
     assert.doesNotMatch(kb, /SYSTEM_SCOPES|SYSTEM_MODES/);
-    assert.match(kb, /return attr\(el, 'data-vk'\) === 'off';/);
+    assert.doesNotMatch(kb, /usesSystemKeyboard|data-vk', 'off'|data-vk'\) === 'off'/);
     assert.match(readSource('modules/sync.js'), /overlay\.className = 'auth-screen';/);
     assert.match(readSource('index.html'), /<div id=\"app-accounts-screen\"/);
   });
