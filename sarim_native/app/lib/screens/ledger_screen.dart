@@ -43,7 +43,12 @@ class _LedgerScreenState extends State<LedgerScreen> {
 
   void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
-  Future<void> _moneyOut() async {
+  /// Shared amount / date / note dialog. [save] throws [ValidationError] to show a message in the dialog.
+  Future<bool> _entryDialog({
+    required String title,
+    required String blurb,
+    required Future<void> Function(double amount, DateTime date, String note) save,
+  }) async {
     final amount = TextEditingController();
     final note = TextEditingController();
     var date = DateTime.now();
@@ -52,10 +57,10 @@ class _LedgerScreenState extends State<LedgerScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('Money out'),
+          title: Text(title),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Cash paid out to ${widget.name}. It is added to what the customer owes (or reduces their credit).'),
+              Text(blurb),
               const SizedBox(height: 12),
               TextField(
                 controller: amount,
@@ -83,7 +88,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
               onPressed: () async {
                 final value = double.tryParse(amount.text.trim().replaceAll(',', ''));
                 try {
-                  await app.repo.recordMoneyOut(name: widget.name, amount: value ?? 0, date: localDateStr(date), note: note.text);
+                  await save(value ?? 0, date, note.text);
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 } on ValidationError catch (e) {
                   setLocal(() => error = e.message);
@@ -95,9 +100,48 @@ class _LedgerScreenState extends State<LedgerScreen> {
         ),
       ),
     );
-    if (ok == true) {
+    return ok == true;
+  }
+
+  Future<void> _moneyOut() async {
+    final ok = await _entryDialog(
+      title: 'Money out',
+      blurb: 'Cash paid out to ${widget.name}. It is added to what the customer owes (or reduces their credit).',
+      save: (amount, date, note) => app.repo.recordMoneyOut(name: widget.name, amount: amount, date: localDateStr(date), note: note),
+    );
+    if (ok) {
       app.changed();
       _snack('Money out recorded for ${widget.name}');
+    }
+  }
+
+  Future<void> _collect() async {
+    final ok = await _entryDialog(
+      title: 'Collect payment',
+      blurb: 'Cash received from ${widget.name}. It is applied to their unpaid credit sales, newest first.',
+      save: (amount, date, note) async {
+        try {
+          await app.repo.recordCollection(name: widget.name, amount: amount, date: localDateStr(date), note: note);
+        } on OverpaymentRequired catch (e) {
+          final go = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Overpayment'),
+              content: Text('${widget.name} owes ${money(e.owed)} but you are collecting ${money(e.amount)}.\n\nProceed only if this is an advance payment.'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Back')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Record advance')),
+              ],
+            ),
+          );
+          if (go != true) throw ValidationError('Collection not recorded.');
+          await app.repo.recordCollection(name: widget.name, amount: amount, date: localDateStr(date), note: note, allowOverpayment: true);
+        }
+      },
+    );
+    if (ok) {
+      app.changed();
+      _snack('Collection recorded for ${widget.name}');
     }
   }
 
@@ -106,7 +150,7 @@ class _LedgerScreenState extends State<LedgerScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete ${entryTitle(e.kind).toLowerCase()}?'),
-        content: Text("${e.date}\n${money(e.amount)}\n\nThe amount will be removed from the customer's balance."),
+        content: Text("${e.date}\n${money(e.amount)}\n\n${e.kind == EntryKind.collection ? 'Sales this payment settled will be reopened.' : "The amount will be removed from the customer's balance."}"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.redAccent), onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
@@ -130,7 +174,11 @@ class _LedgerScreenState extends State<LedgerScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: FilledButton.icon(onPressed: _moneyOut, icon: const Icon(Icons.north_east), label: const Text('Money out')),
+          child: Row(children: [
+            Expanded(child: FilledButton.icon(onPressed: _collect, icon: const Icon(Icons.south_west), label: const Text('Collect'))),
+            const SizedBox(width: 12),
+            Expanded(child: FilledButton.tonalIcon(onPressed: _moneyOut, icon: const Icon(Icons.north_east), label: const Text('Money out'))),
+          ]),
         ),
       ),
       body: l == null

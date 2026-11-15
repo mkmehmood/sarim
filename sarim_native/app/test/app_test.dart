@@ -48,4 +48,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Rs 1,250'), findsWidgets);
   });
+
+  testWidgets('collect payment reduces the balance', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('sales', [
+      {'id': 'a', 'customerName': 'Ali', 'currentRepProfile': 'admin', 'date': '2020-01-01', 'timestamp': 1, 'paymentType': 'CREDIT', 'creditReceived': false, 'quantity': 10, 'unitPrice': 100, 'totalValue': 1000},
+    ]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ali'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Collect'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '250');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rs 750'), findsWidgets);
+  });
 }

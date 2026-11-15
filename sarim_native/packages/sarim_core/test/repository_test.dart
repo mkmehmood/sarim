@@ -122,6 +122,44 @@ Future<void> main() async {
     check((await repo.deletedIds()).contains('${m['id']}'), 'tombstone recorded locally');
   });
 
+  await group('collections: allocate to open credit, balance, validation, delete reopens sales', () async {
+    final repo = fresh();
+    await repo.store.set('sales', [credit('a', 'Ali', '2026-11-01', 1000), credit('b', 'Ali', '2026-11-03', 600)]);
+    var threw = false;
+    try { await repo.recordCollection(name: 'Zed', amount: 50, date: '2026-11-10'); } on ValidationError { threw = true; }
+    check(threw, 'no credit -> rejected');
+    final col = await repo.recordCollection(name: 'Ali', amount: 700, date: '2026-11-10');
+    eq(col['paymentType'], 'COLLECTION', 'type');
+    eq((col['allocations'] as List).length, 2, 'newest sale paid first, remainder to the next');
+    eq((await repo.listCustomers()).customers.single.credit, 900, 'balance after collecting 700 of 1600');
+    final sales = await repo.sales();
+    check(sales.firstWhere((s) => s['id'] == 'b')['creditReceived'] == true, 'newer sale settled');
+    eq(sales.firstWhere((s) => s['id'] == 'a')['partialPaymentReceived'], 100, 'older sale part-paid');
+    final led = await repo.ledger('Ali');
+    eq(led.entries.last.balance, 900, 'ledger running balance');
+    eq(led.entries.last.kind, EntryKind.collection, 'collection row');
+    eq((await repo.outbox()).length, 3, 'collection and both changed sales queued');
+    var over = false;
+    try { await repo.recordCollection(name: 'Ali', amount: 5000, date: '2026-11-11'); } on OverpaymentRequired { over = true; }
+    check(over, 'overpayment needs confirmation');
+    final adv = await repo.recordCollection(name: 'Ali', amount: 1000, date: '2026-11-11', allowOverpayment: true);
+    eq((await repo.listCustomers()).customers.single.credit, -100, 'advance of 100 leaves the customer in credit');
+    final ledAfter = await repo.ledger('Ali');
+    eq(ledAfter.outstanding, 0, 'no amount owed');
+    eq(ledAfter.entries.last.balance, -100, 'running balance shows credit');
+    check((await repo.deleteTransaction('${col['id']}')) != null, 'older collection blocked while a newer one touches the same sale');
+    eq(await repo.deleteTransaction('${adv['id']}'), null, 'newest collection deletes');
+    eq(await repo.deleteTransaction('${col['id']}'), null, 'then the older one');
+    final s2 = await repo.sales();
+    check(s2.every((s) => s['creditReceived'] == false && !s.containsKey('collectionAllocs')), 'sales reopened');
+    eq((await repo.listCustomers()).customers.single.credit, 1600, 'balance restored');
+    for (final bad in [0.0, -1.0, double.nan]) {
+      var t = false;
+      try { await repo.recordCollection(name: 'Ali', amount: bad, date: '2026-11-11'); } on ValidationError { t = true; }
+      check(t, 'amount $bad rejected');
+    }
+  });
+
   await group('offline queue and sync round-trip', () async {
     final remote = FakeRemote();
     final a = fresh();

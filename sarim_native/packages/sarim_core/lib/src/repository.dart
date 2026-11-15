@@ -1,5 +1,7 @@
 import 'customer_ledger.dart';
+import 'finance.dart';
 import 'ids.dart';
+import 'link_graph.dart';
 import 'js_num.dart';
 import 'store.dart';
 
@@ -63,6 +65,13 @@ Rec buildMoneyOutRecord({
       'syncedAt': DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true).toIso8601String(),
       'createdBy': createdBy,
     };
+
+/// Thrown when a collection is larger than what the customer owes; the caller may confirm an advance payment.
+class OverpaymentRequired extends ValidationError {
+  OverpaymentRequired(this.owed, this.amount)
+      : super('Customer owes ${owed.toStringAsFixed(2)} but ${amount.toStringAsFixed(2)} is being collected.');
+  final double owed, amount;
+}
 
 class SarimRepository {
   SarimRepository(this.store, {IdGenerator? ids, int Function()? clock, this.createdBy})
@@ -184,6 +193,76 @@ class SarimRepository {
     return rec;
   }
 
+  // ---- collections -------------------------------------------------------
+  Future<double> outstanding(String name, List<Rec> allSales, Set<String> deleted, Set<String> reconciled) async {
+    final lc = name.trim().toLowerCase();
+    var out = 0.0;
+    final opts = LedgerOpts(reconciledReturnIds: reconciled);
+    for (final s in allSales) {
+      if (deleted.contains('${s['id']}') || s['currentRepProfile'] != 'admin') continue;
+      if ('${s['customerName'] ?? ''}'.toLowerCase() != lc) continue;
+      out = round2(out + debtDelta(s, debtNeedsGross(s) ? saleTransactionValue(s) : 0, opts));
+    }
+    return out > 0 ? out : 0;
+  }
+
+  /// Records cash collected from a customer and applies it to their open credit (newest sale first).
+  Future<Rec> recordCollection({required String name, required double amount, required String date, String note = '', bool allowOverpayment = false}) async {
+    final customerName = name.trim();
+    if (customerName.isEmpty) throw ValidationError('Open a customer first.');
+    if (!amount.isFinite || !(amount > 0)) throw ValidationError('Enter an amount greater than zero.');
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) throw ValidationError('Select a date.');
+    final all = await sales();
+    final deleted = await deletedIds();
+    final reconciled = await _reconciledReturnIds();
+    final owed = await outstanding(customerName, all, deleted, reconciled);
+    if (owed <= 0) {
+      throw ValidationError('$customerName has no outstanding credit balance. Collections can only be recorded against existing unpaid credit.');
+    }
+    if (amount > owed && !allowOverpayment) throw OverpaymentRequired(owed, amount);
+    final now = _clock();
+    final customers = await customerRecords();
+    var phone = '';
+    for (final c in customers) {
+      if ('${c['name']}'.toLowerCase() == customerName.toLowerCase() && truthy(c['phone'])) { phone = '${c['phone']}'; break; }
+    }
+    final rec = <String, dynamic>{
+      'id': ids.next('sale', nowMs: now),
+      'timestamp': now,
+      'createdAt': now,
+      'updatedAt': now,
+      'date': date,
+      'time': formatTime12(DateTime.fromMillisecondsSinceEpoch(now)),
+      'customerName': customerName,
+      'customerPhone': phone,
+      'quantity': 0,
+      'supplyStore': null,
+      'paymentType': 'COLLECTION',
+      'salesRep': 'NONE',
+      'currentRepProfile': 'admin',
+      'totalCost': 0,
+      'totalValue': round2(amount),
+      'profit': round2(amount),
+      'creditReceived': true,
+      'isCollection': true,
+      'gps': null,
+      'syncedAt': DateTime.fromMillisecondsSinceEpoch(now, isUtc: true).toIso8601String(),
+      'createdBy': createdBy,
+      if (note.trim().isNotEmpty) 'notes': note.trim(),
+    };
+    final live = all.where((s) => !deleted.contains('${s['id']}')).toList();
+    final res = applyCollectionToSales(arr: live, record: rec, amount: round2(amount), name: customerName, reconciledReturnIds: reconciled, nowMs: now);
+    final out = [...all];
+    out.add(rec);
+    await store.set('sales', out);
+    for (final id in res.changedIds) {
+      final changed = out.firstWhere((s) => '${s['id']}' == id);
+      await _enqueue(SyncOp('set', 'sales', id, changed));
+    }
+    await _enqueue(SyncOp('set', 'sales', '${rec['id']}', rec));
+    return rec;
+  }
+
   // ---- delete ------------------------------------------------------------
   /// Returns null on success, or the reason the entry cannot be deleted here.
   Future<String?> deleteTransaction(String id) async {
@@ -195,13 +274,30 @@ class SarimRepository {
     final allocs = t['collectionAllocs'];
     if (allocs is List && allocs.isNotEmpty) return 'This entry has payments applied to it. Remove those payments first.';
     final applied = t['allocations'];
-    if ((t['paymentType'] == 'COLLECTION' || t['paymentType'] == 'PARTIAL_PAYMENT') && applied is List && applied.isNotEmpty) {
-      return 'This payment is applied to sales. Delete it from the web app so the sales are reopened correctly.';
+    final reopened = <String>[];
+    if (t['paymentType'] == 'PARTIAL_PAYMENT' && (truthy(t['relatedSaleId']) || (applied is List && applied.isNotEmpty))) {
+      return 'This payment is linked to a credit sale. Delete it from the web app so the sale is reopened correctly.';
+    }
+    if (t['paymentType'] == 'COLLECTION' && applied is List && applied.isNotEmpty) {
+      final issue = collectionRevertIssue(t, all);
+      if (issue != null) return issue;
+      final now = _clock();
+      for (final a in applied) {
+        for (final s in all) {
+          if (s['id'] == (a as Map)['saleId'] && revertCollectionAlloc(s, id)) {
+            s['updatedAt'] = now;
+            reopened.add('${s['id']}');
+          }
+        }
+      }
     }
     all.removeAt(idx);
     await store.set('sales', all);
     final deleted = (await deletedIds())..add(id);
     await store.set('deleted', deleted.toList());
+    for (final sid in reopened) {
+      await _enqueue(SyncOp('set', 'sales', sid, all.firstWhere((x) => '${x['id']}' == sid)));
+    }
     await _enqueue(SyncOp('delete', 'sales', id, null));
     return null;
   }

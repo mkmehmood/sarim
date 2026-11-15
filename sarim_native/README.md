@@ -15,7 +15,7 @@ sarim_native/
 |---|---|---|
 | 1 | Local store, record model, Firebase login, offline queue + two-way sync (sales, customers, deletions) | done, tested |
 | 2 | Customers list, customer ledger (running balance, totals), add customer, Money Out, delete entry | done, tested |
-| 3 | Sales entry, collections with allocation, payments, partial payments | not started |
+| 3 | Collections with allocation (record, delete/reopen), advance payments; sales entry and credit settlement | collections done, tested; sales entry next |
 | 4 | Factory, reps, stock, expenses | not started |
 | 5 | Approvals / staff roles, reports, PDF statements, backup/restore | not started |
 
@@ -29,6 +29,12 @@ Until phase 5 is finished the WebView app on the `flutter-app` branch is the com
   and `modules/tx-date.js`; the Dart port must give identical deltas, debit/credit splits, received totals,
   quantities, row order and running balances (about 34,000 checks).
   Regenerate fixtures with `node packages/sarim_core/tool/gen_fixtures.mjs` from the repo root.
+* `collection_test`: 300 scenarios (1-3 collections each, old debt, part-paid sales, cross-case-name matching) run through the
+  web app's allocation code (`link-graph.js` + `finance.js`); the Dart port must produce identical sales, collection
+  records and, when the newest collection is deleted, identical reopened sales (about 4,400 checks).
+  Regenerate with `node packages/sarim_core/tool/gen_collection_fixtures.mjs`. The orchestration in that script is
+  the body of `applyCollectionToSales` (link-guards.js) with its storage calls removed, because that module
+  needs a browser to import.
 * `repository_test`: Money Out maths, validation, add customer, delete guards, offline queue, two-device sync,
   tombstones, Firestore codec, atomic file store, id format.
 
@@ -43,7 +49,8 @@ flutter pub get && flutter test && flutter run
 
 ## Known limits (phase 1-2)
 * Owner accounts only: staff accounts that read a workspace owner's data and approval-gated writes are phase 5.
-* Sales, collections and payment entry are not in the app yet; the ledger shows them and syncs them.
-* Deleting a sale that has payments applied, or a payment applied to sales, is blocked (use the web app).
+* Collections record cash only: expired-goods credit (which feeds CHORA stock) is phase 4. Sales entry is next in phase 3.
+* Cash-in-hand shortage checks that the web app runs before some entries are not ported yet.
+* Deleting a sale that has payments applied is blocked, and so is deleting an older collection while a newer one touches the same sale (same rule as the web app). Linked partial payments must be deleted in the web app.
 * Customers created here have no opening balance; add old debt in the web app for now.
 * Session tokens are kept in the app's private storage (not the Android keystore).
