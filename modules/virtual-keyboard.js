@@ -110,6 +110,12 @@ export function applyFieldPolicy(el) {
     changed = true;
   }
   const type = typeOf(el);
+  if (type === 'email' || type === 'password' || type === 'url') {
+    el.setAttribute('data-vk-type', type);
+    if (type === 'password') el.setAttribute('data-vk-secret', '');
+    el.setAttribute('type', 'text');
+    changed = true;
+  }
   if (type === 'number' || type === 'tel') {
     el.setAttribute('data-vk-type', type);
     if (!attr(el, 'data-vk-mode')) el.setAttribute('data-vk-mode', type === 'tel' ? 'tel' : 'decimal');
@@ -235,6 +241,7 @@ export function installVirtualKeyboard(opts = {}) {
   const panes = { letters: lettersPane, pad: padPane, symbols: symbolsPane };
   let active = null;
   let caseMode = 'caps';
+  let plainMode = 'caps';
   let spaceHold = 0;
   let spaceAdded = false;
   let hideTimer = 0;
@@ -260,7 +267,7 @@ export function installVirtualKeyboard(opts = {}) {
   };
 
   const upperNow = () => {
-    if (!active || typesLowerCase(active)) return false;
+    if (!active) return false;
     if (caseMode === 'caps') return true;
     if (caseMode === 'small') return false;
     let caret = null;
@@ -269,13 +276,20 @@ export function installVirtualKeyboard(opts = {}) {
   };
 
   const syncCase = () => {
-    const credential = !!active && typesLowerCase(active);
-    dock.classList.toggle('is-lower', !upperNow());
-    dock.setAttribute('data-vk-case', credential ? 'small' : caseMode);
+    const upper = upperNow();
+    dock.classList.toggle('is-lower', !upper);
+    dock.setAttribute('data-vk-case', caseMode);
+    lettersPane.querySelectorAll('[data-vk-letter]').forEach((k) => { k.textContent = casedKey(k.getAttribute('data-vk-ch'), upper); });
+    const sh = lettersPane.querySelector('[data-vk-act="shift"]');
+    if (sh) { sh.classList.toggle('is-on', upper); sh.setAttribute('aria-pressed', String(upper)); }
   };
 
   const cycleCase = () => {
-    caseMode = CASE_MODES[(CASE_MODES.indexOf(caseMode) + 1) % CASE_MODES.length];
+    if (active && typesLowerCase(active)) caseMode = caseMode === 'caps' ? 'small' : 'caps';
+    else {
+      caseMode = CASE_MODES[(CASE_MODES.indexOf(caseMode) + 1) % CASE_MODES.length];
+      plainMode = caseMode;
+    }
     syncCase();
     try { dialogFeedback('select'); } catch (_) {}
   };
@@ -352,6 +366,7 @@ export function installVirtualKeyboard(opts = {}) {
     win.clearTimeout(hideTimer);
     hideNative();
     active = field;
+    caseMode = typesLowerCase(field) ? 'small' : plainMode;
     dock.removeAttribute('inert');
     dock.classList.remove('d-none');
     root.classList.add('vk-open');

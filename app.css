@@ -5648,6 +5648,8 @@ html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content:
 .vk-dock .vk-key.is-accent { background: var(--accent); border-color: transparent; color: var(--on-accent-dark); }
 .vk-dock .vk-key.is-accent:active { background: color-mix(in srgb, var(--accent) 80%, var(--text-main)); color: var(--on-accent-dark); }
 .vk-dock .vk-key.is-shift { position: relative; }
+.vk-dock .vk-key.is-shift.is-on { background: var(--on-accent-dark); color: var(--accent); border-color: var(--accent); }
+input[data-vk-secret] { -webkit-text-security: disc; }
 .vk-dock .vk-key.is-shift::after { content: 'AA'; position: absolute; top: 4px; right: 8px; font-size: 0.5rem; font-weight: 800; letter-spacing: 0.04em; opacity: 0.75; pointer-events: none; }
 .vk-dock[data-vk-case="small"] .vk-key.is-shift::after { content: 'aa'; }
 .vk-dock[data-vk-case="title"] .vk-key.is-shift::after { content: 'Aa'; }

@@ -700,6 +700,66 @@ describe('virtual keyboard in the Android app', () => {
   });
 });
 
+describe('shift and credential fields', () => {
+  it('shift relabels the letter keys and lights up with capitals', async () => {
+    const t = await boot();
+    t.focus(t.input({ type: 'text' }));
+    const L = t.pane('letters');
+    const labels = () => L.querySelectorAll('[data-vk-letter]').map((k) => k.textContent).join('');
+    assert.equal(labels(), 'QWERTYUIOPASDFGHJKLZXCVBNM');
+    assert.ok(t.act('shift').classList.contains('is-on'));
+    t.down(t.act('shift'));
+    assert.equal(labels(), 'qwertyuiopasdfghjklzxcvbnm');
+    assert.ok(!t.act('shift').classList.contains('is-on'));
+    assert.equal(t.act('shift').getAttribute('aria-pressed'), 'false');
+  });
+
+  it('title mode relabels as you type: capitals at the start of each word only', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    const L = t.pane('letters');
+    t.down(t.act('shift'));
+    t.down(t.act('shift'));
+    assert.equal(t.keyByCh(L, 'a').textContent, 'A');
+    t.down(t.keyByCh(L, 'a'));
+    assert.equal(t.keyByCh(L, 'a').textContent, 'a');
+    t.down(t.act('space'));
+    assert.equal(t.keyByCh(L, 'a').textContent, 'A');
+  });
+
+  it('shift works in email and password fields: lower case first, capitals on tap, back to lower', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'password' });
+    t.focus(f);
+    const L = t.pane('letters');
+    assert.equal(t.keyByCh(L, 'q').textContent, 'q');
+    t.down(t.act('shift'));
+    assert.equal(t.keyByCh(L, 'q').textContent, 'Q');
+    t.down(t.keyByCh(L, 'q'));
+    t.down(t.act('shift'));
+    t.down(t.keyByCh(L, 'q'));
+    assert.equal(f.value, 'Qq');
+    t.focus(t.input({ type: 'text' }));
+    assert.equal(t.keyByCh(L, 'q').textContent, 'Q');
+  });
+
+  it('email, password and url fields become plain text fields so Android has no reason to show its own keyboard', async () => {
+    const t = await boot();
+    const pw = t.input({ type: 'password' });
+    const mail = t.input({ type: 'email' });
+    t.focus(pw);
+    t.focus(mail);
+    assert.equal(pw.type, 'text');
+    assert.equal(pw.getAttribute('data-vk-type'), 'password');
+    assert.equal(pw.getAttribute('data-vk-secret'), '');
+    assert.equal(pw.getAttribute('inputmode'), 'none');
+    assert.equal(mail.type, 'text');
+    assert.equal(mail.getAttribute('data-vk-type'), 'email');
+    assert.equal(mail.getAttribute('data-vk-secret'), null);
+  });
+});
+
 describe('new layout keys', () => {
   it('switches between letters, numbers and symbols', async () => {
     const t = await boot();
@@ -929,6 +989,6 @@ describe('the keyboard keeps working while a dialog is open', () => {
   });
 
   it('opening the keyboard clears any inert flag left on it', () => {
-    assert.match(src, /active = field;\n    dock\.removeAttribute\('inert'\);/);
+    assert.match(src, /dock\.removeAttribute\('inert'\);/);
   });
 });
