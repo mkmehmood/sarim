@@ -17,31 +17,16 @@ export const SYMBOL_ROWS = Object.freeze(['1234567890', '@#$_&-+()/', '*"\':;!?~
 export const TOOLS = Object.freeze([
   Object.freeze({ act: 'paste', icon: 'clipboard', aria: 'Paste' }),
   Object.freeze({ act: 'selectall', icon: 'notes', aria: 'Select all' }),
-  Object.freeze({ act: 'code', icon: 'code', aria: 'Code', off: true }),
-  Object.freeze({ act: 'voice', icon: 'mic', aria: 'Voice typing', off: true }),
-  Object.freeze({ act: 'translate', icon: 'translate', aria: 'Translate', off: true }),
-  Object.freeze({ act: 'settings', icon: 'gear', aria: 'Keyboard settings', off: true }),
-  Object.freeze({ act: 'adjust', icon: 'sliders', aria: 'Adjust', off: true }),
 ]);
-export const PREF_KEY = 'sarimVirtualKeyboard';
 
-const NATIVE_TYPES = new Set(['email', 'password', 'url']);
 const NON_TEXT_TYPES = new Set(['hidden', 'checkbox', 'radio', 'file', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range', 'button', 'submit', 'reset', 'image']);
 const NUMPAD_TYPES = new Set(['number', 'tel']);
 const NUMPAD_MODES = new Set(['numeric', 'decimal', 'tel']);
 const ICONS = {
-  wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
   notes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
-  code: '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
-  mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/>',
-  translate: '<path d="m5 8 6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/>',
-  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
-  sliders: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
   shift: '<path d="m5 12 7-7 7 7M12 19V5"/>',
   backspace: '<path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m18 9-6 6M12 9l6 6"/>',
-  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-  smile: '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
   enter: '<path d="M20 4v7a4 4 0 0 1-4 4H4M9 10l-5 5 5 5"/>',
   keyboard: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/>',
   space: '<path d="M4 10v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/>',
@@ -55,12 +40,9 @@ export function layoutForField(el, inputmode) {
   const tag = String(el.tagName).toUpperCase();
   if (tag !== 'INPUT' && tag !== 'TEXTAREA') return null;
   if (el.disabled || el.readOnly) return null;
-  if (attr(el, 'data-keyboard') === 'native') return null;
-  if (attr(el, 'dir') === 'rtl' || attr(el, 'lang') === 'ur') return null;
   const type = tag === 'TEXTAREA' ? 'textarea' : (attr(el, 'type') || 'text');
-  if (NON_TEXT_TYPES.has(type) || NATIVE_TYPES.has(type)) return null;
+  if (NON_TEXT_TYPES.has(type)) return null;
   const mode = String(inputmode != null ? inputmode : attr(el, 'inputmode')).toLowerCase();
-  if (mode === 'email' || mode === 'url') return null;
   if (NUMPAD_TYPES.has(type) || NUMPAD_MODES.has(mode) || attr(el, 'data-layout') === 'numpad') return 'numpad';
   return 'qwerty';
 }
@@ -131,15 +113,12 @@ const padKey = (k) => {
 };
 
 export function dockHtml() {
-  const tools = `<div class="vk-tools">${actKey('tools', icon('wrench'), 'Tools', 'vk-toolbtn is-on')}<div class="vk-pill">`
-    + `${TOOLS.map((t) => actKey(t.act, icon(t.icon), t.aria, `vk-tool${t.off ? ' is-off' : ''}`, t.off ? 'aria-disabled="true"' : '')).join('')}</div></div>`;
+  const tools = `<div class="vk-tools">${TOOLS.map((t) => actKey(t.act, icon(t.icon), t.aria, 'vk-tool')).join('')}</div>`;
   const bottom = [
-    actKey('pad', icon('digits'), 'Numbers', 'vk-fn vk-w12'),
-    actKey('system', icon('globe'), 'System keyboard', 'vk-fn vk-w12'),
-    charKey(',', 'vk-fn vk-w09'),
+    actKey('pad', icon('digits'), 'Numbers', 'vk-fn vk-w15'),
+    charKey(',', 'vk-fn vk-w10'),
     spaceKey('vk-w40'),
-    actKey('emoji', icon('smile'), 'Emoji', 'vk-fn vk-w10'),
-    charKey('.', 'vk-fn vk-w09'),
+    charKey('.', 'vk-fn vk-w10'),
     enterKey('vk-w15'),
   ].join('');
   const letters = QWERTY_ROWS.map((r, i) => {
@@ -163,14 +142,6 @@ export function isAndroidApp() {
   return !!(c && typeof c.isNativePlatform === 'function' && c.isNativePlatform() && typeof c.getPlatform === 'function' && c.getPlatform() === 'android');
 }
 
-export function isEnabled() {
-  try { return localStorage.getItem(PREF_KEY) !== 'off'; } catch (_) { return true; }
-}
-
-export function pickLabel(on) {
-  return on ? 'Virtual Keyboard: On' : 'Virtual Keyboard: Off';
-}
-
 let dock = null;
 let active = null;
 let shift = false;
@@ -192,7 +163,7 @@ function restoreNative(el) {
 }
 
 function fieldLayout(el) {
-  if (!dock || !isEnabled()) return null;
+  if (!dock) return null;
   return layoutForField(el, modes.has(el) ? modes.get(el) || '' : undefined);
 }
 
@@ -308,15 +279,6 @@ function enter() {
   if (typeof el.blur === 'function') el.blur();
 }
 
-function useSystemKeyboard() {
-  const el = active;
-  if (!el) return;
-  tapFeedback();
-  el.setAttribute('data-keyboard', 'native');
-  hideKeyboard();
-  setTimeout(() => { if (el.isConnected) { try { el.blur(); el.focus(); } catch (_) {} } }, 60);
-}
-
 async function pasteClipboard() {
   if (!active || !active.isConnected) return;
   try {
@@ -339,19 +301,10 @@ function showPage(name) {
   revealActive();
 }
 
-function toggleTools(btn) {
-  tapFeedback();
-  const pill = dock.querySelector('.vk-pill');
-  pill.hidden = !pill.hidden;
-  btn.classList.toggle('is-on', !pill.hidden);
-  updateHeight();
-}
-
 function onKeyDown(e) {
   const btn = e.target.closest && e.target.closest('.vk-key');
   if (!btn || !dock.contains(btn)) return;
   e.preventDefault();
-  if (btn.getAttribute('aria-disabled') === 'true') return;
   const act = btn.dataset.act;
   if (act === 'shift') { tapFeedback(); setShift(!shift); return; }
   if (act === 'back') {
@@ -362,10 +315,8 @@ function onKeyDown(e) {
   }
   if (act === 'enter') { enter(); return; }
   if (PAGES[act]) { showPage(act); return; }
-  if (act === 'system' || act === 'emoji') { useSystemKeyboard(); return; }
   if (act === 'paste') { tapFeedback(); pasteClipboard(); return; }
   if (act === 'selectall') { tapFeedback(); selectAll(); return; }
-  if (act === 'tools') { toggleTools(btn); return; }
   press(btn.dataset.key);
 }
 
@@ -391,28 +342,9 @@ export function installVirtualKeyboard({ force = false } = {}) {
   return dock;
 }
 
-export async function syncKeyboardButton() {
-  const btn = document.getElementById('vk-toggle-btn');
-  if (!btn) return;
-  const show = !!dock;
-  btn.classList.toggle('d-none', !show);
-  const label = document.getElementById('vk-toggle-label');
-  if (label && show) label.textContent = pickLabel(isEnabled());
-}
-
-export function toggleVirtualKeyboard() {
-  if (!dock) return;
-  const next = !isEnabled();
-  try { localStorage.setItem(PREF_KEY, next ? 'on' : 'off'); } catch (_) {}
-  if (!next) hideKeyboard();
-  syncKeyboardButton();
-}
-
 if (typeof window !== 'undefined') {
-  window.toggleVirtualKeyboard = toggleVirtualKeyboard;
-  window.syncKeyboardButton = syncKeyboardButton;
   if (typeof document !== 'undefined') {
-    const start = () => { installVirtualKeyboard(); syncKeyboardButton(); };
+    const start = () => { installVirtualKeyboard(); };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
   }
 }

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  QWERTY_ROWS, NUMPAD_OPS, NUMPAD_ROWS, NUMPAD_SIDE, NUMPAD_BOTTOM, SYMBOL_ROWS, TOOLS, layoutForField, keyText, insertManual, backspaceManual, dockHtml, pickLabel,
+  QWERTY_ROWS, NUMPAD_OPS, NUMPAD_ROWS, NUMPAD_SIDE, NUMPAD_BOTTOM, SYMBOL_ROWS, TOOLS, layoutForField, keyText, insertManual, backspaceManual, dockHtml,
 } from '../modules/virtual-keyboard.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -26,13 +26,14 @@ describe('layoutForField', () => {
     assert.equal(layoutForField(el('INPUT', { type: 'search' })), 'qwerty');
     assert.equal(layoutForField(el('TEXTAREA', {})), 'qwerty');
   });
-  it('leaves fields this layout cannot type into to the phone keyboard', () => {
-    for (const type of ['email', 'password', 'url', 'date', 'file', 'checkbox', 'hidden']) {
-      assert.equal(layoutForField(el('INPUT', { type })), null, type);
-    }
-    assert.equal(layoutForField(el('INPUT', { type: 'text', inputmode: 'email' })), null);
-    assert.equal(layoutForField(el('INPUT', { type: 'text', 'data-keyboard': 'native' })), null);
-    assert.equal(layoutForField(el('INPUT', { type: 'text', dir: 'rtl' })), null);
+  it('uses the app keyboard for email, password, web address and right-to-left fields too', () => {
+    for (const type of ['email', 'password', 'url']) assert.equal(layoutForField(el('INPUT', { type })), 'qwerty', type);
+    assert.equal(layoutForField(el('INPUT', { type: 'text', inputmode: 'email' })), 'qwerty');
+    assert.equal(layoutForField(el('INPUT', { type: 'text', 'data-keyboard': 'native' })), 'qwerty');
+    assert.equal(layoutForField(el('INPUT', { type: 'text', dir: 'rtl' })), 'qwerty');
+  });
+  it('ignores controls that are not typed into, and disabled or read-only fields', () => {
+    for (const type of ['date', 'file', 'checkbox', 'hidden']) assert.equal(layoutForField(el('INPUT', { type })), null, type);
     assert.equal(layoutForField(el('INPUT', { type: 'text' }, { readOnly: true })), null);
     assert.equal(layoutForField(el('INPUT', { type: 'text' }, { disabled: true })), null);
     assert.equal(layoutForField(el('SELECT', {})), null);
@@ -92,14 +93,14 @@ describe('layout matches the design exactly, nothing added or removed', () => {
     assert.deepEqual([...NUMPAD_SIDE], ['%', 'space', 'back']);
     assert.deepEqual([...NUMPAD_BOTTOM], ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
   });
-  it('has a symbols page and seven tools', () => {
+  it('has a symbols page and two tools', () => {
     assert.equal(SYMBOL_ROWS.length, 3);
-    assert.equal(TOOLS.length, 7);
+    assert.equal(TOOLS.length, 2);
   });
-  it('letters page: tools row, 10/9/7 letters with shift and backspace, then 123, globe, comma, English space, emoji, period, enter', () => {
+  it('letters page: tools row, 10/9/7 letters with shift and backspace, then 123, comma, English space, period, enter', () => {
     const qwerty = html.slice(html.indexOf('id="vk-qwerty"'), html.indexOf('id="vk-numpad"'));
     assert.deepEqual([...qwerty.matchAll(/data-act="([a-z]+)"/g)].map((m) => m[1]),
-      ['tools', 'paste', 'selectall', 'code', 'voice', 'translate', 'settings', 'adjust', 'shift', 'back', 'pad', 'system', 'emoji', 'enter']);
+      ['paste', 'selectall', 'shift', 'back', 'pad', 'enter']);
     assert.equal((qwerty.match(/class="vk-key"/g) || []).length, 26);
     assert.match(qwerty, /vk-space vk-w40" data-key=" " aria-label="Space">English</);
     assert.match(qwerty, /vk-row vk-row-bottom/);
@@ -138,8 +139,7 @@ describe('styling uses the app theme', () => {
     assert.match(css, /\.vk-w40 \{ flex-grow: 4; \}/);
     assert.match(css, /\.vk-digits \{ flex: 4\.65 1 0;/);
     assert.match(css, /\.vk-numpad \{[^}]*max-width: 480px;/);
-    assert.match(css, /\.vk-pill\[hidden\]/);
-  });
+      });
   it('sits above sheets and dialogs and makes room for itself', () => {
     assert.match(css, /\.vk-dock \{[^}]*z-index: 10350;/);
     assert.match(css, /html\.vk-open body \{ padding-bottom: var\(--vk-height, 0px\); \}/);
@@ -151,7 +151,7 @@ describe('behaviour wiring', () => {
   const src = read('../modules/virtual-keyboard.js');
   it('keeps focus in the field while keys are pressed', () => {
     assert.match(src, /dock\.addEventListener\('pointerdown', onKeyDown\)/);
-    assert.match(src, /e\.preventDefault\(\);\n\s*if \(btn\.getAttribute\('aria-disabled'\) === 'true'\) return;\n\s*const act = btn\.dataset\.act;\n\s*if \(act === 'shift'\)/);
+    assert.match(src, /e\.preventDefault\(\);\n\s*const act = btn\.dataset\.act;\n\s*if \(act === 'shift'\)/);
   });
   it('stops the phone keyboard by overriding inputmode and restores it afterwards', () => {
     assert.match(src, /el\.setAttribute\('inputmode', 'none'\)/);
@@ -161,13 +161,10 @@ describe('behaviour wiring', () => {
     assert.match(src, /execCommand\(name, false, arg\)/);
     assert.match(src, /runCommand\(el, 'insertText', text\)/);
   });
-  it('only installs inside the Android app, behind a Settings switch', () => {
+  it('only installs inside the Android app, with no switch to turn it off', () => {
     assert.match(src, /if \(!force && !isAndroidApp\(\)\) return null;/);
-    assert.match(src, /localStorage\.getItem\(PREF_KEY\) !== 'off'/);
-    assert.equal(pickLabel(true), 'Virtual Keyboard: On');
-    assert.equal(pickLabel(false), 'Virtual Keyboard: Off');
-    assert.ok(read('../index.html').includes('id="vk-toggle-btn"'));
-    assert.match(read('../modules/settings-screen.js'), /syncKeyboardButton\(\)/);
+    assert.doesNotMatch(src, /localStorage|isEnabled|toggleVirtualKeyboard|syncKeyboardButton/);
+    assert.ok(!read('../index.html').includes('vk-toggle-btn'));
     assert.ok(read('../sw.js').includes("'./modules/virtual-keyboard.js'"));
     assert.ok(read('../modules/main.js').includes("import './virtual-keyboard.js';"));
   });
@@ -184,36 +181,16 @@ describe('new keys', () => {
     assert.match(src, /new KeyboardEvent\('keydown', init\)/);
     assert.match(src, /form\.requestSubmit\(\)/);
   });
-  it('globe and emoji hand the field to the phone keyboard', () => {
-    assert.match(src, /el\.setAttribute\('data-keyboard', 'native'\);\n  hideKeyboard\(\);/);
-    assert.equal(layoutForField(el('INPUT', { 'data-keyboard': 'native', type: 'text' })), null);
-  });
-  it('tools: paste and select all work, the others are disabled', () => {
+  it('tools: only paste and select all, both working, nothing disabled', () => {
     assert.match(src, /navigator\.clipboard\.readText\(\)/);
-    assert.deepEqual(TOOLS.filter((t) => !t.off).map((t) => t.act), ['paste', 'selectall']);
-    assert.equal(dockHtml().match(/aria-disabled="true"/g).length, 5);
+    assert.deepEqual(TOOLS.map((t) => t.act), ['paste', 'selectall']);
+    assert.doesNotMatch(dockHtml(), /aria-disabled|data-act="(system|emoji|tools|voice|code|translate|settings|adjust)"/);
   });
 });
 
-describe('fields that need digits or symbols keep the phone keyboard', () => {
+describe('every text field uses the app keyboard', () => {
   const html = read('../index.html');
-  const ids = ['edit-cust-address', 'rep-edit-cust-address', 'entityWallet', 'dl-ref', 'stock-transfer-note', 'payment-transfer-note', 'dl-note', 'quickExpenseDescription', 'expenseDescription', 'approvals-search', 'acct-new-email', 'acct-new-password'];
-  it('marks address, account, reference, note and amount-search fields as native', () => {
-    for (const id of ids.slice(0, 10)) {
-      const tag = html.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))[0];
-      assert.match(tag, /data-keyboard="native"/, id);
-    }
-  });
-  it('already leaves email and password fields native by type', () => {
-    for (const id of ids.slice(10)) {
-      const tag = html.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))[0];
-      assert.equal(layoutForField(el('INPUT', { type: (tag.match(/type="([a-z]+)"/) || [])[1] })), null, id);
-    }
-  });
-  it('keeps names, materials and customer searches on the letters keyboard', () => {
-    for (const id of ['entityName', 'edit-cust-name', 'rep-cust-name', 'cust-name', 'factoryMaterialName', 'acct-new-name']) {
-      const tag = html.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))[0];
-      assert.doesNotMatch(tag, /data-keyboard/, id);
-    }
+  it('no field is routed to the phone keyboard', () => {
+    assert.doesNotMatch(html, /data-keyboard=/);
   });
 });
