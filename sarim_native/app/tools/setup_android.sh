@@ -6,6 +6,8 @@ node tools/gen_config.mjs
 if [ ! -d android ]; then
   flutter create --org com.gullzubair --project-name sarim_native --platforms android --no-pub .
 fi
+# flutter create adds a template test that references a MyApp class we do not have
+rm -f test/widget_test.dart
 RES=android/app/src/main/res
 SRC=../../android/app/src/main/res
 for d in "$SRC"/mipmap-*; do cp -r "$d" "$RES/"; done
