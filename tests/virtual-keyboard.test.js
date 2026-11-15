@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  QWERTY_ROWS, NUMPAD_ROWS, NUMPAD_BOTTOM, layoutForField, keyText, insertManual, backspaceManual, dockHtml, pickLabel,
+  QWERTY_ROWS, NUMPAD_OPS, NUMPAD_ROWS, NUMPAD_SIDE, NUMPAD_BOTTOM, SYMBOL_ROWS, TOOLS, layoutForField, keyText, insertManual, backspaceManual, dockHtml, pickLabel,
 } from '../modules/virtual-keyboard.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -82,52 +82,63 @@ describe('typing helpers', () => {
 
 describe('layout matches the design exactly, nothing added or removed', () => {
   const html = dockHtml();
-  const keys = (re) => [...html.matchAll(re)];
+  const count = (re) => [...html.matchAll(re)].length;
   it('has the letter rows from the screenshot', () => {
     assert.deepEqual(QWERTY_ROWS.map(r => r.join('')), ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']);
   });
-  it('has the numpad from the screenshot: 1-9 then 00, 0, ., backspace', () => {
+  it('has the numpad from the screenshot: operators on the left, 1-9, % space backspace on the right, bottom row', () => {
+    assert.deepEqual([...NUMPAD_OPS], ['+', '-', '\u00d7', '\u00f7']);
     assert.deepEqual(NUMPAD_ROWS.map(r => r.join('')), ['123', '456', '789']);
-    assert.deepEqual([...NUMPAD_BOTTOM], ['00', '0', '.']);
+    assert.deepEqual([...NUMPAD_SIDE], ['%', 'space', 'back']);
+    assert.deepEqual([...NUMPAD_BOTTOM], ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
   });
-  it('contains exactly 26 letters + shift, space, period, backspace, and 9 digits + 00, 0, period, backspace', () => {
-    assert.equal(keys(/<button /g).length, 26 + 4 + 9 + 4);
-    assert.equal(keys(/class="vk-key vk-shift"/g).length, 1);
-    assert.equal(keys(/class="vk-key vk-space"/g).length, 1);
-    assert.equal(keys(/class="vk-key vk-period"/g).length, 1);
-    assert.equal(keys(/vk-key vk-back /g).length, 2);
-    assert.equal(keys(/vk-double/g).length, 1);
+  it('has a symbols page and seven tools', () => {
+    assert.equal(SYMBOL_ROWS.length, 3);
+    assert.equal(TOOLS.length, 7);
   });
-  it('has no keys beyond the design: no enter, comma, symbols, language or mode switch', () => {
-    const labels = keys(/>([^<]+)<\/button>/g).map(m => m[1]);
-    for (const bad of ['Enter', ',', '@', '123', 'ABC', '?', '!', '-', '/']) assert.equal(labels.includes(bad), false, bad);
+  it('letters page: tools row, 10/9/7 letters with shift and backspace, then 123, globe, comma, English space, emoji, period, enter', () => {
+    const qwerty = html.slice(html.indexOf('id="vk-qwerty"'), html.indexOf('id="vk-numpad"'));
+    assert.deepEqual([...qwerty.matchAll(/data-act="([a-z]+)"/g)].map((m) => m[1]),
+      ['tools', 'paste', 'selectall', 'code', 'voice', 'translate', 'settings', 'adjust', 'shift', 'back', 'pad', 'system', 'emoji', 'enter']);
+    assert.equal((qwerty.match(/class="vk-key"/g) || []).length, 26);
+    assert.match(qwerty, /vk-space vk-w40" data-key=" " aria-label="Space">English</);
+    assert.match(qwerty, /vk-row vk-row-bottom/);
   });
-  it('keeps the green dot and the hidden SHIFT badge in the header', () => {
-    assert.match(html, /<span class="vk-dot"><\/span><span id="vk-shift-badge" class="vk-shift-badge" hidden>SHIFT<\/span>/);
-  });
-  it('puts the numpad in a separate, initially hidden layout', () => {
+  it('numpad page is separate and initially hidden, with the tall operator and side columns', () => {
     assert.match(html, /id="vk-numpad" class="vk-numpad" hidden/);
-    assert.match(html, /<button type="button" class="vk-key vk-space" data-key=" "><svg/);
+    assert.match(html, /class="vk-col vk-ops"/);
+    assert.match(html, /class="vk-col vk-digits"/);
+    assert.match(html, /class="vk-col vk-side"/);
+    assert.match(html, /data-act="symbols"[^>]*>!\?#</);
+    assert.equal(count(/vk-w14/g) >= 1, true);
+  });
+  it('symbols page is separate and initially hidden', () => {
+    assert.match(html, /id="vk-symbols" class="vk-symbols" hidden/);
+  });
+  it('shift and enter are accent coloured, the status dot and SHIFT badge are gone', () => {
+    assert.match(html, /vk-key vk-shift" data-act="shift"/);
+    assert.equal(count(/vk-enter/g) >= 3, true);
+    assert.equal(/vk-dot|vk-shift-badge|vk-head/.test(html), false);
   });
 });
 
 describe('styling uses the app theme', () => {
   const css = read('../app.css');
   it('uses app tokens for surfaces, borders, text, accents and danger', () => {
-    const block = css.slice(css.indexOf('.vk-dock {'), css.indexOf('@keyframes vkPulse'));
-    for (const t of ['var(--bg)', 'var(--glass-border-strong)', 'var(--text-main)', 'var(--accent-indigo)', 'var(--danger)', 'var(--warning)', 'var(--accent-emerald)', 'var(--font-ui)']) {
+    const block = css.slice(css.indexOf('.vk-dock {'), css.indexOf('html.vk-open body'));
+    for (const t of ['var(--bg)', 'var(--glass-border-strong)', 'var(--text-main)', 'var(--accent-indigo)', 'var(--danger)', 'var(--font-ui)']) {
       assert.ok(block.includes(t), t);
     }
     assert.equal(/#[0-9a-fA-F]{3,6}\b/.test(block), false);
   });
-  it('uses the design sizes: 44/48 letter keys, 48/56 number keys, indented rows', () => {
-    assert.match(css, /\.vk-key \{[^}]*height: 44px;[^}]*border-radius: 8px;/);
-    assert.match(css, /\.vk-num \{ height: 48px; border-radius: 12px;/);
-    assert.match(css, /\.vk-row-2 \{ padding: 0 12px; \}/);
-    assert.match(css, /\.vk-row-3 \{ padding: 0 24px; \}/);
-    assert.match(css, /\.vk-shift \{ flex: 0 0 64px;/);
-    assert.match(css, /\.vk-period \{ flex: 0 0 56px;/);
-    assert.match(css, /\.vk-numpad \{[^}]*max-width: 384px;/);
+  it('uses the design sizes: rounded 46px keys, indented rows, wide shift/enter/space, tall numpad', () => {
+    assert.match(css, /\.vk-key \{[^}]*height: 46px;[^}]*border-radius: 12px;/);
+    assert.match(css, /\.vk-row-2 \{ padding: 0 5%; \}/);
+    assert.match(css, /\.vk-shift \{ flex: 1\.5 1 0;/);
+    assert.match(css, /\.vk-w40 \{ flex-grow: 4; \}/);
+    assert.match(css, /\.vk-digits \{ flex: 4\.65 1 0;/);
+    assert.match(css, /\.vk-numpad \{[^}]*max-width: 480px;/);
+    assert.match(css, /\.vk-pill\[hidden\]/);
   });
   it('sits above sheets and dialogs and makes room for itself', () => {
     assert.match(css, /\.vk-dock \{[^}]*z-index: 10350;/);
@@ -140,7 +151,7 @@ describe('behaviour wiring', () => {
   const src = read('../modules/virtual-keyboard.js');
   it('keeps focus in the field while keys are pressed', () => {
     assert.match(src, /dock\.addEventListener\('pointerdown', onKeyDown\)/);
-    assert.match(src, /e\.preventDefault\(\);\n\s*if \(btn\.dataset\.act === 'shift'\)/);
+    assert.match(src, /e\.preventDefault\(\);\n\s*if \(btn\.getAttribute\('aria-disabled'\) === 'true'\) return;\n\s*const act = btn\.dataset\.act;\n\s*if \(act === 'shift'\)/);
   });
   it('stops the phone keyboard by overriding inputmode and restores it afterwards', () => {
     assert.match(src, /el\.setAttribute\('inputmode', 'none'\)/);
@@ -159,6 +170,28 @@ describe('behaviour wiring', () => {
     assert.match(read('../modules/settings-screen.js'), /syncKeyboardButton\(\)/);
     assert.ok(read('../sw.js').includes("'./modules/virtual-keyboard.js'"));
     assert.ok(read('../modules/main.js').includes("import './virtual-keyboard.js';"));
+  });
+});
+
+describe('new keys', () => {
+  const src = read('../modules/virtual-keyboard.js');
+  it('switches between letters, numbers and symbols pages', () => {
+    assert.match(src, /const PAGES = \{ letters: 'qwerty', pad: 'numpad', symbols: 'symbols' \};/);
+    assert.match(src, /if \(PAGES\[act\]\) \{ showPage\(act\); return; \}/);
+  });
+  it('enter adds a line in a text area, otherwise sends Enter and submits the form if nothing handled it', () => {
+    assert.match(src, /typeInto\(active, '\\n'\)/);
+    assert.match(src, /new KeyboardEvent\('keydown', init\)/);
+    assert.match(src, /form\.requestSubmit\(\)/);
+  });
+  it('globe and emoji hand the field to the phone keyboard', () => {
+    assert.match(src, /el\.setAttribute\('data-keyboard', 'native'\);\n  hideKeyboard\(\);/);
+    assert.equal(layoutForField(el('INPUT', { 'data-keyboard': 'native', type: 'text' })), null);
+  });
+  it('tools: paste and select all work, the others are disabled', () => {
+    assert.match(src, /navigator\.clipboard\.readText\(\)/);
+    assert.deepEqual(TOOLS.filter((t) => !t.off).map((t) => t.act), ['paste', 'selectall']);
+    assert.equal(dockHtml().match(/aria-disabled="true"/g).length, 5);
   });
 });
 
