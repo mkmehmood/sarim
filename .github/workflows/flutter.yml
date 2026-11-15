@@ -21,6 +21,8 @@ jobs:
       - run: bash flutter_app/tools/setup_android.sh
       - run: flutter pub get
         working-directory: flutter_app
+      - run: bash tools/patch_plugins.sh
+        working-directory: flutter_app
       - run: flutter analyze --no-fatal-infos
         working-directory: flutter_app
       - run: flutter build apk --release

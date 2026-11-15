@@ -23,7 +23,7 @@ npm ci
 node flutter_app/tools/sync_web.mjs --build   # build web app -> assets/www + pubspec asset list
 node flutter_app/tools/verify_parity.mjs      # completeness check (must pass)
 bash flutter_app/tools/setup_android.sh       # flutter create + manifest/Kotlin overrides
-cd flutter_app && flutter pub get && flutter build apk --release
+cd flutter_app && flutter pub get && bash tools/patch_plugins.sh && flutter build apk --release
 ```
 CI does the same in `.github/workflows/flutter.yml`.
 
