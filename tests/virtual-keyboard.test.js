@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readSource } from './_extract.js';
-import { FIELD_SELECTOR, LETTER_ROWS, PAD_KEYS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard, typesLowerCase, wantsCapital } from '../modules/virtual-keyboard.js';
+import { FIELD_SELECTOR, LETTER_ROWS, PAD_BOTTOM, PAD_DIGITS, PAD_OPS, PAD_SIDE, SYMBOL_ROWS, TOOLS, applyFieldPolicy, casedKey, deleteBack, insertAt, isTextField, layoutFor, sanitizeNumber, usesSystemKeyboard, typesLowerCase, wantsCapital } from '../modules/virtual-keyboard.js';
 
 const field = (attrs = {}, extra = {}) => {
   const map = new Map(Object.entries(attrs));
@@ -15,6 +15,7 @@ const field = (attrs = {}, extra = {}) => {
       map.set(k, String(v));
       if (k === 'type') f.type = String(v);
     },
+    removeAttribute: (k) => { map.delete(k); },
     closest: () => null,
     ...extra
   };
@@ -144,8 +145,13 @@ describe('number filtering', () => {
 
 describe('typing rules', () => {
   it('has exactly the rows from the uploaded layouts', () => {
-    assert.deepEqual(LETTER_ROWS, ['qwertyu', 'iopasdf', 'ghjklzx', 'cvbnm']);
-    assert.deepEqual(PAD_KEYS, ['1', '2', '3', '-', '4', '5', '6', '.', '7', '8', '9']);
+    assert.deepEqual(LETTER_ROWS, ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']);
+    assert.deepEqual(PAD_OPS, ['+', '-', '×', '÷']);
+    assert.deepEqual(PAD_DIGITS, [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']]);
+    assert.deepEqual(PAD_SIDE, ['%', 'space', 'back']);
+    assert.deepEqual(PAD_BOTTOM, ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
+    assert.equal(SYMBOL_ROWS.length, 3);
+    assert.equal(TOOLS.length, 7);
   });
   it('capitalises at the start of a field and after a space', () => {
     assert.equal(wantsCapital('', 0), true);
@@ -327,42 +333,58 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(all.every((k) => k.getAttribute('data-feedback') === 'manual'));
   });
 
-  it('letters layout matches the reference: 7 per row, 5 on the last, then dot, space and DEL', async () => {
+  it('letters layout matches the reference: tools row, QWERTY 10/9/7, shift and backspace, then the bottom row', async () => {
     const t = await boot();
-    const rows = rowsOf(t.pane('letters'));
-    assert.equal(t.pane('letters').children.length, 5);
-    assert.deepEqual(rows.slice(0, 4).map(keysOf), [[...'qwertyu'], [...'iopasdf'], [...'ghjklzx'], [...'cvbnm']]);
-    assert.deepEqual(keysOf(rows[4]), ['.', ' ', 'back']);
-    assert.equal(t.pane('letters').querySelectorAll('.vk-key').length, 29);
-    assert.deepEqual(t.pane('letters').querySelectorAll('[data-vk-letter]').map((k) => k.textContent).join(''), 'QWERTYUIOPASDFGHJKLZXCVBNM');
-    assert.equal(t.act('space').textContent, 'space');
-    assert.equal(t.act('back').textContent, 'DEL');
+    const L = t.pane('letters');
+    const rows = rowsOf(L);
+    assert.equal(rows.length, 4);
+    assert.deepEqual(rows[0].children.map((k) => k.getAttribute('data-vk-ch')), [...'qwertyuiop']);
+    assert.deepEqual(rows[1].children.map((k) => k.getAttribute('data-vk-ch')), [...'asdfghjkl']);
+    assert.ok(rows[1].classList.contains('is-home'));
+    assert.deepEqual(keysOf(rows[2]), ['shift', ...'zxcvbnm', 'back']);
+    assert.deepEqual(keysOf(rows[3]), ['pad', 'system', ',', ' ', 'emoji', '.', 'enter']);
+    assert.deepEqual(L.querySelectorAll('[data-vk-letter]').map((k) => k.textContent).join(''), 'QWERTYUIOPASDFGHJKLZXCVBNM');
+    assert.equal(t.act('space').textContent, 'English');
+    assert.ok(t.act('shift').classList.contains('is-accent'));
+    assert.ok(t.act('enter').classList.contains('is-accent'));
   });
 
-  it('numpad layout matches the reference: 1 2 3 -, 4 5 6 ., 7 8 9 with a tall DEL, then 00 and a wide 0', async () => {
+  it('has the tools button and the pill of seven tools above the letters', async () => {
+    const t = await boot();
+    const bar = t.pane('letters').querySelector('.vk-tools');
+    assert.ok(bar);
+    assert.equal(bar.children[0].getAttribute('data-vk-act'), 'tools');
+    const pill = bar.querySelector('.vk-tools-pill');
+    assert.deepEqual(pill.children.map((k) => k.getAttribute('data-vk-act')), ['paste', 'selectall', 'code', 'voice', 'translate', 'settings', 'adjust']);
+    assert.equal(pill.querySelectorAll('[aria-disabled="true"]').length, 5);
+  });
+
+  it('numpad layout matches the reference: + - x / on the left, 1-9, % space and backspace on the right, then the bottom row', async () => {
     const t = await boot();
     const pad = t.pane('pad');
-    assert.deepEqual(pad.children.map((k) => k.getAttribute('data-vk-ch') ?? k.getAttribute('data-vk-act')), ['1', '2', '3', '-', '4', '5', '6', '.', '7', '8', '9', 'back', '00', '0']);
-    assert.equal(pad.querySelectorAll('.vk-key').length, 14);
-    assert.ok(pad.querySelector('.is-double'));
-    assert.ok(pad.querySelector('.is-tall'));
-    assert.ok(pad.querySelector('.is-zero'));
-    assert.equal(t.act('back', pad).textContent, 'DEL');
+    const col = (cls) => pad.querySelector(`.${cls}`);
+    assert.deepEqual(col('is-ops').children.map((k) => k.getAttribute('data-vk-ch')), ['+', '-', '×', '÷']);
+    assert.equal(col('is-ops').children[1].textContent, '\u2212');
+    assert.deepEqual(col('is-digits').children.map(keysOf), [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']]);
+    assert.deepEqual(col('is-side').children.map((k) => k.getAttribute('data-vk-ch') ?? k.getAttribute('data-vk-act')), ['%', ' ', 'back']);
+    const bottom = pad.children.find((c) => c.classList.contains('is-bottom'));
+    assert.deepEqual(keysOf(bottom), ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
+    assert.equal(bottom.children[1].textContent, '!?#');
+    assert.ok(bottom.children[6].classList.contains('is-accent'));
   });
 
-  it('has no shift key, status dot or badge', async () => {
+  it('has a symbols page with the digits row, symbols, ABC and 123', async () => {
     const t = await boot();
-    assert.equal(t.dock.querySelector('.vk-head'), null);
-    assert.equal(t.dock.querySelector('[data-vk-act="shift"]'), null);
-    assert.equal(t.dock.querySelector('.vk-shift-badge'), null);
+    const S = t.pane('symbols');
+    const rows = rowsOf(S);
+    assert.equal(rows.length, 4);
+    assert.deepEqual(rows[0].children.map((k) => k.getAttribute('data-vk-ch')), [...'1234567890']);
+    assert.deepEqual(keysOf(rows[3]), ['letters', 'pad', ',', ' ', '.', 'back', 'enter']);
   });
 
-  it('has no enter, hide, symbols, comma, plus or label keys', async () => {
+  it('every key is a themed button with manual feedback', async () => {
     const t = await boot();
-    const all = t.dock.querySelectorAll('.vk-key').map((k) => k.getAttribute('data-vk-act') ?? k.getAttribute('data-vk-ch'));
-    for (const banned of ['enter', 'hide', 'symbols', 'letters', ',', '+']) assert.ok(!all.includes(banned), banned);
-    assert.equal(t.dock.querySelector('.vk-label'), null);
-    assert.equal(t.dock.querySelector('.vk-bar'), null);
+    assert.ok(t.dock.querySelectorAll('.vk-key').every((k) => k.getAttribute('data-feedback') === 'manual'));
   });
 
   it('opens the letters keyboard for a text field and the numpad for number and phone fields', async () => {
@@ -421,13 +443,11 @@ describe('virtual keyboard in the Android app', () => {
   });
 
   const holdDot = (t) => {
-    t.down(t.keyByCh(t.pane('letters'), '.'));
-    const timer = t.timers.filter((x) => x.kind === 'timeout' && String(x.fn).includes('cycleCase')).pop();
-    timer.fn();
+    t.down(t.act('shift'));
     t.docListeners.pointerup.forEach((fn) => fn({}));
   };
 
-  it('holding the dot key cycles CAPS, small, Capitalised without typing a dot', async () => {
+  it('tapping shift cycles CAPS, small, Capitalised without typing anything', async () => {
     const t = await boot();
     const f = t.input({ type: 'text' });
     t.focus(f);
@@ -685,6 +705,98 @@ describe('virtual keyboard in the Android app', () => {
   });
 });
 
+describe('new layout keys', () => {
+  it('switches between letters, numbers and symbols', async () => {
+    const t = await boot();
+    t.focus(t.input({ type: 'text' }));
+    t.down(t.act('pad'));
+    assert.ok(!t.pane('pad').classList.contains('d-none'));
+    assert.ok(t.pane('letters').classList.contains('d-none'));
+    t.down(t.act('symbols'));
+    assert.ok(!t.pane('symbols').classList.contains('d-none'));
+    assert.ok(t.pane('pad').classList.contains('d-none'));
+    t.down(t.act('letters'));
+    assert.ok(!t.pane('letters').classList.contains('d-none'));
+  });
+
+  it('types operators, comma and symbols', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    t.down(t.act('pad'));
+    for (const c of ['+', '×', '÷', '%', '=']) t.down(t.keyByCh(t.pane('pad'), c));
+    t.down(t.keyByCh(t.pane('letters'), ','));
+    assert.equal(f.value, '+×÷%=,');
+  });
+
+  it('enter adds a new line in a text area', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' }, { tagName: 'TEXTAREA' });
+    t.focus(f);
+    t.down(t.act('enter'));
+    assert.deepEqual(t.calls.exec, [['insertText', '\n']]);
+  });
+
+  it('enter sends an Enter key to a one-line field, and submits its form when nothing handled it', async () => {
+    const t = await boot();
+    let submitted = 0;
+    const f = t.input({ type: 'text' }, { form: { requestSubmit() { submitted += 1; } } });
+    t.focus(f);
+    t.down(t.act('enter'));
+    assert.equal(f.events[0].type, 'keydown');
+    assert.equal(f.events[0].key, 'Enter');
+    assert.equal(submitted, 1);
+    const g = t.input({ type: 'text' }, { dispatchEvent(e) { e.preventDefault(); return false; }, form: { requestSubmit() { submitted += 1; } } });
+    t.focus(g);
+    t.down(t.act('enter'));
+    assert.equal(submitted, 1);
+    const h = t.input({ type: 'text' });
+    t.focus(h);
+    t.down(t.act('enter'));
+    assert.ok(t.isHidden());
+  });
+
+  it('the globe and emoji keys hand the field to the system keyboard', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    t.down(t.act('system'));
+    assert.equal(f.getAttribute('data-vk'), 'off');
+    assert.equal(f.getAttribute('inputmode'), null);
+    assert.ok(t.isHidden());
+    assert.equal(isTextField(f), false);
+    const g = t.input({ type: 'text' });
+    t.focus(g);
+    t.down(t.act('emoji'));
+    assert.equal(g.getAttribute('data-vk'), 'off');
+  });
+
+  it('the tools button shows and hides the tools pill; unavailable tools do nothing', async () => {
+    const t = await boot();
+    const f = t.input({ type: 'text' }, { value: 'x' });
+    t.focus(f);
+    const pill = t.dock.querySelector('.vk-tools-pill');
+    t.down(t.act('tools'));
+    assert.ok(pill.classList.contains('d-none'));
+    assert.ok(!t.act('tools').classList.contains('is-on'));
+    t.down(t.act('tools'));
+    assert.ok(!pill.classList.contains('d-none'));
+    t.down(t.act('voice'));
+    t.down(t.act('code'));
+    assert.equal(f.value, 'x');
+    assert.deepEqual(t.calls.exec, []);
+  });
+
+  it('select all selects the field text', async () => {
+    const t = await boot();
+    let selected = 0;
+    const f = t.input({ type: 'text' }, { value: 'abc', select() { selected += 1; } });
+    t.focus(f);
+    t.down(t.act('selectall'));
+    assert.equal(selected, 1);
+  });
+});
+
 describe('virtual keyboard wiring', () => {
   const native = readSource('modules/native.js');
   const dropdown = readSource('modules/dropdown.js');
@@ -731,20 +843,18 @@ describe('virtual keyboard wiring', () => {
     assert.doesNotMatch(kb, /tailwind|cdn\.|googleapis|<style/i);
     assert.match(css, /\.vk-dock \.vk-key:active \{[^}]*background: var\(--toggle-opt-active-bg\); border-color: var\(--toggle-opt-active-border\); color: var\(--toggle-opt-active-color\)/);
     assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*var\(--danger\)/);
-    assert.match(css, /\.vk-key\.is-double \{ color: var\(--warning\); \}/);
+    assert.match(css, /\.vk-dock \.vk-key\.is-accent \{[^}]*background: var\(--accent\)/);
     assert.doesNotMatch(css, /\.vk-[^{]*\{[^}]*color-mix\([^)]*var\(--soft-bg\)/);
   });
 
-  it('theme keys: bold monospace circles in the app button theme with no backing sheet, flush to the bottom, pill for space, DEL and the wide zero', () => {
-    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border-radius: 50%;[^}]*font-family: var\(--font-mono\)[^}]*font-weight: 800/);
-    assert.match(css, /\.vk-dock\.overlay \{ --vk-d:[^}]*left: 0; right: 0; bottom: 0;[^}]*border-radius: 0; background: transparent; box-shadow: none;/);
-    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 1px solid var\(--glass-border\); border-radius: 50%; background: var\(--soft-bg\)/);
+  it('theme keys: rounded-rectangle keys in the app button theme with no backing sheet, flush to the bottom, accent shift and enter, tall numpad', () => {
+    assert.match(css, /\.vk-dock \.vk-key \{[^}]*border: 1px solid var\(--glass-border\); border-radius: 14px; background: var\(--soft-bg\)/);
+    assert.match(css, /\.vk-dock\.overlay \{ --vk-key-h:[^}]*left: 0; right: 0; bottom: 0;[^}]*border-radius: 0; background: transparent; box-shadow: none;/);
     assert.doesNotMatch(css, /\.vk-dock\.overlay \{[^}]*var\(--soft-card\)/);
-    assert.match(css, /\.vk-dock \.vk-key\.is-back \{[^}]*background: var\(--danger-dim\)/);
+    assert.match(css, /\.vk-dock \.vk-key\.is-accent \{[^}]*var\(--on-accent-dark\)/);
     assert.match(css, /html\.vk-open \{ --vk-gap: 0px; \}/);
-    assert.match(css, /\[data-vk-pane="pad"\]:not\(\.d-none\) \{ display: grid; grid-template-columns: repeat\(4, 1fr\); grid-auto-rows: var\(--vk-pd\);/);
-    assert.match(css, /\.is-zero \{ grid-column: span 2;/);
-    assert.match(css, /\.is-tall \{ grid-row: span 2;/);
+    assert.match(css, /\.vk-tools-pill\.d-none \{ display: none; \}/);
+    assert.match(css, /\[data-vk-pane="pad"\] \.vk-col\.is-digits \{ flex: 4\.65 1 0;/);
   });
 
   it('pads the page, accounts and other screens, dialogs and sheets while the keyboard is open', () => {
