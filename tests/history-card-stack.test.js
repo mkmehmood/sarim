@@ -11,12 +11,10 @@ describe('history card stack', () => {
     assert.match(CSS, /transition: [^;]*padding 0\.3s/);
   });
 
-  it('gives each tone its own colour and tints a flat tonal container from it', () => {
+  it('gives each tone its own background design, not just its own colour', () => {
     for (const tone of ['good', 'bad', 'warn', 'info', 'muted']) {
-      assert.match(CSS, new RegExp(`\\.hc-card\\.is-${tone} \\{[^}]*--hc-c:`), `${tone} has no colour`);
+      assert.match(CSS, new RegExp(`\\.hc-card\\.is-${tone} \\{[^}]*--hc-c:[^}]*background-image`), `${tone} has no design`);
     }
-    assert.match(CSS, /\.hc-card \{[^}]*background: color-mix\(in srgb, var\(--hc-c\) 16%, var\(--glass\)\)/);
-    assert.doesNotMatch(CSS, /\.hc-card\.is-\w+ \{[^}]*background-image/);
   });
 
   it('pops the amount when a card opens and respects reduced motion', () => {
