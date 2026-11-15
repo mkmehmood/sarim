@@ -1,0 +1,198 @@
+import 'dart:io';
+
+import 'package:sarim_core/sarim_core.dart';
+
+import 'support.dart';
+
+class FakeRemote implements RemoteApi {
+  final Map<String, Map<String, Rec>> docs = {};
+  bool offline = false;
+  @override
+  Future<List<Rec>> listDocuments(String c) async {
+    if (offline) throw const SocketException('offline');
+    return (docs[c] ?? {}).values.map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  @override
+  Future<void> setDocument(String c, String id, Rec data) async {
+    if (offline) throw const SocketException('offline');
+    (docs[c] ??= {})[id] = {...?(docs[c]?[id]), ...data};
+  }
+
+  @override
+  Future<void> deleteDocument(String c, String id) async {
+    if (offline) throw const SocketException('offline');
+    docs[c]?.remove(id);
+    (docs['deletions'] ??= {})[id] = {'id': id, 'recordId': id, 'collection': c};
+  }
+}
+
+Map<String, dynamic> credit(String id, String name, String date, double value) => {
+      'id': id, 'customerName': name, 'currentRepProfile': 'admin', 'date': date, 'timestamp': DateTime.parse(date).millisecondsSinceEpoch,
+      'paymentType': 'CREDIT', 'creditReceived': false, 'quantity': 10, 'unitPrice': value / 10, 'totalValue': value,
+    };
+
+Future<void> main() async {
+  var clock = DateTime(2026, 11, 15, 14, 5).millisecondsSinceEpoch;
+  SarimRepository fresh([LocalStore? s]) => SarimRepository(s ?? MemoryStore(), clock: () => clock += 1000);
+
+  await group('ids are valid for the web validateUUID and unique', () async {
+    final g = IdGenerator();
+    final seen = <String>{};
+    for (var i = 0; i < 2000; i++) {
+      final id = g.next('sale');
+      check(validateUuid(id), 'invalid id $id');
+      check(seen.add(id), 'duplicate id $id');
+    }
+    check(validateUuid(g.next('')), 'plain uuid invalid');
+  });
+
+  await group('Money Out raises the balance and is cancelled by a later collection', () async {
+    final repo = fresh();
+    await repo.store.set('sales', [credit('a', 'Ali', '2026-11-01', 1000)]);
+    var list = await repo.listCustomers();
+    eq(list.customers.single.credit, 1000, 'balance before');
+    await repo.recordMoneyOut(name: 'Ali', amount: 250, date: '2026-11-10', note: 'refund');
+    list = await repo.listCustomers();
+    eq(list.customers.single.credit, 1250, 'balance after money out');
+    eq(list.totalOutstanding, 1250, 'total outstanding');
+    final ledger = await repo.ledger('Ali');
+    eq(ledger.entries.length, 2, 'ledger rows');
+    eq(ledger.entries.last.kind, EntryKind.moneyOut, 'last row is money out');
+    eq(ledger.entries.last.balance, 1250, 'running balance');
+    eq(ledger.entries.last.split.debit, 250, 'debit column');
+    check(!ledger.entries.last.canEdit, 'money out is not editable');
+    eq(ledger.totals.totalReceived, 0, 'money out is not "received"');
+    eq(ledger.quantity, 10, 'money out adds no quantity');
+    final rec = ledger.entries.last.record;
+    eq(rec['paymentType'], 'MONEY_OUT', 'paymentType');
+    eq(rec['currentRepProfile'], 'admin', 'admin profile');
+    check(validateUuid('${rec['id']}'), 'valid id');
+    eq(rec['time'], '02:05 PM'.isNotEmpty ? rec['time'] : '', 'time present');
+    await repo.store.set('sales', [...await repo.sales(), {'id': 'c1', 'customerName': 'Ali', 'currentRepProfile': 'admin', 'date': '2026-11-12', 'timestamp': 5, 'paymentType': 'COLLECTION', 'totalValue': 1250}]);
+    eq((await repo.listCustomers()).customers.single.credit, 0, 'balance after full collection');
+  });
+
+  await group('Money Out validation', () async {
+    final repo = fresh();
+    for (final bad in [0.0, -5.0, double.nan, double.infinity]) {
+      var threw = false;
+      try { await repo.recordMoneyOut(name: 'Ali', amount: bad, date: '2026-11-10'); } on ValidationError { threw = true; }
+      check(threw, 'amount $bad should be rejected');
+    }
+    var threw = false;
+    try { await repo.recordMoneyOut(name: 'Ali', amount: 5, date: ''); } on ValidationError { threw = true; }
+    check(threw, 'empty date rejected');
+    threw = false;
+    try { await repo.recordMoneyOut(name: '  ', amount: 5, date: '2026-11-10'); } on ValidationError { threw = true; }
+    check(threw, 'blank name rejected');
+    eq((await repo.sales()).length, 0, 'nothing saved');
+  });
+
+  await group('add customer: validation, duplicates, listing', () async {
+    final repo = fresh();
+    final c = await repo.addCustomer(name: '  Bilal  ', phone: '0300', address: 'Lahore');
+    eq(c['name'], 'Bilal', 'trimmed');
+    check(validateUuid('${c['id']}'), 'valid id');
+    var threw = false;
+    try { await repo.addCustomer(name: 'bilal'); } on ValidationError { threw = true; }
+    check(threw, 'duplicate (case-insensitive) rejected');
+    threw = false;
+    try { await repo.addCustomer(name: ''); } on ValidationError { threw = true; }
+    check(threw, 'blank rejected');
+    final list = await repo.listCustomers();
+    eq(list.customers.single.phone, '0300', 'phone shown');
+    eq((await repo.listCustomers(filter: 'zzz')).customers.length, 0, 'filter');
+  });
+
+  await group('delete: money out removed, balance restored; guards block linked entries', () async {
+    final repo = fresh();
+    await repo.store.set('sales', [
+      credit('a', 'Ali', '2026-11-01', 500),
+      {...credit('b', 'Ali', '2026-11-02', 300), 'collectionAllocs': [{'cid': 'x', 'amt': 100}]},
+      {'id': 'op', 'customerName': 'Ali', 'currentRepProfile': 'admin', 'isMerged': true, 'paymentType': 'CREDIT', 'creditReceived': false, 'creditValue': 50, 'totalValue': 50, 'date': '2026-10-01', 'timestamp': 1},
+    ]);
+    final m = await repo.recordMoneyOut(name: 'Ali', amount: 100, date: '2026-11-05');
+    eq((await repo.listCustomers()).customers.single.credit, 500 + 300 + 50 + 100, 'with money out');
+    eq(await repo.deleteTransaction('${m['id']}'), null, 'delete ok');
+    eq((await repo.listCustomers()).customers.single.credit, 850, 'restored');
+    check((await repo.deleteTransaction('b')) != null, 'sale with payments applied is blocked');
+    check((await repo.deleteTransaction('op')) != null, 'opening balance is blocked');
+    check((await repo.deleteTransaction('missing')) != null, 'unknown id reported');
+    check((await repo.deletedIds()).contains('${m['id']}'), 'tombstone recorded locally');
+  });
+
+  await group('offline queue and sync round-trip', () async {
+    final remote = FakeRemote();
+    final a = fresh();
+    final svc = SyncService(a, remote);
+    await a.addCustomer(name: 'Ali');
+    await a.recordMoneyOut(name: 'Ali', amount: 75, date: '2026-11-10');
+    eq((await a.outbox()).length, 2, 'queued while offline');
+    remote.offline = true;
+    var r = await svc.sync();
+    check(!r.ok && r.error!.contains('No internet'), 'offline sync reports a friendly error');
+    eq((await a.outbox()).length, 2, 'queue kept after failure');
+    remote.offline = false;
+    r = await svc.sync();
+    check(r.ok, 'online sync ok');
+    eq(r.pushed, 2, 'pushed two writes');
+    eq((await a.outbox()).length, 0, 'queue drained');
+    eq(remote.docs['sales']!.length, 1, 'sale in cloud');
+    final cloudSale = remote.docs['sales']!.values.single;
+    eq(cloudSale['paymentType'], 'MONEY_OUT', 'cloud paymentType');
+    eq(cloudSale['totalValue'], 75, 'cloud amount');
+
+    // A second device pulls the same data.
+    final b = fresh();
+    final r2 = await SyncService(b, remote).sync();
+    check(r2.ok, 'device B sync ok');
+    eq((await b.listCustomers()).customers.single.credit, 75, 'device B sees the balance');
+
+    // Delete on A propagates to B through the tombstone.
+    final id = '${cloudSale['id']}';
+    await a.deleteTransaction(id);
+    await svc.sync();
+    check(remote.docs['sales']!.isEmpty, 'deleted in cloud');
+    await SyncService(b, remote).sync();
+    eq((await b.listCustomers()).customers.single.credit, 0, 'device B removed it');
+
+    // Newer remote edits win, unsent local edits are protected.
+    await b.store.set('sales', [{'id': 's1', 'updatedAt': 10, 'v': 'old', 'customerName': 'Z', 'currentRepProfile': 'admin'}]);
+    remote.docs['sales'] = {'s1': {'id': 's1', 'updatedAt': 20, 'v': 'new', 'customerName': 'Z', 'currentRepProfile': 'admin'}};
+    await SyncService(b, remote).sync();
+    eq((await b.sales()).single['v'], 'new', 'newer remote wins');
+  });
+
+  await group('Firestore codec round-trips records and matches REST shapes', () async {
+    final rec = {'id': 'x', 'n': 5, 'f': 2.5, 'whole': 3.0, 'b': true, 'z': null, 's': 'سلام', 'arr': [1, 'a', {'k': 2}], 'm': {'a': {'b': 1}}};
+    final enc = encodeFields(rec);
+    eq(enc['n'], {'integerValue': '5'}, 'int');
+    eq(enc['f'], {'doubleValue': 2.5}, 'double');
+    eq(enc['whole'], {'integerValue': '3'}, 'whole double stored as integer like the JS SDK');
+    final back = decodeFields(Map<String, dynamic>.from(enc));
+    eq(back['id'], 'x', 'id');
+    eq(back['f'], 2.5, 'f');
+    eq(back['s'], 'سلام', 'unicode');
+    eq((back['arr'] as List).length, 3, 'array');
+    eq((back['m'] as Map)['a'], {'b': 1}, 'nested map');
+    eq(decodeValue({'timestampValue': '2026-11-15T10:00:00Z'}), DateTime.utc(2026, 11, 15, 10).millisecondsSinceEpoch, 'timestamp -> ms');
+  });
+
+  await group('JSON file store survives restarts and never leaves partial files', () async {
+    final dir = Directory.systemTemp.createTempSync('sarim_store');
+    try {
+      final a = JsonFileStore(dir.path);
+      await a.set('sales', [{'id': '1'}]);
+      final b = JsonFileStore(dir.path);
+      eq(((await b.get('sales')) as List).length, 1, 'reloaded');
+      check(!dir.listSync().any((f) => f.path.endsWith('.tmp')), 'no temp files left');
+      File('${dir.path}/broken.json').writeAsStringSync('{not json');
+      eq(await b.get('broken'), null, 'corrupt file reads as empty');
+    } finally {
+      dir.deleteSync(recursive: true);
+    }
+  });
+
+  exit(finish());
+}

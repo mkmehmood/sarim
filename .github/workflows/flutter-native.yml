@@ -1,0 +1,41 @@
+name: Native Flutter
+on:
+  push:
+    branches: [flutter-native]
+    paths: ['sarim_native/**', 'modules/finance.js', 'modules/tx-date.js']
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - name: Parity fixtures are current
+        run: |
+          node sarim_native/packages/sarim_core/tool/gen_fixtures.mjs
+          git diff --exit-code sarim_native/packages/sarim_core/test/fixtures
+      - name: Core tests (pure Dart)
+        working-directory: sarim_native/packages/sarim_core
+        run: |
+          dart pub get
+          dart analyze
+          dart run test/parity_test.dart
+          dart run test/ledger_test.dart
+          dart run test/repository_test.dart
+      - name: App
+        working-directory: sarim_native/app
+        run: |
+          bash tools/setup_android.sh
+          flutter pub get
+          flutter analyze
+          flutter test
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sarim-native-apk
+          path: sarim_native/app/build/app/outputs/flutter-apk/app-release.apk
