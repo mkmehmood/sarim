@@ -6,6 +6,7 @@ export 'src/ids.dart';
 export 'src/tx_date.dart';
 export 'src/customer_ledger.dart';
 export 'src/link_graph.dart';
+export 'src/sales.dart';
 export 'src/store.dart';
 export 'src/repository.dart';
 export 'src/firestore_codec.dart';

@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'customer_ledger.dart';
 import 'finance.dart';
 import 'ids.dart';
 import 'link_graph.dart';
+import 'sales.dart';
 import 'js_num.dart';
 import 'store.dart';
 
@@ -72,6 +75,15 @@ class OverpaymentRequired extends ValidationError {
       : super('Customer owes ${owed.toStringAsFixed(2)} but ${amount.toStringAsFixed(2)} is being collected.');
   final double owed, amount;
 }
+
+/// Thrown when a credit sale would push a customer's unpaid balance above the warning threshold.
+class CreditWarning extends ValidationError {
+  CreditWarning(this.existing, this.saleValue)
+      : super('Unpaid balance ${existing.toStringAsFixed(2)} plus this sale ${saleValue.toStringAsFixed(2)}.');
+  final double existing, saleValue;
+}
+
+bool jsonEqual(dynamic a, dynamic b) => jsonEncode(a) == jsonEncode(b);
 
 class SarimRepository {
   SarimRepository(this.store, {IdGenerator? ids, int Function()? clock, this.createdBy})
@@ -191,6 +203,135 @@ class SarimRepository {
     await store.set('sales', all);
     await _enqueue(SyncOp('set', 'sales', '${rec['id']}', rec));
     return rec;
+  }
+
+  // ---- sales -------------------------------------------------------------
+  static const creditWarningThreshold = 5000.0;
+
+  Future<List<StoreInfo>> stores() async => StoreInfo.fromJson(await store.get('stores'));
+
+  Future<SaleQuote> quoteCustomerSale({required String name, required double quantity, required String date, required String storeKey}) async {
+    final all = await stores();
+    var label = storeKey.toUpperCase();
+    for (final s in all) { if (s.key == storeKey) label = s.name; }
+    return quoteSale(
+      date: date,
+      name: name,
+      quantity: quantity,
+      store: storeKey,
+      storeLabel: label,
+      production: await _list('production'),
+      returns: await _list('returns'),
+      sales: await sales(),
+      customers: await customerRecords(),
+      stores: all,
+    );
+  }
+
+  /// Records a cash or credit sale to a customer (no sales rep). Mirrors saveCustomerSale in the web app.
+  Future<Rec> recordSale({
+    required String name,
+    required double quantity,
+    required String date,
+    required String storeKey,
+    required String paymentType,
+    String phone = '',
+    bool confirmHighCredit = false,
+  }) async {
+    if (paymentType != 'CASH' && paymentType != 'CREDIT') throw ValidationError('Choose cash or credit.');
+    final customerName = name.trim();
+    final q = await quoteCustomerSale(name: customerName, quantity: quantity, date: date, storeKey: storeKey);
+    if (!q.ok) throw ValidationError(q.message!);
+    final all = await sales();
+    if (paymentType == 'CREDIT' && !confirmHighCredit) {
+      final lc = customerName.toLowerCase();
+      final known = all.any((s) => truthy(s['customerName']) && '${s['customerName']}'.toLowerCase() == lc);
+      if (known) {
+        final deleted = await deletedIds();
+        final reconciled = await _reconciledReturnIds();
+        var existing = 0.0;
+        final opts = LedgerOpts(reconciledReturnIds: reconciled);
+        for (final s in all) {
+          if (deleted.contains('${s['id']}') || !truthy(s['customerName']) || '${s['customerName']}'.toLowerCase() != lc) continue;
+          existing = round2(existing + debtDelta(s, debtNeedsGross(s) ? saleTransactionValue(s) : 0, opts));
+        }
+        if (existing > creditWarningThreshold) throw CreditWarning(existing, q.totalValue);
+      }
+    }
+    final now = _clock();
+    final dt = DateTime.fromMillisecondsSinceEpoch(now);
+    final rec = <String, dynamic>{
+      'id': ids.next('sale', nowMs: now),
+      'timestamp': now,
+      'createdAt': now,
+      'updatedAt': now,
+      'date': localDateStr(dt),
+      'supplyDate': date,
+      'time': formatTime12(dt),
+      'customerName': customerName,
+      'customerPhone': phone.trim(),
+      'quantity': quantity,
+      'supplyStore': storeKey,
+      'paymentType': paymentType,
+      'salesRep': 'NONE',
+      'currentRepProfile': 'admin',
+      'totalCost': q.totalCost,
+      'totalValue': q.totalValue,
+      'profit': q.profit,
+      'unitPrice': q.unitPrice,
+      'creditReceived': paymentType == 'CASH',
+      'syncedAt': DateTime.fromMillisecondsSinceEpoch(now, isUtc: true).toIso8601String(),
+      'createdBy': createdBy,
+    };
+    all.add(rec);
+    await store.set('sales', all);
+    await _enqueue(SyncOp('set', 'sales', '${rec['id']}', rec));
+    final customers = await customerRecords();
+    final lc = customerName.toLowerCase();
+    if (!customers.any((c) => truthy(c['name']) && '${c['name']}'.toLowerCase() == lc)) {
+      final contact = <String, dynamic>{
+        'id': ids.next('cust', nowMs: now),
+        'name': customerName,
+        'phone': phone.trim(),
+        'address': '',
+        'oldDebit': 0,
+        'customSalePrice': 0,
+        'createdAt': now,
+        'updatedAt': now,
+        'timestamp': now,
+      };
+      customers.add(contact);
+      await store.set('customers', customers);
+      await _enqueue(SyncOp('set', 'customers', '${contact['id']}', contact));
+    }
+    return rec;
+  }
+
+  /// Adopts the store list (names, sale prices) from the cloud. Returns true if anything changed.
+  Future<bool> applyStores(Rec doc) async {
+    final cloud = doc['stores'];
+    if (cloud is! List) return false;
+    final cloudTs = numOf(doc['stores_timestamp']);
+    final localTs = numOf(await store.get('stores_timestamp'));
+    final local = await store.get('stores');
+    if (local is List && local.isNotEmpty && localTs > 0 && cloudTs <= localTs) return false;
+    final localList = local is List ? local.whereType<Map>().toList() : <Map>[];
+    final merged = [
+      for (final c in cloud.whereType<Map>())
+        () {
+          final out = Map<String, dynamic>.from(c);
+          final l = localList.where((x) => x['key'] == c['key']).toList();
+          if (l.isNotEmpty) {
+            if (!(numOf(c['salePrice']) > 0) && numOf(l.first['salePrice']) > 0) out['salePrice'] = l.first['salePrice'];
+            if (!truthy(c['formulaId']) && truthy(l.first['formulaId'])) out['formulaId'] = l.first['formulaId'];
+          }
+          return out;
+        }()
+    ];
+    if (jsonEqual(merged, local)) return false;
+    await store.set('stores', merged);
+    if (cloudTs > 0) await store.set('stores_timestamp', cloudTs);
+    return true;
   }
 
   // ---- collections -------------------------------------------------------

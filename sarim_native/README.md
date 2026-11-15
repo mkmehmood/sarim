@@ -15,7 +15,7 @@ sarim_native/
 |---|---|---|
 | 1 | Local store, record model, Firebase login, offline queue + two-way sync (sales, customers, deletions) | done, tested |
 | 2 | Customers list, customer ledger (running balance, totals), add customer, Money Out, delete entry | done, tested |
-| 3 | Collections with allocation (record, delete/reopen), advance payments; sales entry and credit settlement | collections done, tested; sales entry next |
+| 3 | Collections with allocation (record, delete/reopen), advance payments; cash and credit sales (stock, price, cost, credit warning) | done, tested |
 | 4 | Factory, reps, stock, expenses | not started |
 | 5 | Approvals / staff roles, reports, PDF statements, backup/restore | not started |
 
@@ -35,6 +35,10 @@ Until phase 5 is finished the WebView app on the `flutter-app` branch is the com
   Regenerate with `node packages/sarim_core/tool/gen_collection_fixtures.mjs`. The orchestration in that script is
   the body of `applyCollectionToSales` (link-guards.js) with its storage calls removed, because that module
   needs a browser to import.
+* `sale_test`: 600 sale scenarios (missing date/name/quantity, no production, insufficient stock, custom customer
+  price, missing store price, realized cost per kg with returns/deleted/merged batches) run through the web app's
+  stock loops, price lookup and `profit-cost.js`; the Dart port must return the same error in the same order and
+  identical price, cost, profit and available stock. Regenerate with `node packages/sarim_core/tool/gen_sale_fixtures.mjs`.
 * `repository_test`: Money Out maths, validation, add customer, delete guards, offline queue, two-device sync,
   tombstones, Firestore codec, atomic file store, id format.
 
@@ -49,7 +53,11 @@ flutter pub get && flutter test && flutter run
 
 ## Known limits (phase 1-2)
 * Owner accounts only: staff accounts that read a workspace owner's data and approval-gated writes are phase 5.
-* Collections record cash only: expired-goods credit (which feeds CHORA stock) is phase 4. Sales entry is next in phase 3.
+* Collections record cash only: expired-goods credit (which feeds CHORA stock) is phase 4.
+* Sales: no sales-rep sales yet. The cost of a sale uses the realized cost per kg from costed production batches; when a
+  store has none yet (the web app then falls back to formula cost) the app refuses the sale and asks you to use the web
+  app, so profit is never recorded wrongly. Store names and sale prices, production and returns are pulled from the cloud.
+* Editing a sale is not supported (delete and re-enter).
 * Cash-in-hand shortage checks that the web app runs before some entries are not ported yet.
 * Deleting a sale that has payments applied is blocked, and so is deleting an older collection while a newer one touches the same sale (same rule as the web app). Linked partial payments must be deleted in the web app.
 * Customers created here have no opening balance; add old debt in the web app for now.

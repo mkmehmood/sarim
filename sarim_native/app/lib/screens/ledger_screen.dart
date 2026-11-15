@@ -145,6 +145,121 @@ class _LedgerScreenState extends State<LedgerScreen> {
     }
   }
 
+  Future<void> _sale() async {
+    final stores = await app.repo.stores();
+    if (!mounted) return;
+    if (stores.isEmpty) {
+      _snack('Store prices have not synced yet. Tap sync on the customers screen and try again.');
+      return;
+    }
+    final qty = TextEditingController();
+    var storeKey = stores.first.key;
+    var payment = 'CREDIT';
+    var date = DateTime.now();
+    String? error;
+    String preview = 'Enter a quantity to see the price.';
+    var seq = 0;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          Future<void> refresh() async {
+            final my = ++seq;
+            final value = double.tryParse(qty.text.trim());
+            if (value == null || value <= 0) {
+              setLocal(() => preview = 'Enter a quantity to see the price.');
+              return;
+            }
+            final q = await app.repo.quoteCustomerSale(name: widget.name, quantity: value, date: localDateStr(date), storeKey: storeKey);
+            if (my != seq) return;
+            setLocal(() => preview = q.ok
+                ? '${fmtNum(value)} kg x ${money(q.unitPrice)} = ${money(q.totalValue)}\nStock available: ${fmtNum(q.available)} kg'
+                : q.message!);
+          }
+
+          return AlertDialog(
+            title: const Text('New sale'),
+            content: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Sale to ${widget.name}'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: qty,
+                  autofocus: true,
+                  onChanged: (_) => refresh(),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Quantity (kg)', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: storeKey,
+                  decoration: const InputDecoration(labelText: 'Store', border: OutlineInputBorder()),
+                  items: [for (final st in stores) DropdownMenuItem(value: st.key, child: Text(st.name))],
+                  onChanged: (v) { if (v != null) { setLocal(() => storeKey = v); refresh(); } },
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<String>(
+                  segments: const [ButtonSegment(value: 'CASH', label: Text('Cash')), ButtonSegment(value: 'CREDIT', label: Text('Credit'))],
+                  selected: {payment},
+                  onSelectionChanged: (v) => setLocal(() => payment = v.first),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today, size: 18),
+                  label: Text('Supply date ${localDateStr(date)}'),
+                  onPressed: () async {
+                    final picked = await showDatePicker(context: ctx, initialDate: date, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 1)));
+                    if (picked != null) { setLocal(() => date = picked); refresh(); }
+                  },
+                ),
+                const SizedBox(height: 12),
+                Text(preview),
+                if (error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(error!, style: TextStyle(color: Theme.of(ctx).colorScheme.error))),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () async {
+                  final value = double.tryParse(qty.text.trim()) ?? 0;
+                  Future<void> save(bool confirm) => app.repo.recordSale(
+                        name: widget.name, quantity: value, date: localDateStr(date), storeKey: storeKey, paymentType: payment, confirmHighCredit: confirm);
+                  try {
+                    try {
+                      await save(false);
+                    } on CreditWarning catch (w) {
+                      final go = await showDialog<bool>(
+                        context: ctx,
+                        builder: (c2) => AlertDialog(
+                          title: const Text('High unpaid balance'),
+                          content: Text('Unpaid balance: ${money(w.existing)}\nThis credit sale: ${money(w.saleValue)}\nNew total: ${money(w.existing + w.saleValue)}'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(c2, false), child: const Text('Back')),
+                            FilledButton(onPressed: () => Navigator.pop(c2, true), child: const Text('Continue')),
+                          ],
+                        ),
+                      );
+                      if (go != true) return;
+                      await save(true);
+                    }
+                    if (ctx.mounted) Navigator.pop(ctx, true);
+                  } on ValidationError catch (e) {
+                    setLocal(() => error = e.message);
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (ok == true) {
+      app.changed();
+      _snack('Sale recorded for ${widget.name}');
+    }
+  }
+
   Future<void> _delete(LedgerEntry e) async {
     final yes = await showDialog<bool>(
       context: context,
@@ -175,9 +290,11 @@ class _LedgerScreenState extends State<LedgerScreen> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(children: [
-            Expanded(child: FilledButton.icon(onPressed: _collect, icon: const Icon(Icons.south_west), label: const Text('Collect'))),
-            const SizedBox(width: 12),
-            Expanded(child: FilledButton.tonalIcon(onPressed: _moneyOut, icon: const Icon(Icons.north_east), label: const Text('Money out'))),
+            Expanded(child: FilledButton(onPressed: _sale, child: const Text('Sale'))),
+            const SizedBox(width: 8),
+            Expanded(child: FilledButton(onPressed: _collect, child: const Text('Collect'))),
+            const SizedBox(width: 8),
+            Expanded(child: FilledButton.tonal(onPressed: _moneyOut, child: const Text('Money out'))),
           ]),
         ),
       ),

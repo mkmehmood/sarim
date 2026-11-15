@@ -10,6 +10,8 @@ import 'repository.dart';
 /// using the same `users/{uid}/{collection}/{id}` layout as the web app.
 abstract class RemoteApi {
   Future<List<Rec>> listDocuments(String collection);
+  /// One document (e.g. `stores/list`), or null when it does not exist.
+  Future<Rec?> getDocument(String collection, String id);
   Future<void> setDocument(String collection, String id, Rec data);
   Future<void> deleteDocument(String collection, String id);
 }
@@ -129,6 +131,17 @@ class FirestoreRest implements RemoteApi {
     return out;
   }
 
+  @override
+  Future<Rec?> getDocument(String collection, String id) async {
+    try {
+      final r = await _json(_http, 'GET', Uri.https('firestore.googleapis.com', '$_root/$collection/${Uri.encodeComponent(id)}'), bearer: await _token());
+      return decodeFields(Map<String, dynamic>.from((r['fields'] as Map?) ?? const {}));
+    } on CloudError catch (e) {
+      if (e.status == 404) return null;
+      rethrow;
+    }
+  }
+
   static String _path(String f) => RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(f) ? f : '`${f.replaceAll('\\', '\\\\').replaceAll('`', '\\`')}`';
 
   @override
@@ -168,7 +181,7 @@ class SyncService {
   SyncService(this.repo, this.remote);
   final SarimRepository repo;
   final RemoteApi remote;
-  static const pulled = ['sales', 'customers'];
+  static const pulled = ['sales', 'customers', 'production', 'returns'];
 
   Future<SyncResult> sync() async {
     var pushed = 0;
@@ -192,6 +205,8 @@ class SyncService {
       for (final c in pulled) {
         changed += await repo.applyRemote(c, await remote.listDocuments(c), tombstones: tombs[c] ?? const {});
       }
+      final storesDoc = await remote.getDocument('stores', 'list');
+      if (storesDoc != null && await repo.applyStores(storesDoc)) changed++;
       return SyncResult(pushed: pushed, pulled: changed);
     } on CloudError catch (e) {
       return SyncResult(pushed: pushed, error: e.message);

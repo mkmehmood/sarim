@@ -14,6 +14,13 @@ class FakeRemote implements RemoteApi {
   }
 
   @override
+  Future<Rec?> getDocument(String c, String id) async {
+    if (offline) throw const SocketException('offline');
+    final d = docs[c]?[id];
+    return d == null ? null : Map<String, dynamic>.from(d);
+  }
+
+  @override
   Future<void> setDocument(String c, String id, Rec data) async {
     if (offline) throw const SocketException('offline');
     (docs[c] ??= {})[id] = {...?(docs[c]?[id]), ...data};
@@ -158,6 +165,66 @@ Future<void> main() async {
       try { await repo.recordCollection(name: 'Ali', amount: bad, date: '2026-11-11'); } on ValidationError { t = true; }
       check(t, 'amount $bad rejected');
     }
+  });
+
+  await group('sales: stock, price, cost, credit warning, customer auto-registered', () async {
+    final repo = fresh();
+    await repo.store.set('stores', [{'key': 'zubair', 'name': 'ZUBAIR', 'salePrice': 100}]);
+    await repo.store.set('production', [{'id': 'p1', 'date': '2026-11-10', 'store': 'zubair', 'net': 500, 'totalCost': 20000}]);
+    Future<void> expectErr(Future<dynamic> Function() f, String part, String why) async {
+      try { await f(); check(false, '$why: should have failed'); } on ValidationError catch (e) { check(e.message.contains(part), '$why: got "${e.message}"'); }
+    }
+    await expectErr(() => repo.recordSale(name: 'Ali', quantity: 600, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CASH'), 'Insufficient stock', 'over stock');
+    await expectErr(() => repo.recordSale(name: 'Ali', quantity: 10, date: '2026-11-11', storeKey: 'zubair', paymentType: 'CASH'), 'No production', 'no production that day');
+    await expectErr(() => repo.recordSale(name: '', quantity: 10, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CASH'), 'customer name', 'blank name');
+    final cash = await repo.recordSale(name: 'Ali', quantity: 100, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CASH', phone: '0300');
+    eq(cash['totalValue'], 10000, 'value = qty x price');
+    eq(cash['totalCost'], 4000, 'cost = qty x realized cost per kg (40)');
+    eq(cash['profit'], 6000, 'profit');
+    eq(cash['unitPrice'], 100, 'locked unit price');
+    eq(cash['creditReceived'], true, 'cash sale is settled');
+    eq(cash['supplyDate'], '2026-11-10', 'supply date');
+    check(validateUuid('${cash['id']}'), 'valid id');
+    eq((await repo.listCustomers()).customers.single.credit, 0, 'cash sale leaves no balance');
+    eq((await repo.customerRecords()).single['phone'], '0300', 'customer auto-registered');
+    final cr = await repo.recordSale(name: 'Ali', quantity: 150, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CREDIT');
+    eq((await repo.listCustomers()).customers.single.credit, 15000, 'credit sale raises balance');
+    eq((await repo.customerRecords()).length, 1, 'no duplicate customer record');
+    var warned = false;
+    try { await repo.recordSale(name: 'Ali', quantity: 10, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CREDIT'); } on CreditWarning { warned = true; }
+    check(warned, 'balance above 5000 asks for confirmation');
+    await repo.recordSale(name: 'Ali', quantity: 10, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CREDIT', confirmHighCredit: true);
+    eq((await repo.listCustomers()).customers.single.credit, 16000, 'confirmed credit sale');
+    await repo.recordCollection(name: 'Ali', amount: 16000, date: '2026-11-20');
+    eq((await repo.listCustomers()).customers.single.credit, 0, 'collection settles credit sales');
+    final q = await repo.quoteCustomerSale(name: 'Ali', quantity: 1, date: '2026-11-10', storeKey: 'zubair');
+    eq(q.available, 240, 'stock left after 100 + 150 + 10 sold of 500');
+    eq(await repo.deleteTransaction('${cash['id']}'), null, 'cash sale deletes');
+    check((await repo.deleteTransaction('${cr['id']}')) != null, 'credit sale with payments applied is blocked');
+    await repo.store.set('production', [{'id': 'p2', 'date': '2026-11-10', 'store': 'zubair', 'net': 500, 'totalCost': 0}]);
+    await expectErr(() => repo.recordSale(name: 'Ali', quantity: 1, date: '2026-11-10', storeKey: 'zubair', paymentType: 'CASH'), 'cost price', 'no costed production');
+  });
+
+  await group('sync pulls stores, production and returns from the cloud', () async {
+    final remote = FakeRemote();
+    remote.docs['stores'] = {'list': {'stores': [{'key': 'zubair', 'name': 'ZUBAIR', 'salePrice': 90}], 'stores_timestamp': 5}};
+    remote.docs['production'] = {'p1': {'id': 'p1', 'date': '2026-11-10', 'store': 'zubair', 'net': 100, 'totalCost': 3000, 'updatedAt': 1}};
+    remote.docs['returns'] = {'r1': {'id': 'r1', 'date': '2026-11-10', 'store': 'zubair', 'quantity': 5, 'updatedAt': 1}};
+    final repo = fresh();
+    final res = await SyncService(repo, remote).sync();
+    check(res.ok, 'sync ok');
+    eq((await repo.stores()).single.salePrice, 90, 'store price pulled');
+    final q = await repo.quoteCustomerSale(name: 'Ali', quantity: 20, date: '2026-11-10', storeKey: 'zubair');
+    check(q.ok, 'sale quotable from pulled data: ${q.message}');
+    eq(q.available, 105, 'production + returns');
+    eq(q.totalCost, 600, '30/kg realized cost');
+    // an older cloud copy never overwrites newer local prices
+    remote.docs['stores']!['list'] = {'stores': [{'key': 'zubair', 'name': 'ZUBAIR', 'salePrice': 0}], 'stores_timestamp': 4};
+    await SyncService(repo, remote).sync();
+    eq((await repo.stores()).single.salePrice, 90, 'older cloud list ignored');
+    remote.docs['stores']!['list'] = {'stores': [{'key': 'zubair', 'name': 'ZUBAIR'}], 'stores_timestamp': 9};
+    await SyncService(repo, remote).sync();
+    eq((await repo.stores()).single.salePrice, 90, 'cloud list without a price keeps the local price');
   });
 
   await group('offline queue and sync round-trip', () async {
