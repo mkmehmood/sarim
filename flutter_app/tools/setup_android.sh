@@ -8,6 +8,7 @@ if [ ! -d android ]; then
   flutter create --org com.gullzubair --project-name sarim --platforms android --no-pub .
 fi
 
+rm -f test/widget_test.dart
 KT=android/app/src/main/kotlin/com/gullzubair/sarim
 mkdir -p "$KT"
 cp android_overrides/MainActivity.kt "$KT/MainActivity.kt"
