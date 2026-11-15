@@ -48,7 +48,7 @@ The Flutter UI (`app/`) is covered by `flutter test` (CI) but could not be compi
 ```bash
 cd sarim_native/app
 bash tools/setup_android.sh        # flutter create + config + icons
-flutter pub get && flutter test && flutter run
+flutter pub get && bash tools/patch_plugins.sh && flutter test && flutter run
 ```
 
 ## Known limits (phase 1-2)
