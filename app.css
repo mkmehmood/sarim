@@ -5680,6 +5680,7 @@ html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content:
 .vk-w40 { flex-grow: 4; }
 .vk-shift { flex: 1.5 1 0; color: var(--white); background: var(--accent-indigo); border-color: color-mix(in srgb, var(--accent-indigo) 70%, var(--white)); }
 .vk-shift.is-on { background: var(--white); color: var(--accent-indigo); }
+input[data-vk-secret] { -webkit-text-security: disc; }
 .vk-enter { color: var(--white); background: var(--accent-indigo); border-color: color-mix(in srgb, var(--accent-indigo) 70%, var(--white)); }
 .vk-space { font-size: 0.875rem; color: var(--text-secondary); }
 .vk-back { color: var(--danger); font-size: 1.125rem; }

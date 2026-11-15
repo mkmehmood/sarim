@@ -508,7 +508,7 @@ _cyBody.innerHTML = `
           oninput="validateCloseYearInput(this.value)"
           onkeydown="if(event.key==='Enter'&&!document.getElementById('close-year-confirm-btn').disabled){verifyAndExecuteCloseYear();}">
         <button type="button" id="cy-pwd-eye" tabindex="-1"
-          onclick="(function(b){const i=document.getElementById('close-year-confirm-input');i.type=i.type==='password'?'text':'password';b.querySelector('svg').classList.toggle('dim-icon',i.type!=='text');})(this)">
+          onclick="(function(b){const i=document.getElementById('close-year-confirm-input');const shown=i.hasAttribute('data-vk-type')?(i.toggleAttribute('data-vk-secret'),!i.hasAttribute('data-vk-secret')):((i.type=i.type==='password'?'text':'password')==='text');b.querySelector('svg').classList.toggle('dim-icon',!shown);})(this)">
           <svg width="15" height="15" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-c71e479"><path d="M2.5 18C6.5 10.8 12 7.8 18 7.8S29.5 10.8 33.5 18C29.5 25.2 24 28.2 18 28.2S6.5 25.2 2.5 18Z" fill="var(--accent)" fill-opacity="0.1" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="18" r="5.8" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="18" r="2.4" fill="var(--accent)"/></svg>
         </button>
       </div>

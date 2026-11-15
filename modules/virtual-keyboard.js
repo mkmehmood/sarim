@@ -150,9 +150,17 @@ let repeat = 0;
 let repeatStart = 0;
 const modes = new WeakMap();
 
+const CREDENTIAL_TYPES = new Set(['email', 'password', 'url']);
+
 function suppressNative(el) {
   if (!modes.has(el)) modes.set(el, el.hasAttribute('inputmode') ? el.getAttribute('inputmode') : null);
   el.setAttribute('inputmode', 'none');
+  const type = attr(el, 'type');
+  if (CREDENTIAL_TYPES.has(type)) {
+    el.setAttribute('data-vk-type', type);
+    if (type === 'password') el.setAttribute('data-vk-secret', '');
+    el.setAttribute('type', 'text');
+  }
 }
 
 function restoreNative(el) {
@@ -181,11 +189,19 @@ function revealActive() {
   });
 }
 
+function relabelLetters() {
+  dock.querySelectorAll('#vk-qwerty .vk-key[data-key]').forEach((k) => {
+    const key = k.getAttribute('data-key');
+    if (key.length === 1 && /[a-z]/i.test(key)) k.textContent = keyText(key, shift);
+  });
+}
+
 function setShift(on) {
   shift = on;
   const btn = dock.querySelector('.vk-shift');
   btn.classList.toggle('is-on', on);
   btn.setAttribute('aria-pressed', String(on));
+  relabelLetters();
 }
 
 function showLayout(layout) {
@@ -328,6 +344,7 @@ export function installVirtualKeyboard({ force = false } = {}) {
   dock.className = 'vk-dock';
   dock.hidden = true;
   dock.innerHTML = dockHtml();
+  relabelLetters();
   document.body.appendChild(dock);
   dock.addEventListener('pointerdown', onKeyDown);
   dock.addEventListener('pointerup', stopRepeat);

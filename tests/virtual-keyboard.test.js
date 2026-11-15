@@ -170,6 +170,21 @@ describe('behaviour wiring', () => {
   });
 });
 
+describe('shift and credential fields', () => {
+  const src = read('../modules/virtual-keyboard.js');
+  it('shift relabels the letter keys, which start in lower case', () => {
+    assert.match(src, /function relabelLetters\(\)/);
+    assert.match(src, /k\.textContent = keyText\(key, shift\);/);
+    assert.match(src, /btn\.setAttribute\('aria-pressed', String\(on\)\);\n  relabelLetters\(\);/);
+    assert.match(src, /dock\.innerHTML = dockHtml\(\);\n  relabelLetters\(\);/);
+  });
+  it('email, password and url fields are turned into masked text fields so the phone keyboard has no reason to appear', () => {
+    assert.match(src, /el\.setAttribute\('data-vk-type', type\);/);
+    assert.match(src, /el\.setAttribute\('type', 'text'\);/);
+    assert.match(read('../app.css'), /input\[data-vk-secret\] \{ -webkit-text-security: disc; \}/);
+  });
+});
+
 describe('new keys', () => {
   const src = read('../modules/virtual-keyboard.js');
   it('switches between letters, numbers and symbols pages', () => {
