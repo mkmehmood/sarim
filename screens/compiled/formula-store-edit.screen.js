@@ -1,6 +1,7 @@
 
 // ==== module: formula-store-edit.js ====
-import { _el, _num, _totals, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites, expandFormulaIngredients, mergeIngredients } from '../../modules/formula-store.js';
+import { _el, _num, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites } from '../../modules/formula-store.js';
+import { describeFormula, linkedPerKg, linkIngredient, isLink, canLink, formulaUsers } from '../../modules/formula-links.js';
 import { esc, ensureArray, sqliteStore, getTimestamp, generateUUID } from '../../modules/business.js';
 import { showToast, showGlassConfirm } from '../../modules/customers.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
@@ -10,29 +11,65 @@ import { trashRecord } from '../../modules/store-recycle.js';
 import { formulaIdOf } from '../../modules/store-keys.js';
 
 let _editingId = null;
+let _ctx = { list: [], inventory: [] };
 
-async function _pickFormula(container, formula, inventory, formulas) {
-  const current = [];
-  container.querySelectorAll('.factory-formula-grid').forEach((row) => {
-    const inp = row.querySelector('.factory-mat-search-input');
-    const costIn = row.querySelector('.factory-mat-cost');
-    const qtyIn = row.querySelector('.factory-mat-qty');
-    if (!inp || !inp.dataset.matId || !inp.value.trim()) return;
-    current.push({ id: inp.dataset.matId, name: inp.value.trim(), cost: _num(costIn ? costIn.value : 0, 0), quantity: _num(qtyIn ? qtyIn.value : 0, 0), ...(inp.dataset.custom === '1' ? { custom: true } : {}) });
-  });
-  const added = expandFormulaIngredients(formula, inventory);
-  if (!added.length) { showToast(`"${formula.name || 'Formula'}" has no materials to add`, 'warning'); return; }
-  const merged = mergeIngredients(current, added);
-  container.replaceChildren();
-  merged.forEach((ing) => {
-    const row = _createRow(container, ing.id, ing.quantity > 0 ? ing.quantity : '', ing.custom ? ing.cost : null, ing.name, inventory, formulas);
-    if (ing.custom) { const inp = row.querySelector('.factory-mat-search-input'); if (inp) inp.dataset.custom = '1'; }
-  });
-  container.dispatchEvent(new CustomEvent('formularowchange'));
-  showToast(`Added ${added.length} material${added.length === 1 ? '' : 's'} from "${formula.name || 'Formula'}"`, 'success');
+function _createLinkRow(container, formulaId, qtyVal, savedName) {
+  const sub = _ctx.list.find((f) => String(f.id) === String(formulaId));
+  const name = sub ? (sub.name || 'Untitled') : (savedName || 'Formula');
+  const perKg = sub ? linkedPerKg(sub, _ctx.list, _ctx.inventory) : 0;
+  const notify = () => container.dispatchEvent(new CustomEvent('formularowchange'));
+  const div = document.createElement('div');
+  div.className = 'factory-formula-grid';
+  window.setStyle(div, 'position', 'st-position__d461c9');
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'factory-mat-select';
+  searchWrap.classList.add('st-position__d461c9');
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'form-ctl factory-mat-search-input factory-link-input';
+  searchInput.value = `${name} · formula${sub ? '' : ' (removed)'}`;
+  searchInput.readOnly = true;
+  searchInput.dataset.matId = `formula:${formulaId}`;
+  searchInput.dataset.kind = 'formula';
+  searchInput.dataset.formulaId = String(formulaId);
+  searchInput.dataset.formulaName = name;
+  searchWrap.appendChild(searchInput);
+  const costInput = document.createElement('input');
+  costInput.type = 'number';
+  costInput.className = 'form-ctl factory-mat-cost';
+  costInput.value = perKg;
+  costInput.readOnly = true;
+  costInput.classList.add('st-background__e94d78', 'st-color__5872de', 'st-cursor__2a9295');
+  const qtyInput = document.createElement('input');
+  qtyInput.type = 'number';
+  qtyInput.className = 'form-ctl factory-mat-qty';
+  qtyInput.placeholder = 'Qty (kg)';
+  qtyInput.value = qtyVal;
+  qtyInput.addEventListener('input', notify);
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'btn factory-row-del-btn';
+  delBtn.innerHTML = '&times;';
+  delBtn.title = 'Remove row';
+  delBtn.onclick = () => { div.remove(); notify(); };
+  div.append(searchWrap, costInput, qtyInput, delBtn);
+  container.appendChild(div);
+  return div;
 }
 
-function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory, formulas = []) {
+function _pickFormula(container, formula, sourceRow) {
+  const taken = [...container.querySelectorAll('.factory-mat-search-input')].some((i) => i.dataset.kind === 'formula' && i.dataset.formulaId === String(formula.id));
+  if (taken) { showToast(`"${formula.name || 'Formula'}" is already linked here. Change its quantity instead.`, 'warning'); return; }
+  const weight = describeFormula(formula, _ctx.list, _ctx.inventory).weight;
+  if (!(weight > 0)) { showToast(`"${formula.name || 'Formula'}" has no materials to link`, 'warning'); return; }
+  const blank = sourceRow && sourceRow.querySelector('.factory-mat-search-input');
+  if (sourceRow && blank && !blank.dataset.matId) sourceRow.remove();
+  _createLinkRow(container, formula.id, Math.round(weight * 1e6) / 1e6, formula.name);
+  container.dispatchEvent(new CustomEvent('formularowchange'));
+}
+
+function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory, formulas = [], linkId = '') {
+  if (linkId) return _createLinkRow(container, linkId, qtyVal, savedName);
   let currentCost = costVal !== null ? costVal : 0;
   const currentId = selectedId ? String(selectedId) : '';
   let currentName = savedName || '';
@@ -74,7 +111,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     const typed = (query || '').trim();
     const fq = typed.toLowerCase();
     const formulaOpts = formulas.filter((f) => !fq || (f.name || 'Untitled').toLowerCase().includes(fq))
-      .map((f) => `<div class="factory-mat-option factory-mat-formula" data-formula="${esc(String(f.id))}">Formula: ${esc(f.name || 'Untitled')} (${ensureArray(f.ingredients).length} materials)</div>`).join('');
+      .map((f) => `<div class="factory-mat-option factory-mat-formula" data-formula="${esc(String(f.id))}">Link formula: ${esc(f.name || 'Untitled')}</div>`).join('');
     if (!typed && !formulaOpts) { window.Dropdown.hide(dropdown); return; }
     if (!typed) {
       dropdown.innerHTML = formulaOpts;
@@ -99,7 +136,7 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
         if (opt.dataset.formula) {
           const f = formulas.find((x) => String(x.id) === opt.dataset.formula);
           window.Dropdown.hide(dropdown);
-          if (f) _pickFormula(container, f, inventory, formulas);
+          if (f) _pickFormula(container, f, div);
           return;
         }
         if (opt.dataset.custom === '1') {
@@ -174,17 +211,25 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   return div;
 }
 
-async function _pickableFormulas() {
-  return (await getFormulaStore()).filter((f) => String(f.id) !== String(_editingId) && ensureArray(f.ingredients).length);
+async function _loadCtx() {
+  const [list, inv] = await Promise.all([getFormulaStore(), sqliteStore.get('inventory')]);
+  _ctx = { list, inventory: ensureArray(inv).filter((i) => !(i && i.isPurchaseLot)) };
+  return _ctx;
+}
+
+function _pickableFormulas() {
+  return _ctx.list.filter((f) => ensureArray(f.ingredients).length && (!_editingId || canLink(_ctx.list, _editingId, f.id)));
 }
 
 async function _fillEditor(entry) {
   const inventory = ensureArray(await sqliteStore.get('inventory')).filter((i) => !(i && i.isPurchaseLot));
-  const formulas = await _pickableFormulas();
+  await _loadCtx();
+  const formulas = _pickableFormulas();
   const container = _el('fsEditContainer');
   if (!container) return;
   container.replaceChildren();
   ensureArray(entry.ingredients).forEach((ing) => {
+    if (isLink(ing)) { _createRow(container, '', ing.quantity, null, ing.name, inventory, formulas, ing.formulaId); return; }
     let id = ing.id;
     if (/^custom_/.test(String(id)) && ing.name) {
       const inv = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
@@ -208,6 +253,10 @@ function _collectEditor() {
       const costIn = row.querySelector('.factory-mat-cost');
       const qtyIn = row.querySelector('.factory-mat-qty');
       const name = inp ? inp.value.trim() : '';
+      if (inp && inp.dataset.kind === 'formula') {
+        if (qtyIn && _num(qtyIn.value, 0) > 0) ingredients.push({ ...linkIngredient({ id: inp.dataset.formulaId, name: inp.dataset.formulaName }, _num(qtyIn.value, 0)) });
+        return;
+      }
       if (inp && inp.dataset.matId && name && qtyIn && _num(qtyIn.value, 0) > 0) {
         ingredients.push({ id: inp.dataset.matId, name, cost: _num(costIn ? costIn.value : 0, 0), quantity: _num(qtyIn.value, 0), ...(inp.dataset.custom === '1' ? { custom: true } : {}) });
       }
@@ -223,12 +272,12 @@ function _collectEditor() {
 
 export function updateFormulaStoreSummary() {
   const c = _collectEditor();
-  const t = _totals(c.ingredients, c.additionalCost, c.costAdjustmentFactor);
+  const d = describeFormula({ id: _editingId || '__new__', ingredients: c.ingredients, additionalCost: c.additionalCost, costAdjustmentFactor: c.costAdjustmentFactor }, _ctx.list, _ctx.inventory);
   const set = (id, v) => { const el = _el(id); if (el) el.innerText = v; };
-  set('fsSummaryWeight', _fmt(t.weight) + ' kg');
-  set('fsSummaryRaw', _fmt(t.raw));
-  set('fsSummaryPerUnit', _fmt(t.perUnit));
-  set('fsSummaryPerKg', _fmt(t.perKg));
+  set('fsSummaryWeight', _fmt(d.weight) + ' kg');
+  set('fsSummaryRaw', _fmt(d.raw));
+  set('fsSummaryPerUnit', _fmt(d.perUnit));
+  set('fsSummaryPerKg', _fmt(d.perKg));
 }
 
 function _bindEditor() {
@@ -257,7 +306,8 @@ export async function addFormulaIngredientRow() {
   if (!container) return;
   _bindEditor();
   const inventory = ensureArray(await sqliteStore.get('inventory')).filter((i) => !(i && i.isPurchaseLot));
-  const row = _createRow(container, '', '', null, '', inventory, await _pickableFormulas());
+  await _loadCtx();
+  const row = _createRow(container, '', '', null, '', inventory, _pickableFormulas());
   row.scrollIntoView({ block: 'center', behavior: 'smooth' });
   const inp = row.querySelector('.factory-mat-search-input');
   if (inp) setTimeout(() => inp.focus(), 200);
@@ -270,6 +320,11 @@ async function _saveFormulaStoreEntryRaw() {
   const c = _collectEditor();
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }
   if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning', 'Warning'); return false; }
+const fresh = await getFormulaStore();
+  for (const ing of c.ingredients.filter(isLink)) {
+    if (!fresh.some((f) => String(f.id) === String(ing.formulaId))) { window.notifyBlocking(`The linked formula "${ing.name}" no longer exists. Remove that row.`, 'warning', 'Warning'); return false; }
+    if (_editingId && !canLink(fresh, _editingId, ing.formulaId)) { window.notifyBlocking(`"${ing.name}" already uses this formula, so it can't be linked back.`, 'warning', 'Warning'); return false; }
+  }
 if (!(await window.gcCommit({}))) return false;
   const list = await getFormulaStore();
   const now = getTimestamp();
@@ -294,6 +349,11 @@ export async function deleteFormulaStoreEntry() {
     window.notifyBlocking(`In use by ${users.join(', ')}. Assign those stores another formula first.`, 'warning', 'Warning');
     return;
   }
+  const linkedBy = formulaUsers(await getFormulaStore(), _editingId).map((f) => f.name || 'Untitled');
+  if (linkedBy.length) {
+    window.notifyBlocking(`Linked inside ${linkedBy.join(', ')}. Remove that link first.`, 'warning', 'Warning');
+    return;
+  }
   const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
   if (!ok) return;
   const fullList = await getFormulaStore();
@@ -308,5 +368,5 @@ export async function deleteFormulaStoreEntry() {
 
 Object.assign(window, { openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary });
 
-export const __screenHtml = "<div id=\"formula-store-edit-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\" id=\"fs-edit-title\">Edit Formula</h2>\n  </div>\n  <div class=\"screen-body\" id=\"formula-store-edit-body\">\n    <div class=\"field u-mb-15\">\n      <label>Formula Name</label>\n      <input class=\"form-ctl\" type=\"text\" id=\"fs-edit-name\" maxlength=\"60\" placeholder=\"e.g. Premium Blend\">\n    </div>\n    <div class=\"grid-inputs u-mb-15\">\n      <div class=\"field\">\n        <label>Additional Cost (Per Unit)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-additional-cost\" step=\"0.01\" min=\"0\" value=\"0\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n      <div class=\"field\">\n        <label>Cost Adjustment for Sales &amp; Calc (X)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-cost-factor\" step=\"0.01\" min=\"1\" value=\"1\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n    </div>\n    <div class=\"factory-formula-header\">\n      <span>Material</span>\n      <span>Cost / Unit</span>\n      <span>Qty (kg)</span>\n      <span></span>\n    </div>\n    <div id=\"fsEditContainer\"></div>\n    <button type=\"button\" class=\"btn btn-theme u-add-row-btn\" onclick=\"addFormulaIngredientRow()\">+ Add Ingredient Row</button>\n    <div class=\"formula-store-edit-hint\">Tip: search a material, or pick a Formula to add all of its materials.</div>\n    <div class=\"u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003\">\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Unit Weight:</span><span class=\"qty-val\" id=\"fsSummaryWeight\">0 kg</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Raw Material Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryRaw\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Total Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryPerUnit\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Cost per kg (Sales/Calc):</span><span class=\"cost-val\" id=\"fsSummaryPerKg\">0</span></div>\n    </div>\n    <div class=\"btn-split\">\n      <button class=\"btn btn-danger u-81e32d3 d-none\" id=\"fs-delete-btn\" onclick=\"deleteFormulaStoreEntry()\">Delete Formula</button>\n      <button class=\"btn btn-main u-mt-8 u-16000cc\" onclick=\"(async()=>{await saveFormulaStoreEntry()})()\">Save Formula</button>\n    </div>\n  </div>\n</div>";
+export const __screenHtml = "<div id=\"formula-store-edit-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\" id=\"fs-edit-title\">Edit Formula</h2>\n  </div>\n  <div class=\"screen-body\" id=\"formula-store-edit-body\">\n    <div class=\"field u-mb-15\">\n      <label>Formula Name</label>\n      <input class=\"form-ctl\" type=\"text\" id=\"fs-edit-name\" maxlength=\"60\" placeholder=\"e.g. Premium Blend\">\n    </div>\n    <div class=\"grid-inputs u-mb-15\">\n      <div class=\"field\">\n        <label>Additional Cost (Per Unit)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-additional-cost\" step=\"0.01\" min=\"0\" value=\"0\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n      <div class=\"field\">\n        <label>Cost Adjustment for Sales &amp; Calc (X)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-cost-factor\" step=\"0.01\" min=\"1\" value=\"1\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n    </div>\n    <div class=\"factory-formula-header\">\n      <span>Material</span>\n      <span>Cost / Unit</span>\n      <span>Qty (kg)</span>\n      <span></span>\n    </div>\n    <div id=\"fsEditContainer\"></div>\n    <button type=\"button\" class=\"btn btn-theme u-add-row-btn\" onclick=\"addFormulaIngredientRow()\">+ Add Ingredient Row</button>\n    <div class=\"formula-store-edit-hint\">Tip: search a material, or link a Formula so its materials follow any later changes to it.</div>\n    <div class=\"u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003\">\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Unit Weight:</span><span class=\"qty-val\" id=\"fsSummaryWeight\">0 kg</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Raw Material Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryRaw\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Total Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryPerUnit\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Cost per kg (Sales/Calc):</span><span class=\"cost-val\" id=\"fsSummaryPerKg\">0</span></div>\n    </div>\n    <div class=\"btn-split\">\n      <button class=\"btn btn-danger u-81e32d3 d-none\" id=\"fs-delete-btn\" onclick=\"deleteFormulaStoreEntry()\">Delete Formula</button>\n      <button class=\"btn btn-main u-mt-8 u-16000cc\" onclick=\"(async()=>{await saveFormulaStoreEntry()})()\">Save Formula</button>\n    </div>\n  </div>\n</div>";
 export const __screenCss = "\n";

@@ -6,6 +6,7 @@ import { _invalidateStoresCache, getAppStores } from './utilities-sales.js';
 import { getDefaultStoreKey, formulaIdOf } from './store-keys.js';
 import { feedsFromFormulas } from './formula-pools.js';
 import { mergeRestored } from './store-recycle.js';
+import { describeFormula, formulaUsers, isLink } from './formula-links.js';
 const STORE_KEY = 'formulas';
 const STORE_TS_KEY = 'formulas_timestamp';
 export const _el = (id) => document.getElementById(id);
@@ -87,42 +88,6 @@ export function _totals(ingredients, additionalCost, factor) {
   return { raw, weight, perUnit, perKg };
 }
 
-const _round6 = (v) => Math.round(v * 1e6) / 1e6;
-
-function _liveItem(ing, inventory) {
-  let live = inventory.find((i) => String(i.id) === String(ing.id));
-  if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
-  return live || null;
-}
-
-export function expandFormulaIngredients(formula, inventory) {
-  const inv = ensureArray(inventory);
-  return ensureArray(formula && formula.ingredients)
-    .filter((i) => i && i.id && i.name && _num(i.quantity, 0) > 0)
-    .map((i) => {
-      const live = _liveItem(i, inv);
-      const liveCost = live ? Number(live.cost) : NaN;
-      const out = {
-        id: live ? live.id : i.id,
-        name: live ? live.name : i.name,
-        cost: Number.isFinite(liveCost) && liveCost > 0 ? liveCost : _num(i.cost, 0),
-        quantity: _num(i.quantity, 0),
-      };
-      if (!live && (i.custom || /^custom_/.test(String(i.id)))) out.custom = true;
-      return out;
-    });
-}
-
-export function mergeIngredients(current, additions) {
-  const out = ensureArray(current).map((i) => ({ ...i }));
-  ensureArray(additions).forEach((add) => {
-    const hit = out.find((i) => String(i.id) === String(add.id));
-    if (hit) hit.quantity = _round6(_num(hit.quantity, 0) + _num(add.quantity, 0));
-    else out.push({ ...add });
-  });
-  return out;
-}
-
 function _liveCost(ing, inventory) {
   let live = inventory.find((i) => String(i.id) === String(ing.id));
   if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
@@ -134,20 +99,38 @@ function _row(label, value, extra) {
   return `<div class="d-flex st-font-size__c95659 u-8c130fb${extra ? ' ' + extra : ''}"><span>${label}</span><span>${value}</span></div>`;
 }
 
-function _card(f, inventory, usedBy) {
-  const ings = ensureArray(f.ingredients).map((i) => ({ ...i, cost: _liveCost(i, inventory) }));
-  const addl = _num(f.additionalCost, 0);
-  const factor = _num(f.costAdjustmentFactor, 1) || 1;
-  const t = _totals(ings, addl, factor);
+function _card(f, list, inventory, usedBy) {
+  const d = describeFormula(f, list, inventory);
+  const linkedIn = formulaUsers(list, f.id).map((x) => x.name || 'Untitled');
   let html = `<h4 class="u-c2d830a">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
-  html += ings.length ? ings.map((i) => _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_num(i.cost, 0) * _num(i.quantity, 0)))).join('') : '<div class="u-text-muted">No ingredients.</div>';
-  if (addl > 0) html += _row(`Additional Cost (${addl} per unit)`, _money(addl), 'st-color__497726');
+  const ings = ensureArray(f.ingredients);
+  if (!ings.length) html += '<div class="u-text-muted">No ingredients.</div>';
+  ings.forEach((i) => {
+    if (!isLink(i)) {
+      html += _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_liveCost(i, inventory) * _num(i.quantity, 0)));
+      return;
+    }
+    const sub = list.find((x) => String(x.id) === String(i.formulaId));
+    if (!sub) { html += _row(`${esc(i.name)} · linked formula (removed)`, '—', 'st-color__497726'); return; }
+    const sd = describeFormula(sub, list, inventory);
+    const q = _num(i.quantity, 0);
+    const scale = sd.weight > 0 ? q / sd.weight : 0;
+    html += _row(`${esc(sub.name || 'Untitled')} · linked formula (${_fmt(q)} kg)`, _money(scale * sd.perUnit));
+    sd.items.forEach((m) => { html += _row(`&nbsp;&nbsp;↳ ${esc(m.name)} (${_fmt(m.quantity * scale)} kg)`, _money(m.cost * m.quantity * scale), 'u-text-muted'); });
+    if (sd.additionalCost > 0) html += _row('&nbsp;&nbsp;↳ Additional cost', _money(sd.additionalCost * scale), 'u-text-muted');
+  });
+  if (d.ownAdditionalCost > 0) html += _row(`Additional Cost (${d.ownAdditionalCost} per unit)`, _money(d.ownAdditionalCost), 'st-color__497726');
+  if (d.problems.length) html += _row(`Check linked formulas: ${esc([...new Set(d.problems.map((p) => `${p.name} (${p.type === 'cycle' ? 'circular' : 'removed'})`))].join(', '))}`, '', 'st-color__497726');
   html += '<div class="u-0bee203"></div>';
-  html += _row('Unit Weight', _fmt(t.weight) + ' kg');
-  html += _row('Raw Material Cost per Unit', _money(t.raw));
-  html += _row('Total Cost per Unit', _money(t.perUnit), 'st-font-weight__e3ec02');
-  html += _row('Cost per kg (Sales/Calc)', _money(t.perKg));
-  html += `<div class="formula-store-edit-hint">${usedBy.length ? 'Used by ' + esc(usedBy.join(', ')) + ' · ' : ''}Tap to edit</div>`;
+  html += _row('Unit Weight', _fmt(d.weight) + ' kg');
+  html += _row('Raw Material Cost per Unit', _money(d.raw));
+  if (d.extraCost > 0) html += _row('Additional cost from linked formulas', _money(d.extraCost));
+  html += _row('Total Cost per Unit', _money(d.perUnit), 'st-font-weight__e3ec02');
+  html += _row('Cost per kg (Sales/Calc)', _money(d.perKg));
+  const notes = [];
+  if (usedBy.length) notes.push('Used by ' + esc(usedBy.join(', ')));
+  if (linkedIn.length) notes.push('Linked in ' + esc(linkedIn.join(', ')));
+  html += `<div class="formula-store-edit-hint">${notes.length ? notes.join(' · ') + ' · ' : ''}Tap to edit</div>`;
   return `<div class="callout formula-display formula-store-card" onclick="openFormulaStoreEditor('${esc(String(f.id))}')">${html}</div>`;
 }
 
@@ -160,7 +143,7 @@ export async function renderFormulaStoreList() {
     return;
   }
   const inventory = ensureArray(await sqliteStore.get('inventory')).filter((i) => !(i && i.isPurchaseLot));
-  box.innerHTML = list.map((f) => _card(f, inventory, stores.filter((s) => formulaIdOf(s) === String(f.id)).map((s) => s.name))).join('');
+  box.innerHTML = list.map((f) => _card(f, list, inventory, stores.filter((s) => formulaIdOf(s) === String(f.id)).map((s) => s.name))).join('');
 }
 
 export async function openFormulaStore() {
@@ -271,4 +254,4 @@ export function refreshFormulaStoreScreens() {
   if (listScreen && window.getDisplay(listScreen) !== 'none') renderFormulaStoreList();
 }
 
-Object.assign(window, { expandFormulaIngredients, mergeIngredients, restoreFormulaEntry, openFormulaStore, renderFormulaStoreList, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, updateFormulaCalcs, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });
+Object.assign(window, { restoreFormulaEntry, openFormulaStore, renderFormulaStoreList, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, updateFormulaCalcs, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });

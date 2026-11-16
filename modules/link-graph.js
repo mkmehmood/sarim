@@ -1,3 +1,4 @@
+import { flattenFormula } from './formula-links.js';
 export const GROUP_FIELD = '_deletionGroup';
 
 export const REF_FIELDS = {
@@ -422,7 +423,8 @@ export function resolveSelectedFormula(data, ref) {
     };
   };
   if (f) {
-    return { source: 'store', formulaId: f.id, name: f.name || 'Formula', additionalCost: _n(f.additionalCost), ingredients: (Array.isArray(f.ingredients) ? f.ingredients : []).map(resolve) };
+    const flat = flattenFormula(f, list);
+    return { source: 'store', formulaId: f.id, name: f.name || 'Formula', additionalCost: _n(flat.additionalCost), ingredients: flat.ingredients.map(resolve) };
   }
   return { source: 'none', formulaId: null, name: '', additionalCost: 0, ingredients: [] };
 }

@@ -1,4 +1,5 @@
 import './store-keys.js';
+import { flattenFormula } from './formula-links.js';
 
 const _num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 const _arr = (v) => (Array.isArray(v) ? v : []);
@@ -10,8 +11,9 @@ export function feedsFromFormulas(list) {
   _arr(list).forEach((f) => {
     if (!f || !f.id) return;
     const id = String(f.id);
-    defaults[id] = _arr(f.ingredients).map((i) => ({ id: i.id, name: i.name, cost: _num(i.cost, 0), quantity: _num(i.quantity, 0) }));
-    costs[id] = _num(f.additionalCost, 0);
+    const flat = flattenFormula(f, list);
+    defaults[id] = flat.ingredients.map((i) => ({ id: i.id, name: i.name, cost: _num(i.cost, 0), quantity: _num(i.quantity, 0) }));
+    costs[id] = flat.additionalCost;
     adjustment[id] = _num(f.costAdjustmentFactor, 1) || 1;
   });
   return { defaults, costs, adjustment };

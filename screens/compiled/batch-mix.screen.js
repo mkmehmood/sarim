@@ -6,6 +6,7 @@ import { convertValue, el, fixed3, fmtAmt, loadFormulas, markActive, pickFormula
 import { newCalcId, renderSavedList, setSaveButtons } from '../../modules/batch-saved.js';
 import { showGlassConfirm, showToast } from '../../modules/customers.js';
 import { getFormulaStore, updateFormulaCalcs } from '../../modules/formula-store.js';
+import { resolveAll } from '../../modules/formula-links.js';
 const _state = { formulas: [], formula: null, mode: 'total', unit: 'kg', plan: null, editingId: null };
 const _toUnit = (kg) => (_state.unit === 'g' ? kg * 1000 : kg);
 const _toKg = (v) => (_state.unit === 'g' ? v / 1000 : v);
@@ -91,7 +92,7 @@ function _renderSaved() {
   if (box) box.innerHTML = renderSavedList(recs, 'editBatchMixSaved', 'deleteBatchMixSaved');
 }
 async function _reloadFormula() {
-  _state.formulas = await getFormulaStore();
+  _state.formulas = resolveAll(await getFormulaStore());
   const id = _state.formula ? String(_state.formula.id) : '';
   _state.formula = _state.formulas.find((x) => String(x.id) === id) || null;
 }

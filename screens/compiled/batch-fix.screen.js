@@ -6,6 +6,7 @@ import { convertValue, el, fmtAmt, loadFormulas, markActive, pickFormula, round6
 import { newCalcId, renderSavedList, setSaveButtons } from '../../modules/batch-saved.js';
 import { showGlassConfirm, showToast } from '../../modules/customers.js';
 import { getFormulaStore, updateFormulaCalcs } from '../../modules/formula-store.js';
+import { resolveAll } from '../../modules/formula-links.js';
 const _state = { formulas: [], formula: null, manual: null, unit: 'g', plan: null, editingId: null };
 const _fmt = (v) => `${fmtAmt(v, _state.unit)} ${_state.unit}`;
 const _num = (id) => parseFloat((el(id) || {}).value) || 0;
@@ -98,7 +99,7 @@ function _renderSaved() {
   if (box) box.innerHTML = renderSavedList(recs, 'editBatchFixSaved', 'deleteBatchFixSaved');
 }
 async function _reloadFormula() {
-  _state.formulas = await getFormulaStore();
+  _state.formulas = resolveAll(await getFormulaStore());
   const id = _state.formula ? String(_state.formula.id) : '';
   _state.formula = _state.formulas.find((x) => String(x.id) === id) || null;
 }
