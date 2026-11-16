@@ -5659,7 +5659,7 @@ html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content:
 .apv-svg { width: 22px; height: 22px; }
 
 .vk-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10350; padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1px solid var(--glass-border-strong); box-shadow: 0 -10px 28px color-mix(in srgb, var(--black) 28%, transparent); font-family: var(--font-ui); color: var(--text-main); user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.vk-dock[hidden], .vk-qwerty[hidden], .vk-numpad[hidden], .vk-symbols[hidden] { display: none; }
+.vk-dock[hidden], .vk-qwerty[hidden], .vk-numpad[hidden], .vk-symbols[hidden], .vk-snippets[hidden] { display: none; }
 .vk-qwerty, .vk-symbols { display: grid; gap: 6px; max-width: 768px; margin: 0 auto; }
 .vk-numpad { display: grid; gap: 6px; max-width: 480px; margin: 0 auto; }
 .vk-row { display: flex; justify-content: center; gap: 6px; }
@@ -5681,6 +5681,11 @@ html[data-needs-approval] [onclick*="saveQuickExpenseEntry()"]::after { content:
 .vk-shift { flex: 1.5 1 0; color: var(--white); background: var(--accent-indigo); border-color: color-mix(in srgb, var(--accent-indigo) 70%, var(--white)); }
 .vk-shift.is-on { background: var(--white); color: var(--accent-indigo); }
 input[data-vk-secret] { -webkit-text-security: disc; }
+.vk-snippets { display: grid; gap: 6px; max-width: 768px; margin: 0 auto; }
+.vk-snips { display: flex; flex-direction: column; gap: 6px; max-height: calc(46px * 4 + 18px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.vk-snip-empty { padding: 18px 12px; text-align: center; color: var(--text-secondary); font-size: 0.9rem; }
+.vk-snip-use { display: block; flex: 1 1 0; padding: 0 14px; font-size: 1rem; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 44px; }
+.vk-snip-del { flex: 0 0 52px; color: var(--danger); font-size: 1.5rem; }
 .vk-enter { color: var(--white); background: var(--accent-indigo); border-color: color-mix(in srgb, var(--accent-indigo) 70%, var(--white)); }
 .vk-space { font-size: 0.875rem; color: var(--text-secondary); }
 .vk-back { color: var(--danger); font-size: 1.125rem; }

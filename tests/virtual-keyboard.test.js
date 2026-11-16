@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  QWERTY_ROWS, NUMPAD_OPS, NUMPAD_ROWS, NUMPAD_SIDE, NUMPAD_BOTTOM, SYMBOL_ROWS, TOOLS, layoutForField, keyText, insertManual, backspaceManual, dockHtml,
+  QWERTY_ROWS, SNIPPET_LEN, SNIPPET_MAX, addSnippet, cleanSnippets, loadSnippets, removeSnippet, saveSnippets, NUMPAD_OPS, NUMPAD_ROWS, NUMPAD_SIDE, NUMPAD_BOTTOM, SYMBOL_ROWS, TOOLS, layoutForField, keyText, insertManual, backspaceManual, dockHtml,
 } from '../modules/virtual-keyboard.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -93,14 +93,14 @@ describe('layout matches the design exactly, nothing added or removed', () => {
     assert.deepEqual([...NUMPAD_SIDE], ['%', 'space', 'back']);
     assert.deepEqual([...NUMPAD_BOTTOM], ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
   });
-  it('has a symbols page and two tools', () => {
+  it('has a symbols page and three tools', () => {
     assert.equal(SYMBOL_ROWS.length, 3);
-    assert.equal(TOOLS.length, 2);
+    assert.equal(TOOLS.length, 3);
   });
   it('letters page: tools row, 10/9/7 letters with shift and backspace, then 123, comma, English space, period, enter', () => {
     const qwerty = html.slice(html.indexOf('id="vk-qwerty"'), html.indexOf('id="vk-numpad"'));
     assert.deepEqual([...qwerty.matchAll(/data-act="([a-z]+)"/g)].map((m) => m[1]),
-      ['paste', 'selectall', 'shift', 'back', 'pad', 'enter']);
+      ['paste', 'selectall', 'snippets', 'shift', 'back', 'pad', 'enter']);
     assert.equal((qwerty.match(/class="vk-key"/g) || []).length, 26);
     assert.match(qwerty, /vk-space vk-w40" data-key=" " aria-label="Space">English</);
     assert.match(qwerty, /vk-row vk-row-bottom/);
@@ -151,7 +151,7 @@ describe('behaviour wiring', () => {
   const src = read('../modules/virtual-keyboard.js');
   it('keeps focus in the field while keys are pressed', () => {
     assert.match(src, /dock\.addEventListener\('pointerdown', onKeyDown\)/);
-    assert.match(src, /e\.preventDefault\(\);\n\s*const act = btn\.dataset\.act;\n\s*if \(act === 'shift'\)/);
+    assert.match(src, /e\.preventDefault\(\);\n\s*if \(btn\.dataset\.click\) return;\n\s*const act = btn\.dataset\.act;\n\s*if \(act === 'shift'\)/);
   });
   it('stops the phone keyboard by overriding inputmode and restores it afterwards', () => {
     assert.match(src, /el\.setAttribute\('inputmode', 'none'\)/);
@@ -163,7 +163,7 @@ describe('behaviour wiring', () => {
   });
   it('only installs inside the Android app, with no switch to turn it off', () => {
     assert.match(src, /if \(!force && !isAndroidApp\(\)\) return null;/);
-    assert.doesNotMatch(src, /localStorage|isEnabled|toggleVirtualKeyboard|syncKeyboardButton/);
+    assert.doesNotMatch(src, /isEnabled|toggleVirtualKeyboard|syncKeyboardButton|PREF_KEY/);
     assert.ok(!read('../index.html').includes('vk-toggle-btn'));
     assert.ok(read('../sw.js').includes("'./modules/virtual-keyboard.js'"));
     assert.ok(read('../modules/main.js').includes("import './virtual-keyboard.js';"));
@@ -185,10 +185,47 @@ describe('shift and credential fields', () => {
   });
 });
 
+describe('clipboard and snippets', () => {
+  const src = read('../modules/virtual-keyboard.js');
+  it('paste reads through the Capacitor Clipboard plugin first, then the browser, and says when nothing came back', () => {
+    assert.match(src, /window\.Capacitor\.Plugins\.Clipboard/);
+    assert.match(src, /await plugin\.read\(\)/);
+    assert.match(src, /navigator\.clipboard\.readText\(\)/);
+    assert.match(src, /notify\('Clipboard is empty'\)/);
+    assert.ok(JSON.parse(read('../package.json')).dependencies['@capacitor/clipboard']);
+    assert.match(read('../android/app/capacitor.build.gradle'), /capacitor-clipboard/);
+    assert.match(read('../android/capacitor.settings.gradle'), /capacitor-clipboard/);
+  });
+  it('snippet helpers trim, de-duplicate, cap and survive bad storage', () => {
+    assert.deepEqual(addSnippet(['a', 'b'], '  b  '), ['b', 'a']);
+    assert.deepEqual(addSnippet(['a'], '   '), ['a']);
+    assert.equal(addSnippet([], 'x'.repeat(900))[0].length, SNIPPET_LEN);
+    assert.equal(addSnippet(Array.from({ length: 40 }, (_, i) => `s${i}`), 'new').length, SNIPPET_MAX);
+    assert.deepEqual(removeSnippet(['a', 'b', 'c'], 1), ['a', 'c']);
+    assert.deepEqual(cleanSnippets('nope'), []);
+    assert.deepEqual(loadSnippets({ getItem: () => '{bad' }), []);
+    const store = new Map();
+    const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
+    assert.equal(saveSnippets(storage, ['keep me']), true);
+    assert.deepEqual(loadSnippets(storage), ['keep me']);
+    assert.equal(saveSnippets({ setItem() { throw new Error('full'); } }, ['a']), false);
+  });
+  it('the snippets page has save-clipboard, save-field-text and a list that inserts or deletes on click, not on touch-down', () => {
+    const html = dockHtml();
+    assert.match(html, /id="vk-snippets" class="vk-snippets" hidden/);
+    assert.match(html, /data-act="snip-clip"/);
+    assert.match(html, /data-act="snip-field"/);
+    assert.match(src, /if \(btn\.dataset\.click\) return;/);
+    assert.match(src, /dock\.addEventListener\('click'/);
+    assert.match(src, /notify\('Snippet saved'\)/);
+    assert.match(src, /addSnippetFrom\(selectedOrAll\(\), 'Nothing to save'\)/);
+  });
+});
+
 describe('new keys', () => {
   const src = read('../modules/virtual-keyboard.js');
   it('switches between letters, numbers and symbols pages', () => {
-    assert.match(src, /const PAGES = \{ letters: 'qwerty', pad: 'numpad', symbols: 'symbols' \};/);
+    assert.match(src, /const PAGES = \{ letters: 'qwerty', pad: 'numpad', symbols: 'symbols', snippets: 'snippets' \};/);
     assert.match(src, /if \(PAGES\[act\]\) \{ showPage\(act\); return; \}/);
   });
   it('enter adds a line in a text area, otherwise sends Enter and submits the form if nothing handled it', () => {
@@ -196,9 +233,9 @@ describe('new keys', () => {
     assert.match(src, /new KeyboardEvent\('keydown', init\)/);
     assert.match(src, /form\.requestSubmit\(\)/);
   });
-  it('tools: only paste and select all, both working, nothing disabled', () => {
+  it('tools: paste, select all and snippets, all working, nothing disabled', () => {
     assert.match(src, /navigator\.clipboard\.readText\(\)/);
-    assert.deepEqual(TOOLS.map((t) => t.act), ['paste', 'selectall']);
+    assert.deepEqual(TOOLS.map((t) => t.act), ['paste', 'selectall', 'snippets']);
     assert.doesNotMatch(dockHtml(), /aria-disabled|data-act="(system|emoji|tools|voice|code|translate|settings|adjust)"/);
   });
 });

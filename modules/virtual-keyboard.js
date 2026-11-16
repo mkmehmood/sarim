@@ -17,12 +17,46 @@ export const SYMBOL_ROWS = Object.freeze(['1234567890', '@#$_&-+()/', '*"\':;!?~
 export const TOOLS = Object.freeze([
   Object.freeze({ act: 'paste', icon: 'clipboard', aria: 'Paste' }),
   Object.freeze({ act: 'selectall', icon: 'notes', aria: 'Select all' }),
+  Object.freeze({ act: 'snippets', icon: 'bookmark', aria: 'Snippets' }),
 ]);
+export const SNIPPET_KEY = 'sarimKeyboardSnippets';
+export const SNIPPET_MAX = 30;
+export const SNIPPET_LEN = 500;
+
+export function cleanSnippets(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  list.forEach((t) => {
+    if (typeof t !== 'string') return;
+    const v = t.trim().slice(0, SNIPPET_LEN);
+    if (v && !out.includes(v)) out.push(v);
+  });
+  return out.slice(0, SNIPPET_MAX);
+}
+
+export function loadSnippets(storage) {
+  try { return cleanSnippets(JSON.parse(storage.getItem(SNIPPET_KEY))); } catch (_) { return []; }
+}
+
+export function saveSnippets(storage, list) {
+  try { storage.setItem(SNIPPET_KEY, JSON.stringify(cleanSnippets(list))); return true; } catch (_) { return false; }
+}
+
+export function addSnippet(list, text) {
+  const v = String(text == null ? '' : text).trim().slice(0, SNIPPET_LEN);
+  if (!v) return cleanSnippets(list);
+  return cleanSnippets([v, ...cleanSnippets(list).filter((t) => t !== v)]);
+}
+
+export function removeSnippet(list, index) {
+  return cleanSnippets(list).filter((_, i) => i !== index);
+}
 
 const NON_TEXT_TYPES = new Set(['hidden', 'checkbox', 'radio', 'file', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range', 'button', 'submit', 'reset', 'image']);
 const NUMPAD_TYPES = new Set(['number', 'tel']);
 const NUMPAD_MODES = new Set(['numeric', 'decimal', 'tel']);
 const ICONS = {
+  bookmark: '<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
   notes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
   shift: '<path d="m5 12 7-7 7 7M12 19V5"/>',
@@ -132,6 +166,9 @@ export function dockHtml() {
     + `<div id="vk-numpad" class="vk-numpad" hidden><div class="vk-padtop"><div class="vk-col vk-ops">${NUMPAD_OPS.map(padKey).join('')}</div>`
     + `<div class="vk-col vk-digits">${digits}</div><div class="vk-col vk-side">${NUMPAD_SIDE.map(padKey).join('')}</div></div>`
     + `${row('vk-row-bottom', NUMPAD_BOTTOM.map(padKey).join(''))}</div>`
+    + `<div id="vk-snippets" class="vk-snippets" hidden>${row('vk-snip-head', [
+      actKey('letters', 'ABC', 'Letters', 'vk-fn vk-w10'), actKey('snip-clip', '+ Clipboard', 'Save clipboard as snippet', 'vk-fn vk-w15'),
+      actKey('snip-field', '+ Field text', 'Save field text as snippet', 'vk-fn vk-w15')].join(''))}<div class="vk-snips" id="vk-snip-list"></div></div>`
     + `<div id="vk-symbols" class="vk-symbols" hidden>${symbols}${row('vk-row-bottom', [
       actKey('letters', 'ABC', 'Letters', 'vk-fn vk-w15'), actKey('pad', '123', 'Numbers', 'vk-fn vk-w15'), charKey(',', 'vk-fn vk-w10'),
       spaceKey('vk-w30'), charKey('.', 'vk-fn vk-w10'), backKey('vk-w15'), enterKey('vk-w15')].join(''))}</div>`;
@@ -145,6 +182,7 @@ export function isAndroidApp() {
 let dock = null;
 let active = null;
 let shift = false;
+let snippets = [];
 let watch = 0;
 let repeat = 0;
 let repeatStart = 0;
@@ -209,6 +247,7 @@ function showLayout(layout) {
   dock.querySelector('#vk-qwerty').hidden = layout !== 'qwerty';
   dock.querySelector('#vk-numpad').hidden = layout !== 'numpad';
   dock.querySelector('#vk-symbols').hidden = layout !== 'symbols';
+  dock.querySelector('#vk-snippets').hidden = layout !== 'snippets';
   document.documentElement.classList.add('vk-open');
   if (!watch) watch = setInterval(checkOrphan, 800);
 }
@@ -276,7 +315,7 @@ function stopRepeat() {
   repeat = 0;
 }
 
-const PAGES = { letters: 'qwerty', pad: 'numpad', symbols: 'symbols' };
+const PAGES = { letters: 'qwerty', pad: 'numpad', symbols: 'symbols', snippets: 'snippets' };
 
 function enter() {
   if (!active || !active.isConnected) { hideKeyboard(); return; }
@@ -295,12 +334,101 @@ function enter() {
   if (typeof el.blur === 'function') el.blur();
 }
 
+async function readClipboard() {
+  try {
+    const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Clipboard;
+    if (plugin && typeof plugin.read === 'function') {
+      const r = await plugin.read();
+      if (r && typeof r.value === 'string') return r.value;
+    }
+  } catch (_) {}
+  try { return String(await navigator.clipboard.readText()); } catch (_) { return ''; }
+}
+
+function notify(message) {
+  try { if (typeof window.showToast === 'function') window.showToast(message); } catch (_) {}
+}
+
 async function pasteClipboard() {
   if (!active || !active.isConnected) return;
-  try {
-    const text = await navigator.clipboard.readText();
-    if (text) { active.focus({ preventScroll: true }); typeInto(active, text); }
-  } catch (_) {}
+  const text = await readClipboard();
+  if (!text) { notify('Clipboard is empty'); return; }
+  if (active && active.isConnected) { active.focus({ preventScroll: true }); typeInto(active, text); }
+}
+
+function persistSnippets() {
+  try { saveSnippets(window.localStorage, snippets); } catch (_) {}
+}
+
+function renderSnippets() {
+  const list = dock.querySelector('#vk-snip-list');
+  list.replaceChildren();
+  if (!snippets.length) {
+    const empty = document.createElement('div');
+    empty.className = 'vk-snip-empty';
+    empty.textContent = 'No snippets yet. Copy some text, then tap + Clipboard.';
+    list.appendChild(empty);
+    return;
+  }
+  snippets.forEach((text, i) => {
+    const line = document.createElement('div');
+    line.className = 'vk-row vk-snip';
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'vk-key vk-snip-use';
+    use.dataset.act = 'snip';
+    use.dataset.click = '1';
+    use.dataset.idx = String(i);
+    use.setAttribute('aria-label', 'Insert snippet');
+    use.textContent = text.replace(/\s+/g, ' ').slice(0, 80);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'vk-key vk-snip-del';
+    del.dataset.act = 'snip-del';
+    del.dataset.click = '1';
+    del.dataset.idx = String(i);
+    del.setAttribute('aria-label', 'Delete snippet');
+    del.textContent = '\u00d7';
+    line.append(use, del);
+    list.appendChild(line);
+  });
+}
+
+function addSnippetFrom(text, emptyMessage) {
+  if (!String(text == null ? '' : text).trim()) { notify(emptyMessage); return; }
+  snippets = addSnippet(snippets, text);
+  persistSnippets();
+  renderSnippets();
+  notify('Snippet saved');
+}
+
+function selectedOrAll() {
+  if (!active || typeof active.value !== 'string') return '';
+  let a = null;
+  let b = null;
+  try { a = active.selectionStart; b = active.selectionEnd; } catch (_) {}
+  return a != null && b != null && b > a ? active.value.slice(a, b) : active.value;
+}
+
+function openSnippets() {
+  try { snippets = loadSnippets(window.localStorage); } catch (_) { snippets = []; }
+  renderSnippets();
+  showPage('snippets');
+}
+
+function snippetClick(btn) {
+  const idx = Number(btn.dataset.idx);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= snippets.length) return;
+  tapFeedback();
+  if (btn.dataset.act === 'snip') {
+    if (active && active.isConnected) { active.focus({ preventScroll: true }); typeInto(active, snippets[idx]); }
+    showPage('letters');
+  } else if (btn.dataset.act === 'snip-del') {
+    snippets = removeSnippet(snippets, idx);
+    persistSnippets();
+    renderSnippets();
+    updateHeight();
+  }
 }
 
 function selectAll() {
@@ -321,6 +449,7 @@ function onKeyDown(e) {
   const btn = e.target.closest && e.target.closest('.vk-key');
   if (!btn || !dock.contains(btn)) return;
   e.preventDefault();
+  if (btn.dataset.click) return;
   const act = btn.dataset.act;
   if (act === 'shift') { tapFeedback(); setShift(!shift); return; }
   if (act === 'back') {
@@ -333,6 +462,9 @@ function onKeyDown(e) {
   if (PAGES[act]) { showPage(act); return; }
   if (act === 'paste') { tapFeedback(); pasteClipboard(); return; }
   if (act === 'selectall') { tapFeedback(); selectAll(); return; }
+  if (act === 'snippets') { openSnippets(); return; }
+  if (act === 'snip-clip') { tapFeedback(); readClipboard().then((t) => addSnippetFrom(t, 'Clipboard is empty')); return; }
+  if (act === 'snip-field') { tapFeedback(); addSnippetFrom(selectedOrAll(), 'Nothing to save'); return; }
   press(btn.dataset.key);
 }
 
@@ -351,6 +483,11 @@ export function installVirtualKeyboard({ force = false } = {}) {
   dock.addEventListener('pointercancel', stopRepeat);
   dock.addEventListener('pointerleave', stopRepeat);
   dock.addEventListener('contextmenu', (e) => e.preventDefault());
+  dock.addEventListener('click', (e) => {
+    e.preventDefault();
+    const btn = e.target.closest && e.target.closest('[data-click]');
+    if (btn && dock.contains(btn)) snippetClick(btn);
+  });
   document.addEventListener('pointerdown', onPointerDownField, true);
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('focusout', onFocusOut, true);

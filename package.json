@@ -39,6 +39,7 @@
   "dependencies": {
     "@capacitor/app": "^8.1.2",
     "@capacitor/camera": "^8.2.6",
+    "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/geolocation": "^8.2.4",
