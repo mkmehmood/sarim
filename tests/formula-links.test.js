@@ -117,7 +117,10 @@ describe('live sub-formula links', () => {
     assert.match(ed, /canLink\(_ctx\.list, _editingId, f\.id\)/);
     assert.match(ed, /can't be linked back/);
     assert.match(ed, /Remove that link first/);
-    assert.match(ed, /All materials in this formula/);
+    assert.doesNotMatch(ed, /All materials in this formula|fsMaterialsPreview/);
+    assert.match(ed, /factory-link-child/);
+    assert.match(ed, /el\.readOnly = true;/);
+    assert.match(ed, /\.factory-formula-grid:not\(\.factory-link-child\)/);
     assert.match(ed, /linkIngredient\(\{ id: inp\.dataset\.formulaId/);
   });
 });

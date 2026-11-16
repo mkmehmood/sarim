@@ -6,7 +6,7 @@ import { _invalidateStoresCache, getAppStores } from './utilities-sales.js';
 import { getDefaultStoreKey, formulaIdOf } from './store-keys.js';
 import { feedsFromFormulas } from './formula-pools.js';
 import { mergeRestored } from './store-recycle.js';
-import { describeFormula, formulaUsers } from './formula-links.js';
+import { describeFormula, formulaUsers, isLink } from './formula-links.js';
 const STORE_KEY = 'formulas';
 const STORE_TS_KEY = 'formulas_timestamp';
 export const _el = (id) => document.getElementById(id);
@@ -103,10 +103,21 @@ function _card(f, list, inventory, usedBy) {
   const d = describeFormula(f, list, inventory);
   const linkedIn = formulaUsers(list, f.id).map((x) => x.name || 'Untitled');
   let html = `<h4 class="u-c2d830a">${esc(f.name || 'Untitled')} (1 Unit)</h4>`;
-  if (!d.items.length) html += '<div class="u-text-muted">No ingredients.</div>';
-  d.items.forEach((m) => {
-    const via = m.via && m.via.length ? ` <span class="u-text-muted">· from ${esc(m.via.join(', '))}</span>` : '';
-    html += _row(`${esc(m.name)} (${_fmt(_num(m.quantity, 0))} kg)${via}`, _money(_num(m.cost, 0) * _num(m.quantity, 0)));
+  const ings = ensureArray(f.ingredients);
+  if (!ings.length) html += '<div class="u-text-muted">No ingredients.</div>';
+  ings.forEach((i) => {
+    if (!isLink(i)) {
+      html += _row(`${esc(i.name)} (${_fmt(_num(i.quantity, 0))} kg)`, _money(_liveCost(i, inventory) * _num(i.quantity, 0)));
+      return;
+    }
+    const sub = list.find((x) => String(x.id) === String(i.formulaId));
+    if (!sub) { html += _row(`${esc(i.name)} · sub formula (removed)`, '—', 'st-color__497726'); return; }
+    const sd = describeFormula(sub, list, inventory);
+    const q = _num(i.quantity, 0);
+    const scale = sd.weight > 0 ? q / sd.weight : 0;
+    html += _row(`${esc(sub.name || 'Untitled')} · sub formula (${_fmt(q)} kg)`, _money(scale * sd.perUnit), 'st-font-weight__e3ec02');
+    sd.items.forEach((m) => { html += _row(`&nbsp;&nbsp;\u21b3 ${esc(m.name)} (${_fmt(m.quantity * scale)} kg)`, _money(m.cost * m.quantity * scale), 'u-text-muted'); });
+    if (sd.additionalCost > 0) html += _row('&nbsp;&nbsp;\u21b3 Additional cost', _money(sd.additionalCost * scale), 'u-text-muted');
   });
   if (d.ownAdditionalCost > 0) html += _row(`Additional Cost (${d.ownAdditionalCost} per unit)`, _money(d.ownAdditionalCost), 'st-color__497726');
   if (d.problems.length) html += _row(`Check linked formulas: ${esc([...new Set(d.problems.map((p) => `${p.name} (${p.type === 'cycle' ? 'circular' : 'removed'})`))].join(', '))}`, '', 'st-color__497726');
