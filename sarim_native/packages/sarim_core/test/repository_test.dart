@@ -227,6 +227,30 @@ Future<void> main() async {
     eq((await repo.stores()).single.salePrice, 90, 'cloud list without a price keeps the local price');
   });
 
+  await group('formula costing: used when no batch has a cost, pulled from the cloud', () async {
+    final remote = FakeRemote();
+    remote.docs['stores'] = {'list': {'stores': [{'key': 'zubair', 'name': 'ZUBAIR', 'salePrice': 100, 'formulaId': 'f1'}], 'stores_timestamp': 5}};
+    remote.docs['formulas'] = {'config': {'formulas': [
+      {'id': 'f1', 'name': 'Layer', 'additionalCost': 10, 'costAdjustmentFactor': 2,
+       'ingredients': [{'id': 'i1', 'name': 'Corn', 'quantity': 0.5, 'cost': 20}, {'id': 'i2', 'name': 'Soya', 'quantity': 0.25, 'cost': 40}]}
+    ], 'formulas_timestamp': 7}};
+    remote.docs['inventory'] = {'i1': {'id': 'i1', 'name': 'Corn', 'cost': 30, 'quantity': 900, 'updatedAt': 1}};
+    remote.docs['production'] = {'p1': {'id': 'p1', 'date': '2026-11-10', 'store': 'zubair', 'net': 500, 'totalCost': 0, 'updatedAt': 1}};
+    final repo = fresh();
+    check((await SyncService(repo, remote).sync()).ok, 'sync ok');
+    // Corn uses the live inventory cost (30): 0.5*30 + Soya 0.25*40 = 25, + 10 additional = 35, / factor 2 = 17.5 per kg.
+    final q = await repo.quoteCustomerSale(name: 'Ali', quantity: 100, date: '2026-11-10', storeKey: 'zubair');
+    check(q.ok, 'quote ok: ${q.message}');
+    eq(q.totalCost, 1750, 'formula cost 17.5/kg x 100');
+    eq(q.profit, 10000 - 1750, 'profit');
+    // No formula, no costed production => refuse rather than record a wrong profit.
+    final bare = fresh();
+    await bare.store.set('stores', [{'key': 'zubair', 'name': 'ZUBAIR', 'salePrice': 100}]);
+    await bare.store.set('production', [{'id': 'p1', 'date': '2026-11-10', 'store': 'zubair', 'net': 500, 'totalCost': 0}]);
+    final q2 = await bare.quoteCustomerSale(name: 'Ali', quantity: 1, date: '2026-11-10', storeKey: 'zubair');
+    eq(q2.issue, SaleIssue.noCost, 'refused without any cost basis');
+  });
+
   await group('offline queue and sync round-trip', () async {
     final remote = FakeRemote();
     final a = fresh();

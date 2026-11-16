@@ -225,8 +225,12 @@ class SarimRepository {
       sales: await sales(),
       customers: await customerRecords(),
       stores: all,
+      formulas: await _formulaList(),
+      inventory: await _list('inventory'),
     );
   }
+
+  Future<List<Rec>> _formulaList() => _list('formulas');
 
   /// Records a cash or credit sale to a customer (no sales rep). Mirrors saveCustomerSale in the web app.
   Future<Rec> recordSale({
@@ -305,6 +309,20 @@ class SarimRepository {
       await _enqueue(SyncOp('set', 'customers', '${contact['id']}', contact));
     }
     return rec;
+  }
+
+  /// Adopts the formulas list (`formulas/config`) from the cloud when it is newer.
+  Future<bool> applyFormulas(Rec doc) async {
+    final cloud = doc['formulas'];
+    if (cloud is! List) return false;
+    final cloudTs = numOf(doc['formulas_timestamp']);
+    final localTs = numOf(await store.get('formulas_timestamp'));
+    final local = await store.get('formulas');
+    if (local is List && local.isNotEmpty && localTs > 0 && cloudTs <= localTs) return false;
+    if (jsonEqual(cloud, local)) return false;
+    await store.set('formulas', cloud);
+    if (cloudTs > 0) await store.set('formulas_timestamp', cloudTs);
+    return true;
   }
 
   /// Adopts the store list (names, sale prices) from the cloud. Returns true if anything changed.

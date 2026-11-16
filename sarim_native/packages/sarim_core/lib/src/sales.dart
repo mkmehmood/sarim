@@ -4,14 +4,14 @@ import 'js_num.dart';
 /// profit-cost.js (realized cost per kg) and the stock checks in saveCustomerSale.
 
 class StoreInfo {
-  StoreInfo(this.key, this.name, this.salePrice);
-  final String key, name;
+  StoreInfo(this.key, this.name, this.salePrice, [this.formulaId = '']);
+  final String key, name, formulaId;
   final double salePrice;
   static List<StoreInfo> fromJson(dynamic list) {
     if (list is! List) return const [];
     return [
       for (final s in list)
-        if (s is Map && truthy(s['key'])) StoreInfo('${s['key']}', truthy(s['name']) ? '${s['name']}' : '${s['key']}', numOf(s['salePrice']))
+        if (s is Map && truthy(s['key'])) StoreInfo('${s['key']}', truthy(s['name']) ? '${s['name']}' : '${s['key']}', numOf(s['salePrice']), truthy(s['formulaId']) ? '${s['formulaId']}' : '')
     ];
   }
 }
@@ -34,6 +34,62 @@ double effectiveSalePrice(List<Rec> customers, List<StoreInfo> stores, String? c
     }
   }
   return salePriceForStore(stores, store);
+}
+
+double _fnum(dynamic v, double d) {
+  final x = parseFloatJs(v);
+  return (x != null && x.isFinite) ? x : d;
+}
+
+/// Port of calculateSalesCostPerKg: the store's formula cost per kg from live inventory prices.
+double formulaCostPerKg({
+  required String? store,
+  required List<StoreInfo> stores,
+  required List<Rec> formulas,
+  required List<Rec> inventory,
+}) {
+  if (store == null || store.isEmpty) return 0;
+  String poolId = store;
+  for (final s in stores) { if (s.key == store && s.formulaId.isNotEmpty) { poolId = s.formulaId; break; } }
+  // resolveSelectedFormula(ref = pool id): a store whose key equals the ref wins, else the ref is the formula id.
+  StoreInfo? st;
+  for (final s in stores) { if (s.key == poolId) { st = s; break; } }
+  final String? formulaId = st != null ? (st.formulaId.isEmpty ? null : st.formulaId) : poolId;
+  if (formulaId == null) return 0;
+  Rec? f;
+  for (final x in formulas) { if (truthy(x['id']) && '${x['id']}' == formulaId) { f = x; break; } }
+  if (f == null || f['ingredients'] is! List) return 0;
+  final invLive = inventory.where((i) => !truthy(i['deletedAt'])).toList();
+  Rec? find(List<Rec> list, Map i) {
+    for (final x in list) { if ('${x['id']}' == '${i['id']}') return x; }
+    final n = truthy(i['name']) ? '${i['name']}'.trim().toLowerCase() : '';
+    if (n.isNotEmpty) {
+      for (final x in list) { if (truthy(x['name']) && '${x['name']}'.trim().toLowerCase() == n) return x; }
+    }
+    return null;
+  }
+  final ingredients = [];
+  for (final raw in (f['ingredients'] as List).whereType<Map>()) {
+    final live = find(invLive, raw);
+    final liveCost = live != null ? (double.tryParse('${live['cost']}') ?? double.nan) : double.nan;
+    ingredients.add({
+      'id': raw['id'],
+      'name': (live != null && truthy(live['name'])) ? live['name'] : (truthy(raw['name']) ? raw['name'] : 'Material'),
+      'quantity': _fnum(raw['quantity'], 0),
+      'cost': (liveCost.isFinite && liveCost > 0) ? liveCost : _fnum(raw['cost'], 0),
+    });
+  }
+  if (ingredients.isEmpty) return 0;
+  var rawCost = 0.0;
+  for (final item in ingredients) {
+    final live = find(inventory, item as Map);
+    final c = live != null ? (double.tryParse('${live['cost']}') ?? double.nan) : double.nan;
+    final unit = (c.isFinite && c > 0) ? c : (numOf(item['cost']));
+    rawCost += unit * (item['quantity'] as double);
+  }
+  final additional = _fnum(f['additionalCost'], 0);
+  final adj = (_fnum(f['costAdjustmentFactor'], 1) != 0 ? _fnum(f['costAdjustmentFactor'], 1) : 1.0);
+  return adj > 0 ? (rawCost + additional) / adj : rawCost + additional;
 }
 
 /// Realized cost per kg from production batches: that store+date if costed, else the store's overall average.
@@ -119,6 +175,9 @@ SaleQuote quoteSale({
   required List<Rec> sales,
   required List<Rec> customers,
   required List<StoreInfo> stores,
+  List<Rec> formulas = const [],
+  List<Rec> inventory = const [],
+  bool requireCost = true,
 }) {
   if (date.isEmpty) return SaleQuote.error(SaleIssue.noDate, 'Please select a date.');
   if (name.trim().isEmpty) return SaleQuote.error(SaleIssue.noName, 'Please enter customer name.');
@@ -135,10 +194,11 @@ SaleQuote quoteSale({
       available: pos.available,
     );
   }
-  final perKg = costPerKg(production, store, date);
-  if (!(perKg > 0)) {
+  var perKg = costPerKg(production, store, date);
+  if (!(perKg > 0)) perKg = formulaCostPerKg(store: store, stores: stores, formulas: formulas, inventory: inventory);
+  if (requireCost && !(perKg > 0)) {
     return SaleQuote.error(SaleIssue.noCost,
-        'The cost price for $storeLabel is not available yet (no costed production). Record this sale in the web app so profit is calculated correctly.');
+        'The cost price for $storeLabel is not available yet (no costed production and no formula cost). Sync, or record this sale in the web app so profit is calculated correctly.');
   }
   final price = effectiveSalePrice(customers, stores, name, store);
   if (!(price > 0)) {

@@ -27,6 +27,9 @@ Future<void> main() async {
         sales: recs(input['sales']),
         customers: recs(input['customers']),
         stores: stores,
+        formulas: recs(input['formulas']),
+        inventory: recs(input['inventory']),
+        requireCost: false,
       );
       final issue = q.issue?.name;
       eq(issue, exp['issue'], 'case $i issue');

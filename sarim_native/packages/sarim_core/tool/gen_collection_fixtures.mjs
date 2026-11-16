@@ -9,7 +9,9 @@ import { planCollectionAllocation, applyCollectionAlloc, revertCollectionAlloc, 
 
 const here = dirname(fileURLToPath(import.meta.url));
 let seed = 424242;
-const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const _rng = mulberry32(seed);
+const rnd = (n) => Math.floor(_rng() * n);
 const day = (n) => `2026-10-${String(1 + (n % 28)).padStart(2, '0')}`;
 const STAMP = 777000;
 

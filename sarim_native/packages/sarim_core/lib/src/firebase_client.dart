@@ -181,7 +181,7 @@ class SyncService {
   SyncService(this.repo, this.remote);
   final SarimRepository repo;
   final RemoteApi remote;
-  static const pulled = ['sales', 'customers', 'production', 'returns'];
+  static const pulled = ['sales', 'customers', 'production', 'returns', 'inventory'];
 
   Future<SyncResult> sync() async {
     var pushed = 0;
@@ -207,6 +207,8 @@ class SyncService {
       }
       final storesDoc = await remote.getDocument('stores', 'list');
       if (storesDoc != null && await repo.applyStores(storesDoc)) changed++;
+      final formulasDoc = await remote.getDocument('formulas', 'config');
+      if (formulasDoc != null && await repo.applyFormulas(formulasDoc)) changed++;
       return SyncResult(pushed: pushed, pulled: changed);
     } on CloudError catch (e) {
       return SyncResult(pushed: pushed, error: e.message);
