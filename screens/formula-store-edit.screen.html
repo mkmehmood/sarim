@@ -26,6 +26,7 @@
     <div id="fsEditContainer"></div>
     <button type="button" class="btn btn-theme u-add-row-btn" onclick="addFormulaIngredientRow()">+ Add Ingredient Row</button>
     <div class="formula-store-edit-hint">Tip: search a material, or link a Formula so its materials follow any later changes to it.</div>
+    <div id="fsMaterialsPreview" class="u-mb-15 d-none"></div>
     <div class="u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003">
       <div class="factory-summary-row"><span class="factory-summary-label">Unit Weight:</span><span class="qty-val" id="fsSummaryWeight">0 kg</span></div>
       <div class="factory-summary-row"><span class="factory-summary-label">Raw Material Cost per Unit:</span><span class="cost-val" id="fsSummaryRaw">0</span></div>
@@ -320,6 +321,14 @@ export function updateFormulaStoreSummary() {
   set('fsSummaryRaw', _fmt(d.raw));
   set('fsSummaryPerUnit', _fmt(d.perUnit));
   set('fsSummaryPerKg', _fmt(d.perKg));
+  const box = _el('fsMaterialsPreview');
+  if (box) {
+    const hasLink = c.ingredients.some(isLink);
+    box.classList.toggle('d-none', !hasLink);
+    box.innerHTML = hasLink
+      ? '<div class="factory-summary-label u-mb-8">All materials in this formula</div>' + d.items.map((m) => `<div class="factory-summary-row"><span class="factory-summary-label">${esc(m.name)}${m.via && m.via.length ? ` · from ${esc(m.via.join(', '))}` : ''}</span><span class="qty-val">${_fmt(m.quantity)} kg</span></div>`).join('')
+      : '';
+  }
 }
 
 function _bindEditor() {

@@ -21,8 +21,10 @@ export function flattenFormula(formula, list, path = []) {
   const here = [...path, String(formula && formula.id)];
   const add = (m) => {
     const hit = out.find((x) => String(x.id) === String(m.id));
-    if (hit) hit.quantity = _r6(hit.quantity + m.quantity);
-    else out.push(m);
+    if (hit) {
+      hit.quantity = _r6(hit.quantity + m.quantity);
+      if (m.via) hit.via = [...new Set([...(hit.via || []), ...m.via])];
+    } else out.push(m);
   };
   _arr(formula && formula.ingredients).forEach((i) => {
     if (!i) return;
@@ -40,7 +42,7 @@ export function flattenFormula(formula, list, path = []) {
     const weight = flat.ingredients.reduce((s, m) => s + m.quantity, 0);
     if (weight <= 0) return;
     const scale = q / weight;
-    flat.ingredients.forEach((m) => add({ ...m, quantity: _r6(m.quantity * scale) }));
+    flat.ingredients.forEach((m) => add({ ...m, quantity: _r6(m.quantity * scale), via: [sub.name || 'Formula'] }));
     extra += flat.additionalCost * scale;
   });
   const own = _num(formula && formula.additionalCost, 0);

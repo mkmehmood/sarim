@@ -29,6 +29,15 @@ describe('live sub-formula links', () => {
     assert.equal(f.ingredients.reduce((s, i) => s + i.quantity, 0), 7);
   });
 
+  it('tags materials that come from a linked formula, merged per material', () => {
+    const f = flattenFormula(top, list);
+    assert.deepEqual(f.ingredients.map((i) => [i.id, i.via || null]), [['m1', ['Base']], ['m2', ['Base']]]);
+    const only = flattenFormula({ id: 'x', ingredients: [{ id: 'm1', name: 'Urea', cost: 1, quantity: 1 }, linkIngredient(base, 10)] }, list);
+    assert.equal(only.ingredients[0].quantity, 7);
+    const plain = flattenFormula({ id: 'y', ingredients: [{ id: 'm9', name: 'Zinc', cost: 1, quantity: 1 }] }, list);
+    assert.equal(plain.ingredients[0].via, undefined);
+  });
+
   it('carries the linked formula\'s additional cost in proportion', () => {
     const f = flattenFormula(top, list);
     assert.equal(f.ownAdditionalCost, 3);
@@ -108,6 +117,7 @@ describe('live sub-formula links', () => {
     assert.match(ed, /canLink\(_ctx\.list, _editingId, f\.id\)/);
     assert.match(ed, /can't be linked back/);
     assert.match(ed, /Remove that link first/);
+    assert.match(ed, /All materials in this formula/);
     assert.match(ed, /linkIngredient\(\{ id: inp\.dataset\.formulaId/);
   });
 });
