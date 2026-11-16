@@ -13,6 +13,7 @@ import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
 import { deleteProdPhotos } from './prod-photos.js';
 import { dataRootRef, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_isSyncing, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getTimestamp, isSyncing, loadAllData, localDateStr, lockedUnitPrice, safeReplace, salesRepsList, sqliteStore, validateTimestamp, validateUUID, readFileAsDataUrl, oldDebtNote, balanceAfterHtml, formatTime12, loadCollections } from './business.js';
 import { emitSyncUpdate, pushDataToCloud, sanitizeForFirestore, subscribeToRealtime, triggerSeamlessBackup, unifiedDelete, unifiedSave } from './sync.js';
+import { planNegativeProfitFix } from './profit-cost.js';
 import { DeltaSync, calculateCashTracker, calculateCustomerSale, calculateNetCash, getStorePool, getStoreLabel, refreshCustomerSales, refreshFactoryTab, refreshUI, renderEntityTable, trackFirestoreWrite, updateFactorySummaryCard, updateFactoryUnitsAvailableStats, updateMfgCharts } from './utilities-sales.js';
 import { autoFillTotalSoldQuantity, calculateEntityBalances, currentCompMode, deletePaymentTransfer, editEntityBasicInfo, formatCurrency, formatDisplayDate, formatDisplayDateTime, loadSalesData, phoneActionHTML, refreshPaymentTab, renderUnifiedTable, toSafeDate } from './utilities-payments.js';
 import { calculateDynamicCost, getEffectiveSalePriceForCustomer, getSalePriceForStore, getSaleTransactionValue, syncFactoryProductionStats, updateUnitsAvailableIndicator, validateFormulaAvailability } from './factory-core.js';
@@ -1082,9 +1083,42 @@ if (typeof window.refreshRepUI === 'function') window.refreshRepUI?.();
 });
 };
 
+const PROFIT_FIX_FLAG = 'migration_negative_profit_v1';
+export async function migrateNegativeProfitSales({ force = false } = {}) {
+if (!force && await sqliteStore.get(PROFIT_FIX_FLAG)) return { skipped: true };
+const production = ensureArray(await sqliteStore.get('production'));
+if (!production.length) return { skipped: true, reason: 'no production yet' };
+const summary = { fixed: 0, unfixable: 0, at: new Date().toISOString() };
+for (const key of ['sales', 'rep']) {
+const rows = ensureArray(await sqliteStore.get(key));
+const plan = planNegativeProfitFix(rows, production);
+summary.unfixable += plan.unfixable.length;
+if (!plan.fixed.length) continue;
+const byId = new Map(plan.fixed.map(f => [String(f.id), f]));
+const ids = [];
+rows.forEach((r) => {
+const f = r && byId.get(String(r.id));
+if (!f) return;
+r.totalCost = f.totalCost;
+r.profit = f.profit;
+ensureRecordIntegrity(r, true);
+ids.push(r.id);
+});
+await unifiedSave(key, rows, null, ids);
+summary.fixed += ids.length;
+}
+await sqliteStore.set(PROFIT_FIX_FLAG, summary);
+if (summary.fixed) {
+try { await loadAllData(); } catch (_) {}
+showToast(`Fixed cost and profit on ${summary.fixed} loss-making sale${summary.fixed === 1 ? '' : 's'}.`, 'success');
+}
+return summary;
+}
+window.migrateNegativeProfitSales = migrateNegativeProfitSales;
 export async function reloadDataFromStorage() {
 try {
 await loadAllData();
+migrateNegativeProfitSales().catch((e) => console.warn('Profit fix migration failed:', _safeErr(e)));
 } catch (error) {
 console.error('Failed to load app data.', _safeErr(error));
 showToast('Failed to load app data: ' + (_safeErr(error).message || 'please reload the app'), 'error');

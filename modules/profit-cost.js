@@ -44,3 +44,18 @@ export function isCostedSale(rec) {
   if (rec.transactionType === 'OLD_DEBT') return false;
   return _n(rec.quantity) > 0;
 }
+
+export function planNegativeProfitFix(records, production) {
+  const index = buildCostIndex(production);
+  const fixed = [];
+  const unfixable = [];
+  _arr(records).forEach((rec) => {
+    if (!isCostedSale(rec) || !(_n(rec.profit) < 0)) return;
+    const perKg = costPerKgFromIndex(index, rec.supplyStore, rec.date);
+    if (!(perKg > 0)) { unfixable.push(rec.id); return; }
+    const next = repriceSale(rec, perKg);
+    if (Math.abs(next.totalCost - _n(rec.totalCost)) < 0.01 && Math.abs(next.profit - _n(rec.profit)) < 0.01) return;
+    fixed.push({ id: rec.id, totalCost: next.totalCost, profit: next.profit, before: { totalCost: _n(rec.totalCost), profit: _n(rec.profit) } });
+  });
+  return { fixed, unfixable };
+}
