@@ -5713,3 +5713,6 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-table-wrap { overflow-x: auto; }
 .ov-table th, .ov-table td { text-align: right; white-space: nowrap; }
 .ov-table th:first-child, .ov-table td:first-child { text-align: left; }
+#tab-overview { padding-top: 8px; }
+.ov-notes { margin: 8px 0 4px; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font: 500 0.88rem/1.45 var(--font-ui); color: var(--text-main); }
+.ov-sub { margin: 14px 0 2px; font: 700 0.72rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }

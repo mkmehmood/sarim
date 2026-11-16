@@ -24,6 +24,40 @@ function top(map, limit, extra = () => ({})) {
   return [...map.entries()].map(([name, v]) => ({ name, ...extra(v), value: typeof v === 'number' ? v : v.value })).sort((a, b) => b.value - a.value).slice(0, limit);
 }
 
+export function analyseProfit(sales, keys) {
+  const inRange = _arr(sales).filter((x) => live(x) && keys.has(dayKey(x).slice(0, 7)));
+  const out = { count: inRange.length, losing: { count: 0, sum: 0 }, gaining: { count: 0, sum: 0 }, net: 0, noCost: { count: 0, value: 0 }, mismatch: { count: 0, sum: 0 }, zeroQty: 0, qty: 0, value: 0, cost: 0, avgPrice: 0, avgCost: 0, worst: [], byCustomer: [], byStore: [], byMonth: [] };
+  const cust = new Map();
+  const store = new Map();
+  const month = new Map();
+  const bump = (map, key, v) => map.set(key, (map.get(key) || 0) + v);
+  inRange.forEach((x) => {
+    const profit = _n(x.profit);
+    const value = _n(x.totalValue);
+    const cost = _n(x.totalCost);
+    const qty = _n(x.quantity);
+    out.net += profit; out.qty += qty; out.value += value; out.cost += cost;
+    if (profit < 0) { out.losing.count += 1; out.losing.sum += profit; } else { out.gaining.count += 1; out.gaining.sum += profit; }
+    if (cost <= 0 && value > 0) { out.noCost.count += 1; out.noCost.value += value; }
+    if (Math.abs(profit - (value - cost)) > 1) { out.mismatch.count += 1; out.mismatch.sum += profit - (value - cost); }
+    if (qty <= 0) out.zeroQty += 1;
+    bump(cust, x.customerName || 'Walk-in', profit);
+    bump(store, x.supplyStore || 'Unassigned', profit);
+    bump(month, dayKey(x).slice(0, 7), profit);
+  });
+  out.avgPrice = out.qty > 0 ? out.value / out.qty : 0;
+  out.avgCost = out.qty > 0 ? out.cost / out.qty : 0;
+  out.worst = inRange.filter((x) => _n(x.profit) < 0).sort((a, b) => _n(a.profit) - _n(b.profit)).slice(0, 8).map((x) => {
+    const q = _n(x.quantity);
+    return { date: dayKey(x), customer: x.customerName || 'Walk-in', store: x.supplyStore || '', qty: q, price: q > 0 ? _n(x.totalValue) / q : 0, cost: q > 0 ? _n(x.totalCost) / q : 0, profit: _n(x.profit) };
+  });
+  const rank = (m) => [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => a.value - b.value);
+  out.byCustomer = rank(cust).filter((r) => r.value < 0).slice(0, 6);
+  out.byStore = rank(store).filter((r) => r.value < 0).slice(0, 5);
+  out.byMonth = rank(month).sort((a, b) => a.name.localeCompare(b.name));
+  return out;
+}
+
 export function buildOverview(data, now = new Date(), months = 6) {
   const span = RANGES.includes(months) ? months : 6;
   const list = [];
@@ -90,6 +124,7 @@ export function buildOverview(data, now = new Date(), months = 6) {
   const withCount = (v) => ({ count: v.count });
   return {
     months: list, totals, running: run, thisMonth,
+    profit: analyseProfit(data.sales, new Set(list.map((m) => m.key))),
     formulas: top(formulas, 6, withCount), stores: top(stores, 5, withCount), customers: top(customers, 6, withCount), expenseCats: top(cats, 5, withCount),
     stock: stockRows.sort((a, b) => b.value - a.value).slice(0, 6),
     recent: recent.sort((a, b) => b.ts - a.ts).slice(0, 8),
@@ -105,9 +140,9 @@ const stat = (label, value, t, to, attr = 'data-go', sub = '') => `<button type=
 const section = (title, to, body, t = 'good', chipText = 'Open', attr = 'data-go') => `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">${title}</h4>${chip(to, chipText, attr)}</div>${body}</div>`;
 
 function chart(months, series, to) {
-  const max = Math.max(1, ...months.flatMap((m) => series.map((s) => m[s.f])));
+  const max = Math.max(1, ...months.flatMap((m) => series.map((s) => Math.abs(m[s.f]))));
   const cols = months.map((m) => `<button type="button" class="ov-col" data-go="${to}" aria-label="${m.label}: ${series.map((s) => `${s.name} ${fmt(m[s.f])}`).join(', ')}">`
-    + `<span class="ov-pair">${series.map((s) => `<span class="ov-fill ${tone(s.t)}" style="--h:${Math.max(2, Math.round((m[s.f] / max) * 100))}%"></span>`).join('')}</span>`
+    + `<span class="ov-pair">${series.map((s) => `<span class="ov-fill ${tone(s.t)}" style="--h:${Math.max(2, Math.round((Math.abs(m[s.f]) / max) * 100))}%"></span>`).join('')}</span>`
     + `<span class="ov-val">${fmt(m[series[0].f])}</span><span class="ov-lbl">${m.label}</span></button>`).join('');
   const key = series.length > 1 ? `<div class="ov-key">${series.map((s) => `<span class="ov-key-i ${tone(s.t)}"><i></i>${s.name}</span>`).join('')}</div>` : '';
   return `${key}<div class="ov-cols">${cols}</div>`;
@@ -119,6 +154,21 @@ function ranked(rows, unit, to, t, attr = 'data-go') {
   return `<div class="ov-rank">${rows.map((r) => `<button type="button" class="ov-rank-row ${tone(t)}" ${go(to, attr)}><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}</span></span><span class="bar ov-bar-track"><i style="--w:${Math.max(3, Math.round((r.value / max) * 100))}%"></i></span></button>`).join('')}</div>`;
 }
 
+function profitCheckHtml(p) {
+  if (!p.count) return '';
+  const lines = [];
+  lines.push(`<b>${p.losing.count}</b> of ${p.count} sales made a loss, losing <b>${fmt(-p.losing.sum)}</b> in total. The other ${p.gaining.count} earned <b>${fmt(p.gaining.sum)}</b>, so the net is <b>${fmt(p.net)}</b>.`);
+  if (p.qty > 0) lines.push(`Average selling price was <b>${p.avgPrice.toFixed(2)}</b> per kg against an average cost of <b>${p.avgCost.toFixed(2)}</b> per kg${p.avgPrice < p.avgCost ? ', so on average you sold below cost' : ''}.`);
+  if (p.noCost.count) lines.push(`<b>${p.noCost.count}</b> sale${p.noCost.count === 1 ? ' has' : 's have'} no cost recorded (value ${fmt(p.noCost.value)}), which makes their profit unreliable.`);
+  if (p.mismatch.count) lines.push(`<b>${p.mismatch.count}</b> sale${p.mismatch.count === 1 ? '' : 's'} where the saved profit differs from value minus cost, by ${fmt(p.mismatch.sum)} in total. This points to edited records or a different cost being used.`);
+  if (p.zeroQty) lines.push(`<b>${p.zeroQty}</b> record${p.zeroQty === 1 ? ' has' : 's have'} zero quantity.`);
+  const worst = p.worst.length ? `<div class="ov-sub">Biggest losses</div><div class="ov-recent">${p.worst.map((w) => `<button type="button" class="ov-recent-row sx-tone-bad" data-go="sales"><span class="ov-recent-main"><span class="ov-recent-title">${esc(w.customer)}</span><span class="ov-recent-sub">${esc(w.date)}${w.store ? ` · ${esc(w.store)}` : ''} · ${fmt(w.qty)} kg at ${w.price.toFixed(2)} vs cost ${w.cost.toFixed(2)}</span></span><span class="ov-recent-amt">${fmt(w.profit)}</span></button>`).join('')}</div>` : '';
+  const flip = (rows) => rows.map((r) => ({ ...r, value: -r.value }));
+  const by = (title, rows) => (rows.length ? `<div class="ov-sub">${title}</div>${ranked(flip(rows), '', 'sales', 'bad')}` : '');
+  const months = `<div class="ov-sub">Profit by month</div>${chart(p.byMonth.map((m) => ({ label: m.name, profit: m.value })), [{ f: 'profit', name: 'Profit', t: p.net < 0 ? 'bad' : 'good' }], 'sales')}`;
+  return `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">Profit check</h4>${chip('sales')}</div><ul class="ov-notes">${lines.map((l) => `<li>${l}</li>`).join('')}</ul>${months}${by('Loss by customer', p.byCustomer)}${by('Loss by store', p.byStore)}${worst}</div>`;
+}
+
 export function overviewHtml(model, range = 6) {
   const r = model.running;
   const t = model.totals;
@@ -126,6 +176,7 @@ export function overviewHtml(model, range = 6) {
   const hero = `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">Last ${range} months</h4>${t.salesValue > 0 ? `<span class="badge badge-tint sx-chip sx-tone-good">${t.margin.toFixed(1)}% margin</span>` : ''}</div>`
     + `<div class="sx-hero sx-tone-good"><span class="sx-hero-label">Sales value</span><div class="sx-hero-value">${fmt(t.salesValue)}</div></div>`
     + `<div class="sx-grid sx-cols-2">${stat('Sales profit', fmt(t.salesProfit), 'good', 'sales')}${stat('Sales made', String(t.salesCount), 'info', 'sales')}${stat('Produced', `${fmt(t.prodKg)} kg`, 'info', 'prod')}${stat('Production profit', fmt(t.prodProfit), 'good', 'prod')}${stat('Cash in', fmt(t.cashIn), 'good', 'payments')}${stat('Cash out', fmt(t.cashOut), 'bad', 'payments')}${stat('Expenses', fmt(t.expenses), 'warn', 'payments')}${stat('Net cash', fmt(t.net), t.net >= 0 ? 'good' : 'bad', 'payments')}</div></div>`;
+  const pc = profitCheckHtml(model.profit);
   const now = `<div class="section-header"><h3>Right now</h3></div><div class="sx-grid sx-cols-2 ov-now" data-money>`
     + `${stat('Production today', `${fmt(r.todayProdKg)} kg`, 'info', 'prod', 'data-go', `${r.todayProdCount} entr${r.todayProdCount === 1 ? 'y' : 'ies'}`)}`
     + `${stat('Sales today', fmt(r.todaySalesValue), 'good', 'sales', 'data-go', `${r.todaySalesCount} sale${r.todaySalesCount === 1 ? '' : 's'}`)}`
@@ -134,7 +185,7 @@ export function overviewHtml(model, range = 6) {
     + `${stat('Stock on hand', fmt(r.stockValue), 'purple', 'raw-material-screen', 'data-screen', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}`)}</div>`;
   const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((x) => `<button type="button" class="ov-recent-row ${tone(x.tone)}" data-go="${x.go}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(x.title)}</span><span class="ov-recent-sub">${esc(x.kind)}${x.sub ? ` · ${esc(x.sub)}` : ''}</span></span><span class="ov-recent-amt">${x.amount}</span></button>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
   return `<header class="u-497acf1 d-flex"><h1 class="shimmer-text u-heading-bold">Overview</h1></header>`
-    + `<div class="section-header"><h3>Summary</h3><div class="toggle-group" id="ov-range-toggle">${toggle}</div></div>${hero}${now}`
+    + `<div class="section-header"><h3>Summary</h3><div class="toggle-group" id="ov-range-toggle">${toggle}</div></div>${hero}${pc}${now}`
     + `<div class="section-header"><h3>Over time</h3></div>`
     + section('Sales value', 'sales', chart(model.months, [{ f: 'salesValue', name: 'Sales', t: 'good' }], 'sales'))
     + section('Production (kg)', 'prod', chart(model.months, [{ f: 'prodKg', name: 'Production', t: 'info' }], 'prod'))
