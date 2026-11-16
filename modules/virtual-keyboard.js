@@ -16,9 +16,43 @@ export const PAD_BOTTOM = ['letters', 'symbols', '0', '00', '=', '.', 'enter'];
 export const SYMBOL_ROWS = ['1234567890', '@#$_&-+()/', '*"\':;!?~'];
 export const TOOLS = [
   { act: 'paste', icon: 'clipboard', aria: 'Paste' },
-  { act: 'selectall', icon: 'notes', aria: 'Select all' }
+  { act: 'selectall', icon: 'notes', aria: 'Select all' },
+  { act: 'snippets', icon: 'bookmark', aria: 'Snippets' }
 ];
+export const SNIPPET_KEY = 'sarimKeyboardSnippets';
+export const SNIPPET_MAX = 30;
+export const SNIPPET_LEN = 500;
+
+export function cleanSnippets(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  list.forEach((t) => {
+    if (typeof t !== 'string') return;
+    const v = t.trim().slice(0, SNIPPET_LEN);
+    if (v && !out.includes(v)) out.push(v);
+  });
+  return out.slice(0, SNIPPET_MAX);
+}
+
+export function loadSnippets(storage) {
+  try { return cleanSnippets(JSON.parse(storage.getItem(SNIPPET_KEY))); } catch (_) { return []; }
+}
+
+export function saveSnippets(storage, list) {
+  try { storage.setItem(SNIPPET_KEY, JSON.stringify(cleanSnippets(list))); return true; } catch (_) { return false; }
+}
+
+export function addSnippet(list, text) {
+  const v = String(text == null ? '' : text).trim().slice(0, SNIPPET_LEN);
+  if (!v) return cleanSnippets(list);
+  return cleanSnippets([v, ...cleanSnippets(list).filter((t) => t !== v)]);
+}
+
+export function removeSnippet(list, index) {
+  return cleanSnippets(list).filter((_, i) => i !== index);
+}
 const ICONS = {
+  bookmark: '<path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
   notes: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
   shift: '<path d="m5 12 7-7 7 7M12 19V5"/>',
@@ -230,6 +264,38 @@ export function installVirtualKeyboard(opts = {}) {
     enter()
   ], 'is-bottom'));
 
+  const snipList = node('div', 'vk-snips');
+  const snippetsPane = node('div', 'vk-pane');
+  snippetsPane.setAttribute('data-vk-pane', 'snippets');
+  snippetsPane.appendChild(row([
+    key({ act: 'letters', text: 'ABC', aria: 'Letters', cls: 'is-fn fx-10' }),
+    key({ act: 'snip-clip', text: '+ Clipboard', aria: 'Save clipboard as snippet', cls: 'is-fn fx-15' }),
+    key({ act: 'snip-field', text: '+ Field text', aria: 'Save field text as snippet', cls: 'is-fn fx-15' })
+  ], 'is-snip-head'));
+  snippetsPane.appendChild(snipList);
+  let snippets = [];
+  const store = () => { try { return win.localStorage || null; } catch (_) { return null; } };
+  const notify = (m) => { try { if (typeof win.showToast === 'function') win.showToast(m); } catch (_) {} };
+  const persistSnippets = () => { const st = store(); if (st) saveSnippets(st, snippets); };
+  const renderSnippets = () => {
+    snipList.replaceChildren();
+    if (!snippets.length) {
+      const empty = node('div', 'vk-snip-empty');
+      empty.textContent = 'No snippets yet. Copy some text, then tap + Clipboard.';
+      snipList.appendChild(empty);
+      return;
+    }
+    snippets.forEach((text, i) => {
+      const use = key({ act: 'snip', text: text.replace(/\s+/g, ' ').slice(0, 80), aria: 'Insert snippet', cls: 'is-snip-use' });
+      use.setAttribute('data-vk-click', '1');
+      use.setAttribute('data-vk-idx', String(i));
+      const del = key({ act: 'snip-del', html: '\u00d7', aria: 'Delete snippet', cls: 'is-snip-del' });
+      del.setAttribute('data-vk-click', '1');
+      del.setAttribute('data-vk-idx', String(i));
+      snipList.appendChild(row([use, del], 'is-snip'));
+    });
+  };
+
   const dock = node('div', 'overlay vk-dock d-none');
   dock.id = 'vk-dock';
   dock.setAttribute('role', 'group');
@@ -237,8 +303,9 @@ export function installVirtualKeyboard(opts = {}) {
   dock.appendChild(lettersPane);
   dock.appendChild(padPane);
   dock.appendChild(symbolsPane);
+  dock.appendChild(snippetsPane);
 
-  const panes = { letters: lettersPane, pad: padPane, symbols: symbolsPane };
+  const panes = { letters: lettersPane, pad: padPane, symbols: symbolsPane, snippets: snippetsPane };
   let active = null;
   let caseMode = 'caps';
   let plainMode = 'caps';
@@ -393,11 +460,54 @@ export function installVirtualKeyboard(opts = {}) {
     hide(true);
   };
 
-  const paste = async () => {
+  const readClipboard = async () => {
     try {
-      const text = await win.navigator.clipboard.readText();
-      if (text) insert(text);
+      const plugin = win.Capacitor && win.Capacitor.Plugins && win.Capacitor.Plugins.Clipboard;
+      if (plugin && typeof plugin.read === 'function') {
+        const r = await plugin.read();
+        if (r && typeof r.value === 'string') return r.value;
+      }
     } catch (_) {}
+    try { return String(await win.navigator.clipboard.readText()); } catch (_) { return ''; }
+  };
+
+  const paste = async () => {
+    const text = await readClipboard();
+    if (text) insert(text); else notify('Clipboard is empty');
+  };
+
+  const selectedOrAll = () => {
+    const t = active;
+    if (!t || typeof t.value !== 'string') return '';
+    let a = null;
+    let b = null;
+    try { a = t.selectionStart; b = t.selectionEnd; } catch (_) {}
+    return a != null && b != null && b > a ? t.value.slice(a, b) : t.value;
+  };
+
+  const addSnippetFrom = (text, empty) => {
+    if (!String(text == null ? '' : text).trim()) { notify(empty); return; }
+    snippets = addSnippet(snippets, text);
+    persistSnippets();
+    renderSnippets();
+    notify('Snippet saved');
+  };
+
+  const snippetClick = (k) => {
+    const act = k.getAttribute('data-vk-act');
+    const idx = Number(k.getAttribute('data-vk-idx'));
+    if (!Number.isInteger(idx) || idx < 0 || idx >= snippets.length) return;
+    if (act === 'snip') {
+      insert(snippets[idx]);
+      showPane('letters');
+      syncCase();
+    } else if (act === 'snip-del') {
+      snippets = removeSnippet(snippets, idx);
+      persistSnippets();
+      renderSnippets();
+      if (isOpen()) measure();
+    }
+    try { dialogFeedback('select'); } catch (_) {}
   };
 
   const selectAll = () => {
@@ -416,6 +526,9 @@ export function installVirtualKeyboard(opts = {}) {
     else if (act === 'pad' || act === 'letters' || act === 'symbols') { showPane(act); win.requestAnimationFrame(() => { if (isOpen()) reveal(active); }); }
     else if (act === 'paste') paste();
     else if (act === 'selectall') selectAll();
+    else if (act === 'snippets') { const st = store(); snippets = st ? loadSnippets(st) : snippets; renderSnippets(); showPane('snippets'); win.requestAnimationFrame(() => { if (isOpen()) reveal(active); }); }
+    else if (act === 'snip-clip') { readClipboard().then((t) => addSnippetFrom(t, 'Clipboard is empty')); return; }
+    else if (act === 'snip-field') addSnippetFrom(selectedOrAll(), 'Nothing to save');
     else if (k.hasAttribute('data-vk-letter')) insert(casedKey(ch, upperNow()));
     else if (ch != null) insert(ch);
     syncCase();
@@ -427,6 +540,7 @@ export function installVirtualKeyboard(opts = {}) {
     if (e.button > 0) return;
     const k = e.target && e.target.closest ? e.target.closest('.vk-key') : null;
     if (!k || !dock.contains(k)) return;
+    if (k.hasAttribute('data-vk-click')) return;
     if (k.getAttribute('data-vk-act') === 'space') {
       const before = active ? String(active.value == null ? '' : active.value) : '';
       press(k);
@@ -473,7 +587,12 @@ export function installVirtualKeyboard(opts = {}) {
 
   dock.addEventListener('pointerdown', onDown);
   dock.addEventListener('mousedown', (e) => e.preventDefault());
-  dock.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+  dock.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const k = e.target && e.target.closest ? e.target.closest('[data-vk-click]') : null;
+    if (k && dock.contains(k)) snippetClick(k);
+  });
   doc.addEventListener('pointerup', onUp, true);
   doc.addEventListener('pointercancel', onCancel, true);
   doc.addEventListener('focusin', (e) => {

@@ -148,7 +148,7 @@ describe('typing rules', () => {
     assert.deepEqual(PAD_SIDE, ['%', 'space', 'back']);
     assert.deepEqual(PAD_BOTTOM, ['letters', 'symbols', '0', '00', '=', '.', 'enter']);
     assert.equal(SYMBOL_ROWS.length, 3);
-    assert.equal(TOOLS.length, 2);
+    assert.equal(TOOLS.length, 3);
   });
   it('capitalises at the start of a field and after a space', () => {
     assert.equal(wantsCapital('', 0), true);
@@ -209,6 +209,7 @@ class Node {
   hasAttribute(k) { return this.attrs.has(k); }
   removeAttribute(k) { this.attrs.delete(k); }
   appendChild(c) { c.parent = this; this.children.push(c); return c; }
+  replaceChildren() { this.children = []; }
   addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
 
   descendants() {
@@ -234,6 +235,7 @@ class Node {
 
 function harness(opts = {}) {
   const timers = [];
+  const toasts = [];
   const calls = { reposition: 0, exec: [] };
   const body = new Node('body');
   const classes = new Set(opts.android === false ? [] : ['is-android']);
@@ -264,7 +266,11 @@ function harness(opts = {}) {
     MutationObserver: class { observe() {} },
     InputEvent: Ev,
     KeyboardEvent: Ev,
-    Dropdown: { reposition: () => { calls.reposition += 1; } }
+    Dropdown: { reposition: () => { calls.reposition += 1; } },
+    localStorage: opts.storage || (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); } }; })(),
+    Capacitor: opts.capacitor,
+    navigator: opts.navigator || {},
+    showToast: (m) => toasts.push(m)
   };
   const doc = {
     defaultView: win,
@@ -284,7 +290,7 @@ function harness(opts = {}) {
     }
   };
   win.document = doc;
-  return { doc, win, body, classes, props, timers, calls, docListeners, Ev };
+  return { doc, win, body, classes, props, timers, toasts, calls, docListeners, Ev };
 }
 
 let seq = 0;
@@ -307,7 +313,8 @@ async function boot(opts = {}) {
     h.docListeners.focusin.forEach((fn) => fn({ target: f }));
   };
   const isHidden = () => dock.classList.contains('d-none');
-  return { ...h, kb, dock, pane, keyByCh, act, down, input, focus, isHidden, hidden, mod };
+  const click = (k) => dock.listeners.click[0]({ target: k, preventDefault() {}, stopPropagation() {} });
+  return { ...h, click, kb, dock, pane, keyByCh, act, down, input, focus, isHidden, hidden, mod };
 }
 
 describe('virtual keyboard in the Android app', () => {
@@ -346,10 +353,10 @@ describe('virtual keyboard in the Android app', () => {
     assert.ok(t.act('enter').classList.contains('is-accent'));
   });
 
-  it('has only the two working tools (paste, select all) above the letters, and no dead keys', async () => {
+  it('has only the working tools (paste, select all, snippets) above the letters, and no dead keys', async () => {
     const t = await boot();
     const bar = t.pane('letters').querySelector('.vk-tools');
-    assert.deepEqual(bar.children.map((k) => k.getAttribute('data-vk-act')), ['paste', 'selectall']);
+    assert.deepEqual(bar.children.map((k) => k.getAttribute('data-vk-act')), ['paste', 'selectall', 'snippets']);
     assert.equal(t.dock.querySelectorAll('[aria-disabled="true"]').length, 0);
     for (const gone of ['system', 'emoji', 'tools', 'voice', 'code', 'translate', 'settings', 'adjust']) assert.equal(t.act(gone), null, gone);
   });
@@ -760,6 +767,91 @@ describe('shift and credential fields', () => {
   });
 });
 
+describe('clipboard and snippets', () => {
+  const flush = () => new Promise((r) => setImmediate(r));
+
+  it('paste reads the clipboard through the Capacitor plugin and types it', async () => {
+    const t = await boot({ capacitor: { Plugins: { Clipboard: { read: async () => ({ type: 'text/plain', value: 'hello' }) } } } });
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    t.down(t.act('paste'));
+    await flush();
+    assert.equal(f.value, 'hello');
+  });
+
+  it('paste falls back to the browser clipboard, and says so when the clipboard is empty or blocked', async () => {
+    const t = await boot({ navigator: { clipboard: { readText: async () => 'from browser' } } });
+    const f = t.input({ type: 'text' });
+    t.focus(f);
+    t.down(t.act('paste'));
+    await flush();
+    assert.equal(f.value, 'from browser');
+    const u = await boot({ navigator: { clipboard: { readText: async () => { throw new Error('denied'); } } } });
+    u.focus(u.input({ type: 'text' }));
+    u.down(u.act('paste'));
+    await flush();
+    assert.deepEqual(u.toasts, ['Clipboard is empty']);
+  });
+
+  it('snippet helpers trim, de-duplicate, cap and survive bad storage', async () => {
+    const m = await import('../modules/virtual-keyboard.js');
+    assert.deepEqual(m.addSnippet(['a', 'b'], '  b  '), ['b', 'a']);
+    assert.deepEqual(m.addSnippet(['a'], '   '), ['a']);
+    assert.equal(m.addSnippet([], 'x'.repeat(900))[0].length, m.SNIPPET_LEN);
+    assert.equal(m.addSnippet(Array.from({ length: 40 }, (_, i) => `s${i}`), 'new').length, m.SNIPPET_MAX);
+    assert.deepEqual(m.removeSnippet(['a', 'b', 'c'], 1), ['a', 'c']);
+    assert.deepEqual(m.cleanSnippets('nope'), []);
+    assert.deepEqual(m.loadSnippets({ getItem: () => '{bad' }), []);
+    assert.equal(m.saveSnippets({ setItem() { throw new Error('full'); } }, ['a']), false);
+  });
+
+  it('saves the clipboard and the field text as snippets, lists them, inserts one and deletes one', async () => {
+    const t = await boot({ capacitor: { Plugins: { Clipboard: { read: async () => ({ value: 'Account no. 1234' }) } } } });
+    const f = t.input({ type: 'text' }, { value: 'Hello there', selectionStart: 0, selectionEnd: 5 });
+    t.focus(f);
+    t.down(t.act('snippets'));
+    assert.ok(!t.pane('snippets').classList.contains('d-none'));
+    assert.match(t.pane('snippets').querySelector('.vk-snip-empty').textContent, /No snippets yet/);
+    t.down(t.act('snip-clip'));
+    await flush();
+    t.down(t.act('snip-field'));
+    const uses = () => t.pane('snippets').querySelectorAll('[data-vk-act="snip"]');
+    assert.deepEqual(uses().map((k) => k.textContent), ['Hello', 'Account no. 1234']);
+    assert.ok(t.toasts.includes('Snippet saved'));
+    f.value = '';
+    t.down(uses()[1]);
+    assert.equal(f.value, '');
+    t.click(uses()[1]);
+    assert.equal(f.value, 'Account no. 1234');
+    assert.ok(!t.pane('letters').classList.contains('d-none'));
+    t.down(t.act('snippets'));
+    t.click(t.pane('snippets').querySelectorAll('[data-vk-act="snip-del"]')[0]);
+    assert.deepEqual(uses().map((k) => k.textContent), ['Account no. 1234']);
+  });
+
+  it('snippets persist between sessions', async () => {
+    const store = new Map();
+    const storage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => { store.set(k, v); } };
+    const t = await boot({ storage, capacitor: { Plugins: { Clipboard: { read: async () => ({ value: 'keep me' }) } } } });
+    t.focus(t.input({ type: 'text' }));
+    t.down(t.act('snippets'));
+    t.down(t.act('snip-clip'));
+    await flush();
+    const u = await boot({ storage });
+    u.focus(u.input({ type: 'text' }));
+    u.down(u.act('snippets'));
+    assert.deepEqual(u.pane('snippets').querySelectorAll('[data-vk-act="snip"]').map((k) => k.textContent), ['keep me']);
+  });
+
+  it('saving nothing tells the user instead of failing silently', async () => {
+    const t = await boot();
+    t.focus(t.input({ type: 'text' }, { value: '' }));
+    t.down(t.act('snippets'));
+    t.down(t.act('snip-field'));
+    assert.deepEqual(t.toasts, ['Nothing to save']);
+  });
+});
+
 describe('new layout keys', () => {
   it('switches between letters, numbers and symbols', async () => {
     const t = await boot();
@@ -920,7 +1012,7 @@ describe('search dropdown stays open while typing on the on-screen keyboard', ()
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
 
   it('keyboard key clicks do not bubble to the click-outside handlers', () => {
-    assert.match(read('modules/virtual-keyboard.js'), /dock\.addEventListener\('click', \(e\) => \{ e\.preventDefault\(\); e\.stopPropagation\(\); \}\)/);
+    assert.match(read('modules/virtual-keyboard.js'), /dock\.addEventListener\('click', \(e\) => \{\n    e\.preventDefault\(\);\n    e\.stopPropagation\(\);/);
   });
 
   it('the universal search click-outside handler ignores the keyboard dock', () => {

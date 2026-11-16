@@ -5653,6 +5653,11 @@ input[data-vk-secret] { -webkit-text-security: disc; }
 .vk-dock .vk-key.is-shift::after { content: 'AA'; position: absolute; top: 4px; right: 8px; font-size: 0.5rem; font-weight: 800; letter-spacing: 0.04em; opacity: 0.75; pointer-events: none; }
 .vk-dock[data-vk-case="small"] .vk-key.is-shift::after { content: 'aa'; }
 .vk-dock[data-vk-case="title"] .vk-key.is-shift::after { content: 'Aa'; }
+.vk-snips { display: flex; flex-direction: column; gap: var(--vk-gap-k); max-height: calc(var(--vk-key-h) * 4 + var(--vk-gap-k) * 3); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; margin-top: var(--vk-gap-k); }
+.vk-snips .vk-row { margin: 0; }
+.vk-dock .vk-key.is-snip-use { flex: 1 1 0; justify-content: flex-start; padding: 0 14px; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: calc(var(--vk-key-h) - 2px); text-align: left; }
+.vk-dock .vk-key.is-snip-del { flex: 0 0 52px; color: var(--danger); font-size: 1.5rem; }
+.vk-snip-empty { padding: 18px 12px; text-align: center; color: var(--text-secondary); font-size: 0.9rem; }
 .vk-dock .vk-key.is-back { color: var(--danger); }
 .vk-tools { display: flex; align-items: center; gap: var(--vk-gap-k); margin: 0 0 var(--vk-gap-k); }
 .vk-dock .vk-tools .vk-key.is-tool { flex: 0 0 56px; height: 38px; border-radius: 999px; }

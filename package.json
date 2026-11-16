@@ -2,7 +2,7 @@
   "name": "sarim",
   "version": "1.0.0",
   "private": true,
-  "description": "Gull and Zubair Naswar Dealers \u2014 offline-first PWA for production, sales, inventory and credits.",
+  "description": "Gull and Zubair Naswar Dealers — offline-first PWA for production, sales, inventory and credits.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -42,6 +42,7 @@
   "dependencies": {
     "@capacitor/app": "^8.1.2",
     "@capacitor/camera": "^8.2.6",
+    "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/geolocation": "^8.2.4",
