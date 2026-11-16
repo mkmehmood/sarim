@@ -5677,3 +5677,5 @@ html.vk-open body { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 html.vk-open .standalone-screen { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); box-sizing: border-box; }
 html.vk-open .dlg-overlay { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap) + 12px); box-sizing: border-box; }
 html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
+
+.factory-mat-option.factory-mat-formula { color: var(--accent); font-weight: 600; border-top: 1px solid var(--glass-border); }

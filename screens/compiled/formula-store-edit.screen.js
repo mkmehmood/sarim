@@ -1,6 +1,6 @@
 
 // ==== module: formula-store-edit.js ====
-import { _el, _num, _totals, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites } from '../../modules/formula-store.js';
+import { _el, _num, _totals, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites, expandFormulaIngredients, mergeIngredients } from '../../modules/formula-store.js';
 import { esc, ensureArray, sqliteStore, getTimestamp, generateUUID } from '../../modules/business.js';
 import { showToast, showGlassConfirm } from '../../modules/customers.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
@@ -11,7 +11,28 @@ import { formulaIdOf } from '../../modules/store-keys.js';
 
 let _editingId = null;
 
-function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory) {
+async function _pickFormula(container, formula, inventory, formulas) {
+  const current = [];
+  container.querySelectorAll('.factory-formula-grid').forEach((row) => {
+    const inp = row.querySelector('.factory-mat-search-input');
+    const costIn = row.querySelector('.factory-mat-cost');
+    const qtyIn = row.querySelector('.factory-mat-qty');
+    if (!inp || !inp.dataset.matId || !inp.value.trim()) return;
+    current.push({ id: inp.dataset.matId, name: inp.value.trim(), cost: _num(costIn ? costIn.value : 0, 0), quantity: _num(qtyIn ? qtyIn.value : 0, 0), ...(inp.dataset.custom === '1' ? { custom: true } : {}) });
+  });
+  const added = expandFormulaIngredients(formula, inventory);
+  if (!added.length) { showToast(`"${formula.name || 'Formula'}" has no materials to add`, 'warning'); return; }
+  const merged = mergeIngredients(current, added);
+  container.replaceChildren();
+  merged.forEach((ing) => {
+    const row = _createRow(container, ing.id, ing.quantity > 0 ? ing.quantity : '', ing.custom ? ing.cost : null, ing.name, inventory, formulas);
+    if (ing.custom) { const inp = row.querySelector('.factory-mat-search-input'); if (inp) inp.dataset.custom = '1'; }
+  });
+  container.dispatchEvent(new CustomEvent('formularowchange'));
+  showToast(`Added ${added.length} material${added.length === 1 ? '' : 's'} from "${formula.name || 'Formula'}"`, 'success');
+}
+
+function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory, formulas = []) {
   let currentCost = costVal !== null ? costVal : 0;
   const currentId = selectedId ? String(selectedId) : '';
   let currentName = savedName || '';
@@ -51,18 +72,36 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
     const q = (query || '').toLowerCase();
     const filtered = q ? inventory.filter((i) => i.name && i.name.toLowerCase().includes(q)) : inventory;
     const typed = (query || '').trim();
-    if (!typed) { window.Dropdown.hide(dropdown); return; }
+    const fq = typed.toLowerCase();
+    const formulaOpts = formulas.filter((f) => !fq || (f.name || 'Untitled').toLowerCase().includes(fq))
+      .map((f) => `<div class="factory-mat-option factory-mat-formula" data-formula="${esc(String(f.id))}">Formula: ${esc(f.name || 'Untitled')} (${ensureArray(f.ingredients).length} materials)</div>`).join('');
+    if (!typed && !formulaOpts) { window.Dropdown.hide(dropdown); return; }
+    if (!typed) {
+      dropdown.innerHTML = formulaOpts;
+      window.Dropdown.show(dropdown, searchInput);
+      bindOptions();
+      return;
+    }
     const exact = typed && inventory.some((i) => i.name && i.name.trim().toLowerCase() === typed.toLowerCase());
     const customOpt = typed && !exact ? `<div class="factory-mat-option factory-mat-custom u-d7ba50a" data-custom="1" data-name="${esc(typed)}">+ Add "${esc(typed)}" (not in inventory)</div>` : '';
     if (!filtered.length) {
-      dropdown.innerHTML = (customOpt || '<div class="empty is-compact">No materials found</div>');
+      dropdown.innerHTML = formulaOpts + (customOpt || (formulaOpts ? '' : '<div class="empty is-compact">No materials found</div>'));
     } else {
-      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610 st-background__356c02" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}">${esc(i.name)}</div>`).join('') + customOpt;
+      dropdown.innerHTML = filtered.map((i) => `<div class="factory-mat-option u-a21e610 st-background__356c02" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}">${esc(i.name)}</div>`).join('') + formulaOpts + customOpt;
     }
     window.Dropdown.show(dropdown, searchInput);
+    bindOptions();
+  };
+  const bindOptions = () => {
     dropdown.querySelectorAll('.factory-mat-option').forEach((opt) => {
       opt.addEventListener('mousedown', (e) => {
         e.preventDefault();
+        if (opt.dataset.formula) {
+          const f = formulas.find((x) => String(x.id) === opt.dataset.formula);
+          window.Dropdown.hide(dropdown);
+          if (f) _pickFormula(container, f, inventory, formulas);
+          return;
+        }
         if (opt.dataset.custom === '1') {
           searchInput.value = opt.dataset.name;
           searchInput.dataset.matId = 'custom_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -135,8 +174,13 @@ function _createRow(container, selectedId, qtyVal, costVal, savedName, inventory
   return div;
 }
 
+async function _pickableFormulas() {
+  return (await getFormulaStore()).filter((f) => String(f.id) !== String(_editingId) && ensureArray(f.ingredients).length);
+}
+
 async function _fillEditor(entry) {
   const inventory = ensureArray(await sqliteStore.get('inventory')).filter((i) => !(i && i.isPurchaseLot));
+  const formulas = await _pickableFormulas();
   const container = _el('fsEditContainer');
   if (!container) return;
   container.replaceChildren();
@@ -146,7 +190,7 @@ async function _fillEditor(entry) {
       const inv = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
       if (inv) id = inv.id;
     }
-    const row = _createRow(container, id, ing.quantity, id === ing.id ? ing.cost : null, ing.name, inventory);
+    const row = _createRow(container, id, ing.quantity, id === ing.id ? ing.cost : null, ing.name, inventory, formulas);
     if (/^custom_/.test(String(id))) { const inp = row.querySelector('.factory-mat-search-input'); if (inp) inp.dataset.custom = '1'; }
   });
   _el('fs-edit-name').value = entry.name || '';
@@ -213,7 +257,7 @@ export async function addFormulaIngredientRow() {
   if (!container) return;
   _bindEditor();
   const inventory = ensureArray(await sqliteStore.get('inventory')).filter((i) => !(i && i.isPurchaseLot));
-  const row = _createRow(container, '', '', null, '', inventory);
+  const row = _createRow(container, '', '', null, '', inventory, await _pickableFormulas());
   row.scrollIntoView({ block: 'center', behavior: 'smooth' });
   const inp = row.querySelector('.factory-mat-search-input');
   if (inp) setTimeout(() => inp.focus(), 200);
@@ -264,5 +308,5 @@ export async function deleteFormulaStoreEntry() {
 
 Object.assign(window, { openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary });
 
-export const __screenHtml = "<div id=\"formula-store-edit-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\" id=\"fs-edit-title\">Edit Formula</h2>\n  </div>\n  <div class=\"screen-body\" id=\"formula-store-edit-body\">\n    <div class=\"field u-mb-15\">\n      <label>Formula Name</label>\n      <input class=\"form-ctl\" type=\"text\" id=\"fs-edit-name\" maxlength=\"60\" placeholder=\"e.g. Premium Blend\">\n    </div>\n    <div class=\"grid-inputs u-mb-15\">\n      <div class=\"field\">\n        <label>Additional Cost (Per Unit)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-additional-cost\" step=\"0.01\" min=\"0\" value=\"0\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n      <div class=\"field\">\n        <label>Cost Adjustment for Sales &amp; Calc (X)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-cost-factor\" step=\"0.01\" min=\"1\" value=\"1\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n    </div>\n    <div class=\"factory-formula-header\">\n      <span>Material</span>\n      <span>Cost / Unit</span>\n      <span>Qty (kg)</span>\n      <span></span>\n    </div>\n    <div id=\"fsEditContainer\"></div>\n    <button type=\"button\" class=\"btn btn-theme u-add-row-btn\" onclick=\"addFormulaIngredientRow()\">+ Add Ingredient Row</button>\n    <div class=\"u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003\">\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Unit Weight:</span><span class=\"qty-val\" id=\"fsSummaryWeight\">0 kg</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Raw Material Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryRaw\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Total Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryPerUnit\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Cost per kg (Sales/Calc):</span><span class=\"cost-val\" id=\"fsSummaryPerKg\">0</span></div>\n    </div>\n    <div class=\"btn-split\">\n      <button class=\"btn btn-danger u-81e32d3 d-none\" id=\"fs-delete-btn\" onclick=\"deleteFormulaStoreEntry()\">Delete Formula</button>\n      <button class=\"btn btn-main u-mt-8 u-16000cc\" onclick=\"(async()=>{await saveFormulaStoreEntry()})()\">Save Formula</button>\n    </div>\n  </div>\n</div>";
+export const __screenHtml = "<div id=\"formula-store-edit-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\" id=\"fs-edit-title\">Edit Formula</h2>\n  </div>\n  <div class=\"screen-body\" id=\"formula-store-edit-body\">\n    <div class=\"field u-mb-15\">\n      <label>Formula Name</label>\n      <input class=\"form-ctl\" type=\"text\" id=\"fs-edit-name\" maxlength=\"60\" placeholder=\"e.g. Premium Blend\">\n    </div>\n    <div class=\"grid-inputs u-mb-15\">\n      <div class=\"field\">\n        <label>Additional Cost (Per Unit)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-additional-cost\" step=\"0.01\" min=\"0\" value=\"0\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n      <div class=\"field\">\n        <label>Cost Adjustment for Sales &amp; Calc (X)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-cost-factor\" step=\"0.01\" min=\"1\" value=\"1\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n    </div>\n    <div class=\"factory-formula-header\">\n      <span>Material</span>\n      <span>Cost / Unit</span>\n      <span>Qty (kg)</span>\n      <span></span>\n    </div>\n    <div id=\"fsEditContainer\"></div>\n    <button type=\"button\" class=\"btn btn-theme u-add-row-btn\" onclick=\"addFormulaIngredientRow()\">+ Add Ingredient Row</button>\n    <div class=\"formula-store-edit-hint\">Tip: search a material, or pick a Formula to add all of its materials.</div>\n    <div class=\"u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003\">\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Unit Weight:</span><span class=\"qty-val\" id=\"fsSummaryWeight\">0 kg</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Raw Material Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryRaw\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Total Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryPerUnit\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Cost per kg (Sales/Calc):</span><span class=\"cost-val\" id=\"fsSummaryPerKg\">0</span></div>\n    </div>\n    <div class=\"btn-split\">\n      <button class=\"btn btn-danger u-81e32d3 d-none\" id=\"fs-delete-btn\" onclick=\"deleteFormulaStoreEntry()\">Delete Formula</button>\n      <button class=\"btn btn-main u-mt-8 u-16000cc\" onclick=\"(async()=>{await saveFormulaStoreEntry()})()\">Save Formula</button>\n    </div>\n  </div>\n</div>";
 export const __screenCss = "\n";

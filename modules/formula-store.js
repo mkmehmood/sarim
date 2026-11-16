@@ -87,6 +87,42 @@ export function _totals(ingredients, additionalCost, factor) {
   return { raw, weight, perUnit, perKg };
 }
 
+const _round6 = (v) => Math.round(v * 1e6) / 1e6;
+
+function _liveItem(ing, inventory) {
+  let live = inventory.find((i) => String(i.id) === String(ing.id));
+  if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
+  return live || null;
+}
+
+export function expandFormulaIngredients(formula, inventory) {
+  const inv = ensureArray(inventory);
+  return ensureArray(formula && formula.ingredients)
+    .filter((i) => i && i.id && i.name && _num(i.quantity, 0) > 0)
+    .map((i) => {
+      const live = _liveItem(i, inv);
+      const liveCost = live ? Number(live.cost) : NaN;
+      const out = {
+        id: live ? live.id : i.id,
+        name: live ? live.name : i.name,
+        cost: Number.isFinite(liveCost) && liveCost > 0 ? liveCost : _num(i.cost, 0),
+        quantity: _num(i.quantity, 0),
+      };
+      if (!live && (i.custom || /^custom_/.test(String(i.id)))) out.custom = true;
+      return out;
+    });
+}
+
+export function mergeIngredients(current, additions) {
+  const out = ensureArray(current).map((i) => ({ ...i }));
+  ensureArray(additions).forEach((add) => {
+    const hit = out.find((i) => String(i.id) === String(add.id));
+    if (hit) hit.quantity = _round6(_num(hit.quantity, 0) + _num(add.quantity, 0));
+    else out.push({ ...add });
+  });
+  return out;
+}
+
 function _liveCost(ing, inventory) {
   let live = inventory.find((i) => String(i.id) === String(ing.id));
   if (!live && ing.name) live = inventory.find((i) => i.name && i.name.trim().toLowerCase() === String(ing.name).trim().toLowerCase());
@@ -235,4 +271,4 @@ export function refreshFormulaStoreScreens() {
   if (listScreen && window.getDisplay(listScreen) !== 'none') renderFormulaStoreList();
 }
 
-Object.assign(window, { restoreFormulaEntry, openFormulaStore, renderFormulaStoreList, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, updateFormulaCalcs, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });
+Object.assign(window, { expandFormulaIngredients, mergeIngredients, restoreFormulaEntry, openFormulaStore, renderFormulaStoreList, refreshFormulaStoreScreens, refreshFormulaDependentUI, syncFactoryFormulaPicker, syncFactoryAvailPicker, commitStoresWithFormulas, updateFormulaCalcs, setStoreFormulaSelection, openStoreFormulaPicker, getStoreFormulaNames, getFormulaNames, getFormulaStore });

@@ -30,7 +30,7 @@ function load(initial = {}) {
   };
   const body = src.replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function').replace(/^export (const|let|var) /gm, '$1 ');
   const ctx = vm.createContext({ ...stubs, console, structuredClone, Promise, Number, String, Array, Math, Date, JSON });
-  vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, updateFormulaCalcs, getFormulaStore, getFormulaNames, getStoreFormulaNames };', ctx);
+  vm.runInContext(body + '\nthis.api = { commitStoresWithFormulas, updateFormulaCalcs, getFormulaStore, getFormulaNames, getStoreFormulaNames, expandFormulaIngredients, mergeIngredients };', ctx);
   return { api: ctx.api, data, writes, notes };
 }
 describe('commitStoresWithFormulas', () => {
@@ -115,5 +115,44 @@ describe('updateFormulaCalcs', () => {
     const r = await api.updateFormulaCalcs('zzz', () => ({ ok: true, list: [] }));
     assert.equal(r.ok, false);
     assert.equal(writes.length, 0);
+  });
+});
+
+describe('picking a formula as an ingredient source', () => {
+  const inventory = [{ id: 'm1', name: 'Urea', cost: 120 }, { id: 'm2', name: 'DAP', cost: 0 }];
+  const formula = { id: 'f1', name: 'Base', ingredients: [
+    { id: 'm1', name: 'Urea', cost: 100, quantity: 10 },
+    { id: 'm2', name: 'DAP', cost: 90, quantity: 5 },
+    { id: 'custom_x', name: 'Filler', cost: 7, quantity: 2, custom: true },
+    { id: 'm3', name: 'Gone', cost: 1, quantity: 0 },
+  ] };
+  it('expands to its materials with live inventory names and costs, keeping the stored cost when inventory has none', () => {
+    const { api } = load({});
+    assert.deepEqual(JSON.parse(JSON.stringify(api.expandFormulaIngredients(formula, inventory))), [
+      { id: 'm1', name: 'Urea', cost: 120, quantity: 10 },
+      { id: 'm2', name: 'DAP', cost: 90, quantity: 5 },
+      { id: 'custom_x', name: 'Filler', cost: 7, quantity: 2, custom: true },
+    ]);
+    assert.deepEqual(api.expandFormulaIngredients(null, inventory), []);
+  });
+  it('merges into the current rows: same material adds quantity, new materials are appended', () => {
+    const { api } = load({});
+    const out = JSON.parse(JSON.stringify(api.mergeIngredients(
+      [{ id: 'm1', name: 'Urea', cost: 120, quantity: 1.5 }, { id: 'z', name: 'Zinc', cost: 5, quantity: 3 }],
+      api.expandFormulaIngredients(formula, inventory)
+    )));
+    assert.deepEqual(out.map((i) => [i.id, i.quantity]), [['m1', 11.5], ['z', 3], ['m2', 5], ['custom_x', 2]]);
+  });
+  it('does not change the inputs', () => {
+    const { api } = load({});
+    const cur = [{ id: 'm1', name: 'Urea', cost: 1, quantity: 1 }];
+    api.mergeIngredients(cur, [{ id: 'm1', name: 'Urea', cost: 1, quantity: 4 }]);
+    assert.equal(cur[0].quantity, 1);
+  });
+  it('the editor offers the other formulas in the ingredient search and expands the pick into material rows', () => {
+    const ed = readFileSync(new URL('../screens/formula-store-edit.screen.html', import.meta.url), 'utf8');
+    assert.match(ed, /data-formula="\$\{esc\(String\(f\.id\)\)\}"/);
+    assert.match(ed, /String\(f\.id\) !== String\(_editingId\)/);
+    assert.match(ed, /mergeIngredients\(current, added\)/);
   });
 });
