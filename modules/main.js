@@ -17,6 +17,7 @@ import './money-out.js';
 import './formula-store.js';
 import './batch-common.js';
 import './batch-saved.js';
+import './overview.js';
 let _factoryLoad = null;
 let _repLoad = null;
 

@@ -5679,3 +5679,31 @@ html.vk-open .dlg-overlay { padding-bottom: calc(var(--vk-h, 0px) + var(--vk-gap
 html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 
 .factory-mat-option.factory-mat-formula { color: var(--accent); font-weight: 600; border-top: 1px solid var(--glass-border); }
+
+#tab-overview { padding: 12px 14px 90px; max-width: 980px; margin: 0 auto; }
+.ov-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.ov-head h2 { margin: 0; font-size: 1.4rem; }
+.ov-ranges { display: flex; gap: 6px; }
+.ov-range { min-height: 36px; min-width: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--soft-bg); color: var(--text-main); font: inherit; cursor: pointer; }
+.ov-range.is-on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.ov-section-label { margin: 16px 0 8px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+.ov-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.ov-tile { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--soft-bg); color: var(--text-main); font: inherit; cursor: pointer; min-height: 44px; }
+.ov-tile:active, .ov-link:active, .ov-bar:active { transform: scale(0.98); }
+.ov-tile-title { font-size: 0.78rem; color: var(--text-secondary); }
+.ov-tile-value { font-size: 1.45rem; font-weight: 800; }
+.ov-tile-sub { font-size: 0.78rem; color: var(--text-secondary); }
+.ov-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.ov-card { padding: 14px; border-radius: 14px; border: 1px solid var(--glass-border); background: var(--soft-bg); margin-top: 12px; }
+.ov-charts .ov-card { margin-top: 0; }
+.ov-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ov-card-head h3 { margin: 0; font-size: 1rem; }
+.ov-link { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--glass-border); background: transparent; color: var(--accent); font: inherit; cursor: pointer; }
+.ov-bars { display: flex; align-items: stretch; gap: 8px; height: 190px; }
+.ov-bar { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.68rem; cursor: pointer; }
+.ov-bar-fill { display: block; width: 100%; height: var(--h, 2%); border-radius: 6px 6px 0 0; background: var(--accent); flex: none; }
+.ov-bar-val { font-size: 0.66rem; color: var(--text-main); white-space: nowrap; }
+.ov-table-wrap { overflow-x: auto; }
+.ov-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.ov-table th, .ov-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--glass-border); white-space: nowrap; }
+.ov-table th:first-child, .ov-table td:first-child { text-align: left; }

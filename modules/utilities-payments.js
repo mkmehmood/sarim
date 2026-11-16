@@ -1069,6 +1069,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   }
   await enforceRepModeLock();
   preventAdminAccess();
+  if (appMode === 'admin' && typeof window.showTab === 'function') window.showTab('overview');
   if (typeof checkBiometricLock === 'function') await checkBiometricLock();
   const cloudMenuBtn = document.getElementById('cloudMenuBtn');
   if (cloudMenuBtn) window.setDisplay(cloudMenuBtn, (appMode === 'admin') ? '' : 'none');
@@ -3850,7 +3851,7 @@ if (window._originalShowTab) window.showTab = window._originalShowTab;
 if (appMode === 'rep') {
 const originalShowTab = window._originalShowTab || window.showTab;
 window.showTab = function(tab) {
-const adminTabs = ['prod', 'sales', 'calc', 'factory', 'payments'];
+const adminTabs = ['overview', 'prod', 'sales', 'calc', 'factory', 'payments'];
 if (adminTabs.includes(tab)) {
 showToast("Access Denied - Device in Rep Mode", "warning", 3000);
 return;

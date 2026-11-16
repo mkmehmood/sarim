@@ -4395,7 +4395,7 @@ throw e;
 export async function showTab(tab) {
 window.currentActiveTab = tab;
 requestAnimationFrame(() => {
-const tabs = ['tab-prod', 'tab-sales', 'tab-calc', 'tab-factory', 'tab-payments', 'tab-rep'];
+const tabs = ['tab-overview', 'tab-prod', 'tab-sales', 'tab-calc', 'tab-factory', 'tab-payments', 'tab-rep'];
 tabs.forEach(id => {
 const el = document.getElementById(id);
 if (el) el.classList.add('hidden');
@@ -4425,6 +4425,10 @@ window.setStyle(paymentHistorySection, 'visibility', 'st-visibility__8a20bb');
 setTimeout(async () => {
 try {
 const tabLoaders = {
+'overview': async () => {
+if (typeof window.initOverview === 'function') window.initOverview();
+if (typeof window.renderOverview === 'function') await window.renderOverview();
+},
 'sales': async () => {
 await syncSalesTab();
 },
