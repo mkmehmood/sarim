@@ -168,6 +168,29 @@ describe('profit check', () => {
   });
 });
 
+describe('total profit includes production', () => {
+  it('adds the profit booked by production to the profit made by sales, per month and in total', () => {
+    const m = buildOverview({
+      production: [{ date: '2026-11-02', net: 100, profit: 1000 }, { date: '2026-10-02', net: 10, profit: 200 }],
+      sales: [{ date: '2026-11-03', totalValue: 500, profit: -300 }, { date: '2026-10-04', totalValue: 100, profit: 50 }],
+    }, now, 3);
+    assert.deepEqual(m.months.map((x) => x.totalProfit), [0, 250, 700]);
+    assert.deepEqual([m.totals.salesProfit, m.totals.prodProfit, m.totals.totalProfit], [-250, 1200, 950]);
+  });
+
+  it('shows the total with its split on the Profit tile, a split chart, the table columns and the explanation', () => {
+    const model = buildOverview({
+      production: [{ date: '2026-11-02', net: 100, profit: 1000 }],
+      sales: [{ date: '2026-11-03', totalValue: 500, profit: -300, totalCost: 800, quantity: 5 }],
+    }, now, 3);
+    const html = overviewHtml(model, 3);
+    assert.match(html, /<span class="ov-kpi-l">Profit<\/span><span class="ov-kpi-v">700<\/span>[\s\S]*?sales -300 \u00b7 production 1,000/);
+    assert.match(html, /Profit: production and sales/);
+    assert.match(html, /<th>Production profit<\/th><th>Total profit<\/th>/);
+    assert.match(html, /Production booked <b>1,000<\/b> profit when goods were made[^<]*<b>-300<\/b>[^<]*total profit is <b>700<\/b>/);
+  });
+});
+
 describe('compact layout', () => {
   const html = overviewHtml(buildOverview(data, now, 6), 6);
   const hiddenPanels = (h) => [...h.matchAll(/data-panel-id="(\w+)"( hidden)?/g)].filter((m) => m[2]).map((m) => m[1]);
