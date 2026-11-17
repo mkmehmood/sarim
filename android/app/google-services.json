@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "124313576124",
+    "firebase_url": "https://calculator-fabd3-default-rtdb.firebaseio.com",
+    "project_id": "calculator-fabd3",
+    "storage_bucket": "calculator-fabd3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:124313576124:android:f6ebca4bf0cb9e64db26b9",
+        "android_client_info": {
+          "package_name": "com.gullzubair.sarim"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "124313576124-50ols730hac6ca1kmo83uqh7jnqngjq8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.gullzubair.sarim",
+            "certificate_hash": "31fc305307a2dc99d5b06e072c51455b74fb9c04"
+          }
+        },
+        {
+          "client_id": "124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBe6Fa7v8SPsgVAT8vqwRY1rAt3x9pbZsg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "124313576124-408rl178jlpua4qgcb25lb85hbautsda.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

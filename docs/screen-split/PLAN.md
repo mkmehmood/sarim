@@ -1,0 +1,276 @@
+# Plan: one file per screen (HTML + CSS + JS), loaded when first opened
+
+Status: **complete for everything that can be split without changing behaviour.** Final state and the decisions behind it are in section 8 at the end; sections 1-7 are the working log.
+Everything below is measured from the repo at `3168d72`, not estimated.
+
+## 1. What exists today
+
+| Area | Size | Notes |
+|---|---|---|
+| `index.html` | 217 KB | 6 tabs + 24 standalone screens = **~150 KB (69%)**; the rest is shell, splash, nav, dialogs |
+| `app.css` | 249 KB, 2,417 rules | single global file |
+| `modules/*.js` | 72 files, ~44.7k lines | all statically imported by `main.js`, except `factory.js` and `rep-sales.js` (already lazy) |
+| Inline handlers | 216 `onclick=` in HTML, 191 distinct calls | all resolve through `window.*` |
+| `window.*` assignments | 907 | this is the real public surface between screens |
+| Tests | 68 files read `index.html`, `app.css` or `modules/*.js` as text | will break on any move unless fixed first |
+
+### Screens (33 roots found)
+Tabs: `tab-prod` 7 KB, `tab-sales` 11 KB, `tab-calc` 14 KB, `tab-factory` 7 KB, `tab-payments` 14 KB, `tab-rep` 9 KB.
+Standalone (24): settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, daily-ledger, raw-material, formula-store, formula-store-edit, batch-mix, batch-fix, app-accounts, approvals, feedback, close-financial-year, db-structure, entity-details, add-entity, expense-details, customer-management, customer-edit, rep-customer-management, rep-customer-edit.
+
+### The two facts that shape the whole plan
+
+1. **CSS is mostly shared.** Of 236 KB of rule bytes only **24 KB (~10%)** belong exclusively to one screen (a rule counts as exclusive only if every selector uses an id/class that appears in that one screen and nowhere else in HTML or JS). The other ~90% is design system, themes, components and overrides. Most screens will end up with *small* CSS in their file; the shared base stays in a `core.css`.
+   Largest exclusive CSS: payments 6.4 KB, calc 2.5 KB, prod 2.4 KB, factory 1.8 KB, raw-material 1.4 KB, formula-store 1.3 KB, daily-ledger 1.1 KB.
+2. **JS is concentrated in five multi-screen monoliths**: `utilities-payments.js` (7.3k lines), `utilities-sales.js` (6.9k), `utilities-core.js` (4.5k), `sync.js` (4.5k), `admin-data.js` (2.8k) = **26k of 44.7k lines**. They reference several tabs at once (e.g. `utilities-sales.js` touches `tab-calc`, the sales tab, rep inputs, expense search…). Splitting these is the only hard part; everything else is mechanical.
+
+Cleanly single-screen modules (safe first movers): `daily-ledger.js` (501 lines, 1 importer), `batch-fix.js`, `batch-mix.js`, `accounts.js`, `approvals.js`, `formula-store.js`, `cm-ledger.js` (shared by 3 customer screens). Core modules that look screen-specific but are not: `feedback.js` is the global tap/haptic engine used by `native.js` and `dialog.js`.
+
+## 2. Target design
+
+One file per screen: `screens/<name>.screen.html`
+
+```html
+<template>   …the screen's markup, verbatim…   </template>
+<style>      …rules used only by this screen…    </style>
+<script type="module"> …this screen's logic…   </script>
+```
+
+- **Build**: an esbuild step compiles each file to one JS chunk exporting `{ html, css, mount }`. Content-hashed like today's chunks. `scripts/serve.js` (dev) parses the same file at runtime so no build is needed while developing.
+- **Runtime ("runs once when called")**: `openScreen(id)` memoises one `import()` per screen. First call: inject CSS, insert markup, run the module once, then show. Later calls just show. A screen's listeners are attached once, at mount.
+- **Compatibility layer** (generated from the manifest): for every `window.X` a screen owns, a stub `window.X = (...a) => load().then(() => window.X(...a))` is installed at startup. This keeps the 191 inline handlers and the cross-screen `typeof window.fn === 'function'` calls working before the screen has loaded.
+- **Core stays core**: shell, nav, dialogs, sync, storage, design-system CSS (`core.css`), shared helpers.
+
+## 3. Phases (each ends with all checks green and its own commit)
+
+**Phase 1 – Loader and safety net** (no screen moved yet)
+- `screens/` format, esbuild plugin, dev-server support, `openScreen`, stub generator.
+- `sw.js` `ASSETS_TO_CACHE` and `scripts/verify.js` must list/validate screen chunks. **Offline-first matters here:** a screen not in the precache would fail to open offline on first use.
+- Add `tests/helpers/source.js` (`readAppSource()` = `index.html` + all screen templates/styles/scripts) and switch the 68 source-reading tests to it, so tests assert on the app, not on one file.
+- Capacitor/Android: confirm chunks are inside `dist/` before `cap sync`.
+
+**Phase 2 – Standalone screens that already own their module**
+daily-ledger, batch-mix, batch-fix, approvals, accounts, formula-store + edit, store-manager, db-structure, close-financial-year, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material. HTML + exclusive CSS + the module go into one file each.
+
+**Phase 3 – Screens whose logic lives in monoliths**
+customer-management / customer-edit / entity-details / rep-customer-* / add-entity / expense-details / settings. Move their functions out of the monoliths using the `window.*` manifest as the ownership map. `cm-ledger.js` becomes shared code imported by three screen files.
+
+**Phase 4 – The six tabs**
+Highest risk: `showTab` sets state on several tabs, edit flows (e.g. `startEditSale`, `startEditRepReturn`) require the sales tab DOM to exist, and `utilities-payments.js` holds a screen registry (`closeFn`/`contentSel`). Tabs mount lazily except `tab-prod` (default) — and any tab another flow targets must `await openScreen()` first.
+
+## 4. Known hazards to design for
+- Code that reads or writes another screen's DOM before it has mounted (sync updates, notification deep-links via `notify-target.js` `prepare:` hooks, `showTab` toggling all six tabs).
+- Modules that do `getElementById(...)` / attach listeners at import time.
+- `money-privacy.js` `RESTRICTED_SCREENS` and role gating (`isScreenAllowed`) use screen ids – must apply before a screen mounts.
+- Load order of CSS: screen CSS is injected after `core.css`; only rules that are *exclusive* move, so cascade order cannot change for shared rules.
+- Circular imports when carving the monoliths – resolve by moving shared helpers to a core module first.
+
+## 5. How "nothing lost" is verified
+
+`node scripts/split-manifest.mjs check` compares the tree to `docs/screen-split/baseline.json` (taken before any change) and fails if any of these disappear or change:
+- every HTML element id (700) and inline handler call (191)
+- the whitespace-normalised markup of every screen root (53 blocks)
+- every CSS rule/at-rule, counted as a multiset (2,417) – moving a rule between files passes, dropping or editing one fails
+- every top-level JS declaration (2,102), export (1,480) and `window.*` assignment (976, including `Object.assign(window, {...})`)
+
+Self-tested: a pure move into `screens/` passes; a dropped CSS rule, a renamed id, a removed export and a removed `window.*` assignment each fail.
+
+Per-phase gate: `npm run lint && npm test && npm run build && npm run verify -- dist && npm run split:check`.
+
+## 6. What this cannot prove (needs a person or a browser)
+The checker proves no code was lost; it cannot prove a lazily loaded screen *behaves* the same. Each phase needs a manual pass on a device or emulator: open each moved screen online and offline, first open vs. second open, and the flows that cross screens (edit from ledger, notification deep-link, role-restricted login). A headless-browser smoke test would be worth adding in Phase 1.
+
+## 7. Progress log
+
+### Phase 1 – done
+- `screens/<name>.screen.html`: `<template>` + `<style>` + `<script type="module">`. The script keeps imports relative to `modules/`.
+- `scripts/screen-compile.mjs` compiles a screen to one JS module. The same code is used by the esbuild plugin (`build.js` now uses the esbuild API), the dev server (`scripts/serve.js` serves `modules/<name>.screen.js` from the screen file) and `scripts/screens-lint.mjs`.
+- `modules/screen-loader.js`: loads a screen once, injects its style once, swaps the `data-lazy-screen` placeholder for the real markup, then calls the screen's `onMount()` if it has one. It also wraps `window.openStandaloneScreen` so a lazy screen is mounted before it is shown, and installs `window.*` stubs that load the screen and then call the real function.
+- `modules/screen-registry.js`: one entry per screen (literal `import()` so each gets its own chunk, plus its `globals`). `tests/screen-registry.test.js` fails if the registry, the screen file, the placeholder in `index.html`, the service-worker list or the published `window.*` names drift apart.
+- Offline: the build lists every screen chunk in the service worker's precache automatically, and `npm run verify -- dist` checks each one exists.
+- Tests: `tests/helpers/source.js` reads the app as one document again (placeholders re-expanded, screen styles appended to `app.css`, folded modules found by marker). `tests/_extract.js` now goes through it, and 13 scanning tests use `moduleFiles()` so a moved module is still scanned by every rule it was before.
+
+### Rules that changed on purpose
+- "All CSS lives in app.css" (`tests/no-inline-css.test.js`) now allows exactly two exceptions: one `<style>` per `screens/*.screen.html`, and the single `createElement('style')` in `modules/screen-loader.js`. The CSP already allows this (`style-src 'self' 'unsafe-inline'`).
+- The "no comments" and "no repeated blank lines" rules still apply, and now cover code that lives in screen files.
+
+### CSS is moved conservatively
+A rule moves into a screen file only if (a) every selector uses an id or class that exists only in that screen, (b) it has no `!important`, and (c) no rule that stays in `app.css`, appears later and has the **same specificity** sets any of the same property families, because injecting the screen style after `app.css` would flip that winner. Anything else stays in `app.css`. Result so far: daily-ledger moved 4 rules and kept 11 for cascade safety; batch-mix and batch-fix moved none. Expect screen files to carry little CSS until the shared rules are untangled in a later pass.
+
+### Phase 2 – moved so far
+daily-ledger, batch-mix, batch-fix. Main entry chunk went from 52.3 KB to 36.5 KB; the three screens load on first open (31.5 KB, 8.4 KB, 10.5 KB).
+
+Not yet moved, and why (see Phase 3 below for the rest): `approvals` and `accounts` are also imported by `sync.js` (it must reach them through the registry first); `formula-store`, `batch-saved`, `batch-common` are imported by several modules (shared code, stays in core); `cm-ledger` is shared by three screens. The remaining standalone screens (settings, store-manager, backup-restore, recycle-bin, stock-transfer, payment-transfer, raw-material, db-structure, close-financial-year, feedback) keep their logic inside the large modules and belong to Phase 3.
+
+### Splitting a module before moving it
+`node scripts/module-split.mjs <module.js> <new-core.js> <name> ...` moves named top-level declarations (and the `window.X = name` lines that publish them) into a new core module, recomputes both files' imports, and re-points other modules that imported those names. It refuses if the moved code depends on something that stays behind, so it cannot create an import cycle.
+
+Used for `accounts.js`: the five session functions that `sync.js` calls at sign-in (`syncAccountSession`, `applyAccountSession`, `applyCachedAccountSession`, `accountInfoFromDoc`, `SESSION_FETCH_TIMEOUT_MS`) became `modules/account-session.js` and stay in core; the 366-line admin UI became the lazy `app-accounts` screen (14.3 KB chunk). Main entry chunk is now 36.8 KB.
+
+### `approvals` is not a pure move (needs a design decision)
+`sync.js` needs two groups from it. The **submit side** (`gates`, `isGatedSession`, `submitPending`, `submitPendingBatch`, `pendingWrite`, `revertLocal`, `watchOwnPending`) is self-contained and could go to core with `module-split`. The **admin watcher** is the problem: `watchPendingApprovals` runs for every admin at sign-in and, on each snapshot, updates the badge, calls `renderApprovals()` (UI), resolves a notification deep link via `openApprovalSheet()` (UI) and may open the screen. The UI and watcher also share mutable state (`_pending`, `_loaded`, `_filter`, `_wantedId`). Moving the UI therefore needs:
+1. a small `approvals-state.js` holding that shared state, imported by both halves;
+2. the watcher calling the UI only when it is mounted (`isScreenMounted('approvals-screen')`), and `openApprovalFromPush` / `_showApprovalsScreen` going through `loadScreen`;
+3. a decision on whether a push deep link may wait for the screen chunk to download (offline it would fail after the first precache).
+Those change behaviour, so this should be reviewed rather than done mechanically. Estimated size: about 60 lines of glue, 3 tests.
+
+### Phase 3 – what the analysis found
+`node scripts/screen-carve.mjs <screen-id> <name> [--dry]` works out which top-level statements (across every module) belong only to one screen: a statement is owned when it touches the screen's element ids or is called only from the screen's inline handlers, **and every place that uses it is itself owned** (greatest fixed point, so shared helpers stay and are imported back). Without `--dry` it moves them into `modules/<name>.js`, publishes their globals from there, trims only the imports the move made unused (syntax-tree based, so strings never count), and records the origin in `docs/screen-split/carved.json` so tests can still find the code under its old file name. It refuses if a variable is assigned from both sides of the boundary.
+
+Its most useful output is the **LAZY-SAFE** verdict. A screen is safe to mount lazily only if no code left behind reads or writes its elements, because that code would run against an empty placeholder. Result for the 20 remaining standalone screens: **1 safe (backup-restore, now moved)**, 19 not.
+
+Why the 19 are blocked (the same two causes keep recurring):
+1. **Core functions that stay behind write into the screen.** The opener and the render function are shared: `openRecycleBin`/`renderRecycleBin`, `prepareStockTransferScreen`/`applyStockTransferFilter`, `applyPaymentTransferFilter`/`selectFromUniversalSearch`, `renderFormulaStoreList`, `renderApprovals`, `openCustomerManagement`/`renderCustomerTransactions` (and the rep equivalent), `openOperatingExpenseOverlay`, `openEntityDetailsOverlay`, `syncFeedbackSettings`, `updateCloseYearProgress`, and so on. These are called from other modules and from refresh hooks, often right after `openStandaloneScreen(...)`.
+2. **Code that lives in `index.html` inline `<script>` blocks (711 lines of classic script).** `store-manager` (8 ids), `raw-material` (6), `add-entity` (5) and `db-structure` (1) are driven from there, and the first version of this analysis missed it. That produced two false "safe" verdicts, which is why the check now reads inline scripts too.
+
+Size of what is *owned* but not yet movable (so the prize is real): settings 1,729 lines, raw-material 346, expense-details 295, add-entity 272, customer-edit 231 and rep-customer-edit 231, plus smaller ones.
+
+### Phase 3a – done: the inline scripts
+`index.html` had nine inline scripts. Eight are tiny early-boot scripts (theme, splash, update dialog) and stay inline so they run before first paint. The ninth (388 lines) held three things: the navigation core, screen code, and a `DOMContentLoaded` block. It is now 155 lines: navigation core (`openSidebar`, `openStandaloneScreen`, `popstate`, `sidebarNav`) plus the `DOMContentLoaded` block, which must exist before modules load. Everything else moved, verbatim, into modules imported **first** in `main.js` so they still run before the rest of the app:
+- `store-manager.js` (open/render/reset/edit/delete/save), `add-entity.js` (`prepareAddEntityScreen`), `raw-material.js` (`prepareRawMaterialScreen`), `db-structure.js` (`loadDbStructureScreen`, since folded into the lazy `db-structure` screen).
+- Names the old inline code reached through the global scope are now written `window.NAME`, which is the same lookup.
+
+**Load order mattered, and one thing was deleted.** Inline scripts run before the deferred modules, so any `window.X = …` that a module also assigns was already being overwritten. Moving those into a module would have changed which version wins, so they were not moved. Nine inline definitions were provably dead and were removed: `openDataMenu`, `closeDataMenu`, `openRecycleBin`, `closeRecycleBin`, `openEntityManagement`, `closeEntityManagement`, `openFactoryInventoryModal`, `closeFactoryInventoryModal` (each is published by a module, and for the last two by `factory.js`, which is the only place that can open the raw-material screen) and `_origOpenFactoryInventoryModal` (always assigned `undefined`; nothing reads it). `tests/inline-script-split.test.js` pins this: every one of those names must still be published by a module and must not be assigned inline, the moved code must be gone from the inline script, and the navigation core must stay inline.
+
+Other things that changed: the split checker now also looks for inline `on*="…"` handlers inside JS strings (the store list builds `editStore(…)`/`deleteStore(…)` buttons that way); the `cssText` policy test now looks in the new module/screen for the single allowed `!important` rule.
+
+Effect: main entry chunk 44.4 KB (36.9 KB before 3a; the moved code is now countable, and 5.7 KB of it is the lazy `db-structure` chunk). The remaining blockers for `store-manager`, `raw-material` and `add-entity` are the shared-opener problem below, not inline code.
+
+### Phase 3b/3c – recycle-bin (first screen done this way)
+`openRecycleBin`, `renderRecycleBin` and the recover / hard-delete / empty-bin code (1,007 lines, 25 statements) moved out of `utilities-payments.js` into the lazy `recycle-bin` screen (36.5 KB chunk). No per-opener rewrite was needed: the opener itself moved, so its `window` stub loads and mounts the screen first and then runs the real function, which renders the first content. The sidebar button, the notification deep link (`type: 'call'`) and the filter popover all reach it through `window`, which the stub covers (`tests/screen-registry.test.js` now checks that every function a notification target names is either published eagerly or stubbed).
+
+What the analysis taught us, now built into `screen-carve`:
+- **Function names inside strings are not code uses.** `fn: 'openRecycleBin'` or `onclick="attemptRecoverRecord(...)"` in a template string are looked up through `window`, so they no longer pin a function in core. Uses are now read from the syntax tree, not by scanning text. Use `--also a,b` for functions that are only referenced from button HTML (here `attemptRecoverRecord`, `attemptHardDeleteRecord`, `hardDeleteRecord`).
+- **Never move shared integrity code just because the screen is its only caller today.** Without a limit, the closure reached 1,780 lines of `link-graph.js`, `link-guards.js` and `money-privacy.js`, which `sync` and many tests depend on. `--within utilities-payments.js` confines a carve to the screen's own file; the helpers stay in core and are imported back (the tool exports them).
+- **Data globals must not get function stubs.** The `RECYCLE_*` tables are published on `window` as data. The registry now stubs only published *functions* (`scripts/screen-globals.mjs`); data globals are still published when the screen loads, which is only acceptable when nothing reads them earlier (verified: no outside consumers).
+- Two bugs found and fixed in the tool: duplicate keys in the generated `Object.assign(window, …)` when a name was published twice, and moved statements being joined without blank lines.
+- Tests: `readModule(name)` returns a module plus anything carved out of it (imports stripped so it still parses); `readSource` stays exact so the scanning tests do not count moved code twice. Five tests that inspected recycle-bin code were pointed at `modules/recycle-bin.js`.
+
+Next candidates for the same treatment: `store-manager`, `raw-material` and `add-entity` (their code is now in modules after 3a), then `formula-store`, `formula-store-edit`, `expense-details`, `entity-details` and the customer screens. Each still needs a first-open test on a device.
+
+### Phase 3b/3c – stock-transfer and payment-transfer
+Both moved with the same method; their lazy chunks are 13.5 KB and 14.4 KB. The analysis showed what actually pins a screen in core, and `screen-carve` now handles each case explicitly:
+- **A core function calls a screen function directly** (`--via-window a,b`). The call is rewritten so it is late-bound: `f(x)` becomes `window.f(x)`, `typeof f` becomes `typeof window.f`, and a function passed *as a value* (for example `registerEditHandler('stocktransfer', startEditStockTransfer, …)`) becomes `((...args) => window.startEditStockTransfer(...args))`, never a bare `window.f`, because that would capture `undefined` if the registry had not run yet. The lazy stub then loads the screen when the call happens. Used for: the edit-mode registrations, `deleteProdEntry` calling `deleteStockTransfer`, camera delivery calling `_applyPaymentTransferPendingPhoto`, universal search calling `applyPaymentTransferFilter`, and `deletePaymentTransfer` calling `renderPaymentTransferHistory`.
+- **A shared function only looks owned** (`--keep a,b`). `computeStoreStockSnapshot` (read by `factory.js` and `link-guards.js` through `window`), `routeHistoryMatcher` (shared helper in `business.js`), `openCustomerEditModal`, `openRepCustomerEditModal`, `calculateRepCustomerStatsForDisplay` and `selectFromUniversalSearch` stay in core. `deletePaymentTransfer` also stays: three core delete flows call it, so it is data logic, and only its trailing render call moved behind `window`.
+- **Button-only references** (`--also deleteStockTransfer`), and `--why name` to print what pins a function.
+- **References are now computed with scope analysis** (`eslint-scope`), not by listing identifiers. A local variable named `n` is no longer mistaken for a top-level `n` in another module (the earlier version exported a single-letter `n` from `inventory-note.js` for this reason; that was caught in review and removed). Imports for moved code resolve in the right order: a declaration in the same module, then that module's own import, then a unique global (this fixed a missed `getStoreLabel`, which is also a local helper name in `prod-photos.js`).
+
+Tests that read these functions now read them from `modules/stock-transfer.js` / `modules/payment-transfer.js`, or use `readModule('utilities-sales.js')` / `readModule('utilities-payments.js')` when they need the origin file plus what was carved out of it.
+
+### store-manager, and what the build says about the real payoff
+`store-manager` needed no carve: its module was created in 3a and is single-screen (the tool cannot see functions published as `window.X = async function…`, which is why it reported "not lazy-safe"). The only outside reference is a guarded `typeof window.renderStoreList === 'function' && getDisplay(_el('store-manager-screen')) !== 'none'` in `formula-store.js`, which stays correct with the placeholder (hidden and unmounted means skipped).
+
+**Measured result so far** (gzipped JS that loads at start-up, excluding the lazy screens): 397 KB on `main` → 369 KB here, about 7%. Ten screens (about 148 KB raw) now load on demand. The reason the saving is modest is that one shared chunk is 1.07 MB, and nearly all of it is the five monoliths plus code that is *meant* to be lazy but is pinned by static imports:
+
+| module in the always-loaded chunk | size |
+|---|---|
+| utilities-sales | 167 KB |
+| utilities-payments | 157 KB |
+| utilities-core | 130 KB |
+| sync | 107 KB |
+| admin-data | 98 KB |
+| business | 50 KB |
+| **rep-sales** (loaded with `import()` in `main.js`, but imported statically elsewhere) | 49 KB |
+| **factory** (same) | 46 KB |
+| customers, link-graph, link-guards, cm-ledger | 39, 30, 20, 18 KB |
+
+So the biggest remaining payoff is not more small screens. It is (1) breaking the static imports that pin `factory.js` and `rep-sales.js` (about 95 KB raw, and the `raw-material` screen code lives inside `factory.js`), then (2) carving the tab code out of the five monoliths (Phase 4).
+
+### rep-sales made genuinely lazy (first real start-up saving)
+`main.js` always loaded `rep-sales.js` with `import()`, but four modules also imported it statically, so it shipped in the start-up chunk. It is now its own 47.8 KB chunk, precached for offline use, that loads when the Rep tab is first shown (the existing `_lazyLoadRep` path: `showTab('rep')` awaits the load, then `syncRepTab()` and `handleRepTabUI()` render). Measured start-up JS (gzip): 397 KB on `main` → 355 KB.
+
+How, in the order it was done:
+1. **Move what was never a rep feature into core.** `getPosition` (GPS, used when saving sales) → `modules/geo.js`; the biometric app lock (`checkBiometricLock`, `syncBiometricButton`, `_bioIsOn`) → `modules/app-lock.js`; `toggleBiometricLock` / `enableBiometricLock` / `disableBiometricLock` → `modules/biometric-toggle.js` (imported by `main.js`, because nothing else imports it). `app-lock.js` and `utilities-payments.js` import each other (`BiometricAuth` is only used inside functions at call time, so the cycle is safe).
+2. **Classify every remaining reference with `scripts/lazy-module.mjs`** (scope analysis, so only real uses of the imported binding change):
+   - **Seven refresh hooks, silent until loaded:** `refreshRepUI`, `renderRepCustomerTable`, `renderRepCustomerTransactions`, `renderRepHistory`, `calculateRepAnalytics`, `updateRepLiveMap`, `calculateRepSalePreview` become `window.f?.(x)`. With no rep UI loaded there is nothing to refresh, and the tab renders in full when it first loads.
+   - **Everything else is an entry point and gets a start-up stub** (21 functions, listed in `modules/screen-registry.js` under `registerLazyModules`), so notification links, the rep customer edit form, PDF export, the rep search picks and `fetchRepDeviceLocation` load the module on demand.
+   - **`repMap`** is a reassigned variable, so `window.repMap = repMap` would have published a stale `null`. It is now `Object.defineProperty(window, 'repMap', { get })` and readers use `window.repMap`. The split checker also counts `defineProperty(window, …)` as a publish.
+3. **Tests** (`tests/screen-registry.test.js`): every published function of a lazy module is either stubbed or a declared hook (and never both); nothing imports it statically; no module calls a hook without `?.`; notification targets resolve to an eager or stubbed global.
+
+What to check on a device: first Rep tab open as admin and as rep (online and offline), editing a rep customer from a payments search, opening a rep customer from a notification, exporting a rep customer to PDF, deleting a rep entry (the delete refreshes the rep UI), and the biometric toggle in the sidebar.
+
+Same job still open for `factory.js` (46 KB): it holds core calculations that sales, payments and sync import (`calculatePaymentSummaries`, `getCostPerUnit`, `getSaleTransactionValue`, `getGoodsCreditUnitPrice`, `getReconciledRepReturnIds`, `getFormulaUnitsValue`), so those have to move to core first (step 1 above, but for money logic), then the references can be classified the same way.
+
+### factory.js made genuinely lazy (38.3 KB chunk)
+`factory.js` is not only the Factory tab: it also holds the **Production tab's** units-available indicator, production cost calculator and tracking update (`syncFactoryProductionStats` recalculates and persists `tracking` after every production entry), plus all the pricing, credit and payment-summary calculations that sales, payments, customers, admin-data, rep-sales and sync import. The Production tab is the default, so that code must exist at start-up. Only the Factory-tab and raw-material UI can be lazy.
+
+Measured with scope analysis: the part core needs is **22 names / 340 lines**; the other **54 names / 1,050 lines (75%)** are lazy. Done in this order:
+1. **State mirrors removed.** `currentStore`, `currentFactorySummaryMode` and `editingFactoryInventoryId` were local copies of values the UI-state registry in `utilities-core.js` already owns (it defines `window.X` accessors with the defaults `'daily'` and `null`), kept in step by `_set_*` helpers and a `__uiSyncers` push. `factory.js` now reads and writes `window.X` directly and core does the same. The six removed names (3 variables, 3 `_set_*` helpers) are listed with their reasons in `docs/screen-split/intentional-removals.json`; `split-manifest` treats exactly those as allowed and everything else as lost. `notify-open.js` assigns `window.currentStore` instead of calling `_set_currentStore`.
+2. **Core closure moved** with `module-split` to `modules/factory-core.js`: `getSalePriceForStore`, `getEffectiveSalePriceForCustomer`, `getSaleTransactionValue`, `getGoodsCreditUnitPrice`, `getRepGoodsCreditUnitPrice`, `getCostPriceForStore`, `getCostPerUnit`, `getFormulaUnitsValue`, `calculateDynamicCost`, `calculateSalesCostPerKg`, `calculatePaymentSummaries`, `getReconciledRepReturnIds`, `validateFormulaAvailability`, `unlinkSupplierFromMaterial`, `updateFormulaInventory`, `syncFactoryProductionStats`, `updateUnitsAvailableIndicator`, `updateProductionCostOnStoreChange`, `calculateFactoryProduction`, `calculateDynamicProductionCost` and their helpers. These are verbatim moves; no calculation was edited. `registerEditHandler('factory', …)` now lives in core and loads the module on demand with `import('./factory.js')`.
+3. **Remaining imports rewritten** with `lazy-module`: four render hooks (`renderFactoryInventory`, `renderFactoryHistory`, `updateFactoryInventoryDisplay`, `closeFactoryInventoryModal`) do nothing until the chunk is loaded; the other 31 published functions are start-up stubs that load it on first call.
+
+Start-up JS (gzip): 397 KB on `main` → 355 KB after rep-sales → **345 KB**. About 76 KB gzip is now lazy (10 screens, rep tab, factory tab).
+
+Two defects were found only because of review and the build, and each now has a test:
+- A late-bound edit handler called `window.startEditFactoryEntry(...)`, which is not published. It would have thrown if Edit were tapped before the chunk loaded. `tests/screen-registry.test.js` now checks that every `(...args) => window.X(...args)` wrapper in core points at something published, stubbed or declared a hook.
+- The two earlier screens (`recycle-bin`, `stock-transfer`) imported a function that moved. Lint does not resolve imports and my split tools only rewrote `modules/`, so only the production build caught it. `tests/imports-resolve.test.js` now checks every named import in every module and screen script against the target's real exports, and `module-split` now also repoints imports inside `screens/*.screen.html`. `lazy-module` still only rewrites `modules/` (no screen currently needs it; the new test would flag one that did).
+
+What to check on a device: Production tab (store switch, units available badge, cost and profit, save and delete a production entry), Factory tab first open online and offline, editing a factory entry from its history card, the raw-material screen (add, edit, delete, link and unlink a supplier), a payment recorded for a sale (summaries), customer and rep ledgers (prices and credit), and a notification that opens a factory or production card.
+
+### Incident: lazy screens 404 on a site that serves the source tree
+Reported from a device: every lazy screen failed with `404` on `modules/<name>.screen.js` and `Failed to fetch dynamically imported module`. Cause: the site was serving the **source tree** (unbundled `sync.js` in the console, `.nojekyll` in the repo), not the build. `modules/<name>.screen.js` existed only virtually (the esbuild plugin and the dev server created it), so a static host had nothing to serve. The same missing files were also in the service worker's precache list; a service worker whose precache list contains a 404 fails to install, so offline/PWA install was broken there as well. The test suite, lint and the production build all passed, because none of them ever served the source tree.
+
+Fix: compiled copies are now real, committed files.
+- `screens/compiled/<name>.screen.js`, generated from `screens/<name>.screen.html` by `npm run screens` (`scripts/screens-build.mjs`). They sit outside `modules/` so the hygiene and duplicate-code scanners do not see the code twice, and ESLint ignores them (the screen scripts are linted from their source by `screens-lint`). Relative imports are rewritten to `../../modules/…` using the syntax tree.
+- `modules/screen-registry.js` and `sw.js` point at `screens/compiled/…`. The build still resolves them from the `.screen.html` source, so `dist` is unchanged; the dev server regenerates them on the fly.
+- `screens/compiled/` must never be edited by hand. `tests/screen-registry.test.js` fails when any compiled file is stale (`run npm run screens`) or has no source behind it; `scripts/screen-extract.mjs` regenerates it automatically.
+- A failed load now shows "Could not load this screen. Check your connection and try again." for stub calls too (before, only the open path did).
+- **`tests/source-served.test.js`** starts a plain static server over the repository, crawls every static and dynamic import from `modules/main.js`, and checks every service-worker precache entry. It reproduces the incident exactly on the previous commit (10 screens plus the precache entries missing) and passes now. Any future change that needs a build step to resolve a file will fail it.
+
+Deployment note: `deploy.yml` publishes `dist` from `main` after `npm run check`, which was never affected. The incident only affects a site serving a branch's source directly (for example, Pages set to "deploy from a branch").
+
+### admin-data.js made genuinely lazy (99.5 KB chunk)
+`admin-data.js` (2,800 lines: Close Financial Year with all its merge logic, backup and restore, deduplication, delta-sync diagnostics) was loaded at start-up although it is almost entirely admin tools. Only `sync.js` and `utilities-sales.js` imported it, and only for three state flags. There was also a dead "lazy loader" in `utilities-payments.js` (`_loadAdminModule`) that injected a `<script src="admin-data.js">` which does not exist; it only wrapped `showDeltaSyncDetails` and `showCloseFinancialYearDialog`, and was removed.
+
+- **Flags moved to core:** `modules/admin-flags.js` holds `adminFlags = { closeYearInProgress, closing, restoring }`, the `_set_closing` / `_set_restoring` setters and `window.closeYearInProgress` / `window.closing` / `window.restoring` as **live getters** (the old `window.X = X` lines were one-time copies that went stale; nothing outside `admin-data.js` read them). `sync.js` reads `adminFlags.X`; `admin-data.js` reads and writes `adminFlags.X` (rewritten with scope analysis, so `fyMeta.closing` and the string `'closing'` are untouched). The three removed variables are in `docs/screen-split/intentional-removals.json`.
+- **Registered as a lazy module** with all 32 published functions stubbed. The only outside consumers are four user-triggered entry points (`showCloseFinancialYearDialog`, `_showCloseFinancialYearDialog`, `showDeltaSyncDetails`, `_showDeltaSyncDetails`), so no refresh hooks were needed. A scan of the module's load-time statements found only three variable initialisers: nothing is skipped by loading it later.
+
+Start-up JS (gzip): 397 KB on `main` → 345 KB → **317 KB (-20%)**. About 106 KB gzip is now lazy.
+
+What to check on a device: the Close Financial Year button in the sidebar (dialog opens, summary shows; do not run it against live data), Delta Sync details from the DB structure screen, a backup restore (the `restoring` flag now lives in `adminFlags`; sync must pause while it runs and resume after), and an interrupted close or restore picked up again at the next sign-in (`sync.js` reads the stored `closing` / `restoring` flags).
+
+### What each blocked screen needs (small, per screen, but behaviour-changing)
+- **3a. Move the inline `index.html` scripts into modules.** Done, see above.
+- **3b. Make openers wait for the screen.** Add `ensureScreen(id)` (an exported wrapper over `loadScreen`) and have each core opener `await` it before touching the screen's elements; sync openers must become async.
+- **3c. First render on mount.** Each screen exports `onMount()` that does the initial render that used to happen at startup, so the first open is not empty.
+- **3d. Fix the remaining cross-boundary variables** the tool reports as HAZARDS (formula-store-edit, add-entity, expense-details, customer-edit).
+Each of 3b/3c needs a manual first-open test on a device, which is why they are not done mechanically here.
+
+### How to move the next screen
+`node scripts/screen-extract.mjs <screen-id> <name> [module.js ...]` (add `--dry` to preview), then:
+`npm run lint && npm test && npm run build && npm run verify -- dist && npm run split:check`.
+A module may only be folded in if nothing else imports it. A screen's script must not touch its own DOM at top level; put start-up DOM work in `export function onMount() {}`.
+
+## 8. Final state
+
+### What loads on demand now (16 chunks, 389 KB raw / 121 KB gzip)
+| chunk | raw | how it is reached |
+|---|---|---|
+| admin-data (Close Financial Year, restore tools, dedupe, delta-sync details) | 99 KB | start-up stubs (32 functions) |
+| rep-sales (Rep tab) | 47 KB | `showTab('rep')`, 21 stubs, 7 silent refresh hooks |
+| factory (Factory tab, raw material, inventory) | 38 KB | `showTab('factory')`, 31 stubs, 4 silent hooks |
+| recycle-bin, daily-ledger, app-accounts, payment-transfer, stock-transfer, batch-fix, formula-store-edit, batch-mix, store-manager, db-structure, backup-restore | 4-36 KB each | lazy screens: placeholder in `index.html`, mounted on first open |
+| payments-tab (expense form, export) | 25 KB | preloaded by `showTab('payments')`, 7 stubs |
+| calc-tab (Calculator save, edit, charts, history filter) | 20 KB | loaded by `showTab('calc')`, 10 stubs, 2 hooks |
+
+**Start-up JS: 983 KB raw / 307 KB gzip, down from 397 KB gzip on `main` (-23%).** Everything is also in the service worker's precache, so a lazy chunk works offline once the app is installed.
+
+### What was deliberately left eager, and why
+- **Sales tab save flows** (`saveCustomerSale`, `saveRepReturn`, `saveCustomerCollection`, `_partyOutstanding`, about 600 lines): the primary money-entry path. In an offline-first app it should not depend on fetching a chunk. `rebuildStoreUI` is also called by the inline start-up script.
+- **Payments refresh path** (`refreshPaymentTab`, `renderUnifiedTable`, filters): `refreshPaymentTab` also repairs stored expenses, entities and transactions, syncs suppliers to entities and recalculates net cash. Every flow depends on that running, so it cannot be a "skip until the tab has loaded" hook. Splitting the data maintenance from the rendering would be a logic change, not a move.
+- **Role security** (`lockToUserRoleMode`, `preventAdminAccess`, `enforceRepModeLock`): runs at start-up by design.
+- **Settings screen**: a menu over core features (theme, biometric lock, desktop startup, sync). `settings-screen.js` is 20 lines. Nothing to move.
+- **sync, business, link-graph, link-guards, dialog, notify, prod-photos and the rest of utilities-core/sales/payments** (about 840 KB raw): record saving, integrity checks, sync and refresh paths needed from the first second.
+- **Customer screens** (`customers.js` + `cm-ledger.js`, 57 KB): `currentManagingCustomer` and `currentManagingRepCustomer` are written from both sides of any split, `CFG` and `renderCustomerTransactions` are shared, and `customers.js` also holds the toast and dialog helpers. About 9 KB raw would move.
+- **rep-customer-edit, raw-material, add-entity, expense-details, entity-details, approvals, feedback**: either their code is already inside a lazy chunk (rep-customer-edit, raw-material), or it is shared with core data logic (add-entity and entity-details with entity rename and delete; approvals with the sync-time watcher, see section 7), or the analysis flags blocking hazards.
+
+### Tools and guards that exist now
+- `scripts/screen-extract.mjs`, `screen-carve.mjs`, `module-split.mjs`, `lazy-module.mjs`, `mirror-remove.mjs`: each refuses when a move could change behaviour (variable written from both sides, import cycle, shorthand uses, value use of a setter).
+- `scripts/split-manifest.mjs` + `docs/screen-split/baseline.json` + `intentional-removals.json`: every id, handler, screen markup block, CSS rule, JS declaration, export and `window.*` publish from the original app is either still present or listed with a reason (45 names, all UI-state mirrors and flags).
+- `npm run screens` regenerates `screens/compiled/*.screen.js`; a test fails if any is stale.
+- Tests that exist because of defects found along the way: every named import in every module and screen resolves; every late-bound `window` wrapper points at something published or stubbed; hooks are only called with `?.` or a `typeof` guard; notification targets resolve; and `tests/source-served.test.js` crawls a plain static server over the source tree (imports, lazy imports, precache).
+
+### Before merging to main
+1. Rebase or merge `refactor/screen-split-plan` onto current `main`; `deploy.yml` builds `dist` and is unaffected.
+2. Test on a device (online and offline, first and second open): every lazy screen; Rep, Factory, Calculator and Payments tabs; Close Financial Year dialog (do not run it on live data); restore; entry editing for calc, factory, stock and payment transfers; notification deep links; the biometric toggle.
+3. If a branch is served directly (not through `deploy.yml`), run `npm run screens` first so `screens/compiled/` is current.

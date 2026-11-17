@@ -1,0 +1,202 @@
+import { ensureArray, sqliteStore } from './business.js';
+import { hcToggle } from './history-card.js';
+import { appMode } from './business.js';
+import { LEDGER_SCREEN, isViewTarget, parseTarget, resolveView } from './notify-target.js';
+
+const WAIT_MS = 60000;
+const RETRY_MS = 500;
+let pending = null;
+let timer = null;
+
+function toast(message, type) {
+  if (typeof window.showToast === 'function') window.showToast(message, type);
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitFor(find, ms = 5000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const found = find();
+    if (found) return found;
+    await sleep(120);
+  }
+  return null;
+}
+
+async function openLedger(plan) {
+  const openers = { cust: window.openCustomerManagement, rep: window.openRepCustomerManagement, ent: window.openEntityDetailsOverlay };
+  const open = openers[plan.kind];
+  if (typeof open !== 'function') return false;
+  if (plan.profile && window.currentRepProfile !== plan.profile && typeof window.adminSwitchRepProfile === 'function') window.adminSwitchRepProfile(plan.profile);
+  await open(plan.owner);
+  if (!plan.row) return true;
+  const screen = LEDGER_SCREEN[plan.kind];
+  const row = await waitFor(() => Array.from(document.querySelectorAll('#' + screen + ' .cm-row')).find((r) => r.dataset.txid === plan.row));
+  if (!row) return false;
+  const month = row.closest('.cm-month');
+  if (month && month.classList.contains('is-collapsed')) {
+    month.classList.remove('is-collapsed');
+    const head = month.querySelector('.cm-month-head');
+    if (head) head.setAttribute('aria-expanded', 'true');
+  }
+  row.scrollIntoView({ block: 'center' });
+  if (typeof window.openCustomerTxnSheet === 'function') window.openCustomerTxnSheet(row);
+  return true;
+}
+
+async function openCard(id, refresh) {
+  const find = () => Array.from(document.querySelectorAll('.hc-card[data-rec]')).find((c) => c.getAttribute('data-rec') === id);
+  let card = await waitFor(find, 1500);
+  for (let i = 0; !card && refresh && i < 4; i += 1) {
+    try { await refresh(); } catch (_) {}
+    card = await waitFor(find, 1500);
+  }
+  if (!card) return false;
+  for (let i = 0; i < 4; i += 1) {
+    card = find() || card;
+    card.classList.remove('d-none', 'hidden');
+    if (typeof window.setDisplay === 'function') window.setDisplay(card, '');
+    if (!card.classList.contains('is-open')) hcToggle(card);
+    card.scrollIntoView({ block: 'center' });
+    await sleep(700);
+    const again = find();
+    if (again && again.classList.contains('is-open')) return true;
+  }
+  return false;
+}
+
+async function openExpense(plan) {
+  const expenses = ensureArray(await sqliteStore.get('expenses'));
+  const expense = expenses.find((e) => e && String(e.id) === plan.expenseId);
+  if (!expense) return false;
+  if (expense.category === 'operating') {
+    if (typeof window.openOperatingExpenseOverlay !== 'function') return false;
+    await window.openOperatingExpenseOverlay(expense.name);
+    return true;
+  }
+  const entities = ensureArray(await sqliteStore.get('entities'));
+  const name = String(expense.name || '').toLowerCase();
+  const entity = entities.find((e) => e && String(e.name || '').toLowerCase() === name);
+  if (!entity) return false;
+  const transactions = ensureArray(await sqliteStore.get('transactions'));
+  const linked = transactions.find((t) => t && String(t.expenseId) === String(expense.id));
+  return openLedger({ kind: 'ent', owner: String(entity.id), row: linked ? String(linked.id) : '' });
+}
+
+async function openView(plan) {
+  if (plan.type === 'ledger') return openLedger(plan);
+  if (plan.type === 'expense') return openExpense(plan);
+  if (plan.type === 'transfer') {
+    if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen(plan.screen);
+    if (typeof window[plan.prepare] === 'function') await window[plan.prepare]();
+    const redo = () => (typeof window[plan.prepare] === 'function' ? window[plan.prepare]() : null);
+    return plan.card ? openCard(plan.card, redo) : true;
+  }
+  if (plan.type === 'call') {
+    if (typeof window[plan.fn] !== 'function') return false;
+    await window[plan.fn]();
+    return true;
+  }
+  if (plan.type === 'calc') {
+    if (typeof window.showTab === 'function') await window.showTab('calc');
+    return openCard(plan.card, () => (typeof window.refreshUI === 'function' ? window.refreshUI() : null));
+  }
+  if (plan.type === 'factory') {
+    const factoryDate = document.getElementById('factory-date');
+    if (plan.date && factoryDate && factoryDate.value !== plan.date) factoryDate.value = plan.date;
+    if (typeof window.showTab === 'function') await window.showTab('factory');
+    return openCard(plan.card, () => (typeof window.renderFactoryHistory === 'function' ? window.renderFactoryHistory() : null));
+  }
+  if (plan.type === 'prod') {
+    const dateInput = document.getElementById('sys-date');
+    if (plan.date && dateInput && dateInput.value !== plan.date) dateInput.value = plan.date;
+    if (plan.store) {
+      window.currentStore = plan.store;
+      const selector = document.getElementById('storeSelector');
+      if (selector && (!selector.options || Array.from(selector.options).some((o) => o.value === plan.store))) selector.value = plan.store;
+    }
+    if (typeof window.setProductionView === 'function') window.setProductionView('store');
+    if (typeof window.showTab === 'function') await window.showTab('prod');
+    await sleep(300);
+    if (typeof window.refreshUI === 'function') await window.refreshUI();
+    return openCard(plan.card, () => (typeof window.refreshUI === 'function' ? window.refreshUI() : null));
+  }
+  if (plan.type === 'tab') {
+    if (typeof window.showTab === 'function') await window.showTab(plan.tab);
+    return true;
+  }
+  return false;
+}
+
+async function attempt(startedAt) {
+  const target = pending;
+  if (!target) return;
+  const retry = () => {
+    if (Date.now() - startedAt > WAIT_MS) {
+      pending = null;
+      toast('Could not open that transaction. Open it from its tab.', 'warning');
+      return;
+    }
+    timer = setTimeout(() => attempt(startedAt), RETRY_MS);
+  };
+  if (isViewTarget(target)) {
+    if (!appMode || typeof window.openStandaloneScreen !== 'function') { retry(); return; }
+    pending = null;
+    let shown = false;
+    try { shown = await openView(resolveView(target, null)); } catch (_) { shown = false; }
+    if (!shown) toast('Could not open that screen.', 'warning');
+    return;
+  }
+  let rows = [];
+  try { rows = ensureArray(await sqliteStore.get(target.k)); } catch (_) { rows = []; }
+  if (!rows.length || typeof window.openStandaloneScreen !== 'function') { retry(); return; }
+  const record = rows.find((r) => r && String(r.id) === target.id);
+  pending = null;
+  if (!record) { toast('That transaction is no longer available.', 'warning'); return; }
+  const plan = resolveView(target, record);
+  let opened = false;
+  try { opened = plan ? await openView(plan) : false; } catch (error) { opened = false; window.__notifyOpenError = String(error && error.stack || error); console.warn('[notify-open]', error); }
+  if (!opened) toast('Opened the list, but could not find that transaction.', 'warning');
+}
+
+export function openNotificationTarget(raw) {
+  const target = parseTarget(raw);
+  if (!target) return;
+  pending = target;
+  clearTimeout(timer);
+  attempt(Date.now());
+}
+
+function listenNative(tries) {
+  const plugins = (window.Capacitor && window.Capacitor.Plugins) || {};
+  const LocalNotifications = plugins.LocalNotifications;
+  if (LocalNotifications && typeof LocalNotifications.addListener === 'function') {
+    LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+      openNotificationTarget(event && event.notification && event.notification.extra);
+    });
+    return;
+  }
+  if (tries > 0) setTimeout(() => listenNative(tries - 1), RETRY_MS);
+}
+
+export function initNotificationOpen() {
+  listenNative(20);
+  if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.addEventListener) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'OPEN_NOTIFICATION_TARGET') openNotificationTarget(event.data.target);
+    });
+  }
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const open = params.get('open');
+    if (open) {
+      params.delete('open');
+      const query = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : '') + window.location.hash);
+      openNotificationTarget(open);
+    }
+  } catch (_) {}
+}
+
+if (typeof window !== 'undefined' && window.document) initNotificationOpen();

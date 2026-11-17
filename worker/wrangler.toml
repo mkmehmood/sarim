@@ -1,0 +1,16 @@
+name = "sarim-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+PROJECT_ID = "calculator-fabd3"
+ALLOWED_ORIGIN = "https://mkmehmood.github.io"
+
+# Create the namespace first: npx wrangler kv namespace create RATE
+# then paste the id it prints below.
+[[kv_namespaces]]
+binding = "RATE"
+id = "PASTE_KV_NAMESPACE_ID_HERE"
+
+# The service-account key is a secret, set it with:
+#   npx wrangler secret put SERVICE_ACCOUNT_JSON
