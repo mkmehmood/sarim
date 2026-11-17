@@ -1,5 +1,6 @@
 import { localDateStr } from './finance.js';
 import { auditData, isLedgerRow } from './overview-audit.js';
+import { buildExtras } from './overview-extra.js';
 
 const _arr = (v) => (Array.isArray(v) ? v : []);
 const _n = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -141,6 +142,7 @@ export function buildOverview(data, now = new Date(), months = 6) {
     months: list, totals, running: run, thisMonth,
     profit: analyseProfit(data.sales, new Set(list.map((m) => m.key))),
     audit: auditData(data, today),
+    extra: buildExtras(data, now, list.map((m) => m.key)),
     formulas: top(formulas, 6, withCount), stores: top(stores, 5, withCount),
     formulaMoves: top(moveFormulas, 3, (v) => ({ count: v.count, movement: true })), storeMoves: top(moveStores, 6, (v) => ({ count: v.count, movement: true })), customers: top(customers, 6, withCount), expenseCats: top(cats, 5, withCount),
     stock: stockRows.sort((a, b) => b.value - a.value).slice(0, 6),
@@ -203,6 +205,14 @@ function checkCardHtml(model) {
   return `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">Profit and data check</h4>${status}</div>${hasProfit ? profitCheckHtml(p) : ''}${hasAudit ? auditHtml(a) : ''}</div>`;
 }
 
+function owedSection(x) {
+  if (!x || !x.owed.count) return '';
+  const o = x.owed;
+  const tiles = `<div class="sx-grid sx-cols-2">${stat('Total owed', fmt(o.total), 'warn', 'sales', 'data-go', `${o.count} sale${o.count === 1 ? '' : 's'}, oldest ${o.oldest} days`)}${stat('Up to 30 days', fmt(o.d30), 'good', 'sales')}${stat('31 to 60 days', fmt(o.d60), 'warn', 'sales')}${stat('Over 60 days', fmt(o.d90), 'bad', 'sales')}</div>`;
+  const rows = o.customers.map((c) => ({ name: `${c.name} (${c.oldest}d)`, value: c.value }));
+  return section('Who owes you', 'sales', `${tiles}<div class="ov-sub">By customer, with age of the oldest sale</div>${ranked(rows, '', 'sales', 'warn')}`);
+}
+
 export function overviewHtml(model, range = 6) {
   const r = model.running;
   const t = model.totals;
@@ -216,15 +226,21 @@ export function overviewHtml(model, range = 6) {
     + `${stat('Sales today', fmt(r.todaySalesValue), 'good', 'sales', 'data-go', `${r.todaySalesCount} sale${r.todaySalesCount === 1 ? '' : 's'}`)}`
     + `${stat('Cash in today', fmt(r.todayIn), 'good', 'payments')}${stat('Cash out today', fmt(r.todayOut), 'bad', 'payments')}`
     + `${stat('Open credit sales', fmt(r.openCreditValue), 'warn', 'sales', 'data-go', `${r.openCreditCount} not yet received`)}`
-    + `${stat('Stock on hand', fmt(r.stockValue), 'purple', 'raw-material-screen', 'data-screen', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}`)}</div>`;
+    + `${model.extra && model.extra.outOfStock.count ? stat('Out of stock', String(model.extra.outOfStock.count), 'bad', 'raw-material-screen', 'data-screen', esc(model.extra.outOfStock.names.slice(0, 3).join(', ') + (model.extra.outOfStock.count > 3 ? '...' : ''))) : ''}${stat('Stock on hand', fmt(r.stockValue), 'purple', 'raw-material-screen', 'data-screen', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}`)}</div>`;
   const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((x) => `<button type="button" class="ov-recent-row ${tone(x.tone)}" data-go="${x.go}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(x.title)}</span><span class="ov-recent-sub">${esc(x.kind)}${x.sub ? ` · ${esc(x.sub)}` : ''}</span></span><span class="ov-recent-amt">${x.amount}</span></button>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
   return `<header class="u-497acf1 d-flex"><h1 class="shimmer-text u-heading-bold">Overview</h1></header>`
     + `<div class="section-header"><h3>Summary</h3><div class="toggle-group" id="ov-range-toggle">${toggle}</div></div>${hero}${pc}${now}`
     + `<div class="section-header"><h3>Over time</h3></div>`
     + section('Sales value', 'sales', chart(model.months, [{ f: 'salesValue', name: 'Sales', t: 'good' }], 'sales'))
     + section('Production (kg)', 'prod', chart(model.months, [{ f: 'prodKg', name: 'Production', t: 'info' }], 'prod'))
+    + (model.extra && model.extra.factory.total > 0 ? section('Factory output (units)', 'factory', chart(model.months.map((m, i) => ({ label: m.label, units: model.extra.factory.months[i].units })), [{ f: 'units', name: 'Units', t: 'purple' }], 'factory')) : '')
     + section('Cash in and out', 'payments', chart(model.months, [{ f: 'cashIn', name: 'In', t: 'good' }, { f: 'cashOut', name: 'Out', t: 'bad' }], 'payments'))
     + `<div class="section-header"><h3>Breakdown</h3></div>`
+    + owedSection(model.extra)
+    + (model.extra && model.extra.salesByStore.length ? section('Sales by store', 'sales', ranked(model.extra.salesByStore, '', 'sales', 'good')) : '')
+    + (model.extra && model.extra.salesByPay.length ? section('Cash and credit sales', 'sales', ranked(model.extra.salesByPay, '', 'sales', 'warn')) : '')
+    + (model.extra && model.extra.factory.formulas.length ? section('Factory output by formula', 'factory', ranked(model.extra.factory.formulas, ' units', 'factory', 'purple')) : '')
+    + (model.extra && model.extra.formulaCosts.length ? section('Formula cost per kg', 'factory', ranked(model.extra.formulaCosts.map((c) => ({ ...c, name: c.linked ? `${c.name} (linked)` : c.name })), '', 'factory', 'purple')) : '')
     + section('Top customers', 'sales', ranked(model.customers, '', 'sales', 'good'))
     + section('Production by formula', 'prod', ranked(model.formulas.concat(model.formulaMoves || []), ' kg', 'prod', 'info'))
     + section('Production by store', 'prod', ranked(model.stores.concat(model.storeMoves || []), ' kg', 'prod', 'info'))

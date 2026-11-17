@@ -13,9 +13,11 @@ let _range = 6;
 export async function renderOverview() {
   const box = document.getElementById('tab-overview');
   if (!box) return;
-  const [production, sales, inventory, transactions, expenses, entities] = await Promise.all(['production', 'sales', 'inventory', 'transactions', 'expenses', 'entities'].map((k) => sqliteStore.get(k).catch(() => [])));
-  const model = buildOverview({ production, sales, inventory, transactions, expenses, entities }, new Date(), _range);
-  box.innerHTML = overviewHtml(model, _range);
+  const keys = ['production', 'sales', 'inventory', 'transactions', 'expenses', 'entities', 'factory'];
+  const loaded = await Promise.all(keys.map((k) => sqliteStore.get(k).catch(() => [])));
+  const data = Object.fromEntries(keys.map((k, i) => [k, loaded[i]]));
+  data.formulas = await getFormulaStore().catch(() => []);
+  box.innerHTML = overviewHtml(buildOverview(data, new Date(), _range), _range);
 }
 
 const ESC = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
