@@ -278,6 +278,11 @@ function handleBack() {
   }
   const sidebar = document.querySelector('.sidebar.open, #sidebar.open, .side-menu.open');
   if (sidebar && typeof window.closeSidebar === 'function') { window.closeSidebar(); return; }
+  const tab = window.currentActiveTab;
+  if (tab && tab !== 'overview' && typeof window.overviewIsHome === 'function' && window.overviewIsHome() && document.getElementById('tab-overview')) {
+    if (typeof window.sidebarNav === 'function') window.sidebarNav('overview'); else if (typeof window.showTab === 'function') window.showTab('overview');
+    return;
+  }
   const now = Date.now();
   if (now - lastBack < 2000) { const { App } = P(); if (App) App.exitApp(); return; }
   lastBack = now;

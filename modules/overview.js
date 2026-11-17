@@ -1,4 +1,4 @@
-import { ensureRecordIntegrity, generateUUID, getTimestamp, sqliteStore } from './business.js';
+import { appMode, ensureRecordIntegrity, generateUUID, getTimestamp, sqliteStore } from './business.js';
 import { openDialog } from './dialog.js';
 import { unifiedSave } from './sync.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
@@ -9,6 +9,7 @@ import { getFormulaStore } from './formula-store.js';
 import { applyFix, parseInput, planFixes } from './overview-fix.js';
 
 let _range = 6;
+let _panel = 'sales';
 
 export async function renderOverview() {
   const box = document.getElementById('tab-overview');
@@ -17,7 +18,7 @@ export async function renderOverview() {
   const loaded = await Promise.all(keys.map((k) => sqliteStore.get(k).catch(() => [])));
   const data = Object.fromEntries(keys.map((k, i) => [k, loaded[i]]));
   data.formulas = await getFormulaStore().catch(() => []);
-  box.innerHTML = overviewHtml(buildOverview(data, new Date(), _range), _range);
+  box.innerHTML = overviewHtml(buildOverview(data, new Date(), _range), _range, { panel: _panel });
 }
 
 const ESC = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -130,12 +131,19 @@ export function initOverview() {
   if (!box || box.dataset.bound === '1') return;
   box.dataset.bound = '1';
   box.addEventListener('keydown', (e) => {
-    const r = e.target.closest && e.target.closest('[data-range]');
+    const r = e.target.closest && e.target.closest('[data-range],[data-panel]');
     if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); r.click(); }
   });
   box.addEventListener('click', (e) => {
     const fixBtn = e.target.closest('[data-fix]');
     if (fixBtn && box.contains(fixBtn)) { const [col, idx] = fixBtn.getAttribute('data-fix').split(':'); openFix(col, Number(idx)); return; }
+    const tab = e.target.closest('[data-panel]');
+    if (tab && box.contains(tab)) {
+      _panel = tab.getAttribute('data-panel');
+      box.querySelectorAll('[data-panel]').forEach((el) => el.classList.toggle('active', el === tab));
+      box.querySelectorAll('[data-panel-id]').forEach((el) => { el.hidden = el.getAttribute('data-panel-id') !== _panel; });
+      return;
+    }
     const range = e.target.closest('[data-range]');
     if (range) { _range = Number(range.getAttribute('data-range')); renderOverview(); return; }
     const go = e.target.closest('[data-go],[data-screen]');
@@ -144,6 +152,7 @@ export function initOverview() {
 }
 
 if (typeof window !== 'undefined') {
+  window.overviewIsHome = () => appMode === 'admin';
   window.renderOverview = renderOverview;
   window.initOverview = initOverview;
 }

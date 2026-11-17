@@ -96,7 +96,7 @@ describe('overview data', () => {
     for (const go of ['prod', 'sales', 'payments']) assert.match(html, new RegExp(`data-go="${go}"`));
     assert.match(html, /data-screen="raw-material-screen"/);
     assert.match(html, /Right now/);
-    assert.match(html, />Over time</);
+    assert.match(html, /class="ov-kpis"/);
     assert.match(html, /data-range="3"/);
     assert.match(html, /toggle-opt active" role="button" tabindex="0" data-range="6"/);
     for (const part of ['Top customers', 'Production by formula', 'Production by store', 'Expenses by category', 'Stock by value', 'Recent activity', 'Monthly summary', 'Cash in and out']) assert.match(html, new RegExp(part));
@@ -165,6 +165,54 @@ describe('profit check', () => {
     assert.match(html, /Biggest losses/);
     assert.match(html, /Profit by month/);
     assert.doesNotThrow(() => overviewHtml(buildOverview({}, new Date(2026, 10, 16), 3), 3));
+  });
+});
+
+describe('compact layout', () => {
+  const html = overviewHtml(buildOverview(data, now, 6), 6);
+  const hiddenPanels = (h) => [...h.matchAll(/data-panel-id="(\w+)"( hidden)?/g)].filter((m) => m[2]).map((m) => m[1]);
+
+  it('shows one panel at a time, sales first, with every other panel present but hidden', () => {
+    assert.deepEqual(hiddenPanels(html), ['prod', 'money', 'stock', 'checks', 'activity']);
+    assert.deepEqual(hiddenPanels(overviewHtml(buildOverview(data, now, 6), 6, { panel: 'checks' })), ['sales', 'prod', 'money', 'stock', 'activity']);
+    assert.deepEqual(hiddenPanels(overviewHtml(buildOverview(data, now, 6), 6, { panel: 'nope' })), ['prod', 'money', 'stock', 'checks', 'activity']);
+    for (const id of ['sales', 'prod', 'money', 'stock', 'checks', 'activity']) assert.match(html, new RegExp(`data-panel="${id}"`));
+  });
+
+  it('has a KPI strip with trends and a right-now strip instead of tall stat cards', () => {
+    assert.equal((html.match(/class="ov-kpi /g) || []).length, 7);
+    assert.match(html, /<svg class="ov-spark"/);
+    assert.match(html, /class="ov-now-strip"/);
+    assert.equal((html.match(/class="ov-pill /g) || []).length, 4);
+    assert.doesNotMatch(html, /sx-hero|class="section-header"/);
+  });
+
+  it('shows trend arrows against the previous month and tolerates flat or empty series', () => {
+    assert.match(html, /ov-delta">[\u25b2\u25bc] \d+%/);
+    assert.doesNotThrow(() => overviewHtml(buildOverview({}, now, 3), 3));
+  });
+
+  it('draws cash against credit as a donut', () => {
+    const sales = [{ date: '2026-11-10', totalValue: 300, paymentType: 'CASH' }, { date: '2026-11-11', totalValue: 100, paymentType: 'CREDIT' }];
+    const h = overviewHtml(buildOverview({ sales }, now, 3), 3);
+    assert.match(h, /class="ov-donut sx-tone-good" style="--p:75"/);
+    assert.match(h, /Cash<b>300<\/b><em>75%/);
+  });
+
+  it('switches panels without re-rendering and remembers the choice', () => {
+    const src = read('../modules/overview.js');
+    assert.match(src, /el\.hidden = el\.getAttribute\('data-panel-id'\) !== _panel/);
+    assert.match(src, /\{ panel: _panel \}/);
+  });
+});
+
+describe('back button returns to overview', () => {
+  const native = read('../modules/native.js');
+  it('goes to overview from any other main tab, only for full-access devices, after closing dialogs, screens and the menu', () => {
+    assert.match(native, /const tab = window\.currentActiveTab;\n  if \(tab && tab !== 'overview' && typeof window\.overviewIsHome === 'function' && window\.overviewIsHome\(\)/);
+    assert.ok(native.indexOf("window.sidebarNav('overview')") > native.indexOf('window.closeSidebar()'));
+    assert.ok(native.indexOf("window.sidebarNav('overview')") < native.indexOf("Press back again to exit"));
+    assert.match(read('../modules/overview.js'), /window\.overviewIsHome = \(\) => appMode === 'admin';/);
   });
 });
 

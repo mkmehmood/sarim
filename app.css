@@ -5734,3 +5734,43 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-fix-label { display: flex; flex-direction: column; gap: 4px; font: 600 0.72rem var(--font-ui); color: var(--text-secondary); }
 .ov-fixchip { border: 0; pointer-events: none; flex: none; }
 .dlg-option.is-danger { color: var(--danger); }
+
+.ov-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.ov-top h1 { margin: 0; }
+.ov-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 640px) { .ov-kpis { grid-template-columns: repeat(4, 1fr); } }
+.ov-kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--glass-border); border-left: 3px solid var(--sx-c, var(--accent)); background: var(--soft-bg); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
+.ov-kpi:active, .ov-pill:active, .ov-donut-wrap:active { transform: scale(0.985); }
+.ov-kpi-l { font: 700 0.62rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.ov-kpi-v { font: 800 1.15rem var(--font-num); font-variant-numeric: tabular-nums; color: var(--sx-c, var(--accent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-kpi-s { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--sx-c, var(--accent)); }
+.ov-spark { flex: 1; height: 18px; min-width: 0; }
+.ov-delta { font: 700 0.64rem var(--font-num); color: var(--text-secondary); white-space: nowrap; }
+.ov-kpi-sub { font: 500 0.66rem var(--font-ui); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-now-strip { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.ov-now-label { font: 800 0.62rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.ov-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--soft-bg); color: var(--text-main); font: 600 0.72rem var(--font-ui); cursor: pointer; }
+.ov-pill b { font-family: var(--font-num); color: var(--sx-c, var(--accent)); }
+.ov-tabs { display: flex; overflow-x: auto; margin: 4px 0 10px; scrollbar-width: none; }
+.ov-tabs::-webkit-scrollbar { display: none; }
+.ov-tabs .toggle-opt { flex: 1 0 auto; white-space: nowrap; }
+.ov-count { display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--sx-c, var(--danger)); color: var(--on-accent-dark); font: 800 0.6rem/16px var(--font-num); text-align: center; }
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 10px; align-items: start; }
+.ov-grid.is-wide { grid-template-columns: 1fr; }
+.ov-panel[hidden] { display: none; }
+.ov-c { margin: 0; padding: 12px 14px; }
+.ov-c .sx-card-head { margin-bottom: 4px; }
+.ov-c .ov-cols { height: 120px; margin-top: 6px; }
+.ov-c .ov-rank { gap: 2px; margin-top: 4px; }
+.ov-c .ov-rank-row { padding: 5px 2px; gap: 4px; }
+.ov-c .ov-recent-row { padding: 7px 2px 7px 10px; }
+.ov-c .sx-grid { gap: 6px; }
+.ov-c .sx-grid .card.stat { padding: 8px 10px; margin: 0; }
+.ov-donut-wrap { display: flex; align-items: center; gap: 14px; width: 100%; padding: 6px 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.ov-donut { flex: none; width: 84px; height: 84px; border-radius: 50%; background: conic-gradient(var(--sx-c, var(--accent)) calc(var(--p) * 1%), var(--warning) 0); -webkit-mask: radial-gradient(circle 26px, transparent 98%, #000 100%); mask: radial-gradient(circle 26px, transparent 98%, #000 100%); }
+.ov-legend { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.ov-legend-row { display: flex; align-items: center; gap: 6px; font: 600 0.8rem var(--font-ui); }
+.ov-legend-row i { width: 10px; height: 10px; border-radius: 3px; background: var(--sx-c, var(--accent)); flex: none; }
+.ov-legend-row b { margin-left: auto; font-family: var(--font-num); }
+.ov-legend-row em { font-style: normal; color: var(--text-muted); width: 36px; text-align: right; }
+.ov-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

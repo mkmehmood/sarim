@@ -156,7 +156,7 @@ const go = (to, attr = 'data-go') => `${attr}="${to}"`;
 const chip = (to, text = 'Open', attr = 'data-go') => `<button type="button" class="badge badge-tint sx-chip sx-tone-good ov-chip" ${go(to, attr)}>${text}</button>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const stat = (label, value, t, to, attr = 'data-go', sub = '') => `<button type="button" class="card stat ov-stat ${tone(t)}" ${go(to, attr)}><span class="stat-label">${label}</span><span class="stat-value">${value}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</button>`;
-const section = (title, to, body, t = 'good', chipText = 'Open', attr = 'data-go') => `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">${title}</h4>${chip(to, chipText, attr)}</div>${body}</div>`;
+const section = (title, to, body, t = 'good', chipText = 'Open', attr = 'data-go') => `<div class="card sx-card sx-card--accent ov-c" data-money><div class="sx-card-head"><h4 class="sx-card-title">${title}</h4>${chip(to, chipText, attr)}</div>${body}</div>`;
 
 function chart(months, series, to) {
   const max = Math.max(1, ...months.flatMap((m) => series.map((s) => Math.abs(m[s.f]))));
@@ -202,7 +202,7 @@ function checkCardHtml(model) {
   const hasAudit = !!(a && a.total);
   if (!hasProfit && !hasAudit) return '';
   const status = hasAudit ? `<span class="badge badge-tint sx-chip sx-tone-${a.errors ? 'bad' : a.warnings ? 'warn' : 'good'}">${a.errors ? `${a.errors} errors` : a.warnings ? `${a.warnings} warnings` : 'Clean'}</span>` : chip('sales');
-  return `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">Profit and data check</h4>${status}</div>${hasProfit ? profitCheckHtml(p) : ''}${hasAudit ? auditHtml(a) : ''}</div>`;
+  return `<div class="card sx-card sx-card--accent ov-c" data-money><div class="sx-card-head"><h4 class="sx-card-title">Profit and data check</h4>${status}</div>${hasProfit ? profitCheckHtml(p) : ''}${hasAudit ? auditHtml(a) : ''}</div>`;
 }
 
 function owedSection(x) {
@@ -213,39 +213,97 @@ function owedSection(x) {
   return section('Who owes you', 'sales', `${tiles}<div class="ov-sub">By customer, with age of the oldest sale</div>${ranked(rows, '', 'sales', 'warn')}`);
 }
 
-export function overviewHtml(model, range = 6) {
+const PANELS = [['sales', 'Sales'], ['prod', 'Production'], ['money', 'Money'], ['stock', 'Stock'], ['checks', 'Checks'], ['activity', 'Activity']];
+
+function spark(values) {
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  const step = values.length > 1 ? 100 / (values.length - 1) : 100;
+  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(22 - ((v - min) / span) * 20).toFixed(1)}`).join(' ');
+  return `<svg class="ov-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/></svg>`;
+}
+
+function delta(values) {
+  if (values.length < 2) return '';
+  const prev = values[values.length - 2];
+  const last = values[values.length - 1];
+  if (!(Math.abs(prev) > 0)) return '';
+  const pct = Math.round(((last - prev) / Math.abs(prev)) * 100);
+  return `<span class="ov-delta">${pct >= 0 ? '\u25b2' : '\u25bc'} ${Math.abs(pct)}%</span>`;
+}
+
+function kpi(label, value, series, t, to, sub = '', attr = 'data-go') {
+  return `<button type="button" class="ov-kpi ${tone(t)}" ${go(to, attr)}><span class="ov-kpi-l">${label}</span><span class="ov-kpi-v">${value}</span>${series ? `<span class="ov-kpi-s">${spark(series)}${delta(series)}</span>` : ''}${sub ? `<span class="ov-kpi-sub">${sub}</span>` : ''}</button>`;
+}
+
+function pill(label, value, t, to) {
+  return `<button type="button" class="ov-pill ${tone(t)}" data-go="${to}"><span>${label}</span><b>${value}</b></button>`;
+}
+
+function donut(rows, to) {
+  const total = rows.reduce((sum, r) => sum + r.value, 0);
+  if (!(total > 0)) return '<div class="ov-empty">Nothing recorded in this period.</div>';
+  const pct = Math.round((rows[0].value / total) * 100);
+  const legend = rows.map((r, i) => `<span class="ov-legend-row ${tone(i === 0 ? 'good' : 'warn')}"><i></i>${esc(r.name)}<b>${fmt(r.value)}</b><em>${Math.round((r.value / total) * 100)}%</em></span>`).join('');
+  return `<button type="button" class="ov-donut-wrap" data-go="${to}"><span class="ov-donut sx-tone-good" style="--p:${pct}"></span><span class="ov-legend">${legend}</span></button>`;
+}
+
+export function overviewHtml(model, range = 6, opts = {}) {
   const r = model.running;
   const t = model.totals;
+  const x = model.extra;
+  const panel = PANELS.some(([id]) => id === opts.panel) ? opts.panel : 'sales';
+  const series = (f) => model.months.map((m) => m[f]);
+  const netSeries = model.months.map((m) => m.cashIn - m.cashOut);
   const toggle = RANGES.map((n) => `<div class="toggle-opt${n === range ? ' active' : ''}" role="button" tabindex="0" data-range="${n}">${n}M</div>`).join('');
-  const hero = `<div class="card sx-card sx-card--accent" data-money><div class="sx-card-head"><h4 class="sx-card-title">Last ${range} months</h4>${t.salesValue > 0 ? `<span class="badge badge-tint sx-chip sx-tone-good">${t.margin.toFixed(1)}% margin</span>` : ''}</div>`
-    + `<div class="sx-hero sx-tone-good"><span class="sx-hero-label">Sales value</span><div class="sx-hero-value">${fmt(t.salesValue)}</div></div>`
-    + `<div class="sx-grid sx-cols-2">${stat('Sales profit', fmt(t.salesProfit), 'good', 'sales')}${stat('Sales made', String(t.salesCount), 'info', 'sales')}${stat('Produced', `${fmt(t.prodKg)} kg`, 'info', 'prod')}${stat('Production profit', fmt(t.prodProfit), 'good', 'prod')}${stat('Cash in', fmt(t.cashIn), 'good', 'payments')}${stat('Cash out', fmt(t.cashOut), 'bad', 'payments')}${stat('Expenses', fmt(t.expenses), 'warn', 'payments')}${stat('Net cash', fmt(t.net), t.net >= 0 ? 'good' : 'bad', 'payments')}</div></div>`;
-  const pc = checkCardHtml(model);
-  const now = `<div class="section-header"><h3>Right now</h3></div><div class="sx-grid sx-cols-2 ov-now" data-money>`
-    + `${stat('Production today', `${fmt(r.todayProdKg)} kg`, 'info', 'prod', 'data-go', `${r.todayProdCount} entr${r.todayProdCount === 1 ? 'y' : 'ies'}`)}`
-    + `${stat('Sales today', fmt(r.todaySalesValue), 'good', 'sales', 'data-go', `${r.todaySalesCount} sale${r.todaySalesCount === 1 ? '' : 's'}`)}`
-    + `${stat('Cash in today', fmt(r.todayIn), 'good', 'payments')}${stat('Cash out today', fmt(r.todayOut), 'bad', 'payments')}`
-    + `${stat('Open credit sales', fmt(r.openCreditValue), 'warn', 'sales', 'data-go', `${r.openCreditCount} not yet received`)}`
-    + `${model.extra && model.extra.outOfStock.count ? stat('Out of stock', String(model.extra.outOfStock.count), 'bad', 'raw-material-screen', 'data-screen', esc(model.extra.outOfStock.names.slice(0, 3).join(', ') + (model.extra.outOfStock.count > 3 ? '...' : ''))) : ''}${stat('Stock on hand', fmt(r.stockValue), 'purple', 'raw-material-screen', 'data-screen', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}`)}</div>`;
-  const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((x) => `<button type="button" class="ov-recent-row ${tone(x.tone)}" data-go="${x.go}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(x.title)}</span><span class="ov-recent-sub">${esc(x.kind)}${x.sub ? ` · ${esc(x.sub)}` : ''}</span></span><span class="ov-recent-amt">${x.amount}</span></button>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
-  return `<header class="u-497acf1 d-flex"><h1 class="shimmer-text u-heading-bold">Overview</h1></header>`
-    + `<div class="section-header"><h3>Summary</h3><div class="toggle-group" id="ov-range-toggle">${toggle}</div></div>${hero}${pc}${now}`
-    + `<div class="section-header"><h3>Over time</h3></div>`
-    + section('Sales value', 'sales', chart(model.months, [{ f: 'salesValue', name: 'Sales', t: 'good' }], 'sales'))
-    + section('Production (kg)', 'prod', chart(model.months, [{ f: 'prodKg', name: 'Production', t: 'info' }], 'prod'))
-    + (model.extra && model.extra.factory.total > 0 ? section('Factory output (units)', 'factory', chart(model.months.map((m, i) => ({ label: m.label, units: model.extra.factory.months[i].units })), [{ f: 'units', name: 'Units', t: 'purple' }], 'factory')) : '')
-    + section('Cash in and out', 'payments', chart(model.months, [{ f: 'cashIn', name: 'In', t: 'good' }, { f: 'cashOut', name: 'Out', t: 'bad' }], 'payments'))
-    + `<div class="section-header"><h3>Breakdown</h3></div>`
-    + owedSection(model.extra)
-    + (model.extra && model.extra.salesByStore.length ? section('Sales by store', 'sales', ranked(model.extra.salesByStore, '', 'sales', 'good')) : '')
-    + (model.extra && model.extra.salesByPay.length ? section('Cash and credit sales', 'sales', ranked(model.extra.salesByPay, '', 'sales', 'warn')) : '')
-    + (model.extra && model.extra.factory.formulas.length ? section('Factory output by formula', 'factory', ranked(model.extra.factory.formulas, ' units', 'factory', 'purple')) : '')
-    + (model.extra && model.extra.formulaCosts.length ? section('Formula cost per kg', 'factory', ranked(model.extra.formulaCosts.map((c) => ({ ...c, name: c.linked ? `${c.name} (linked)` : c.name })), '', 'factory', 'purple')) : '')
-    + section('Top customers', 'sales', ranked(model.customers, '', 'sales', 'good'))
-    + section('Production by formula', 'prod', ranked(model.formulas.concat(model.formulaMoves || []), ' kg', 'prod', 'info'))
-    + section('Production by store', 'prod', ranked(model.stores.concat(model.storeMoves || []), ' kg', 'prod', 'info'))
-    + section('Expenses by category', 'payments', ranked(model.expenseCats, '', 'payments', 'warn'))
-    + section('Stock by value', 'raw-material-screen', ranked(model.stock, '', 'raw-material-screen', 'purple', 'data-screen'), 'purple', 'Open', 'data-screen')
-    + `<div class="section-header"><h3>Recent activity</h3></div><div class="card sx-card" data-money>${rec}</div>`
-    + `<div class="section-header"><h3>Monthly summary</h3></div><div class="card sx-card" data-money><div class="ov-table-wrap"><table class="table ov-table"><thead><tr><th>Month</th><th>Produced kg</th><th>Sales</th><th>Profit</th><th>In</th><th>Out</th><th>Expenses</th></tr></thead><tbody>${model.months.slice().reverse().map((m) => `<tr><td>${m.label}</td><td>${fmt(m.prodKg)}</td><td>${fmt(m.salesValue)}</td><td>${fmt(m.salesProfit)}</td><td>${fmt(m.cashIn)}</td><td>${fmt(m.cashOut)}</td><td>${fmt(m.expenses)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  const badge = model.audit && (model.audit.errors || model.audit.warnings) ? ` <span class="ov-count sx-tone-${model.audit.errors ? 'bad' : 'warn'}">${model.audit.errors + model.audit.warnings}</span>` : '';
+  const tabs = PANELS.map(([id, label]) => `<div class="toggle-opt${id === panel ? ' active' : ''}" role="button" tabindex="0" data-panel="${id}">${label}${id === 'checks' ? badge : ''}</div>`).join('');
+  const kpis = [
+    kpi('Sales', fmt(t.salesValue), series('salesValue'), 'good', 'sales', `${t.salesCount} sale${t.salesCount === 1 ? '' : 's'}`),
+    kpi('Profit', fmt(t.salesProfit), series('salesProfit'), t.salesProfit < 0 ? 'bad' : 'good', 'sales', t.salesValue > 0 ? `${t.margin.toFixed(1)}% margin` : ''),
+    kpi('Produced', `${fmt(t.prodKg)} kg`, series('prodKg'), 'info', 'prod', `profit ${fmt(t.prodProfit)}`),
+    kpi('Net cash', fmt(t.net), netSeries, t.net < 0 ? 'bad' : 'good', 'payments', `in ${fmt(t.cashIn)} \u00b7 out ${fmt(t.cashOut)}`),
+    kpi('Expenses', fmt(t.expenses), series('expenses'), 'warn', 'payments'),
+    kpi('Owed to you', fmt(x && x.owed.count ? x.owed.total : r.openCreditValue), null, 'warn', 'sales', `${x && x.owed.count ? x.owed.count : r.openCreditCount} unreceived`),
+    kpi('Stock', fmt(r.stockValue), null, 'purple', 'raw-material-screen', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}${x && x.outOfStock.count ? ` \u00b7 ${x.outOfStock.count} out` : ''}`, 'data-screen'),
+  ].join('');
+  const now = `<div class="ov-now-strip" data-money><span class="ov-now-label">Right now</span>${pill('Production', `${fmt(r.todayProdKg)} kg`, 'info', 'prod')}${pill('Sales', fmt(r.todaySalesValue), 'good', 'sales')}${pill('In', fmt(r.todayIn), 'good', 'payments')}${pill('Out', fmt(r.todayOut), 'bad', 'payments')}</div>`;
+  const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((e) => `<button type="button" class="ov-recent-row ${tone(e.tone)}" data-go="${e.go}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(e.title)}</span><span class="ov-recent-sub">${esc(e.kind)}${e.sub ? ` \u00b7 ${esc(e.sub)}` : ''}</span></span><span class="ov-recent-amt">${e.amount}</span></button>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
+  const table = `<div class="ov-table-wrap"><table class="table ov-table"><thead><tr><th>Month</th><th>Produced kg</th><th>Sales</th><th>Profit</th><th>In</th><th>Out</th><th>Expenses</th></tr></thead><tbody>${model.months.slice().reverse().map((m) => `<tr><td>${m.label}</td><td>${fmt(m.prodKg)}</td><td>${fmt(m.salesValue)}</td><td>${fmt(m.salesProfit)}</td><td>${fmt(m.cashIn)}</td><td>${fmt(m.cashOut)}</td><td>${fmt(m.expenses)}</td></tr>`).join('')}</tbody></table></div>`;
+  const factoryChart = x && x.factory.total > 0 ? section('Factory output (units)', 'factory', chart(model.months.map((m, i) => ({ label: m.label, units: x.factory.months[i].units })), [{ f: 'units', name: 'Units', t: 'purple' }], 'factory')) : '';
+  const panels = {
+    sales: [
+      section('Sales value and profit', 'sales', chart(model.months, [{ f: 'salesValue', name: 'Sales', t: 'good' }, { f: 'salesProfit', name: 'Profit', t: 'info' }], 'sales')),
+      owedSection(x),
+      section('Top customers', 'sales', ranked(model.customers, '', 'sales', 'good')),
+      x && x.salesByStore.length ? section('Sales by store', 'sales', ranked(x.salesByStore, '', 'sales', 'good')) : '',
+      x && x.salesByPay.length ? section('Cash and credit sales', 'sales', donut(x.salesByPay, 'sales')) : '',
+    ],
+    prod: [
+      section('Production (kg)', 'prod', chart(model.months, [{ f: 'prodKg', name: 'Production', t: 'info' }], 'prod')),
+      factoryChart,
+      section('Production by formula', 'prod', ranked(model.formulas.concat(model.formulaMoves || []), ' kg', 'prod', 'info')),
+      section('Production by store', 'prod', ranked(model.stores.concat(model.storeMoves || []), ' kg', 'prod', 'info')),
+      x && x.factory.formulas.length ? section('Factory output by formula', 'factory', ranked(x.factory.formulas, ' units', 'factory', 'purple')) : '',
+      x && x.formulaCosts.length ? section('Formula cost per kg', 'factory', ranked(x.formulaCosts.map((c) => ({ ...c, name: c.linked ? `${c.name} (linked)` : c.name })), '', 'factory', 'purple')) : '',
+    ],
+    money: [
+      section('Cash in and out', 'payments', chart(model.months, [{ f: 'cashIn', name: 'In', t: 'good' }, { f: 'cashOut', name: 'Out', t: 'bad' }], 'payments')),
+      section('Expenses by category', 'payments', ranked(model.expenseCats, '', 'payments', 'warn')),
+    ],
+    stock: [
+      section('Stock by value', 'raw-material-screen', ranked(model.stock, '', 'raw-material-screen', 'purple', 'data-screen'), 'purple', 'Open', 'data-screen'),
+      x && x.outOfStock.count ? section('Out of stock', 'raw-material-screen', `<div class="ov-chips">${x.outOfStock.names.map((n) => `<span class="badge badge-tint sx-chip sx-tone-bad">${esc(n)}</span>`).join('')}</div>`, 'bad', 'Open', 'data-screen') : '',
+    ],
+    checks: [checkCardHtml(model)],
+    activity: [
+      `<div class="card sx-card ov-c" data-money><div class="sx-card-head"><h4 class="sx-card-title">Recent activity</h4></div>${rec}</div>`,
+      `<div class="card sx-card ov-c" data-money><div class="sx-card-head"><h4 class="sx-card-title">Monthly summary</h4></div>${table}</div>`,
+    ],
+  };
+  const body = PANELS.map(([id]) => `<div class="ov-panel ov-grid${id === 'checks' || id === 'activity' ? ' is-wide' : ''}" data-panel-id="${id}"${id === panel ? '' : ' hidden'}>${panels[id].join('')}</div>`).join('');
+  return `<header class="ov-top"><h1 class="shimmer-text u-heading-bold">Overview</h1><div class="toggle-group" id="ov-range-toggle">${toggle}</div></header>`
+    + `<div class="ov-kpis" data-money>${kpis}</div>${now}`
+    + `<div class="toggle-group ov-tabs" id="ov-panel-toggle">${tabs}</div>${body}`;
 }
