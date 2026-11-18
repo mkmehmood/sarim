@@ -11,9 +11,9 @@ import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_currentRepProfile, appMode, compareTimestamps, currentRepProfile, debtDelta, ledgerDelta, ledgerSplit, allocHonor, ensureArray, ensureRecordIntegrity, esc, fmtAmt, fmtNum, generateUUID, getRecordTimestamp, getTimestamp, localDateStr, lockedUnitPrice, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, selectedCustomerFilter, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
-import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
+import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora, getPendingRepDeliveries, getPendingRepReturns } from './utilities-payments.js';
 import { getCostPriceDetail, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory-core.js';
-import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale, isFutureDate } from './finance.js';
+import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale, isFutureDate, canonicalCustomerName } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
 import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast, fetchLocationInto } from './customers.js';
@@ -164,7 +164,7 @@ if (submitBtn) submitBtn.disabled = false;
 }
 try {
 const date = document.getElementById('rep-date').value;
-const name = document.getElementById('rep-cust-name').value.trim();
+const name = canonicalCustomerName(document.getElementById('rep-cust-name').value.trim(), rep);
 if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); await restoreBtn(); return; }
 const phoneInput = document.getElementById('rep-new-cust-phone');
 const phoneNumber = (!document.getElementById('rep-new-customer-phone-container').classList.contains('hidden'))
@@ -195,6 +195,17 @@ window.notifyBlocking("Enter Quantity", 'warning', 'Warning');
 restoreBtn();
 return;
 }
+try {
+const _delivered = (await getPendingRepDeliveries(currentRepProfile)).reduce((t, x) => t + (Number(x.quantity) || 0), 0);
+const _back = (await getPendingRepReturns(currentRepProfile)).reduce((t, x) => t + (Number(x.expiredQty) || 0) + (Number(x.returnedQty) || 0), 0);
+const _soldAlready = rep.filter(r => r && !r.deletedAt && !r.usedInCalcId && r.salesRep === currentRepProfile && r.paymentType !== 'COLLECTION' && !r.isRepReturn && !(_ed && r.id === _ed.id)).reduce((t, r) => t + (Number(r.quantity) || 0), 0);
+const _held = round2(_delivered - _back - _soldAlready);
+if (round2(qty) > _held + 0.0001) {
+window.notifyBlocking(`${currentRepProfile} is holding ${fmtNum(Math.max(0, _held))} kg, so a sale of ${fmtNum(qty)} kg is more than the stock they have.`, 'warning', 'Warning');
+restoreBtn();
+return;
+}
+} catch (_stockErr) { }
 if(!salePrice || salePrice <= 0) {
 window.notifyBlocking(" Sale price not configured. Set prices in Factory Formulas before recording rep sales.", 'warning', 'Warning');
 restoreBtn();

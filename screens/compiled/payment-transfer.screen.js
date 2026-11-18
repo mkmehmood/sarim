@@ -1,7 +1,7 @@
 
 // ==== module: payment-transfer.js ====
-import { _showFilterEmpty, refreshPaymentTab, formatDisplayDateTime } from '../../modules/utilities-payments.js';
-import { customerHistoryMatcher, appMode, loadCollections, generateUUID, validateUUID, getTimestamp, ensureRecordIntegrity, fmtAmt, sqliteStore, ensureArray, esc } from '../../modules/business.js';
+import { _showFilterEmpty, refreshPaymentTab, formatDisplayDateTime, calculateEntityBalances } from '../../modules/utilities-payments.js';
+import { customerHistoryMatcher, appMode, loadCollections, generateUUID, validateUUID, getTimestamp, ensureRecordIntegrity, fmtAmt, sqliteStore, ensureArray, esc, round2, localDateStr } from '../../modules/business.js';
 import { showToast } from '../../modules/customers.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
 import { runExclusive, getTxLinkIssue } from '../../modules/link-graph.js';
@@ -60,10 +60,11 @@ return;
 const { entities, transactions } = await loadCollections('entities', 'transactions');
 const fromId = (document.getElementById('payment-transfer-from-value') || {}).value;
 const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
-const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
+const amount = round2(parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0);
 const date = (document.getElementById('payment-transfer-date') || {}).value;
 const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
 if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
+if (String(date) > localDateStr()) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); return; }
 if (!fromId || !toId) { window.notifyBlocking('Please search and select both entities from the list.', 'warning', 'Warning'); return; }
 if (String(fromId) === String(toId)) { window.notifyBlocking('From and To entities must be different.', 'warning', 'Warning'); return; }
 if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning', 'Warning'); return; }
@@ -85,7 +86,16 @@ const _ok = await confirmEditChanges([
 ], 'Update Transfer?');
 if (!_ok) return;
 }
-if (!(await window.gcCommit({}))) return;
+let _trfWarn = {};
+try {
+const _bal = await calculateEntityBalances();
+const _fromBal = Number(_bal[fromEntity.id]);
+const _back = _oOut ? (Number(_oOut.amount) || 0) : 0;
+if (Number.isFinite(_fromBal) && amount > round2(_fromBal + _back) + 0.005) {
+_trfWarn = { lines: [`${fromEntity.name} balance: ${fmtAmt(Math.max(0, round2(_fromBal + _back)))}`, `Transferring: ${fmtAmt(amount)}`], warning: 'This is more than the balance of the From entity.', confirmText: 'Transfer Anyway' };
+}
+} catch (_balErr) { }
+if (!(await window.gcCommit(_trfWarn))) return;
 let pairId = _ed ? _ed.original.pairId : generateUUID('trfpair');
 if (!validateUUID(pairId)) pairId = generateUUID('trfpair');
 const createdAt = getTimestamp();

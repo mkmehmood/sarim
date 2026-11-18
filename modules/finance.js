@@ -216,3 +216,11 @@ export function isValidIsoDate(d) {
   if (y < 1990 || mo < 1 || mo > 12 || da < 1) return false;
   return da <= new Date(y, mo, 0).getDate();
 }
+
+export function canonicalCustomerName(name, records) {
+  const typed = String(name == null ? '' : name).trim();
+  const key = typed.toLowerCase();
+  if (!key) return typed;
+  const hit = (Array.isArray(records) ? records : []).find(r => r && !r.deletedAt && r.customerName && String(r.customerName).trim().toLowerCase() === key);
+  return hit ? String(hit.customerName).trim() : typed;
+}

@@ -1,5 +1,5 @@
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
-import { isFutureDate } from './finance.js';
+import { isFutureDate, canonicalCustomerName } from './finance.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
@@ -1039,7 +1039,7 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sal
 window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const date = document.getElementById('cust-date').value;
-const name = document.getElementById('cust-name').value.trim();
+let name = document.getElementById('cust-name').value.trim();
 const quantity = readNum('cust-quantity');
 if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); return; }
 const store = document.getElementById('supply-store-value').value;
@@ -1107,6 +1107,7 @@ return;
 }
 const totalValue = quantity * _effectiveSalePrice;
 const profit = totalValue - totalCost;
+name = canonicalCustomerName(name, sales);
 const existingCustomer = sales.find(s => s && s.customerName && name && s.customerName.toLowerCase() === name.toLowerCase());
 let existingCredit = 0;
 let _gcWarn = null;
@@ -1590,7 +1591,7 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sal
 window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const date = document.getElementById('cust-date').value;
-const name = document.getElementById('cust-name').value.trim();
+const name = canonicalCustomerName(document.getElementById('cust-name').value.trim(), sales);
 const amountEl = document.getElementById('cust-amount-collected');
 const amount = parseFloat(amountEl?.value) || 0;
 const expiredEl = document.getElementById('cust-expired-qty');

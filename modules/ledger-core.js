@@ -31,8 +31,17 @@ export function defaultCategory(type, scope) {
 export function parseAmount(text) {
   const raw = String(text == null ? '' : text).replace(/\s/g, '');
   const cleaned = /^\d{1,3}(,\d{2,3})*,\d{3}(\.\d+)?$/.test(raw) ? raw.replace(/,/g, '') : raw.replace(/,/g, '.');
-  const n = parseFloat(cleaned);
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
+}
+export const MAX_LEDGER_AMOUNT = 1000000000;
+const LEDGER_LIMITS = { party: 100, category: 80, note: 500, ref: 100 };
+function validDay(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d == null ? '' : d).trim());
+  if (!m) return false;
+  const y = +m[1], mo = +m[2], da = +m[3];
+  return y >= 1990 && mo >= 1 && mo <= 12 && da >= 1 && da <= new Date(y, mo, 0).getDate();
 }
 export function uniqCI(list) {
   const seen = new Set();
@@ -183,12 +192,20 @@ export function canonicalMode(value, modes) {
 export function buildEntry(form, prev, ctx) {
   const amount = parseAmount(form.amount);
   if (amount === null || amount <= 0) return { ok: false, error: 'Please enter a valid amount greater than 0.' };
+  if (amount > MAX_LEDGER_AMOUNT) return { ok: false, error: 'Amount is too large.' };
+  const entryDate = form.date || ctx.today;
+  if (!validDay(entryDate)) return { ok: false, error: 'Please enter a valid date.' };
+  if (ctx.today && validDay(ctx.today) && String(entryDate).trim() > String(ctx.today).trim()) return { ok: false, error: 'Date cannot be in the future.' };
+  for (const [key, max] of Object.entries(LEDGER_LIMITS)) {
+    if (String(form[key] == null ? '' : form[key]).trim().length > max) return { ok: false, error: `${key.charAt(0).toUpperCase() + key.slice(1)} is too long (maximum ${max} characters).` };
+  }
   const type = normalizeType(form.type);
   const isT = type === 'TRANSFER';
   const isOut = type === 'OUT';
   const modes = ctx.modes || DEFAULT_PAYMENT_MODES;
   const mode = canonicalMode(String(form.mode || '').trim() || 'Cash', modes);
-  const toMode = isT ? canonicalMode(String(form.toMode || '').trim() || 'Bank Transfer', modes) : '';
+  if (isT && !String(form.toMode || '').trim()) return { ok: false, error: 'Choose the account the money is going to.' };
+  const toMode = isT ? canonicalMode(String(form.toMode || '').trim(), modes) : '';
   if (isT && low(mode) === low(toMode)) return { ok: false, error: 'Source and destination payment modes must be different.' };
   const typed = String(form.category || '').trim();
   const home = isHomeExpense(typed, form.scope);
@@ -205,7 +222,7 @@ export function buildEntry(form, prev, ctx) {
     party: isT ? '' : String(form.party || '').trim(),
     note: String(form.note || '').trim(),
     ref: String(form.ref || '').trim(),
-    date: form.date || ctx.today,
+    date: String(entryDate).trim(),
     timestamp: prev ? prev.timestamp : ctx.now,
     updatedAt: ctx.now
   };
