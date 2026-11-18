@@ -63,7 +63,7 @@ describe('overview data', () => {
     const t = buildOverview(data, now, 3).totals;
     assert.deepEqual([t.salesValue, t.salesProfit, t.prodKg, t.prodProfit], [1800, 180, 220, 22]);
     assert.deepEqual([t.cashIn, t.cashOut, t.net, t.expenses], [220, 80, 140, 55]);
-    assert.equal(Math.round(t.margin), 10);
+    assert.equal(Math.round(t.salesMargin), 10);
   });
 
   it('ranks customers, formulas, stores, expense categories and stock', () => {
@@ -168,26 +168,44 @@ describe('profit check', () => {
   });
 });
 
-describe('total profit includes production', () => {
-  it('adds the profit booked by production to the profit made by sales, per month and in total', () => {
-    const m = buildOverview({
-      production: [{ date: '2026-11-02', net: 100, profit: 1000 }, { date: '2026-10-02', net: 10, profit: 200 }],
-      sales: [{ date: '2026-11-03', totalValue: 500, profit: -300 }, { date: '2026-10-04', totalValue: 100, profit: 50 }],
-    }, now, 3);
-    assert.deepEqual(m.months.map((x) => x.totalProfit), [0, 250, 700]);
-    assert.deepEqual([m.totals.salesProfit, m.totals.prodProfit, m.totals.totalProfit], [-250, 1200, 950]);
+describe('net profit follows the Total combined card', () => {
+  const production = [
+    { date: '2026-11-02', net: 100, totalSale: 3000, totalCost: 1800, profit: 1200, store: 'A', formulaName: 'F' },
+    { date: '2026-10-02', net: 20, totalSale: 600, totalCost: 400, profit: 200, store: 'A', formulaName: 'F' },
+    { date: '2026-11-05', net: 7, isReturn: true, totalSale: 999, totalCost: 999, profit: 999 },
+    { date: '2026-11-06', net: 50, isTransfer: true, totalSale: 999, totalCost: 999, profit: 999 },
+  ];
+  const sales = [
+    { date: '2026-11-03', quantity: 60, totalValue: 500, profit: -300, customerName: 'Ali', supplyDate: '2026-11-03' },
+    { date: '2026-10-04', quantity: 10, totalValue: 100, profit: 50, customerName: 'Sara', supplyDate: '2026-11-01' },
+    { date: '2026-11-07', quantity: 5, totalValue: 0, profit: 0, customerName: 'Ali', isCollection: true },
+  ];
+  const m = buildOverview({ production, sales }, now, 3);
+
+  it('takes profit, value and cost from production, not from sales, leaving out returns and transfers', () => {
+    assert.deepEqual([m.totals.prodValue, m.totals.prodCost, m.totals.prodProfit], [3600, 2200, 1400]);
+    assert.equal(Math.round(m.totals.margin * 10) / 10, 38.9);
+    assert.equal(m.totals.salesProfit, -250);
   });
 
-  it('shows the total with its split on the Profit tile, a split chart, the table columns and the explanation', () => {
-    const model = buildOverview({
-      production: [{ date: '2026-11-02', net: 100, profit: 1000 }],
-      sales: [{ date: '2026-11-03', totalValue: 500, profit: -300, totalCost: 800, quantity: 5 }],
-    }, now, 3);
-    const html = overviewHtml(model, 3);
-    assert.match(html, /<span class="ov-kpi-l">Profit<\/span><span class="ov-kpi-v">700<\/span>[\s\S]*?sales -300 \u00b7 production 1,000/);
-    assert.match(html, /Profit: production and sales/);
-    assert.match(html, /<th>Production profit<\/th><th>Total profit<\/th>/);
-    assert.match(html, /Production booked <b>1,000<\/b> profit when goods were made[^<]*<b>-300<\/b>[^<]*total profit is <b>700<\/b>/);
+  it('works out stock in, sold and remaining the way the card does, by supply date and without ledger rows', () => {
+    assert.deepEqual([m.totals.prodKg, m.totals.returnsKg, m.totals.inKg], [120, 7, 127]);
+    assert.equal(m.totals.soldKg, 70);
+    assert.equal(m.totals.remainingKg, 57);
+    assert.deepEqual(m.months.map((x) => x.soldKg), [0, 0, 70]);
+    assert.deepEqual(m.customersKg.map((c) => [c.name, c.value]), [['Ali', 60], ['Sara', 10]]);
+  });
+
+  it('shows net profit with its margin, remaining kg and sold-by-customer kg, and explains why sales profit is not added', () => {
+    const html = overviewHtml(m, 3);
+    assert.match(html, /<span class="ov-kpi-l">Net profit<\/span><span class="ov-kpi-v">1,400<\/span>[\s\S]*?38\.9% margin on 3,600/);
+    assert.match(html, /<span class="ov-kpi-l">Remaining<\/span><span class="ov-kpi-v">57 kg<\/span>[\s\S]*?127 in \u00b7 70 sold/);
+    assert.match(html, /Sold by customer \(kg\)/);
+    assert.match(html, /Stock movement \(kg\)/);
+    assert.match(html, /Net profit and sales profit/);
+    assert.match(html, /production value <b>3,600<\/b> minus production cost <b>2,200<\/b> is <b>1,400<\/b>[\s\S]*?not added on top/);
+    assert.match(html, /<th>Net profit<\/th><th>Sales profit<\/th>/);
+    assert.doesNotMatch(html, /Total profit/);
   });
 });
 
@@ -203,7 +221,7 @@ describe('compact layout', () => {
   });
 
   it('has a KPI strip with trends and a right-now strip instead of tall stat cards', () => {
-    assert.equal((html.match(/class="ov-kpi /g) || []).length, 7);
+    assert.equal((html.match(/class="ov-kpi /g) || []).length, 8);
     assert.match(html, /<svg class="ov-spark"/);
     assert.match(html, /class="ov-now-strip"/);
     assert.equal((html.match(/class="ov-pill /g) || []).length, 4);

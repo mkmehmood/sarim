@@ -69,7 +69,7 @@ export function buildOverview(data, now = new Date(), months = 6) {
   const list = [];
   for (let i = span - 1; i >= 0; i -= 1) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    list.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`, prodKg: 0, prodProfit: 0, salesValue: 0, salesProfit: 0, salesCount: 0, cashIn: 0, cashOut: 0, expenses: 0 });
+    list.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`, prodKg: 0, prodProfit: 0, prodValue: 0, prodCost: 0, soldKg: 0, returnsKg: 0, salesValue: 0, salesProfit: 0, salesCount: 0, cashIn: 0, cashOut: 0, expenses: 0 });
   }
   const byKey = new Map(list.map((m) => [m.key, m]));
   const today = localDateStr(now);
@@ -80,6 +80,7 @@ export function buildOverview(data, now = new Date(), months = 6) {
   const moveFormulas = new Map();
   const moveStores = new Map();
   const customers = new Map();
+  const customersKg = new Map();
   const cats = new Map();
   const recent = [];
   const add = (map, key, val, sub) => { const o = map.get(key) || { value: 0, count: 0 }; o.value += val; o.count += sub; map.set(key, o); };
@@ -92,11 +93,12 @@ export function buildOverview(data, now = new Date(), months = 6) {
         const label = p.isTransfer === true ? 'Transfers' : 'Returns';
         add(moveFormulas, label, Math.abs(_n(p.net)), 1);
         add(moveStores, `${p.store || 'Unassigned'} \u2013 ${label}`, Math.abs(_n(p.net)), 1);
+        if (p.isReturn === true) m.returnsKg += _n(p.net);
       }
       return;
     }
     if (m) {
-      m.prodKg += _n(p.net); m.prodProfit += _n(p.profit);
+      m.prodKg += _n(p.net); m.prodProfit += _n(p.profit); m.prodValue += _n(p.totalSale); m.prodCost += _n(p.totalCost);
       add(formulas, p.formulaName || 'No formula', _n(p.net), 1);
       add(stores, p.store || 'Unassigned', _n(p.net), 1);
     }
@@ -108,6 +110,11 @@ export function buildOverview(data, now = new Date(), months = 6) {
     const m = byKey.get(k.slice(0, 7));
     const val = _n(s.totalValue);
     if (m) { m.salesValue += val; m.salesProfit += _n(s.profit); m.salesCount += 1; add(customers, s.customerName || 'Walk-in', val, 1); }
+    if (!isLedgerRow(s)) {
+      const sk = typeof s.supplyDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s.supplyDate) ? s.supplyDate.slice(0, 10) : k;
+      const sm = byKey.get(sk.slice(0, 7));
+      if (sm) { sm.soldKg += _n(s.quantity); add(customersKg, s.customerName || 'Unknown', _n(s.quantity), 1); }
+    }
     if (k === today) { run.todaySalesValue += val; run.todaySalesCount += 1; }
     if (String(s.paymentType || '').toUpperCase() !== 'CASH' && s.creditReceived !== true) { run.openCreditValue += val; run.openCreditCount += 1; }
     recent.push({ kind: 'Sale', title: s.customerName || 'Sale', sub: s.supplyStore || '', amount: Math.round(val).toLocaleString('en-US'), tone: 'good', go: 'sales', ts: stamp(s) });
@@ -133,18 +140,20 @@ export function buildOverview(data, now = new Date(), months = 6) {
     const q = _n(i.quantity);
     if (q > 0) { const v = q * _n(i.cost); run.stockValue += v; run.stockItems += 1; stockRows.push({ name: i.name || 'Material', value: v, qty: q }); }
   });
-  list.forEach((m) => { m.totalProfit = m.salesProfit + m.prodProfit; });
   const sum = (f) => list.reduce((s, m) => s + m[f], 0);
-  const totals = { prodKg: sum('prodKg'), prodProfit: sum('prodProfit'), salesValue: sum('salesValue'), salesProfit: sum('salesProfit'), salesCount: sum('salesCount'), cashIn: sum('cashIn'), cashOut: sum('cashOut'), expenses: sum('expenses') };
-  totals.margin = totals.salesValue > 0 ? (totals.salesProfit / totals.salesValue) * 100 : 0;
+  const totals = { prodKg: sum('prodKg'), prodProfit: sum('prodProfit'), prodValue: sum('prodValue'), prodCost: sum('prodCost'), soldKg: sum('soldKg'), returnsKg: sum('returnsKg'), salesValue: sum('salesValue'), salesProfit: sum('salesProfit'), salesCount: sum('salesCount'), cashIn: sum('cashIn'), cashOut: sum('cashOut'), expenses: sum('expenses') };
+  totals.margin = totals.prodValue > 0 ? (totals.prodProfit / totals.prodValue) * 100 : 0;
+  totals.salesMargin = totals.salesValue > 0 ? (totals.salesProfit / totals.salesValue) * 100 : 0;
+  totals.inKg = totals.prodKg + totals.returnsKg;
+  totals.remainingKg = totals.inKg - totals.soldKg;
   totals.net = totals.cashIn - totals.cashOut;
-  totals.totalProfit = totals.salesProfit + totals.prodProfit;
   const withCount = (v) => ({ count: v.count });
   return {
     months: list, totals, running: run, thisMonth,
     profit: analyseProfit(data.sales, new Set(list.map((m) => m.key))),
     audit: auditData(data, today),
     extra: buildExtras(data, now, list.map((m) => m.key)),
+    customersKg: top(customersKg, undefined, withCount),
     formulas: top(formulas, 6, withCount), stores: top(stores, 5, withCount),
     formulaMoves: top(moveFormulas, 3, (v) => ({ count: v.count, movement: true })), storeMoves: top(moveStores, 6, (v) => ({ count: v.count, movement: true })), customers: top(customers, 6, withCount), expenseCats: top(cats, 5, withCount),
     stock: stockRows.sort((a, b) => b.value - a.value).slice(0, 6),
@@ -189,7 +198,7 @@ function profitCheckHtml(p, t) {
   if (!p.count) return '';
   const lines = [];
   lines.push(`<b>${p.losing.count}</b> of ${p.count} sales made a loss, losing <b>${fmt(-p.losing.sum)}</b> in total. The other ${p.gaining.count} earned <b>${fmt(p.gaining.sum)}</b>, so the net is <b>${fmt(p.net)}</b>.`);
-  if (t && t.prodProfit !== 0) lines.push(`Production booked <b>${fmt(t.prodProfit)}</b> profit when goods were made, and sales profit of <b>${fmt(t.salesProfit)}</b> is what sales added or took off after that. Together total profit is <b>${fmt(t.totalProfit)}</b>.`);
+  if (t && t.prodValue > 0) lines.push(`Net profit follows the Total combined card: production value <b>${fmt(t.prodValue)}</b> minus production cost <b>${fmt(t.prodCost)}</b> is <b>${fmt(t.prodProfit)}</b> (${t.margin.toFixed(1)}% margin), and it covers sold and unsold production. Sales profit of <b>${fmt(t.salesProfit)}</b> is measured separately on the quantity sold, so it is not added on top.`);
   if (p.qty > 0) lines.push(`Average selling price was <b>${p.avgPrice.toFixed(2)}</b> per kg against an average cost of <b>${p.avgCost.toFixed(2)}</b> per kg${p.avgPrice < p.avgCost ? ', so on average you sold below cost' : ''}.`);
   const worst = p.worst.length ? `<div class="ov-sub">Biggest losses</div><div class="ov-recent">${p.worst.map((w) => `<button type="button" class="ov-recent-row sx-tone-bad" data-go="sales"><span class="ov-recent-main"><span class="ov-recent-title">${esc(w.customer)}</span><span class="ov-recent-sub">${esc(w.date)}${w.store ? ` · ${esc(w.store)}` : ''} · ${fmt(w.qty)} kg at ${w.price.toFixed(2)} vs cost ${w.cost.toFixed(2)}</span></span><span class="ov-recent-amt">${fmt(w.profit)}</span></button>`).join('')}</div>` : '';
   const flip = (rows) => rows.map((r) => ({ ...r, value: -r.value }));
@@ -264,8 +273,9 @@ export function overviewHtml(model, range = 6, opts = {}) {
   const tabs = PANELS.map(([id, label]) => `<div class="toggle-opt${id === panel ? ' active' : ''}" role="button" tabindex="0" data-panel="${id}">${label}${id === 'checks' ? badge : ''}</div>`).join('');
   const kpis = [
     kpi('Sales', fmt(t.salesValue), series('salesValue'), 'good', 'sales', `${t.salesCount} sale${t.salesCount === 1 ? '' : 's'}`),
-    kpi('Profit', fmt(t.totalProfit), series('totalProfit'), t.totalProfit < 0 ? 'bad' : 'good', 'sales', `sales ${fmt(t.salesProfit)} \u00b7 production ${fmt(t.prodProfit)}`),
-    kpi('Produced', `${fmt(t.prodKg)} kg`, series('prodKg'), 'info', 'prod', `profit ${fmt(t.prodProfit)} booked`),
+    kpi('Net profit', fmt(t.prodProfit), series('prodProfit'), t.prodProfit < 0 ? 'bad' : 'good', 'prod', t.prodValue > 0 ? `${t.margin.toFixed(1)}% margin on ${fmt(t.prodValue)}` : ''),
+    kpi('Produced', `${fmt(t.prodKg)} kg`, series('prodKg'), 'info', 'prod', t.returnsKg > 0 ? `+${fmt(t.returnsKg)} kg returns` : `cost ${fmt(t.prodCost)}`),
+    kpi('Remaining', `${fmt(t.remainingKg)} kg`, null, t.remainingKg < 0 ? 'bad' : 'warn', 'sales', `${fmt(t.inKg)} in \u00b7 ${fmt(t.soldKg)} sold`),
     kpi('Net cash', fmt(t.net), netSeries, t.net < 0 ? 'bad' : 'good', 'payments', `in ${fmt(t.cashIn)} \u00b7 out ${fmt(t.cashOut)}`),
     kpi('Expenses', fmt(t.expenses), series('expenses'), 'warn', 'payments'),
     kpi('Owed to you', fmt(x && x.owed.count ? x.owed.total : r.openCreditValue), null, 'warn', 'sales', `${x && x.owed.count ? x.owed.count : r.openCreditCount} unreceived`),
@@ -273,12 +283,14 @@ export function overviewHtml(model, range = 6, opts = {}) {
   ].join('');
   const now = `<div class="ov-now-strip" data-money><span class="ov-now-label">Right now</span>${pill('Production', `${fmt(r.todayProdKg)} kg`, 'info', 'prod')}${pill('Sales', fmt(r.todaySalesValue), 'good', 'sales')}${pill('In', fmt(r.todayIn), 'good', 'payments')}${pill('Out', fmt(r.todayOut), 'bad', 'payments')}</div>`;
   const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((e) => `<button type="button" class="ov-recent-row ${tone(e.tone)}" data-go="${e.go}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(e.title)}</span><span class="ov-recent-sub">${esc(e.kind)}${e.sub ? ` \u00b7 ${esc(e.sub)}` : ''}</span></span><span class="ov-recent-amt">${e.amount}</span></button>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
-  const table = `<div class="ov-table-wrap"><table class="table ov-table"><thead><tr><th>Month</th><th>Produced kg</th><th>Sales</th><th>Sales profit</th><th>Production profit</th><th>Total profit</th><th>In</th><th>Out</th><th>Expenses</th></tr></thead><tbody>${model.months.slice().reverse().map((m) => `<tr><td>${m.label}</td><td>${fmt(m.prodKg)}</td><td>${fmt(m.salesValue)}</td><td>${fmt(m.salesProfit)}</td><td>${fmt(m.prodProfit)}</td><td>${fmt(m.totalProfit)}</td><td>${fmt(m.cashIn)}</td><td>${fmt(m.cashOut)}</td><td>${fmt(m.expenses)}</td></tr>`).join('')}</tbody></table></div>`;
+  const table = `<div class="ov-table-wrap"><table class="table ov-table"><thead><tr><th>Month</th><th>Produced kg</th><th>Sales</th><th>Net profit</th><th>Sales profit</th><th>In</th><th>Out</th><th>Expenses</th></tr></thead><tbody>${model.months.slice().reverse().map((m) => `<tr><td>${m.label}</td><td>${fmt(m.prodKg)}</td><td>${fmt(m.salesValue)}</td><td>${fmt(m.prodProfit)}</td><td>${fmt(m.salesProfit)}</td><td>${fmt(m.cashIn)}</td><td>${fmt(m.cashOut)}</td><td>${fmt(m.expenses)}</td></tr>`).join('')}</tbody></table></div>`;
   const factoryChart = x && x.factory.total > 0 ? section('Factory output (units)', 'factory', chart(model.months.map((m, i) => ({ label: m.label, units: x.factory.months[i].units })), [{ f: 'units', name: 'Units', t: 'purple' }], 'factory')) : '';
   const panels = {
     sales: [
       section('Sales value', 'sales', chart(model.months, [{ f: 'salesValue', name: 'Sales', t: 'good' }], 'sales')),
-      section('Profit: production and sales', 'sales', chart(model.months, [{ f: 'prodProfit', name: 'Production', t: 'info' }, { f: 'salesProfit', name: 'Sales', t: 'good' }, { f: 'totalProfit', name: 'Total', t: 'purple' }], 'sales')),
+      section('Net profit and sales profit', 'prod', chart(model.months, [{ f: 'prodProfit', name: 'Net profit', t: 'good' }, { f: 'salesProfit', name: 'Sales profit', t: 'info' }], 'prod')),
+      section('Stock movement (kg)', 'sales', ranked([{ name: 'Sold', value: t.soldKg }, { name: 'Remaining', value: Math.max(0, t.remainingKg) }, { name: 'Production + returns in', value: t.inKg }].filter((r) => r.value > 0), ' kg', 'sales', 'warn')),
+      section('Sold by customer (kg)', 'sales', ranked(model.customersKg, ' kg', 'sales', 'warn')),
       owedSection(x),
       section('Top customers', 'sales', ranked(model.customers, '', 'sales', 'good')),
       x && x.salesByStore.length ? section('Sales by store', 'sales', ranked(x.salesByStore, '', 'sales', 'good')) : '',
