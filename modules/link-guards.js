@@ -605,7 +605,7 @@ export async function applyCollectionToSales(opts) {
     record.collectedAmount = amount;
     record.allocations = plan.allocs;
     record.totalValue = cashLeft;
-    record.profit = cashLeft;
+    record.profit = 0;
     if (creditPaid > 0) record.expiredAllocated = creditPaid; else delete record.expiredAllocated;
   } else {
     delete record.collectedAmount; delete record.allocations; delete record.expiredAllocated;

@@ -1,4 +1,5 @@
 import { addManyToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
+import { isFutureDate } from './finance.js';
 import { showTab, refreshCustomerSales, revertRepSalesEntries, processRepTransfer, markAllPendingCreditSalesAsCash, refreshUI, _cap } from './utilities-sales.js';
 import { getCostPriceForStore, getSalePriceForStore } from './factory-core.js';
 import { getDefaultStoreKey } from './store-keys.js';
@@ -177,6 +178,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const seller = document.getElementById('sellerSelect').value;
 const date = document.getElementById('sale-date').value;
 const sold = readNum('totalSold');
+if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); return; }
 const _calcEd = getEditCtx('calc');
 const ret = readNum('returnedQuantity');
 const exp = readNum('expiredQuantity');

@@ -1,4 +1,5 @@
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
+import { isFutureDate } from './finance.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatMonthYear } from './date-format.js';
 import { getSaleBlockReason, detachChildPayment, getSaleEditLinkIssue, deletePaymentTxWithLinks, applyCollectionToSales, getPaymentTxDeleteBlockReason, getExpiredDeleteBlockReason } from './link-guards.js';
@@ -1040,6 +1041,7 @@ window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warn
 const date = document.getElementById('cust-date').value;
 const name = document.getElementById('cust-name').value.trim();
 const quantity = readNum('cust-quantity');
+if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); return; }
 const store = document.getElementById('supply-store-value').value;
 const paymentType = document.getElementById('payment-type-value').value;
 const salesRep = document.getElementById('sales-rep-value').value;
@@ -1598,6 +1600,7 @@ const phoneNumber = (!document.getElementById('new-customer-phone-container').cl
 ? phoneInput.value.trim()
 : '';
 if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
+if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); return; }
 if (!name) { window.notifyBlocking('Please enter customer name.', 'warning', 'Warning'); return; }
 if (amount < 0 || expired < 0) { window.notifyBlocking('Amount and expired quantity cannot be negative.', 'warning', 'Warning'); return; }
 if (amount <= 0 && expired <= 0) { window.notifyBlocking('Please enter an amount collected and/or an expired quantity.', 'warning', 'Warning'); return; }
@@ -1680,7 +1683,7 @@ salesRep: 'NONE',
 currentRepProfile: 'admin',
 totalCost: 0,
 totalValue: amount,
-profit: amount,
+profit: 0,
 creditReceived: true,
 isCollection: true,
 gps: gpsCoords,

@@ -4089,7 +4089,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 });
 } else {
 html = `<div class="empty is-compact" >
-No match found. "${query}" will be created as new customer.
+No match found. "${esc(query)}" will be created as new customer.
 </div>`;
 }
 break;
@@ -4216,7 +4216,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 });
 } else {
 html = `<div class="empty is-compact" >
-No match found. "${query}" will be created.
+No match found. "${esc(query)}" will be created.
 </div>`;
 }
 break;

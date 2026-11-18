@@ -203,3 +203,16 @@ export function receivedPercent(received, debt) {
 export function localDateStr(d = new Date()) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+
+export function isFutureDate(d, today = localDateStr()) {
+  const s = String(d == null ? '' : d).trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && s > today;
+}
+
+export function isValidIsoDate(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d == null ? '' : d).trim());
+  if (!m) return false;
+  const y = +m[1], mo = +m[2], da = +m[3];
+  if (y < 1990 || mo < 1 || mo > 12 || da < 1) return false;
+  return da <= new Date(y, mo, 0).getDate();
+}

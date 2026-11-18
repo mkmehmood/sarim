@@ -13,7 +13,7 @@ import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
 import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
 import { getCostPriceDetail, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory-core.js';
-import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale } from './finance.js';
+import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale, isFutureDate } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
 import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast, fetchLocationInto } from './customers.js';
@@ -165,6 +165,7 @@ if (submitBtn) submitBtn.disabled = false;
 try {
 const date = document.getElementById('rep-date').value;
 const name = document.getElementById('rep-cust-name').value.trim();
+if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); await restoreBtn(); return; }
 const phoneInput = document.getElementById('rep-new-cust-phone');
 const phoneNumber = (!document.getElementById('rep-new-customer-phone-container').classList.contains('hidden'))
 ? phoneInput.value.trim()
@@ -298,7 +299,7 @@ salesRep: currentRepProfile,
 gps: gpsCoords,
 totalCost: 0,
 totalValue: amount,
-profit: amount,
+profit: 0,
 creditReceived: true,
 isCollection: true,
 createdAt: getTimestamp(),

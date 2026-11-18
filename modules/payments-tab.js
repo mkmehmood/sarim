@@ -1,4 +1,5 @@
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
+import { isFutureDate } from './finance.js';
 import { applyPaymentHistoryFilter, selectExpenseCategory, _resetExpenseForm, refreshPaymentTab, renderUnifiedTable, refreshEntityBalances, renderExpenseTable, formatDisplayDate } from './utilities-payments.js';
 import { ensureArray, sqliteStore, loadAliveCollections, esc, loadCollections, fmtAmt, getTimestamp, ensureRecordIntegrity, generateUUID, validateUUID, appMode, allocatePaymentToMaterials, _safeErr, localDateStr } from './business.js';
 import { confirmEditChanges, endEditMode, getEditCtx } from './edit-mode.js';
@@ -221,6 +222,7 @@ window.notifyBlocking('Access Denied — Payments not in your assigned tabs', 'w
 const name = document.getElementById('expenseName').value.trim();
 const amount = parseFloat(document.getElementById('expenseAmount').value);
 const date = document.getElementById('expenseDate').value;
+if (isFutureDate(date)) { window.notifyBlocking('Date cannot be in the future.', 'warning', 'Warning'); return; }
 const description = document.getElementById('expenseDescription').value.trim();
 const category = window._expenseCategory || 'operating';
 if (!name) {

@@ -15,6 +15,7 @@ import { usedUnitsByBatch } from './formula-pools.js';
 import { confirmGuard } from './confirm-guard.js';
 import { formatDayMonthYear } from './date-format.js';
 import { editDateValue } from './edit-date.js';
+import { isFutureDate } from './finance.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg } from './record-list.js';
 import { getFormulaUnitsValue, unlinkSupplierFromMaterial, getSalePriceForStore, getCostPriceForStore, calculateFactoryProduction, updateFormulaInventory, syncFactoryProductionStats, calculateDynamicProductionCost } from './factory-core.js';
 
@@ -311,14 +312,21 @@ const { inventory } = await loadCollections('inventory');
 const name = _el('factoryMaterialName').value.trim();
 const qty = readNum('factoryMaterialQuantity');
 const cost = readNum('factoryMaterialCost');
-const conversionFactor = parseFloat(_el('factoryMaterialConversionFactor').value) || 1;
+const _convRaw = String(_el('factoryMaterialConversionFactor').value).trim();
+const conversionFactor = _convRaw === '' ? 1 : Number(_convRaw);
 const unitName = _el('factoryMaterialUnitName').value.trim() || '';
 const supplierType = _el('factoryMaterialSupplierType').value;
 const date = _el('factoryPurchaseDate').value || localDateStr();
 if (!name) return window.notifyBlocking('Name required', 'warning', 'Warning');
 if (!(qty > 0)) return window.notifyBlocking('Enter how many units you bought', 'warning', 'Warning');
 if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater than 0', 'warning', 'Warning');
-if (conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning', 'Warning');
+if (!Number.isFinite(conversionFactor) || conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning', 'Warning');
+if (isFutureDate(date)) return window.notifyBlocking('Purchase date cannot be in the future', 'warning', 'Warning');
+if (supplierType === 'new' && !_el('factorySupplierName').value.trim()) return window.notifyBlocking('Enter the new supplier name, or choose no supplier', 'warning', 'Warning');
+if (supplierType === 'existing') {
+const _sEl = _el('factoryExistingSupplier');
+if (!((_sEl && _sEl.getAttribute('data-supplier-id')) || (_sEl && _sEl.value && _sEl.value.trim()))) return window.notifyBlocking('Pick a supplier from the list, or choose no supplier', 'warning', 'Warning');
+}
 if (!(await window.gcCommit({}))) return;
 try {
 const kg = qty * conversionFactor;
@@ -670,8 +678,9 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('fac
 window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning', 'Warning');
 return;
 }
-const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
+const units = Number(String(document.getElementById('factoryProductionUnits').value).trim()) || 0;
 if (units <= 0) return window.notifyBlocking('Invalid units', 'warning', 'Warning');
+if (!Number.isInteger(units)) return window.notifyBlocking('Units must be a whole number (for example 2, not 2.7)', 'warning', 'Warning');
 const inventorySnapshot = JSON.parse(JSON.stringify(inventory));
 const historySnapshot = [...factory];
 let _histSavedRec = null;
