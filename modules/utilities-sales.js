@@ -590,22 +590,17 @@ window.setDisplay(card, 'none');
 
 export async function getAvailableCashInHand() {
 const _gacBatch = await sqliteStore.getBatch([
-'calculator','production','sales','transactions','expenses',
+'calculator','sales','transactions','expenses',
 'factory'
 ]);
 const _gacSalesHistory = ensureArray(_gacBatch.get('calculator'));
-const _gacDb = ensureArray(_gacBatch.get('production'));
 const _gacCustomerSales = ensureArray(_gacBatch.get('sales'));
 const _gacPayTx = ensureArray(_gacBatch.get('transactions'));
 const _gacExpenses = ensureArray(_gacBatch.get('expenses'));
 const _gacProdHistory = ensureArray(_gacBatch.get('factory'));
-let _gacProdVal = 0;
-_gacDb.forEach(item => {
-if (item.isReturn) return;
-_gacProdVal += (item.totalSale || 0);
-});
 let _gacSalesCash = 0;
 _gacCustomerSales.forEach(sale => {
+if (sale && !sale.deletedAt && sale.paymentType === 'COLLECTION') _gacSalesCash -= Math.max(0, Number(sale.expiredAllocated) || 0);
 const isRepLinked = sale.salesRep && sale.salesRep !== 'NONE';
 const _saleVal = sale.totalValue || 0;
 if (sale.isMerged && sale.mergedSummary) {
@@ -641,7 +636,7 @@ if (exp.isMerged === true && exp.category === 'operating') _gacExp += (parseFloa
 _gacProdHistory.forEach(entry => {
 if (!entry.isMerged) _gacExp += (parseFloat(entry.additionalCost) || 0);
 });
-return _gacProdVal + _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _gacExp;
+return _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _gacExp;
 }
 
 export async function calculateNetCash() {

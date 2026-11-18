@@ -473,7 +473,7 @@ let recoveredCash = 0;
       creditSalesKg += (sale.quantity || 0);
     }
     if (sale.paymentType === 'COLLECTION') {
-      recoveredCash += (sale.totalValue || 0);
+      recoveredCash += (sale.collectedAmount != null ? Number(sale.collectedAmount) || 0 : (sale.totalValue || 0));
     }
   }
 });
