@@ -24,16 +24,23 @@ Method: the real app modules and the real SQLite engine were driven headlessly (
 
 - Over-collection: the app already asks for confirmation ("Proceed only if this is an advance payment"). The harness had skipped the dialog.
 
-## Open, needs an owner decision
+## Decided with the owner and fixed
 
-1. Cash in hand adds the production sale value (unsold stock) and then each cash sale on top.
-2. Expired stock counted in a collection is treated as cash received.
-3. Overview "Net cash" counts a credit purchase (supplier payable) as money in.
-4. Calculator expected cash uses only the default store's price and the supplied quantity, not what the rep recorded.
-5. Rep tab has no stock limit. Rep cash sales are never marked as reconciled, so a limit cannot be computed without changing the model.
-6. Payments tab creates a new entity from an unknown name.
-7. Money transfer between entities has no balance check.
-8. "New supplier" with an existing name reuses that entity and ignores the phone typed.
+| # | Decision | Change |
+|---|---|---|
+| 1 | Unsold production is assumed to be a cash sale. Profit and cash come from unsold stock + sold + reconciled in the Calculator. | Cash in hand, the cash tracker and the balance sheet now use production value minus sold stock plus returned stock, so a sale no longer counts the same stock twice. A cash sale moves stock into cash (no change), a credit sale moves it to receivables, rep supply moves it out until the Calculator receives the cash, and rep returns put it back. |
+| 2 | Expired stock reduces the customer's credit but is not cash. | The expired part of a collection is taken out of cash everywhere. |
+| 3 | A credit purchase is not cash. | Overview net cash ignores supplier payable IN rows (shown as "Credit purchase"). |
+| 7 | Transfers between entities need a balance check. | The sending entity needs at least that balance (IN minus OUT). Editing a transfer adds its own amount back first. |
+| 8 | New supplier with an existing name. | Blocked with a message to use "Existing supplier". |
+
+Found while verifying #1: customer **Money Out** and **Collection** rows are saved with `creditReceived: true`, so the cash formulas counted them as sales. Money Out therefore raised cash instead of lowering it. All three formulas now classify those rows by type first.
+
+## Left as is by decision
+
+4. Calculator expected cash price and quantity basis.
+5. Rep tab stock limit.
+6. Payments creating an entity from an unknown name.
 
 ## Verified working
 

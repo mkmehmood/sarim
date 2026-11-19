@@ -8,7 +8,7 @@ import { hcCard, hcChip, hcEmptyHtml } from './history-card.js';
 import { customerHistoryMatcher, selectedValueFilter } from './business.js';
 import { sxTile, sxGrid, sxHero, sxSplit, sxBreakdown, sxMargin } from './summary-kit.js';
 import { ownsNoPayable } from './raw-purchases.js';
-import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionPartialCash, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
+import { runExclusive, hasLiveSupplierInvoice, isOrphanSupplierTx, planEditSettlement, applySettlement, collectionCollected, collectionExpiredCredit, collectionPartialCash, isCashFlowRow, soldStockValue, newGroupId, getTxLinkIssue, planGoodsCredit } from './link-graph.js';
 import { editDateValue } from './edit-date.js';
 import { getCalcEditBlockReason } from './utilities-payments.js';
 import { BRAND_LOGO_JPEG_BASE64, entityListViewType } from './constants.js';
@@ -91,6 +91,7 @@ totalProductionQuantity: 0,
 salesCash: 0,
 salesCredits: 0,
 totalSoldValue: 0,
+returnedStockValue: 0,
 calculatorCash: 0,
 calculatorCredits: 0,
 calculatorRecovered: 0,
@@ -99,8 +100,11 @@ paymentsOut: 0,
 expenses: 0
 };
 production.forEach(item => {
-if (item.isReturn) return;
 const itemDate = new Date(item.date);
+if (item.isReturn) {
+if (itemDate >= startDate && itemDate <= endDate) rawData.returnedStockValue += item.totalSale || 0;
+return;
+}
 if (itemDate >= startDate && itemDate <= endDate) {
 rawData.totalProductionValue += item.totalSale || 0;
 rawData.totalProductionQuantity += item.net || 0;
@@ -128,11 +132,11 @@ const repPartialPaid = sale.partialPaymentReceived || 0;
 rawData.salesCredits += Math.max(0, _ctSaleVal - repPartialPaid);
 }
 } else {
-if (sale.paymentType === 'CASH' || sale.creditReceived) {
+if ((sale.paymentType === 'CASH' || sale.creditReceived) && !isCashFlowRow(sale)) {
 rawData.salesCash += _ctSaleVal;
 rawData.totalSoldValue += _ctSaleVal;
 } else if (sale.paymentType === 'COLLECTION') {
-rawData.salesCash += _ctSaleVal;
+rawData.salesCash += _ctSaleVal - collectionExpiredCredit(sale);
 rawData.salesCredits -= _ctSaleVal;
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 rawData.salesCash += _ctSaleVal;
@@ -195,13 +199,14 @@ productionQuantity: rawData.totalProductionQuantity,
 salesTabCash: netSalesCash,
 salesTabCredits: netSalesCredits,
 totalSoldValue: rawData.totalSoldValue,
+returnedStockValue: rawData.returnedStockValue,
 calculatorCash: rawData.calculatorCash,
 calculatorCredits: netCalculatorDebt,
 paymentsIn: rawData.paymentsIn,
 paymentsOut: rawData.paymentsOut,
 expenses: rawData.expenses
 };
-const netCash = finalTotals.productionValue +
+const netCash = finalTotals.productionValue - finalTotals.totalSoldValue + finalTotals.returnedStockValue +
 finalTotals.salesTabCash + finalTotals.calculatorCash +
 finalTotals.paymentsIn - finalTotals.paymentsOut - finalTotals.expenses;
 const totalCredits = finalTotals.salesTabCredits +
@@ -237,7 +242,7 @@ return finalTotals;
 }
 
 export function updateEconomicDashboardWithNetValues(totals, totalCredits) {
-const operatingCashFlow = totals.productionValue - totals.totalSoldValue + totals.salesTabCash + totals.calculatorCash;
+const operatingCashFlow = totals.productionValue - totals.totalSoldValue + (totals.returnedStockValue || 0) + totals.salesTabCash + totals.calculatorCash;
 const operatingCashElement = document.getElementById('operatingCashFlow');
 if (operatingCashElement) {
 operatingCashElement.textContent = `${fmtAmt(safeValue(operatingCashFlow))}`;
@@ -601,11 +606,12 @@ const _gacExpenses = ensureArray(_gacBatch.get('expenses'));
 const _gacProdHistory = ensureArray(_gacBatch.get('factory'));
 let _gacProdVal = 0;
 _gacDb.forEach(item => {
-if (item.isReturn) return;
 _gacProdVal += (item.totalSale || 0);
 });
 let _gacSalesCash = 0;
+let _gacSoldVal = 0;
 _gacCustomerSales.forEach(sale => {
+_gacSoldVal += soldStockValue(sale);
 const isRepLinked = sale.salesRep && sale.salesRep !== 'NONE';
 const _saleVal = sale.totalValue || 0;
 if (sale.isMerged && sale.mergedSummary) {
@@ -614,8 +620,8 @@ _gacSalesCash += (sale.mergedSummary.cashSales || 0);
 _gacSalesCash += collectionPartialCash(sale);
 } else if (isRepLinked) {
 } else {
-if (sale.paymentType === 'CASH' || sale.creditReceived) _gacSalesCash += _saleVal;
-else if (sale.paymentType === 'COLLECTION') _gacSalesCash += _saleVal;
+if ((sale.paymentType === 'CASH' || sale.creditReceived) && !isCashFlowRow(sale)) _gacSalesCash += _saleVal;
+else if (sale.paymentType === 'COLLECTION') _gacSalesCash += _saleVal - collectionExpiredCredit(sale);
 else if (sale.paymentType === 'PARTIAL_PAYMENT') _gacSalesCash += _saleVal;
 else if (sale.paymentType === 'MONEY_OUT') _gacSalesCash -= _saleVal;
 }
@@ -641,7 +647,7 @@ if (exp.isMerged === true && exp.category === 'operating') _gacExp += (parseFloa
 _gacProdHistory.forEach(entry => {
 if (!entry.isMerged) _gacExp += (parseFloat(entry.additionalCost) || 0);
 });
-return _gacProdVal + _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _gacExp;
+return _gacProdVal - _gacSoldVal + _gacSalesCash + _gacCalcCash + _gacPayIn - _gacPayOut - _gacExp;
 }
 
 export async function calculateNetCash() {
@@ -702,6 +708,7 @@ totalProductionQuantity: 0,
 salesCash: 0,
 salesCredits: 0,
 totalSoldValue: 0,
+returnedStockValue: 0,
 calculatorCash: 0,
 calculatorTotalIssued: 0,
 calculatorTotalRecovered: 0,
@@ -709,8 +716,11 @@ paymentsIn: 0,
 paymentsOut: 0
 };
 production.forEach(item => {
-if (item.isReturn) return;
 if (!_cncInRange(item.date)) return;
+if (item.isReturn) {
+rawData.returnedStockValue += item.totalSale || 0;
+return;
+}
 rawData.totalProductionValue += item.totalSale || 0;
 rawData.totalProductionQuantity += item.net || 0;
 });
@@ -735,11 +745,11 @@ const repPartialPaid = sale.partialPaymentReceived || 0;
 rawData.salesCredits += Math.max(0, _saleVal - repPartialPaid);
 }
 } else {
-if (sale.paymentType === 'CASH' || sale.creditReceived) {
+if ((sale.paymentType === 'CASH' || sale.creditReceived) && !isCashFlowRow(sale)) {
 rawData.salesCash += _saleVal;
 rawData.totalSoldValue += _saleVal;
 } else if (sale.paymentType === 'COLLECTION') {
-rawData.salesCash += _saleVal;
+rawData.salesCash += _saleVal - collectionExpiredCredit(sale);
 rawData.salesCredits -= _saleVal;
 } else if (sale.paymentType === 'PARTIAL_PAYMENT') {
 rawData.salesCash += _saleVal;
@@ -790,7 +800,7 @@ totalExpenses += (parseFloat(entry.additionalCost) || 0);
 const netSalesCash = rawData.salesCash;
 const netSalesCredits = rawData.salesCredits;
 const combinedMarketDebt = rawData.calculatorTotalIssued - rawData.calculatorTotalRecovered;
-const cashInHand = rawData.totalProductionValue +
+const cashInHand = rawData.totalProductionValue - rawData.totalSoldValue + rawData.returnedStockValue +
 netSalesCash + rawData.calculatorCash +
 rawData.paymentsIn - rawData.paymentsOut - totalExpenses;
 let AccountsReceivable = {
@@ -914,7 +924,7 @@ paymentsIn: rawData.paymentsIn,
 paymentsOut: rawData.paymentsOut,
 operatingExpenses: totalExpenses
 },
-operatingCashFlow: rawData.totalProductionValue - rawData.totalSoldValue + netSalesCash + rawData.calculatorCash,
+operatingCashFlow: rawData.totalProductionValue - rawData.totalSoldValue + rawData.returnedStockValue + netSalesCash + rawData.calculatorCash,
 assets: {
 cash: cashInHand,
 rawMaterials: RawMaterialsValue,

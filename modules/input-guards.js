@@ -43,3 +43,14 @@ export function canonicalName(typed, known) {
   const hit = (Array.isArray(known) ? known : []).find((c) => c && c.name && String(c.name).replace(/\s+/g, ' ').trim().toLowerCase() === key);
   return hit ? String(hit.name).replace(/\s+/g, ' ').trim() : clean;
 }
+
+export function entityBalance(transactions, entityId, addBackOut = 0) {
+  let bal = 0;
+  for (const t of Array.isArray(transactions) ? transactions : []) {
+    if (!t || t.deletedAt || String(t.entityId) !== String(entityId)) continue;
+    const amt = Number(t.amount) || 0;
+    if (t.type === 'IN') bal += amt;
+    else if (t.type === 'OUT') bal -= amt;
+  }
+  return roundMoney(bal + (Number(addBackOut) || 0));
+}

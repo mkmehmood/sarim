@@ -124,9 +124,10 @@ export function buildOverview(data, now = new Date(), months = 6) {
     const m = byKey.get(k.slice(0, 7));
     const amt = _n(t.amount);
     const isIn = t.type === 'IN';
-    if (m) { if (isIn) m.cashIn += amt; else m.cashOut += amt; }
-    if (k === today) { if (isIn) run.todayIn += amt; else run.todayOut += amt; }
-    recent.push({ kind: isIn ? 'Cash in' : 'Cash out', title: t.entityName || 'Payment', sub: '', amount: Math.round(amt).toLocaleString('en-US'), tone: isIn ? 'good' : 'bad', go: 'payments', ts: stamp(t) });
+    const isCreditPurchase = isIn && t.isPayable === true;
+    if (m && !isCreditPurchase) { if (isIn) m.cashIn += amt; else m.cashOut += amt; }
+    if (k === today && !isCreditPurchase) { if (isIn) run.todayIn += amt; else run.todayOut += amt; }
+    recent.push({ kind: isCreditPurchase ? 'Credit purchase' : isIn ? 'Cash in' : 'Cash out', title: t.entityName || 'Payment', sub: '', amount: Math.round(amt).toLocaleString('en-US'), tone: isIn ? 'good' : 'bad', go: 'payments', ts: stamp(t) });
   });
   _arr(data.expenses).filter(live).forEach((e) => {
     const m = byKey.get(dayKey(e).slice(0, 7));

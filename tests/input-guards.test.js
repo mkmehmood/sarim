@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalName, phoneIssue, dateIssue, strictAmount, roundMoney, amountIssue } from '../modules/input-guards.js';
+import { canonicalName, entityBalance, phoneIssue, dateIssue, strictAmount, roundMoney, amountIssue } from '../modules/input-guards.js';
 
 describe('input guards', () => {
   it('phone: blank is fine, letters and bad lengths are rejected', () => {
@@ -46,5 +46,15 @@ describe('input guards', () => {
     assert.equal(canonicalName('New  Person', known), 'New Person');
     assert.equal(canonicalName('', known), '');
     assert.equal(canonicalName('x', null), 'x');
+  });
+  it('entityBalance is IN minus OUT for that entity, ignoring deleted rows', () => {
+    const tx = [
+      { entityId: 'a', type: 'IN', amount: 1000 }, { entityId: 'a', type: 'OUT', amount: 250.5 },
+      { entityId: 'b', type: 'IN', amount: 99 }, { entityId: 'a', type: 'IN', amount: 5, deletedAt: 1 }
+    ];
+    assert.equal(entityBalance(tx, 'a'), 749.5);
+    assert.equal(entityBalance(tx, 'a', 250.5), 1000);
+    assert.equal(entityBalance(tx, 'zzz'), 0);
+    assert.equal(entityBalance(null, 'a'), 0);
   });
 });

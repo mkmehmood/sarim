@@ -3,7 +3,7 @@
 import { _showFilterEmpty, refreshPaymentTab, formatDisplayDateTime } from '../../modules/utilities-payments.js';
 import { localDateStr, customerHistoryMatcher, appMode, loadCollections, generateUUID, validateUUID, getTimestamp, ensureRecordIntegrity, fmtAmt, sqliteStore, ensureArray, esc } from '../../modules/business.js';
 import { showToast } from '../../modules/customers.js';
-import { dateIssue, roundMoney } from '../../modules/input-guards.js';
+import { dateIssue, entityBalance, roundMoney } from '../../modules/input-guards.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
 import { runExclusive, getTxLinkIssue } from '../../modules/link-graph.js';
 import { getEditCtx, endEditMode, confirmEditChanges, stampEdit, replaceRecord, beginEditMode, actionRowHtml } from '../../modules/edit-mode.js';
@@ -76,6 +76,8 @@ const toEntity = entities.find(e => String(e.id) === String(toId));
 if (!fromEntity || !toEntity) { window.notifyBlocking('Selected entity not found.', 'error', 'Something went wrong'); return; }
 if (fromEntity.isExpenseEntity === true || toEntity.isExpenseEntity === true) { window.notifyBlocking('Expense-only entities cannot be used in a transfer.', 'warning', 'Warning'); return; }
 const _oOut = _ed ? _ed.original.records.find(r => r.type === 'OUT') : null;
+const _fromBal = entityBalance(transactions, fromEntity.id, _oOut && String(_oOut.entityId) === String(fromEntity.id) ? _oOut.amount : 0);
+if (amount > _fromBal + 0.004) { window.notifyBlocking(`${fromEntity.name} only has ${fmtAmt(Math.max(0, _fromBal))} available to transfer.`, 'warning', 'Warning'); return; }
 const _oIn = _ed ? _ed.original.records.find(r => r.type === 'IN') : null;
 if (_ed) {
 const avail = await getAvailableCashInHand();

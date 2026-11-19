@@ -689,6 +689,24 @@ export function revertCollectionAlloc(sale, cid) {
   return true;
 }
 
+export function isCashFlowRow(sale) {
+  return !!sale && (sale.paymentType === 'COLLECTION' || sale.paymentType === 'PARTIAL_PAYMENT' || sale.paymentType === 'MONEY_OUT');
+}
+
+export function soldStockValue(sale) {
+  if (!sale || isCashFlowRow(sale)) return 0;
+  if (sale.isMerged && sale.mergedSummary) return _n(sale.mergedSummary.cashSales) + _n(sale.mergedSummary.unpaidCredit);
+  const v = _n(sale.totalValue);
+  if (sale.paymentType === 'CREDIT' && !sale.creditReceived) return v;
+  if (sale.salesRep && sale.salesRep !== 'NONE') return v;
+  if (sale.paymentType === 'CASH' || sale.creditReceived) return v;
+  return 0;
+}
+
+export function collectionExpiredCredit(sale) {
+  return sale && sale.paymentType === 'COLLECTION' && !(sale.salesRep && sale.salesRep !== 'NONE') ? _n(sale.expiredAllocated) : 0;
+}
+
 export function collectionPartialCash(sale) {
   if (!sale || sale.creditReceived || !Array.isArray(sale.collectionAllocs)) return 0;
   return _r2(sale.collectionAllocs.reduce((t, a) => t + (a && !a.full ? _n(a.amount) : 0), 0));

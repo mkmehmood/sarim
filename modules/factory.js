@@ -324,6 +324,11 @@ if (conversionFactor <= 0 || (_cfRaw !== '' && !(parseFloat(_cfRaw) > 0))) retur
 const _pdi = dateIssue(date, localDateStr());
 if (_pdi) return window.notifyBlocking(_pdi, 'warning', 'Warning');
 if (supplierType === 'new' && !_el('factorySupplierName').value.trim()) return window.notifyBlocking('Enter the supplier name, or choose No supplier.', 'warning', 'Warning');
+if (supplierType === 'new') {
+const _newName = _el('factorySupplierName').value.trim().replace(/\s+/g, ' ').toLowerCase();
+const _dupEntity = ensureArray(await sqliteStore.get('entities')).find((e) => e && !e.deletedAt && !e.isExpenseEntity && String(e.name || '').trim().replace(/\s+/g, ' ').toLowerCase() === _newName);
+if (_dupEntity) return window.notifyBlocking(`A supplier named "${_dupEntity.name}" already exists. Choose Existing supplier and pick it from the list.`, 'warning', 'Warning');
+}
 if (supplierType === 'new' && phoneIssue(_el('factorySupplierPhone').value)) return window.notifyBlocking(phoneIssue(_el('factorySupplierPhone').value), 'warning', 'Warning');
 if (supplierType === 'existing' && !(((_el('factoryExistingSupplier') || {}).getAttribute || (() => ''))('data-supplier-id') || '')) return window.notifyBlocking('Pick the supplier from the list, or choose No supplier.', 'warning', 'Warning');
 if (!(await window.gcCommit({}))) return;
