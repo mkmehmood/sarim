@@ -1,3 +1,4 @@
+import { canonicalName, dateIssue, phoneIssue } from './input-guards.js';
 import { themeColor } from './theme-tokens.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
@@ -164,13 +165,19 @@ if (submitBtn) submitBtn.disabled = false;
 }
 try {
 const date = document.getElementById('rep-date').value;
-const name = document.getElementById('rep-cust-name').value.trim();
+const name = canonicalName(document.getElementById('rep-cust-name').value, clients);
 const phoneInput = document.getElementById('rep-new-cust-phone');
 const phoneNumber = (!document.getElementById('rep-new-customer-phone-container').classList.contains('hidden'))
 ? phoneInput.value.trim()
 : '';
 if(!date || !name) {
 window.notifyBlocking("Date and Name required", 'warning', 'Warning');
+restoreBtn();
+return;
+}
+const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber);
+if (_gi) {
+window.notifyBlocking(_gi, 'warning', 'Warning');
 restoreBtn();
 return;
 }
@@ -206,8 +213,8 @@ return;
 }
 const _lockedPrice = (_ed && _ed.original.unitPrice > 0) ? _ed.original.unitPrice : salePrice;
 const _lockedCost = (_ed && _ed.original.quantity > 0) ? (_ed.original.totalCost || 0) / _ed.original.quantity : costPerKg;
-const totalValue = qty * _lockedPrice;
-const computedProfit = totalValue - (qty * _lockedCost);
+const totalValue = round2(qty * _lockedPrice);
+const computedProfit = round2(totalValue - (qty * _lockedCost));
 if(computedProfit < 0) {
 window.notifyBlocking(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, 'warning', 'Warning');
 restoreBtn();

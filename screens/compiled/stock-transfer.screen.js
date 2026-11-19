@@ -2,8 +2,9 @@
 // ==== module: stock-transfer.js ====
 import { _showFilterEmpty, formatDisplayDateTime, safeValue } from '../../modules/utilities-payments.js';
 import { getAppStores, computeStoreStockSnapshot, getStoreLabel, refreshUI } from '../../modules/utilities-sales.js';
-import { routeHistoryMatcher, appMode, fmtNum, safeNumber, ensureArray, sqliteStore, formatTime12, generateUUID, validateUUID, ensureRecordIntegrity, _creatorBadgeHtml, escapeHtml, getTimestamp } from '../../modules/business.js';
+import { localDateStr, routeHistoryMatcher, appMode, fmtNum, safeNumber, ensureArray, sqliteStore, formatTime12, generateUUID, validateUUID, ensureRecordIntegrity, _creatorBadgeHtml, escapeHtml, getTimestamp } from '../../modules/business.js';
 import { showToast, showGlassConfirm } from '../../modules/customers.js';
+import { dateIssue } from '../../modules/input-guards.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
 import { runExclusive } from '../../modules/link-graph.js';
 import { getEditCtx, endEditMode, stampEdit, replaceRecord, beginEditMode, actionRowHtml } from '../../modules/edit-mode.js';
@@ -87,6 +88,8 @@ const date = (document.getElementById('stock-transfer-date') || {}).value;
 const quantity = parseFloat((document.getElementById('stock-transfer-qty') || {}).value) || 0;
 const note = ((document.getElementById('stock-transfer-note') || {}).value || '').trim();
 if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
+const _di = dateIssue(date, localDateStr());
+if (_di) { window.notifyBlocking(_di, 'warning', 'Warning'); return; }
 if (!fromStore || !toStore) { window.notifyBlocking('Please select both stores.', 'warning', 'Warning'); return; }
 if (fromStore === toStore) { window.notifyBlocking('From and To stores must be different.', 'warning', 'Warning'); return; }
 if (quantity <= 0) { window.notifyBlocking('Please enter a valid quantity.', 'warning', 'Warning'); return; }

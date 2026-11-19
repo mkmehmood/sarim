@@ -1,3 +1,4 @@
+import { dateIssue, phoneIssue } from './input-guards.js';
 import { findCalcLinkForReturn } from './link-guards.js';
 import { moneyLine } from './money-privacy.js';
 import { hcCard, hcCardHtml, hcEmptyHtml } from './history-card.js';
@@ -311,14 +312,20 @@ const { inventory } = await loadCollections('inventory');
 const name = _el('factoryMaterialName').value.trim();
 const qty = readNum('factoryMaterialQuantity');
 const cost = readNum('factoryMaterialCost');
-const conversionFactor = parseFloat(_el('factoryMaterialConversionFactor').value) || 1;
+const _cfRaw = _el('factoryMaterialConversionFactor').value.trim();
+const conversionFactor = parseFloat(_cfRaw) || 1;
 const unitName = _el('factoryMaterialUnitName').value.trim() || '';
 const supplierType = _el('factoryMaterialSupplierType').value;
 const date = _el('factoryPurchaseDate').value || localDateStr();
 if (!name) return window.notifyBlocking('Name required', 'warning', 'Warning');
 if (!(qty > 0)) return window.notifyBlocking('Enter how many units you bought', 'warning', 'Warning');
 if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater than 0', 'warning', 'Warning');
-if (conversionFactor <= 0) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning', 'Warning');
+if (conversionFactor <= 0 || (_cfRaw !== '' && !(parseFloat(_cfRaw) > 0))) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning', 'Warning');
+const _pdi = dateIssue(date, localDateStr());
+if (_pdi) return window.notifyBlocking(_pdi, 'warning', 'Warning');
+if (supplierType === 'new' && !_el('factorySupplierName').value.trim()) return window.notifyBlocking('Enter the supplier name, or choose No supplier.', 'warning', 'Warning');
+if (supplierType === 'new' && phoneIssue(_el('factorySupplierPhone').value)) return window.notifyBlocking(phoneIssue(_el('factorySupplierPhone').value), 'warning', 'Warning');
+if (supplierType === 'existing' && !(((_el('factoryExistingSupplier') || {}).getAttribute || (() => ''))('data-supplier-id') || '')) return window.notifyBlocking('Pick the supplier from the list, or choose No supplier.', 'warning', 'Warning');
 if (!(await window.gcCommit({}))) return;
 try {
 const kg = qty * conversionFactor;
@@ -670,8 +677,12 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('fac
 window.notifyBlocking('Access Denied — Factory not in your assigned tabs', 'warning', 'Warning');
 return;
 }
-const units = parseInt(document.getElementById('factoryProductionUnits').value) || 0;
+const _unitsRaw = parseFloat(document.getElementById('factoryProductionUnits').value);
+const units = Number.isFinite(_unitsRaw) ? Math.trunc(_unitsRaw) : 0;
 if (units <= 0) return window.notifyBlocking('Invalid units', 'warning', 'Warning');
+if (_unitsRaw !== units) return window.notifyBlocking('Units must be a whole number.', 'warning', 'Warning');
+const _fdi = dateIssue(document.getElementById('factory-date').value, localDateStr());
+if (_fdi) return window.notifyBlocking(_fdi, 'warning', 'Warning');
 const inventorySnapshot = JSON.parse(JSON.stringify(inventory));
 const historySnapshot = [...factory];
 let _histSavedRec = null;
@@ -1025,7 +1036,7 @@ const _stockDrop = isReturn ? getReturnStockDrop(entryToDelete, _retLog) : (entr
 if (_stockDrop > 0 && typeof window.computeStoreStockSnapshot === 'function') {
 const _snap = await window.computeStoreStockSnapshot(entryToDelete.store, entryToDelete.date);
 if (_snap.available - _stockDrop < -0.0001) {
-window.notifyBlocking(`Cannot delete: ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} was already sold. Delete those sales first.`, 'warning', 'Action not allowed');
+window.notifyBlocking(`Cannot delete: removing ${fmtNum(_stockDrop)} kg of ${_dpStoreLabel} stock on ${entryToDelete.date} would leave it short by ${fmtNum(Math.abs(_snap.available - _stockDrop))} kg because that stock was already sold. Delete those sales first.`, 'warning', 'Action not allowed');
 return;
 }
 }

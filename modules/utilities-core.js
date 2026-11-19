@@ -1,3 +1,4 @@
+import { dateIssue } from './input-guards.js';
 import { themeColor } from './theme-tokens.js';
 import { normalizePref, resolveTheme, nextPref, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { moneyLine } from './money-privacy.js';
@@ -1266,6 +1267,11 @@ const grossWtEl = document.getElementById('gross-wt');
 const contWtEl = document.getElementById('cont-wt');
 if (!netElement || !dateElement || !storeElement || !formulaUnitsElement) {
 window.notifyBlocking('Form error: Missing required fields', 'error', 'Something went wrong');
+return;
+}
+const _pdi = dateIssue(dateElement.value, localDateStr());
+if (_pdi) {
+window.notifyBlocking(_pdi, 'warning', 'Warning');
 return;
 }
 const net = parseFloat(netElement.value) || 0;

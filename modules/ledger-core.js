@@ -1,3 +1,4 @@
+import { MAX_AMOUNT, dateIssue } from './input-guards.js';
 export const DEFAULT_BUSINESS_CATEGORIES = ['Raw Materials', 'Salaries & Labor', 'Rent & Lease', 'Electricity / Power', 'Maintenance & Repairs', 'Transport & Fuel', 'Tea & Refreshment', 'Packaging Supplies', 'Office Supplies', 'Taxes & Govt Fees', 'Marketing & Ads', 'Miscellaneous Business'];
 export const DEFAULT_HOME_CATEGORIES = ['Groceries & Food', 'Home Electricity & Gas', 'Water & Maintenance', 'Home Rent', 'School / Tuition Fees', 'Medical & Healthcare', 'House Help & Maid', 'Clothing & Shopping', 'Mobile & Internet', 'Home Repairs', 'Gifts & Charity', 'Miscellaneous Home', 'Home', 'Kitchen Supplies', 'Personal & Family'];
 export const DEFAULT_INCOME_CATEGORIES = ['Sales', 'Customer Payment', 'Recovery', 'Advance Received', 'Capital In', 'Commission', 'Loan Received', 'Other Income'];
@@ -180,15 +181,24 @@ export function canonicalMode(value, modes) {
   const hit = modes.find((m) => low(m) === low(v));
   return hit || v;
 }
+export const LEDGER_LIMITS = { party: 120, note: 500, ref: 60 };
 export function buildEntry(form, prev, ctx) {
-  const amount = parseAmount(form.amount);
+  const rawAmount = String(form.amount == null ? '' : form.amount).trim();
+  const amount = /^[\d\s,]*\.?\d*$/.test(rawAmount) && /\d/.test(rawAmount) ? parseAmount(rawAmount) : null;
   if (amount === null || amount <= 0) return { ok: false, error: 'Please enter a valid amount greater than 0.' };
+  if (amount > MAX_AMOUNT) return { ok: false, error: 'Amount is too large.' };
+  const dateError = dateIssue(form.date, ctx.today);
+  if (dateError) return { ok: false, error: dateError };
+  for (const f of ['party', 'note', 'ref']) {
+    if (String(form[f] || '').trim().length > LEDGER_LIMITS[f]) return { ok: false, error: `${f === 'ref' ? 'Reference' : f[0].toUpperCase() + f.slice(1)} is too long (max ${LEDGER_LIMITS[f]} characters).` };
+  }
   const type = normalizeType(form.type);
   const isT = type === 'TRANSFER';
   const isOut = type === 'OUT';
   const modes = ctx.modes || DEFAULT_PAYMENT_MODES;
   const mode = canonicalMode(String(form.mode || '').trim() || 'Cash', modes);
-  const toMode = isT ? canonicalMode(String(form.toMode || '').trim() || 'Bank Transfer', modes) : '';
+  if (isT && !String(form.toMode || '').trim()) return { ok: false, error: 'Choose the destination payment mode for the transfer.' };
+  const toMode = isT ? canonicalMode(String(form.toMode).trim(), modes) : '';
   if (isT && low(mode) === low(toMode)) return { ok: false, error: 'Source and destination payment modes must be different.' };
   const typed = String(form.category || '').trim();
   const home = isHomeExpense(typed, form.scope);

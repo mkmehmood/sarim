@@ -349,3 +349,28 @@ t2('linked ledger rows follow renames and cash-to-credit changes made in the oth
   const toCredit = linkedDrift([sale], { sales: [{ id: 's9', totalValue: 500, date: '2026-05-01', paymentType: 'CREDIT', customerName: 'Ali' }] });
   assert2.deepEqual(toCredit, [{ id: 'dl_a', remove: true }]);
 });
+
+describe('buildEntry input rules', () => {
+  const ctx = { id: 'dl_t', now: 1, today: '2026-11-18', modes: ['Cash', 'Bank Transfer'] };
+  const form = (o) => ({ type: 'IN', scope: '', amount: '100', category: 'Sales', mode: 'Cash', toMode: '', party: '', note: '', ref: '', date: '2026-11-18', ...o });
+  it('rejects amounts with trailing junk, too many dots or absurd size', () => {
+    for (const bad of ['12abc', '1.2.3', '1e12', 'abc', '-5', '99999999999']) assert.equal(buildEntry(form({ amount: bad }), null, ctx).ok, false, bad);
+    for (const good of ['1500', '1,500', '1,5', '0.5', '250.75']) assert.equal(buildEntry(form({ amount: good }), null, ctx).ok, true, good);
+  });
+  it('rejects invalid and future dates but defaults a blank date to today', () => {
+    assert.equal(buildEntry(form({ date: '2026-13-45' }), null, ctx).ok, false);
+    assert.equal(buildEntry(form({ date: '2031-01-01' }), null, ctx).error, 'Date cannot be in the future.');
+    assert.equal(buildEntry(form({ date: '1900-01-01' }), null, ctx).ok, false);
+    assert.equal(buildEntry(form({ date: '' }), null, ctx).entry.date, '2026-11-18');
+  });
+  it('caps party, note and reference length', () => {
+    assert.equal(buildEntry(form({ party: 'x'.repeat(121) }), null, ctx).ok, false);
+    assert.equal(buildEntry(form({ note: 'n'.repeat(501) }), null, ctx).ok, false);
+    assert.equal(buildEntry(form({ ref: 'r'.repeat(61) }), null, ctx).ok, false);
+    assert.equal(buildEntry(form({ party: 'x'.repeat(120), note: 'n'.repeat(500), ref: 'r'.repeat(60) }), null, ctx).ok, true);
+  });
+  it('a transfer needs a destination mode', () => {
+    assert.equal(buildEntry(form({ type: 'TRANSFER', toMode: '' }), null, ctx).ok, false);
+    assert.equal(buildEntry(form({ type: 'TRANSFER', toMode: 'Bank Transfer' }), null, ctx).ok, true);
+  });
+});

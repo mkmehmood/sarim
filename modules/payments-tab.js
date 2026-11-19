@@ -1,3 +1,4 @@
+import { dateIssue, roundMoney } from './input-guards.js';
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
 import { applyPaymentHistoryFilter, selectExpenseCategory, _resetExpenseForm, refreshPaymentTab, renderUnifiedTable, refreshEntityBalances, renderExpenseTable, formatDisplayDate } from './utilities-payments.js';
 import { ensureArray, sqliteStore, loadAliveCollections, esc, loadCollections, fmtAmt, getTimestamp, ensureRecordIntegrity, generateUUID, validateUUID, appMode, allocatePaymentToMaterials, _safeErr, localDateStr } from './business.js';
@@ -219,12 +220,17 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('pay
 window.notifyBlocking('Access Denied — Payments not in your assigned tabs', 'warning', 'Payment warning'); return;
 }
 const name = document.getElementById('expenseName').value.trim();
-const amount = parseFloat(document.getElementById('expenseAmount').value);
+const amount = roundMoney(parseFloat(document.getElementById('expenseAmount').value));
 const date = document.getElementById('expenseDate').value;
 const description = document.getElementById('expenseDescription').value.trim();
 const category = window._expenseCategory || 'operating';
 if (!name) {
 window.notifyBlocking("Please enter name/entity", 'warning', 'Warning');
+return;
+}
+const _di = dateIssue(date, localDateStr());
+if (_di) {
+window.notifyBlocking(_di, 'warning', 'Warning');
 return;
 }
 if (!amount || amount <= 0) {

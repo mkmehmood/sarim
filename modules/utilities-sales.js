@@ -1,3 +1,4 @@
+import { canonicalName, dateIssue, phoneIssue } from './input-guards.js';
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatMonthYear } from './date-format.js';
@@ -1038,7 +1039,7 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sal
 window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const date = document.getElementById('cust-date').value;
-const name = document.getElementById('cust-name').value.trim();
+const name = canonicalName(document.getElementById('cust-name').value, customers);
 const quantity = readNum('cust-quantity');
 const store = document.getElementById('supply-store-value').value;
 const paymentType = document.getElementById('payment-type-value').value;
@@ -1053,6 +1054,11 @@ return;
 }
 if (!name) {
 window.notifyBlocking('Please enter customer name.', 'warning', 'Warning');
+return;
+}
+const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber);
+if (_gi) {
+window.notifyBlocking(_gi, 'warning', 'Warning');
 return;
 }
 if (quantity <= 0) {
@@ -1103,8 +1109,8 @@ if (!_effectiveSalePrice || _effectiveSalePrice <= 0) {
 window.notifyBlocking(' Sale price not configured for this store. Set prices in Factory Formulas before recording sales.', 'warning', 'Warning');
 return;
 }
-const totalValue = quantity * _effectiveSalePrice;
-const profit = totalValue - totalCost;
+const totalValue = round2(quantity * _effectiveSalePrice);
+const profit = round2(totalValue - totalCost);
 const existingCustomer = sales.find(s => s && s.customerName && name && s.customerName.toLowerCase() === name.toLowerCase());
 let existingCredit = 0;
 let _gcWarn = null;
@@ -1588,7 +1594,7 @@ if (appMode === 'userrole' && !(window._userRoleAllowedTabs || []).includes('sal
 window.notifyBlocking('Access Denied — Sales not in your assigned tabs', 'warning', 'Warning'); return;
 }
 const date = document.getElementById('cust-date').value;
-const name = document.getElementById('cust-name').value.trim();
+const name = canonicalName(document.getElementById('cust-name').value, ensureArray(await sqliteStore.get('customers')));
 const amountEl = document.getElementById('cust-amount-collected');
 const amount = parseFloat(amountEl?.value) || 0;
 const expiredEl = document.getElementById('cust-expired-qty');
@@ -1599,6 +1605,8 @@ const phoneNumber = (!document.getElementById('new-customer-phone-container').cl
 : '';
 if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
 if (!name) { window.notifyBlocking('Please enter customer name.', 'warning', 'Warning'); return; }
+const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber);
+if (_gi) { window.notifyBlocking(_gi, 'warning', 'Warning'); return; }
 if (amount < 0 || expired < 0) { window.notifyBlocking('Amount and expired quantity cannot be negative.', 'warning', 'Warning'); return; }
 if (amount <= 0 && expired <= 0) { window.notifyBlocking('Please enter an amount collected and/or an expired quantity.', 'warning', 'Warning'); return; }
 const btn = document.getElementById('btn-save-cust-transaction');

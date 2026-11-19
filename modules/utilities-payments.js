@@ -1,3 +1,4 @@
+import { phoneIssue } from './input-guards.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
@@ -1672,6 +1673,11 @@ const { entities, transactions } = await loadCollections('entities', 'transactio
 const name = document.getElementById('entityName').value.trim();
 const phone = document.getElementById('entityPhone').value.trim();
 const wallet = document.getElementById('entityWallet').value.trim();
+const _phoneIssue = phoneIssue(phone);
+if (_phoneIssue) {
+window.notifyBlocking(_phoneIssue, 'warning', 'Warning');
+return;
+}
 const existingEntity = editingEntityId ? entities.find(e => String(e.id) === String(editingEntityId)) : null;
 const entityTxs = existingEntity
 ? transactions.filter(t => String(t.entityId) === String(existingEntity.id))
@@ -4089,7 +4095,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 });
 } else {
 html = `<div class="empty is-compact" >
-No match found. "${query}" will be created as new customer.
+No match found. "${esc(query)}" will be created as new customer.
 </div>`;
 }
 break;
@@ -4216,7 +4222,7 @@ onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName
 });
 } else {
 html = `<div class="empty is-compact" >
-No match found. "${query}" will be created.
+No match found. "${esc(query)}" will be created.
 </div>`;
 }
 break;

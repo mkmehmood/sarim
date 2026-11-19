@@ -1,8 +1,9 @@
 
 // ==== module: payment-transfer.js ====
 import { _showFilterEmpty, refreshPaymentTab, formatDisplayDateTime } from '../../modules/utilities-payments.js';
-import { customerHistoryMatcher, appMode, loadCollections, generateUUID, validateUUID, getTimestamp, ensureRecordIntegrity, fmtAmt, sqliteStore, ensureArray, esc } from '../../modules/business.js';
+import { localDateStr, customerHistoryMatcher, appMode, loadCollections, generateUUID, validateUUID, getTimestamp, ensureRecordIntegrity, fmtAmt, sqliteStore, ensureArray, esc } from '../../modules/business.js';
 import { showToast } from '../../modules/customers.js';
+import { dateIssue, roundMoney } from '../../modules/input-guards.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
 import { runExclusive, getTxLinkIssue } from '../../modules/link-graph.js';
 import { getEditCtx, endEditMode, confirmEditChanges, stampEdit, replaceRecord, beginEditMode, actionRowHtml } from '../../modules/edit-mode.js';
@@ -60,13 +61,16 @@ return;
 const { entities, transactions } = await loadCollections('entities', 'transactions');
 const fromId = (document.getElementById('payment-transfer-from-value') || {}).value;
 const toId = (document.getElementById('payment-transfer-to-value') || {}).value;
-const amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
+let amount = parseFloat((document.getElementById('payment-transfer-amount') || {}).value) || 0;
 const date = (document.getElementById('payment-transfer-date') || {}).value;
 const note = ((document.getElementById('payment-transfer-note') || {}).value || '').trim();
 if (!date) { window.notifyBlocking('Please select a date.', 'warning', 'Warning'); return; }
+const _di = dateIssue(date, localDateStr());
+if (_di) { window.notifyBlocking(_di, 'warning', 'Warning'); return; }
 if (!fromId || !toId) { window.notifyBlocking('Please search and select both entities from the list.', 'warning', 'Warning'); return; }
 if (String(fromId) === String(toId)) { window.notifyBlocking('From and To entities must be different.', 'warning', 'Warning'); return; }
 if (amount <= 0) { window.notifyBlocking('Please enter a valid amount.', 'warning', 'Warning'); return; }
+amount = roundMoney(amount);
 const fromEntity = entities.find(e => String(e.id) === String(fromId));
 const toEntity = entities.find(e => String(e.id) === String(toId));
 if (!fromEntity || !toEntity) { window.notifyBlocking('Selected entity not found.', 'error', 'Something went wrong'); return; }
