@@ -1,4 +1,4 @@
-import { dateIssue, roundMoney } from './input-guards.js';
+import { dateIssue, nameIssue, roundMoney } from './input-guards.js';
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
 import { applyPaymentHistoryFilter, selectExpenseCategory, _resetExpenseForm, refreshPaymentTab, renderUnifiedTable, refreshEntityBalances, renderExpenseTable, formatDisplayDate } from './utilities-payments.js';
 import { ensureArray, sqliteStore, loadAliveCollections, esc, loadCollections, fmtAmt, getTimestamp, ensureRecordIntegrity, generateUUID, validateUUID, appMode, allocatePaymentToMaterials, _safeErr, localDateStr } from './business.js';
@@ -228,7 +228,7 @@ if (!name) {
 window.notifyBlocking("Please enter name/entity", 'warning', 'Warning');
 return;
 }
-const _di = dateIssue(date, localDateStr());
+const _di = dateIssue(date, localDateStr()) || nameIssue(name, 'Name') || nameIssue(description, 'Description', 300);
 if (_di) {
 window.notifyBlocking(_di, 'warning', 'Warning');
 return;

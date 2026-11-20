@@ -14,6 +14,8 @@ import { unifiedSave, emitSyncUpdate, unifiedDelete } from './sync.js';
 import { notifyDataChange, indPerformanceChart, _set_indPerformanceChart, SarimChart } from './utilities-core.js';
 import { pickReturnsCovered } from './rep-return-link.js';
 import { isMoneyRestricted } from './money-privacy.js';
+import { LIMITS, MAX_AMOUNT, dateIssue } from './input-guards.js';
+import { localDateStr } from './finance.js';
 import { themeColor } from './theme-tokens.js';
 import { formatMonthYear } from './date-format.js';
 
@@ -162,7 +164,7 @@ if (_hasLinks) showToast('Total sold, returned and expired are refreshed from th
 
 let _calcSaveInFlight = false;
 
-export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Sale', late: true, fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']], ledger: { when: () => !getEditCtx('calc'), label: 'Add cash, expenses & commission to Daily Ledger', formBox: 'calcAddToLedger' } }); }
+export function saveTransaction(...a) { return confirmGuard('saveTransaction', () => _saveTransactionRaw(...a), { label: 'Settlement', late: true, fields: [['sellerSelect', 'Seller'], ['sale-date', 'Date'], ['totalSold', 'Total Sold'], ['returnedQuantity', 'Returned'], ['expiredQuantity', 'Expired'], ['creditSales', 'Credit Sales'], ['receivedCash', 'Cash Received']], ledger: { when: () => !getEditCtx('calc'), label: 'Add cash, expenses & commission to Daily Ledger', formBox: 'calcAddToLedger' } }); }
 
 async function _saveTransactionRaw() {
 if (_calcSaveInFlight) return;
@@ -223,6 +225,12 @@ if(fieldExp < 0) return window.notifyBlocking('Field expenses cannot be negative
 if(commissionPerUnit < 0) return window.notifyBlocking('Commission per unit cannot be negative', 'warning', 'Warning');
 if(commissionPaid < 0) return window.notifyBlocking('Commission paid cannot be negative', 'warning', 'Warning');
 if((ret + exp + shared) > sold) return window.notifyBlocking('Combined returned + expired + shared quantity cannot exceed total sold', 'warning', 'Warning');
+if(commissionPerUnit > LIMITS.COMMISSION_MAX) return window.notifyBlocking(`Commission per unit cannot be more than ${LIMITS.COMMISSION_MAX.toLocaleString('en-US')}`, 'warning', 'Warning');
+if(rec > MAX_AMOUNT || commissionPaid > MAX_AMOUNT || fieldExp > MAX_AMOUNT || prev > MAX_AMOUNT) return window.notifyBlocking('An amount is too large. Please check the cash, expense and commission fields.', 'warning', 'Warning');
+if(!_calcEd) {
+const _calcDateIssue = dateIssue(date, localDateStr());
+if (_calcDateIssue) return window.notifyBlocking(_calcDateIssue, 'warning', 'Warning');
+}
 const netSold = Math.max(0, sold - ret - exp - shared);
 if(cred > netSold) return window.notifyBlocking('Credit sales cannot exceed net sold quantity', 'warning', 'Credit warning');
 const cashQty = Math.max(0, netSold - cred);
@@ -232,6 +240,10 @@ const totalCost = netSold * costPerKg;
 const profit = revenue - totalCost;
 const totalExpected = (cashQty * salePrice) + prev - fieldExp - commissionPaid;
 const diff = rec - totalExpected;
+if (!_calcQuick && Math.abs(diff) > 0.01 && typeof window.showGlassConfirm === 'function') {
+const _diffMsg = `Cash received ${fmtAmt(safeNumber(rec, 0))} but expected ${fmtAmt(safeNumber(totalExpected, 0))}.\n${diff < 0 ? 'Short' : 'Over'} by ${fmtAmt(safeNumber(Math.abs(diff), 0))}. Save this settlement anyway?`;
+if (!(await window.showGlassConfirm(_diffMsg, { title: diff < 0 ? 'Cash is short' : 'Cash is over', confirmText: 'Save anyway' }))) return;
+}
 const grossCommission = commissionPerUnit * netSold;
 const commissionPayable = Math.max(0, grossCommission - commissionPaid);
 let statusText = "PERFECT MATCH ";

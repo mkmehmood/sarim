@@ -1,4 +1,4 @@
-import { phoneIssue } from './input-guards.js';
+import { nameIssue, phoneIssue } from './input-guards.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { normalizePref, resolveTheme, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
@@ -1673,7 +1673,7 @@ const { entities, transactions } = await loadCollections('entities', 'transactio
 const name = document.getElementById('entityName').value.trim();
 const phone = document.getElementById('entityPhone').value.trim();
 const wallet = document.getElementById('entityWallet').value.trim();
-const _phoneIssue = phoneIssue(phone);
+const _phoneIssue = phoneIssue(phone) || nameIssue(name, 'Name') || nameIssue(wallet, 'Wallet details', 120);
 if (_phoneIssue) {
 window.notifyBlocking(_phoneIssue, 'warning', 'Warning');
 return;

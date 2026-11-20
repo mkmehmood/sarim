@@ -1,4 +1,4 @@
-import { dateIssue } from './input-guards.js';
+import { LIMITS, dateIssue, numberIssue } from './input-guards.js';
 import { themeColor } from './theme-tokens.js';
 import { normalizePref, resolveTheme, nextPref, prefLabel, readStoredPref, writeStoredPref } from './theme-pref.js';
 import { moneyLine } from './money-privacy.js';
@@ -1272,6 +1272,13 @@ return;
 const _pdi = dateIssue(dateElement.value, localDateStr());
 if (_pdi) {
 window.notifyBlocking(_pdi, 'warning', 'Warning');
+return;
+}
+const _wtIssue = (grossWtEl ? numberIssue(grossWtEl.value, { label: 'Gross weight', min: LIMITS.QTY_MIN, max: LIMITS.QTY_MAX }) : '')
+  || (contWtEl ? numberIssue(contWtEl.value, { label: 'Container weight', min: 0, max: LIMITS.QTY_MAX, allowBlank: true }) : '')
+  || numberIssue(formulaUnitsElement.value, { label: 'Formula units', min: 0, minExclusive: true, max: LIMITS.QTY_MAX, allowBlank: true });
+if (_wtIssue) {
+window.notifyBlocking(_wtIssue, 'warning', 'Warning');
 return;
 }
 const net = parseFloat(netElement.value) || 0;

@@ -54,3 +54,47 @@ export function entityBalance(transactions, entityId, addBackOut = 0) {
   }
   return roundMoney(bal + (Number(addBackOut) || 0));
 }
+
+export const LIMITS = {
+  QTY_MIN: 0.001,
+  QTY_MAX: 1000000,
+  UNIT_COST_MAX: 100000000,
+  FACTOR_MAX: 100000,
+  COST_FACTOR_MAX: 100,
+  COMMISSION_MAX: 100000,
+  NAME_MAX: 80,
+  UNIT_MAX: 30,
+};
+
+const fmtLimit = (n) => Number(n).toLocaleString('en-US');
+
+export function numberIssue(raw, { label = 'Value', min = 0, max = Infinity, minExclusive = false, allowBlank = false } = {}) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return allowBlank ? '' : `${label} is required.`;
+  const n = strictAmount(s);
+  if (Number.isNaN(n)) return `${label} must be a plain number such as 12.5.`;
+  if (minExclusive ? !(n > min) : n < min) return minExclusive ? `${label} must be greater than ${fmtLimit(min)}.` : `${label} cannot be less than ${fmtLimit(min)}.`;
+  if (n > max) return `${label} cannot be more than ${fmtLimit(max)}.`;
+  return '';
+}
+
+export function nameIssue(raw, label = 'Name', max = LIMITS.NAME_MAX) {
+  const s = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+  if (s.length > max) return `${label} is too long (at most ${max} characters).`;
+  if (/[\u0000-\u001f]/.test(s)) return `${label} contains characters that are not allowed.`;
+  return '';
+}
+
+export function quantityIssue(raw, label = 'Quantity') {
+  return numberIssue(raw, { label, min: LIMITS.QTY_MIN, max: LIMITS.QTY_MAX });
+}
+
+export function unitCostIssue(raw, label = 'Cost') {
+  return numberIssue(raw, { label, min: 0.01, max: LIMITS.UNIT_COST_MAX });
+}
+
+export function duplicateName(typed, known, ignoreId) {
+  const key = String(typed == null ? '' : typed).replace(/\s+/g, ' ').trim().toLowerCase();
+  if (!key) return null;
+  return (Array.isArray(known) ? known : []).find((k) => k && String(k.id) !== String(ignoreId) && String(k.name || '').replace(/\s+/g, ' ').trim().toLowerCase() === key) || null;
+}

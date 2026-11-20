@@ -36,6 +36,21 @@ Method: the real app modules and the real SQLite engine were driven headlessly (
 
 Found while verifying #1: customer **Money Out** and **Collection** rows are saved with `creditReceived: true`, so the cash formulas counted them as sales. Money Out therefore raised cash instead of lowering it. All three formulas now classify those rows by type first.
 
+## Second pass: limits and unvalidated fields (fixed)
+
+Re-ran every form against the current code. The remaining gaps were missing range limits and a few fields with no check at all.
+
+| Area | Change |
+|---|---|
+| Shared limits | `LIMITS`, `numberIssue`, `nameIssue`, `quantityIssue`, `unitCostIssue` and `duplicateName` in `input-guards.js`. Numbers must be plain (no `1e12`, no spaces inside, no repeated dots). |
+| Raw material purchase | Quantity 0.001 to 1,000,000, cost 0.01 to 100,000,000, conversion factor 0.001 to 100,000, name 80 and unit 30 characters, supplier name 80, unit name required when the conversion factor is not 1. |
+| Production | Gross weight required (0.001 to 1,000,000), container weight 0 or more, formula units above 0, all plain numbers. A negative container weight can no longer make net larger than gross. |
+| Sales and rep sales | Customer name at most 80 characters, quantity 0.001 to 1,000,000. The rep stock limit stays as decided. |
+| Calculator | Commission per unit at most 100,000, cash and expense fields at most 10,000,000,000, settlement date cannot be in the future. A settlement whose cash differs from the expected cash now asks "Cash is short / over by X. Save anyway?". The confirm box is titled Settlement, not Sale. |
+| Formula editor | Additional cost 0 to 100,000,000, cost factor above 0 and at most 100 (a factor of 0 could divide by zero), ingredient quantity 0.001 to 1,000,000, duplicate names (ignoring case and spaces) refused. |
+| Store manager | A sale price must be a plain number of at least 0.01 and at most 100,000,000. Negative values used to be saved silently as 0. |
+| Stock transfer, expense, entity | Quantity range, and name, description and wallet length limits. |
+
 ## Left as is by decision
 
 4. Calculator expected cash price and quantity basis.

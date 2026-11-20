@@ -50,7 +50,7 @@ import { _showFilterEmpty, formatDisplayDateTime, safeValue } from './utilities-
 import { getAppStores, computeStoreStockSnapshot, getStoreLabel, refreshUI } from './utilities-sales.js';
 import { localDateStr, routeHistoryMatcher, appMode, fmtNum, safeNumber, ensureArray, sqliteStore, formatTime12, generateUUID, validateUUID, ensureRecordIntegrity, _creatorBadgeHtml, escapeHtml, getTimestamp } from './business.js';
 import { showToast, showGlassConfirm } from './customers.js';
-import { dateIssue } from './input-guards.js';
+import { dateIssue, quantityIssue } from './input-guards.js';
 import { confirmGuard } from './confirm-guard.js';
 import { runExclusive } from './link-graph.js';
 import { getEditCtx, endEditMode, stampEdit, replaceRecord, beginEditMode, actionRowHtml } from './edit-mode.js';
@@ -139,6 +139,8 @@ if (_di) { window.notifyBlocking(_di, 'warning', 'Warning'); return; }
 if (!fromStore || !toStore) { window.notifyBlocking('Please select both stores.', 'warning', 'Warning'); return; }
 if (fromStore === toStore) { window.notifyBlocking('From and To stores must be different.', 'warning', 'Warning'); return; }
 if (quantity <= 0) { window.notifyBlocking('Please enter a valid quantity.', 'warning', 'Warning'); return; }
+const _qtyIssue = quantityIssue((document.getElementById('stock-transfer-qty') || {}).value, 'Quantity');
+if (_qtyIssue) { window.notifyBlocking(_qtyIssue, 'warning', 'Warning'); return; }
 const _pairIds = _ed ? _ed.original.records.map(r => r.id) : null;
 const snapshot = await computeStoreStockSnapshot(fromStore, date, _pairIds);
 if (_ed) {

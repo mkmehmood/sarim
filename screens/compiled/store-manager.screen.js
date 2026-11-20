@@ -1,4 +1,5 @@
 
+import { LIMITS, nameIssue, numberIssue } from '../../modules/input-guards.js';
 // ==== module: store-manager.js ====
 async function openStoreManagerScreen() {
   openStandaloneScreen('store-manager-screen');
@@ -106,6 +107,11 @@ async function saveStoreFromForm() {
   }
   if (!formulaId) {
     if (typeof window.showToast === 'function') window.showToast('Select a formula from the Formula Store', 'warning');
+    return;
+  }
+  const _storeIssue = nameIssue(nameRaw, 'Store name') || numberIssue(document.getElementById('store-sale-price-input').value, { label: 'Sale price', min: 0.01, max: LIMITS.UNIT_COST_MAX, allowBlank: true });
+  if (_storeIssue) {
+    if (typeof window.showToast === 'function') window.showToast(_storeIssue, 'warning');
     return;
   }
   const stores = (await (typeof window.getAppStores === 'function' ? window.getAppStores() : Promise.resolve([]))).map(function(st) { return Object.assign({}, st); });

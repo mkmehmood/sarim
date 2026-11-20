@@ -1,4 +1,4 @@
-import { dateIssue, phoneIssue } from './input-guards.js';
+import { LIMITS, dateIssue, nameIssue, numberIssue, phoneIssue, quantityIssue, unitCostIssue } from './input-guards.js';
 import { findCalcLinkForReturn } from './link-guards.js';
 import { moneyLine } from './money-privacy.js';
 import { hcCard, hcCardHtml, hcEmptyHtml } from './history-card.js';
@@ -323,6 +323,14 @@ if (cost <= 0) return window.notifyBlocking('Please enter a valid cost greater t
 if (conversionFactor <= 0 || (_cfRaw !== '' && !(parseFloat(_cfRaw) > 0))) return window.notifyBlocking('Conversion factor must be greater than 0', 'warning', 'Warning');
 const _pdi = dateIssue(date, localDateStr());
 if (_pdi) return window.notifyBlocking(_pdi, 'warning', 'Warning');
+const _rangeIssue = nameIssue(name, 'Material name')
+  || quantityIssue(_el('factoryMaterialQuantity').value, 'Quantity')
+  || unitCostIssue(_el('factoryMaterialCost').value, 'Cost')
+  || (_cfRaw !== '' ? numberIssue(_cfRaw, { label: 'Conversion factor', min: LIMITS.QTY_MIN, max: LIMITS.FACTOR_MAX }) : '')
+  || nameIssue(unitName, 'Unit name', LIMITS.UNIT_MAX)
+  || (conversionFactor !== 1 && !unitName ? 'Enter the unit name, for example bag.' : '')
+  || (supplierType === 'new' ? nameIssue(_el('factorySupplierName').value, 'Supplier name') : '');
+if (_rangeIssue) return window.notifyBlocking(_rangeIssue, 'warning', 'Warning');
 if (supplierType === 'new' && !_el('factorySupplierName').value.trim()) return window.notifyBlocking('Enter the supplier name, or choose No supplier.', 'warning', 'Warning');
 if (supplierType === 'new') {
 const _newName = _el('factorySupplierName').value.trim().replace(/\s+/g, ' ').toLowerCase();

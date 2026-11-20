@@ -1,4 +1,4 @@
-import { canonicalName, dateIssue, phoneIssue } from './input-guards.js';
+import { canonicalName, dateIssue, nameIssue, phoneIssue, quantityIssue } from './input-guards.js';
 import { themeColor } from './theme-tokens.js';
 import { formatDayMonthYear } from './date-format.js';
 import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
@@ -175,7 +175,8 @@ window.notifyBlocking("Date and Name required", 'warning', 'Warning');
 restoreBtn();
 return;
 }
-const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber);
+const _repQtyRaw = (document.getElementById('rep-quantity') || {}).value || '';
+const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber) || nameIssue(name, 'Customer name') || (repTransactionMode === 'sale' && _repQtyRaw.trim() ? quantityIssue(_repQtyRaw, 'Quantity') : '');
 if (_gi) {
 window.notifyBlocking(_gi, 'warning', 'Warning');
 restoreBtn();

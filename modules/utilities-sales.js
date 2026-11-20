@@ -1,4 +1,4 @@
-import { canonicalName, dateIssue, phoneIssue } from './input-guards.js';
+import { canonicalName, dateIssue, nameIssue, phoneIssue, quantityIssue } from './input-guards.js';
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
 import { themeColor, themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatMonthYear } from './date-format.js';
@@ -1066,7 +1066,8 @@ if (!name) {
 window.notifyBlocking('Please enter customer name.', 'warning', 'Warning');
 return;
 }
-const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber);
+const _qRaw = (document.getElementById('cust-quantity') || {}).value || '';
+const _gi = dateIssue(date, localDateStr()) || phoneIssue(phoneNumber) || nameIssue(name, 'Customer name') || (_qRaw.trim() ? quantityIssue(_qRaw, 'Quantity') : '');
 if (_gi) {
 window.notifyBlocking(_gi, 'warning', 'Warning');
 return;

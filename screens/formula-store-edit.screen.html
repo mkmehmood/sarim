@@ -43,6 +43,7 @@
 <script type="module">
 // ==== module: formula-store-edit.js ====
 import { _el, _num, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites } from './formula-store.js';
+import { LIMITS, duplicateName, nameIssue, numberIssue } from './input-guards.js';
 import { describeFormula, linkedPerKg, linkIngredient, isLink, canLink, formulaUsers } from './formula-links.js';
 import { esc, ensureArray, sqliteStore, getTimestamp, generateUUID } from './business.js';
 import { showToast, showGlassConfirm } from './customers.js';
@@ -400,6 +401,13 @@ async function _saveFormulaStoreEntryRaw() {
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }
   if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning', 'Warning'); return false; }
 const fresh = await getFormulaStore();
+  const _fi = nameIssue(c.name, 'Formula name')
+    || numberIssue(_el('fs-additional-cost').value, { label: 'Additional cost', min: 0, max: LIMITS.UNIT_COST_MAX, allowBlank: true })
+    || numberIssue(_el('fs-cost-factor').value, { label: 'Cost factor', min: 0, minExclusive: true, max: LIMITS.COST_FACTOR_MAX, allowBlank: true })
+    || (c.ingredients.find((i) => i.quantity < LIMITS.QTY_MIN || i.quantity > LIMITS.QTY_MAX) ? `Each ingredient quantity must be between ${LIMITS.QTY_MIN} and ${LIMITS.QTY_MAX.toLocaleString('en-US')} kg.` : '');
+  if (_fi) { window.notifyBlocking(_fi, 'warning', 'Warning'); return false; }
+  const _dupFormula = duplicateName(c.name, fresh, _editingId);
+  if (_dupFormula) { window.notifyBlocking(`A formula named "${_dupFormula.name}" already exists. Choose a different name or edit that formula.`, 'warning', 'Warning'); return false; }
   for (const ing of c.ingredients.filter(isLink)) {
     if (!fresh.some((f) => String(f.id) === String(ing.formulaId))) { window.notifyBlocking(`The linked formula "${ing.name}" no longer exists. Remove that row.`, 'warning', 'Warning'); return false; }
     if (_editingId && !canLink(fresh, _editingId, ing.formulaId)) { window.notifyBlocking(`"${ing.name}" already uses this formula, so it can't be linked back.`, 'warning', 'Warning'); return false; }
