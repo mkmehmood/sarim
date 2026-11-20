@@ -36,7 +36,7 @@ Method: the real app modules and the real SQLite engine were driven headlessly (
 
 Found while verifying #1: customer **Money Out** and **Collection** rows are saved with `creditReceived: true`, so the cash formulas counted them as sales. Money Out therefore raised cash instead of lowering it. All three formulas now classify those rows by type first.
 
-## Second pass: limits and unvalidated fields (fixed)
+## Range limits and unvalidated fields (fixed)
 
 Re-ran every form against the current code. The remaining gaps were missing range limits and a few fields with no check at all.
 
@@ -69,7 +69,7 @@ Method as before. Cloud features (backups, approvals, manager sessions) need a s
 - Numbers reproduce exactly (a saved correction with 10 kg of one ingredient gives 15.881 kg, with 9.9 kg gives 15.722 kg). 3,000 random formulas: present amounts always add to the remaining batch, and remaining + additions always equals the required total.
 - Saving a correction and editing it restores the saved values exactly. Unit toggling g to kg and back does not drift. The 40-saved-calculation limit holds.
 - Display only: each row rounds present, add and target to 3 decimals on its own, so a row can look 0.001 kg off (8.871 + 1.414 shows 10.286, not 10.285). "Weight per unit" shows 3.002 kg while the true value is 3.0015.
-- A batch weight of 1e12 kg is accepted with no upper limit.
+- A batch weight of 1e12 kg is accepted with no upper limit (still open).
 
 ### Editing existing records
 - Sale, collection, production, factory batch, payment, expense, transfer, rep sale, rep return, Calculator and stock transfer edits all keep cash, stock and linked records consistent.
@@ -89,7 +89,7 @@ Method as before. Cloud features (backups, approvals, manager sessions) need a s
 - Formula editor silently drops any ingredient row with no material picked or a quantity of 0, then reports "saved with N ingredients". Duplicate formula names and duplicate materials in one formula are not blocked. A cost factor of 0 silently becomes 1.
 - Deleting a formula checks stores and links only, not past production and factory entries.
 - **Store delete has no guard.** A store with production and sales was deleted with no warning, leaving its remaining stock unreachable.
-- A negative or non-numeric sale price on a store silently becomes 0. A price of 1e12 is accepted.
+- A negative or non-numeric sale price on a store silently becomes 0. A price of 1e12 is accepted. **Fixed** in the range-limits pass (price must be 0.01 to 100,000,000). Duplicate formula names are also refused now; duplicate materials in one formula and the silent row drop are still open.
 
 ### Approvals and manager mode (code review)
 - Gating, money hiding and recycle scope are covered by existing tests and the code is consistent. Cash-shortage messages are redacted for restricted roles.
