@@ -1,9 +1,11 @@
 
 // ==== module: formula-store-edit.js ====
+import { formulaFormIssue } from '../../modules/formula-checks.js';
 import { _el, _num, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites } from '../../modules/formula-store.js';
 import { LIMITS, duplicateName, nameIssue, numberIssue } from '../../modules/input-guards.js';
 import { describeFormula, linkedPerKg, linkIngredient, isLink, canLink, formulaUsers } from '../../modules/formula-links.js';
-import { esc, ensureArray, sqliteStore, getTimestamp, generateUUID } from '../../modules/business.js';
+import { esc, ensureArray, fmtNum, sqliteStore, getTimestamp, generateUUID } from '../../modules/business.js';
+import { computeUnitPools } from '../../modules/formula-pools.js';
 import { showToast, showGlassConfirm } from '../../modules/customers.js';
 import { confirmGuard } from '../../modules/confirm-guard.js';
 import { sendDeviceNotification } from '../../modules/notify.js';
@@ -354,7 +356,25 @@ export async function addFormulaIngredientRow() {
 
 export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', late: true, isUpdate: () => !!_editingId }); }
 
+function _editorRows() {
+  const out = [];
+  const container = _el('fsEditContainer');
+  if (!container) return out;
+  container.querySelectorAll('.factory-formula-grid:not(.factory-link-child)').forEach((row) => {
+    const inp = row.querySelector('.factory-mat-search-input');
+    const qtyIn = row.querySelector('.factory-mat-qty');
+    out.push({
+      label: inp ? inp.value : '',
+      matId: inp && inp.dataset.kind !== 'formula' ? (inp.dataset.matId || '') : '',
+      formulaId: inp && inp.dataset.kind === 'formula' ? (inp.dataset.formulaId || '') : '',
+      qty: qtyIn ? qtyIn.value : '',
+    });
+  });
+  return out;
+}
 async function _saveFormulaStoreEntryRaw() {
+  const _issue = formulaFormIssue({ name: _el('fs-edit-name').value, rows: _editorRows(), costFactorRaw: _el('fs-cost-factor').value, additionalRaw: _el('fs-additional-cost').value, others: await getFormulaStore(), editingId: _editingId });
+  if (_issue) { window.notifyBlocking(_issue, 'warning', 'Warning'); return false; }
   const c = _collectEditor();
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }
   if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning', 'Warning'); return false; }
@@ -399,7 +419,15 @@ export async function deleteFormulaStoreEntry() {
     window.notifyBlocking(`Linked inside ${linkedBy.join(', ')}. Remove that link first.`, 'warning', 'Warning');
     return;
   }
-  const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
+  const _factory = ensureArray(await sqliteStore.get('factory'));
+  const _production = ensureArray(await sqliteStore.get('production'));
+  const _left = computeUnitPools(_factory, _production)[String(_editingId)];
+  if (_left && _left.available > 0.0005) {
+    window.notifyBlocking(`${fmtNum(_left.available)} unit${_left.available === 1 ? '' : 's'} made with this formula are still unused. Use them in production or delete those factory batches first.`, 'warning', 'Warning');
+    return;
+  }
+  const _past = _factory.filter((e) => e && !e.deletedAt && String(e.formulaId) === String(_editingId)).length;
+  const ok = await showGlassConfirm('Delete this formula from the store?' + (_past ? `\n\nIt was used for ${_past} factory batch${_past === 1 ? '' : 'es'}. Their recorded costs stay as they are.` : ''), { title: 'Delete Formula', confirmText: 'Delete', danger: true });
   if (!ok) return;
   const fullList = await getFormulaStore();
   const removed = fullList.find((f) => String(f.id) === String(_editingId));
@@ -413,5 +441,5 @@ export async function deleteFormulaStoreEntry() {
 
 Object.assign(window, { openFormulaStoreEditor, addFormulaIngredientRow, saveFormulaStoreEntry, deleteFormulaStoreEntry, updateFormulaStoreSummary });
 
-export const __screenHtml = "<div id=\"formula-store-edit-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\" id=\"fs-edit-title\">Edit Formula</h2>\n  </div>\n  <div class=\"screen-body\" id=\"formula-store-edit-body\">\n    <div class=\"field u-mb-15\">\n      <label>Formula Name</label>\n      <input class=\"form-ctl\" type=\"text\" id=\"fs-edit-name\" maxlength=\"60\" placeholder=\"e.g. Premium Blend\">\n    </div>\n    <div class=\"grid-inputs u-mb-15\">\n      <div class=\"field\">\n        <label>Additional Cost (Per Unit)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-additional-cost\" step=\"0.01\" min=\"0\" value=\"0\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n      <div class=\"field\">\n        <label>Cost Adjustment for Sales &amp; Calc (X)</label>\n        <input class=\"form-ctl\" type=\"number\" id=\"fs-cost-factor\" step=\"0.01\" min=\"1\" value=\"1\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n    </div>\n    <div class=\"factory-formula-header\">\n      <span>Material</span>\n      <span>Cost / Unit</span>\n      <span>Qty (kg)</span>\n      <span></span>\n    </div>\n    <div id=\"fsEditContainer\"></div>\n    <button type=\"button\" class=\"btn btn-theme u-add-row-btn\" onclick=\"addFormulaIngredientRow()\">+ Add Ingredient Row</button>\n    <div class=\"formula-store-edit-hint\">Tip: search a material, or link a Formula so its materials follow any later changes to it.</div>\n    <div class=\"u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003\">\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Unit Weight:</span><span class=\"qty-val\" id=\"fsSummaryWeight\">0 kg</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Raw Material Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryRaw\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Total Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryPerUnit\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Cost per kg (Sales/Calc):</span><span class=\"cost-val\" id=\"fsSummaryPerKg\">0</span></div>\n    </div>\n    <div class=\"btn-split\">\n      <button class=\"btn btn-danger u-81e32d3 d-none\" id=\"fs-delete-btn\" onclick=\"deleteFormulaStoreEntry()\">Delete Formula</button>\n      <button class=\"btn btn-main u-mt-8 u-16000cc\" onclick=\"(async()=>{await saveFormulaStoreEntry()})()\">Save Formula</button>\n    </div>\n  </div>\n</div>";
+export const __screenHtml = "<div id=\"formula-store-edit-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\" id=\"fs-edit-title\">Edit Formula</h2>\n  </div>\n  <div class=\"screen-body\" id=\"formula-store-edit-body\">\n    <div class=\"field u-mb-15\">\n      <label>Formula Name</label>\n      <input class=\"form-ctl\" type=\"text\" id=\"fs-edit-name\" maxlength=\"60\" placeholder=\"e.g. Premium Blend\">\n    </div>\n    <div class=\"grid-inputs u-mb-15\">\n      <div class=\"field\">\n        <label>Additional Cost (Per Unit)</label>\n        <input class=\"form-ctl\" type=\"number\" inputmode=\"decimal\" id=\"fs-additional-cost\" step=\"0.01\" min=\"0\" value=\"0\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n      <div class=\"field\">\n        <label>Cost Adjustment for Sales &amp; Calc (X)</label>\n        <input class=\"form-ctl\" type=\"number\" inputmode=\"decimal\" id=\"fs-cost-factor\" step=\"0.01\" min=\"1\" value=\"1\" oninput=\"updateFormulaStoreSummary()\">\n      </div>\n    </div>\n    <div class=\"factory-formula-header\">\n      <span>Material</span>\n      <span>Cost / Unit</span>\n      <span>Qty (kg)</span>\n      <span></span>\n    </div>\n    <div id=\"fsEditContainer\"></div>\n    <button type=\"button\" class=\"btn btn-theme u-add-row-btn\" onclick=\"addFormulaIngredientRow()\">+ Add Ingredient Row</button>\n    <div class=\"formula-store-edit-hint\">Tip: search a material, or link a Formula so its materials follow any later changes to it.</div>\n    <div class=\"u-bg-accent-5 u-p-10 u-rounded-8 u-mb-15 u-4bb9003\">\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Unit Weight:</span><span class=\"qty-val\" id=\"fsSummaryWeight\">0 kg</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Raw Material Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryRaw\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Total Cost per Unit:</span><span class=\"cost-val\" id=\"fsSummaryPerUnit\">0</span></div>\n      <div class=\"factory-summary-row\"><span class=\"factory-summary-label\">Cost per kg (Sales/Calc):</span><span class=\"cost-val\" id=\"fsSummaryPerKg\">0</span></div>\n    </div>\n    <div class=\"btn-split\">\n      <button class=\"btn btn-danger u-81e32d3 d-none\" id=\"fs-delete-btn\" onclick=\"deleteFormulaStoreEntry()\">Delete Formula</button>\n      <button class=\"btn btn-main u-mt-8 u-16000cc\" onclick=\"(async()=>{await saveFormulaStoreEntry()})()\">Save Formula</button>\n    </div>\n  </div>\n</div>";
 export const __screenCss = "\n";

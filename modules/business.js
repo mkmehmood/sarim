@@ -1932,7 +1932,7 @@ auth = null; window.auth = auth;
 isSyncing = false; window.isSyncing = isSyncing;
 appMode = 'admin'; window.appMode = appMode;
 currentRepProfile = 'admin'; window.currentRepProfile = currentRepProfile;
-salesRepsList = ['NORAN SHAH', 'NOMAN SHAH']; window.salesRepsList = salesRepsList;
+salesRepsList = []; window.salesRepsList = salesRepsList;
 export const _VALID_APP_MODES = new Set(['admin','rep','production','factory','userrole']);
 
 export const _MODE_CODES = {

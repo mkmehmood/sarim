@@ -18,7 +18,7 @@
         </div>
         <div class="field">
           <label>Sale Price (per kg)</label>
-          <input class="form-ctl" type="number" id="store-sale-price-input" step="0.01" min="0" value="0">
+          <input class="form-ctl" type="number" inputmode="decimal" id="store-sale-price-input" step="0.01" min="0" value="0">
         </div>
       </div>
       <div class="u-1e68903 d-flex btn-row btn-split">
@@ -42,6 +42,7 @@
 <script type="module">
 import { LIMITS, nameIssue, numberIssue } from './input-guards.js';
 // ==== module: store-manager.js ====
+import { storeUsage, storeUsageText } from './input-guards.js';
 async function openStoreManagerScreen() {
   openStandaloneScreen('store-manager-screen');
   await renderStoreList();
@@ -122,6 +123,12 @@ async function deleteStore(index) {
   const stores = await (typeof window.getAppStores === 'function' ? window.getAppStores() : Promise.resolve([]));
   const s = stores[index];
   if (!s) return;
+  const _get = (k) => window.sqliteStore.get(k).then((v) => (Array.isArray(v) ? v : []));
+  const _use = storeUsage(s.key, { production: await _get('production'), factory: await _get('factory'), sales: await _get('sales'), returns: await _get('returns'), rep: await _get('rep') });
+  if (_use.total > 0) {
+    window.notifyBlocking('"' + s.name + '" still has ' + storeUsageText(_use) + '. Delete or move those records first, so no stock is left without a store.', 'warning', 'Warning');
+    return;
+  }
   const confirmed = await (typeof window.showGlassConfirm === 'function'
     ? window.showGlassConfirm('Delete store "' + s.name + '"?\nThis cannot be undone.', { title:'Delete Store', confirmText:'Delete', cancelText:'Cancel', icon:'🗑' })
     : Promise.resolve(window.confirm('Delete store "' + s.name + '"?')));

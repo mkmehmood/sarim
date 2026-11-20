@@ -1,6 +1,7 @@
 
 import { LIMITS, nameIssue, numberIssue } from '../../modules/input-guards.js';
 // ==== module: store-manager.js ====
+import { MAX_STORE_PRICE, storeUsage, storeUsageText } from '../../modules/input-guards.js';
 async function openStoreManagerScreen() {
   openStandaloneScreen('store-manager-screen');
   await renderStoreList();
@@ -81,6 +82,12 @@ async function deleteStore(index) {
   const stores = await (typeof window.getAppStores === 'function' ? window.getAppStores() : Promise.resolve([]));
   const s = stores[index];
   if (!s) return;
+  const _get = (k) => window.sqliteStore.get(k).then((v) => (Array.isArray(v) ? v : []));
+  const _use = storeUsage(s.key, { production: await _get('production'), factory: await _get('factory'), sales: await _get('sales'), returns: await _get('returns'), rep: await _get('rep') });
+  if (_use.total > 0) {
+    window.notifyBlocking('"' + s.name + '" still has ' + storeUsageText(_use) + '. Delete or move those records first, so no stock is left without a store.', 'warning', 'Warning');
+    return;
+  }
   const confirmed = await (typeof window.showGlassConfirm === 'function'
     ? window.showGlassConfirm('Delete store "' + s.name + '"?\nThis cannot be undone.', { title:'Delete Store', confirmText:'Delete', cancelText:'Cancel', icon:'🗑' })
     : Promise.resolve(window.confirm('Delete store "' + s.name + '"?')));
@@ -99,7 +106,15 @@ async function saveStoreFromForm() {
   const nameRaw = (document.getElementById('store-name-input').value || '').trim().toUpperCase();
   const formulaId = document.getElementById('store-formula-select').value || '';
   const salePriceRaw = parseFloat(document.getElementById('store-sale-price-input').value);
-  const salePrice = (isNaN(salePriceRaw) || salePriceRaw < 0) ? 0 : salePriceRaw;
+  if (!isNaN(salePriceRaw) && (salePriceRaw < 0 || salePriceRaw > MAX_STORE_PRICE)) {
+    if (typeof window.showToast === 'function') window.showToast('Sale price must be between 0 and ' + MAX_STORE_PRICE.toLocaleString() + ' per kg', 'warning');
+    return;
+  }
+  if ((document.getElementById('store-sale-price-input').value || '').trim() !== '' && isNaN(salePriceRaw)) {
+    if (typeof window.showToast === 'function') window.showToast('Sale price must be a number', 'warning');
+    return;
+  }
+  const salePrice = isNaN(salePriceRaw) ? 0 : salePriceRaw;
   const editIndex = parseInt(document.getElementById('store-edit-index').value, 10);
   if (!nameRaw) {
     if (typeof window.showToast === 'function') window.showToast('Store name is required', 'warning');
@@ -151,5 +166,5 @@ async function saveStoreFromForm() {
 }
 window.saveStoreFromForm = saveStoreFromForm;
 
-export const __screenHtml = "<div id=\"store-manager-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\">Store Manager</h2>\n  </div>\n  <div class=\"screen-body\" id=\"store-manager-body\">\n    <div class=\"card u-d8ddece st-border-bottom__e54b2f\">\n      <p class=\"settings-group-label\" id=\"store-form-heading\">New Store</p>\n      <input type=\"hidden\" id=\"store-edit-index\" value=\"-1\">\n      <div class=\"grid-inputs u-mb-15\">\n        <div class=\"field\">\n          <label>Store Name</label>\n          <input type=\"text\" id=\"store-name-input\" placeholder=\"e.g. KARACHI\" maxlength=\"32\" class=\"form-ctl u-3d59ac9\" oninput=\"this.value=this.value.toUpperCase()\">\n        </div>\n        <div class=\"field\">\n          <label>Formula</label>\n          <input type=\"hidden\" id=\"store-formula-select\" value=\"\">\n          <button type=\"button\" id=\"store-formula-btn\" class=\"form-ctl u-e17a8ec d-flex\" onclick=\"openStoreFormulaPicker(this)\"><span>Select formula</span><svg class=\"ic-chev\" width=\"12\" height=\"12\" viewBox=\"0 0 10 10\" fill=\"none\"><circle cx=\"5\" cy=\"5\" r=\"4.8\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M2.6 3.9L5 6.3L7.4 3.9\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button>\n        </div>\n        <div class=\"field\">\n          <label>Sale Price (per kg)</label>\n          <input class=\"form-ctl\" type=\"number\" id=\"store-sale-price-input\" step=\"0.01\" min=\"0\" value=\"0\">\n        </div>\n      </div>\n      <div class=\"u-1e68903 d-flex btn-row btn-split\">\n        <button class=\"btn btn-theme u-d59bb54 d-none st-background__f38efd\" id=\"store-cancel-edit-btn\" onclick=\"resetStoreForm()\">Cancel</button>\n        <button class=\"btn btn-main u-mt-8 u-634a28b\" onclick=\"(async()=>{await saveStoreFromForm()})()\">\n          <span id=\"store-save-btn-text\">Add Store</span>\n        </button>\n      </div>\n    </div>\n    <p class=\"settings-group-label\">Existing Stores</p>\n    <div id=\"store-list-container\"></div>\n    <div class=\"u-5efdd87 st-background__5e344c st-border-bottom__167edb\">\n      <strong class=\"u-cab13eb\">Note:</strong> A store's key is generated from its name when the store is created (ZUBAIR becomes <code>zubair</code>). It is permanent and links to all historical records, so renaming a store later is safe.\n      Renaming a store updates its display name everywhere. Deleting is only allowed if the store has no production records.\n      Changes sync to all connected devices automatically.\n    </div>\n  </div>\n</div>";
+export const __screenHtml = "<div id=\"store-manager-screen\" class=\"standalone-screen d-none\">\n  <div class=\"shell-bar screen-topbar\">\n    <h2 class=\"screen-title\">Store Manager</h2>\n  </div>\n  <div class=\"screen-body\" id=\"store-manager-body\">\n    <div class=\"card u-d8ddece st-border-bottom__e54b2f\">\n      <p class=\"settings-group-label\" id=\"store-form-heading\">New Store</p>\n      <input type=\"hidden\" id=\"store-edit-index\" value=\"-1\">\n      <div class=\"grid-inputs u-mb-15\">\n        <div class=\"field\">\n          <label>Store Name</label>\n          <input type=\"text\" id=\"store-name-input\" placeholder=\"e.g. KARACHI\" maxlength=\"32\" class=\"form-ctl u-3d59ac9\" oninput=\"this.value=this.value.toUpperCase()\">\n        </div>\n        <div class=\"field\">\n          <label>Formula</label>\n          <input type=\"hidden\" id=\"store-formula-select\" value=\"\">\n          <button type=\"button\" id=\"store-formula-btn\" class=\"form-ctl u-e17a8ec d-flex\" onclick=\"openStoreFormulaPicker(this)\"><span>Select formula</span><svg class=\"ic-chev\" width=\"12\" height=\"12\" viewBox=\"0 0 10 10\" fill=\"none\"><circle cx=\"5\" cy=\"5\" r=\"4.8\" fill=\"currentColor\" fill-opacity=\".12\"/><path d=\"M2.6 3.9L5 6.3L7.4 3.9\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button>\n        </div>\n        <div class=\"field\">\n          <label>Sale Price (per kg)</label>\n          <input class=\"form-ctl\" type=\"number\" inputmode=\"decimal\" id=\"store-sale-price-input\" step=\"0.01\" min=\"0\" value=\"0\">\n        </div>\n      </div>\n      <div class=\"u-1e68903 d-flex btn-row btn-split\">\n        <button class=\"btn btn-theme u-d59bb54 d-none st-background__f38efd\" id=\"store-cancel-edit-btn\" onclick=\"resetStoreForm()\">Cancel</button>\n        <button class=\"btn btn-main u-mt-8 u-634a28b\" onclick=\"(async()=>{await saveStoreFromForm()})()\">\n          <span id=\"store-save-btn-text\">Add Store</span>\n        </button>\n      </div>\n    </div>\n    <p class=\"settings-group-label\">Existing Stores</p>\n    <div id=\"store-list-container\"></div>\n    <div class=\"u-5efdd87 st-background__5e344c st-border-bottom__167edb\">\n      <strong class=\"u-cab13eb\">Note:</strong> A store's key is generated from its name when the store is created (ZUBAIR becomes <code>zubair</code>). It is permanent and links to all historical records, so renaming a store later is safe.\n      Renaming a store updates its display name everywhere. Deleting is only allowed if the store has no production records.\n      Changes sync to all connected devices automatically.\n    </div>\n  </div>\n</div>";
 export const __screenCss = "\n";

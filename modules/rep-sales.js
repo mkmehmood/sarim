@@ -1,3 +1,4 @@
+import { redactMoney } from './money-privacy.js';
 import { canonicalName, dateIssue, nameIssue, phoneIssue, quantityIssue } from './input-guards.js';
 import { themeColor } from './theme-tokens.js';
 import { formatDayMonthYear } from './date-format.js';
@@ -217,7 +218,7 @@ const _lockedCost = (_ed && _ed.original.quantity > 0) ? (_ed.original.totalCost
 const totalValue = round2(qty * _lockedPrice);
 const computedProfit = round2(totalValue - (qty * _lockedCost));
 if(computedProfit < 0) {
-window.notifyBlocking(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, 'warning', 'Warning');
+window.notifyBlocking(redactMoney(` This sale would result in a loss of ${fmtAmt ? fmtAmt(Math.abs(computedProfit)) : fmtNum(Math.abs(computedProfit))}. Check sale price vs cost price in Factory Formulas.`, 'This sale cannot be saved at the current price. Please contact the admin.'), 'warning', 'Warning');
 restoreBtn();
 return;
 }

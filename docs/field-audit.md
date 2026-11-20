@@ -100,3 +100,16 @@ Method as before. Cloud features (backups, approvals, manager sessions) need a s
 - Form controls use 0.85rem (13.6 px) text, which makes iPhone Safari zoom in when a field is focused.
 - `.btn-sm` (Edit, Delete, Copy Voucher) is 30 px high, under the usual 44 px touch target, and sits beside other buttons.
 - 26 of 32 number fields have no `inputmode`. 24 fields (mostly search boxes) have no label or aria-label.
+
+### Second pass: fixed
+
+| Area | Fix |
+|---|---|
+| Store manager | A store that still has production, factory batches, sales, returns or rep sales cannot be deleted; the message names what is left. Sale price must be a number between 0 and 1,000,000 per kg. |
+| Formula editor | Unpicked or zero-quantity ingredient rows, a quantity with no ingredient, the same material or linked formula twice, duplicate formula names, a cost factor of 0 or less and a negative additional cost are all blocked with a message instead of being dropped silently. |
+| Formula delete | Blocked while units made with the formula are still unused; otherwise the confirm shows how many factory batches used it. |
+| Backup and restore | The sales rep list is now in the backup. A restore merges it with the current list and with rep names found on the restored sales and rep records, so older backups recover their reps too. |
+| Rep list | The hard-coded names "NORAN SHAH" and "NOMAN SHAH" are gone; a new install starts with no reps. |
+| Manager mode | The Rep tab "loss of X" message is hidden from money-restricted users. |
+| Batch screens | Row targets are built from the shown present + add, unit weight shows 4 decimals in kg, and batches above 10,000,000 kg are treated as no value. |
+| Phone | Pinch zoom is allowed, iPhone fields use 16 px text, small buttons are 44 px on touch screens, all 32 number fields have a number-pad `inputmode`, and unlabelled fields and icon buttons get an accessible name. |

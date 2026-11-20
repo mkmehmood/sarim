@@ -10,11 +10,11 @@
     <div class="grid-inputs u-mb-15">
       <div class="field">
         <label>Additional Cost (Per Unit)</label>
-        <input class="form-ctl" type="number" id="fs-additional-cost" step="0.01" min="0" value="0" oninput="updateFormulaStoreSummary()">
+        <input class="form-ctl" type="number" inputmode="decimal" id="fs-additional-cost" step="0.01" min="0" value="0" oninput="updateFormulaStoreSummary()">
       </div>
       <div class="field">
         <label>Cost Adjustment for Sales &amp; Calc (X)</label>
-        <input class="form-ctl" type="number" id="fs-cost-factor" step="0.01" min="1" value="1" oninput="updateFormulaStoreSummary()">
+        <input class="form-ctl" type="number" inputmode="decimal" id="fs-cost-factor" step="0.01" min="1" value="1" oninput="updateFormulaStoreSummary()">
       </div>
     </div>
     <div class="factory-formula-header">
@@ -42,10 +42,12 @@
 </style>
 <script type="module">
 // ==== module: formula-store-edit.js ====
+import { formulaFormIssue } from './formula-checks.js';
 import { _el, _num, _fmt, getFormulaStore, _saveFormulaStore, _feedWrites } from './formula-store.js';
 import { LIMITS, duplicateName, nameIssue, numberIssue } from './input-guards.js';
 import { describeFormula, linkedPerKg, linkIngredient, isLink, canLink, formulaUsers } from './formula-links.js';
-import { esc, ensureArray, sqliteStore, getTimestamp, generateUUID } from './business.js';
+import { esc, ensureArray, fmtNum, sqliteStore, getTimestamp, generateUUID } from './business.js';
+import { computeUnitPools } from './formula-pools.js';
 import { showToast, showGlassConfirm } from './customers.js';
 import { confirmGuard } from './confirm-guard.js';
 import { sendDeviceNotification } from './notify.js';
@@ -396,7 +398,25 @@ export async function addFormulaIngredientRow() {
 
 export function saveFormulaStoreEntry(...a) { return confirmGuard('saveFormulaStoreEntry', () => _saveFormulaStoreEntryRaw(...a), { label: 'Formula', late: true, isUpdate: () => !!_editingId }); }
 
+function _editorRows() {
+  const out = [];
+  const container = _el('fsEditContainer');
+  if (!container) return out;
+  container.querySelectorAll('.factory-formula-grid:not(.factory-link-child)').forEach((row) => {
+    const inp = row.querySelector('.factory-mat-search-input');
+    const qtyIn = row.querySelector('.factory-mat-qty');
+    out.push({
+      label: inp ? inp.value : '',
+      matId: inp && inp.dataset.kind !== 'formula' ? (inp.dataset.matId || '') : '',
+      formulaId: inp && inp.dataset.kind === 'formula' ? (inp.dataset.formulaId || '') : '',
+      qty: qtyIn ? qtyIn.value : '',
+    });
+  });
+  return out;
+}
 async function _saveFormulaStoreEntryRaw() {
+  const _issue = formulaFormIssue({ rows: _editorRows() });
+  if (_issue) { window.notifyBlocking(_issue, 'warning', 'Warning'); return false; }
   const c = _collectEditor();
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }
   if (!c.ingredients.length) { window.notifyBlocking('Add at least one ingredient with quantity', 'warning', 'Warning'); return false; }
@@ -441,7 +461,15 @@ export async function deleteFormulaStoreEntry() {
     window.notifyBlocking(`Linked inside ${linkedBy.join(', ')}. Remove that link first.`, 'warning', 'Warning');
     return;
   }
-  const ok = await showGlassConfirm('Delete this formula from the store?', { title: 'Delete Formula', confirmText: 'Delete', danger: true });
+  const _factory = ensureArray(await sqliteStore.get('factory'));
+  const _production = ensureArray(await sqliteStore.get('production'));
+  const _left = computeUnitPools(_factory, _production)[String(_editingId)];
+  if (_left && _left.available > 0.0005) {
+    window.notifyBlocking(`${fmtNum(_left.available)} unit${_left.available === 1 ? '' : 's'} made with this formula are still unused. Use them in production or delete those factory batches first.`, 'warning', 'Warning');
+    return;
+  }
+  const _past = _factory.filter((e) => e && !e.deletedAt && String(e.formulaId) === String(_editingId)).length;
+  const ok = await showGlassConfirm('Delete this formula from the store?' + (_past ? `\n\nIt was used for ${_past} factory batch${_past === 1 ? '' : 'es'}. Their recorded costs stay as they are.` : ''), { title: 'Delete Formula', confirmText: 'Delete', danger: true });
   if (!ok) return;
   const fullList = await getFormulaStore();
   const removed = fullList.find((f) => String(f.id) === String(_editingId));

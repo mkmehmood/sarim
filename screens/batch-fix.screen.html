@@ -118,7 +118,7 @@ export function recomputeBatchFix(skipInput) {
     const card = document.querySelector(`#bfRows .bf-card[data-id="${CSS.escape(x.id)}"]`);
     if (!card) return;
     card.querySelector('[data-f="present"]').textContent = _fmt(x.present);
-    card.querySelector('[data-f="target"]').textContent = _fmt(x.target);
+    card.querySelector('[data-f="target"]').textContent = _fmt(Number(fmtAmt(x.present, _state.unit)) + Number(fmtAmt(x.add, _state.unit)));
     const input = card.querySelector('input[data-id]');
     if (input && input !== skipInput) input.value = fmtAmt(x.add, _state.unit);
   });

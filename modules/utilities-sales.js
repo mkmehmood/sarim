@@ -1,3 +1,5 @@
+import { mergeRepNames } from './rep-names.js';
+import { _set_salesRepsList } from './business.js';
 import { canonicalName, dateIssue, nameIssue, phoneIssue, quantityIssue } from './input-guards.js';
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
 import { themeColor, themeVar } from './theme-tokens.js';
@@ -3960,6 +3962,13 @@ if (_cleanTracking &&
     JSON.stringify(_cleanTracking) !== JSON.stringify(currentSettings.factoryUnitTracking)) {
 await sqliteStore.set('tracking', _cleanTracking);
 await sqliteStore.set('tracking_timestamp', settingsTimestamp);
+}
+{
+const _mergedReps = mergeRepNames(await sqliteStore.get('reps', []), data);
+if (_mergedReps.length) {
+await sqliteStore.set('reps', _mergedReps);
+_set_salesRepsList(_mergedReps);
+}
 }
 if (data.settings && JSON.stringify(data.settings) !== JSON.stringify(currentSettings.naswarDefaultSettings)) {
 await sqliteStore.set('settings', data.settings);

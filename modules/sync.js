@@ -827,7 +827,7 @@ try {
 const settingsRef = this.userRef.collection('settings').doc('config');
 await settingsRef.set({
 settings: {},
-repProfile: salesRepsList[0] || 'NORAN SHAH',
+repProfile: salesRepsList[0] || '',
 theme: 'dark',
 biometricEnabled: false,
 lastSync: null,

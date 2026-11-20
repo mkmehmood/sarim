@@ -1,7 +1,7 @@
 
 // ==== module: batch-mix.js ====
 import { esc } from '../../modules/business.js';
-import { MAX_SAVED_CALCS, calcsOf, defaultCalcName, formulaIngredients, planBatch, removeCalc, unitWeight, upsertCalc } from '../../modules/batch-calc.js';
+import { MAX_SAVED_CALCS, fmtPrecise, calcsOf, defaultCalcName, formulaIngredients, planBatch, removeCalc, unitWeight, upsertCalc } from '../../modules/batch-calc.js';
 import { convertValue, el, fixed3, fmtAmt, loadFormulas, markActive, pickFormula, round6, sectionLabel, setPickerLabel, show, summaryBox, summaryRow } from '../../modules/batch-common.js';
 import { newCalcId, renderSavedList, setSaveButtons } from '../../modules/batch-saved.js';
 import { showGlassConfirm, showToast } from '../../modules/customers.js';
@@ -32,7 +32,7 @@ function _renderIngredients() {
   const input = el('bm-ing-select');
   _setIngredient(input ? input.value : '', true);
   const info = el('bmFormulaInfo');
-  if (info) info.textContent = f ? `1 unit = ${_fmt(unitWeight(f))} ${_state.unit} · ${ings.length} ingredient${ings.length === 1 ? '' : 's'}` : '';
+  if (info) info.textContent = f ? `1 unit = ${fmtPrecise(_toUnit(unitWeight(f)), _state.unit)} ${_state.unit} · ${ings.length} ingredient${ings.length === 1 ? '' : 's'}` : '';
 }
 export function openBatchMixIngredientPicker(btn) {
   pickFormula(btn, '_pop_batchMixIng', _ingredients().map((i) => ({ id: i.id, name: `${i.name} (${_fmt(i.quantity)} ${_state.unit} / unit)` })), (v) => _setIngredient(v));
@@ -51,7 +51,7 @@ export function recomputeBatchMix() {
   _state.plan = p;
   show('bmSaveBar', true);
   const u = _state.unit;
-  const head = summaryRow('Units', fixed3(p.units)) + summaryRow('Weight per Unit', `${_fmt(p.unitWeight)} ${u}`) + summaryRow('Total Batch Weight', `${_fmt(p.totalWeight)} ${u}`, 'rev-val');
+  const head = summaryRow('Units', fixed3(p.units)) + summaryRow('Weight per Unit', `${fmtPrecise(_toUnit(p.unitWeight), u)} ${u}`) + summaryRow('Total Batch Weight', `${_fmt(p.totalWeight)} ${u}`, 'rev-val');
   const rows = p.rows.map((r) => summaryRow(esc(r.name), `${_fmt(r.total)} ${u}`)).join('');
   box.innerHTML = summaryBox(head) + sectionLabel('Required Ingredients') + summaryBox(rows);
 }

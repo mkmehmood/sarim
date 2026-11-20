@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalName, entityBalance, phoneIssue, dateIssue, strictAmount, roundMoney, amountIssue } from '../modules/input-guards.js';
+import { storeUsage, storeUsageText, canonicalName, entityBalance, phoneIssue, dateIssue, strictAmount, roundMoney, amountIssue } from '../modules/input-guards.js';
 
 describe('input guards', () => {
   it('phone: blank is fine, letters and bad lengths are rejected', () => {
@@ -56,5 +56,12 @@ describe('input guards', () => {
     assert.equal(entityBalance(tx, 'a', 250.5), 1000);
     assert.equal(entityBalance(tx, 'zzz'), 0);
     assert.equal(entityBalance(null, 'a'), 0);
+  });
+  it('storeUsage counts every record that points at a store', () => {
+    const data = { production: [{ store: 'zubair' }, { store: 'zubair', deletedAt: 1 }, { store: 'asaan' }], sales: [{ supplyStore: 'zubair' }, { supplyStore: 'zubair' }], factory: [{ store: 'zubair' }], returns: [], rep: [{ supplyStore: 'zubair' }] };
+    const u = storeUsage('zubair', data);
+    assert.deepEqual([u.production, u.sales, u.factory, u.returns, u.rep, u.total], [1, 2, 1, 0, 1, 5]);
+    assert.equal(storeUsage('mahmood', data).total, 0);
+    assert.equal(storeUsageText(u), '1 production entry, 1 factory batch, 2 sales, 1 rep sale');
   });
 });

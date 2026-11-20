@@ -3829,7 +3829,7 @@ return;
 const storedMode = await sqliteStore.get('appMode');
 if (storedMode === 'rep') {
 _set_appMode('rep');
-_set_currentRepProfile(await sqliteStore.get('repProfile') || (salesRepsList[0] || 'NORAN SHAH'));
+_set_currentRepProfile(await sqliteStore.get('repProfile') || (salesRepsList[0] || ''));
 lockToRepMode();
 } else if (storedMode === 'userrole') {
 _set_appMode('userrole');
@@ -4489,7 +4489,7 @@ repProfile: {
 localKey: 'repProfile',
 localVariable: 'currentRepProfile',
 type: 'string',
-defaultValue: 'NORAN SHAH',
+defaultValue: '',
 description: 'Active sales-representative profile name'
 },
 deleted: {
@@ -4727,8 +4727,7 @@ const stored = await sqliteStore.get('reps', null);
 if (Array.isArray(stored) && stored.length > 0) {
 _set_salesRepsList(stored);
 } else {
-_set_salesRepsList(['NORAN SHAH', 'NOMAN SHAH']);
-await sqliteStore.set('reps', salesRepsList);
+_set_salesRepsList([]);
 }
 if (firebaseDB && currentUser) {
 try {

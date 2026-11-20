@@ -5774,3 +5774,10 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-legend-row b { margin-left: auto; font-family: var(--font-num); }
 .ov-legend-row em { font-style: normal; color: var(--text-muted); width: 36px; text-align: right; }
 .ov-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+@supports (-webkit-touch-callout: none) {
+  .form-ctl, input, select, textarea { font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .btn-sm { height: 44px; min-height: 44px; }
+}

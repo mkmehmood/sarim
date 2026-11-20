@@ -45,8 +45,8 @@
   object-src  'none';
   upgrade-insecure-requests;
 ">
-<meta name="viewport" id="app-viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<script>(function(){var c=window.Capacitor,n=!!(c&&typeof c.isNativePlatform==="function"&&c.isNativePlatform())||/;\s*wv\)/.test(navigator.userAgent);if(n)return;var m=document.getElementById("app-viewport");if(m)m.setAttribute("content","width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual")})();</script>
+<meta name="viewport" id="app-viewport" content="width=device-width, initial-scale=1.0">
+<script>(function(){var c=window.Capacitor,n=!!(c&&typeof c.isNativePlatform==="function"&&c.isNativePlatform())||/;\s*wv\)/.test(navigator.userAgent);if(n)return;var m=document.getElementById("app-viewport");if(m)m.setAttribute("content","width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual")})();</script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -848,7 +848,7 @@ window._showLogoutConfirmDialog = async function() {
       <div class="u-quick-row">
         <div class="field u-field-flex-1-min">
           <label>Amount (Rs)</label>
-          <input class="form-ctl u-w-full" type="number" id="quickExpenseAmount" placeholder="0.00">
+          <input class="form-ctl u-w-full" type="number" inputmode="decimal" id="quickExpenseAmount" placeholder="0.00">
         </div>
         <div class="field u-field-flex-1-5b">
           <label>Description (optional)</label>
@@ -1101,7 +1101,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 <div id="rep-sale-inputs">
 <div class="grid-inputs">
-<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="rep-quantity" step="0.001" oninput="calculateRepSalePreview()"></div>
+<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="rep-quantity" step="0.001" oninput="calculateRepSalePreview()"></div>
 <div class="field">
 <label>Payment Type</label>
 <div class="toggle-group">
@@ -1116,11 +1116,11 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="grid-inputs">
 <div class="field">
 <label>Amount Received (₨)</label>
-<input class="form-ctl" type="number" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
+<input class="form-ctl" type="number" inputmode="numeric" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
 </div>
 <div class="field">
 <label>Expired / Damage Qty (kg)</label>
-<input class="form-ctl" type="number" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
+<input class="form-ctl" type="number" inputmode="decimal" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
 </div>
 </div>
 </div>
@@ -1218,13 +1218,13 @@ oninput="renderRepCustomerTable()">
 </div>
 <div class="grid-inputs">
 <div class="field"><label>Select Date</label><input class="form-ctl" type="date" id="sys-date" onchange="refreshUI(); setOverviewMode(currentOverviewMode);"></div>
-<div class="field"><label>Gross Weight (kg)</label><input class="form-ctl" type="number" id="gross-wt" step="0.001" oninput="calcNet()"></div>
-<div class="field"><label>Container Weight (kg)</label><input class="form-ctl" type="number" id="cont-wt" step="0.001" oninput="calcNet()"></div>
+<div class="field"><label>Gross Weight (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="gross-wt" step="0.001" oninput="calcNet()"></div>
+<div class="field"><label>Container Weight (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="cont-wt" step="0.001" oninput="calcNet()"></div>
 </div>
 <div class="grid-inputs">
 <div class="field">
 <label>Net Production (kg)</label>
-<input type="number" id="net-wt" readonly class="form-ctl u-540e04e st-background__44812c">
+<input type="number" inputmode="decimal" id="net-wt" readonly class="form-ctl u-540e04e st-background__44812c">
 <div data-money id="dynamic-cost-display" class="u-7960f3f text-xs">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
@@ -1238,7 +1238,7 @@ Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</s
 <div class="grid-inputs">
 <div class="field">
 <label>Formula Units Used</label>
-<input class="form-ctl" type="number" id="formula-units" step="0.001" min="0" value="1" oninput="calculateDynamicProductionCost()">
+<input class="form-ctl" type="number" inputmode="decimal" id="formula-units" step="0.001" min="0" value="1" oninput="calculateDynamicProductionCost()">
 <div class="u-field-hint-xs" >
 Units of factory mixture consumed
 </div>
@@ -1380,24 +1380,24 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 <div id="cust-sale-inputs">
 <div class="grid-inputs">
-<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
+<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
 </div>
 <div id="cust-return-inputs" class="hidden">
 <div class="grid-inputs">
-<div class="field"><label>Expired / Damage Qty (kg)</label><input class="form-ctl" type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
-<div class="field"><label>Returned Qty (kg)</label><input class="form-ctl" type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Expired / Damage Qty (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Returned Qty (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
 </div>
 </div>
 <div id="cust-coll-inputs" class="hidden">
 <div class="grid-inputs">
 <div class="field">
 <label>Amount Received (₨)</label>
-<input class="form-ctl" type="number" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
+<input class="form-ctl" type="number" inputmode="numeric" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
 </div>
 <div class="field">
 <label>Expired / Damage Qty (kg)</label>
-<input class="form-ctl" type="number" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
+<input class="form-ctl" type="number" inputmode="decimal" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
 </div>
 </div>
 <label class="pf-check"><input type="checkbox" id="custAddToLedger"><span>Add to Daily Ledger</span></label>
@@ -1545,12 +1545,12 @@ oninput="filterCustomers()">
 <div class="grid-inputs">
 <div class="field">
 <label>Total Sold Qty</label>
-<input type="number" id="totalSold" readonly class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
+<input type="number" inputmode="decimal" id="totalSold" readonly class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
 </div>
-<div class="field"><label>Returned Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" id="returnedQuantity" readonly tabindex="-1" placeholder="0" oninput="handleReturnQtyInput()"></div>
-<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" id="expiredQuantity" readonly tabindex="-1" placeholder="0" oninput="handleExpiredQtyInput()"></div>
-<div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
-<div class="field"><label>Net Sold Qty</label><input type="number" id="netSoldQty" readonly tabindex="-1" placeholder="0" class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Returned Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" inputmode="decimal" id="returnedQuantity" readonly tabindex="-1" placeholder="0" oninput="handleReturnQtyInput()"></div>
+<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" inputmode="decimal" id="expiredQuantity" readonly tabindex="-1" placeholder="0" oninput="handleExpiredQtyInput()"></div>
+<div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" inputmode="decimal" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Net Sold Qty</label><input type="number" inputmode="decimal" id="netSoldQty" readonly tabindex="-1" placeholder="0" class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div id="repReturnAutoHint" class="hidden u-field-hint u-78f55da-hint"></div>
 <div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb">
 <label class="u-5c10e65"> Return Stock To Physical Inventory:</label>
@@ -1568,18 +1568,18 @@ oninput="filterCustomers()">
 * Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
 </div>
 </div>
-<div class="field"><label>Credit Sales Qty</label><input class="form-ctl" type="number" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+<div class="field"><label>Credit Sales Qty</label><input class="form-ctl" type="number" inputmode="decimal" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Commission</div>
 <div class="grid-inputs">
-<div class="field"><label>Commission / Unit</label><input class="form-ctl" type="number" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
-<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Commission / Unit</label><input class="form-ctl" type="number" inputmode="decimal" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" inputmode="decimal" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Collections &amp; Handover Cash</div>
 <div class="grid-inputs">
-<div class="field"><label>Recovered Credit</label><input class="form-ctl" type="number" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
-<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
-<div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" id="receivedCash" oninput="calculateSales()"></div>
+<div class="field"><label>Recovered Credit</label><input class="form-ctl" type="number" inputmode="decimal" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+<div class="field"><label>Field Expenses</label><input type="number" inputmode="decimal" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" inputmode="decimal" id="receivedCash" oninput="calculateSales()"></div>
 </div>
 <div class="card result-box st-background__2cf90b" id="calc-result-card">
 <div class="u-787e284 d-flex">
@@ -1737,7 +1737,7 @@ oninput="filterCustomers()">
 <div class="grid-inputs">
 <div class="field">
 <label>Units to Produce</label>
-<input class="form-ctl" type="number" id="factoryProductionUnits" value="1" min="1" oninput="calculateFactoryProduction()">
+<input class="form-ctl" type="number" inputmode="decimal" id="factoryProductionUnits" value="1" min="1" oninput="calculateFactoryProduction()">
 </div>
 <div class="field">
 <label>Total Cost</label>
@@ -1914,7 +1914,7 @@ autocomplete="off" class="form-ctl u-13f34eb"
 <div class="u-field-flex-1-min" >
 <label class="u-label-sm" >Amount</label>
 <input
-type="number"
+type="number" inputmode="decimal"
 id="expenseAmount"
 placeholder="0"
 step="0.01"

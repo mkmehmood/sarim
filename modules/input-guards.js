@@ -98,3 +98,29 @@ export function duplicateName(typed, known, ignoreId) {
   if (!key) return null;
   return (Array.isArray(known) ? known : []).find((k) => k && String(k.id) !== String(ignoreId) && String(k.name || '').replace(/\s+/g, ' ').trim().toLowerCase() === key) || null;
 }
+
+export function storeUsage(key, data) {
+  const k = String(key || '');
+  const d = data || {};
+  const count = (list, field) => (Array.isArray(list) ? list : []).filter((r) => r && !r.deletedAt && String(r[field] || '') === k).length;
+  const out = {
+    production: count(d.production, 'store'),
+    factory: count(d.factory, 'store'),
+    sales: count(d.sales, 'supplyStore'),
+    returns: count(d.returns, 'store'),
+    rep: count(d.rep, 'supplyStore'),
+  };
+  out.total = out.production + out.factory + out.sales + out.returns + out.rep;
+  return out;
+}
+
+export function storeUsageText(usage) {
+  const parts = [];
+  if (usage.production) parts.push(`${usage.production} production entr${usage.production === 1 ? 'y' : 'ies'}`);
+  if (usage.factory) parts.push(`${usage.factory} factory batch${usage.factory === 1 ? '' : 'es'}`);
+  if (usage.sales) parts.push(`${usage.sales} sale${usage.sales === 1 ? '' : 's'}`);
+  if (usage.returns) parts.push(`${usage.returns} return${usage.returns === 1 ? '' : 's'}`);
+  if (usage.rep) parts.push(`${usage.rep} rep sale${usage.rep === 1 ? '' : 's'}`);
+  return parts.join(', ');
+}
+

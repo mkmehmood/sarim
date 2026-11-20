@@ -1,5 +1,7 @@
 const EPS = 1e-9;
-const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 ? n : 0; };
+export const MAX_BATCH_KG = 10000000;
+export const fmtPrecise = (v, unit) => String(unit === 'g' ? Math.round(v * 10) / 10 : Math.round(v * 10000) / 10000);
+const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 && n <= MAX_BATCH_KG ? n : 0; };
 export function formulaIngredients(formula) {
   return (Array.isArray(formula && formula.ingredients) ? formula.ingredients : [])
     .map((i) => ({ id: String(i.id), name: i.name || 'Untitled', quantity: num(i.quantity) }))
