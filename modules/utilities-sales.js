@@ -582,7 +582,7 @@ window.notifyBlocking(" Failed to delete transaction. Please try again.", 'error
 
 export async function filterPaymentHistory() {
 const searchTerm = document.getElementById('payment-search').value.toLowerCase();
-const allCards = document.querySelectorAll('#paymentHistoryList .card');
+const allCards = document.querySelectorAll('#paymentHistoryList .card:not(.cm-day)');
 allCards.forEach(card => {
 const cardText = card.textContent.toLowerCase();
 if (cardText.includes(searchTerm)) {
@@ -3341,7 +3341,7 @@ updateUnitsAvailableIndicator();
 
 export function filterProductionHistory() {
 const searchTerm = document.getElementById('production-search').value.toLowerCase();
-const allCards = document.querySelectorAll('#prodHistoryList .card');
+const allCards = document.querySelectorAll('#prodHistoryList .card:not(.cm-day)');
 allCards.forEach(card => {
 const cardText = card.textContent.toLowerCase();
 if (cardText.includes(searchTerm)) {
@@ -3354,7 +3354,7 @@ window.setDisplay(card, 'none');
 
 export function filterCustomerTransactions() {
 const searchTerm = document.getElementById('customer-search').value.toLowerCase();
-const allCards = document.querySelectorAll('#custHistoryList .card');
+const allCards = document.querySelectorAll('#custHistoryList .card:not(.cm-day)');
 allCards.forEach(card => {
 const customerName = card.querySelector('.customer-name')?.textContent.toLowerCase() || '';
 if (customerName.includes(searchTerm)) {

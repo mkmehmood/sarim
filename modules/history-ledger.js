@@ -10,8 +10,6 @@ const toneOf = (c) => ['good', 'bad', 'warn', 'info', 'muted'].find((t) => c.cla
 
 const sigs = new WeakMap();
 const srcObservers = new WeakMap();
-let sheetCard = null;
-let sheetBody = null;
 let armedAt = 0;
 let blockOpenUntil = 0;
 
@@ -54,7 +52,9 @@ function adopt(list) {
 const NF = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 const plain = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&bull;|&middot;/g, ' ').replace(/\s+/g, ' ').trim();
 const numOf = (h) => { const m = plain(h).replace(/,/g, '').match(/-?\d+(?:\.\d+)?/); return m ? parseFloat(m[0]) : 0; };
-const TAG_TONE = { good: 'is-good', warn: 'is-warn', bad: 'is-bad', info: 'is-info', muted: 'is-info' };
+const TAG_CLS = { good: 'paid', warn: 'pending', bad: 'is-bad', info: '', muted: '' };
+const IN_TAG = /collection|^in$|received|reconciled|return/i;
+const DATE_HEAD = /^\s*\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}(?:\s*@\s*(\d{1,2}:\d{2}(?::\d{2})?\s*[AP]M))?/i;
 const DOT = { good: 'cm-in', warn: 'cm-cr', bad: 'cm-out' };
 const SUMS = {
   custHistoryList: { kgWord: 'kg sold', a: ['Sold', (e) => !/collection|reconciled|rep return/i.test(e.tag)], b: ['Received', (e) => /collection|paid|cash|received/i.test(e.tag)] },
@@ -78,6 +78,35 @@ function kgOf(card, amtHtml, subHtml) {
   return m ? parseFloat(m[1]) : 0;
 }
 
+function metricList(card) {
+  return Array.from(card.querySelectorAll('.hc-metric')).map((m) => ({ l: (m.querySelector('dt') || {}).textContent || '', v: (m.querySelector('dd') || {}).innerHTML || '' })).filter((m) => plain(m.v));
+}
+
+function qtyRateOf(card) {
+  const mets = metricList(card);
+  const q = mets.find((m) => /^quantity$/i.test(m.l.trim()));
+  const rt = mets.find((m) => /^rate$/i.test(m.l.trim()));
+  return q && rt ? `${plain(q.v)} @ ${plain(rt.v).replace(/\/kg/i, '')}` : '';
+}
+
+function detailHtml(card, e) {
+  const body = card.querySelector(':scope > .hc-body');
+  if (!body) return { info: '', rows: '' };
+  const mets = metricList(body);
+  const used = new Set();
+  let info = '';
+  Array.from(body.querySelectorAll('.hc-chips > *')).map((c) => c.textContent.trim()).filter(Boolean).forEach((c) => { info += `<div class="hl-line is-soft">${esc(c)}</div>`; });
+  const q = mets.find((m) => /^quantity$/i.test(m.l.trim()));
+  const rt = mets.find((m) => /^rate$/i.test(m.l.trim()));
+  if (q && rt) { used.add(q); used.add(rt); info += `<div class="hl-line">${esc(plain(q.v))} @ ${esc(plain(rt.v).replace(/\/kg/i, ''))} = ${e.amt}</div>`; }
+  const note = body.querySelector('.hc-note');
+  if (note && plain(note.innerHTML)) info += `<div class="hl-line is-soft">${note.innerHTML}</div>`;
+  const kv = (l, v) => `<div class="txn-balance-after"><span>${esc(l)}</span><b>${v}</b></div>`;
+  let rows = mets.filter((m) => !used.has(m)).map((m) => kv(m.l, m.v)).join('');
+  rows += Array.from(body.querySelectorAll('.hc-mat')).map((m) => kv((m.querySelector('.hc-mat-name') || {}).textContent || '', (m.querySelector('.hc-mat-val') || {}).innerHTML || '')).join('');
+  return { info, rows };
+}
+
 function parseCard(card) {
   const date = card.getAttribute('data-date') || '';
   const q = (sel) => card.querySelector(':scope > .hc-head ' + sel);
@@ -97,6 +126,7 @@ function parseCard(card) {
     amt: amtHtml,
     tag: tag ? tag.textContent.trim() : '',
     kg: kgOf(card, amtHtml, subHtml),
+    qtyRate: qtyRateOf(card),
     money: isKgAmt ? 0 : numOf(amtHtml)
   };
 }
@@ -115,13 +145,25 @@ function summarize(listId, items) {
   return { kg: out.kg, kgText: out.kg > 0 ? `${NF.format(out.kg)} ${cfg.kgWord || 'kg'}` : '', parts, cfg, vals: out };
 }
 
+function rowSub(e) {
+  const m = e.sub.match(DATE_HEAD);
+  if (!m) return e.sub;
+  const rest = e.sub.slice(m[0].length);
+  const parts = [e.qtyRate, m[1]].filter(Boolean).join(' \u00b7 ');
+  return parts + rest;
+}
+
+function tagHtml(e) {
+  return e.tag ? `<span class="badge status-badge ${TAG_CLS[e.tone] || ''}">${esc(e.tag.toUpperCase())}</span>` : '';
+}
+
 function rowHtml(e, idx, first) {
   const d = e.dkey ? new Date(e.dkey + 'T00:00:00') : null;
   const ok = d && !isNaN(d.getTime());
   const dnum = ok ? d.getDate() : '';
   const dwk = ok ? d.toLocaleDateString('en-US', { weekday: 'short' }) : '';
-  const tag = e.tag ? ` <span class="hl-tag ${TAG_TONE[e.tone] || 'is-info'}">${esc(e.tag)}</span>` : '';
-  return `<button type="button" class="row cm-row hl-row ${DOT[e.tone] || ''}" data-i="${idx}"><span class="cm-date">${first && ok ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tag}</span><span class="cm-sub">${e.sub}</span></span><span class="cm-amt"><b>${e.amt}</b></span></button>`;
+  const isIn = IN_TAG.test(e.tag) && e.money > 0;
+  return `<button type="button" class="row cm-row hl-row ${DOT[e.tone] || ''}" data-i="${idx}"><span class="cm-date">${first && ok ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tagHtml(e)}</span><span class="cm-sub">${rowSub(e)}</span></span><span class="cm-amt"><b class="${isIn ? 'is-in' : ''}">${isIn ? '+ ' : ''}${e.amt}</b></span></button>`;
 }
 
 function dayFoot(listId, items) {
@@ -165,7 +207,7 @@ function rebuild(list) {
   led.classList.remove('is-comfortable');
   let html = '';
   months.forEach((M, mi) => {
-    const days = M.days.map((D) => `<div class="hl-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${dayFoot(list.id, D.items)}</div>`).join('');
+    const days = M.days.map((D) => `<div class="card cm-day hl-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${dayFoot(list.id, D.items)}</div>`).join('');
     const md = M.key === 'undated' ? null : new Date(M.key + '-01T00:00:00');
     const name = md && !isNaN(md.getTime()) ? formatMonthYear(md) : 'No date';
     const collapsed = many && mi > 0;
@@ -236,6 +278,7 @@ function inSheet(t) {
 }
 
 let sheetActs = null;
+let sheetActsParent = null;
 let sheetEdit = null;
 
 export function closeHistorySheet() {
@@ -244,13 +287,9 @@ export function closeHistorySheet() {
   if (sheet) sheet.classList.remove('is-open');
   if (back) back.classList.remove('is-open');
   if (sheetEdit) { sheetEdit.classList.replace('btn-main', 'btn-theme'); sheetEdit.classList.add('btn-sm'); }
-  if (sheetBody && sheetCard && sheetCard.isConnected) {
-    if (sheetActs) sheetBody.appendChild(sheetActs);
-    sheetCard.appendChild(sheetBody);
-  }
-  sheetBody = null;
-  sheetCard = null;
+  if (sheetActs && sheetActsParent && sheetActsParent.isConnected) sheetActsParent.appendChild(sheetActs);
   sheetActs = null;
+  sheetActsParent = null;
   sheetEdit = null;
   unlockScroll();
 }
@@ -260,16 +299,11 @@ export function openHistorySheet(entry) {
   closeHistorySheet();
   const { back, sheet } = sheetEls();
   const body = entry.card.querySelector(':scope > .hc-body');
-  sheetCard = entry.card;
-  sheetBody = body;
-  const wrap = document.createElement('div');
-  wrap.className = `hc-card is-open hl-detail is-${entry.tone}`;
-  if (body) wrap.appendChild(body);
   const acts = body ? body.querySelector('.hc-actions') : null;
   sheetActs = acts;
-  const tag = entry.tag ? `<span class="hl-tag ${TAG_TONE[entry.tone] || 'is-info'}">${esc(entry.tag)}</span>` : '';
-  sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="hl-sheet-sub">${entry.sub}${tag}</div>`;
-  sheet.appendChild(wrap);
+  sheetActsParent = acts ? acts.parentElement : null;
+  const det = detailHtml(entry.card, entry);
+  sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="cm-sheet-body"><div class="cust-history-info"><div>${entry.sub}</div>${det.info}</div></div>${det.rows}`;
   if (acts) {
     const bar = document.createElement('div');
     bar.className = 'cm-sheet-actions hl-sheet-actions';
