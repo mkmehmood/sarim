@@ -29,7 +29,6 @@ const ASSETS_TO_CACHE = [
   './modules/cm-ledger.js',
   './modules/record-list.js',
   './modules/history-card.js',
-  './modules/history-ledger.js',
   './modules/summary-kit.js',
   './modules/summary-card.js',
   './modules/stmt-range.js',

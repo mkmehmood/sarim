@@ -4724,26 +4724,6 @@ button.dl-row-line { cursor: pointer; }
 .cm-sheet-more { margin-top: 6px; }
 .cm-sheet-actions { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; }
 .cm-sheet-actions .btn { flex: 1; height: 42px; min-height: 42px; margin: 0; }
-.hl-src { display: none !important; }
-.history-list > .hl-ledger { display: block; grid-column: 1 / -1; width: 100%; }
-.hl-day { margin: 8px 0; padding: 0 12px; background: var(--soft-card); border: 1px solid var(--glass-border); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
-.hl-row { padding: 10px 0; text-align: left; background: transparent; border: 0; color: inherit; font: inherit; -webkit-tap-highlight-color: transparent; }
-.hl-row + .hl-row { border-top: 1px solid var(--glass-border); }
-.hl-row .cm-title { align-items: center; }
-.hl-row .cm-title .hc-lead, .hl-row .cm-title .badge { font-size: 0.62rem; }
-.hl-row .cm-sub { overflow: hidden; text-overflow: ellipsis; }
-.hl-row .cm-amt b { color: var(--text-strong, var(--text-main)); }
-.hl-row.cm-in .cm-amt b { color: var(--accent-emerald); }
-.hl-row.cm-out .cm-amt b { color: var(--danger); }
-.hl-sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
-.hl-sheet-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -4px 0 10px; font-size: 0.74rem; color: var(--text-muted); }
-.hl-sheet-tag { padding: 2px 9px; border-radius: 99px; border: 1px solid var(--glass-border); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-.hl-sheet-tag.is-good { color: var(--accent-emerald); }
-.hl-sheet-tag.is-bad { color: var(--danger); }
-.hl-sheet-tag.is-warn { color: var(--warning); }
-.hc-card.hl-detail { margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; overflow: visible; }
-.hc-card.hl-detail::before { display: none; }
-.hc-card.hl-detail.is-open > .hc-body { border-top: 0; margin-top: 0; padding-top: 0; }
 .btn-row { display: flex; align-items: stretch; gap: 10px; }
 .btn-row > .btn { flex: 1; height: 42px; min-height: 42px; margin: 0; }
 @media (prefers-reduced-motion: reduce) { .cm-sheet, .cm-sheet-backdrop, .cm-chev { transition: none; } }
