@@ -1,6 +1,6 @@
 import { formatMonthYear } from './date-format.js';
 
-const LISTS = ['historyList', 'custHistoryList', 'prodHistoryList', 'paymentHistoryList', 'repHistoryList', 'factoryHistoryList', 'factoryPurchaseHistory', 'paymentTransferHistoryList', 'stockTransferHistoryList', 'dailyLedgerList'];
+const LISTS = ['historyList', 'custHistoryList', 'prodHistoryList', 'paymentHistoryList'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const COLLAPSE_AFTER = 40;
 const TONE_CLASS = { good: 'cm-in', warn: 'cm-cr', bad: 'cm-out' };
@@ -43,7 +43,7 @@ function watchSource(list, src) {
 }
 
 function adopt(list) {
-  const fresh = Array.from(list.querySelectorAll(':scope > .hc-card, :scope > .hc-list > .hc-card'));
+  const fresh = Array.from(list.children).filter((n) => n.classList && n.classList.contains('hc-card'));
   if (!fresh.length) return false;
   const { src } = ensureParts(list);
   watchSource(list, src);
@@ -213,8 +213,7 @@ export function openHistorySheet(entry) {
 
 window.closeHistorySheet = closeHistorySheet;
 window.hlOpenCard = (card) => {
-  const holder = card && card.closest && card.closest('.hl-src');
-  const list = holder && holder.parentElement;
+  const list = card && card.closest && card.closest('.history-list');
   if (list) { adopt(list); rebuild(list); }
   const led = list && list.querySelector(':scope > .hl-ledger');
   if (!led || !led._entries) return false;
@@ -286,15 +285,5 @@ if (typeof document !== 'undefined' && !window.__hlBound) {
   document.addEventListener('focusin', (e) => { if (onSheetOpen() && !inSheet(e.target) && armed()) closeHistorySheet(); });
 
   const init = () => LISTS.forEach((id) => { const el = document.getElementById(id); if (el) watchList(el); });
-  let pending = false;
-  const schedule = () => {
-    if (pending) return;
-    pending = true;
-    requestAnimationFrame(() => { pending = false; init(); });
-  };
-  const start = () => {
-    init();
-    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 }
