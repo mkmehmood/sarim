@@ -108,8 +108,8 @@ Method as before. Cloud features (backups, approvals, manager sessions) need a s
 | Store manager | A store that still has production, factory batches, sales, returns or rep sales cannot be deleted; the message names what is left. |
 | Formula editor | Unpicked or zero-quantity ingredient rows, a quantity with no ingredient, and the same material or linked formula twice are blocked with a message instead of being dropped silently. Duplicate names, cost factor and additional cost limits come from the range-limits pass. |
 | Formula delete | Blocked while units made with the formula are still unused; otherwise the confirm shows how many factory batches used it. |
-| Backup and restore | The sales rep list is now in the backup. A restore merges it with the current list and with rep names found on the restored sales and rep records, so older backups recover their reps too. |
-| Rep list | The hard-coded names "NORAN SHAH" and "NOMAN SHAH" are gone; a new install starts with no reps. |
+| Backup and restore | The sales rep list is now in the backup. Reps stay controlled by app accounts (the Sales Rep role): a list that already has reps is never changed by a restore. Only when the list is empty is it refilled, first from the backup's own list, then from rep names on sales and rep records, so history is never left without its rep. |
+| Rep list | The hard-coded names "NORAN SHAH" and "NOMAN SHAH" are gone. A new install starts with no reps. A device with no saved list but with rep history gets those reps back from the records; reps are otherwise added and removed only through app accounts. |
 | Manager mode | The Rep tab "loss of X" message is hidden from money-restricted users. |
 | Batch screens | Row targets are built from the shown present + add, unit weight shows 4 decimals in kg, and batches above 10,000,000 kg are treated as no value. |
 | Phone | Pinch zoom is allowed, iPhone fields use 16 px text, small buttons are 44 px on touch screens, all 32 number fields have a number-pad `inputmode`, and unlabelled fields and icon buttons get an accessible name. |

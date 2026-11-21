@@ -1,3 +1,4 @@
+import { fillEmptyRepList } from './rep-names.js';
 import { nameIssue, phoneIssue } from './input-guards.js';
 import { txDeviceDate } from './tx-date.js';
 import { themeColor, themeVar } from './theme-tokens.js';
@@ -4670,7 +4671,10 @@ const stored = await sqliteStore.get('reps', null);
 if (Array.isArray(stored) && stored.length > 0) {
 _set_salesRepsList(stored);
 } else {
-_set_salesRepsList([]);
+const _history = { sales: ensureArray(await sqliteStore.get('sales')), rep: ensureArray(await sqliteStore.get('rep')) };
+const _derived = fillEmptyRepList([], _history);
+_set_salesRepsList(_derived);
+if (_derived.length) await sqliteStore.set('reps', _derived);
 }
 if (firebaseDB && currentUser) {
 try {

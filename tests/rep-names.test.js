@@ -1,17 +1,21 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeRepNames } from '../modules/rep-names.js';
+import { fillEmptyRepList } from '../modules/rep-names.js';
 
-describe('mergeRepNames', () => {
-  it('keeps the existing list and adds names from the backup list and records, without duplicates', () => {
-    const out = mergeRepNames(['ALI REP'], { reps: ['ali  rep', 'BILAL'], rep: [{ salesRep: 'Chand' }], sales: [{ salesRep: 'NONE' }, { salesRep: 'bilal' }, null] });
-    assert.deepEqual(out, ['ALI REP', 'BILAL', 'Chand']);
+describe('fillEmptyRepList: accounts control the list, history is only a safety net', () => {
+  it('never changes a list that already has reps', () => {
+    const data = { reps: ['BILAL'], rep: [{ salesRep: 'CHAND' }], sales: [{ salesRep: 'ZED' }] };
+    assert.deepEqual(fillEmptyRepList(['ALI REP'], data), ['ALI REP']);
   });
-  it('recovers rep names from an old backup that has no rep list', () => {
-    assert.deepEqual(mergeRepNames([], { sales: [{ salesRep: 'ZED' }], rep: [] }), ['ZED']);
+  it('uses the backup list first when the current list is empty', () => {
+    assert.deepEqual(fillEmptyRepList([], { reps: ['ali  rep', 'Bilal', 'BILAL'], sales: [{ salesRep: 'ZED' }] }), ['ALI REP', 'BILAL']);
   });
-  it('handles empty and bad input', () => {
-    assert.deepEqual(mergeRepNames(null, null), []);
-    assert.deepEqual(mergeRepNames(['NONE', ''], {}), []);
+  it('falls back to reps that have records, so history is never left without its rep', () => {
+    assert.deepEqual(fillEmptyRepList([], { sales: [{ salesRep: 'NONE' }, { salesRep: 'zed' }], rep: [{ salesRep: 'Chand' }, null] }), ['CHAND', 'ZED']);
+  });
+  it('stays empty when there is nothing to recover', () => {
+    assert.deepEqual(fillEmptyRepList(null, null), []);
+    assert.deepEqual(fillEmptyRepList([], { sales: [{ salesRep: 'NONE' }] }), []);
+    assert.deepEqual(fillEmptyRepList(['', '  '], {}), []);
   });
 });
