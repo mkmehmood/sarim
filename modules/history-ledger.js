@@ -3,7 +3,6 @@ import { formatMonthYear } from './date-format.js';
 const LISTS = ['historyList', 'custHistoryList', 'prodHistoryList', 'paymentHistoryList', 'repHistoryList', 'factoryHistoryList', 'factoryPurchaseHistory', 'paymentTransferHistoryList', 'stockTransferHistoryList', 'dailyLedgerList', 'expenseManagementHistoryList'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const COLLAPSE_AFTER = 40;
-const TONE_CLASS = { good: 'cm-in', warn: 'cm-cr', bad: 'cm-out' };
 
 const esc = (v) => (v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
 const isVisible = (c) => c.style.display !== 'none' && !c.classList.contains('d-none') && !c.classList.contains('hidden');
@@ -52,23 +51,68 @@ function adopt(list) {
   return true;
 }
 
+const NF = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
+const plain = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&bull;|&middot;/g, ' ').replace(/\s+/g, ' ').trim();
+const numOf = (h) => { const m = plain(h).replace(/,/g, '').match(/-?\d+(?:\.\d+)?/); return m ? parseFloat(m[0]) : 0; };
+const TAG_TONE = { good: 'is-good', warn: 'is-warn', bad: 'is-bad', info: 'is-info', muted: 'is-info' };
+const DOT = { good: 'cm-in', warn: 'cm-cr', bad: 'cm-out' };
+const SUMS = {
+  custHistoryList: { kgWord: 'kg sold', a: ['Sold', (e) => !/collection|reconciled|rep return/i.test(e.tag)], b: ['Received', (e) => /collection|paid|cash|received/i.test(e.tag)] },
+  paymentHistoryList: { a: ['In', (e) => /^in$/i.test(e.tag)], b: ['Out', (e) => /^out$/i.test(e.tag)] },
+  historyList: { a: ['Revenue', () => true] },
+  prodHistoryList: { kgWord: 'kg' },
+  repHistoryList: { kgWord: 'kg sold', a: ['Sold', (e) => !/collection|reconciled|rep return/i.test(e.tag)], b: ['Received', (e) => /collection|paid|cash|received/i.test(e.tag)] },
+  factoryPurchaseHistory: { kgWord: 'kg', a: ['Purchased', () => true] },
+  factoryHistoryList: { a: ['Cost', () => true] },
+  expenseManagementHistoryList: { a: ['Spent', () => true] },
+  paymentTransferHistoryList: { a: ['Moved', () => true] },
+  stockTransferHistoryList: { kgWord: 'kg' },
+  dailyLedgerList: { a: ['Total', () => true] }
+};
+
+function kgOf(card, amtHtml, subHtml) {
+  if (/kg/i.test(plain(amtHtml))) return numOf(amtHtml);
+  const metric = Array.from(card.querySelectorAll('.hc-metric')).find((m) => /quantity|weight|returned/i.test(m.querySelector('dt') ? m.querySelector('dt').textContent : ''));
+  if (metric) { const v = metric.querySelector('dd'); if (v && /kg/i.test(v.textContent)) return numOf(v.innerHTML); }
+  const m = plain(subHtml).replace(/,/g, '').match(/(\d+(?:\.\d+)?)\s*kg/i);
+  return m ? parseFloat(m[1]) : 0;
+}
+
 function parseCard(card) {
   const date = card.getAttribute('data-date') || '';
-  const tag = card.querySelector(':scope > .hc-head .hc-tag');
-  const lead = card.querySelector(':scope > .hc-head .hc-lead');
-  const title = card.querySelector(':scope > .hc-head .hc-title');
-  const sub = card.querySelector(':scope > .hc-head .hc-sub');
-  const amt = card.querySelector(':scope > .hc-head .hc-amt');
+  const q = (sel) => card.querySelector(':scope > .hc-head ' + sel);
+  const tag = q('.hc-tag');
+  const title = q('.hc-title');
+  const sub = q('.hc-sub');
+  const amt = q('.hc-amt');
+  const amtHtml = amt ? amt.innerHTML : '';
+  const subHtml = sub ? sub.innerHTML : '';
+  const isKgAmt = /kg/i.test(plain(amtHtml));
   return {
     card,
     tone: toneOf(card),
     dkey: DATE_RE.test(date.slice(0, 10)) ? date.slice(0, 10) : '',
     title: title ? title.innerHTML : '',
-    sub: sub ? sub.innerHTML : '',
-    amt: amt ? amt.innerHTML : '',
+    sub: subHtml,
+    amt: amtHtml,
     tag: tag ? tag.textContent.trim() : '',
-    lead: lead ? lead.outerHTML : ''
+    kg: kgOf(card, amtHtml, subHtml),
+    money: isKgAmt ? 0 : numOf(amtHtml)
   };
+}
+
+function summarize(listId, items) {
+  const cfg = SUMS[listId] || { a: ['Total', () => true] };
+  const out = { kg: 0, a: 0, b: 0 };
+  items.forEach((e) => {
+    out.kg += e.kg;
+    if (cfg.a && e.money && cfg.a[1](e)) out.a += e.money;
+    if (cfg.b && e.money && cfg.b[1](e)) out.b += e.money;
+  });
+  const parts = [];
+  if (cfg.a && (out.a || !out.kg)) parts.push(`${cfg.a[0]} ${NF.format(out.a)}`);
+  if (cfg.b) parts.push(`${cfg.b[0]} ${NF.format(out.b)}`);
+  return { kg: out.kg, kgText: out.kg > 0 ? `${NF.format(out.kg)} ${cfg.kgWord || 'kg'}` : '', parts, cfg, vals: out };
 }
 
 function rowHtml(e, idx, first) {
@@ -76,7 +120,17 @@ function rowHtml(e, idx, first) {
   const ok = d && !isNaN(d.getTime());
   const dnum = ok ? d.getDate() : '';
   const dwk = ok ? d.toLocaleDateString('en-US', { weekday: 'short' }) : '';
-  return `<button type="button" class="row cm-row hl-row ${TONE_CLASS[e.tone] || ''}" data-i="${idx}"><span class="cm-date">${first && ok ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}</span><span class="cm-sub">${e.sub}</span></span><span class="cm-amt"><b>${e.amt}</b><span>${esc(e.tag)}</span></span></button>`;
+  const tag = e.tag ? ` <span class="hl-tag ${TAG_TONE[e.tone] || 'is-info'}">${esc(e.tag)}</span>` : '';
+  return `<button type="button" class="row cm-row hl-row ${DOT[e.tone] || ''}" data-i="${idx}"><span class="cm-date">${first && ok ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tag}</span><span class="cm-sub">${e.sub}</span></span><span class="cm-amt"><b>${e.amt}</b></span></button>`;
+}
+
+function dayFoot(listId, items) {
+  const S = summarize(listId, items);
+  const bits = [];
+  if (S.kgText) bits.push(S.kgText);
+  S.parts.forEach((p) => bits.push(p.replace(' ', ': ')));
+  if (!bits.length || (!S.kgText && items.length > 1 && bits.length === 1)) bits.unshift(items.length === 1 ? '1 entry' : `${items.length} entries`);
+  return `<div class="cm-day-foot"><span>${bits.join(' | ')}</span></div>`;
 }
 
 function rebuild(list) {
@@ -97,27 +151,27 @@ function rebuild(list) {
     e.i = i;
     const mk = e.dkey ? e.dkey.slice(0, 7) : 'undated';
     let M = mIdx[mk];
-    if (!M) { M = mIdx[mk] = { key: mk, days: [], dIdx: {}, n: 0 }; months.push(M); }
+    if (!M) { M = mIdx[mk] = { key: mk, days: [], dIdx: {}, items: [] }; months.push(M); }
     const dk = e.dkey || 'undated';
     let D = M.dIdx[dk];
     if (!D) { D = M.dIdx[dk] = { key: dk, items: [] }; M.days.push(D); }
     D.items.push(e);
-    M.n++;
+    M.items.push(e);
   });
   const byKeyDesc = (a, b) => (a.key === 'undated' ? 1 : b.key === 'undated' ? -1 : a.key < b.key ? 1 : a.key > b.key ? -1 : 0);
   months.sort(byKeyDesc);
   months.forEach((M) => M.days.sort(byKeyDesc));
   const many = entries.length > COLLAPSE_AFTER;
-  const comfortable = entries.length <= 6;
-  led.classList.toggle('is-comfortable', comfortable);
+  led.classList.remove('is-comfortable');
   let html = '';
   months.forEach((M, mi) => {
-    const days = M.days.map((D) => `<div class="hl-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${D.items.length > 1 ? `<div class="cm-day-foot"><span>${D.items.length === 1 ? '1 entry' : `${D.items.length} entries`}</span></div>` : ''}</div>`).join('');
-    if (comfortable) { html += days; return; }
+    const days = M.days.map((D) => `<div class="hl-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${dayFoot(list.id, D.items)}</div>`).join('');
     const md = M.key === 'undated' ? null : new Date(M.key + '-01T00:00:00');
     const name = md && !isNaN(md.getTime()) ? formatMonthYear(md) : 'No date';
     const collapsed = many && mi > 0;
-    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}"><button type="button" class="cm-month-head" data-hl-month aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(name)}</span><span class="cm-month-count">${M.n === 1 ? '1 entry' : `${M.n} entries`}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
+    const S = summarize(list.id, M.items);
+    const count = S.kgText || (M.items.length === 1 ? '1 entry' : `${M.items.length} entries`);
+    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}"><button type="button" class="cm-month-head" data-hl-month aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(name)}</span><span class="cm-month-count">${esc(count)}</span><span class="cm-month-sum">${esc(S.parts.join(' \u00b7 '))}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
   });
   led.innerHTML = html;
 }
@@ -181,14 +235,23 @@ function inSheet(t) {
   return !!(t && t.closest && t.closest('#hl-sheet'));
 }
 
+let sheetActs = null;
+let sheetEdit = null;
+
 export function closeHistorySheet() {
   const back = document.getElementById('hl-sheet-backdrop');
   const sheet = document.getElementById('hl-sheet');
   if (sheet) sheet.classList.remove('is-open');
   if (back) back.classList.remove('is-open');
-  if (sheetBody && sheetCard && sheetCard.isConnected) sheetCard.appendChild(sheetBody);
+  if (sheetEdit) { sheetEdit.classList.replace('btn-main', 'btn-theme'); sheetEdit.classList.add('btn-sm'); }
+  if (sheetBody && sheetCard && sheetCard.isConnected) {
+    if (sheetActs) sheetBody.appendChild(sheetActs);
+    sheetCard.appendChild(sheetBody);
+  }
   sheetBody = null;
   sheetCard = null;
+  sheetActs = null;
+  sheetEdit = null;
   unlockScroll();
 }
 
@@ -202,8 +265,19 @@ export function openHistorySheet(entry) {
   const wrap = document.createElement('div');
   wrap.className = `hc-card is-open hl-detail is-${entry.tone}`;
   if (body) wrap.appendChild(body);
-  sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="hl-sheet-sub">${entry.sub}${entry.tag ? `<span class="hl-sheet-tag is-${entry.tone}">${esc(entry.tag)}</span>` : ''}</div>`;
+  const acts = body ? body.querySelector('.hc-actions') : null;
+  sheetActs = acts;
+  const tag = entry.tag ? `<span class="hl-tag ${TAG_TONE[entry.tone] || 'is-info'}">${esc(entry.tag)}</span>` : '';
+  sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="hl-sheet-sub">${entry.sub}${tag}</div>`;
   sheet.appendChild(wrap);
+  if (acts) {
+    const bar = document.createElement('div');
+    bar.className = 'cm-sheet-actions hl-sheet-actions';
+    bar.appendChild(acts);
+    sheet.appendChild(bar);
+    sheetEdit = acts.querySelector('.btn-theme');
+    if (sheetEdit) { sheetEdit.classList.replace('btn-theme', 'btn-main'); sheetEdit.classList.remove('btn-sm'); }
+  }
   sheet.scrollTop = 0;
   lockScroll();
   armedAt = Date.now() + 250;
