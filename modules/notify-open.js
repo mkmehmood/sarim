@@ -57,7 +57,9 @@ async function openCard(id, refresh) {
     card = find() || card;
     card.classList.remove('d-none', 'hidden');
     if (typeof window.setDisplay === 'function') window.setDisplay(card, '');
-    if (!card.classList.contains('is-open')) hcToggle(card);
+    if (card.closest('.hl-src')) {
+      if (typeof window.hlOpenCard === 'function' && window.hlOpenCard(card)) return true;
+    } else if (!card.classList.contains('is-open')) hcToggle(card);
     card.scrollIntoView({ block: 'center' });
     await sleep(700);
     const again = find();
