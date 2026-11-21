@@ -1491,18 +1491,22 @@ export async function renderRepHistory() {
 const rep = ensureArray(await sqliteStore.get('rep'));
 const list = document.getElementById('repHistoryList');
 if (!list) return;
+const dateInput = document.getElementById('rep-date');
+const selectedDate = dateInput && dateInput.value ? dateInput.value : localDateStr();
+const isToday = selectedDate === localDateStr();
 const pickedCustomer = selectedCustomerFilter('rep-cust-name');
-const baseHeader = 'Activity';
+const baseHeader = isToday ? "Today's Activity" : `Activity for ${selectedDate}`;
 const headerText = pickedCustomer ? `${baseHeader} - ${(document.getElementById('rep-cust-name').value || '').trim()}` : baseHeader;
 const activityData = rep
 .filter(s =>
 s.salesRep === currentRepProfile &&
+s.date === selectedDate &&
 s.paymentType !== 'PARTIAL_PAYMENT' &&
 (!pickedCustomer || String(s.customerName || '').trim().toLowerCase() === pickedCustomer)
 )
 .sort((a,b) => b.timestamp - a.timestamp);
 if(activityData.length === 0) {
-list.innerHTML = `<div class="empty hc-empty">No activity found${pickedCustomer ? ` for ${esc((document.getElementById('rep-cust-name').value || '').trim())}` : ''}</div>`;
+list.innerHTML = `<div class="empty hc-empty">No activity found for ${pickedCustomer ? `${esc((document.getElementById('rep-cust-name').value || '').trim())} on ` : ''}${esc(selectedDate)}</div>`;
 return;
 }
 const cardsHtml = activityData.map(item => {

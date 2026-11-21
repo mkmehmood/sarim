@@ -19,7 +19,7 @@ const doc = {
 const win = { setDisplay: (el, v) => { el.shown = v !== 'none'; } };
 
 const biz = extractFunctions('modules/business.js', ['selectedCustomerFilter', 'customerHistoryMatcher'], { document: doc });
-const pay = extractFunctions('modules/utilities-payments.js', ['_filterHistoryByPeriod', '_showHistoryFilterEmpty', '_showFilterEmpty'], {
+const pay = extractFunctions('modules/utilities-payments.js', ['_filterHistoryByPeriod', '_cardInPeriod', '_showHistoryFilterEmpty', '_showFilterEmpty'], {
   document: doc, window: win, customerHistoryMatcher: biz.customerHistoryMatcher, hcEmptyHtml: (m) => `<div>${m}</div>`
 });
 const visible = (mode) => { pay._filterHistoryByPeriod('#custHistoryList', '2026-10-28', mode); return cards.filter((c) => c.shown).map((c) => `${c.customer}@${c.date}`); };
@@ -31,10 +31,15 @@ beforeEach(() => {
   input = { value: '', dataset: {} };
 });
 
-describe('summary duration toggles no longer hide history', () => {
-  for (const mode of ['day', 'week', 'month', 'year', 'all']) {
-    it(`${mode} keeps every sale in the ledger`, () => assert.equal(visible(mode).length, 5));
-  }
+describe('summary duration toggles hide and show history', () => {
+  it('daily shows only the selected day', () => assert.deepEqual(visible('day'), ['ali@2026-10-28']));
+  it('weekly shows the last 7 days', () => assert.equal(visible('week').length, 2));
+  it('monthly shows the selected month', () => assert.equal(visible('month').length, 3));
+  it('yearly shows the selected year', () => assert.equal(visible('year').length, 4));
+  it('all time shows everything', () => assert.equal(visible('all').length, 5));
+  it('switching back and forth restores hidden cards', () => {
+    visible('day'); assert.equal(visible('all').length, 5);
+  });
 });
 
 describe('name input filters history', () => {
@@ -46,9 +51,9 @@ describe('name input filters history', () => {
     input.value = 'Ali'; input.dataset.histCustomer = 'ali';
     assert.deepEqual(visible('all'), ['ali@2026-10-28', 'ali@2026-03-01']);
   });
-  it('the duration toggle does not narrow a name search', () => {
+  it('name and duration combine', () => {
     input.value = 'ali'; input.dataset.histCustomer = 'ali';
-    assert.deepEqual(visible('month'), ['ali@2026-10-28', 'ali@2026-03-01']);
+    assert.deepEqual(visible('month'), ['ali@2026-10-28']);
   });
   it('clearing the name shows everyone again', () => {
     input.value = 'sara'; visible('all'); input.value = '';
@@ -57,6 +62,10 @@ describe('name input filters history', () => {
   it('never hides the stat tiles inside visible cards', () => {
     input.value = 'ali'; visible('all');
     assert.ok(tiles.every((t) => t.shown), 'metric tiles stay visible');
+  });
+  it('shows the empty message for a period with no sales even when no name is typed', () => {
+    pay._filterHistoryByPeriod('#custHistoryList', '2026-01-01', 'day');
+    assert.equal(emptyNodes.length, 1);
   });
   it('shows a message when nothing matches, and removes it afterwards', () => {
     input.value = 'zzz'; assert.equal(visible('all').length, 0); assert.equal(emptyNodes.length, 1);

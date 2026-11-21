@@ -1136,46 +1136,88 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
   if (typeof window.__splashTryHide === 'function') window.__splashTryHide();
 });
 
-export function _filterFactoryHistoryByMode() {
+export function _filterFactoryHistoryByMode(mode) {
+const selectedDateVal = (document.getElementById('factory-date') || {}).value || localDateStr();
+const selectedDate = new Date(selectedDateVal);
+if (isNaN(selectedDate.getTime())) return;
+const weekStart = new Date(selectedDate);
+weekStart.setDate(selectedDate.getDate() - 6);
 const formula = selectedValueFilter('factory-formula-value');
 let total = 0, shown = 0;
 document.querySelectorAll('#factoryHistoryList .hc-card').forEach(item => {
 total++;
-const show = !formula || String(item.getAttribute('data-formula') || '').toLowerCase() === formula;
+const ds = item.getAttribute('data-date');
+const cd = ds ? new Date(ds) : null;
+let inPeriod = true;
+if (cd && !isNaN(cd.getTime())) {
+if (mode === 'daily') inPeriod = (ds === selectedDateVal);
+else if (mode === 'weekly') inPeriod = (cd >= weekStart && cd <= selectedDate);
+else if (mode === 'monthly') inPeriod = (cd.getMonth() === selectedDate.getMonth() && cd.getFullYear() === selectedDate.getFullYear());
+else if (mode === 'yearly') inPeriod = (cd.getFullYear() === selectedDate.getFullYear());
+}
+const show = inPeriod && (!formula || String(item.getAttribute('data-formula') || '').toLowerCase() === formula);
 if (show) shown++;
 window.setDisplay(item, show ? '' : 'none');
 });
-_showFilterEmpty('#factoryHistoryList', total, shown, 'No production for this formula.');
+_showFilterEmpty('#factoryHistoryList', total, shown, formula ? 'No production for this formula in this period.' : 'No production in this period.');
 }
 
 export function _filterPaymentHistoryByPeriod() {
+const periodFilterEl = document.getElementById('unifiedPeriodFilter');
+const period = periodFilterEl ? periodFilterEl.value : 'all';
+const now = new Date();
+const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+let startDate = new Date(0);
+if (period === 'today') startDate = today;
+else if (period === 'week') { startDate = new Date(today); startDate.setDate(today.getDate() - 7); }
+else if (period === 'month') { startDate = new Date(today); startDate.setDate(today.getDate() - 30); }
 const matchName = customerHistoryMatcher('expenseName');
 let total = 0, shown = 0;
 document.querySelectorAll('#paymentHistoryList .card').forEach(card => {
 total++;
-const show = !matchName || matchName(String(card.getAttribute('data-entity') || ''));
+const ds = card.getAttribute('data-date');
+const cd = ds ? new Date(ds) : null;
+const inPeriod = !cd || isNaN(cd.getTime()) || cd >= startDate;
+const show = inPeriod && (!matchName || matchName(String(card.getAttribute('data-entity') || '')));
 if (show) shown++;
 window.setDisplay(card, show ? '' : 'none');
 });
-_showFilterEmpty('#paymentHistoryList', total, shown, 'No matching payments. Clear the name to see all.');
+_showFilterEmpty('#paymentHistoryList', total, shown, matchName ? 'No matching payments for this period. Try another period or clear the name.' : 'No payments for this period.');
 }
 
 export function applyPaymentHistoryFilter() {
 _filterPaymentHistoryByPeriod();
 }
 
-export function _filterHistoryByPeriod(listSelector) {
+export function _filterHistoryByPeriod(listSelector, refDateStr, mode) {
+const refDate = new Date(refDateStr);
+if (isNaN(refDate.getTime())) return;
+const weekStart = new Date(refDate);
+weekStart.setDate(refDate.getDate() - 6);
 const isCustList = listSelector === '#custHistoryList';
 const matchName = isCustList ? customerHistoryMatcher('cust-name') : null;
 const cards = document.querySelectorAll(listSelector + ' .card:not(.hc-metric)');
 let total = 0, shown = 0;
 cards.forEach(card => {
 total++;
-const show = !matchName || matchName(String(card.getAttribute('data-customer') || ''));
+const show = _cardInPeriod(card, refDate, refDateStr, weekStart, mode) &&
+(!matchName || matchName(String(card.getAttribute('data-customer') || '')));
 if (show) shown++;
 window.setDisplay(card, show ? '' : 'none');
 });
-if (isCustList) _showHistoryFilterEmpty(listSelector, total, shown, !!matchName);
+if (isCustList) _showHistoryFilterEmpty(listSelector, total, shown, mode, !!matchName);
+}
+
+function _cardInPeriod(card, refDate, refDateStr, weekStart, mode) {
+const ds = card.getAttribute('data-date');
+if (!ds) return true;
+const cd = new Date(ds);
+if (isNaN(cd.getTime())) return true;
+if (mode === 'day') return ds === refDateStr;
+if (mode === 'week') return cd >= weekStart && cd <= refDate;
+if (mode === 'month') return cd.getMonth() === refDate.getMonth() && cd.getFullYear() === refDate.getFullYear();
+if (mode === 'year') return cd.getFullYear() === refDate.getFullYear();
+return true;
 }
 
 export function _showFilterEmpty(listSelector, total, shown, message) {
@@ -1189,8 +1231,10 @@ holder.innerHTML = hcEmptyHtml(message);
 list.appendChild(holder);
 }
 
-function _showHistoryFilterEmpty(listSelector, total, shown, byName) {
-_showFilterEmpty(listSelector, total, shown, byName ? 'No matching sales. Clear the name to see all.' : 'No sales found.');
+function _showHistoryFilterEmpty(listSelector, total, shown, mode, byName) {
+const labels = { day: 'this day', week: 'this week', month: 'this month', year: 'this year', all: 'all time' };
+const msg = byName ? `No matching sales for ${labels[mode] || 'this period'}. Try another period or clear the name.` : `No sales for ${labels[mode] || 'this period'}.`;
+_showFilterEmpty(listSelector, total, shown, msg);
 }
 
 export function applyCustomerHistoryFilter(mode) {
@@ -2750,32 +2794,45 @@ list.replaceChildren(Object.assign(document.createElement('div'), {className:'em
 return;
 }
 const _expFrag = document.createDocumentFragment();
-const _expPhotos = [];
 relatedExpenses.forEach(exp => {
+const item = document.createElement('div');
+item.className = 'card cust-history-item';
 const _expPhotoBadgeId = 'ph-badge-exp-' + String(exp.id).replace(/[^a-z0-9]/gi, '');
-const photoBtn = `<button type="button" id="${_expPhotoBadgeId}" title="View photo" class="badge badge-tint d-none" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()">Photo</button>`;
-_expFrag.appendChild(hcCard({
-tone: 'warn', icon: 'out', title: esc(exp.description || 'No description'),
-sub: `${esc(formatDisplayDateTime(exp.date, exp.time || null))}${exp.isMerged ? _mergedBadgeHtml(exp, {inline:true}) : ''}`,
-chips: [photoBtn],
-amount: fmtAmt(parseFloat(exp.amount) || 0), tag: 'Expense', tagTone: 'warn',
-actions: exp.isMerged ? '' : actionRowHtml('expense', exp.id, `<button class="btn btn-danger btn-sm u-w-full u-mt-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">Delete</button>`)
-}, { attrs: { 'data-date': exp.date, 'data-rec': exp.id } }));
-_expPhotos.push([_expPhotoBadgeId, 'expense:' + exp.id]);
-});
+item.innerHTML = `
+<div class="cust-history-info">
+<div class="u-fs-sm2 u-text-muted" >${formatDisplayDateTime(exp.date, exp.time || null)}${exp.isMerged ? _mergedBadgeHtml(exp, {inline:true}) : ''}</div>
+<div class="u-fs-sm2 u-text-muted" >${esc(exp.description || 'No description')}</div>
+</div>
+<div class="u-d94b2d8 d-flex">
+<div class="u-1d673f2 text-right">
+<span class="badge txn-label-badge txn-warning">EXPENSE</span>
+<div class="cost-val u-bb4c6c9">${fmtAmt(parseFloat(exp.amount) || 0)}</div>
+</div>
+<button class="d-none st-align-items__7c6197 st-padding__dd269a st-border__2eda1d st-border-radius__0dc840 st-cursor__3b6a3a st-font-size__8303b5 st-font-weight__e3ec02 st-background__c6ed62 st-color__2a7210 u-45da04f" id="${_expPhotoBadgeId}" title="View photo" onclick="(async()=>{const ph=(await sqliteStore.get('photos'))||{};const d=ph['expense:${esc(exp.id)}'];if(d)openPhotoLightbox(d);else showToast('No photo','warning',1500);})()"
+ >
+  <svg width="11" height="11" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-b62856e"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.13" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="currentColor" fill-opacity="0.28" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="currentColor"/><circle cx="27.5" cy="14" r="1.3" fill="currentColor"/></svg>
+  Photo
+</button>
+${exp.isMerged ? '' : `<button class="btn btn-sm btn-danger u-p-4-8" onclick="deleteExpenseFromOverlay('${esc(exp.id)}')">⌫</button><button class="btn btn-sm u-p-4-8 st-color__a80552 st-border-bottom__89f1f8 st-background__a8869d" onclick="startEdit('expense','${esc(exp.id)}')">✎</button>`}
+</div>
+`;
+_expFrag.appendChild(item);
+const _expPhKey = 'expense:' + exp.id;
 sqliteStore.get('photos').then(ph => {
-_expPhotos.forEach(([badgeId, key]) => {
-if (ph && ph[key]) { const badge = document.getElementById(badgeId); if (badge) window.setDisplay(badge, 'inline-flex'); }
-});
+  if (ph && ph[_expPhKey]) {
+    const badge = document.getElementById(_expPhotoBadgeId);
+    if (badge) window.setDisplay(badge, 'inline-flex');
+  }
 }).catch(() => {});
+});
 list.replaceChildren(_expFrag);
 }
 
 export function filterExpenseManagementHistory() {
 const term = document.getElementById('expense-history-search').value.toLowerCase();
-const items = document.querySelectorAll('#expenseManagementHistoryList .hc-card');
+const items = document.querySelectorAll('#expenseManagementHistoryList .cust-history-item');
 items.forEach(item => {
-window.setDisplay(item, item.textContent.toLowerCase().includes(term) ? '' : 'none');
+window.setDisplay(item, item.innerText.toLowerCase().includes(term) ? 'flex' : 'none');
 });
 }
 

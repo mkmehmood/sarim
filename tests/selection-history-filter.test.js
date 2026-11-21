@@ -118,9 +118,9 @@ describe('factory tab history follows the selected formula', () => {
     pay._filterFactoryHistoryByMode('all');
     assert.deepEqual(rows(), ['f-a@2026-10-28', 'f-a@2026-10-20']);
   });
-  it('ignores the summary duration so the ledger keeps every date', () => {
+  it('combines the formula with the summary duration', () => {
     pay._filterFactoryHistoryByMode('daily');
-    assert.deepEqual(rows(), ['f-a@2026-10-28', 'f-a@2026-10-20']);
+    assert.deepEqual(rows(), ['f-a@2026-10-28']);
   });
   it('switching formula shows the other formula', () => {
     inputs['factory-formula-value'].value = 'f-b';
@@ -132,7 +132,7 @@ describe('factory tab history follows the selected formula', () => {
     pay._filterFactoryHistoryByMode('all');
     assert.equal(rows().length, 4);
   });
-  it('shows a message when the formula has no production', () => {
+  it('shows a message when the formula has nothing in the period', () => {
     inputs['factory-formula-value'].value = 'f-c';
     pay._filterFactoryHistoryByMode('all');
     assert.equal(rows().length, 0); assert.equal(emptyNodes.length, 1);
