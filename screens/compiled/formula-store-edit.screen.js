@@ -373,7 +373,7 @@ function _editorRows() {
   return out;
 }
 async function _saveFormulaStoreEntryRaw() {
-  const _issue = formulaFormIssue({ name: _el('fs-edit-name').value, rows: _editorRows(), costFactorRaw: _el('fs-cost-factor').value, additionalRaw: _el('fs-additional-cost').value, others: await getFormulaStore(), editingId: _editingId });
+  const _issue = formulaFormIssue({ rows: _editorRows() });
   if (_issue) { window.notifyBlocking(_issue, 'warning', 'Warning'); return false; }
   const c = _collectEditor();
   if (!c.name) { window.notifyBlocking('Enter a formula name', 'warning', 'Warning'); return false; }

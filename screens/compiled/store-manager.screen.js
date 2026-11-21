@@ -1,7 +1,7 @@
 
 import { LIMITS, nameIssue, numberIssue } from '../../modules/input-guards.js';
 // ==== module: store-manager.js ====
-import { MAX_STORE_PRICE, storeUsage, storeUsageText } from '../../modules/input-guards.js';
+import { storeUsage, storeUsageText } from '../../modules/input-guards.js';
 async function openStoreManagerScreen() {
   openStandaloneScreen('store-manager-screen');
   await renderStoreList();
@@ -106,15 +106,7 @@ async function saveStoreFromForm() {
   const nameRaw = (document.getElementById('store-name-input').value || '').trim().toUpperCase();
   const formulaId = document.getElementById('store-formula-select').value || '';
   const salePriceRaw = parseFloat(document.getElementById('store-sale-price-input').value);
-  if (!isNaN(salePriceRaw) && (salePriceRaw < 0 || salePriceRaw > MAX_STORE_PRICE)) {
-    if (typeof window.showToast === 'function') window.showToast('Sale price must be between 0 and ' + MAX_STORE_PRICE.toLocaleString() + ' per kg', 'warning');
-    return;
-  }
-  if ((document.getElementById('store-sale-price-input').value || '').trim() !== '' && isNaN(salePriceRaw)) {
-    if (typeof window.showToast === 'function') window.showToast('Sale price must be a number', 'warning');
-    return;
-  }
-  const salePrice = isNaN(salePriceRaw) ? 0 : salePriceRaw;
+  const salePrice = (isNaN(salePriceRaw) || salePriceRaw < 0) ? 0 : salePriceRaw;
   const editIndex = parseInt(document.getElementById('store-edit-index').value, 10);
   if (!nameRaw) {
     if (typeof window.showToast === 'function') window.showToast('Store name is required', 'warning');
