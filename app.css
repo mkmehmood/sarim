@@ -4725,7 +4725,8 @@ button.dl-row-line { cursor: pointer; }
 .cm-sheet-actions { display: flex; align-items: stretch; gap: 8px; margin-top: 14px; }
 .cm-sheet-actions .btn { flex: 1; height: 42px; min-height: 42px; margin: 0; }
 .hl-src { display: none !important; }
-.history-list > .hl-ledger { display: block; grid-column: 1 / -1; width: 100%; }
+.hl-ledger { display: block; grid-column: 1 / -1; width: 100%; }
+.history-list .hc-list:empty { display: none; }
 .hl-day { margin: 8px 0; padding: 0 12px; background: var(--soft-card); border: 1px solid var(--glass-border); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
 .hl-row { padding: 10px 0; text-align: left; background: transparent; border: 0; color: inherit; font: inherit; -webkit-tap-highlight-color: transparent; }
 .hl-row + .hl-row { border-top: 1px solid var(--glass-border); }
