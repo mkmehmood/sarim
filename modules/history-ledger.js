@@ -112,7 +112,7 @@ function rebuild(list) {
   led.classList.toggle('is-comfortable', comfortable);
   let html = '';
   months.forEach((M, mi) => {
-    const days = M.days.map((D) => `<div class="hl-day cm-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${D.items.length > 1 ? `<div class="cm-day-foot"><span>${D.items.length === 1 ? '1 entry' : `${D.items.length} entries`}</span></div>` : ''}</div>`).join('');
+    const days = M.days.map((D) => `<div class="hl-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${D.items.length > 1 ? `<div class="cm-day-foot"><span>${D.items.length === 1 ? '1 entry' : `${D.items.length} entries`}</span></div>` : ''}</div>`).join('');
     if (comfortable) { html += days; return; }
     const md = M.key === 'undated' ? null : new Date(M.key + '-01T00:00:00');
     const name = md && !isNaN(md.getTime()) ? formatMonthYear(md) : 'No date';
