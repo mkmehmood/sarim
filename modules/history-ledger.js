@@ -131,6 +131,7 @@ function parseCard(card, listId) {
     sub: subHtml,
     amt: amtHtml,
     tag: tag ? tag.textContent.trim() : '',
+    rec: card.getAttribute('data-rec') || '',
     kg: kgOf(card, amtHtml, subHtml),
     qtyRate: qtyRateOf(card),
     money: isKgAmt ? 0 : numOf(amtHtml)
@@ -167,13 +168,18 @@ function tagHtml(e) {
 
 function rowHtml(e, idx) {
   const isIn = e.kind === 'in' && e.money > 0;
-  return `<button type="button" class="row cm-row hl-row cm-${e.kind}" data-i="${idx}"><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tagHtml(e)}</span><span class="cm-sub">${rowSub(e)}</span></span><span class="cm-amt"><b class="${isIn ? 'is-in' : ''}">${isIn ? '+ ' : ''}${e.amt}</b></span></button>`;
+  return `<button type="button" class="row cm-row hl-row cm-${e.kind} is-${e.tone}" data-i="${idx}" data-rec="${esc(e.rec)}"><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tagHtml(e)}</span><span class="cm-sub">${rowSub(e)}</span></span><span class="cm-amt"><b class="${isIn ? 'is-in' : ''}">${isIn ? '+ ' : ''}${e.amt}</b></span></button>`;
 }
 
 const CHEV = '<svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 const localKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const byKeyDesc = (a, b) => (a.key === 'undated' ? 1 : b.key === 'undated' ? -1 : a.key < b.key ? 1 : a.key > b.key ? -1 : 0);
 const entriesWord = (n) => (n === 1 ? '1 entry' : `${n} entries`);
+
+function refreshSelected() {
+  const on = new Set(Array.from(document.querySelectorAll('[data-pp-box].on')).map((b) => b.getAttribute('data-pp-box')));
+  document.querySelectorAll('.hl-row[data-rec]').forEach((row) => row.classList.toggle('is-selected', on.has(row.dataset.rec)));
+}
 
 function isOpen(list, key, dflt) {
   const st = list._hlOpen || (list._hlOpen = {});
@@ -252,6 +258,7 @@ function rebuild(list) {
     html += `<section class="cm-month hl-year${yOpen ? '' : ' is-collapsed'}">${headHtml('cm-month-head hl-year-head', yKey, Y.key === 'undated' ? 'No date' : Y.key, SY.kgText || entriesWord(Y.items.length), SY.parts.join(' \u00b7 '), yOpen)}<div class="cm-month-body">${mHtml}</div></section>`;
   });
   led.innerHTML = html;
+  refreshSelected();
 }
 
 function sync(list) {
@@ -309,6 +316,10 @@ function unlockScroll() {
   }
 }
 
+function isOverlay(t) {
+  return !!(t && t.closest && t.closest('#photo-lightbox-modal, #pp-sharebar'));
+}
+
 function inSheet(t) {
   return !!(t && t.closest && t.closest('#hl-sheet'));
 }
@@ -316,18 +327,23 @@ function inSheet(t) {
 let sheetActs = null;
 let sheetActsParent = null;
 let sheetEdit = null;
+let sheetExtras = [];
+const KNOWN_PARTS = ['hc-chips', 'hc-metrics', 'hc-more', 'hc-note', 'hc-actions'];
 
 export function closeHistorySheet() {
   const back = document.getElementById('hl-sheet-backdrop');
   const sheet = document.getElementById('hl-sheet');
-  if (sheet) sheet.classList.remove('is-open');
+  if (sheet) { sheet.classList.remove('is-open', 'is-good', 'is-warn', 'is-bad', 'is-info', 'is-muted'); }
   if (back) back.classList.remove('is-open');
   if (sheetEdit) { sheetEdit.classList.replace('btn-main', 'btn-theme'); sheetEdit.classList.add('btn-sm'); }
   if (sheetActs && sheetActsParent && sheetActsParent.isConnected) sheetActsParent.appendChild(sheetActs);
+  sheetExtras.forEach((x) => { if (x.parent && x.parent.isConnected) x.parent.insertBefore(x.node, x.next && x.next.parentNode === x.parent ? x.next : null); });
+  sheetExtras = [];
   sheetActs = null;
   sheetActsParent = null;
   sheetEdit = null;
   unlockScroll();
+  refreshSelected();
 }
 
 export function openHistorySheet(entry) {
@@ -340,6 +356,16 @@ export function openHistorySheet(entry) {
   sheetActsParent = acts ? acts.parentElement : null;
   const det = detailHtml(entry.card, entry);
   sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="cm-sheet-body"><div class="cust-history-info"><div>${entry.sub}</div>${det.info}</div></div>${det.rows}`;
+  const inner = body ? body.querySelector(':scope > .hc-body-in') : null;
+  if (inner) {
+    const extras = Array.from(inner.children).filter((n) => !KNOWN_PARTS.some((c) => n.classList.contains(c)));
+    if (extras.length) {
+      const box = document.createElement('div');
+      box.className = 'hl-extra';
+      extras.forEach((n) => { sheetExtras.push({ node: n, parent: inner, next: n.nextSibling }); box.appendChild(n); });
+      sheet.querySelector('.cm-sheet-body').after(box);
+    }
+  }
   if (acts) {
     const bar = document.createElement('div');
     bar.className = 'cm-sheet-actions hl-sheet-actions';
@@ -348,6 +374,7 @@ export function openHistorySheet(entry) {
     sheetEdit = acts.querySelector('.btn-theme');
     if (sheetEdit) { sheetEdit.classList.replace('btn-theme', 'btn-main'); sheetEdit.classList.remove('btn-sm'); }
   }
+  sheet.classList.add(`is-${entry.tone}`);
   sheet.scrollTop = 0;
   lockScroll();
   armedAt = Date.now() + 250;
@@ -401,20 +428,22 @@ if (typeof document !== 'undefined' && !window.__hlBound) {
       if (entry) openHistorySheet(entry);
       return;
     }
+    if (e.target.closest && e.target.closest('[data-pp-box], #pp-sharebar')) setTimeout(refreshSelected, 60);
+    if (inSheet(e.target) && e.target.closest('[data-pp-box]')) setTimeout(closeHistorySheet, 420);
     if (inSheet(e.target) && e.target.closest('.hc-actions button, .hc-actions a')) closeHistorySheet();
   }, true);
 
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && onSheetOpen()) closeHistorySheet(); });
 
   const outside = (e) => {
-    if (!onSheetOpen() || !armed() || inSheet(e.target)) return;
+    if (!onSheetOpen() || !armed() || inSheet(e.target) || isOverlay(e.target)) return;
     blockOpenUntil = Date.now() + 450;
     closeHistorySheet();
   };
   document.addEventListener('pointerdown', outside, true);
   document.addEventListener('touchstart', outside, { capture: true, passive: true });
   document.addEventListener('wheel', (e) => {
-    if (!onSheetOpen()) return;
+    if (!onSheetOpen() || isOverlay(e.target)) return;
     if (!inSheet(e.target)) { if (armed()) { blockOpenUntil = Date.now() + 450; closeHistorySheet(); } e.preventDefault(); return; }
     const sh = document.getElementById('hl-sheet');
     const atTop = sh.scrollTop <= 0 && e.deltaY < 0;
@@ -424,7 +453,7 @@ if (typeof document !== 'undefined' && !window.__hlBound) {
   let ty = 0;
   document.addEventListener('touchstart', (e) => { if (e.touches[0]) ty = e.touches[0].clientY; }, { capture: true, passive: true });
   document.addEventListener('touchmove', (e) => {
-    if (!onSheetOpen()) return;
+    if (!onSheetOpen() || isOverlay(e.target)) return;
     if (!inSheet(e.target)) { if (armed()) { blockOpenUntil = Date.now() + 450; closeHistorySheet(); } if (e.cancelable) e.preventDefault(); return; }
     const sh = document.getElementById('hl-sheet');
     const dy = (e.touches[0] ? e.touches[0].clientY : ty) - ty;
@@ -433,7 +462,7 @@ if (typeof document !== 'undefined' && !window.__hlBound) {
     if ((atTop || atEnd) && e.cancelable) e.preventDefault();
   }, { capture: true, passive: false });
   window.addEventListener('scroll', (e) => { if (onSheetOpen() && armed() && !inSheet(e.target)) closeHistorySheet(); }, { capture: true, passive: true });
-  document.addEventListener('focusin', (e) => { if (onSheetOpen() && !inSheet(e.target) && armed()) closeHistorySheet(); });
+  document.addEventListener('focusin', (e) => { if (onSheetOpen() && !inSheet(e.target) && !isOverlay(e.target) && armed()) closeHistorySheet(); });
 
   const init = () => LISTS.forEach((id) => { const el = document.getElementById(id); if (el) watchList(el); });
   let pending = false;

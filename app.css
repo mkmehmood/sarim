@@ -2974,7 +2974,7 @@ font-feature-settings: "tnum" 1;
 .pp-box.holding .pp-box-fill { opacity: 1; animation: ppBoxHold 3s linear forwards; }
 .pp-box.holding { transform: scale(0.94); }
 .pp-sharebar {
-  position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 9000;
+  position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 10300;
   display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px;
   border-radius: 16px; background: var(--glass-raised); border: 1px solid var(--glass-border-strong);
   box-shadow: 0 8px 28px color-mix(in srgb, var(--black) 35%, transparent); font-size: 0.82rem; color: var(--text-main);
@@ -4731,6 +4731,16 @@ button.dl-row-line { cursor: pointer; }
 .hl-day.is-collapsed .hl-day-body { display: none; }
 .hl-day-body { border-top: 1px solid var(--glass-border); }
 .hl-day .cm-row { grid-template-columns: 1fr auto; }
+.hl-row, .hl-sheet { --hc-c: var(--text-muted); }
+.hl-row { border-radius: 14px; }
+.hl-row.is-good, .hl-sheet.is-good { --hc-c: var(--accent-emerald); background-image: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--hc-c) 26%, transparent), transparent 55%), radial-gradient(70% 90% at 0% 100%, color-mix(in srgb, var(--hc-c) 13%, transparent), transparent 60%); }
+.hl-row.is-bad, .hl-sheet.is-bad { --hc-c: var(--danger); background-image: linear-gradient(100deg, color-mix(in srgb, var(--hc-c) 20%, transparent), transparent 58%), radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--hc-c) 14%, transparent), transparent 55%); }
+.hl-row.is-warn, .hl-sheet.is-warn { --hc-c: var(--warning); background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--hc-c) 11%, transparent) 0 7px, transparent 7px 14px), radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--hc-c) 22%, transparent), transparent 55%); background-size: 100% 100%; background-repeat: no-repeat; }
+.hl-row.is-info, .hl-sheet.is-info { --hc-c: var(--accent-cyan); background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--hc-c) 30%, transparent) 1px, transparent 1.6px), radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--hc-c) 20%, transparent), transparent 55%); background-size: 12px 12px, 100% 100%; background-repeat: repeat, no-repeat; }
+.hl-row.is-muted, .hl-sheet.is-muted { background-image: linear-gradient(155deg, color-mix(in srgb, var(--text-main) 7%, transparent), transparent 60%); }
+.hl-row.is-selected { box-shadow: inset 3px 0 0 var(--accent); }
+.hl-extra { margin: 8px 0 4px; }
+.hl-extra .pp-strip { margin-top: 8px; }
 .hl-sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .hl-line { margin-top: 3px; font-size: 0.86rem; }
 .hl-line.is-soft { font-style: italic; color: var(--text-muted); }
