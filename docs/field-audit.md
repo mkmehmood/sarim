@@ -113,3 +113,18 @@ Method as before. Cloud features (backups, approvals, manager sessions) need a s
 | Manager mode | The Rep tab "loss of X" message is hidden from money-restricted users. |
 | Batch screens | Row targets are built from the shown present + add, unit weight shows 4 decimals in kg, and batches above 10,000,000 kg are treated as no value. |
 | Phone | Pinch zoom is allowed, iPhone fields use 16 px text, small buttons are 44 px on touch screens, all 32 number fields have a number-pad `inputmode`, and unlabelled fields and icon buttons get an accessible name. |
+
+## Third pass: dates around midnight (fixed)
+
+Found by running the app in the Pakistan timezone (UTC+5) and moving the clock past midnight.
+
+| Problem | Fix |
+|---|---|
+| "Today" was taken from the UTC date in the analytics merge (8 places in `admin-data.js`), the calculator weekly chart, the sales charts, the previous-day unit lookup, default batch names and the failed-operations filename. Between 00:00 and 05:00 local time these used yesterday, and in the first hours of a month they used the previous month. | They now use the local calendar day (`localDateStr`, and the new `parseLocalDate` for reading a stored date as local midnight). A test fails if any module builds a day from `toISOString()` again. |
+| Entry forms set their default date once at startup. An app left open overnight kept offering yesterday's date for sales, rep sales, expenses, factory batches and ledger entries. | `date-rollover.js` moves any date field that still holds the previous day to the new day when the app returns to the foreground, regains focus, or on a one-minute check. A date the user picked, and the field being typed in, are left alone. |
+
+## Checked again and left alone
+
+- "Start with Computer" is hidden unless the desktop app is running.
+- The Update Store confirm uses the warning style on purpose: it changes pricing for new entries.
+- Purchases with no supplier are saved as pending payables to nobody. This is a design question (is a supplier optional?) rather than a defect, so it is not changed.

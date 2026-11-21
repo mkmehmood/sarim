@@ -327,7 +327,7 @@ exportDeadLetterQueue() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'failed_ops_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = 'failed_ops_' + localDateStr() + '.json';
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   showToast('Failed operations exported', 'success', 2500);

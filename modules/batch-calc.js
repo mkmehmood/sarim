@@ -1,3 +1,4 @@
+import { localDateStr } from './finance.js';
 const EPS = 1e-9;
 export const MAX_BATCH_KG = 10000000;
 export const fmtPrecise = (v, unit) => String(unit === 'g' ? Math.round(v * 10) / 10 : Math.round(v * 10000) / 10000);
@@ -88,6 +89,6 @@ export function removeCalc(list, id) {
   return (Array.isArray(list) ? list : []).filter((c) => c && String(c.id) !== String(id));
 }
 export function defaultCalcName(formula, kind, now) {
-  const day = new Date(now).toISOString().slice(0, 10);
+  const day = localDateStr(new Date(now));
   return `${kind === 'fix' ? 'Correction' : 'Batch'} · ${(formula && formula.name) || 'Formula'} · ${day}`;
 }

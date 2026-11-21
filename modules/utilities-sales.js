@@ -18,6 +18,7 @@ import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, rese
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
 import { isMoneyRestricted, moneyLine, redactMoney } from './money-privacy.js';
+import { parseLocalDate } from './finance.js';
 import { dataRootRef, allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-flags.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
@@ -68,7 +69,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 const paymentDateEl = document.getElementById('expenseDate');
 const selectedDate = (paymentDateEl && paymentDateEl.value) || localDateStr();
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 let startDate = new Date(selectedDate);
@@ -673,7 +674,7 @@ const factoryDefaultFormulas = _cncBatch.get('defaults') || {};
 const factoryAdditionalCosts = _cncBatch.get('costs') || {};
 const paymentDateEl = document.getElementById('expenseDate');
 const selectedDate = (paymentDateEl && paymentDateEl.value) || localDateStr();
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 let cncStartDate = new Date('2000-01-01');
@@ -3069,7 +3070,7 @@ if (isMoneyRestricted()) return;
 const { production } = await loadCollections('production');
 if(storeComparisonChart) storeComparisonChart.destroy();
 const selectedDate = document.getElementById('sys-date').value;
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
@@ -4751,7 +4752,7 @@ let filteredData = window.currentProductionView === 'combined' ? production : pr
 let labels = [], dataQty = [];
 let totalCost = 0, totalProfit = 0, totalValue = 0;
 const selectedDate = document.getElementById('sys-date').value;
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
@@ -4763,7 +4764,7 @@ if (window.currentMfgMode === 'week') {
 for(let i=6; i>=0; i--) {
 const d = new Date(selectedDateObj);
 d.setDate(selectedDay - i);
-const dateStr = d.toISOString().split('T')[0];
+const dateStr = localDateStr(d);
 labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
 let dayQty = 0;
 filteredData.forEach(item => {
@@ -4920,9 +4921,9 @@ return fallbackWeight;
 export async function getPreviousDayAvailableUnits(storeType, currentDate) {
 const { factory, production } = await loadCollections('factory', 'production');
 const factoryUnitTracking = (await sqliteStore.get('tracking')) || {};
-const previousDate = new Date(currentDate);
+const previousDate = parseLocalDate(currentDate);
 previousDate.setDate(previousDate.getDate() - 1);
-const previousDateStr = previousDate.toISOString().split('T')[0];
+const previousDateStr = localDateStr(previousDate);
 const prevProduction = production.filter(item => item.date === previousDateStr);
 const prevFactoryProduction = factory.filter(item => item.date === previousDateStr);
 const _pdPool = await getStorePool(storeType);
@@ -5223,7 +5224,7 @@ const factoryDefaultFormulas = (await sqliteStore.get('defaults')) || {};
 const factoryAdditionalCosts = (await sqliteStore.get('costs')) || {};
 window.currentOverviewMode = mode;
 const selectedDate = document.getElementById('sys-date').value;
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 const _appStoresOv = await getAppStores();
@@ -5410,7 +5411,7 @@ if(custSalesChart) custSalesChart.destroy();
 if(custPaymentChart) custPaymentChart.destroy();
 const selectedDate = document.getElementById('cust-date').value;
 if (!selectedDate) return;
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();
@@ -5424,7 +5425,7 @@ if (window.currentCustomerChartMode === 'week') {
 for(let i=6; i>=0; i--) {
 const d = new Date(selectedDateObj);
 d.setDate(selectedDay - i);
-const dateStr = d.toISOString().split('T')[0];
+const dateStr = localDateStr(d);
 labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
 let dayCash = 0, dayCredit = 0;
 sales.forEach(item => {
@@ -5636,7 +5637,7 @@ font: { size: 13, weight: 'bold' }
 const _pendingOf = (item) => Math.max(0, (item.totalValue || 0) - (item.partialPaymentReceived || 0));
 
 export function computeCustomerPeriodStats(sortedSales, selectedDate, matchName) {
-const selectedDateObj = new Date(selectedDate);
+const selectedDateObj = parseLocalDate(selectedDate);
 const selectedYear = selectedDateObj.getFullYear();
 const selectedMonth = selectedDateObj.getMonth();
 const selectedDay = selectedDateObj.getDate();

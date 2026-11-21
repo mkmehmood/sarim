@@ -200,6 +200,11 @@ export function receivedPercent(received, debt) {
   const total = got + owed;
   return total > 0.005 ? Math.max(0, Math.min(100, Math.round(got / total * 100))) : 0;
 }
+export function parseLocalDate(str) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str == null ? '' : str));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(str);
+}
+
 export function localDateStr(d = new Date()) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }

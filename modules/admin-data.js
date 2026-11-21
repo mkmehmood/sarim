@@ -1,5 +1,6 @@
 import { themeVar } from './theme-tokens.js';
 import { formatDayMonthYear, formatDateTime } from './date-format.js';
+import { localDateStr } from './finance.js';
 import { dataRootRef, CryptoEngine, _safeErr, _triggerFileDownload, compareRecordVersions, currentUser, ensureArray, ensureRecordIntegrity, firebaseDB, fmtAmt, generateUUID, getDeviceId, sqliteStore, validateUUID, loadCollections } from './business.js';
 import { _commitMergedBatch, emitSyncUpdate, performOneClickSync, pushDataToCloud, sanitizeForFirestore } from './sync.js';
 import { defaultSettings } from './utilities-core.js';
@@ -1388,7 +1389,7 @@ updateCloseYearProgress('Merging Production Data...', 10);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(production) || production.length === 0) return;
 const nowDate    = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 const _recTs = r => r.createdAt || r.timestamp || 0;
@@ -1611,7 +1612,7 @@ updateCloseYearProgress('Merging Sales Data...', 30);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(sales) || sales.length === 0) return;
 const nowDate    = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 const _recTs = r => r.createdAt || r.timestamp || 0;
@@ -1702,7 +1703,7 @@ if (Object.keys(repGroups).length === 0) {
   return;
 }
 const nowDate = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime = nowDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true});
 const mergedRecords = [];
@@ -1808,7 +1809,7 @@ if (Object.keys(entityGroups).length === 0) {
   return;
 }
 const nowDate = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime = nowDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true});
 const mergedRecords = [];
@@ -1887,7 +1888,7 @@ nonMergedRecords.forEach(item => {
   storeGroups[key].push(item);
 });
 const nowDate = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime = nowDate.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true});
 const mergedRecords = [];
@@ -1951,7 +1952,7 @@ updateCloseYearProgress('Merging Rep Sales Data...', 88);
 if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 if (!Array.isArray(rep) || rep.length === 0) return;
 const nowDate    = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 const _recTs = r => r.createdAt || r.timestamp || 0;
@@ -2034,7 +2035,7 @@ if (!Array.isArray(expenses) || expenses.length === 0) {
   return;
 }
 const nowDate    = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 const _recTs = r => r.createdAt || r.timestamp || 0;
@@ -2132,7 +2133,7 @@ if (!Array.isArray(returns) || returns.length === 0) {
   return;
 }
 const nowDate    = new Date();
-const nowISODate = nowDate.toISOString().split('T')[0];
+const nowISODate = localDateStr(nowDate);
 const mergeEpoch = nowDate.getTime();
 const nowTime    = nowDate.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 const _recTs = r => r.createdAt || r.timestamp || 0;

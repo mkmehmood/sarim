@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { extractFunctions } from './_extract.js';
+import { parseLocalDate } from '../modules/finance.js';
 
 const mkCard = (date, customer) => ({ date, customer, shown: true, getAttribute(k) { return k === 'data-date' ? this.date : this.customer; } });
 let cards; let emptyNodes; let input;
@@ -65,7 +66,7 @@ describe('name input filters history', () => {
 });
 
 describe('summary numbers follow the selected person', () => {
-  const { computeCustomerPeriodStats } = extractFunctions('modules/utilities-sales.js', ['computeCustomerPeriodStats'], {});
+  const { computeCustomerPeriodStats } = extractFunctions('modules/utilities-sales.js', ['computeCustomerPeriodStats'], { parseLocalDate });
   const sale = (customerName, date, totalValue, quantity) => ({ customerName, date, totalValue, quantity, paymentType: 'CASH', profit: 10 });
   const data = [sale('ali', '2026-10-28', 1000, 5), sale('sara', '2026-10-28', 400, 2), sale('ali', '2026-03-01', 300, 1)];
   it('everyone when no filter', () => {

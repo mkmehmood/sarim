@@ -548,7 +548,7 @@ if (window.currentIndMode === 'week') {
 for(let i=6; i>=0; i--) {
 const d = new Date(now);
 d.setDate(now.getDate() - i);
-const dateStr = d.toISOString().split('T')[0];
+const dateStr = localDateStr(d);
 labels.push(d.toLocaleDateString('en-US', {weekday:'short'}));
 let metricValue = 0;
 sellerHistory.forEach(h => {
