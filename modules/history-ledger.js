@@ -2,7 +2,6 @@ import { formatMonthYear } from './date-format.js';
 
 const LISTS = ['historyList', 'custHistoryList', 'prodHistoryList', 'paymentHistoryList', 'repHistoryList', 'factoryHistoryList', 'factoryPurchaseHistory', 'paymentTransferHistoryList', 'stockTransferHistoryList', 'dailyLedgerList', 'expenseManagementHistoryList'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const COLLAPSE_AFTER = 40;
 
 const esc = (v) => (v == null ? '' : String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
 const isVisible = (c) => c.style.display !== 'none' && !c.classList.contains('d-none') && !c.classList.contains('hidden');
@@ -52,10 +51,17 @@ function adopt(list) {
 const NF = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 const plain = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&bull;|&middot;/g, ' ').replace(/\s+/g, ' ').trim();
 const numOf = (h) => { const m = plain(h).replace(/,/g, '').match(/-?\d+(?:\.\d+)?/); return m ? parseFloat(m[0]) : 0; };
-const TAG_CLS = { good: 'paid', warn: 'pending', bad: 'is-bad', info: '', muted: '' };
-const IN_TAG = /collection|^in$|received|reconciled|return/i;
 const DATE_HEAD = /^\s*\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}(?:\s*@\s*(\d{1,2}:\d{2}(?::\d{2})?\s*[AP]M))?/i;
-const DOT = { good: 'cm-in', warn: 'cm-cr', bad: 'cm-out' };
+function kindOf(listId, e) {
+  const t = e.tag;
+  if (/credit|pending|unpaid|partial|debt|due|rep return/i.test(t)) return 'cr';
+  if (/collection|^in$|received|reconcil|return|payment in/i.test(t)) return 'in';
+  if (/^out$|expense|payment out|money out/i.test(t) || listId === 'expenseManagementHistoryList') return 'out';
+  if (e.tone === 'bad') return 'out';
+  if (e.tone === 'warn') return 'cr';
+  return 'cash';
+}
+const TAG_BY_KIND = { in: 'paid', cr: 'pending', out: 'is-bad', cash: '' };
 const SUMS = {
   custHistoryList: { kgWord: 'kg sold', a: ['Sold', (e) => !/collection|reconciled|rep return/i.test(e.tag)], b: ['Received', (e) => /collection|paid|cash|received/i.test(e.tag)] },
   paymentHistoryList: { a: ['In', (e) => /^in$/i.test(e.tag)], b: ['Out', (e) => /^out$/i.test(e.tag)] },
@@ -107,7 +113,7 @@ function detailHtml(card, e) {
   return { info, rows };
 }
 
-function parseCard(card) {
+function parseCard(card, listId) {
   const date = card.getAttribute('data-date') || '';
   const q = (sel) => card.querySelector(':scope > .hc-head ' + sel);
   const tag = q('.hc-tag');
@@ -117,7 +123,7 @@ function parseCard(card) {
   const amtHtml = amt ? amt.innerHTML : '';
   const subHtml = sub ? sub.innerHTML : '';
   const isKgAmt = /kg/i.test(plain(amtHtml));
-  return {
+  const e = {
     card,
     tone: toneOf(card),
     dkey: DATE_RE.test(date.slice(0, 10)) ? date.slice(0, 10) : '',
@@ -129,6 +135,8 @@ function parseCard(card) {
     qtyRate: qtyRateOf(card),
     money: isKgAmt ? 0 : numOf(amtHtml)
   };
+  e.kind = kindOf(listId, e);
+  return e;
 }
 
 function summarize(listId, items) {
@@ -154,25 +162,40 @@ function rowSub(e) {
 }
 
 function tagHtml(e) {
-  return e.tag ? `<span class="badge status-badge ${TAG_CLS[e.tone] || ''}">${esc(e.tag.toUpperCase())}</span>` : '';
+  return e.tag ? `<span class="badge status-badge ${TAG_BY_KIND[e.kind] || ''}">${esc(e.tag.toUpperCase())}</span>` : '';
 }
 
-function rowHtml(e, idx, first) {
-  const d = e.dkey ? new Date(e.dkey + 'T00:00:00') : null;
-  const ok = d && !isNaN(d.getTime());
-  const dnum = ok ? d.getDate() : '';
-  const dwk = ok ? d.toLocaleDateString('en-US', { weekday: 'short' }) : '';
-  const isIn = IN_TAG.test(e.tag) && e.money > 0;
-  return `<button type="button" class="row cm-row hl-row ${DOT[e.tone] || ''}" data-i="${idx}"><span class="cm-date">${first && ok ? `<b>${dnum}</b><span>${dwk}</span>` : ''}</span><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tagHtml(e)}</span><span class="cm-sub">${rowSub(e)}</span></span><span class="cm-amt"><b class="${isIn ? 'is-in' : ''}">${isIn ? '+ ' : ''}${e.amt}</b></span></button>`;
+function rowHtml(e, idx) {
+  const isIn = e.kind === 'in' && e.money > 0;
+  return `<button type="button" class="row cm-row hl-row cm-${e.kind}" data-i="${idx}"><span class="cm-main"><span class="cm-title"><i class="cm-dot"></i>${e.title}${tagHtml(e)}</span><span class="cm-sub">${rowSub(e)}</span></span><span class="cm-amt"><b class="${isIn ? 'is-in' : ''}">${isIn ? '+ ' : ''}${e.amt}</b></span></button>`;
 }
 
-function dayFoot(listId, items) {
-  const S = summarize(listId, items);
+const CHEV = '<svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const localKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const byKeyDesc = (a, b) => (a.key === 'undated' ? 1 : b.key === 'undated' ? -1 : a.key < b.key ? 1 : a.key > b.key ? -1 : 0);
+const entriesWord = (n) => (n === 1 ? '1 entry' : `${n} entries`);
+
+function isOpen(list, key, dflt) {
+  const st = list._hlOpen || (list._hlOpen = {});
+  return key in st ? st[key] : dflt;
+}
+
+function headHtml(cls, key, name, count, sum, open) {
+  return `<button type="button" class="${cls}" data-hl-toggle="${esc(key)}" aria-expanded="${open}"><span class="cm-month-name">${esc(name)}</span><span class="cm-month-count">${esc(count)}</span><span class="cm-month-sum">${esc(sum)}</span>${CHEV}</button>`;
+}
+
+function dayHtml(list, D, today) {
+  const dKey = `d:${D.key}`;
+  const open = isOpen(list, dKey, D.key === today);
+  const dd = D.key === 'undated' ? null : new Date(D.key + 'T00:00:00');
+  const ok = dd && !isNaN(dd.getTime());
+  const S = summarize(list.id, D.items);
   const bits = [];
   if (S.kgText) bits.push(S.kgText);
   S.parts.forEach((p) => bits.push(p.replace(' ', ': ')));
-  if (!bits.length || (!S.kgText && items.length > 1 && bits.length === 1)) bits.unshift(items.length === 1 ? '1 entry' : `${items.length} entries`);
-  return `<div class="cm-day-foot"><span>${bits.join(' | ')}</span></div>`;
+  const cnt = entriesWord(D.items.length);
+  const dateCol = ok ? `<span class="cm-date"><b>${dd.getDate()}</b><span>${dd.toLocaleDateString('en-US', { weekday: 'short' })}</span></span>` : '<span class="cm-date"><b>--</b></span>';
+  return `<div class="card cm-day hl-day${open ? '' : ' is-collapsed'}" data-day="${esc(D.key)}"><button type="button" class="hl-day-head" data-hl-toggle="${esc(dKey)}" aria-expanded="${open}">${dateCol}<span class="hl-day-sum"><b>${esc(cnt)}</b><span>${esc(bits.join(' | '))}</span></span>${CHEV}</button><div class="hl-day-body">${D.items.map((e) => rowHtml(e, e.i)).join('')}</div></div>`;
 }
 
 function rebuild(list) {
@@ -181,39 +204,52 @@ function rebuild(list) {
   if (!src || !led) return;
   const cards = Array.from(src.children).filter((c) => c.classList.contains('hc-card'));
   const vis = cards.filter(isVisible);
-  const sig = `${cards.length}:${vis.map((c) => cards.indexOf(c)).join(',')}`;
+  const today = localKey(new Date());
+  const sig = `${today}:${cards.length}:${vis.map((c) => cards.indexOf(c)).join(',')}`;
   if (sigs.get(list) === sig) return;
   sigs.set(list, sig);
-  led._entries = vis.map(parseCard);
+  led._entries = vis.map((c) => parseCard(c, list.id));
   const entries = led._entries;
   if (!entries.length) { led.innerHTML = ''; return; }
-  const months = [];
-  const mIdx = {};
+  const years = [];
+  const yIdx = {};
   entries.forEach((e, i) => {
     e.i = i;
-    const mk = e.dkey ? e.dkey.slice(0, 7) : 'undated';
-    let M = mIdx[mk];
-    if (!M) { M = mIdx[mk] = { key: mk, days: [], dIdx: {}, items: [] }; months.push(M); }
     const dk = e.dkey || 'undated';
+    const mk = e.dkey ? e.dkey.slice(0, 7) : 'undated';
+    const yk = e.dkey ? e.dkey.slice(0, 4) : 'undated';
+    let Y = yIdx[yk];
+    if (!Y) { Y = yIdx[yk] = { key: yk, months: [], mIdx: {}, items: [] }; years.push(Y); }
+    let M = Y.mIdx[mk];
+    if (!M) { M = Y.mIdx[mk] = { key: mk, days: [], dIdx: {}, items: [] }; Y.months.push(M); }
     let D = M.dIdx[dk];
     if (!D) { D = M.dIdx[dk] = { key: dk, items: [] }; M.days.push(D); }
-    D.items.push(e);
-    M.items.push(e);
+    D.items.push(e); M.items.push(e); Y.items.push(e);
   });
-  const byKeyDesc = (a, b) => (a.key === 'undated' ? 1 : b.key === 'undated' ? -1 : a.key < b.key ? 1 : a.key > b.key ? -1 : 0);
-  months.sort(byKeyDesc);
-  months.forEach((M) => M.days.sort(byKeyDesc));
-  const many = entries.length > COLLAPSE_AFTER;
-  led.classList.remove('is-comfortable');
+  years.sort(byKeyDesc);
+  years.forEach((Y) => Y.months.sort(byKeyDesc));
+  const curY = today.slice(0, 4);
+  const curM = today.slice(0, 7);
+  const hasY = years.some((Y) => Y.key === curY);
+  const hasM = years.some((Y) => Y.months.some((M) => M.key === curM));
+  const latestY = years[0].key;
+  const latestM = years[0].months[0].key;
   let html = '';
-  months.forEach((M, mi) => {
-    const days = M.days.map((D) => `<div class="card cm-day hl-day" data-day="${esc(D.key)}">${D.items.map((e, i) => rowHtml(e, e.i, i === 0)).join('')}${dayFoot(list.id, D.items)}</div>`).join('');
-    const md = M.key === 'undated' ? null : new Date(M.key + '-01T00:00:00');
-    const name = md && !isNaN(md.getTime()) ? formatMonthYear(md) : 'No date';
-    const collapsed = many && mi > 0;
-    const S = summarize(list.id, M.items);
-    const count = S.kgText || (M.items.length === 1 ? '1 entry' : `${M.items.length} entries`);
-    html += `<section class="cm-month${collapsed ? ' is-collapsed' : ''}"><button type="button" class="cm-month-head" data-hl-month aria-expanded="${collapsed ? 'false' : 'true'}"><span class="cm-month-name">${esc(name)}</span><span class="cm-month-count">${esc(count)}</span><span class="cm-month-sum">${esc(S.parts.join(' \u00b7 '))}</span><svg class="cm-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><div class="cm-month-body">${days}</div></section>`;
+  years.forEach((Y) => {
+    const yKey = `y:${Y.key}`;
+    const yOpen = isOpen(list, yKey, hasY ? Y.key === curY : Y.key === latestY);
+    let mHtml = '';
+    Y.months.forEach((M) => {
+      M.days.sort(byKeyDesc);
+      const mKey = `m:${M.key}`;
+      const mOpen = isOpen(list, mKey, hasM ? M.key === curM : M.key === latestM);
+      const md = M.key === 'undated' ? null : new Date(M.key + '-01T00:00:00');
+      const name = md && !isNaN(md.getTime()) ? formatMonthYear(md) : 'No date';
+      const S = summarize(list.id, M.items);
+      mHtml += `<section class="cm-month hl-month${mOpen ? '' : ' is-collapsed'}">${headHtml('cm-month-head', mKey, name, S.kgText || entriesWord(M.items.length), S.parts.join(' \u00b7 '), mOpen)}<div class="cm-month-body">${M.days.map((D) => dayHtml(list, D, today)).join('')}</div></section>`;
+    });
+    const SY = summarize(list.id, Y.items);
+    html += `<section class="cm-month hl-year${yOpen ? '' : ' is-collapsed'}">${headHtml('cm-month-head hl-year-head', yKey, Y.key === 'undated' ? 'No date' : Y.key, SY.kgText || entriesWord(Y.items.length), SY.parts.join(' \u00b7 '), yOpen)}<div class="cm-month-body">${mHtml}</div></section>`;
   });
   led.innerHTML = html;
 }
@@ -345,10 +381,16 @@ if (typeof document !== 'undefined' && !window.__hlBound) {
   window.__hlBound = true;
 
   document.addEventListener('click', (e) => {
-    const month = e.target.closest && e.target.closest('[data-hl-month]');
-    if (month) {
-      const sec = month.closest('.cm-month');
-      if (sec) month.setAttribute('aria-expanded', sec.classList.toggle('is-collapsed') ? 'false' : 'true');
+    const tog = e.target.closest && e.target.closest('[data-hl-toggle]');
+    if (tog) {
+      const box = tog.closest('.cm-month, .hl-day');
+      const led = tog.closest('.hl-ledger');
+      if (box) {
+        const closed = box.classList.toggle('is-collapsed');
+        tog.setAttribute('aria-expanded', closed ? 'false' : 'true');
+        const list = led && led.parentElement;
+        if (list) (list._hlOpen || (list._hlOpen = {}))[tog.dataset.hlToggle] = !closed;
+      }
       return;
     }
     const row = e.target.closest && e.target.closest('.hl-row');

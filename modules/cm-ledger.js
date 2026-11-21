@@ -81,7 +81,7 @@ export function applyCmFilters(kind) {
   if (!list) return;
   const searchEl = document.getElementById(c.search);
   const term = searchEl && !searchEl.classList.contains('d-none') ? searchEl.value.toLowerCase().trim() : '';
-  const filter = 'all';
+  const filter = list.classList.contains('is-comfortable') ? 'all' : st(kind).filter;
   list.classList.toggle('is-filtering', !!term || filter !== 'all');
   list.querySelectorAll('.cm-row').forEach((r) => {
     const okF = filter === 'all' || (filter === 'open' ? r.dataset.open === '1' : r.dataset.cat === filter);
@@ -159,7 +159,7 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
   const n = entries.length;
   const comfortable = n <= 6;
   if (search) search.classList.toggle('d-none', comfortable);
-  if (filters) { filters.replaceChildren(); filters.classList.add('d-none'); }
+  if (filters) filters.classList.toggle('d-none', comfortable);
   if (sum) { sum.classList.remove('d-none'); sum.innerHTML = summaryHtml; }
   if (n === 0) {
     if (filters) filters.replaceChildren();
@@ -213,6 +213,10 @@ export async function renderLedger(kind, { name, phone, entries, summaryHtml, mo
   html += '<div class="cm-no-match empty d-none">No matching history. Clear the search or pick All.</div>';
   list.className = comfortable ? 'cm-list is-comfortable' : 'cm-list';
   list.innerHTML = html;
+  if (filters && !comfortable) {
+    const FL = Array.isArray(c.filterChips) ? c.filterChips : [['all', 'All'], ['credit', 'Credit'], ['cash', 'Cash'], ['pay', 'Payments'], ['open', 'Unpaid']];
+    filters.innerHTML = FL.map(([k, l]) => `<button type="button" class="toggle-opt${state.filter === k ? ' active' : ''}" data-f="${k}" onclick="setCmFilter('${kind}','${k}')">${l}</button>`).join('');
+  }
   if (jump) {
     const show = many && months.length >= 3;
     jump.classList.toggle('d-none', !show);

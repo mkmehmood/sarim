@@ -4720,6 +4720,17 @@ button.dl-row-line { cursor: pointer; }
 .hl-src { display: none !important; }
 .hl-ledger { display: block; grid-column: 1 / -1; width: 100%; }
 .history-list .hc-list:empty { display: none; }
+.hl-ledger .cm-month .cm-month { margin-left: 8px; }
+.hl-year-head .cm-month-name { font-size: 1rem; }
+.hl-day { padding: 0 12px; }
+.hl-day-head { display: grid; grid-template-columns: 38px 1fr 14px; gap: 0 10px; align-items: center; width: 100%; padding: 12px 0; text-align: left; color: var(--text-main); background: transparent; border: 0; cursor: pointer; }
+.hl-day-sum { display: block; min-width: 0; }
+.hl-day-sum b { display: block; font-size: 0.86rem; font-weight: 600; }
+.hl-day-sum span { display: block; font-size: 0.72rem; color: var(--text-muted); }
+.hl-day.is-collapsed .cm-chev { transform: rotate(-90deg); }
+.hl-day.is-collapsed .hl-day-body { display: none; }
+.hl-day-body { border-top: 1px solid var(--glass-border); }
+.hl-day .cm-row { grid-template-columns: 1fr auto; }
 .hl-sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .hl-line { margin-top: 3px; font-size: 0.86rem; }
 .hl-line.is-soft { font-style: italic; color: var(--text-muted); }
