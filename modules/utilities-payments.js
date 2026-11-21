@@ -1151,7 +1151,7 @@ _showFilterEmpty('#factoryHistoryList', total, shown, 'No production for this fo
 export function _filterPaymentHistoryByPeriod() {
 const matchName = customerHistoryMatcher('expenseName');
 let total = 0, shown = 0;
-document.querySelectorAll('#paymentHistoryList .card').forEach(card => {
+document.querySelectorAll('#paymentHistoryList .card:not(.cm-day)').forEach(card => {
 total++;
 const show = !matchName || matchName(String(card.getAttribute('data-entity') || ''));
 if (show) shown++;
@@ -1167,7 +1167,7 @@ _filterPaymentHistoryByPeriod();
 export function _filterHistoryByPeriod(listSelector) {
 const isCustList = listSelector === '#custHistoryList';
 const matchName = isCustList ? customerHistoryMatcher('cust-name') : null;
-const cards = document.querySelectorAll(listSelector + ' .card:not(.hc-metric)');
+const cards = document.querySelectorAll(listSelector + ' .card:not(.hc-metric):not(.cm-day)');
 let total = 0, shown = 0;
 cards.forEach(card => {
 total++;

@@ -66,7 +66,7 @@ describe('routeHistoryMatcher', () => {
 });
 
 describe('payments tab history follows the entity name', () => {
-  const SEL = '#paymentHistoryList .card';
+  const SEL = '#paymentHistoryList .card:not(.cm-day)';
   beforeEach(() => {
     inputs = { unifiedPeriodFilter: { value: 'all' }, expenseName: { value: '', dataset: {} } };
     lists[SEL] = [mkCard({ 'data-date': '2026-10-30', 'data-entity': 'ali traders' }), mkCard({ 'data-date': '2026-10-01', 'data-entity': 'ali' }), mkCard({ 'data-date': '2026-09-01', 'data-entity': 'sara' })];
