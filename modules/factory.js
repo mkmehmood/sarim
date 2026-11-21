@@ -180,21 +180,21 @@ const metrics = [
 if (l.supplierId) metrics.push({ label: 'Pending', value: fmtAmt(pend), wide: true });
 return hcCardHtml({
 tone: l.supplierId ? (pend > 0 ? 'warn' : 'good') : 'muted', icon: 'in',
-title: _fmtDay(l.purchaseDate), sub: l.supplierId ? esc(supName(l) || 'Supplier') : 'No supplier',
+title: l.supplierId ? esc(supName(l) || 'Supplier') : 'Cash purchase', sub: `${esc(_fmtDay(l.purchaseDate))}${_fmtDay(l.purchaseDate) ? ' &bull; ' : ''}${fmtNum(purchaseKgOf(l))} kg`,
 amount: fmtAmt(l.totalValue), tag: l.supplierId ? (pend > 0 ? 'Pending' : 'Paid') : 'Cash', tagTone: l.supplierId ? (pend > 0 ? 'warn' : 'good') : 'info',
 metrics,
 actions: `<button class="btn btn-theme btn-sm" onclick="editFactoryPurchase('${rlJsArg(l.id)}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteFactoryPurchase('${rlJsArg(l.id)}')">Delete</button>`
-}, { attrs: { 'data-date': l.purchaseDate } });
+}, { attrs: { 'data-date': editDateValue({ d: l.purchaseDate }) } });
 });
 if (!mat.purchasesTracked) {
 const pend = pendingOf(mat);
 const openKg = Number(mat.quantity) || 0;
 cards.push(hcCardHtml({
-tone: mat.supplierId ? (pend > 0 ? 'warn' : 'good') : 'muted', icon: 'in', title: 'Opening stock', sub: mat.supplierId ? esc(supName(mat) || 'Supplier') : 'No supplier',
+tone: mat.supplierId ? (pend > 0 ? 'warn' : 'good') : 'muted', icon: 'in', title: 'Opening stock', sub: `${esc(_fmtDay(mat.purchaseDate || mat.createdAt))}${_fmtDay(mat.purchaseDate || mat.createdAt) ? ' &bull; ' : ''}${mat.supplierId ? esc(supName(mat) || 'Supplier') : 'No supplier'}`,
 amount: fmtAmt(mat.supplierId ? pend : openKg * (Number(mat.cost) || 0)), tag: mat.supplierId ? (pend > 0 ? 'Pending' : 'Paid') : 'Opening', tagTone: mat.supplierId ? (pend > 0 ? 'warn' : 'good') : 'info',
 metrics: [{ label: 'Date', value: _fmtDay(mat.purchaseDate || mat.createdAt) }, { label: 'Stock now', value: `${fmtNum(openKg)} kg` }, { label: 'Supplier', value: mat.supplierId ? esc(supName(mat) || 'Supplier') : 'None' }].concat(mat.supplierId ? [{ label: 'Pending', value: fmtAmt(pend) }] : []),
 actions: mat.supplierId ? `<button class="btn btn-danger btn-sm" onclick="unlinkFactoryOpeningSupplier('${rlJsArg(mat.id)}')">Unlink Supplier</button>` : ''
-}));
+}, { attrs: { 'data-date': editDateValue({ d: mat.purchaseDate || mat.createdAt }) } }));
 }
 box.innerHTML = cards.length ? cards.join('') : hcEmptyHtml('No purchases recorded yet');
 }

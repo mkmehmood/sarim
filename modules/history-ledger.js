@@ -1,6 +1,6 @@
 import { formatMonthYear } from './date-format.js';
 
-const LISTS = ['historyList', 'custHistoryList', 'prodHistoryList', 'paymentHistoryList', 'repHistoryList', 'factoryHistoryList', 'factoryPurchaseHistory', 'paymentTransferHistoryList', 'stockTransferHistoryList', 'dailyLedgerList'];
+const LISTS = ['historyList', 'custHistoryList', 'prodHistoryList', 'paymentHistoryList', 'repHistoryList', 'factoryHistoryList', 'factoryPurchaseHistory', 'paymentTransferHistoryList', 'stockTransferHistoryList', 'dailyLedgerList', 'expenseManagementHistoryList'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const COLLAPSE_AFTER = 40;
 const TONE_CLASS = { good: 'cm-in', warn: 'cm-cr', bad: 'cm-out' };

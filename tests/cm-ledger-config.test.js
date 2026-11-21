@@ -12,7 +12,7 @@ test('every ledger kind keeps `filters` as a DOM id string', () => {
   }
 });
 
-test('chip rendering only maps over an array', () => {
-  assert.match(src, /Array\.isArray\(c\.filterChips\)/);
-  assert.doesNotMatch(src, /c\.filters\s*\|\|\s*\[\[/);
+test('ledger no longer renders filter chips', () => {
+  assert.doesNotMatch(src, /setCmFilter\('\$\{kind\}'/);
+  assert.doesNotMatch(src, /filters\.innerHTML\s*=/);
 });

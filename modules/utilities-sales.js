@@ -3236,18 +3236,7 @@ stats.year.v += (item.totalSale || 0); stats.year.fu += (item.formulaUnits || 0)
 stats.all.q += (item.net || 0); stats.all.p += (item.profit || 0); stats.all.c += (item.totalCost || 0);
 stats.all.v += (item.totalSale || 0); stats.all.fu += (item.formulaUnits || 0); stats.all.fc += (item.formulaCost || 0);
 });
-const histMode = (window.currentProductionView === 'store') ? 'day' : (window.currentOverviewMode || 'day');
-const filteredProduction = sortedDb.filter(item => {
-if (!item.date) return true;
-const [rowY, rowM, rowD] = item.date.split('-').map(Number);
-const rowDateObj = new Date(rowY, rowM - 1, rowD);
-rowDateObj.setHours(0, 0, 0, 0);
-if (histMode === 'day') return item.date === selectedDate;
-if (histMode === 'week') return rowDateObj >= weekStart && rowDateObj <= selectedDateObj;
-if (histMode === 'month') return rowY === sYear && rowM === sMonth;
-if (histMode === 'year') return rowY === sYear;
-return true;
-});
+const filteredProduction = sortedDb;
 const totalItems = filteredProduction.length;
 const histContainer = document.getElementById('prodHistoryList');
 if (isMoneyRestricted()) {
