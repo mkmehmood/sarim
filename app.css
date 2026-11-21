@@ -4741,7 +4741,7 @@ button.dl-row-line { cursor: pointer; }
 .hl-row.is-selected { box-shadow: inset 3px 0 0 var(--accent); }
 .hl-extra { margin: 8px 0 4px; }
 .hl-extra .pp-strip { margin-top: 8px; }
-.hl-sheet { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.hl-sheet { background-color: var(--surface); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .hl-line { margin-top: 3px; font-size: 0.86rem; }
 .hl-line.is-soft { font-style: italic; color: var(--text-muted); }
 .status-badge.is-bad { color: var(--danger); }
