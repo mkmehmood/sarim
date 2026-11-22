@@ -1,4 +1,4 @@
-const ALWAYS_VISIBLE = new Set(['sidebar-btn-sync', 'sidebar-btn-recycle', 'sidebar-btn-theme', 'sidebar-btn-bg', 'sidebar-btn-bg-reset', 'startup-btn']);
+const ALWAYS_VISIBLE = new Set(['sidebar-btn-sync', 'sidebar-btn-recycle', 'sidebar-btn-theme', 'startup-btn']);
 export function prepareSettingsScreen() {
   const screen = document.getElementById('settings-screen');
   if (!screen) return;
@@ -10,7 +10,6 @@ export function prepareSettingsScreen() {
     const anyShown = Array.from(card.querySelectorAll('.sidebar-item')).some((b) => !b.classList.contains('d-none'));
     card.classList.toggle('d-none', !anyShown);
   });
-  if (typeof window.syncCustomBgButtons === 'function') window.syncCustomBgButtons();
   if (typeof window.syncBiometricButton === 'function') window.syncBiometricButton();
   if (typeof window.syncStartupButton === 'function') window.syncStartupButton().catch(() => {});
 }

@@ -69,7 +69,7 @@ describe('settings screen', () => {
     const groups = settings.split('<p class="settings-group-label">').slice(1).map((g) => [g.slice(0, g.indexOf('</p>')).replace(/&amp;/g, '&'), labelOf(g)]);
     assert.deepEqual(groups, [
       ['Data & Sync', ['Sync Data', 'Backup & Restore', 'Recycle Bin', 'Database Structure']],
-      ['Appearance & Device', ['Theme', 'Background Picture', 'Reset Background', 'Sound & Haptics', 'Start with Computer: Off']],
+      ['Appearance & Device', ['Theme', 'Sound & Haptics', 'Start with Computer: Off']],
       ['Security', ['Fingerprint Lock', 'App Accounts']],
       ['Business', ['Store Manager']],
       ['Danger Zone', ['Close Financial Year']]
@@ -106,15 +106,5 @@ describe('prepareSettingsScreen role gating', () => {
     const r = await run('rep');
     assert.deepEqual(r.all.map((b) => [b.id, b.classList.contains('d-none')]), [['sidebar-btn-sync', false], ['x1', true], ['sidebar-btn-theme', false], ['bio-toggle-btn', true]]);
     assert.deepEqual(r.cards.map((c) => c.classList.contains('d-none')), [false, false, true]);
-  });
-});
-describe('custom background', () => {
-  it('has settings buttons wired to the picker and reset, shown to every role', async () => {
-    assert.match(settings, /id="sidebar-btn-bg"[^>]*onclick="pickCustomBackground\(\)"/);
-    assert.match(settings, /id="sidebar-btn-bg-reset"[^>]*onclick="resetCustomBackground\(\)"/);
-    assert.ok(read('../sw.js').includes("'./modules/custom-bg.js'"));
-    assert.ok(read('../modules/main.js').includes("import './custom-bg.js';"));
-    const src = read('../modules/settings-screen.js');
-    assert.ok(src.includes("'sidebar-btn-bg'") && src.includes("'sidebar-btn-bg-reset'"));
   });
 });

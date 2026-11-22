@@ -55,7 +55,6 @@ const ASSETS_TO_CACHE = [
   './modules/ledger-core.js',
   './modules/store-recycle.js',
   './modules/screen-order.js',
-  './modules/custom-bg.js',
   './modules/settings-screen.js',
   './modules/desktop-startup.js',
   './modules/push.js',
