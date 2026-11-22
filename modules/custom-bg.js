@@ -1,7 +1,7 @@
 const IMG_KEY = 'sarim_custom_bg';
 const CFG_KEY = 'sarim_custom_bg_cfg';
 const MAX_SCALE_FACTOR = 8;
-const DEFAULT_DIM = 35;
+const DEFAULT_DIM = 45;
 
 function toast(msg, type) {
   if (typeof window.showToast === 'function') window.showToast(msg, type || 'info', 2200);

@@ -5806,14 +5806,18 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 }
 
 #app-bg-image { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-image: var(--custom-bg-image, none); background-size: cover; background-position: center; background-repeat: no-repeat; }
-#app-bg-image .app-bg-dim { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) var(--custom-bg-dim, 35%), transparent); }
-html[data-custom-bg][data-theme] { --bg-gradient: transparent; --soft-card: transparent; --panel-bg: transparent; --dt-card-top: transparent; --dt-card-bot: transparent; --backdrop-blur: none; --shadow: none; --shadow-header: none; }
-html[data-custom-bg] :is(.card, .panel, .shell-bar, .screen-topbar, .screen-body, #sys-header) { background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+#app-bg-image .app-bg-dim { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) var(--custom-bg-dim, 45%), transparent); }
+html[data-custom-bg][data-theme] { --custom-bg-fill: linear-gradient(color-mix(in srgb, var(--bg) var(--custom-bg-dim, 45%), transparent), color-mix(in srgb, var(--bg) var(--custom-bg-dim, 45%), transparent)), var(--custom-bg-image); }
+html[data-custom-bg] :is(.standalone-screen, .shell-bar, #sys-header) { background-color: var(--bg); background-image: var(--custom-bg-fill); background-size: 100vw 100vh; background-position: top left; background-repeat: no-repeat; }
+html[data-custom-bg] :is(.card, .panel, .screen-topbar, .screen-body) { background: transparent; border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+html[data-custom-bg] .shell-bar { box-shadow: none; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
 html[data-custom-bg] .card :where(.card) { border-color: transparent; }
+html[data-custom-bg] body { text-shadow: 0 0 3px var(--bg), 0 0 9px color-mix(in srgb, var(--bg) 70%, transparent); }
+html[data-custom-bg] :is(input, textarea, select, button, .btn, .form-ctl) { text-shadow: none; }
 .bg-editor { position: fixed; inset: 0; z-index: 99999; background: #000; display: flex; flex-direction: column; }
 .bg-editor-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .bg-editor-img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; will-change: transform; pointer-events: none; }
-.bg-editor-dim { position: absolute; inset: 0; pointer-events: none; background: color-mix(in srgb, var(--bg) var(--bg-editor-dim, 35%), transparent); }
+.bg-editor-dim { position: absolute; inset: 0; pointer-events: none; background: color-mix(in srgb, var(--bg) var(--bg-editor-dim, 45%), transparent); }
 .bg-editor-hint { position: absolute; top: calc(14px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); padding: 7px 14px; border-radius: 999px; background: rgba(0,0,0,0.55); color: #fff; font-size: 0.8rem; font-weight: 600; pointer-events: none; transition: opacity .4s; white-space: nowrap; }
 .bg-editor-hint.is-hidden { opacity: 0; }
 .bg-editor-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,0.65)); display: flex; flex-direction: column; gap: 12px; }
