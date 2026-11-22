@@ -1,4 +1,4 @@
-const ALWAYS_VISIBLE = new Set(['sidebar-btn-sync', 'sidebar-btn-recycle', 'sidebar-btn-theme', 'sidebar-btn-bg', 'startup-btn']);
+const ALWAYS_VISIBLE = new Set(['sidebar-btn-sync', 'sidebar-btn-recycle', 'sidebar-btn-theme', 'startup-btn']);
 export function prepareSettingsScreen() {
   const screen = document.getElementById('settings-screen');
   if (!screen) return;

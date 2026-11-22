@@ -56,7 +56,6 @@ const ASSETS_TO_CACHE = [
   './modules/store-recycle.js',
   './modules/screen-order.js',
   './modules/settings-screen.js',
-  './modules/custom-background.js',
   './modules/desktop-startup.js',
   './modules/push.js',
   './modules/rep-data.js',

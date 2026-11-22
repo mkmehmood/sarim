@@ -39,7 +39,7 @@ export function applyMoneyPrivacy(mode) {
   return locked;
 }
 
-const RESTRICTED_SCREENS = new Set(['settings-screen', 'splash-screen', 'feedback-screen', 'background-screen', 'recycle-bin-screen']);
+const RESTRICTED_SCREENS = new Set(['settings-screen', 'splash-screen', 'feedback-screen', 'recycle-bin-screen']);
 const REP_OWN_SCREENS = new Set(['rep-customer-management-screen', 'rep-customer-edit-screen']);
 
 export function isScreenAllowed(id, mode) {
