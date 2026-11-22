@@ -5804,3 +5804,18 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 @media (pointer: coarse) {
   .btn-sm { height: 44px; min-height: 44px; }
 }
+
+#app-bg-image { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-image: var(--custom-bg-image, none); background-size: cover; background-position: center; background-repeat: no-repeat; }
+#app-bg-image .app-bg-dim { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) var(--custom-bg-dim, 35%), transparent); }
+html[data-custom-bg][data-theme] { --bg-gradient: transparent; }
+.bg-editor { position: fixed; inset: 0; z-index: 99999; background: #000; display: flex; flex-direction: column; }
+.bg-editor-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.bg-editor-img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; will-change: transform; pointer-events: none; }
+.bg-editor-dim { position: absolute; inset: 0; pointer-events: none; background: color-mix(in srgb, var(--bg) var(--bg-editor-dim, 35%), transparent); }
+.bg-editor-hint { position: absolute; top: calc(14px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); padding: 7px 14px; border-radius: 999px; background: rgba(0,0,0,0.55); color: #fff; font-size: 0.8rem; font-weight: 600; pointer-events: none; transition: opacity .4s; white-space: nowrap; }
+.bg-editor-hint.is-hidden { opacity: 0; }
+.bg-editor-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,0.65)); display: flex; flex-direction: column; gap: 12px; }
+.bg-editor-dimrow { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 0.85rem; font-weight: 700; }
+.bg-editor-range { flex: 1; touch-action: pan-x; }
+.bg-editor-actions { display: flex; gap: 10px; }
+.bg-editor-actions .btn { flex: 1; }

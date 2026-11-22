@@ -38,6 +38,7 @@ import './dropdown.js';
 import './notify-open.js';
 import './phone-actions.js';
 import './field-expenses.js';
+import './custom-bg.js';
 import './settings-screen.js';
 import './desktop-startup.js';
 import './push.js';
