@@ -338,7 +338,7 @@ const _dupEntity = ensureArray(await sqliteStore.get('entities')).find((e) => e 
 if (_dupEntity) return window.notifyBlocking(`A supplier named "${_dupEntity.name}" already exists. Choose Existing supplier and pick it from the list.`, 'warning', 'Warning');
 }
 if (supplierType === 'new' && phoneIssue(_el('factorySupplierPhone').value)) return window.notifyBlocking(phoneIssue(_el('factorySupplierPhone').value), 'warning', 'Warning');
-if (supplierType === 'existing' && !(((_el('factoryExistingSupplier') || {}).getAttribute || (() => ''))('data-supplier-id') || '')) return window.notifyBlocking('Pick the supplier from the list, or choose No supplier.', 'warning', 'Warning');
+if (supplierType === 'existing' && !(((_el('factoryExistingSupplier') || null)?.getAttribute('data-supplier-id')) || '')) return window.notifyBlocking('Pick the supplier from the list, or choose No supplier.', 'warning', 'Warning');
 if (!(await window.gcCommit({}))) return;
 try {
 const kg = qty * conversionFactor;
