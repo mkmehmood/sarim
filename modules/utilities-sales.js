@@ -18,7 +18,8 @@ import { hydrateProdPhotoThumbs, loadProdPhotosForEdit, prodPhotoStripHtml, rese
 import { actionRowHtml, beginEditMode, endEditMode, getEditCtx, registerEditHandler, replaceRecord, stampEdit } from './edit-mode.js';
 import { inventoryTileModel, inventoryTileHtml } from './inventory-note.js';
 import { isMoneyRestricted, moneyLine, redactMoney } from './money-privacy.js';
-import { parseLocalDate } from './finance.js';
+import { parseLocalDate, ledgerDelta, allocHonor } from './finance.js';
+import { txDeviceCompare } from './tx-date.js';
 import { dataRootRef, allocatePaymentToMaterials, _creatorBadgeHtml, _mergedBadgeHtml, _readFileAsArrayBuffer, _safeErr, _triggerFileDownload, appMode, auth, balanceAfterHtml, compareRecordVersions, compareTimestamps, CryptoEngine, currentRepProfile, currentUser, debtDelta, debtNeedsGross, ensureArray, ensureRecordIntegrity, esc, extractUUIDMeta, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getRecordTimestamp, getTimestamp, loadAllData, localDateStr, OfflineAuth, round2, safeNumber, salesRepsList, sqliteStore, validateUUID, oldDebtNote, formatTime12, readNum, repairStoredRecords, loadCollections } from './business.js';
 import { _set_restoring, _set_closing } from './admin-flags.js';
 import { emitSyncUpdate, mergeArrays, mergeDatasets, performOneClickSync, pushDataToCloud, sanitizeForFirestore, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
@@ -3237,7 +3238,7 @@ stats.year.v += (item.totalSale || 0); stats.year.fu += (item.formulaUnits || 0)
 stats.all.q += (item.net || 0); stats.all.p += (item.profit || 0); stats.all.c += (item.totalCost || 0);
 stats.all.v += (item.totalSale || 0); stats.all.fu += (item.formulaUnits || 0); stats.all.fc += (item.formulaCost || 0);
 });
-const filteredProduction = sortedDb;
+const filteredProduction = window.currentProductionView === 'combined' ? sortedDb : sortedDb.filter(item => !item.date || item.date === selectedDate);
 const totalItems = filteredProduction.length;
 const histContainer = document.getElementById('prodHistoryList');
 if (isMoneyRestricted()) {
@@ -5815,6 +5816,25 @@ histContainer.innerHTML = hcEmptyHtml('No sales found.');
 const fragment = document.createDocumentFragment();
 const _rrUsedIds = new Set();
 ensureArray(await sqliteStore.get('calculator')).forEach(h => { if (h && Array.isArray(h.linkedRepReturnIds)) h.linkedRepReturnIds.forEach(i => _rrUsedIds.add(i)); });
+const _balAfter = new Map();
+try {
+const _rrBal = await getReconciledRepReturnIds();
+const _honorBal = allocHonor(sales);
+const _byCust = new Map();
+sales.forEach(t => {
+if (!t || !t.id || !t.customerName || t.currentRepProfile !== 'admin') return;
+if (!_byCust.has(t.customerName)) _byCust.set(t.customerName, []);
+_byCust.get(t.customerName).push(t);
+});
+for (const list of _byCust.values()) {
+const asc = list.map((t, i) => ({ t, i })).sort((a, b) => txDeviceCompare(a.t, b.t) || (a.i - b.i));
+let run = 0;
+for (const { t } of asc) {
+run = round2(run + ledgerDelta(t, debtNeedsGross(t) ? await getSaleTransactionValue(t) : 0, { reconciledReturnIds: _rrBal, honor: _honorBal }));
+_balAfter.set(t.id, run);
+}
+}
+} catch (_e) { console.warn('[refreshCustomerSales] balance after failed:', _safeErr(_e)); }
 displayData.forEach(async item => {
 const effDate = item.date;
 const isSelected = effDate === selectedDate;
@@ -5907,7 +5927,7 @@ actions: deleteBtnHtml
 }
 const card = hcCard(cardOpts, {
 className: `${highlightClass}${item.isSettled ? ' is-settled-record' : ''}`.trim(),
-attrs: { 'data-date': _cardDate, 'data-customer': String(item.customerName || '').trim().toLowerCase() }
+attrs: _saleAttrs(item, _cardDate, _balAfter, isOldDebtItem, isAdminCollItem, paymentType, creditReceived)
 });
 fragment.appendChild(card);
 });
@@ -5917,6 +5937,19 @@ const _custDate = (document.getElementById('cust-date') || {}).value || localDat
 _filterHistoryByPeriod('#custHistoryList', _custDate, currentSalesSummaryMode || 'day');
 renderCustomersTable();
 updateCustomerCharts();
+}
+
+function _saleAttrs(item, date, balMap, isOldDebt, isAdminColl, paymentType, creditReceived) {
+let kind = (paymentType === 'CREDIT' && !creditReceived) ? 'cr' : 'cash';
+if (item.isRepReturn || isAdminColl || paymentType === 'COLLECTION' || paymentType === 'PARTIAL_PAYMENT') kind = 'in';
+else if (isOldDebt || paymentType === 'MONEY_OUT') kind = 'cr';
+const attrs = { 'data-date': date, 'data-customer': String(item.customerName || '').trim().toLowerCase(), 'data-kind': kind };
+if (balMap.has(item.id)) {
+const bal = balMap.get(item.id);
+attrs['data-bal'] = bal < -0.005 ? `${fmtAmt(-bal)} CR` : fmtAmt(Math.max(0, bal));
+attrs['data-bal-tone'] = bal > 0.005 ? 'debt' : 'clear';
+}
+return attrs;
 }
 
 export async function computeStoreStockSnapshot(store, date, excludeIds = null) {

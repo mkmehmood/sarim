@@ -53,6 +53,7 @@ const plain = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&bull;|&m
 const numOf = (h) => { const m = plain(h).replace(/,/g, '').match(/-?\d+(?:\.\d+)?/); return m ? parseFloat(m[0]) : 0; };
 const DATE_HEAD = /^\s*\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}(?:\s*@\s*(\d{1,2}:\d{2}(?::\d{2})?\s*[AP]M))?/i;
 function kindOf(listId, e) {
+  if (e.dkind) return e.dkind;
   const t = e.tag;
   if (/credit|pending|unpaid|partial|debt|due|rep return/i.test(t)) return 'cr';
   if (/collection|^in$|received|reconcil|return|payment in/i.test(t)) return 'in';
@@ -100,15 +101,22 @@ function detailHtml(card, e) {
   if (!body) return { info: '', rows: '' };
   const mets = metricList(body);
   const used = new Set();
+  const chips = Array.from(body.querySelectorAll('.hc-chips > *')).map((c) => c.textContent.trim()).filter(Boolean);
+  const supply = chips.filter((c) => /^supply date/i.test(c));
+  const others = chips.filter((c) => !/^supply date/i.test(c));
   let info = '';
-  Array.from(body.querySelectorAll('.hc-chips > *')).map((c) => c.textContent.trim()).filter(Boolean).forEach((c) => { info += `<div class="hl-line is-soft">${esc(c)}</div>`; });
+  supply.forEach((c) => { info += `<div class="st-font-size__8113a0 st-color__5872de st-margin-top__7a21c6 st-font-style__e698a0">${esc(c.replace(/^supply date\s*/i, 'Supply Date: '))}</div>`; });
   const q = mets.find((m) => /^quantity$/i.test(m.l.trim()));
   const rt = mets.find((m) => /^rate$/i.test(m.l.trim()));
-  if (q && rt) { used.add(q); used.add(rt); info += `<div class="hl-line">${esc(plain(q.v))} @ ${esc(plain(rt.v).replace(/\/kg/i, ''))} = ${e.amt}</div>`; }
+  if (q && rt) { used.add(q); used.add(rt); info += `<div class="u-fs-sm2 u-text-muted">${esc(plain(q.v))} @ ${esc(plain(rt.v).replace(/\/kg/i, ''))} = ${e.amt}</div>`; }
+  if (others.length) info += `<div class="u-5d1cf22 text-xs">${esc(others.join(' \u00b7 '))}</div>`;
   const note = body.querySelector('.hc-note');
-  if (note && plain(note.innerHTML)) info += `<div class="hl-line is-soft">${note.innerHTML}</div>`;
+  if (note && plain(note.innerHTML)) info += `<div class="u-5d1cf22 text-xs">${note.innerHTML}</div>`;
   const kv = (l, v) => `<div class="txn-balance-after"><span>${esc(l)}</span><b>${v}</b></div>`;
-  let rows = mets.filter((m) => !used.has(m)).map((m) => kv(m.l, m.v)).join('');
+  let rows = '';
+  const bal = card.getAttribute('data-bal');
+  if (bal) rows += `<div class="txn-balance-after txn-balance-${card.getAttribute('data-bal-tone') === 'debt' ? 'debt' : 'clear'}"><span>Balance after</span><b>${esc(bal)}</b></div>`;
+  rows += mets.filter((m) => !used.has(m)).map((m) => kv(m.l, m.v)).join('');
   rows += Array.from(body.querySelectorAll('.hc-mat')).map((m) => kv((m.querySelector('.hc-mat-name') || {}).textContent || '', (m.querySelector('.hc-mat-val') || {}).innerHTML || '')).join('');
   return { info, rows };
 }
@@ -132,6 +140,7 @@ function parseCard(card, listId) {
     amt: amtHtml,
     tag: tag ? tag.textContent.trim() : '',
     rec: card.getAttribute('data-rec') || '',
+    dkind: card.getAttribute('data-kind') || '',
     kg: kgOf(card, amtHtml, subHtml),
     qtyRate: qtyRateOf(card),
     money: isKgAmt ? 0 : numOf(amtHtml)
@@ -355,7 +364,7 @@ export function openHistorySheet(entry) {
   sheetActs = acts;
   sheetActsParent = acts ? acts.parentElement : null;
   const det = detailHtml(entry.card, entry);
-  sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="cm-sheet-body"><div class="cust-history-info"><div>${entry.sub}</div>${det.info}</div></div>${det.rows}`;
+  sheet.innerHTML = `<div class="cm-sheet-grab" aria-hidden="true"></div><div class="cm-sheet-head"><div class="title title-md cm-sheet-title">${entry.title}</div><div class="cm-sheet-amt">${entry.amt}</div></div><div class="cm-sheet-body"><div class="cust-history-info"><div class="u-fs-sm2 u-text-muted">${entry.sub}</div>${det.info}</div></div>${det.rows}`;
   const inner = body ? body.querySelector(':scope > .hc-body-in') : null;
   if (inner) {
     const extras = Array.from(inner.children).filter((n) => !KNOWN_PARTS.some((c) => n.classList.contains(c)));
