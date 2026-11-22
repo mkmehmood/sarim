@@ -8,7 +8,7 @@
       <div class="u-611b408 d-flex">
         <div class="u-a8a9035">
           <button id="recycleBinFilterBtn" class="form-ctl u-a5ce510 d-flex st-border-bottom__e54b2f st-background__356c02" onclick="window._mkPopover(this.parentNode,'_pop_recycleBin',[{value:'all',label:'All Tabs'},{value:'tab_sales',label:'Sales Tab'},{value:'tab_rep',label:'Rep Tab'},{value:'tab_production',label:'Manufacturing Tab'},{value:'tab_calculator',label:'Calculator Tab'},{value:'tab_factory',label:'Factory Tab'},{value:'tab_payments',label:'Payments Tab'},{value:'tab_ledger',label:'Daily Ledger'},{value:'tab_formulas',label:'Formula Store'}],function(v,l){document.getElementById('recycleBinFilter').value=v;document.getElementById('recycleBinFilterBtn').querySelector('span').textContent=l;renderRecycleBin(v);})"><span>All Tabs </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-          <select id="recycleBinFilter" class="form-ctl d-none">
+          <select id="recycleBinFilter" class="form-ctl d-none" aria-label="Recycle Bin Filter">
             <option value="all">All Tabs</option>
             <option value="tab_sales">Sales Tab</option>
             <option value="tab_rep">Rep Tab</option>

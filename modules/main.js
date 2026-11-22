@@ -41,8 +41,3 @@ import './field-expenses.js';
 import './settings-screen.js';
 import './desktop-startup.js';
 import './push.js';
-import { startAccessibleNames } from './a11y-labels.js';
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startAccessibleNames, { once: true });
-  else startAccessibleNames();
-}

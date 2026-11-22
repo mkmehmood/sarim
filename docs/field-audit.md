@@ -112,7 +112,7 @@ Method as before. Cloud features (backups, approvals, manager sessions) need a s
 | Rep list | The hard-coded names "NORAN SHAH" and "NOMAN SHAH" are gone. A new install starts with no reps. A device with no saved list but with rep history gets those reps back from the records; reps are otherwise added and removed only through app accounts. |
 | Manager mode | The Rep tab "loss of X" message is hidden from money-restricted users. |
 | Batch screens | Row targets are built from the shown present + add, unit weight shows 4 decimals in kg, and batches above 10,000,000 kg are treated as no value. |
-| Phone | Pinch zoom is allowed, iPhone fields use 16 px text, small buttons are 44 px on touch screens, all 32 number fields have a number-pad `inputmode`, and unlabelled fields and icon buttons get an accessible name. |
+| Phone | iPhone fields use 16 px text, small buttons are 44 px on touch screens, and unlabelled search boxes and file pickers carry a fixed accessible name in the markup. Pinch zoom, number-pad hints and a page-wide label scanner were tried and removed because they changed how the first touch on a scroll behaves; the original viewport is kept. |
 
 ## Third pass: dates around midnight (fixed)
 

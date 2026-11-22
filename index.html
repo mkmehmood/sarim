@@ -45,8 +45,8 @@
   object-src  'none';
   upgrade-insecure-requests;
 ">
-<meta name="viewport" id="app-viewport" content="width=device-width, initial-scale=1.0">
-<script>(function(){var c=window.Capacitor,n=!!(c&&typeof c.isNativePlatform==="function"&&c.isNativePlatform())||/;\s*wv\)/.test(navigator.userAgent);if(n)return;var m=document.getElementById("app-viewport");if(m)m.setAttribute("content","width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual")})();</script>
+<meta name="viewport" id="app-viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>(function(){var c=window.Capacitor,n=!!(c&&typeof c.isNativePlatform==="function"&&c.isNativePlatform())||/;\s*wv\)/.test(navigator.userAgent);if(n)return;var m=document.getElementById("app-viewport");if(m)m.setAttribute("content","width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual")})();</script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -601,7 +601,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       </section>
       <section class="card pf-section">
         <h3 class="pf-section-title">Supplier</h3>
-        <select id="factoryMaterialSupplierType" class="form-ctl d-none">
+        <select id="factoryMaterialSupplierType" class="form-ctl d-none" aria-label="Factory Material Supplier Type">
           <option value="none">No Supplier Link</option>
           <option value="existing">Select Existing Entity</option>
           <option value="new">Add New Supplier Entity</option>
@@ -670,7 +670,7 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
   </div>
   <div class="screen-body apv-body">
     <div id="approvals-hero"></div>
-    <div class="apv-search-wrap d-none"><input id="approvals-search" class="form-ctl apv-search" type="search" placeholder="Search by name, item or amount" autocomplete="off" oninput="setApprovalSearch(this.value)"></div>
+    <div class="apv-search-wrap d-none"><input id="approvals-search" class="form-ctl apv-search" type="search" placeholder="Search by name, item or amount" autocomplete="off" oninput="setApprovalSearch(this.value)" aria-label="Search by name, item or amount"></div>
     <div id="approvals-types" class="apv-chips d-none"></div>
     <div id="approvals-people" class="apv-chips d-none"></div>
     <div id="approvals-list"></div>
@@ -774,7 +774,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div id="entityManagementSummary" class="panel cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
-      <input type="text" id="entity-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterEntityManagementHistory()">
+      <input type="text" id="entity-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterEntityManagementHistory()" aria-label="Search history...">
     </div>
     <div id="entityHistoryFilters" class="cm-filters d-none"></div>
     <div id="entityMonthJump" class="cm-filters cm-jump d-none"></div>
@@ -800,7 +800,7 @@ window._showLogoutConfirmDialog = async function() {
           <button class="btn pf-chip d-flex" onclick="openPhotoCapture('entity')"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.2" stroke="var(--accent)" stroke-width="2"/></svg>Camera</button>
           <button class="btn pf-chip pf-chip-danger d-none" id="entity-photo-clear-btn" onclick="clearPersonPhoto('entity')" title="Remove photo">Remove</button>
         </div>
-        <input type="file" id="entity-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'entity')">
+        <input type="file" id="entity-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'entity')" aria-label="Entity photo file">
       </div>
       <div class="pf-name field u-pos-relative">
         <label>Entity Name</label>
@@ -834,8 +834,8 @@ window._showLogoutConfirmDialog = async function() {
   </div>
   <div class="screen-body">
     <div class="u-0931b17 d-flex">
-      <input type="text" id="expense-history-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterExpenseManagementHistory()" autocomplete="off">
-      <select id="expenseOverlayRange" class="form-ctl d-none" onchange="renderExpenseOverlayContent()">
+      <input type="text" id="expense-history-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterExpenseManagementHistory()" autocomplete="off" aria-label="Search history...">
+      <select id="expenseOverlayRange" class="form-ctl d-none" onchange="renderExpenseOverlayContent()" aria-label="Expense Overlay Range">
         <option value="today">Today</option>
         <option value="week">This Week</option>
         <option value="month">This Month</option>
@@ -848,7 +848,7 @@ window._showLogoutConfirmDialog = async function() {
       <div class="u-quick-row">
         <div class="field u-field-flex-1-min">
           <label>Amount (Rs)</label>
-          <input class="form-ctl u-w-full" type="number" inputmode="decimal" id="quickExpenseAmount" placeholder="0.00">
+          <input class="form-ctl u-w-full" type="number" id="quickExpenseAmount" placeholder="0.00">
         </div>
         <div class="field u-field-flex-1-5b">
           <label>Description (optional)</label>
@@ -873,7 +873,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div id="customerManagementSummary" class="panel cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
-      <input type="text" id="cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterCustomerManagementHistory()">
+      <input type="text" id="cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterCustomerManagementHistory()" aria-label="Search history...">
       <button type="button" class="btn btn-main btn-sm" id="cust-money-out-btn" onclick="recordCustomerMoneyOut()" title="Daily Ledger: Cash Out (money paid)">Money Out <small>(Cash Out −)</small></button>
     </div>
     <div id="customerHistoryFilters" class="cm-filters d-none"></div>
@@ -900,7 +900,7 @@ window._showLogoutConfirmDialog = async function() {
           <button class="btn pf-chip d-flex" onclick="openPhotoCapture('cust')"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.2" stroke="var(--accent)" stroke-width="2"/></svg>Camera</button>
           <button class="btn pf-chip pf-chip-danger d-none" id="cust-photo-clear-btn" onclick="clearPersonPhoto('cust')" title="Remove photo">Remove</button>
         </div>
-        <input type="file" id="cust-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'cust')">
+        <input type="file" id="cust-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'cust')" aria-label="Cust photo file">
       </div>
       <div class="pf-name field u-pos-relative">
         <label id="cust-name-label">Customer Name</label>
@@ -948,7 +948,7 @@ window._showLogoutConfirmDialog = async function() {
   <div class="screen-body">
     <div id="repCustomerManagementSummary" class="panel cm-summary d-none"></div>
     <div class="u-0931b17 d-flex">
-      <input type="text" id="rep-cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterRepCustomerManagementHistory()">
+      <input type="text" id="rep-cust-trans-search" class="form-ctl search-bar u-m-0 u-634a28b" placeholder="Search history..." oninput="filterRepCustomerManagementHistory()" aria-label="Search history...">
     </div>
     <div id="repCustomerHistoryFilters" class="cm-filters d-none"></div>
     <div id="repCustomerMonthJump" class="cm-filters cm-jump d-none"></div>
@@ -974,7 +974,7 @@ window._showLogoutConfirmDialog = async function() {
           <button class="btn pf-chip d-flex" onclick="openPhotoCapture('rep-cust')"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.2" stroke="var(--accent)" stroke-width="2"/></svg>Camera</button>
           <button class="btn pf-chip pf-chip-danger d-none" id="rep-cust-photo-clear-btn" onclick="clearPersonPhoto('rep-cust')" title="Remove photo">Remove</button>
         </div>
-        <input type="file" id="rep-cust-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'rep-cust')">
+        <input type="file" id="rep-cust-photo-file" accept="image/*" class="d-none" onchange="handlePersonPhotoFile(event,'rep-cust')" aria-label="Rep cust photo file">
       </div>
       <div class="pf-name field u-pos-relative">
         <label id="rep-cust-name-label">Customer Name</label>
@@ -1065,13 +1065,13 @@ window._showLogoutConfirmDialog = async function() {
     <button type="button" class="btn cam-btn cam-lg cam-sq cam-gallery" onclick="openCameraGallery()" aria-label="Choose from gallery">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect x="4" y="5" width="28" height="26" rx="4.5" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12.5" cy="13" r="2.8" fill="currentColor"/><path d="M4.8 27L13 18.5L20 25L25 20L31.2 26.5V27.8A3.2 3.2 0 0 1 28 31H8A3.2 3.2 0 0 1 4.8 27.8Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>
     </button>
-    <input type="file" id="cam-gallery-input" accept="image/*" multiple class="d-none" onchange="handleCameraGalleryFiles(event)">
+    <input type="file" id="cam-gallery-input" accept="image/*" multiple class="d-none" onchange="handleCameraGalleryFiles(event)" aria-label="Cam gallery input">
     <button type="button" class="cam-shutter" onclick="capturePhotoFromCamera()" aria-label="Capture photo"><span></span></button>
     <button type="button" id="cam-flip-btn" class="btn cam-btn cam-lg cam-flip" onclick="flipCamera()" title="Switch camera" aria-label="Switch camera">
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M12.5 19.5A5.7 5.7 0 0 1 22.5 16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M23.3 12V16.4H19" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M23.5 19.5A5.7 5.7 0 0 1 13.5 23" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.7 27V22.6H17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
-</div><input type="file" id="restoreInput" class="hidden" accept=".gznd" onchange="(async () => { await unifiedRestore(event) })()">
+</div><input type="file" id="restoreInput" class="hidden" accept=".gznd" onchange="(async () = aria-label="Restore Input"> { await unifiedRestore(event) })()">
 <div id="tab-rep" class="hidden">
 <header class="u-497acf1 d-flex">
 <h1 class="shimmer-text u-heading-bold">Rep Sales</h1>
@@ -1101,7 +1101,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 </div>
 <div id="rep-sale-inputs">
 <div class="grid-inputs">
-<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="rep-quantity" step="0.001" oninput="calculateRepSalePreview()"></div>
+<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="rep-quantity" step="0.001" oninput="calculateRepSalePreview()"></div>
 <div class="field">
 <label>Payment Type</label>
 <div class="toggle-group">
@@ -1116,11 +1116,11 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <div class="grid-inputs">
 <div class="field">
 <label>Amount Received (₨)</label>
-<input class="form-ctl" type="number" inputmode="numeric" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
+<input class="form-ctl" type="number" id="rep-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateRepCollectionPreview()">
 </div>
 <div class="field">
 <label>Expired / Damage Qty (kg)</label>
-<input class="form-ctl" type="number" inputmode="decimal" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
+<input class="form-ctl" type="number" id="rep-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateRepCollectionPreview()">
 </div>
 </div>
 </div>
@@ -1185,7 +1185,7 @@ oninput="handleUniversalSearch('rep-cust-name', 'rep-customer-search-results', '
 <h3 class="u-3b741c2">Customer List</h3>
 <input type="text" id="rep-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0"
 placeholder="Search customers..."
-oninput="renderRepCustomerTable()">
+oninput="renderRepCustomerTable()" aria-label="Search customers...">
 <button class="btn btn-theme u-e1b82f4 st-border-bottom__d088ee" onclick="exportCustomerData('rep')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 <button class="btn btn-theme u-4ae4ad1 d-inline-flex st-border-bottom__38fcbe" onclick="openRepCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
 </div>
@@ -1218,13 +1218,13 @@ oninput="renderRepCustomerTable()">
 </div>
 <div class="grid-inputs">
 <div class="field"><label>Select Date</label><input class="form-ctl" type="date" id="sys-date" onchange="refreshUI(); setOverviewMode(currentOverviewMode);"></div>
-<div class="field"><label>Gross Weight (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="gross-wt" step="0.001" oninput="calcNet()"></div>
-<div class="field"><label>Container Weight (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="cont-wt" step="0.001" oninput="calcNet()"></div>
+<div class="field"><label>Gross Weight (kg)</label><input class="form-ctl" type="number" id="gross-wt" step="0.001" oninput="calcNet()"></div>
+<div class="field"><label>Container Weight (kg)</label><input class="form-ctl" type="number" id="cont-wt" step="0.001" oninput="calcNet()"></div>
 </div>
 <div class="grid-inputs">
 <div class="field">
 <label>Net Production (kg)</label>
-<input type="number" inputmode="decimal" id="net-wt" readonly class="form-ctl u-540e04e st-background__44812c">
+<input type="number" id="net-wt" readonly class="form-ctl u-540e04e st-background__44812c">
 <div data-money id="dynamic-cost-display" class="u-7960f3f text-xs">
 Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</span>
 </div>
@@ -1238,7 +1238,7 @@ Dynamic Cost Value: <span class="u-text-danger" id="display-cost-value" >0.00</s
 <div class="grid-inputs">
 <div class="field">
 <label>Formula Units Used</label>
-<input class="form-ctl" type="number" inputmode="decimal" id="formula-units" step="0.001" min="0" value="1" oninput="calculateDynamicProductionCost()">
+<input class="form-ctl" type="number" id="formula-units" step="0.001" min="0" value="1" oninput="calculateDynamicProductionCost()">
 <div class="u-field-hint-xs" >
 Units of factory mixture consumed
 </div>
@@ -1380,24 +1380,24 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 </div>
 <div id="cust-sale-inputs">
 <div class="grid-inputs">
-<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
+<div class="field"><label>Quantity (kg)</label><input class="form-ctl" type="number" id="cust-quantity" step="0.001" oninput="calculateCustomerSale()"></div>
 </div>
 </div>
 <div id="cust-return-inputs" class="hidden">
 <div class="grid-inputs">
-<div class="field"><label>Expired / Damage Qty (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
-<div class="field"><label>Returned Qty (kg)</label><input class="form-ctl" type="number" inputmode="decimal" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Expired / Damage Qty (kg)</label><input class="form-ctl" type="number" id="rep-return-expired" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
+<div class="field"><label>Returned Qty (kg)</label><input class="form-ctl" type="number" id="rep-return-qty" step="0.001" min="0" placeholder="0" oninput="updateRepReturnPreview()"></div>
 </div>
 </div>
 <div id="cust-coll-inputs" class="hidden">
 <div class="grid-inputs">
 <div class="field">
 <label>Amount Received (₨)</label>
-<input class="form-ctl" type="number" inputmode="numeric" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
+<input class="form-ctl" type="number" id="cust-amount-collected" step="1" placeholder="Cash received from customer" oninput="updateCollectionPreview()">
 </div>
 <div class="field">
 <label>Expired / Damage Qty (kg)</label>
-<input class="form-ctl" type="number" inputmode="decimal" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
+<input class="form-ctl" type="number" id="cust-expired-qty" step="0.001" min="0" placeholder="0" oninput="updateCollectionPreview()">
 </div>
 </div>
 <label class="pf-check"><input type="checkbox" id="custAddToLedger"><span>Add to Daily Ledger</span></label>
@@ -1456,7 +1456,7 @@ oninput="handleUniversalSearch('cust-name', 'customer-search-results', 'customer
 <div class="section-header u-59e2099">
 <h3 class="u-3b741c2">CUSTOMERS</h3>
 <input type="text" id="customer-filter" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search customers..."
-oninput="filterCustomers()">
+oninput="filterCustomers()" aria-label="Search customers...">
 <span id="customer-count" class="u-62e500b">0 customers</span>
 <button class="btn btn-theme u-7c64339 st-border-bottom__38fcbe" onclick="exportCustomerData('admin')" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 <button class="btn btn-theme u-2386b90 d-inline-flex st-border-bottom__d088ee" onclick="openCustomerEditModal('')" title="Add New Customer"><svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="11.5" r="5.7" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 30C3.5 21 24.5 21 24.5 30Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M28 9V20M22.5 14.5H33.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
@@ -1545,12 +1545,12 @@ oninput="filterCustomers()">
 <div class="grid-inputs">
 <div class="field">
 <label>Total Sold Qty</label>
-<input type="number" inputmode="decimal" id="totalSold" readonly class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
+<input type="number" id="totalSold" readonly class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" onclick="handleTripleTap(this, 'sales')">
 </div>
-<div class="field"><label>Returned Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" inputmode="decimal" id="returnedQuantity" readonly tabindex="-1" placeholder="0" oninput="handleReturnQtyInput()"></div>
-<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" inputmode="decimal" id="expiredQuantity" readonly tabindex="-1" placeholder="0" oninput="handleExpiredQtyInput()"></div>
-<div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" inputmode="decimal" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
-<div class="field"><label>Net Sold Qty</label><input type="number" inputmode="decimal" id="netSoldQty" readonly tabindex="-1" placeholder="0" class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Returned Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" id="returnedQuantity" readonly tabindex="-1" placeholder="0" oninput="handleReturnQtyInput()"></div>
+<div class="field"><label>Expired / Damage Qty</label><input class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8" type="number" id="expiredQuantity" readonly tabindex="-1" placeholder="0" oninput="handleExpiredQtyInput()"></div>
+<div class="field"><label>Shared (Deduction)</label><input class="form-ctl" type="number" id="sharedQty" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Net Sold Qty</label><input type="number" id="netSoldQty" readonly tabindex="-1" placeholder="0" class="form-ctl u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 <div id="repReturnAutoHint" class="hidden u-field-hint u-78f55da-hint"></div>
 <div id="returnStoreSection" class="hidden u-78f55da st-background__3031a5 st-border-bottom__167edb">
 <label class="u-5c10e65"> Return Stock To Physical Inventory:</label>
@@ -1568,18 +1568,18 @@ oninput="filterCustomers()">
 * Expired product will be added to the CHORA raw material inventory. It will NOT be added to production stock.
 </div>
 </div>
-<div class="field"><label>Credit Sales Qty</label><input class="form-ctl" type="number" inputmode="decimal" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+<div class="field"><label>Credit Sales Qty</label><input class="form-ctl" type="number" id="creditSales" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Commission</div>
 <div class="grid-inputs">
-<div class="field"><label>Commission / Unit</label><input class="form-ctl" type="number" inputmode="decimal" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
-<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" inputmode="decimal" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Commission / Unit</label><input class="form-ctl" type="number" id="commissionPerUnit" oninput="calculateSales()" placeholder="0"></div>
+<div class="field"><label>Commission Paid (Advance/Paid)</label><input type="number" id="commissionPaid" readonly onclick="openCommissionPaidPopup()" placeholder="Tap to add commission" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
 </div>
 <div class="u-heading-accent u-c0e2fdc">Collections &amp; Handover Cash</div>
 <div class="grid-inputs">
-<div class="field"><label>Recovered Credit</label><input class="form-ctl" type="number" inputmode="decimal" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
-<div class="field"><label>Field Expenses</label><input type="number" inputmode="decimal" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
-<div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" inputmode="decimal" id="receivedCash" oninput="calculateSales()"></div>
+<div class="field"><label>Recovered Credit</label><input class="form-ctl" type="number" id="prevCreditReceived" oninput="calculateSales()" onclick="handleTripleTap(this, 'rep')"></div>
+<div class="field"><label>Field Expenses</label><input type="number" id="fieldExpenses" readonly onclick="openFieldExpensePopup()" placeholder="Tap to add expenses" class="form-ctl fe-trigger u-29f5481 st-background__44812c st-border-bottom__89f1f8"></div>
+<div class="field"><label>Physical Cash Received from Rep</label><input class="form-ctl" type="number" id="receivedCash" oninput="calculateSales()"></div>
 </div>
 <div class="card result-box st-background__2cf90b" id="calc-result-card">
 <div class="u-787e284 d-flex">
@@ -1659,7 +1659,7 @@ oninput="filterCustomers()">
 <label class="u-b2b7f30">Select Metric:</label>
 <div class="u-a8a9035">
 <button id="indMetricSelectorBtn" class="form-ctl u-e17a8ec d-flex" onclick="window._mkPopover(this.parentNode,'_pop_indMetric',[{value:'weight',label:'Weight (kg)'},{value:'value',label:'Total Value'},{value:'cost',label:'Total Cost'},{value:'profit',label:'Net Profit'},{value:'cash',label:'Cash Sales'},{value:'credit',label:'Credit Sales'}],function(v,l){document.getElementById('indMetricSelector').value=v;document.getElementById('indMetricSelectorBtn').querySelector('span').textContent=l;setIndChartMetric(v);})"><span>Weight (kg) </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="indMetricSelector" class="form-ctl d-none">
+<select id="indMetricSelector" class="form-ctl d-none" aria-label="Ind Metric Selector">
 <option value="weight">Weight (kg)</option>
 <option value="value">Total Value ()</option>
 <option value="cost">Total Cost ()</option>
@@ -1726,7 +1726,7 @@ oninput="filterCustomers()">
 <h3 class="u-text-accent" >New Production Entry</h3>
 <div class="u-8ae412c d-flex">
 <label class="u-bcef30c text-xs">Date</label>
-<input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" class="form-ctl u-8da625c">
+<input type="date" id="factory-date" onchange="refreshFactoryTab(); setFactorySummaryMode(currentFactorySummaryMode || 'daily');" class="form-ctl u-8da625c" aria-label="Factory date">
 </div>
 </div>
 <div class="field u-mb-15" id="factory-formula-field">
@@ -1737,7 +1737,7 @@ oninput="filterCustomers()">
 <div class="grid-inputs">
 <div class="field">
 <label>Units to Produce</label>
-<input class="form-ctl" type="number" inputmode="decimal" id="factoryProductionUnits" value="1" min="1" oninput="calculateFactoryProduction()">
+<input class="form-ctl" type="number" id="factoryProductionUnits" value="1" min="1" oninput="calculateFactoryProduction()">
 </div>
 <div class="field">
 <label>Total Cost</label>
@@ -1895,7 +1895,7 @@ Clear
 <input
 type="date"
 id="expenseDate" class="form-ctl u-13f34eb"
-onchange="setCashTrackerMode(currentCashTrackerMode || 'day'); calculateNetCash();"
+onchange="setCashTrackerMode(currentCashTrackerMode || 'day'); calculateNetCash();" aria-label="Expense Date"
 >
 </div>
 <div id="expense-name-wrap" class="u-c43e9e1">
@@ -1905,7 +1905,7 @@ type="text"
 id="expenseName"
 placeholder="Search expenses or entities..."
 oninput="handleExpenseSearch(); applyPaymentHistoryFilter()"
-autocomplete="off" class="form-ctl u-13f34eb"
+autocomplete="off" class="form-ctl u-13f34eb" aria-label="Search expenses or entities..."
 >
 <div id="expense-search-results" class="hidden u-327750f has-overflow scroll-y st-background__e02427 st-border-bottom__e54b2f u-86c6b8a"></div>
 </div>
@@ -1914,11 +1914,11 @@ autocomplete="off" class="form-ctl u-13f34eb"
 <div class="u-field-flex-1-min" >
 <label class="u-label-sm" >Amount</label>
 <input
-type="number" inputmode="decimal"
+type="number"
 id="expenseAmount"
 placeholder="0"
 step="0.01"
-min="0" class="form-ctl u-b58d92a"
+min="0" class="form-ctl u-b58d92a" aria-label="0"
 >
 </div>
 <div class="u-befb117">
@@ -1928,14 +1928,14 @@ min="0" class="form-ctl u-b58d92a"
     type="text"
     id="expenseDescription"
     placeholder="Add details..."
-    class="form-ctl u-5d90a7b"
+    class="form-ctl u-5d90a7b" aria-label="Add details..."
   >
   <button id="expense-photo-btn" title="Attach photo" onclick="openExpensePhotoCapture()" class="btn btn-theme btn-icon">
     <svg width="17" height="17" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 13A3.2 3.2 0 0 1 7.2 9.8H10.4L12.6 6.5H23.4L25.6 9.8H28.8A3.2 3.2 0 0 1 32 13V27A3.2 3.2 0 0 1 28.8 30.2H7.2A3.2 3.2 0 0 1 4 27Z" fill="var(--accent)" fill-opacity="0.13" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="18" cy="19.5" r="5.8" fill="var(--accent-gold)" fill-opacity="0.28" stroke="var(--accent-gold)" stroke-width="1.7"/><circle cx="18" cy="19.5" r="2" fill="var(--accent-gold)"/><circle cx="27.5" cy="14" r="1.3" fill="var(--accent)"/></svg>
     <span id="expense-photo-dot" class="u-c5bbf32 d-none st-background__36d305 st-border-bottom__42309d"></span>
   </button>
 </div>
-<input type="file" id="expense-photo-file" accept="image/*" class="d-none" onchange="handleExpensePhotoFile(event)">
+<input type="file" id="expense-photo-file" accept="image/*" class="d-none" onchange="handleExpensePhotoFile(event)" aria-label="Expense photo file">
 </div>
 </div>
 <div class="u-mt-5" >
@@ -2109,20 +2109,20 @@ Save Transaction
 <div class="u-467306a d-flex">
 <h4 class="u-a75ad3e">Unified Records</h4>
 <input type="text" id="unified-search" class="form-ctl search-bar u-flex-1 u-min-w-0 u-fs-sm2 u-m-0" placeholder="Search..."
-oninput="renderUnifiedTable()">
+oninput="renderUnifiedTable()" aria-label="Search...">
 <button class="btn btn-theme u-f5c3969 st-border-bottom__d088ee" onclick="exportUnifiedData()" title="Download PDF"><svg width="14" height="14" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" class="u-f6e3388 d-inline-block"><path d="M9 3.5H22L29 10.5V30A2.5 2.5 0 0 1 26.5 32.5H9A2.5 2.5 0 0 1 6.5 30V6A2.5 2.5 0 0 1 9 3.5Z" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M22 3.5V10.5H29" fill="currentColor" fill-opacity="0.4" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M11.5 17.5H24M11.5 22.5H24M11.5 27.5H18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/><path class="ic-sp" d="M29 25Q29 28 32 28Q29 28 29 31Q29 28 26 28Q29 28 29 25Z" fill="currentColor"/></svg></button>
 </div>
 <div class="u-f86c566 d-flex">
 <div class="u-1b8b20b">
 <button id="unifiedViewModeBtn" class="form-ctl u-dc0751c d-flex" onclick="window._mkPopover(this.parentNode,'_pop_uniView',[{value:'entities',label:'Entities & Balances'},{value:'transactions',label:'Expenses'}],function(v,l){document.getElementById('unifiedViewMode').value=v;document.getElementById('unifiedViewModeBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>Entities &amp; Balances </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="unifiedViewMode" class="form-ctl d-none">
+<select id="unifiedViewMode" class="form-ctl d-none" aria-label="Unified View Mode">
 <option value="entities" selected>Entities & Balances</option>
 <option value="transactions">Expenses</option>
 </select>
 </div>
 <div class="u-6130581">
 <button id="unifiedPeriodFilterBtn" class="form-ctl u-dc0751c d-flex" onclick="window._mkPopover(this.parentNode,'_pop_uniPeriod',[{value:'today',label:'Today'},{value:'week',label:'This Week'},{value:'month',label:'This Month'},{value:'all',label:'All Time'}],function(v,l){document.getElementById('unifiedPeriodFilter').value=v;document.getElementById('unifiedPeriodFilterBtn').querySelector('span').textContent=l;renderUnifiedTable();})"><span>This Month </span><svg class="ic-chev" width="12" height="12" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.8" fill="currentColor" fill-opacity=".12"/><path d="M2.6 3.9L5 6.3L7.4 3.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<select id="unifiedPeriodFilter" class="form-ctl d-none">
+<select id="unifiedPeriodFilter" class="form-ctl d-none" aria-label="Unified Period Filter">
 <option value="today">Today</option>
 <option value="week">This Week</option>
 <option value="month" selected>This Month</option>
