@@ -1,6 +1,7 @@
 import { localDateStr } from './finance.js';
 import { auditData, isLedgerRow } from './overview-audit.js';
 import { buildExtras } from './overview-extra.js';
+import { sparkWaveSvg, waveBarSvg, waveChartSvg } from './overview-waves.js';
 
 const _arr = (v) => (Array.isArray(v) ? v : []);
 const _n = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -172,17 +173,16 @@ const section = (title, to, body, t = 'good', chipText = 'Open', attr = 'data-go
 
 function chart(months, series, to) {
   const max = Math.max(1, ...months.flatMap((m) => series.map((s) => Math.abs(m[s.f]))));
-  const cols = months.map((m) => `<button type="button" class="ov-col" data-go="${to}" aria-label="${m.label}: ${series.map((s) => `${s.name} ${fmt(m[s.f])}`).join(', ')}">`
-    + `<span class="ov-pair">${series.map((s) => `<span class="ov-fill ${tone(s.t)}" style="--h:${Math.max(2, Math.round((Math.abs(m[s.f]) / max) * 100))}%"></span>`).join('')}</span>`
-    + `<span class="ov-val">${fmt(m[series[0].f])}</span><span class="ov-lbl">${m.label}</span></button>`).join('');
+  const label = series.map((s) => s.name).join(' and ');
+  const svg = waveChartSvg(series.map((s) => ({ values: months.map((m) => m[s.f]), tone: s.t })), max, label);
+  const cols = months.map((m) => `<button type="button" class="ov-col" data-go="${to}" aria-label="${m.label}: ${series.map((s) => `${s.name} ${fmt(m[s.f])}`).join(', ')}"><span class="ov-val">${fmt(m[series[0].f])}</span><span class="ov-lbl">${m.label}</span></button>`).join('');
   const key = series.length > 1 ? `<div class="ov-key">${series.map((s) => `<span class="ov-key-i ${tone(s.t)}"><i></i>${s.name}</span>`).join('')}</div>` : '';
-  return `${key}<div class="ov-cols">${cols}</div>`;
+  return `${key}<div class="ov-waves">${svg}<div class="ov-axis">${cols}</div></div>`;
 }
-
 function ranked(rows, unit, to, t, attr = 'data-go') {
   if (!rows.length) return '<div class="ov-empty">Nothing recorded in this period.</div>';
   const max = Math.max(1, ...rows.map((r) => r.value));
-  return `<div class="ov-rank">${rows.map((r) => `<button type="button" class="ov-rank-row ${tone(t)}" ${go(to, attr)}><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}</span></span><span class="bar ov-bar-track"><i style="--w:${Math.max(3, Math.round((r.value / max) * 100))}%"></i></span></button>`).join('')}</div>`;
+  return `<div class="ov-rank">${rows.map((r) => `<button type="button" class="ov-rank-row ${tone(t)}" ${go(to, attr)}><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}</span></span>${waveBarSvg(Math.max(4, Math.round((r.value / max) * 100)))}</button>`).join('')}</div>`;
 }
 
 function auditHtml(a) {
@@ -229,12 +229,7 @@ function owedSection(x) {
 const PANELS = [['sales', 'Sales'], ['prod', 'Production'], ['money', 'Money'], ['stock', 'Stock'], ['checks', 'Checks'], ['activity', 'Activity']];
 
 function spark(values) {
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const span = max - min || 1;
-  const step = values.length > 1 ? 100 / (values.length - 1) : 100;
-  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(22 - ((v - min) / span) * 20).toFixed(1)}`).join(' ');
-  return `<svg class="ov-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/></svg>`;
+  return sparkWaveSvg(values);
 }
 
 function delta(values) {
