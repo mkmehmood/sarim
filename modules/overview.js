@@ -6,7 +6,7 @@ import { localDateStr } from './finance.js';
 import { buildOverview, overviewHtml } from './overview-data.js';
 import { auditData } from './overview-audit.js';
 import { getFormulaStore } from './formula-store.js';
-import { applyFix, parseInput, planFixes } from './overview-fix.js';
+import { applyValues, planFields, validateValues } from './overview-fix.js';
 
 let _range = 6;
 let _panel = 'sales';
@@ -29,7 +29,6 @@ const FACTS = {
   expenses: ['date', 'name', 'category', 'amount'],
   inventory: ['name', 'quantity', 'cost'],
 };
-const TARGET = { sales: { go: 'sales' }, production: { go: 'prod' }, transactions: { go: 'payments' }, expenses: { go: 'payments' }, inventory: { screen: 'raw-material-screen' } };
 const DELETERS = { sales: 'deleteTransactionFromOverlay', production: 'deleteProdEntry', transactions: 'deleteEntityTransaction', expenses: 'deleteExpenseFromOverlay' };
 
 function toast(message, type = 'info') {
@@ -58,12 +57,29 @@ async function loadAudit() {
   return auditData(Object.fromEntries(keys.map((k, i) => [k, loaded[i]])), localDateStr(new Date()));
 }
 
-function fixBody(col, finding, fixes) {
-  const rec = finding.rec;
-  const facts = (FACTS[col] || []).filter((k) => rec[k] !== undefined && rec[k] !== '').map((k) => `<div class="ov-fix-fact"><span>${ESC(k)}</span><b>${ESC(rec[k])}</b></div>`).join('');
+function fieldHtml(f, i) {
+  if (f.type === 'check') return `<label class="ov-fix-check"><input type="checkbox" data-fix-input="${i}"${f.value ? ' checked' : ''}> ${ESC(f.label)}</label>`;
+  const control = f.type === 'select'
+    ? `<select class="form-ctl" data-fix-input="${i}"><option value="">Choose...</option>${f.options.map((o) => `<option value="${ESC(o.value)}">${ESC(o.label)}</option>`).join('')}</select>`
+    : `<input class="form-ctl" data-fix-input="${i}" type="${f.type === 'date' ? 'date' : 'text'}"${f.type === 'number' ? ' inputmode="decimal" autocomplete="off"' : ''} value="${ESC(f.value)}">`;
+  return `<label class="ov-fix-label">${ESC(f.label)}${control}</label>`;
+}
+
+function fixBody(finding, plan) {
+  const head = `${ESC(finding.label)}${finding.date ? ` \u00b7 ${ESC(finding.date)}` : ''}${finding.id ? ` \u00b7 id ${ESC(finding.id)}` : ''}`;
   const reasons = finding.reasons.map((r) => `<li>${ESC(r)}</li>`).join('');
-  const options = fixes.map((f, i) => `<li class="ov-fix-opt">${f.input ? `<label class="ov-fix-label">${ESC(f.input.label)}${f.input.type === 'select' ? `<select class="form-ctl" data-fix-input="${i}"><option value="">Choose...</option>${f.input.options.map((o) => `<option value="${ESC(o.value)}">${ESC(o.label)}</option>`).join('')}</select>` : `<input class="form-ctl" data-fix-input="${i}" type="${f.input.type === 'date' ? 'date' : 'number'}" step="any" inputmode="decimal" value="${ESC(f.input.value)}">`}</label>` : ''}<button type="button" class="panel dlg-option${f.danger ? ' is-danger' : ''}" data-opt="${i}" data-act="${i + 1}">${ESC(f.label)}${f.hint ? ` <small>${ESC(f.hint)}</small>` : ''}</button></li>`).join('');
-  return `<div class="ov-fix"><div class="ov-fix-facts">${facts}</div><div class="ov-sub">What is wrong</div><ul class="ov-fix-reasons">${reasons}</ul><div class="ov-sub">Choose a fix</div><ul class="dlg-options">${options}</ul></div>`;
+  const notes = plan.notes.map((n) => `<p class="ov-fix-note">${ESC(n)}</p>`).join('');
+  const fields = plan.fields.length ? `<div class="ov-sub">Update</div><div class="ov-fix-fields">${plan.fields.map(fieldHtml).join('')}</div>` : '';
+  return `<div class="ov-fix"><div class="ov-fix-head">${head}</div><ul class="ov-fix-reasons">${reasons}</ul>${notes}${fields}<div class="ov-fix-error" role="alert" hidden></div></div>`;
+}
+
+function readFields(overlay, fields) {
+  const raw = {};
+  fields.forEach((f, i) => {
+    const el = overlay.querySelector(`[data-fix-input="${i}"]`);
+    raw[f.key] = !el ? '' : (f.type === 'check' ? el.checked : el.value);
+  });
+  return raw;
 }
 
 async function persistFixed(col, arr, idx, next) {
@@ -81,51 +97,58 @@ export async function openFix(col, idx, opts = {}) {
   let { arr, finding } = await loadFinding(col, idx);
   if (!finding) { toast('That record no longer has a problem.', 'success'); await renderOverview(); return 'done'; }
   for (let guard = 0; guard < 8 && finding; guard += 1) {
-    const inventory = await sqliteStore.get('inventory').catch(() => []);
-    const fixes = planFixes(col, finding.rec, finding.codes, localDateStr(new Date()), { formulas: await getFormulaStore().catch(() => []), inventory: Array.isArray(inventory) ? inventory : [] });
-    let raw = null;
+    const [inventory, formulas, entities] = await Promise.all([
+      sqliteStore.get('inventory').catch(() => []),
+      getFormulaStore().catch(() => []),
+      sqliteStore.get('entities').catch(() => []),
+    ]);
+    const ctx = { formulas, inventory: Array.isArray(inventory) ? inventory : [], entities: Array.isArray(entities) ? entities : [] };
+    const today = localDateStr(new Date());
+    const plan = planFields(col, finding.rec, finding.codes, today, ctx);
+    let captured = null;
+    const save = {
+      label: plan.fields.length || plan.newId ? (plan.newId && !plan.fields.length ? 'Give new id' : 'Save') : '',
+      variant: 'solid',
+      value: 'save',
+      guard: (overlay) => {
+        const errEl = overlay.querySelector('.ov-fix-error');
+        const check = validateValues(plan.fields, readFields(overlay, plan.fields), today);
+        if (!check.ok) { errEl.textContent = check.message; errEl.hidden = false; return { ok: false }; }
+        errEl.hidden = true;
+        captured = check.values;
+        return { ok: true, value: 'save' };
+      },
+    };
+    const actions = [opts.sequence ? { label: 'Stop', variant: 'ghost', value: null } : { label: 'Cancel', variant: 'ghost', value: null }];
+    if (opts.sequence) actions.push({ label: 'Skip', variant: 'ghost', value: 'skip' });
+    if (plan.deletable) actions.push({ label: 'Delete', variant: 'ghost', value: 'delete' });
+    if (save.label) actions.push(save);
     const picked = await openDialog({
       tone: finding.severity === 'error' ? 'danger' : 'warning',
       eyebrow: finding.severity === 'error' ? 'Needs fixing' : 'Please check',
-      title: `Fix ${finding.label}: ${finding.title}`,
-      body: fixBody(col, finding, fixes),
-      actions: opts.sequence ? [{ label: 'Stop', variant: 'ghost', value: null }, { label: 'Skip', variant: 'ghost', value: 'skip' }] : [{ label: 'Close', variant: 'ghost', value: null }],
+      title: `${finding.label}: ${finding.title}`,
+      body: fixBody(finding, plan),
+      actions,
       dismissIndex: 0,
       focusIndex: -1,
-      onBodyClick: (i) => {
-        const overlays = document.querySelectorAll('.dlg-overlay');
-        const input = overlays[overlays.length - 1].querySelector(`[data-fix-input="${i}"]`);
-        raw = input ? input.value : null;
-        return i;
-      },
     });
     if (picked === null || picked === undefined) { status = 'closed'; break; }
     if (picked === 'skip') { status = 'skipped'; break; }
-    const fix = fixes[picked];
-    if (!fix) break;
-    if (fix.kind === 'open') {
-      const t = TARGET[col];
-      if (t.screen && typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen(t.screen);
-      else if (t.go && typeof window.sidebarNav === 'function') window.sidebarNav(t.go);
-      return 'closed';
-    }
-    if (fix.kind === 'delete') {
+    if (picked === 'delete') {
       const fn = window[DELETERS[col]];
-      if (typeof fn !== 'function') { toast('Deleting is not available for this record here. Open its screen instead.', 'error'); break; }
+      if (typeof fn !== 'function') { toast('Deleting is not available for this record here.', 'error'); break; }
       await fn(finding.rec.id);
       await renderOverview();
       return 'done';
     }
-    const parsed = parseInput(fix, raw);
-    if (!parsed.ok) { toast(parsed.message, 'error'); continue; }
-    const next = fix.kind === 'newid' ? { ...finding.rec, id: generateUUID('repair') } : applyFix(finding.rec, fix, parsed.value);
+    const next = plan.newId && !plan.fields.length ? { ...finding.rec, id: generateUUID('repair') } : applyValues(col, plan.newId ? { ...finding.rec, id: generateUUID('repair') } : finding.rec, captured || {}, ctx);
     try {
       await persistFixed(col, arr, idx, next);
     } catch (e) {
       toast('Could not save the fix. Nothing was changed.', 'error');
       break;
     }
-    toast('Record fixed', 'success');
+    toast('Saved', 'success');
     ({ arr, finding } = await loadFinding(col, idx));
     if (finding && finding.codes.includes('sale_loss')) finding = null;
   }

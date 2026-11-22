@@ -5804,3 +5804,10 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 @media (pointer: coarse) {
   .btn-sm { height: 44px; min-height: 44px; }
 }
+
+.ov-fix-head { font: 700 0.78rem var(--font-ui); color: var(--text-muted); margin-bottom: 4px; }
+.ov-fix-note { margin: 6px 0 0; font: 500 0.78rem/1.4 var(--font-ui); color: var(--text-secondary); }
+.ov-fix-fields { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.ov-fix-check { display: flex; align-items: center; gap: 8px; font: 600 0.85rem var(--font-ui); }
+.ov-fix-error { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); font: 600 0.8rem/1.35 var(--font-ui); }
+.ov-fix-error[hidden] { display: none; }

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildOverview, overviewHtml, analyseProfit } from '../modules/overview-data.js';
-import { planFixes, applyFix } from '../modules/overview-fix.js';
+import { planFields, applyValues } from '../modules/overview-fix.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const now = new Date(2026, 10, 16);
@@ -34,12 +34,11 @@ describe('every row in the checks panel can open the dialog', () => {
     assert.doesNotMatch(html, /ov-recent-row sx-tone-bad" data-go="sales"/);
   });
 
-  it('a losing sale that has no data problem still gets a dialog with fixes for its cost and value', () => {
-    const fixes = planFixes('sales', sales[1], ['sale_loss'], '2026-11-16');
-    assert.deepEqual(fixes.map((f) => f.id), ['cost', 'value', 'delete', 'open']);
-    const next = applyFix(sales[1], fixes[0], 600);
+  it('a losing sale that has no data problem still gets a form with its value and cost', () => {
+    const plan = planFields('sales', sales[1], ['sale_loss'], '2026-11-16');
+    assert.deepEqual(plan.fields.map((f) => f.key), ['totalValue', 'totalCost']);
+    const next = applyValues('sales', sales[1], { totalCost: 600 });
     assert.deepEqual([next.totalCost, next.profit], [600, 100]);
-    assert.equal(applyFix(sales[1], fixes[1], 1000).profit, 100);
   });
 });
 
@@ -61,7 +60,8 @@ describe('the dialog flow in overview.js', () => {
   });
 
   it('offers Stop and Skip in the sequence, and reports how each record ended', () => {
-    assert.match(src, /\{ label: 'Stop', variant: 'ghost', value: null \}, \{ label: 'Skip', variant: 'ghost', value: 'skip' \}/);
+    assert.match(src, /opts\.sequence \? \{ label: 'Stop', variant: 'ghost', value: null \} : \{ label: 'Cancel', variant: 'ghost', value: null \}/);
+    assert.match(src, /actions\.push\(\{ label: 'Skip', variant: 'ghost', value: 'skip' \}\)/);
     assert.match(src, /status = 'skipped'/);
     assert.match(src, /status = 'closed'/);
     assert.match(src, /return status;\n\}/);

@@ -1,105 +1,145 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { planFixes, applyFix, parseInput } from '../modules/overview-fix.js';
+import { applyValues, planFields, validateValues } from '../modules/overview-fix.js';
 
 const today = '2026-11-16';
 const sale = { id: 's1', date: '2026-11-01', quantity: 10, unitPrice: 100, totalValue: 1000, totalCost: 800, profit: 900 };
-const ids = (col, rec, codes) => planFixes(col, rec, codes, today).map((f) => f.id);
-const fix = (col, rec, codes, id) => planFixes(col, rec, codes, today).find((f) => f.id === id);
+const keys = (col, rec, codes, ctx) => planFields(col, rec, codes, today, ctx).fields.map((f) => f.key);
+const field = (col, rec, codes, key, ctx) => planFields(col, rec, codes, today, ctx).fields.find((f) => f.key === key);
 
-describe('fix planner', () => {
-  it('recalculates a mismatched sale profit', () => {
-    const f = fix('sales', sale, ['sale_profit_mismatch'], 'profit');
-    assert.deepEqual(applyFix(sale, f).profit, 200);
-    assert.equal(sale.profit, 900);
+describe('the fix form shows only the broken inputs', () => {
+  it('a profit mismatch shows just the profit, already filled with the correct figure', () => {
+    assert.deepEqual(keys('sales', sale, ['sale_profit_mismatch']), ['profit']);
+    assert.equal(field('sales', sale, ['sale_profit_mismatch'], 'profit').value, 200);
   });
 
-  it('offers both ways to reconcile a sale total, and keeps profit consistent', () => {
-    const rec = { ...sale, totalValue: 1500, profit: 700 };
-    assert.deepEqual(ids('sales', rec, ['sale_total_mismatch']), ['total_from_price', 'price_from_total', 'delete', 'open']);
-    const a = applyFix(rec, fix('sales', rec, ['sale_total_mismatch'], 'total_from_price'));
-    assert.deepEqual([a.totalValue, a.profit], [1000, 200]);
-    const b = applyFix(rec, fix('sales', rec, ['sale_total_mismatch'], 'price_from_total'));
-    assert.equal(b.unitPrice, 150);
+  it('a total that does not match shows the unit price and the total value, and says what the product is', () => {
+    const rec = { ...sale, totalValue: 1500 };
+    const plan = planFields('sales', rec, ['sale_total_mismatch'], today);
+    assert.deepEqual(plan.fields.map((f) => f.key), ['unitPrice', 'totalValue']);
+    assert.match(plan.notes[0], /Quantity times unit price is 1,000, but the total value is 1,500/);
   });
 
-  it('asks for the missing cost and recomputes profit from it', () => {
-    const rec = { ...sale, totalCost: 0, profit: 1000 };
-    const f = fix('sales', rec, ['sale_no_cost'], 'cost');
-    assert.equal(parseInput(f, '').ok, false);
-    assert.equal(parseInput(f, '0').ok, false);
-    const p = parseInput(f, '650');
-    assert.equal(p.ok, true);
-    const next = applyFix(rec, f, p.value);
+  it('one input per problem: cost, quantity, value, date, received flag, weight, amount, stock and cost per unit', () => {
+    assert.deepEqual(keys('sales', sale, ['sale_no_cost']), ['totalCost']);
+    assert.deepEqual(keys('sales', sale, ['sale_bad_qty']), ['quantity']);
+    assert.deepEqual(keys('sales', sale, ['sale_negative_value']), ['totalValue']);
+    assert.deepEqual(keys('sales', sale, ['future_date']), ['date']);
+    assert.equal(field('sales', sale, ['bad_date'], 'date').value, today);
+    assert.equal(field('sales', sale, ['sale_cash_unreceived'], 'creditReceived').type, 'check');
+    assert.deepEqual(keys('production', {}, ['prod_bad_net']), ['net']);
+    assert.deepEqual(keys('transactions', {}, ['txn_bad_amount']), ['amount']);
+    assert.deepEqual(keys('expenses', {}, ['exp_bad_amount']), ['amount']);
+    assert.equal(field('inventory', {}, ['inv_negative_qty'], 'quantity').value, 0);
+    assert.deepEqual(keys('inventory', {}, ['inv_bad_cost']), ['cost']);
+  });
+
+  it('values that are not numbers become one field each', () => {
+    const rec = { id: 'x', quantity: 'n/a', totalValue: 'n/a', totalCost: 1, profit: 1, unitPrice: 1 };
+    assert.deepEqual(keys('sales', rec, ['not_a_number']), ['quantity', 'totalValue']);
+  });
+
+  it('a losing sale shows its value and cost, nothing else', () => {
+    assert.deepEqual(keys('sales', sale, ['sale_loss']), ['totalValue', 'totalCost']);
+  });
+
+  it('no formula shows a formula choice and explains whether cost is recalculated', () => {
+    const formulas = [{ id: 'f1', name: 'STANDARD', ingredients: [] }];
+    const withUnits = planFields('production', { formulaUnits: 2 }, ['prod_no_formula'], today, { formulas });
+    assert.deepEqual(withUnits.fields.map((f) => [f.key, f.type]), [['formulaId', 'select']]);
+    assert.match(withUnits.notes[0], /recalculated/);
+    assert.match(planFields('production', {}, ['prod_no_formula'], today, { formulas }).notes[0], /saved cost stays/);
+    assert.deepEqual(keys('production', {}, ['prod_no_formula'], { formulas: [] }), []);
+  });
+
+  it('a payment of the wrong type or with a missing account gets a choice, from the real accounts', () => {
+    const t = planFields('transactions', {}, ['txn_bad_type'], today).fields[0];
+    assert.deepEqual(t.options.map((o) => o.value), ['IN', 'OUT']);
+    const e = planFields('transactions', {}, ['txn_missing_entity'], today, { entities: [{ id: 'a', name: 'Ali' }, { id: 'b', name: 'Gone', isDeleted: true }] }).fields[0];
+    assert.deepEqual(e.options, [{ value: 'a', label: 'Ali' }]);
+    assert.deepEqual(keys('transactions', {}, ['txn_missing_entity'], { entities: [] }), []);
+  });
+
+  it('problems with nothing to type say so: a duplicate id offers a new id, a duplicate record offers delete', () => {
+    const id = planFields('sales', sale, ['duplicate_id'], today);
+    assert.deepEqual([id.fields.length, id.newId, id.deletable], [0, true, false]);
+    const dup = planFields('sales', sale, ['duplicate_record'], today);
+    assert.deepEqual([dup.fields.length, dup.deletable], [0, true]);
+    assert.equal(planFields('inventory', {}, ['duplicate_record'], today).deletable, false);
+  });
+
+  it('never shows the same input twice when several problems share it', () => {
+    assert.deepEqual(keys('sales', sale, ['sale_loss', 'sale_no_cost', 'sale_profit_mismatch']), ['profit', 'totalCost', 'totalValue']);
+  });
+});
+
+describe('checking what was typed', () => {
+  const cost = planFields('sales', sale, ['sale_no_cost'], today).fields;
+
+  it('accepts a plain number in range and returns it as a number', () => {
+    assert.deepEqual(validateValues(cost, { totalCost: '650' }, today), { ok: true, values: { totalCost: 650 } });
+    assert.deepEqual(validateValues(cost, { totalCost: '1,250.5' }, today), { ok: true, values: { totalCost: 1250.5 } });
+  });
+
+  it('rejects blanks, text, scientific notation, zero and too-large values with a message', () => {
+    for (const v of ['', 'abc', '1e12', '0', '99999999999999']) assert.equal(validateValues(cost, { totalCost: v }, today).ok, false, v);
+    assert.match(validateValues(cost, { totalCost: 'abc' }, today).message, /Total cost/);
+  });
+
+  it('allows a negative profit, because a loss is a real profit figure', () => {
+    const profit = planFields('sales', sale, ['sale_profit_mismatch'], today).fields;
+    assert.deepEqual(validateValues(profit, { profit: '-250.5' }, today), { ok: true, values: { profit: -250.5 } });
+    assert.equal(validateValues(profit, { profit: '--5' }, today).ok, false);
+  });
+
+  it('checks dates, choices and the received flag', () => {
+    const date = planFields('sales', sale, ['future_date'], today).fields;
+    assert.equal(validateValues(date, { date: '2031-01-01' }, today).ok, false);
+    assert.equal(validateValues(date, { date: '' }, today).ok, false);
+    assert.deepEqual(validateValues(date, { date: '2026-11-10' }, today), { ok: true, values: { date: '2026-11-10' } });
+    const type = planFields('transactions', {}, ['txn_bad_type'], today).fields;
+    assert.match(validateValues(type, { type: '' }, today).message, /Choose a type/);
+    assert.equal(validateValues(type, { type: 'OUT' }, today).values.type, 'OUT');
+    const rec = planFields('sales', sale, ['sale_cash_unreceived'], today).fields;
+    assert.equal(validateValues(rec, { creditReceived: true }, today).values.creditReceived, true);
+  });
+});
+
+describe('saving the typed values', () => {
+  it('sets the typed fields and works out the profit itself when value or cost changed', () => {
+    const next = applyValues('sales', { ...sale, totalCost: 0, profit: 1000 }, { totalCost: 650 });
     assert.deepEqual([next.totalCost, next.profit], [650, 350]);
+    assert.equal(applyValues('sales', sale, { totalValue: 1200 }).profit, 400);
   });
 
-  it('fixes dates, received flags, quantities and values', () => {
-    assert.equal(applyFix(sale, fix('sales', sale, ['bad_date'], 'date'), '2026-10-01').date, '2026-10-01');
-    assert.equal(fix('sales', sale, ['future_date'], 'date').input.value, today);
-    assert.equal(parseInput(fix('sales', sale, ['bad_date'], 'date'), 'nope').ok, false);
-    assert.equal(applyFix(sale, fix('sales', sale, ['sale_cash_unreceived'], 'received')).creditReceived, true);
-    assert.equal(parseInput(fix('sales', sale, ['sale_bad_qty'], 'qty'), '-3').ok, false);
-    const neg = applyFix({ ...sale, totalValue: -5 }, fix('sales', sale, ['sale_negative_value'], 'value'), 900);
-    assert.deepEqual([neg.totalValue, neg.profit], [900, 100]);
+  it('keeps a profit the user typed instead of overwriting it', () => {
+    assert.equal(applyValues('sales', sale, { totalCost: 700, profit: 123 }).profit, 123);
   });
 
-  it('offers a field fix for every value that is not a number', () => {
-    const rec = { id: 'x', quantity: 'abc', totalValue: 'n/a', totalCost: 1, profit: 1, unitPrice: 1 };
-    assert.deepEqual(ids('sales', rec, ['not_a_number']).slice(0, 2), ['num_quantity', 'num_totalValue']);
-    assert.equal(applyFix(rec, fix('sales', rec, ['not_a_number'], 'num_quantity'), 7).quantity, 7);
+  it('does not change the original record', () => {
+    const before = { ...sale };
+    applyValues('sales', sale, { totalCost: 1 });
+    assert.deepEqual(sale, before);
   });
 
-  it('fixes production, payments, expenses and stock', () => {
-    const prod = { id: 'p', net: 5, totalSale: 100, totalCost: 40, profit: 10 };
-    assert.equal(applyFix(prod, fix('production', prod, ['prod_profit_mismatch'], 'profit')).profit, 60);
-    assert.equal(applyFix({ type: 'X' }, fix('transactions', {}, ['txn_bad_type'], 'type_out')).type, 'OUT');
-    assert.equal(applyFix({ amount: 0 }, fix('transactions', {}, ['txn_bad_amount'], 'amount'), 5).amount, 5);
-    assert.equal(parseInput(fix('expenses', {}, ['exp_bad_amount'], 'amount'), '0').ok, false);
-    assert.equal(parseInput(fix('transactions', {}, ['txn_bad_amount'], 'amount'), '0').ok, true);
-    assert.equal(parseInput(fix('transactions', {}, ['txn_bad_amount'], 'amount'), '-1').ok, false);
-    assert.equal(applyFix({ quantity: -3 }, fix('inventory', {}, ['inv_negative_qty'], 'stock'), 0).quantity, 0);
-    assert.equal(applyFix({ cost: 0 }, fix('inventory', {}, ['inv_bad_cost'], 'invcost'), 4).cost, 4);
-  });
-
-  it('assigns a formula to production with none, optionally recalculating cost and profit', () => {
+  it('assigns a formula and recalculates production cost and profit from live inventory prices', () => {
     const formulas = [{ id: 'f1', name: 'STANDARD', additionalCost: 10, ingredients: [{ id: 'm1', name: 'Urea', cost: 50, quantity: 2 }] }];
     const inventory = [{ id: 'm1', name: 'Urea', cost: 100 }];
     const rec = { id: 'p', net: 20, formulaUnits: 2, totalSale: 1000, totalCost: 0, profit: 1000, formulaName: '' };
-    const list = planFixes('production', rec, ['prod_no_formula'], today, { formulas, inventory });
-    assert.deepEqual(list.map((f) => f.id), ['formula_cost', 'formula_only', 'delete', 'open']);
-    const f = list[0];
-    assert.equal(parseInput(f, '').ok, false);
-    assert.equal(parseInput(f, 'nope').ok, false);
-    assert.deepEqual(parseInput(f, 'f1'), { ok: true, value: 'f1' });
-    const next = applyFix(rec, f, 'f1');
+    const next = applyValues('production', rec, { formulaId: 'f1' }, { formulas, inventory });
     assert.deepEqual([next.formulaId, next.formulaName, next.totalCost, next.formulaCost, next.cp, next.profit], ['f1', 'STANDARD', 420, 420, 21, 580]);
-    const only = applyFix(rec, list[1], 'f1');
-    assert.deepEqual([only.formulaName, only.totalCost, only.profit], ['STANDARD', 0, 1000]);
+    const noUnits = applyValues('production', { ...rec, formulaUnits: 0 }, { formulaId: 'f1' }, { formulas, inventory });
+    assert.deepEqual([noUnits.formulaName, noUnits.totalCost, noUnits.profit], ['STANDARD', 0, 1000]);
   });
 
-  it('only offers the label fix when units are unknown, and nothing when there are no formulas', () => {
-    const formulas = [{ id: 'f1', name: 'A', ingredients: [] }];
-    assert.deepEqual(planFixes('production', { id: 'p', net: 5 }, ['prod_no_formula'], today, { formulas }).map((f) => f.id).slice(0, 1), ['formula_only']);
-    assert.equal(planFixes('production', { id: 'p', net: 5 }, ['prod_no_formula'], today, { formulas: [] }).some((f) => f.id.startsWith('formula')), false);
+  it('assigns the chosen account to a payment', () => {
+    const next = applyValues('transactions', { id: 't', entityId: 'gone', entityName: 'Old' }, { entityId: 'a' }, { entities: [{ id: 'a', name: 'Ali' }] });
+    assert.deepEqual([next.entityId, next.entityName], ['a', 'Ali']);
   });
 
-  it('offers a new id for duplicate ids and deletion for duplicate copies', () => {
-    assert.ok(ids('sales', sale, ['duplicate_id']).includes('newid'));
-    assert.equal(fix('sales', sale, ['duplicate_record'], 'delete').label, 'Delete this copy');
-    assert.equal(fix('sales', sale, ['sale_no_cost'], 'delete').danger, true);
-  });
-
-  it('never offers deleting stock items, and always offers opening the screen', () => {
-    assert.equal(ids('inventory', {}, ['inv_negative_qty']).includes('delete'), false);
-    for (const col of ['sales', 'production', 'transactions', 'expenses', 'inventory']) assert.ok(ids(col, {}, ['bad_date']).includes('open'));
-  });
-
-  it('the overview opens this dialog from a flagged row and saves through the app save path', () => {
+  it('the overview saves through the app save path and deletes with the app delete', () => {
     const src = readFileSync(new URL('../modules/overview.js', import.meta.url), 'utf8');
-    assert.match(src, /\[data-fix\]/);
-    assert.match(src, /openDialog\(\{/);
     assert.match(src, /await unifiedSave\(col, arr, record\)/);
     assert.match(src, /notifyDataChange\(col\);\n  triggerAutoSync\(\);/);
     assert.match(src, /sales: 'deleteTransactionFromOverlay'/);
