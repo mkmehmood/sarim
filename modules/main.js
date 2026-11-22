@@ -39,5 +39,6 @@ import './notify-open.js';
 import './phone-actions.js';
 import './field-expenses.js';
 import './settings-screen.js';
+import './custom-background.js';
 import './desktop-startup.js';
 import './push.js';

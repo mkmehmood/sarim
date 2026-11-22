@@ -4752,6 +4752,7 @@ export const _overlayStack = (() => {
     'logout-screen':               { closeFn: () => closeStandaloneScreen('logout-screen'),           contentSel: '.screen-body' },
     'settings-screen':             { closeFn: () => closeStandaloneScreen('settings-screen'),         contentSel: '.screen-body' },
     'feedback-screen':             { closeFn: () => closeStandaloneScreen('feedback-screen'),         contentSel: '.screen-body' },
+    'background-screen':           { closeFn: () => closeStandaloneScreen('background-screen'),       contentSel: '.bg-stage' },
     'close-financial-year-screen': { closeFn: () => closeStandaloneScreen('close-financial-year-screen'), contentSel: '.screen-body' },
     'entity-details-screen':       { closeFn: () => closeStandaloneScreen('entity-details-screen'),          contentSel: '.screen-body' },
     'expense-details-screen':      { closeFn: () => closeStandaloneScreen('expense-details-screen'),         contentSel: '.screen-body' },

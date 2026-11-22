@@ -504,6 +504,10 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
       <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="7.2" fill="var(--accent-gold)" fill-opacity="0.15" stroke="var(--accent-gold)" stroke-width="1.7"/><path d="M18 10.8A7.2 7.2 0 0 1 18 25.2Z" fill="var(--accent-gold)" fill-opacity=".8"/><path d="M29.3 18L32.8 18" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M25.99 25.99L28.47 28.47" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 29.3L18 32.8" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M10.01 25.99L7.53 28.47" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6.7 18L3.2 18" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M10.01 10.01L7.53 7.53" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M18 6.7L18 3.2" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M25.99 10.01L28.47 7.53" stroke="var(--accent-gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
       <span id="theme-mode-label">Theme</span>
     </button>
+    <button id="sidebar-btn-bg" class="sidebar-item" onclick="openBackgroundScreen()">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4.5" y="6.5" width="27" height="23" rx="4" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12.5" cy="14" r="2.6" fill="var(--accent-gold)" fill-opacity="0.3" stroke="var(--accent-gold)" stroke-width="1.5"/><path d="M5 26L13.5 18.5L19 23.5L24 19L31 25.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      <span id="bg-mode-label">Background: Default</span>
+    </button>
     <button class="sidebar-item" onclick="openStandaloneScreen('feedback-screen')">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4Z" fill="var(--accent)" fill-opacity="0.14" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round"/></svg>
       Sound &amp; Haptics
@@ -723,6 +727,32 @@ Promise.race([fl,new Promise(function(r){setTimeout(r,FONTW)})]).then(reveal,rev
     </div>
     <p class="settings-list-item-desc u-feedback-note">These settings apply to this device only and cover dialogs, switches and toggle buttons.</p>
   </div>
+</div>
+<div id="background-screen" class="standalone-screen d-none">
+  <div id="bg-stage" class="bg-stage">
+    <img id="bg-edit-img" class="bg-edit-img d-none" alt="" draggable="false">
+    <div id="bg-stage-tint" class="bg-stage-tint"></div>
+    <p id="bg-empty" class="bg-empty">No custom background yet.<br>Choose a picture, then pinch to zoom and drag to place it.</p>
+  </div>
+  <div class="shell-bar screen-topbar bg-topbar">
+    <button type="button" class="btn screen-back-btn" aria-label="Back" onclick="closeBackgroundScreen()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 5L8 12L15 19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2 class="screen-title" id="bg-edit-title">Background</h2>
+  </div>
+  <div class="bg-bottom">
+    <p id="bg-hint" class="bg-hint d-none">Pinch to zoom, drag to move, double-tap to zoom in or out</p>
+    <div class="bg-dim-row">
+      <label for="bg-dim">Dim</label>
+      <input id="bg-dim" type="range" min="0" max="80" step="1" value="35" aria-label="Dim the picture">
+      <span id="bg-dim-val">35%</span>
+    </div>
+    <div class="bg-actions">
+      <button type="button" class="btn btn-theme" onclick="chooseBackgroundPicture()">Choose picture</button>
+      <button type="button" id="bg-btn-reset" class="btn btn-theme d-none" onclick="resetBackgroundEdit()">Reset</button>
+      <button type="button" id="bg-btn-remove" class="btn btn-danger d-none" onclick="removeCustomBackground()">Remove</button>
+      <button type="button" id="bg-btn-save" class="btn btn-main d-none" onclick="saveBackgroundEdit()">Set background</button>
+    </div>
+  </div>
+  <input id="bg-file" type="file" accept="image/*" class="d-none">
 </div>
 <div id="close-financial-year-screen" class="standalone-screen d-none">
   <div class="shell-bar screen-topbar">
