@@ -55,7 +55,7 @@ export function analyseProfit(sales, keys) {
   out.avgCost = out.qty > 0 ? out.cost / out.qty : 0;
   out.worst = inRange.filter((x) => _n(x.profit) < 0).sort((a, b) => _n(a.profit) - _n(b.profit)).map((x) => {
     const q = _n(x.quantity);
-    return { date: dayKey(x), customer: x.customerName || 'Walk-in', store: x.supplyStore || '', qty: q, price: q > 0 ? _n(x.totalValue) / q : 0, cost: q > 0 ? _n(x.totalCost) / q : 0, profit: _n(x.profit) };
+    return { idx: _arr(sales).indexOf(x), date: dayKey(x), customer: x.customerName || 'Walk-in', store: x.supplyStore || '', qty: q, price: q > 0 ? _n(x.totalValue) / q : 0, cost: q > 0 ? _n(x.totalCost) / q : 0, profit: _n(x.profit) };
   });
   const rank = (m) => [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => a.value - b.value);
   out.byCustomer = rank(cust).filter((r) => r.value < 0).slice(0, 6);
@@ -190,9 +190,9 @@ function auditHtml(a) {
   const head = a.findings.length
     ? `<b>${a.findings.length}</b> of ${a.total.toLocaleString('en-US')} records need attention: <b>${a.errors}</b> with errors and <b>${a.warnings}</b> with warnings. Errors break totals or links; warnings are unusual but may be intentional.`
     : `No problems found in ${a.total.toLocaleString('en-US')} records.`;
-  const checks = a.byCheck.length ? `<div class="ov-sub">What was found</div><div class="ov-checks">${a.byCheck.map((c) => `<div class="ov-check sx-tone-${c.severity === 'error' ? 'bad' : 'warn'}"><span>${esc(c.label)}</span><b>${c.count}</b></div>`).join('')}</div>` : '';
+  const checks = a.byCheck.length ? `<div class="ov-sub">What was found</div><div class="ov-checks">${a.byCheck.map((c) => `<button type="button" class="ov-check sx-tone-${c.severity === 'error' ? 'bad' : 'warn'}" data-fix-code="${c.code}"><span>${esc(c.label)}</span><b>${c.count}</b></button>`).join('')}</div>` : '';
   const rows = a.findings.length ? `<div class="ov-sub">Records to check</div><div class="ov-recent">${a.findings.map((f) => `<button type="button" class="ov-recent-row sx-tone-${f.severity === 'error' ? 'bad' : 'warn'}" data-fix="${f.collection}:${f.idx}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(f.title)}</span><span class="ov-recent-sub">${esc(f.label)}${f.date ? ` · ${esc(f.date)}` : ''}${f.id ? ` · id ${esc(f.id)}` : ''}</span><span class="ov-reasons">${f.reasons.map((r) => `<span>${esc(r)}</span>`).join('')}</span></span>${f.impact ? `<span class="ov-recent-amt">${fmt(f.impact)}</span>` : ''}<span class="badge badge-tint sx-chip sx-tone-good ov-fixchip">Fix</span></button>`).join('')}</div>` : '';
-  return `<div class="ov-sub">Data problems</div><p class="ov-lead">${head}</p>${checks}${rows}`;
+  return `<div class="ov-sub">Data problems</div><p class="ov-lead">${head}</p>${a.findings.length ? '<button type="button" class="badge badge-tint sx-chip sx-tone-good ov-chip ov-more" data-fix-all="1">Fix one by one</button>' : ''}${checks}${rows}`;
 }
 
 function profitCheckHtml(p, t) {
@@ -201,7 +201,7 @@ function profitCheckHtml(p, t) {
   lines.push(`<b>${p.losing.count}</b> of ${p.count} sales made a loss, losing <b>${fmt(-p.losing.sum)}</b> in total. The other ${p.gaining.count} earned <b>${fmt(p.gaining.sum)}</b>, so the net is <b>${fmt(p.net)}</b>.`);
   if (t && t.prodValue > 0) lines.push(`Net profit follows the Total combined card: production value <b>${fmt(t.prodValue)}</b> minus production cost <b>${fmt(t.prodCost)}</b> is <b>${fmt(t.prodProfit)}</b> (${t.margin.toFixed(1)}% margin), and it covers sold and unsold production. Sales profit of <b>${fmt(t.salesProfit)}</b> is measured separately on the quantity sold, so it is not added on top.`);
   if (p.qty > 0) lines.push(`Average selling price was <b>${p.avgPrice.toFixed(2)}</b> per kg against an average cost of <b>${p.avgCost.toFixed(2)}</b> per kg${p.avgPrice < p.avgCost ? ', so on average you sold below cost' : ''}.`);
-  const worst = p.worst.length ? `<div class="ov-sub">Biggest losses</div><div class="ov-recent">${p.worst.map((w) => `<button type="button" class="ov-recent-row sx-tone-bad" data-go="sales"><span class="ov-recent-main"><span class="ov-recent-title">${esc(w.customer)}</span><span class="ov-recent-sub">${esc(w.date)}${w.store ? ` · ${esc(w.store)}` : ''} · ${fmt(w.qty)} kg at ${w.price.toFixed(2)} vs cost ${w.cost.toFixed(2)}</span></span><span class="ov-recent-amt">${fmt(w.profit)}</span></button>`).join('')}</div>` : '';
+  const worst = p.worst.length ? `<div class="ov-sub">Biggest losses</div><div class="ov-recent">${p.worst.map((w) => `<button type="button" class="ov-recent-row sx-tone-bad" data-fix="sales:${w.idx}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(w.customer)}</span><span class="ov-recent-sub">${esc(w.date)}${w.store ? ` · ${esc(w.store)}` : ''} · ${fmt(w.qty)} kg at ${w.price.toFixed(2)} vs cost ${w.cost.toFixed(2)}</span></span><span class="ov-recent-amt">${fmt(w.profit)}</span><span class="badge badge-tint sx-chip sx-tone-good ov-fixchip">Open</span></button>`).join('')}</div>` : '';
   const flip = (rows) => rows.map((r) => ({ ...r, value: -r.value }));
   const by = (title, rows) => (rows.length ? `<div class="ov-sub">${title}</div>${ranked(flip(rows), '', 'sales', 'bad')}` : '');
   const months = `<div class="ov-sub">Profit by month</div>${chart(p.byMonth.map((m) => ({ label: m.name, profit: m.value })), [{ f: 'profit', name: 'Profit', t: p.net < 0 ? 'bad' : 'good' }], 'sales')}`;

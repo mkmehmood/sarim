@@ -41,8 +41,21 @@ async function loadFinding(col, idx) {
   const arr = Array.isArray(rows) ? rows : [];
   const entities = await sqliteStore.get('entities').catch(() => []);
   const audit = auditData({ [col]: arr, entities }, localDateStr(new Date()));
-  const finding = audit.findings.find((f) => f.idx === idx);
+  let finding = audit.findings.find((f) => f.idx === idx);
+  const rec = arr[idx];
+  if (!finding && col === 'sales' && rec && !rec.isDeleted && Number(rec.profit) < 0) {
+    const q = Number(rec.quantity) || 0;
+    const price = q > 0 ? (Number(rec.totalValue) || 0) / q : 0;
+    const cost = q > 0 ? (Number(rec.totalCost) || 0) / q : 0;
+    finding = { rec, idx, codes: ['sale_loss'], collection: col, id: rec.id == null ? '' : String(rec.id), date: String(rec.date || ''), title: rec.customerName || 'Sale', label: 'Sale', severity: 'warn', impact: Number(rec.profit) || 0, reasons: [`No data problem found. It sold at ${price.toFixed(2)} per kg against a cost of ${cost.toFixed(2)} per kg, a loss of ${Math.abs(Number(rec.profit) || 0).toLocaleString('en-US')}. Check the price or the cost.`] };
+  }
   return { arr, finding };
+}
+
+async function loadAudit() {
+  const keys = ['production', 'sales', 'inventory', 'transactions', 'expenses', 'entities'];
+  const loaded = await Promise.all(keys.map((k) => sqliteStore.get(k).catch(() => [])));
+  return auditData(Object.fromEntries(keys.map((k, i) => [k, loaded[i]])), localDateStr(new Date()));
 }
 
 function fixBody(col, finding, fixes) {
@@ -62,19 +75,21 @@ async function persistFixed(col, arr, idx, next) {
   return record;
 }
 
-export async function openFix(col, idx) {
-  if (!FACTS[col]) return;
+export async function openFix(col, idx, opts = {}) {
+  if (!FACTS[col]) return 'done';
+  let status = 'done';
   let { arr, finding } = await loadFinding(col, idx);
-  if (!finding) { toast('That record no longer has a problem.', 'success'); await renderOverview(); return; }
+  if (!finding) { toast('That record no longer has a problem.', 'success'); await renderOverview(); return 'done'; }
   for (let guard = 0; guard < 8 && finding; guard += 1) {
     const inventory = await sqliteStore.get('inventory').catch(() => []);
     const fixes = planFixes(col, finding.rec, finding.codes, localDateStr(new Date()), { formulas: await getFormulaStore().catch(() => []), inventory: Array.isArray(inventory) ? inventory : [] });
     let raw = null;
     const picked = await openDialog({
       tone: finding.severity === 'error' ? 'danger' : 'warning',
+      eyebrow: finding.severity === 'error' ? 'Needs fixing' : 'Please check',
       title: `Fix ${finding.label}: ${finding.title}`,
       body: fixBody(col, finding, fixes),
-      actions: [{ label: 'Close', variant: 'ghost', value: null }],
+      actions: opts.sequence ? [{ label: 'Stop', variant: 'ghost', value: null }, { label: 'Skip', variant: 'ghost', value: 'skip' }] : [{ label: 'Close', variant: 'ghost', value: null }],
       dismissIndex: 0,
       focusIndex: -1,
       onBodyClick: (i) => {
@@ -84,21 +99,22 @@ export async function openFix(col, idx) {
         return i;
       },
     });
-    if (picked === null || picked === undefined) break;
+    if (picked === null || picked === undefined) { status = 'closed'; break; }
+    if (picked === 'skip') { status = 'skipped'; break; }
     const fix = fixes[picked];
     if (!fix) break;
     if (fix.kind === 'open') {
       const t = TARGET[col];
       if (t.screen && typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen(t.screen);
       else if (t.go && typeof window.sidebarNav === 'function') window.sidebarNav(t.go);
-      return;
+      return 'closed';
     }
     if (fix.kind === 'delete') {
       const fn = window[DELETERS[col]];
       if (typeof fn !== 'function') { toast('Deleting is not available for this record here. Open its screen instead.', 'error'); break; }
       await fn(finding.rec.id);
       await renderOverview();
-      return;
+      return 'done';
     }
     const parsed = parseInput(fix, raw);
     if (!parsed.ok) { toast(parsed.message, 'error'); continue; }
@@ -111,6 +127,28 @@ export async function openFix(col, idx) {
     }
     toast('Record fixed', 'success');
     ({ arr, finding } = await loadFinding(col, idx));
+    if (finding && finding.codes.includes('sale_loss')) finding = null;
+  }
+  await renderOverview();
+  return status;
+}
+
+async function fixByCode(code) {
+  const audit = await loadAudit();
+  const f = audit.findings.find((x) => x.codes.includes(code));
+  if (!f) { toast('No records with this problem were found.', 'success'); await renderOverview(); return; }
+  await openFix(f.collection, f.idx);
+}
+
+async function fixAll() {
+  const done = new Set();
+  for (let n = 0; n < 1000; n += 1) {
+    const audit = await loadAudit();
+    const f = audit.findings.find((x) => !done.has(`${x.collection}:${x.id || x.idx}`));
+    if (!f) break;
+    done.add(`${f.collection}:${f.id || f.idx}`);
+    const status = await openFix(f.collection, f.idx, { sequence: true });
+    if (status === 'closed') break;
   }
   await renderOverview();
 }
@@ -135,6 +173,9 @@ export function initOverview() {
     if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); r.click(); }
   });
   box.addEventListener('click', (e) => {
+    if (e.target.closest('[data-fix-all]')) { fixAll(); return; }
+    const codeBtn = e.target.closest('[data-fix-code]');
+    if (codeBtn && box.contains(codeBtn)) { fixByCode(codeBtn.getAttribute('data-fix-code')); return; }
     const fixBtn = e.target.closest('[data-fix]');
     if (fixBtn && box.contains(fixBtn)) { const [col, idx] = fixBtn.getAttribute('data-fix').split(':'); openFix(col, Number(idx)); return; }
     const tab = e.target.closest('[data-panel]');

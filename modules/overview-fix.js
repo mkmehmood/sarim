@@ -42,10 +42,10 @@ export function planFixes(col, rec, codes, today, ctx = {}) {
     add({ id: 'total_from_price', label: 'Set total to quantity x price', hint: `${round2(_n(rec.unitPrice) * q).toLocaleString('en-US')}`, patch: () => ({ totalValue: round2(_n(rec.unitPrice) * q), ...salesProfit(rec, round2(_n(rec.unitPrice) * q), c) }) });
     if (q > 0) add({ id: 'price_from_total', label: 'Set price to total divided by quantity', hint: `${round2(v / q)}`, patch: () => ({ unitPrice: round2(v / q) }) });
   }
-  if (has('sale_no_cost')) add({ id: 'cost', label: 'Enter the cost', input: { field: 'totalCost', label: 'Total cost', type: 'number', min: 0, exclusive: true, value: '' }, patch: (x) => ({ totalCost: x, ...salesProfit(rec, v, x) }) });
+  if (has('sale_no_cost') || has('sale_loss')) add({ id: 'cost', label: 'Enter the cost', input: { field: 'totalCost', label: 'Total cost', type: 'number', min: 0, exclusive: true, value: '' }, patch: (x) => ({ totalCost: x, ...salesProfit(rec, v, x) }) });
   if (has('sale_cash_unreceived')) add({ id: 'received', label: 'Mark the cash as received', patch: () => ({ creditReceived: true }) });
   if (has('sale_bad_qty')) add({ id: 'qty', label: 'Enter the quantity', input: { field: 'quantity', label: 'Quantity', type: 'number', min: 0, exclusive: true, value: '' }, patch: (x) => ({ quantity: x }) });
-  if (has('sale_negative_value')) add({ id: 'value', label: 'Enter the sale value', input: { field: 'totalValue', label: 'Total value', type: 'number', min: 0, value: '' }, patch: (x) => ({ totalValue: x, ...salesProfit(rec, x, c) }) });
+  if (has('sale_negative_value') || has('sale_loss')) add({ id: 'value', label: 'Enter the sale value', input: { field: 'totalValue', label: 'Total value', type: 'number', min: 0, value: '' }, patch: (x) => ({ totalValue: x, ...salesProfit(rec, x, c) }) });
   if (has('bad_date') || has('future_date')) add({ id: 'date', label: 'Set the date', input: { field: 'date', label: 'Date', type: 'date', value: today }, patch: (x) => ({ date: x }) });
   if (has('not_a_number')) {
     (NUMERIC[col] || []).filter((k) => notNumber(rec[k])).forEach((k) => add({ id: `num_${k}`, label: `Set ${k}`, input: { field: k, label: k, type: 'number', value: '' }, patch: (x) => ({ [k]: x }) }));
