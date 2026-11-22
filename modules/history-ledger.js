@@ -85,8 +85,8 @@ function kgOf(card, amtHtml, subHtml) {
   return m ? parseFloat(m[1]) : 0;
 }
 
-function metricList(card) {
-  return Array.from(card.querySelectorAll('.hc-metric')).map((m) => ({ l: (m.querySelector('dt') || {}).textContent || '', v: (m.querySelector('dd') || {}).innerHTML || '' })).filter((m) => plain(m.v));
+function metricList(card, topOnly) {
+  return Array.from(card.querySelectorAll('.hc-metric')).filter((m) => !topOnly || !m.closest('.hc-more')).map((m) => ({ l: (m.querySelector('dt') || {}).textContent || '', v: (m.querySelector('dd') || {}).innerHTML || '' })).filter((m) => plain(m.v));
 }
 
 function qtyRateOf(card) {
@@ -99,7 +99,7 @@ function qtyRateOf(card) {
 function detailHtml(card, e) {
   const body = card.querySelector(':scope > .hc-body');
   if (!body) return { info: '', rows: '' };
-  const mets = metricList(body);
+  const mets = metricList(body, true);
   const used = new Set();
   const chips = Array.from(body.querySelectorAll('.hc-chips > *')).map((c) => c.textContent.trim()).filter(Boolean);
   const supply = chips.filter((c) => /^supply date/i.test(c));
@@ -117,7 +117,6 @@ function detailHtml(card, e) {
   const bal = card.getAttribute('data-bal');
   if (bal) rows += `<div class="txn-balance-after txn-balance-${card.getAttribute('data-bal-tone') === 'debt' ? 'debt' : 'clear'}"><span>Balance after</span><b>${esc(bal)}</b></div>`;
   rows += mets.filter((m) => !used.has(m)).map((m) => kv(m.l, m.v)).join('');
-  rows += Array.from(body.querySelectorAll('.hc-mat')).map((m) => kv((m.querySelector('.hc-mat-name') || {}).textContent || '', (m.querySelector('.hc-mat-val') || {}).innerHTML || '')).join('');
   return { info, rows };
 }
 
@@ -337,7 +336,7 @@ let sheetActs = null;
 let sheetActsParent = null;
 let sheetEdit = null;
 let sheetExtras = [];
-const KNOWN_PARTS = ['hc-chips', 'hc-metrics', 'hc-more', 'hc-note', 'hc-actions'];
+const KNOWN_PARTS = ['hc-chips', 'hc-metrics', 'hc-note', 'hc-actions'];
 
 export function closeHistorySheet() {
   const back = document.getElementById('hl-sheet-backdrop');
@@ -372,7 +371,7 @@ export function openHistorySheet(entry) {
       const box = document.createElement('div');
       box.className = 'hl-extra';
       extras.forEach((n) => { sheetExtras.push({ node: n, parent: inner, next: n.nextSibling }); box.appendChild(n); });
-      sheet.querySelector('.cm-sheet-body').after(box);
+      sheet.appendChild(box);
     }
   }
   if (acts) {
