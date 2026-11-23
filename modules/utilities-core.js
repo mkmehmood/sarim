@@ -2034,7 +2034,8 @@ const phone = entity.phone || '';
 const wallet = entity.wallet || '';
 const _safeEntityId = String(entity.id).replace(/'/g, "\\'");
 const _entPhoto = await getPersonPhoto('entity:' + String(entity.id));
-const _entAvatarHTML = renderPersonAvatarHTML(_entPhoto, 44);
+const _entAvatarRaw = renderPersonAvatarHTML(_entPhoto, 44);
+const _entAvatarHTML = entity.ledgerPage ? `<div class="av-wrap">${_entAvatarRaw}<span class="av-page" title="Ledger page ${esc(String(entity.ledgerPage))}">${esc(String(entity.ledgerPage))}</span></div>` : _entAvatarRaw;
 _manageET.innerHTML = `<div class="u-1043921 d-flex">${_entAvatarHTML}<div class="u-69f8e5a"><div class="u-611b408 d-flex"><span class="u-fw-700">${esc(entity.name)}</span>${menuButtonHtml('ent', _safeEntityId)}</div>${(phone || wallet) ? `<div class="st-font-size__8113a0 st-color__5872de st-font-weight__1f3c50 st-margin-top__c00d39">${phone ? phoneActionHTML(phone) : ''}${phone && wallet ? ' &middot; ' : ''}${esc(wallet)}</div>` : ''}</div></div>`;
 }
 const _entStats = document.getElementById('manageEntityStats');

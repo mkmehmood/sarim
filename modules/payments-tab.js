@@ -1,3 +1,4 @@
+import { openingBalanceOf } from './edit-history.js';
 import { dateIssue, nameIssue, roundMoney } from './input-guards.js';
 import { addToLedgerSafely, isLedgerChecked } from './ledger-mirror.js';
 import { applyPaymentHistoryFilter, selectExpenseCategory, _resetExpenseForm, refreshPaymentTab, renderUnifiedTable, refreshEntityBalances, renderExpenseTable, formatDisplayDate } from './utilities-payments.js';
@@ -676,7 +677,7 @@ const entityMergedInfo = {};
 entities.forEach(e => {
 if (e.isExpenseEntity === true) return;
 if (supplierIdSet.has(String(e.id))) return;
-entityNetBalances[e.id] = 0;
+entityNetBalances[e.id] = openingBalanceOf(e);
 });
 transactions.forEach(t => {
 if (t.isExpense === true) return;

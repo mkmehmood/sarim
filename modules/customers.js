@@ -15,6 +15,7 @@ import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
 import { geoErrorMessage } from './geolocation-bridge.js';
+import { historyDiff, pushHistory, renderEditHistory } from './edit-history.js';
 export async function runningBalanceHtml(bal) {
 const text = bal < -0.005 ? `${await formatCurrency(-bal)} CR` : await formatCurrency(Math.max(0, bal));
 return balanceAfterHtml(text, bal > 0.005 ? 'debt' : 'clear');
@@ -877,11 +878,6 @@ renderCustomersTable();
 const CUST_HISTORY_FIELDS = [['name', 'Name'], ['phone', 'Phone'], ['address', 'Address'], ['oldDebit', 'Old debt'], ['customSalePrice', 'Custom price'], ['ledgerPage', 'Ledger page']];
 let _custEditBaseline = null;
 
-function _custHistVal(key, v) {
-if (v === '' || v == null || (typeof v === 'number' && v === 0 && key !== 'ledgerPage')) return '\u2014';
-return typeof v === 'number' ? fmtNum(v) : String(v);
-}
-
 function _custEditorValues() {
 return {
 name: document.getElementById('edit-cust-name').value.trim(),
@@ -893,42 +889,8 @@ ledgerPage: (document.getElementById('edit-cust-ledger-page').value || '').trim(
 };
 }
 
-function _custDiff(before, after) {
-const out = [];
-for (const [key, label] of CUST_HISTORY_FIELDS) {
-const a = before[key] == null ? '' : before[key];
-const b = after[key] == null ? '' : after[key];
-if (String(a) !== String(b)) out.push({ f: key, label, from: a, to: b });
-}
-return out;
-}
-
-function _custActor() {
-const u = window.currentUser || {};
-return String(window._assignedManagerName || u.displayName || String(u.email || '').split('@')[0] || 'Admin');
-}
-
-function _fmtHistoryStamp(iso) {
-const d = new Date(iso);
-if (isNaN(d.getTime())) return '';
-const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-return formatDisplayDateTime(d, time);
-}
-
-const _EH_TRASH = '<svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 10H28M14 10V7H22V10M10.5 10L12 30H24L25.5 10M15 15V25M21 15V25" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
 function renderCustomerEditHistory(contact) {
-const card = document.getElementById('cust-edit-history-card');
-const box = document.getElementById('cust-edit-history');
-if (!card || !box) return;
-if (!contact) { card.classList.add('d-none'); box.replaceChildren(); return; }
-card.classList.remove('d-none');
-const all = Array.isArray(contact.editHistory) ? contact.editHistory : [];
-let html = all.map((h, idx) => ({ h, idx })).reverse().map(({ h, idx }) => `<div class="eh-item"><div class="eh-head"><span class="eh-when">${esc(_fmtHistoryStamp(h.at))}</span><span class="eh-by">${esc(h.by || '')}</span><button type="button" class="eh-del" onclick="deleteCustomerHistoryEntry(${idx})" aria-label="Delete this history entry" title="Delete this history entry">${_EH_TRASH}</button></div>${(h.changes || []).map(c => `<div class="eh-change"><span class="eh-field">${esc(c.label || c.f)}</span><span class="eh-vals">${esc(_custHistVal(c.f, c.from))} <i>\u2192</i> ${esc(_custHistVal(c.f, c.to))}</span></div>`).join('')}</div>`).join('');
-const created = contact.createdAt ? _fmtHistoryStamp(contact.createdAt) : '';
-if (created) html += `<div class="eh-item eh-created"><div class="eh-head"><span class="eh-when">${esc(created)}</span><span class="eh-by">Customer added</span></div></div>`;
-if (!html) html = '<div class="pf-hint">No edits recorded yet.</div>';
-box.innerHTML = html;
+renderEditHistory({ cardId: 'cust-edit-history-card', boxId: 'cust-edit-history', record: contact, delFn: 'deleteCustomerHistoryEntry', addedLabel: 'Customer added' });
 }
 
 window.deleteCustomerHistoryEntry = async function(idx) {
@@ -1060,20 +1022,16 @@ if (contact) {
 if (!validateUUID(String(contact.id || ''))) { contact.id = generateUUID('cust'); }
 contact.name = name; contact.phone = phone; contact.address = address; contact.oldDebit = oldDebit; contact.customSalePrice = customSalePrice; contact.ledgerPage = ledgerPage; contact.updatedAt = getTimestamp();
 if (_custEditBaseline) {
-const _chg = _custDiff(_custEditBaseline, { name, phone, address, oldDebit, customSalePrice, ledgerPage });
-if (_chg.length) {
-const _hist = Array.isArray(contact.editHistory) ? contact.editHistory : [];
-_hist.push({ at: new Date().toISOString(), by: _custActor(), changes: _chg });
-contact.editHistory = _hist.slice(-100);
-}
+const _chg = historyDiff(CUST_HISTORY_FIELDS, _custEditBaseline, { name, phone, address, oldDebit, customSalePrice, ledgerPage });
+pushHistory(contact, _chg);
 }
 ensureRecordIntegrity(contact, true);
 } else {
 contact = { id: generateUUID('cust'), name, phone, address, oldDebit, customSalePrice, ledgerPage,
 createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
 if (_custEditBaseline) {
-const _chg0 = _custDiff(_custEditBaseline, { name, phone, address, oldDebit, customSalePrice, ledgerPage });
-if (_chg0.length) contact.editHistory = [{ at: new Date().toISOString(), by: _custActor(), changes: _chg0 }];
+const _chg0 = historyDiff(CUST_HISTORY_FIELDS, _custEditBaseline, { name, phone, address, oldDebit, customSalePrice, ledgerPage });
+pushHistory(contact, _chg0);
 }
 customers.push(contact);
 }

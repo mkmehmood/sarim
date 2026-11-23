@@ -23,6 +23,7 @@ import { confirmGuard } from './confirm-guard.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { getDefaultStoreKey } from './store-keys.js';
 import { getPosition } from './geo.js';
+import { historyDiff, pushHistory, renderEditHistory } from './edit-history.js';
 
 export let repTransactionMode = 'sale';
 window.repTransactionMode = repTransactionMode;
@@ -776,6 +777,7 @@ const phone = repContact?.phone || latest?.customerPhone || '';
 return rlRowHtml({
 name,
 photo: rlPhoto(_rlPhotos, 'rep-cust:' + (currentRepProfile || '') + ':' + name.toLowerCase()),
+avatarBadge: repContact?.ledgerPage ? String(repContact.ledgerPage) : '',
 tone: customerData.debt > 1 ? 'warn' : 'clear',
 details: [
 phone ? phoneActionHTML(phone) : '<span class="rl-muted">No phone</span>'
@@ -932,7 +934,8 @@ const contact = repContacts.find(c => c && c.name && c.name.toLowerCase() === na
 const phone = contact?.phone || transactions.find(t => t && t.customerPhone)?.customerPhone || '';
 const address = contact?.address || '';
 const _repHeaderPhoto = await getPersonPhoto('rep-cust:' + (currentRepProfile || '') + ':' + name.toLowerCase());
-const _repAvatarHTML = renderPersonAvatarHTML(_repHeaderPhoto, 42);
+const _repAvatarRaw = renderPersonAvatarHTML(_repHeaderPhoto, 42);
+const _repAvatarHTML = contact?.ledgerPage ? `<div class="av-wrap">${_repAvatarRaw}<span class="av-page" title="Ledger page ${esc(String(contact.ledgerPage))}">${esc(String(contact.ledgerPage))}</span></div>` : _repAvatarRaw;
 const _repSafeName = esc(name).split("'").join("\\'");
 const _repRows = transactions.map(t => ({ t, value: t.totalValue }));
 const _repTotals = periodTotals(_repRows);
@@ -1043,6 +1046,40 @@ _entries.push({
 }
 await renderLedger('rep', { name, phone, entries: pinOpeningDays(_entries), summaryHtml: await custSummaryHtml(_repTotals, Math.max(0, _runTotal), periodQuantity(_repRows), _nAll, 'rep'), money: formatCurrency });
 }
+const REP_HISTORY_FIELDS = [['name', 'Name'], ['phone', 'Phone'], ['address', 'Address'], ['oldDebit', 'Old debt'], ['ledgerPage', 'Ledger page']];
+let _repEditBaseline = null;
+
+function _repEditorValues() {
+return {
+name: document.getElementById('rep-edit-cust-name').value.trim(),
+phone: document.getElementById('rep-edit-cust-phone').value.trim(),
+address: document.getElementById('rep-edit-cust-address').value.trim(),
+oldDebit: readNum('rep-edit-cust-old-debit'),
+ledgerPage: (document.getElementById('rep-edit-cust-ledger-page').value || '').trim()
+};
+}
+
+function renderRepCustomerEditHistory(contact) {
+renderEditHistory({ cardId: 'rep-cust-edit-history-card', boxId: 'rep-cust-edit-history', record: contact, delFn: 'deleteRepCustomerHistoryEntry', addedLabel: 'Customer added' });
+}
+
+window.deleteRepCustomerHistoryEntry = async function(idx) {
+const nameInput = document.getElementById('rep-edit-cust-name');
+const name = (nameInput && nameInput.dataset.originalName) || '';
+if (!name) return;
+const { clients } = await loadCollections('clients');
+const list = Array.isArray(clients) ? clients : [];
+const lc = name.toLowerCase();
+const contact = list.find(c => c && c.name && c.name.toLowerCase() === lc && c.salesRep === currentRepProfile) || list.find(c => c && c.name && c.name.toLowerCase() === lc);
+if (!contact || !Array.isArray(contact.editHistory) || !contact.editHistory[idx]) return;
+if (!(await showGlassConfirm('Delete this history entry? This cannot be undone.', { title: 'Delete History', confirmText: 'Delete', danger: true }))) return;
+contact.editHistory.splice(idx, 1);
+contact.updatedAt = getTimestamp();
+ensureRecordIntegrity(contact, true);
+await unifiedSave('clients', list, contact);
+renderRepCustomerEditHistory(contact);
+};
+
 export async function openRepCustomerEditModal(customerName) {
 customerName = customerName || '';
 const isAddMode = !customerName;
@@ -1077,6 +1114,9 @@ if (!customerName) {
 document.getElementById('rep-edit-cust-phone').value = '';
 document.getElementById('rep-edit-cust-address').value = '';
 document.getElementById('rep-edit-cust-old-debit').value = '';
+document.getElementById('rep-edit-cust-ledger-page').value = '';
+_repEditBaseline = null;
+renderRepCustomerEditHistory(null);
 const _repPhotoKey = 'rep-cust:' + (currentRepProfile || '') + ':';
 await loadPersonPhotoIntoEditor('rep-cust', _repPhotoKey);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-customer-edit-screen');
@@ -1094,6 +1134,10 @@ const oldDebitValue = existingOldDebtTx ? (existingOldDebtTx.totalValue || 0) : 
 document.getElementById('rep-edit-cust-phone').value = contact?.phone || saleRecord?.customerPhone || '';
 document.getElementById('rep-edit-cust-address').value = contact?.address || '';
 document.getElementById('rep-edit-cust-old-debit').value = oldDebitValue;
+document.getElementById('rep-edit-cust-ledger-page').value = contact?.ledgerPage || '';
+_repEditBaseline = _repEditorValues();
+_repEditBaseline.name = customerName;
+renderRepCustomerEditHistory(contact || { createdAt: '', editHistory: [] });
 const _repPhotoKey = 'rep-cust:' + (currentRepProfile || '') + ':' + customerName.toLowerCase();
 await loadPersonPhotoIntoEditor('rep-cust', _repPhotoKey);
 if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-customer-edit-screen');
@@ -1101,7 +1145,7 @@ if (typeof openStandaloneScreen === 'function') openStandaloneScreen('rep-custom
 export function closeRepCustomerEditModal() {
 if (typeof closeStandaloneScreen === 'function') closeStandaloneScreen('rep-customer-edit-screen');
 }
-export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['rep-edit-cust-name', 'Name'], ['rep-edit-cust-phone', 'Phone'], ['rep-edit-cust-address', 'Address'], ['rep-edit-cust-old-debit', 'Old Debit']], isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
+export function saveRepCustomerDetails(...a) { return confirmGuard('saveRepCustomerDetails', () => _saveRepCustomerDetailsRaw(...a), { label: 'Customer', late: true, fields: [['rep-edit-cust-name', 'Name'], ['rep-edit-cust-phone', 'Phone'], ['rep-edit-cust-address', 'Address'], ['rep-edit-cust-old-debit', 'Old Debit'], ['rep-edit-cust-ledger-page', 'Ledger Page']], isUpdate: () => !!(document.getElementById('rep-edit-cust-name') || {}).dataset.originalName }); }
 async function _saveRepCustomerDetailsRaw() {
 const { rep, clients } = await loadCollections('rep', 'clients');
 const nameInput = document.getElementById('rep-edit-cust-name');
@@ -1110,6 +1154,7 @@ const originalName = nameInput.dataset.originalName || name;
 const phone = document.getElementById('rep-edit-cust-phone').value.trim();
 const address = document.getElementById('rep-edit-cust-address').value.trim();
 const oldDebit = readNum('rep-edit-cust-old-debit');
+const ledgerPage = (document.getElementById('rep-edit-cust-ledger-page').value || '').trim();
 if (!name) { window.notifyBlocking('Customer name is required', 'error', 'Something went wrong'); return; }
 if (oldDebit < 0) { window.notifyBlocking('Old debt balance cannot be negative. Enter 0 to clear the balance.', 'warning', 'Warning'); return; }
 if (!(await window.gcCommit({}))) return;
@@ -1129,12 +1174,14 @@ if (!contact) contact = clients.find(c => c && c.name && c.name.toLowerCase() ==
 const previousOldDebit = contact?.oldDebit || 0;
 if (contact) {
 if (!validateUUID(String(contact.id || ''))) { contact.id = generateUUID('rep_cust'); }
-contact.name = name; contact.phone = phone; contact.address = address; contact.oldDebit = oldDebit;
+contact.name = name; contact.phone = phone; contact.address = address; contact.oldDebit = oldDebit; contact.ledgerPage = ledgerPage;
 contact.salesRep = currentRepProfile; contact.updatedAt = getTimestamp();
+if (_repEditBaseline) pushHistory(contact, historyDiff(REP_HISTORY_FIELDS, _repEditBaseline, { name, phone, address, oldDebit, ledgerPage }));
 ensureRecordIntegrity(contact, true);
 } else {
-contact = { id: generateUUID('rep_cust'), name, phone, address, oldDebit, salesRep: currentRepProfile,
+contact = { id: generateUUID('rep_cust'), name, phone, address, oldDebit, ledgerPage, salesRep: currentRepProfile,
 createdAt: getTimestamp(), updatedAt: getTimestamp(), timestamp: getTimestamp() };
+if (_repEditBaseline) pushHistory(contact, historyDiff(REP_HISTORY_FIELDS, _repEditBaseline, { name, phone, address, oldDebit, ledgerPage }));
 clients.push(contact);
 }
 await unifiedSave('clients', clients, contact);

@@ -46,7 +46,7 @@ registerScreens({
 registerLazyModules({
   'rep-sales': {
     load: () => import('./rep-sales.js'),
-    globals: ['_selectRepCustomerBase', 'adminSwitchRepProfile', 'autoUpdateCustomerLocation', 'calculateRepCustomerStats', 'calculateRepCustomerStatsForDisplay', 'closeRepCustomerEditModal', 'closeRepCustomerManagement', 'deg2rad', 'deleteCurrentRepCustomer', 'exportRepCustomerToPDF', 'fetchRepDeviceLocation', 'getDistanceFromLatLonInMeters', 'initRepMap', 'openRepCustomerEditModal', 'openRepCustomerManagement', 'saveRepCustomerDetails', 'saveRepTransaction', 'selectRepCustomer', 'setRepAnalyticsMode', 'setRepMode', 'updateRepCollectionPreview'],
+    globals: ['_selectRepCustomerBase', 'adminSwitchRepProfile', 'autoUpdateCustomerLocation', 'calculateRepCustomerStats', 'calculateRepCustomerStatsForDisplay', 'closeRepCustomerEditModal', 'closeRepCustomerManagement', 'deg2rad', 'deleteCurrentRepCustomer', 'deleteRepCustomerHistoryEntry', 'exportRepCustomerToPDF', 'fetchRepDeviceLocation', 'getDistanceFromLatLonInMeters', 'initRepMap', 'openRepCustomerEditModal', 'openRepCustomerManagement', 'saveRepCustomerDetails', 'saveRepTransaction', 'selectRepCustomer', 'setRepAnalyticsMode', 'setRepMode', 'updateRepCollectionPreview'],
     hooks: ['calculateRepAnalytics', 'refreshRepUI', 'renderRepCustomerTable', 'renderRepCustomerTransactions', 'renderRepHistory', 'updateRepLiveMap', 'calculateRepSalePreview'],
   },
   'factory': {

@@ -13,8 +13,9 @@ import { editDateValue } from './edit-date.js';
 import { runExclusive, hasLiveSupplierInvoice, planCreditToggle, applySettlement, newGroupId, stampGroup, isOrphanSupplierTx, GROUP_FIELD, DELETE_ORIGIN_FIELD } from './link-graph.js';
 import { BRAND_LOGO_JPEG_BASE64 } from './constants.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
+import { historyDiff, pushHistory, renderEditHistory, openingBalanceOf, openingBalanceText } from './edit-history.js';
 import { actionRowHtml, beginEditMode, getEditCtx, registerEditHandler } from './edit-mode.js';
-import { dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
+import { readNum, dataRootRef, round2, _checkFirebaseSessionExists, _creatorBadgeHtml, _mergedBadgeHtml, _safeErr, _set_appMode, _set_currentRepProfile, _set_isSyncing, _set_salesRepsList, appMode, currentRepProfile, currentUser, ensureArray, ensureRecordIntegrity, esc, firebaseDB, fmtAmt, fmtNum, generateUUID, getDeviceId, getTimestamp, loadAllData, localDateStr, safeNumber, salesRepsList, scheduleAutomaticCleanup, SQLiteCrypto, sqliteStore, validateUUID, customerHistoryMatcher, selectedValueFilter, formatTime12, repairStoredRecords, loadCollections, loadAliveCollections, loadDeletedIds } from './business.js';
 import { createAuthOverlay, emitSyncUpdate, initFirebase, initializeCompleteFirestoreDatabase, initializeFirebaseSystem, isCompleteDatabaseInitialized, isConnectionStale, isReconnecting, listenerReconnectTimer, performOneClickSync, safeInitializeCompleteDatabase, sanitizeForFirestore, scheduleListenerReconnect, showAuthOverlay, unifiedDelete, unifiedSave, updateSyncButton } from './sync.js';
 import { OfflineQueue, _reconcileSupplierLinksForDeletedTransactions, _refreshSupplierLinkViews, PDF_MERGED_HDR_COLOR, PDF_MERGED_ROW_COLOR, SarimChart, _pdfDrawMergedSectionHeader, _pdfMergedCountLabel, _pdfMergedPeriodLabel, _setCloudConnectionState, _set_salesCompChart, _set_salesPerfChart, clearPersonPhoto, currentEntityId, initSplashScreen, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, openEntityDetailsOverlay, registerDeletion, renderEntityOverlayContent, salesCompChart, salesPerfChart, savePersonPhoto, triggerAutoSync, cleanupOldDeletions, updateOfflineBanner, rangeCutoffDate } from './utilities-core.js';
 import { calculateCashTracker, calculateNetCash, closeEntityTransactions, getAvailableCashInHand, getStorePool, getStoreLabel, initFactoryTab, loadFirestoreStats, refreshCustomerSales, refreshUI, renderEntityTable, revertRepSalesEntries, markAllPendingCreditSalesAsCash, processRepTransfer, setProductionView, showTab, syncSuppliersToEntities, trackFirestoreWrite, updateAllStoresOverview, updateAllTabsWithFactoryCosts, updateCustomerCharts } from './utilities-sales.js';
@@ -1511,7 +1512,7 @@ supplierIdSet.add(String(t.entityId));
 const balances = {};
 entities.forEach(entity => {
 if (entity.isExpenseEntity === true) return;
-balances[entity.id] = 0;
+balances[entity.id] = openingBalanceOf(entity);
 });
 if (typeof inventory !== 'undefined') {
 inventory.forEach(material => {
@@ -1602,11 +1603,55 @@ window.setDisplay(card, 'none');
 });
 }
 
+const ENTITY_HISTORY_FIELDS = [['name', 'Name'], ['phone', 'Phone'], ['wallet', 'Wallet'], ['openingBalance', 'Old balance'], ['ledgerPage', 'Ledger page']];
+let _entEditBaseline = null;
+const _entHistFmt = (key, v) => (key === 'openingBalance' ? openingBalanceText(v) : null);
+
+window.resetEntityEditBaseline = function() { _entEditBaseline = null; window.editingEntityId = null; editingEntityId = null; };
+
+function _entEditorValues() {
+const amt = readNum('entityOpeningAmount');
+const credit = document.getElementById('entityOpeningType').value !== 'debit';
+return {
+name: document.getElementById('entityName').value.trim(),
+phone: document.getElementById('entityPhone').value.trim(),
+wallet: document.getElementById('entityWallet').value.trim(),
+openingBalance: amt === 0 ? 0 : (credit ? amt : -amt),
+ledgerPage: (document.getElementById('entityLedgerPage').value || '').trim()
+};
+}
+
+function _entFillExtras(entity) {
+const ob = openingBalanceOf(entity);
+document.getElementById('entityOpeningType').value = ob < 0 ? 'debit' : 'credit';
+document.getElementById('entityOpeningAmount').value = ob === 0 ? '' : Math.abs(ob);
+document.getElementById('entityLedgerPage').value = (entity && entity.ledgerPage) || '';
+}
+
+function renderEntityEditHistory(entity) {
+renderEditHistory({ cardId: 'entity-edit-history-card', boxId: 'entity-edit-history', record: entity, delFn: 'deleteEntityHistoryEntry', addedLabel: 'Entity added', fmt: _entHistFmt });
+}
+
+window.deleteEntityHistoryEntry = async function(idx) {
+const id = window.editingEntityId;
+if (!id) return;
+const { entities } = await loadCollections('entities');
+const entity = entities.find(e => String(e.id) === String(id));
+if (!entity || !Array.isArray(entity.editHistory) || !entity.editHistory[idx]) return;
+if (!(await showGlassConfirm('Delete this history entry? This cannot be undone.', { title: 'Delete History', confirmText: 'Delete', danger: true }))) return;
+entity.editHistory.splice(idx, 1);
+entity.updatedAt = getTimestamp();
+ensureRecordIntegrity(entity, true);
+await unifiedSave('entities', entities, entity);
+renderEntityEditHistory(entity);
+};
+
 export function openEntityManagement() {
 editingEntityId = null; window.editingEntityId = editingEntityId;
 const _en = document.getElementById('entityName'); if (_en) _en.value = '';
 const _ep = document.getElementById('entityPhone'); if (_ep) _ep.value = '';
 const _ew = document.getElementById('entityWallet'); if (_ew) _ew.value = '';
+_entFillExtras(null); _entEditBaseline = null; renderEntityEditHistory(null);
 const _entMT1 = document.getElementById('entityManagementModalTitle'); if (_entMT1) _entMT1.innerText = 'Add New Entity';
 const _delBtn = document.getElementById('deleteEntityBtn'); if (_delBtn) { _delBtn.classList.add('u-hidden'); window.setDisplay(_delBtn, 'none'); }
 clearPersonPhoto('entity');
@@ -1623,13 +1668,17 @@ if (entity) renderEntityOverlayContent(entity);
 }
 }
 
-export function saveEntity(...a) { return confirmGuard('saveEntity', () => runExclusive('saveEntity', () => _saveEntityImpl(...a)), { label: 'Entity', late: true, fields: [['entityName', 'Name'], ['entityPhone', 'Phone'], ['entityWallet', 'Wallet']], isUpdate: () => !!editingEntityId }); }
+export function saveEntity(...a) { return confirmGuard('saveEntity', () => runExclusive('saveEntity', () => _saveEntityImpl(...a)), { label: 'Entity', late: true, fields: [['entityName', 'Name'], ['entityPhone', 'Phone'], ['entityWallet', 'Wallet'], ['entityOpeningAmount', 'Old Balance'], ['entityLedgerPage', 'Ledger Page']], isUpdate: () => !!editingEntityId }); }
 
 async function _saveEntityImpl() {
 const { entities, transactions } = await loadCollections('entities', 'transactions');
 const name = document.getElementById('entityName').value.trim();
 const phone = document.getElementById('entityPhone').value.trim();
 const wallet = document.getElementById('entityWallet').value.trim();
+const _extras = _entEditorValues();
+const openingBalance = _extras.openingBalance;
+const ledgerPage = _extras.ledgerPage;
+if (readNum('entityOpeningAmount') < 0) { window.notifyBlocking('Old balance cannot be negative. Pick credit or debit instead.', 'warning', 'Warning'); return; }
 const _phoneIssue = phoneIssue(phone) || nameIssue(name, 'Name') || nameIssue(wallet, 'Wallet details', 120);
 if (_phoneIssue) {
 window.notifyBlocking(_phoneIssue, 'warning', 'Warning');
@@ -1658,14 +1707,18 @@ if (editingEntityId) {
 const index = entities.findIndex(e => e.id === editingEntityId);
 if (index !== -1) {
 if (entities[index].name !== name) _renameFrom = entities[index].name;
-entities[index] = ensureRecordIntegrity({
+const _updated = {
 ...entities[index],
 name,
 type,
 phone,
 wallet,
+openingBalance,
+ledgerPage,
 updatedAt: getTimestamp()
-}, true);
+};
+if (_entEditBaseline) pushHistory(_updated, historyDiff(ENTITY_HISTORY_FIELDS, _entEditBaseline, { name, phone, wallet, openingBalance, ledgerPage }));
+entities[index] = ensureRecordIntegrity(_updated, true);
 showToast("Entity updated successfully", "success");
 }
 } else {
@@ -1679,6 +1732,8 @@ name,
 type,
 phone,
 wallet,
+openingBalance,
+ledgerPage,
 createdAt: getTimestamp(),
 updatedAt: getTimestamp(),
 syncedAt: new Date().toISOString()
@@ -1712,6 +1767,10 @@ editingEntityId = id; window.editingEntityId = editingEntityId;
 document.getElementById('entityName').value = entity.name;
 document.getElementById('entityPhone').value = entity.phone || '';
 document.getElementById('entityWallet').value = entity.wallet || '';
+_entFillExtras(entity);
+_entEditBaseline = _entEditorValues();
+_entEditBaseline.name = entity.name;
+renderEntityEditHistory(entity);
 const _entMT2 = document.getElementById('entityManagementModalTitle'); if (_entMT2) _entMT2.innerText = 'Edit Entity Info';
 const _entDelBtn = document.getElementById('deleteEntityBtn'); if (_entDelBtn) { _entDelBtn.classList.remove('u-hidden'); window.setDisplay(_entDelBtn, ''); }
 await loadPersonPhotoIntoEditor('entity', 'entity:' + String(id));
@@ -2448,7 +2507,7 @@ const entityBalances = {};
 entities.forEach(entity => {
 if (entity.isExpenseEntity === true) return;
 if (supplierIds.has(String(entity.id))) return;
-entityBalances[entity.id] = 0;
+entityBalances[entity.id] = openingBalanceOf(entity);
 });
 if (typeof transactions !== 'undefined') {
 transactions.forEach(transaction => {
@@ -2476,7 +2535,7 @@ const walletMatch = entityWallet.includes(searchQuery);
 if (!nameMatch && !phoneMatch && !walletMatch) return;
 }
 let balance = supplierIds.has(String(entity.id))
-? (supplierEntityBalances[String(entity.id)] || 0)
+? ((supplierEntityBalances[String(entity.id)] || 0) + openingBalanceOf(entity))
 : (entityBalances[entity.id] || 0);
 if (entity.balance !== undefined && entity.balance !== null && typeof transactions === 'undefined') {
 balance = parseFloat(entity.balance) || 0;
@@ -2555,6 +2614,7 @@ const tone = row.balanceLabel === 'PAYABLE' ? 'debt' : row.balanceLabel === 'REC
 return rlRowHtml({
 name: row.name,
 photo: rlPhoto(_rlPhotos, 'entity:' + String(row.id)),
+avatarBadge: row.entity && row.entity.ledgerPage ? String(row.entity.ledgerPage) : '',
 tone,
 details: [phoneActionHTML(row.contact)],
 amount: row.amountStr,
