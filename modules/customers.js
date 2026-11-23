@@ -170,7 +170,7 @@ const phone = phoneByName.get(c.name.toLowerCase()) || saleBy.get(c.name) || '';
 const owes = c.credit > 0.005;
 return rlRowHtml({
 name: c.name,
-note: pageByName.has(c.name.toLowerCase()) ? 'p. ' + pageByName.get(c.name.toLowerCase()) : '',
+avatarBadge: pageByName.get(c.name.toLowerCase()) || '',
 photo: rlPhoto(_rlPhotos, 'cust:' + c.name.toLowerCase()),
 tone: owes ? 'debt' : 'clear',
 details: [
@@ -363,10 +363,10 @@ const _custAvatarHTML = renderPersonAvatarHTML(_custHeaderPhoto, 42);
 const _custSafeName = esc(name).split("'").join("\\'");
 headerTitle.innerHTML = `
 <div class="u-1043921 d-flex">
-${_custAvatarHTML}
+${entity?.ledgerPage ? `<div class="av-wrap">${_custAvatarHTML}<span class="av-page" title="Ledger page ${esc(String(entity.ledgerPage))}">${esc(String(entity.ledgerPage))}</span></div>` : _custAvatarHTML}
 <div class="u-69f8e5a">
 <div class="u-611b408 d-flex">
-<span>${esc(name)}</span>${entity?.ledgerPage ? `<span class="rl-note">p. ${esc(String(entity.ledgerPage))}</span>` : ''}
+<span>${esc(name)}</span>
 ${menuButtonHtml('cust', _custSafeName)}
 </div>
 <div class="u-9e739fd">
@@ -915,19 +915,38 @@ const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit',
 return formatDisplayDateTime(d, time);
 }
 
+const _EH_TRASH = '<svg width="16" height="16" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 10H28M14 10V7H22V10M10.5 10L12 30H24L25.5 10M15 15V25M21 15V25" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 function renderCustomerEditHistory(contact) {
 const card = document.getElementById('cust-edit-history-card');
 const box = document.getElementById('cust-edit-history');
 if (!card || !box) return;
 if (!contact) { card.classList.add('d-none'); box.replaceChildren(); return; }
 card.classList.remove('d-none');
-const list = Array.isArray(contact.editHistory) ? contact.editHistory.slice().reverse() : [];
-let html = list.map(h => `<div class="eh-item"><div class="eh-head"><span class="eh-when">${esc(_fmtHistoryStamp(h.at))}</span><span class="eh-by">${esc(h.by || '')}</span></div>${(h.changes || []).map(c => `<div class="eh-change"><span class="eh-field">${esc(c.label || c.f)}</span><span class="eh-vals">${esc(_custHistVal(c.f, c.from))} <i>\u2192</i> ${esc(_custHistVal(c.f, c.to))}</span></div>`).join('')}</div>`).join('');
+const all = Array.isArray(contact.editHistory) ? contact.editHistory : [];
+let html = all.map((h, idx) => ({ h, idx })).reverse().map(({ h, idx }) => `<div class="eh-item"><div class="eh-head"><span class="eh-when">${esc(_fmtHistoryStamp(h.at))}</span><span class="eh-by">${esc(h.by || '')}</span><button type="button" class="eh-del" onclick="deleteCustomerHistoryEntry(${idx})" aria-label="Delete this history entry" title="Delete this history entry">${_EH_TRASH}</button></div>${(h.changes || []).map(c => `<div class="eh-change"><span class="eh-field">${esc(c.label || c.f)}</span><span class="eh-vals">${esc(_custHistVal(c.f, c.from))} <i>\u2192</i> ${esc(_custHistVal(c.f, c.to))}</span></div>`).join('')}</div>`).join('');
 const created = contact.createdAt ? _fmtHistoryStamp(contact.createdAt) : '';
 if (created) html += `<div class="eh-item eh-created"><div class="eh-head"><span class="eh-when">${esc(created)}</span><span class="eh-by">Customer added</span></div></div>`;
 if (!html) html = '<div class="pf-hint">No edits recorded yet.</div>';
 box.innerHTML = html;
 }
+
+window.deleteCustomerHistoryEntry = async function(idx) {
+const nameInput = document.getElementById('edit-cust-name');
+const name = (nameInput && nameInput.dataset.originalName) || '';
+if (!name) return;
+const { customers } = await loadCollections('customers');
+const contact = (Array.isArray(customers) ? customers : []).find(c => c && c.name && c.name.toLowerCase() === name.toLowerCase());
+if (!contact || !Array.isArray(contact.editHistory) || !contact.editHistory[idx]) return;
+if (!(await showGlassConfirm('Delete this history entry? This cannot be undone.', { title: 'Delete History', confirmText: 'Delete', danger: true }))) return;
+contact.editHistory.splice(idx, 1);
+contact.updatedAt = getTimestamp();
+ensureRecordIntegrity(contact, true);
+await unifiedSave('customers', customers, contact);
+renderCustomerEditHistory(contact);
+notifyDataChange('entities');
+triggerAutoSync();
+};
 
 export async function openCustomerEditModal(customerName) {
 customerName = customerName || '';

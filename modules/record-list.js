@@ -38,12 +38,15 @@ export function rlRowHtml(opts) {
         ? `<img src="${esc(opts.photo)}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.remove('has-photo');this.remove()">`
         : '')
       + `</div>`;
+  const avatarOut = (avatar && opts.avatarBadge)
+    ? `<div class="av-wrap">${avatar}<span class="av-page" title="Ledger page ${esc(opts.avatarBadge)}">${esc(opts.avatarBadge)}</span></div>`
+    : avatar;
   const open = opts.onOpen
     ? ` role="button" tabindex="0" onclick="if(!event.target.closest('a,button'))${opts.onOpen}" onkeydown="if(event.key==='Enter'&&!event.target.closest('a,button')){event.preventDefault();${opts.onOpen}}"`
     : '';
   return `<div class="row rl-row is-${tone}${opts.onOpen ? ' is-open' : ''}"${open}>`
-    + avatar
-    + `<div class="rl-main"><div class="rl-name-line"><span class="rl-name">${esc(opts.name || '')}</span>${opts.note ? `<span class="rl-note">${esc(opts.note)}</span>` : ''}${badges}</div>`
+    + avatarOut
+    + `<div class="rl-main"><div class="rl-name-line"><span class="rl-name">${esc(opts.name || '')}</span>${badges}</div>`
     + (details ? `<div class="rl-details">${details}</div>` : '')
     + `</div>`
     + `<div class="rl-end"><div class="rl-amt">${opts.amount == null ? '' : opts.amount}</div>`
