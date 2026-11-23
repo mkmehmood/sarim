@@ -8,6 +8,7 @@ import { APP_CONFIG, BRAND_LOGO_JPEG_BASE64, loadBrandLogo } from './constants.j
 import { deletePaymentTxWithLinks, getPaymentTxDeleteBlockReason, getEntityDeleteBlockReason } from './link-guards.js';
 import { newGroupId, stampGroup, allocatePayments, materialOriginalPayable, findPayableInTxs, runExclusive, planSupplierCreditRestore, txMaterialIds, dedupDeletionRecords, collectionCollected } from './link-graph.js';
 import { ledgerDelta, ledgerSplit, allocHonor, honoredToSale } from './finance.js';
+import { openingBalanceOf } from './edit-history.js';
 import { endEditMode, getEditCtx, replaceRecord, stampEdit } from './edit-mode.js';
 import { installJsPdfImageLog, renderJsPdfToCanvases } from './pdf-canvas.js';
 import { getProdPhotoKeys, persistProdPhotos } from './prod-photos.js';
@@ -2049,13 +2050,15 @@ const totalOut = realTxns.filter(t => t.type === 'OUT').reduce((s, t) => s + (pa
 const entityTxns = transactions.filter(t => t.entityId === entity.id);
 const _tsOf = (t) => Number(t.timestamp) || new Date(t.date || t.createdAt || 0).getTime() || 0;
 const _delta = (t) => (t.isExpense ? 0 : (t.type === 'IN' ? 1 : -1) * (parseFloat(t.amount) || 0));
-const _asc = entityTxns.map((t, i) => ({ t, i })).sort((a, b) => _tsOf(a.t) - _tsOf(b.t) || (a.i - b.i));
+const _dayOf = (t) => { const d = String(t.date || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''; };
+const _entCmp = (a, b) => { const da = _dayOf(a), db = _dayOf(b); return (da && db && da !== db) ? (da < db ? -1 : 1) : _tsOf(a) - _tsOf(b); };
+const _asc = entityTxns.map((t, i) => ({ t, i })).sort((a, b) => _entCmp(a.t, b.t) || (a.i - b.i));
 const _sum = _asc.reduce((s, x) => s + _delta(x.t), 0);
 let _run = balance - _sum;
 const _runBal = new Map();
 for (const { t } of _asc) { _run += _delta(t); _runBal.set(t, _run); }
 const _photos = (await sqliteStore.get('photos').catch(() => null)) || {};
-const _sorted = entityTxns.slice().sort((a, b) => _tsOf(b) - _tsOf(a));
+const _sorted = entityTxns.slice().sort((a, b) => _entCmp(b, a));
 const _balText = (b) => (b < -0.005 ? `${fmtAmt(-b)} REC` : fmtAmt(Math.max(0, b)));
 const _entries = [];
 for (const t of _sorted) {
@@ -2792,14 +2795,15 @@ const priorTxns = periodCutoff
 let periodTxns = (periodCutoff || _periodEnd)
   ? allEntityTxns.filter(t => { if (!t.date) return false; const d = new Date(t.date); return (!periodCutoff || d >= periodCutoff) && (!_periodEnd || d <= _periodEnd); })
   : allEntityTxns;
+const _entOpen = openingBalanceOf(entity);
 const openingBalance = priorTxns.reduce((bal, t) => {
   const amt = parseFloat(t.amount) || 0;
   return t.type === 'OUT' ? bal - amt : bal + amt;
-}, 0);
+}, _entOpen);
 periodTxns.sort((a, b) => {
 const da = toSafeDate(a.date);
 const db = toSafeDate(b.date);
-return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
+return ((da ? da.getTime() : 0) - (db ? db.getTime() : 0)) || ((Number(a.timestamp) || 0) - (Number(b.timestamp) || 0));
 });
 const isPayee = entity.type === 'payee';
 const isPayor = entity.type === 'payor';
@@ -2923,7 +2927,7 @@ if (mergedTxns.length > 0) {
   yPos = doc.lastAutoTable.finalY + 6;
   if (yPos > 255) { doc.addPage(); yPos = 20; }
 }
-const hasPriorBalance = periodCutoff !== null && priorTxns.length > 0;
+const hasPriorBalance = (periodCutoff !== null && priorTxns.length > 0) || Math.abs(_entOpen) >= 0.01;
 const txRunBal = { val: hasPriorBalance ? openingBalance : 0 };
 const txRows = normalTxns.map(t => buildTxRow(t, txRunBal));
 if (hasPriorBalance) {
@@ -2933,7 +2937,7 @@ if (hasPriorBalance) {
     ? 'Settled'
     : openingBalance > 0 ? 'Receivable (they owe)' : 'Payable (we owe)';
   txRows.unshift([
-    'Prior',
+    (periodCutoff !== null && priorTxns.length > 0) ? 'Prior' : 'Old',
     `Opening Balance`,
     '—',
     '-',

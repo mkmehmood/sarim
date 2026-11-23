@@ -126,6 +126,13 @@ export function ledgerDelta(t, grossValue, opts) {
   return round2(d + (honor.bySale.get(t.id) || 0));
 }
 
+export function collectionUnapplied(t, honor) {
+  if (!_isCol(t)) return 0;
+  const got = (t.collectedAmount != null ? num(t.collectedAmount, 0) : num(t.totalValue, 0)) + Math.max(0, num(t.expiredValue, 0));
+  const dropped = -Math.min(0, ledgerDelta(t, 0, { honor }));
+  return round2(Math.max(0, got - dropped));
+}
+
 export function ledgerSplit(t, grossValue, opts) {
   const delta = ledgerDelta(t, grossValue, opts);
   if (!t || t.isRepReturn === true || t.paymentType === 'REP_RETURN' || t.paymentType === 'MONEY_OUT' || _isCol(t)) {

@@ -2,7 +2,7 @@ import { redactMoney } from './money-privacy.js';
 import { canonicalName, dateIssue, nameIssue, phoneIssue, quantityIssue } from './input-guards.js';
 import { themeColor } from './theme-tokens.js';
 import { formatDayMonthYear } from './date-format.js';
-import { getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
+import { getOldDebtChangeIssue, getSaleBlockReason, getSaleEditLinkIssue, recordCustomerRename, applyCollectionToSales, getExpiredDeleteBlockReason } from './link-guards.js';
 import { smBarHtml } from './summary-card.js';
 import { hcCardHtml, hcChip } from './history-card.js';
 import { txEffectiveDate, txShowTime, txChronoCompare, ledgerEffectiveDate, pinOpeningDays } from './tx-date.js';
@@ -15,7 +15,7 @@ import { emitSyncUpdate, unifiedDelete, unifiedSave } from './sync.js';
 import { _buildStatementText, _captureAutoTables, _exportDocAsImageAndOpenWhatsApp, _shareStatementText, getPersonPhoto, loadPersonPhotoIntoEditor, loadScript, notifyDataChange, renderPersonAvatarHTML, savePersonPhoto, triggerAutoSync, styleStatementRow } from './utilities-core.js';
 import { formatCurrency, formatDisplayDate, formatDisplayDateTime, handleUniversalSearch, phoneActionHTML, processExpiredToChora, reverseExpiredFromChora } from './utilities-payments.js';
 import { getCostPriceDetail, getSalePriceForStore, getRepGoodsCreditUnitPrice } from './factory-core.js';
-import { periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale } from './finance.js';
+import { collectionUnapplied, periodTotals, periodQuantity, netSoldQuantity, rowReceived, honoredToSale } from './finance.js';
 import { renderLedger, menuButtonHtml, resetLedgerFilter } from './cm-ledger.js';
 import { rangeBounds, rangeLabel } from './stmt-range.js';
 import { custSummaryHtml, runningBalanceHtml, _set_currentManagingRepCustomer, currentManagingRepCustomer, showGlassConfirm, showToast, fetchLocationInto } from './customers.js';
@@ -380,6 +380,7 @@ transactionRecord.time = o.time;
 transactionRecord.gps = o.gps || transactionRecord.gps;
 transactionRecord.salesRep = o.salesRep;
 if (o.partialPaymentReceived) transactionRecord.partialPaymentReceived = o.partialPaymentReceived;
+if (Array.isArray(o.collectionAllocs) && o.collectionAllocs.length) transactionRecord.collectionAllocs = o.collectionAllocs;
 ensureRecordIntegrity(transactionRecord, true);
 replaceRecord(rep, transactionRecord);
 } else {
@@ -1004,6 +1005,7 @@ info = `
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
 rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${fmtNum(Number(t.expiredQty) || 0)} kg${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Bulk payment');
 rAmt = _pay + _expV; rIn = true; rKind = 'in'; rCat = 'pay';
+{ const _unap = collectionUnapplied(t, _honor); if (_unap > 0.01) rSub += ` \u00b7 ${fmtAmt(_unap)} not applied to a sale`; }
 } else if (isOldDebt) {
 info = `
     <div class="u-fs-sm2 u-text-muted">
@@ -1210,9 +1212,15 @@ if (oldDebtIdx !== -1) {
 const tx = salesArray[oldDebtIdx];
 if (!validateUUID(String(tx.id || ''))) { tx.id = generateUUID('old_debt'); }
 const amountChanged = tx.totalValue !== oldDebit;
+let _odCollected = 0;
+if (amountChanged) {
+const _odChk = await getOldDebtChangeIssue(tx, oldDebit, 'rep');
+if (_odChk.issue) { window.notifyBlocking(_odChk.issue, 'warning', 'Warning'); return; }
+_odCollected = _odChk.collected;
+}
 tx.totalValue = oldDebit; tx.customerPhone = phone; tx.timestamp = getTimestamp();
 tx.updatedAt = getTimestamp();
-if (amountChanged) { tx.creditReceived = false; tx.partialPaymentReceived = 0; }
+if (amountChanged) { tx.partialPaymentReceived = _odCollected; tx.creditReceived = _odCollected >= oldDebit && oldDebit > 0; }
 if (!tx.time) tx.time = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true});
 ensureRecordIntegrity(tx, true);
 oldDebtModified = true; oldDebtRecord = tx;

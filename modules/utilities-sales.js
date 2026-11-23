@@ -1185,6 +1185,7 @@ saleRecord.date = o.date;
 saleRecord.time = o.time;
 saleRecord.currentRepProfile = o.currentRepProfile || 'admin';
 if (o.partialPaymentReceived) saleRecord.partialPaymentReceived = o.partialPaymentReceived;
+if (Array.isArray(o.collectionAllocs) && o.collectionAllocs.length) saleRecord.collectionAllocs = o.collectionAllocs;
 applySettlement(saleRecord, planEditSettlement(o, paymentType));
 }
 if (_ed) {

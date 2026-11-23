@@ -453,9 +453,9 @@ export async function findLiveSameNameRecord(collectionName, snapshot) {
   return arr.find(r => r && !r.deletedAt && r.name && String(r.name).trim().toLowerCase() === nm) || null;
 }
 
-export async function getOldDebtChangeIssue(oldDebtRecord, newAmount) {
+export async function getOldDebtChangeIssue(oldDebtRecord, newAmount, kind = 'customer') {
   if (!oldDebtRecord || !oldDebtRecord.id) return { issue: null, collected: 0 };
-  const all = ensureArray(await sqliteStore.get('sales'));
+  const all = ensureArray(await sqliteStore.get(kind === 'rep' ? 'rep' : 'sales'));
   const kids = all.filter(s => s && s.relatedSaleId === oldDebtRecord.id);
   const live = all.find(s => s && s.id === oldDebtRecord.id);
   if (live && Array.isArray(live.collectionAllocs) && live.collectionAllocs.length && Math.abs((Number(live.totalValue) || 0) - (Number(newAmount) || 0)) > 0.001) {

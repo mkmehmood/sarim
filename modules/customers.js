@@ -14,6 +14,7 @@ import { confirmGuard } from './confirm-guard.js';
 import { rlRowHtml, rlEmptyHtml, rlJsArg, rlPhoto } from './record-list.js';
 import { showGlassConfirm, showGlassAlert, showChoiceDialog, showPasswordConfirm, notifyBlocking } from './dialog.js';
 import { getDefaultStoreKey } from './store-keys.js';
+import { collectionUnapplied } from './finance.js';
 import { geoErrorMessage } from './geolocation-bridge.js';
 import { historyDiff, pushHistory, renderEditHistory } from './edit-history.js';
 export async function runningBalanceHtml(bal) {
@@ -491,6 +492,7 @@ const _pay = collectionCollected(t), _expV = Number(t.expiredValue) || 0;
 rTitle = isPartialPayment ? 'Partial payment' : (_expV > 0 ? 'Payment | Expired credit' : 'Collection');
 rSub = isPartialPayment ? 'Payment received' : (_expV > 0 ? `${fmtAmt(_pay)} | ${fmtNum(Number(t.expiredQty) || 0)} kg${Number(t.expiredUnitPrice) > 0 ? ` @${fmtAmt(Number(t.expiredUnitPrice))}` : ''}` : 'Amount received');
 rAmt = _pay + _expV; rIn = true; rKind = 'in'; rCat = 'pay';
+{ const _unap = collectionUnapplied(t, _honor); if (_unap > 0.01) rSub += ` \u00b7 ${fmtAmt(_unap)} not applied to a sale`; }
 } else if (isMoneyOut) {
 rTitle = 'Money out'; rSub = t.notes ? String(t.notes) : 'Paid out to customer';
 rAmt = Number(t.totalValue) || 0; rKind = 'cr'; rCat = 'credit';
