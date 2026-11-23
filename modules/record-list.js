@@ -43,7 +43,7 @@ export function rlRowHtml(opts) {
     : '';
   return `<div class="row rl-row is-${tone}${opts.onOpen ? ' is-open' : ''}"${open}>`
     + avatar
-    + `<div class="rl-main"><div class="rl-name-line"><span class="rl-name">${esc(opts.name || '')}</span>${badges}</div>`
+    + `<div class="rl-main"><div class="rl-name-line"><span class="rl-name">${esc(opts.name || '')}</span>${opts.note ? `<span class="rl-note">${esc(opts.note)}</span>` : ''}${badges}</div>`
     + (details ? `<div class="rl-details">${details}</div>` : '')
     + `</div>`
     + `<div class="rl-end"><div class="rl-amt">${opts.amount == null ? '' : opts.amount}</div>`

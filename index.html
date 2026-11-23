@@ -931,6 +931,15 @@ window._showLogoutConfirmDialog = async function() {
           <label>Custom sale price</label>
           <div class="form-ctl pf-control pf-has-prefix pf-has-suffix"><span class="pf-affix">Rs</span><input type="number" id="edit-cust-custom-price" placeholder="Factory default" step="1" min="0" inputmode="decimal" class="form-ctl u-67130d4"><span class="pf-affix pf-affix-end">/kg</span></div>
         </div>
+        <div class="field pf-field">
+          <label for="edit-cust-ledger-page">Manual ledger book page</label>
+          <input type="text" id="edit-cust-ledger-page" class="form-ctl" placeholder="e.g. 45" maxlength="12" autocomplete="off" aria-label="Manual ledger book page">
+          <div class="pf-hint">Shown in small italic text after the customer name.</div>
+        </div>
+      </section>
+      <section class="card pf-section d-none" id="cust-edit-history-card">
+        <h3 class="pf-section-title">Edit history</h3>
+        <div id="cust-edit-history" class="eh-list"></div>
       </section>
     </div>
     <div class="pf-footer pf-footer-split">

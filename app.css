@@ -4873,6 +4873,17 @@ button.dl-row-line { cursor: pointer; }
 .rl-detail { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
 .rl-detail a { color: var(--accent); font-weight: 600; text-decoration: none; }
 .rl-muted { color: var(--text-muted); }
+.rl-note { flex-shrink: 0; font-size: 0.68rem; font-style: italic; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+.eh-list { display: flex; flex-direction: column; gap: 10px; }
+.eh-item { padding-bottom: 10px; border-bottom: 1px solid var(--glass-border); }
+.eh-item:last-child { padding-bottom: 0; border-bottom: 0; }
+.eh-head { display: flex; justify-content: space-between; gap: 10px; font-size: 0.72rem; color: var(--text-muted); }
+.eh-by { font-weight: 700; }
+.eh-change { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 5px; font-size: 0.8rem; }
+.eh-field { color: var(--text-muted); flex-shrink: 0; }
+.eh-vals { text-align: right; overflow-wrap: anywhere; }
+.eh-vals i { font-style: normal; color: var(--accent); }
+.eh-created .eh-head { font-style: italic; }
 .rl-strong { color: var(--text-main); font-weight: 700; }
 .rl-owed { color: var(--danger); font-weight: 700; }
 .badge-tint.rl-flag {
