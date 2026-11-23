@@ -1,4 +1,5 @@
 import { describeFormula } from './formula-links.js';
+import { LINK_CODES } from './link-repair.js';
 import { LIMITS, MAX_AMOUNT, dateIssue, numberIssue } from './input-guards.js';
 
 const _n = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -29,6 +30,11 @@ export function planFields(col, rec, codes, today, ctx = {}) {
   const seen = new Set();
   const add = (f) => { if (!seen.has(f.key)) { seen.add(f.key); fields.push(f); } };
   const has = (c) => codes.includes(c);
+  if (codes.some((c) => LINK_CODES.includes(c))) {
+    if (has('col_unapplied')) notes.push('This collection recorded more cash than the sales confirm. Repair keeps the part the sales confirm, then applies the rest to this customer\u2019s unpaid sales, newest first. Any cash left over stays as customer credit.');
+    if (has('link_orphan')) notes.push('This sale is marked as paid by a collection that was deleted. Repair takes that payment off the sale so it is owed again.');
+    return { fields, notes, newId: false, deletable: false, repair: true };
+  }
   const v = _n(rec.totalValue);
   const c = _n(rec.totalCost);
   const q = _n(rec.quantity);

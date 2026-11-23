@@ -7,6 +7,7 @@ import { buildOverview, overviewHtml } from './overview-data.js';
 import { auditData } from './overview-audit.js';
 import { getFormulaStore } from './formula-store.js';
 import { applyValues, planFields, validateValues } from './overview-fix.js';
+import { LINK_CODES, repairStore, repairSummary } from './link-repair.js';
 
 let _range = 6;
 let _panel = 'sales';
@@ -14,7 +15,7 @@ let _panel = 'sales';
 export async function renderOverview() {
   const box = document.getElementById('tab-overview');
   if (!box) return;
-  const keys = ['production', 'sales', 'inventory', 'transactions', 'expenses', 'entities', 'factory'];
+  const keys = ['production', 'sales', 'rep', 'inventory', 'transactions', 'expenses', 'entities', 'factory'];
   const loaded = await Promise.all(keys.map((k) => sqliteStore.get(k).catch(() => [])));
   const data = Object.fromEntries(keys.map((k, i) => [k, loaded[i]]));
   data.formulas = await getFormulaStore().catch(() => []);
@@ -24,6 +25,7 @@ export async function renderOverview() {
 const ESC = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const FACTS = {
   sales: ['date', 'customerName', 'supplyStore', 'quantity', 'unitPrice', 'totalValue', 'totalCost', 'profit', 'paymentType'],
+  rep: ['date', 'customerName', 'paymentType', 'totalValue'],
   production: ['date', 'store', 'formulaName', 'net', 'totalSale', 'totalCost', 'profit'],
   transactions: ['date', 'type', 'entityName', 'amount'],
   expenses: ['date', 'name', 'category', 'amount'],
@@ -52,7 +54,7 @@ async function loadFinding(col, idx) {
 }
 
 async function loadAudit() {
-  const keys = ['production', 'sales', 'inventory', 'transactions', 'expenses', 'entities'];
+  const keys = ['production', 'sales', 'rep', 'inventory', 'transactions', 'expenses', 'entities'];
   const loaded = await Promise.all(keys.map((k) => sqliteStore.get(k).catch(() => [])));
   return auditData(Object.fromEntries(keys.map((k, i) => [k, loaded[i]])), localDateStr(new Date()));
 }
@@ -91,6 +93,22 @@ async function persistFixed(col, arr, idx, next) {
   return record;
 }
 
+async function repairLinks(col, scope) {
+  const rows = await sqliteStore.get(col).catch(() => []);
+  const arr = Array.isArray(rows) ? rows : [];
+  const result = repairStore(arr, col === 'rep' ? 'rep' : 'sales', scope || {});
+  if (!result.changedIds.length) return result;
+  const stamp = getTimestamp();
+  result.changedIds.forEach((id) => {
+    const rec = arr.find((x) => x && x.id === id);
+    if (rec) { rec.updatedAt = stamp; ensureRecordIntegrity(rec, true); }
+  });
+  await unifiedSave(col, arr, null, result.changedIds);
+  notifyDataChange(col);
+  triggerAutoSync();
+  return result;
+}
+
 export async function openFix(col, idx, opts = {}) {
   if (!FACTS[col]) return 'done';
   let status = 'done';
@@ -107,7 +125,7 @@ export async function openFix(col, idx, opts = {}) {
     const plan = planFields(col, finding.rec, finding.codes, today, ctx);
     let captured = null;
     const save = {
-      label: plan.fields.length || plan.newId ? (plan.newId && !plan.fields.length ? 'Give new id' : 'Save') : '',
+      label: plan.repair ? 'Repair' : (plan.fields.length || plan.newId ? (plan.newId && !plan.fields.length ? 'Give new id' : 'Save') : ''),
       variant: 'solid',
       value: 'save',
       guard: (overlay) => {
@@ -141,6 +159,19 @@ export async function openFix(col, idx, opts = {}) {
       await renderOverview();
       return 'done';
     }
+    if (plan.repair) {
+      let repaired;
+      try {
+        repaired = await repairLinks(col, finding.codes.includes('col_unapplied') ? { only: [finding.rec.id] } : { only: [], orphanIds: [finding.rec.id] });
+      } catch (e) {
+        toast('Could not repair. Nothing was changed.', 'error');
+        break;
+      }
+      if (!repaired.changedIds.length) { toast('Nothing could be repaired automatically.', 'error'); break; }
+      toast(repairSummary(repaired), 'success');
+      ({ arr, finding } = await loadFinding(col, idx));
+      continue;
+    }
     const next = plan.newId && !plan.fields.length ? { ...finding.rec, id: generateUUID('repair') } : applyValues(col, plan.newId ? { ...finding.rec, id: generateUUID('repair') } : finding.rec, captured || {}, ctx);
     try {
       await persistFixed(col, arr, idx, next);
@@ -156,7 +187,37 @@ export async function openFix(col, idx, opts = {}) {
   return status;
 }
 
+async function fixAllLinks() {
+  const audit = await loadAudit();
+  const cols = ['sales', 'rep'].filter((c) => audit.findings.some((f) => f.collection === c && f.codes.some((x) => LINK_CODES.includes(x))));
+  if (!cols.length) { toast('No records with this problem were found.', 'success'); await renderOverview(); return; }
+  const count = audit.findings.filter((f) => f.codes.some((x) => LINK_CODES.includes(x))).length;
+  const go = await openDialog({
+    tone: 'warning',
+    eyebrow: 'Repair',
+    title: 'Repair payment links',
+    body: `<div class="ov-fix"><p class="ov-fix-note">${count} record${count === 1 ? '' : 's'} will be repaired. Collection cash that no sale confirms is applied to that customer\u2019s unpaid sales, newest first, and payments from deleted collections are taken off the sales. Records that are already correct are not touched.</p></div>`,
+    actions: [{ label: 'Cancel', variant: 'ghost', value: null }, { label: 'Repair all', variant: 'solid', value: 'go' }],
+    dismissIndex: 0,
+    focusIndex: -1,
+  });
+  if (go !== 'go') return;
+  const total = { cleared: 0, restored: 0, applied: 0, changedIds: [] };
+  try {
+    for (const c of cols) {
+      const r = await repairLinks(c);
+      total.cleared += r.cleared; total.restored += r.restored; total.applied += r.applied; total.changedIds.push(...r.changedIds);
+    }
+  } catch (e) {
+    toast('Could not repair. Nothing was changed.', 'error');
+    return;
+  }
+  toast(repairSummary(total), 'success');
+  await renderOverview();
+}
+
 async function fixByCode(code) {
+  if (LINK_CODES.includes(code)) { await fixAllLinks(); return; }
   const audit = await loadAudit();
   const f = audit.findings.find((x) => x.codes.includes(code));
   if (!f) { toast('No records with this problem were found.', 'success'); await renderOverview(); return; }

@@ -1,3 +1,5 @@
+import { auditLinks } from './link-repair.js';
+
 const _arr = (v) => (Array.isArray(v) ? v : []);
 const _n = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
 const blank = (v) => v === undefined || v === null || v === '';
@@ -31,7 +33,11 @@ export const CHECKS = {
   exp_bad_amount: { label: 'Expense with zero or negative amount', severity: 'error' },
   inv_negative_qty: { label: 'Material with negative stock', severity: 'error' },
   inv_bad_cost: { label: 'Material with no cost', severity: 'warn' },
+  col_unapplied: { label: 'Collection cash not applied to any sale', severity: 'error' },
+  link_orphan: { label: 'Sale marked paid by a collection that no longer exists', severity: 'error' },
 };
+
+const LINK_META = { rep: { label: 'Rep record', go: 'sales', title: (r) => r.customerName || 'Rep record' } };
 
 const COLLECTIONS = {
   sales: { label: 'Sale', go: 'sales', title: (r) => r.customerName || 'Sale' },
@@ -64,7 +70,7 @@ export function auditData(data, today) {
     counts[code] = (counts[code] || 0) + 1;
     let f = findings.find((x) => x.rec === rec);
     if (!f) {
-      f = { rec, idx: _arr(data[col]).indexOf(rec), codes: [], collection: col, id: rec.id == null ? '' : String(rec.id), date: day(rec), title: COLLECTIONS[col].title(rec), go: COLLECTIONS[col].go, screen: !!COLLECTIONS[col].screen, label: COLLECTIONS[col].label, reasons: [], severity: 'warn', impact: 0 };
+      f = { rec, idx: _arr(data[col]).indexOf(rec), codes: [], collection: col, id: rec.id == null ? '' : String(rec.id), date: day(rec), title: (COLLECTIONS[col] || LINK_META[col]).title(rec), go: (COLLECTIONS[col] || LINK_META[col]).go, screen: !!(COLLECTIONS[col] || LINK_META[col]).screen, label: (COLLECTIONS[col] || LINK_META[col]).label, reasons: [], severity: 'warn', impact: 0 };
       findings.push(f);
     }
     f.codes.push(code);
@@ -115,6 +121,11 @@ export function auditData(data, today) {
     });
     rows.forEach((r) => { if (!blank(r.id) && ids.get(String(r.id)) > 1) flag(col, r, 'duplicate_id', `id ${r.id}`); });
     sig.forEach((group) => { if (group.length > 1) group.forEach((r) => flag(col, r, 'duplicate_record', `${group.length} copies`, _n(r.totalValue))); });
+  });
+
+  ['sales', 'rep'].forEach((col) => {
+    if (!_arr(data[col]).length) return;
+    auditLinks(_arr(data[col]), col).forEach((i) => flag(col, i.rec, i.code, i.detail, i.amount));
   });
 
   const rank = (f) => (f.severity === 'error' ? 0 : 1);

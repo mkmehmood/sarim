@@ -26,6 +26,7 @@ const ASSETS_TO_CACHE = [
   './modules/factory.js',
   './modules/customers.js',
   './modules/edit-history.js',
+  './modules/link-repair.js',
   './modules/dialog.js',
   './modules/cm-ledger.js',
   './modules/record-list.js',
