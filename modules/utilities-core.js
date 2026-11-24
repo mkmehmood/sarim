@@ -4296,7 +4296,7 @@ export const SarimChart = (() => {
     _render() {
       if (!this.el) return;
       const t = this.config.type;
-      if (t === 'bar') this._bar();
+      if (t === 'bar') this._line();
       else if (t === 'pie') this._pie();
       else if (t === 'line') this._line();
     }
@@ -4401,20 +4401,20 @@ export const SarimChart = (() => {
       if (total <= 0) return this._empty('Nothing recorded in this period');
       const cols = Array.isArray(ds.backgroundColor) ? ds.backgroundColor : ['--accent', '--accent-cyan', '--danger', '--warning', '--accent-purple', '--accent-sky'].map((t) => themeColor(t));
       const col = (i) => cols[i % cols.length];
-      const r = 44, C = 2 * Math.PI * r, gap = raw.filter((v) => v > 0).length > 1 ? 2.2 : 0;
+      const r = 46, C = 2 * Math.PI * r, gap = raw.filter((v) => v > 0).length > 1 ? 12 : 0;
       let off = 0, slices = '';
       raw.forEach((v, i) => {
         if (v <= 0) return;
         const len = (v / total) * C;
         const tip = _esc(`${labels[i] || ''}: ${_fmt(v)} (${(v / total * 100).toFixed(1)}%)`);
-        slices += `<circle class="cx-donut-slice" cx="60" cy="60" r="${r}" fill="none" stroke="${_esc(col(i))}" stroke-width="15" stroke-dasharray="${Math.max(0.1, len - gap).toFixed(2)} ${(C - Math.max(0.1, len - gap)).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" data-tip="${tip}" tabindex="0"/>`;
+        slices += `<circle class="cx-donut-slice" cx="60" cy="60" r="${r}" fill="none" stroke="${_esc(col(i))}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${Math.max(0.1, len - gap).toFixed(2)} ${(C - Math.max(0.1, len - gap)).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" data-tip="${tip}" tabindex="0"/>`;
         off += len;
       });
       const leg = raw.map((v, i) => {
         const p = (v / total) * 100;
         return `<div class="cx-leg-row"><div class="cx-leg-top"><span class="sx-dot dc-background" style="--d-background: ${_esc(col(i))}"></span><span class="cx-leg-name">${_esc(labels[i] || '')}</span><b>${_compact(v)}</b><em>${p.toFixed(1)}%</em></div><div class="bar cx-leg-track"><i class="dc-background dc-width" style="--d-width: ${p.toFixed(1)}%; --d-background: ${_esc(col(i))}"></i></div></div>`;
       }).join('');
-      this.el.innerHTML = `<div class="cx">${this._titleHtml()}<div class="cx-donut-row"><div class="cx-donut-wrap"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--glass-border)" stroke-width="15"/>${slices}</svg><div class="cx-donut-center"><b>${_compact(total)}</b><span>Total</span></div></div><div class="cx-leg">${leg}</div></div></div>`;
+      this.el.innerHTML = `<div class="cx">${this._titleHtml()}<div class="cx-donut-row"><div class="cx-donut-wrap"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--glass-border)" stroke-width="10"/>${slices}</svg><div class="cx-donut-center"><b>${_compact(total)}</b><span>Total</span></div></div><div class="cx-leg">${leg}</div></div></div>`;
       _bindTips(this.el);
     }
     _line() {
@@ -4449,14 +4449,14 @@ export const SarimChart = (() => {
           defs += `<linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${_esc(c)}" stop-opacity="0.32"/><stop offset="1" stop-color="${_esc(c)}" stop-opacity="0"/></linearGradient>`;
           svg += `<path d="${line} L${pts[pts.length - 1].x.toFixed(1)},${pT + cH} L${pts[0].x.toFixed(1)},${pT + cH} Z" fill="url(#${gid})"/>`;
         }
-        svg += `<path d="${line}" fill="none" stroke="${_esc(c)}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+        svg += `<path class="cx-line" d="${line}" fill="none" style="--lc:${_esc(c)}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
         pts.forEach((p, i) => {
           const last = i === pts.length - 1;
-          if (n <= 14 || last) svg += `<circle class="cx-dot" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${last ? 4 : 2.8}" fill="${_esc(c)}"/>`;
+          if (n <= 14 || last) svg += `<circle class="cx-dot" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${last ? 4 : 2.8}" style="--lc:${_esc(c)}"/>`;
           svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="9" fill="transparent" data-tip="${_esc(`${ds.label || ''}: ${_fmt(p.v)}`)}" class="cx-tap"/>`;
         });
         const last = pts[pts.length-1];
-        svg += `<circle class="sc-dot-end" cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4" fill="${_esc(c)}"/>`;
+        svg += `<circle class="sc-dot-end" cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="4" style="--lc:${_esc(c)}"/>`;
       });
       this.el.innerHTML = `<div class="cx">${this._titleHtml()}${datasets.length > 1 ? this._legendHtml(datasets) : ''}<svg class="cx-svg" viewBox="0 0 ${W} ${H}" role="img"><defs>${defs}</defs>${svg}</svg></div>`;
       _bindTips(this.el);

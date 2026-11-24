@@ -41,5 +41,6 @@ export function sparkWaveSvg(values) {
   const n = norm.length;
   const pts = norm.map((v, i) => [n > 1 ? (i / (n - 1)) * 100 : 50, 22 - v * 18]);
   const line = smoothPath(n > 1 ? pts : [[0, pts[0][1]], [100, pts[0][1]]]);
-  return `<svg class="ov-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path class="ov-spark-fill" d="${line} L100,24 L0,24 Z"/><path class="ov-spark-line" d="${line}"/></svg>`;
+  const endY = pts[n - 1][1];
+  return `<span class="ov-spark-wrap" style="--y:${f1((endY / 24) * 100)}%"><svg class="ov-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path class="ov-spark-fill" d="${line} L100,24 L0,24 Z"/><path class="ov-spark-line" d="${line}"/></svg><i class="ov-spark-dot"></i></span>`;
 }

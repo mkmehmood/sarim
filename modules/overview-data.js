@@ -208,7 +208,7 @@ const shortName = (n) => (String(n).length > 8 ? `${String(n).slice(0, 7)}\u2026
 
 function ranked(rows, unit, t) {
   if (!rows.length) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  return lineChart({ labels: rows.map((r) => String(r.name)), tickLabels: rows.map((r) => shortName(r.name)), series: [{ name: '', c: PAL[t] === undefined ? 0 : PAL[t], values: rows.map((r) => r.value) }], unit: unit.trim(), area: true, label: 'Ranking' });
+  return lineChart({ labels: rows.map((r) => String(r.name)), tickLabels: rows.map((r) => shortName(r.name)), series: [{ name: '', c: PAL[t] === undefined ? 0 : PAL[t], values: rows.map((r) => r.value) }], unit: unit.trim(), area: true, label: 'Ranking', valueLabels: true });
 }
 
 function auditHtml(a) {
@@ -278,7 +278,7 @@ function pill(label, value, t) {
 function donut(rows) {
   const total = rows.reduce((sum, r) => sum + r.value, 0);
   if (!(total > 0)) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  return lineChart({ labels: rows.map((r) => r.name), series: [{ name: '', c: 0, values: rows.map((r) => r.value) }], area: true, label: 'Cash and credit sales' });
+  return lineChart({ labels: rows.map((r) => r.name), series: [{ name: '', c: 0, values: rows.map((r) => r.value) }], area: true, label: 'Cash and credit sales', valueLabels: true });
 }
 
 export function overviewHtml(model, range = 6, opts = {}) {

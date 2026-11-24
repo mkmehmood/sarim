@@ -35,7 +35,10 @@ export function niceTicks(min, max, count = 4) {
   return { min: lo, max: hi, ticks };
 }
 
-export function lineChart({ labels, series, unit = '', area = false, label = 'Chart', tickLabels }) {
+let uid = 0;
+
+export function lineChart({ labels, series, unit = '', area = false, label = 'Chart', tickLabels, valueLabels = false }) {
+  uid += 1;
   const { W, H, L, R, T, B } = PLOT;
   const n = labels.length;
   const all = series.flatMap((s) => s.values).filter(Number.isFinite);
@@ -48,13 +51,17 @@ export function lineChart({ labels, series, unit = '', area = false, label = 'Ch
   const yl = t.ticks.map((v) => `<text class="ov-ytick" x="${L - 6}" y="${f1(yOf(v) + 3)}">${compact(v)}</text>`).join('');
   const every = n > 8 ? 2 : 1;
   const xl = (tickLabels || labels).map((lb, i) => (i % every === 0 || i === n - 1 ? `<text class="ov-xtick" x="${f1(xs[i])}" y="${H - 8}">${esc(lb)}</text>` : '')).join('');
+  let defs = '';
   const paths = series.map((s, i) => {
     const pts = s.values.map((v, j) => [xs[j], yOf(v)]);
     const d = n > 1 ? smoothPath(pts) : `M${f1(pts[0][0] - 4)},${f1(pts[0][1])} L${f1(pts[0][0] + 4)},${f1(pts[0][1])}`;
     const base = f1(yOf(0));
-    const fill = area && series.length <= 2 ? `<path class="ov-line-area ov-s${s.c}" data-s="${i}" d="${d} L${f1(xs[n - 1])},${base} L${f1(xs[0])},${base} Z"/>` : '';
+    const fill = area && series.length <= 2 ? `<path class="ov-line-area ov-s${s.c}" data-s="${i}" style="--g:url(#ovg${uid}_${i})" d="${d} L${f1(xs[n - 1])},${base} L${f1(xs[0])},${base} Z"/>` : '';
+    const grad = fill ? `<linearGradient id="ovg${uid}_${i}" x1="0" y1="0" x2="0" y2="1"><stop class="ov-gs ov-gs-a ov-s${s.c}" offset="0"/><stop class="ov-gs ov-gs-b ov-s${s.c}" offset="1"/></linearGradient>` : '';
+    defs += grad;
+    const vals = valueLabels && series.length === 1 && n <= 8 ? pts.map((pt, j) => `<text class="ov-vl" x="${f1(pt[0])}" y="${f1(pt[1] - 8)}">${compact(s.values[j])}</text>`).join('') : '';
     const last = pts[pts.length - 1];
-    return `${fill}<path class="ov-line ov-s${s.c}" data-s="${i}" d="${d}"/><circle class="ov-last ov-s${s.c}" data-s="${i}" cx="${f1(last[0])}" cy="${f1(last[1])}" r="3.5"/>`;
+    return `${fill}<path class="ov-line ov-s${s.c}" data-s="${i}" d="${d}"/><circle class="ov-last ov-s${s.c}" data-s="${i}" cx="${f1(last[0])}" cy="${f1(last[1])}" r="4"/>${vals}`;
   }).join('');
   const hover = series.map((s, i) => `<circle class="ov-hdot ov-s${s.c}" data-s="${i}" r="4.5" cx="0" cy="0"/>`).join('');
   const data = {
@@ -64,7 +71,7 @@ export function lineChart({ labels, series, unit = '', area = false, label = 'Ch
   };
   const chips = series.length > 1 || series[0].name ? `<div class="ov-chips-s">${series.map((s, i) => `<button type="button" class="ov-chip-s ov-s${s.c}" data-series="${i}" aria-pressed="true"><i></i>${esc(s.name)}</button>`).join('')}</div>` : '';
   const unitTag = unit ? `<span class="ov-unit">${esc(unit)}</span>` : '';
-  return `<div class="ov-linechart" data-lines="${esc(JSON.stringify(data))}">${unitTag}${chips}<div class="ov-plot"><svg class="ov-lines" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${yl}${xl}${paths}<line class="ov-cross is-off" x1="0" x2="0" y1="${T}" y2="${H - B}"/><g class="ov-hover is-off">${hover}</g><rect class="ov-hit" x="${L}" y="${T}" width="${pw}" height="${ph}"/></svg><div class="ov-tip" hidden></div></div></div>`;
+  return `<div class="ov-linechart" data-lines="${esc(JSON.stringify(data))}">${unitTag}${chips}<div class="ov-plot"><svg class="ov-lines" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}"><defs>${defs}</defs>${grid}${yl}${xl}${paths}<line class="ov-cross is-off" x1="0" x2="0" y1="${T}" y2="${H - B}"/><g class="ov-hover is-off">${hover}</g><rect class="ov-hit" x="${L}" y="${T}" width="${pw}" height="${ph}"/></svg><div class="ov-tip" hidden></div></div></div>`;
 }
 
 export function nearestIndex(xs, x) {
