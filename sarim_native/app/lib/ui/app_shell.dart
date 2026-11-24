@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../screens/customers_screen.dart';
+import 'production_tab.dart';
 import 'standalone.dart';
 import 'tabs.dart';
 import 'theme.dart';
@@ -34,6 +35,8 @@ class _AppShellState extends State<AppShell> {
 
   Widget _body(ShellTab t) {
     switch (t) {
+      case ShellTab.prod:
+        return ProductionTab(app: app);
       case ShellTab.sales:
         return CustomersScreen(app: app, embedded: true);
       default:

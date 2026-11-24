@@ -114,6 +114,7 @@ void main() {
     await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
     expect(find.text('Production'), findsWidgets); // default tab
+    expect(find.text('No production in this period.'), findsOneWidget);
     await tester.tap(find.text('Sales').last);
     await tester.pumpAndSettle();
     expect(find.text('No customers yet. Tap Add to create one.'), findsOneWidget);
