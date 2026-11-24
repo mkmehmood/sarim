@@ -1,7 +1,7 @@
 import { appMode, ensureRecordIntegrity, generateUUID, getTimestamp, sqliteStore } from './business.js';
 import { openDialog } from './dialog.js';
-import { unifiedSave } from './sync.js';
-import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
+import { emitSyncUpdate, getFirestoreCollection, pushDataToCloud, unifiedSave } from './sync.js';
+import { notifyDataChange } from './utilities-core.js';
 import { localDateStr } from './finance.js';
 import { buildOverview, overviewHtml } from './overview-data.js';
 import { nearestIndex, tipHtml } from './overview-lines.js';
@@ -9,6 +9,7 @@ import { auditData } from './overview-audit.js';
 import { getFormulaStore } from './formula-store.js';
 import { applyValues, planFields, validateValues } from './overview-fix.js';
 import { LINK_CODES, repairStore, repairSummary } from './link-repair.js';
+import { syncFix, syncMessage, touchPeers } from './overview-sync.js';
 
 let _range = 6;
 let _panel = 'sales';
@@ -85,13 +86,30 @@ function readFields(overlay, fields) {
   return raw;
 }
 
+function syncDeps() {
+  return {
+    signedIn: () => !!window.currentUser,
+    online: () => navigator.onLine !== false,
+    flush: () => (window._syncQueue ? window._syncQueue.run(async () => {}) : Promise.resolve()),
+    push: () => pushDataToCloud(true),
+    ping: (payload) => emitSyncUpdate(payload),
+    pending: () => (window.OfflineQueue && Array.isArray(window.OfflineQueue.queue) ? window.OfflineQueue.queue.length : 0),
+    collectionKey: (col) => getFirestoreCollection(col),
+  };
+}
+
 async function persistFixed(col, arr, idx, next) {
-  const record = ensureRecordIntegrity({ ...next, updatedAt: getTimestamp() }, true);
+  const stamp = getTimestamp();
+  const oldId = arr[idx] ? arr[idx].id : null;
+  const record = ensureRecordIntegrity({ ...next, updatedAt: stamp }, true);
   arr[idx] = record;
-  await unifiedSave(col, arr, record);
+  const idChanged = oldId != null && String(oldId) !== String(record.id);
+  const peers = idChanged ? touchPeers(arr, oldId, idx, stamp) : [];
+  if (peers.length) await unifiedSave(col, arr, null, [record.id, oldId]);
+  else await unifiedSave(col, arr, record);
   notifyDataChange(col);
-  triggerAutoSync();
-  return record;
+  const ids = [record.id, ...(peers.length ? [oldId] : [])];
+  return syncFix({ col, ids, deps: syncDeps() });
 }
 
 async function repairLinks(col, scope) {
@@ -106,7 +124,7 @@ async function repairLinks(col, scope) {
   });
   await unifiedSave(col, arr, null, result.changedIds);
   notifyDataChange(col);
-  triggerAutoSync();
+  result.outcome = await syncFix({ col, ids: result.changedIds, deps: syncDeps() });
   return result;
 }
 
@@ -157,6 +175,8 @@ export async function openFix(col, idx, opts = {}) {
       const fn = window[DELETERS[col]];
       if (typeof fn !== 'function') { toast('Deleting is not available for this record here.', 'error'); break; }
       await fn(finding.rec.id);
+      const removed = await syncFix({ col, ids: [finding.rec.id], deps: syncDeps() });
+      toast(syncMessage(removed, 'Deleted'), 'success');
       await renderOverview();
       return 'done';
     }
@@ -169,18 +189,19 @@ export async function openFix(col, idx, opts = {}) {
         break;
       }
       if (!repaired.changedIds.length) { toast('Nothing could be repaired automatically.', 'error'); break; }
-      toast(repairSummary(repaired), 'success');
+      toast(syncMessage(repaired.outcome, repairSummary(repaired)), 'success');
       ({ arr, finding } = await loadFinding(col, idx));
       continue;
     }
     const next = plan.newId && !plan.fields.length ? { ...finding.rec, id: generateUUID('repair') } : applyValues(col, plan.newId ? { ...finding.rec, id: generateUUID('repair') } : finding.rec, captured || {}, ctx);
+    let outcome;
     try {
-      await persistFixed(col, arr, idx, next);
+      outcome = await persistFixed(col, arr, idx, next);
     } catch (e) {
       toast('Could not save the fix. Nothing was changed.', 'error');
       break;
     }
-    toast('Saved', 'success');
+    toast(syncMessage(outcome, 'Saved'), 'success');
     ({ arr, finding } = await loadFinding(col, idx));
     if (finding && finding.codes.includes('sale_loss')) finding = null;
   }
@@ -203,17 +224,19 @@ async function fixAllLinks() {
     focusIndex: -1,
   });
   if (go !== 'go') return;
-  const total = { cleared: 0, restored: 0, applied: 0, changedIds: [] };
+  const total = { cleared: 0, restored: 0, applied: 0, changedIds: [], outcome: 'synced' };
+  const worst = { synced: 0, queued: 1, local: 2 };
   try {
     for (const c of cols) {
       const r = await repairLinks(c);
       total.cleared += r.cleared; total.restored += r.restored; total.applied += r.applied; total.changedIds.push(...r.changedIds);
+      if (r.outcome && worst[r.outcome] > worst[total.outcome]) total.outcome = r.outcome;
     }
   } catch (e) {
     toast('Could not repair. Nothing was changed.', 'error');
     return;
   }
-  toast(repairSummary(total), 'success');
+  toast(syncMessage(total.outcome, repairSummary(total)), 'success');
   await renderOverview();
 }
 

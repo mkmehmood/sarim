@@ -141,7 +141,8 @@ describe('saving the typed values', () => {
   it('the overview saves through the app save path and deletes with the app delete', () => {
     const src = readFileSync(new URL('../modules/overview.js', import.meta.url), 'utf8');
     assert.match(src, /await unifiedSave\(col, arr, record\)/);
-    assert.match(src, /notifyDataChange\(col\);\n  triggerAutoSync\(\);/);
+    assert.match(src, /notifyDataChange\(col\);\n  const ids = /);
+    assert.match(src, /return syncFix\(\{ col, ids, deps: syncDeps\(\) \}\);/);
     assert.match(src, /sales: 'deleteTransactionFromOverlay'/);
   });
 });
