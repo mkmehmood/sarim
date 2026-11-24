@@ -53,6 +53,7 @@ export function styleStatementRow(data, hasPrior) {
       if(txt.includes('COLLECTION')) data.cell.styles.textColor=[40,167,69];
       if(txt.includes('PARTIAL')) data.cell.styles.textColor=[200,100,0];
       if(txt.includes('OLD DEBT')) data.cell.styles.textColor=[220,53,69];
+      if(txt.includes('MONEY OUT')) data.cell.styles.textColor=[220,53,69];
     }
     if (data.column.index===5){
       const txt=(data.cell.text||[]).join('');
@@ -2633,6 +2634,7 @@ const _URDU_VALUE_RULES = [
   [/\bPayment\b/gi, 'ادائیگی'],
   [/^Opening Balance$/i, 'سابقہ بقایا'],
   [/^(Previous balance|Previous balance brought forward|Brought forward from previous records)$/i, 'سابقہ بقایا'],
+  [/^Cash paid out/i, 'نقد ادائیگی'],
   [/Cash payment received/i, 'نقد رقم وصول'],
   [/Partial payment received/i, 'جزوی رقم وصول'],
   [/(\d+) txns? merged/i, '$1 لین دین یکجا'],
@@ -3300,6 +3302,10 @@ const buildSaleRow = async (t, runBal) => {
     typeLabel = 'PARTIAL\nPAYMENT';
     detailLabel = 'Partial payment received';
     displayDate = formatDisplayDate(t.creditReceivedDate || t.date);
+  } else if (pt === 'MONEY_OUT') {
+    ({ debit, credit } = ledgerSplit(t, 0, { honor: custHonor }));
+    typeLabel = 'MONEY OUT';
+    detailLabel = 'Cash paid out' + (t.notes ? `\n${String(t.notes)}` : '');
   }
   runBal.val += (debit - credit);
   let balDisplay;
