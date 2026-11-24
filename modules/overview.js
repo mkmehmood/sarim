@@ -4,6 +4,7 @@ import { unifiedSave } from './sync.js';
 import { notifyDataChange, triggerAutoSync } from './utilities-core.js';
 import { localDateStr } from './finance.js';
 import { buildOverview, overviewHtml } from './overview-data.js';
+import { nearestIndex, tipHtml } from './overview-lines.js';
 import { auditData } from './overview-audit.js';
 import { getFormulaStore } from './formula-store.js';
 import { applyValues, planFields, validateValues } from './overview-fix.js';
@@ -237,21 +238,86 @@ async function fixAll() {
   await renderOverview();
 }
 
-export function goTo(el) {
-  const screen = el.getAttribute('data-screen');
-  if (screen) {
-    if (typeof window.openStandaloneScreen === 'function') window.openStandaloneScreen(screen);
-    if (typeof window.prepareRawMaterialScreen === 'function') window.prepareRawMaterialScreen();
-    return;
+const chartData = new WeakMap();
+const chartOff = new WeakMap();
+
+function dataOf(chart) {
+  if (!chartData.has(chart)) {
+    try { chartData.set(chart, JSON.parse(chart.getAttribute('data-lines'))); } catch (_) { chartData.set(chart, null); }
   }
-  const tab = el.getAttribute('data-go');
-  if (tab && typeof window.sidebarNav === 'function') window.sidebarNav(tab);
+  return chartData.get(chart);
+}
+
+function hideTip(chart) {
+  chart.querySelector('.ov-tip').hidden = true;
+  chart.querySelector('.ov-cross').classList.add('is-off');
+  chart.querySelector('.ov-hover').classList.add('is-off');
+}
+
+export function showTip(chart, clientX) {
+  const data = dataOf(chart);
+  if (!data) return;
+  const svg = chart.querySelector('.ov-lines');
+  const rect = svg.getBoundingClientRect();
+  if (!rect.width) return;
+  const idx = nearestIndex(data.x, ((clientX - rect.left) / rect.width) * data.W);
+  const off = chartOff.get(chart) || new Set();
+  const cross = chart.querySelector('.ov-cross');
+  cross.setAttribute('x1', data.x[idx]);
+  cross.setAttribute('x2', data.x[idx]);
+  cross.classList.remove('is-off');
+  chart.querySelector('.ov-hover').classList.remove('is-off');
+  chart.querySelectorAll('.ov-hdot').forEach((dot) => {
+    const i = Number(dot.getAttribute('data-s'));
+    dot.setAttribute('cx', data.x[idx]);
+    dot.setAttribute('cy', data.series[i].y[idx]);
+    dot.classList.toggle('is-off', off.has(i));
+  });
+  const tip = chart.querySelector('.ov-tip');
+  tip.innerHTML = tipHtml(data, idx, off);
+  const pct = (data.x[idx] / data.W) * 100;
+  tip.style.setProperty('--tip-x', `${pct}%`);
+  tip.classList.toggle('is-right', pct >= 50);
+  tip.hidden = false;
+}
+
+function toggleSeries(chart, chip) {
+  const i = Number(chip.getAttribute('data-series'));
+  const off = chartOff.get(chart) || new Set();
+  if (off.has(i)) off.delete(i); else off.add(i);
+  chartOff.set(chart, off);
+  const on = !off.has(i);
+  chip.classList.toggle('is-off', !on);
+  chip.setAttribute('aria-pressed', String(on));
+  chart.querySelectorAll(`[data-s="${i}"]`).forEach((el) => el.classList.toggle('is-off', !on));
+  hideTip(chart);
+}
+
+function bindCharts(box) {
+  box.addEventListener('pointerdown', (e) => {
+    const hit = e.target.closest && e.target.closest('.ov-hit');
+    box.querySelectorAll('.ov-linechart').forEach((c) => { if (!hit || !c.contains(hit)) hideTip(c); });
+    if (hit) showTip(hit.closest('.ov-linechart'), e.clientX);
+  });
+  box.addEventListener('pointermove', (e) => {
+    const hit = e.target.closest && e.target.closest('.ov-hit');
+    if (hit && (e.pointerType !== 'mouse' || e.buttons === 0 || e.buttons === 1)) showTip(hit.closest('.ov-linechart'), e.clientX);
+  });
+  box.addEventListener('pointerout', (e) => {
+    const hit = e.target.closest && e.target.closest('.ov-hit');
+    if (hit && e.pointerType === 'mouse' && !hit.contains(e.relatedTarget)) hideTip(hit.closest('.ov-linechart'));
+  });
+  box.addEventListener('click', (e) => {
+    const chip = e.target.closest && e.target.closest('.ov-chip-s');
+    if (chip) toggleSeries(chip.closest('.ov-linechart'), chip);
+  });
 }
 
 export function initOverview() {
   const box = document.getElementById('tab-overview');
   if (!box || box.dataset.bound === '1') return;
   box.dataset.bound = '1';
+  bindCharts(box);
   box.addEventListener('keydown', (e) => {
     const r = e.target.closest && e.target.closest('[data-range],[data-panel]');
     if (r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); r.click(); }
@@ -271,8 +337,6 @@ export function initOverview() {
     }
     const range = e.target.closest('[data-range]');
     if (range) { _range = Number(range.getAttribute('data-range')); renderOverview(); return; }
-    const go = e.target.closest('[data-go],[data-screen]');
-    if (go && box.contains(go)) goTo(go);
   });
 }
 

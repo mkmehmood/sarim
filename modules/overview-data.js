@@ -1,7 +1,8 @@
 import { localDateStr } from './finance.js';
 import { auditData, isLedgerRow } from './overview-audit.js';
 import { buildExtras } from './overview-extra.js';
-import { sparkWaveSvg, waveBarSvg, waveChartSvg } from './overview-waves.js';
+import { lineChart } from './overview-lines.js';
+import { sparkWaveSvg, waveBarSvg } from './overview-waves.js';
 
 const _arr = (v) => (Array.isArray(v) ? v : []);
 const _n = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -22,6 +23,10 @@ const stamp = (r) => {
   const t = Date.parse(r.timestamp || r.createdAt || '') || Number(r.timestamp) || Number(r.recordDate) || 0;
   return t || Date.parse(dayKey(r)) || 0;
 };
+
+function topTrend(map, limit) {
+  return [...map.entries()].map(([name, values]) => ({ name, values, total: values.reduce((a, b) => a + Math.abs(b), 0) })).sort((a, b) => b.total - a.total).slice(0, limit).map(({ name, values }) => ({ name, values }));
+}
 
 function top(map, limit, extra = () => ({})) {
   return [...map.entries()].map(([name, v]) => ({ name, ...extra(v), value: typeof v === 'number' ? v : v.value })).sort((a, b) => b.value - a.value).slice(0, limit);
@@ -73,6 +78,16 @@ export function buildOverview(data, now = new Date(), months = 6) {
     list.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`, prodKg: 0, prodProfit: 0, prodValue: 0, prodCost: 0, soldKg: 0, returnsKg: 0, salesValue: 0, salesProfit: 0, salesCount: 0, cashIn: 0, cashOut: 0, expenses: 0 });
   }
   const byKey = new Map(list.map((m) => [m.key, m]));
+  const idxOf = new Map(list.map((m, i) => [m.key, i]));
+  const fTrend = new Map();
+  const sTrend = new Map();
+  const cTrend = new Map();
+  const ssTrend = new Map();
+  const tadd = (map, name, key, val) => {
+    const arr = map.get(name) || list.map(() => 0);
+    arr[idxOf.get(key)] += val;
+    map.set(name, arr);
+  };
   const today = localDateStr(now);
   const thisMonth = today.slice(0, 7);
   const run = { todayProdKg: 0, todayProdCount: 0, todaySalesValue: 0, todaySalesCount: 0, todayIn: 0, todayOut: 0, openCreditValue: 0, openCreditCount: 0, stockValue: 0, stockItems: 0 };
@@ -102,6 +117,8 @@ export function buildOverview(data, now = new Date(), months = 6) {
       m.prodKg += _n(p.net); m.prodProfit += _n(p.profit); m.prodValue += _n(p.totalSale); m.prodCost += _n(p.totalCost);
       add(formulas, p.formulaName || 'No formula', _n(p.net), 1);
       add(stores, p.store || 'Unassigned', _n(p.net), 1);
+      tadd(fTrend, p.formulaName || 'No formula', k.slice(0, 7), _n(p.net));
+      tadd(sTrend, p.store || 'Unassigned', k.slice(0, 7), _n(p.net));
     }
     if (k === today) { run.todayProdKg += _n(p.net); run.todayProdCount += 1; }
     recent.push({ kind: 'Production', title: p.store || 'Production', sub: p.formulaName || '', amount: `${Math.round(_n(p.net)).toLocaleString('en-US')} kg`, tone: 'info', go: 'prod', ts: stamp(p) });
@@ -110,7 +127,7 @@ export function buildOverview(data, now = new Date(), months = 6) {
     const k = dayKey(s);
     const m = byKey.get(k.slice(0, 7));
     const val = _n(s.totalValue);
-    if (m) { m.salesValue += val; m.salesProfit += _n(s.profit); m.salesCount += 1; add(customers, s.customerName || 'Walk-in', val, 1); }
+    if (m) { m.salesValue += val; m.salesProfit += _n(s.profit); m.salesCount += 1; add(customers, s.customerName || 'Walk-in', val, 1); tadd(cTrend, s.customerName || 'Walk-in', k.slice(0, 7), val); tadd(ssTrend, s.supplyStore || 'Unassigned', k.slice(0, 7), val); }
     if (!isLedgerRow(s)) {
       const sk = typeof s.supplyDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s.supplyDate) ? s.supplyDate.slice(0, 10) : k;
       const sm = byKey.get(sk.slice(0, 7));
@@ -156,6 +173,7 @@ export function buildOverview(data, now = new Date(), months = 6) {
     audit: auditData(data, today),
     extra: buildExtras(data, now, list.map((m) => m.key)),
     customersKg: top(customersKg, undefined, withCount),
+    trends: { formulas: topTrend(fTrend, 6), stores: topTrend(sTrend, 6), customers: topTrend(cTrend, 6), salesStores: topTrend(ssTrend, 6) },
     formulas: top(formulas, 6, withCount), stores: top(stores, 5, withCount),
     formulaMoves: top(moveFormulas, 3, (v) => ({ count: v.count, movement: true })), storeMoves: top(moveStores, 6, (v) => ({ count: v.count, movement: true })), customers: top(customers, 6, withCount), expenseCats: top(cats, 5, withCount),
     stock: stockRows.sort((a, b) => b.value - a.value).slice(0, 6),
@@ -165,24 +183,31 @@ export function buildOverview(data, now = new Date(), months = 6) {
 
 const fmt = (v) => Math.round(v).toLocaleString('en-US');
 const tone = (cls) => `sx-tone-${cls}`;
-const go = (to, attr = 'data-go') => `${attr}="${to}"`;
-const chip = (to, text = 'Open', attr = 'data-go') => `<button type="button" class="badge badge-tint sx-chip sx-tone-good ov-chip" ${go(to, attr)}>${text}</button>`;
+const chip = () => '';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const stat = (label, value, t, to, attr = 'data-go', sub = '') => `<button type="button" class="card stat ov-stat ${tone(t)}" ${go(to, attr)}><span class="stat-label">${label}</span><span class="stat-value">${value}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</button>`;
-const section = (title, to, body, t = 'good', chipText = 'Open', attr = 'data-go') => `<div class="card sx-card sx-card--accent ov-c" data-money><div class="sx-card-head"><h4 class="sx-card-title">${title}</h4>${chip(to, chipText, attr)}</div>${body}</div>`;
+const stat = (label, value, t, sub = '') => `<div class="card stat ov-stat ${tone(t)}"><span class="stat-label">${label}</span><span class="stat-value">${value}</span>${sub ? `<span class="stat-sub">${sub}</span>` : ''}</div>`;
+const section = (title, body) => `<div class="card sx-card sx-card--accent ov-c" data-money><div class="sx-card-head"><h4 class="sx-card-title">${title}</h4></div>${body}</div>`;
 
-function chart(months, series, to) {
-  const max = Math.max(1, ...months.flatMap((m) => series.map((s) => Math.abs(m[s.f]))));
-  const label = series.map((s) => s.name).join(' and ');
-  const svg = waveChartSvg(series.map((s) => ({ values: months.map((m) => m[s.f]), tone: s.t })), max, label);
-  const cols = months.map((m) => `<button type="button" class="ov-col" data-go="${to}" aria-label="${m.label}: ${series.map((s) => `${s.name} ${fmt(m[s.f])}`).join(', ')}"><span class="ov-val">${fmt(m[series[0].f])}</span><span class="ov-lbl">${m.label}</span></button>`).join('');
-  const key = series.length > 1 ? `<div class="ov-key">${series.map((s) => `<span class="ov-key-i ${tone(s.t)}"><i></i>${s.name}</span>`).join('')}</div>` : '';
-  return `${key}<div class="ov-waves">${svg}<div class="ov-axis">${cols}</div></div>`;
+const PAL = { good: 0, info: 1, warn: 2, bad: 3, purple: 4 };
+
+function chart(months, series, unit = '') {
+  return lineChart({
+    labels: months.map((m) => m.label),
+    series: series.map((x) => ({ name: x.name, c: x.c === undefined ? PAL[x.t] : x.c, values: months.map((m) => m[x.f]) })),
+    unit,
+    area: true,
+    label: series.map((x) => x.name).join(' and '),
+  });
 }
-function ranked(rows, unit, to, t, attr = 'data-go') {
+
+function trendChart(months, list, unit) {
+  return lineChart({ labels: months.map((m) => m.label), series: list.map((x, i) => ({ name: x.name, c: i % 8, values: x.values })), unit, label: unit || 'Trend' });
+}
+
+function ranked(rows, unit, t) {
   if (!rows.length) return '<div class="ov-empty">Nothing recorded in this period.</div>';
   const max = Math.max(1, ...rows.map((r) => r.value));
-  return `<div class="ov-rank">${rows.map((r) => `<button type="button" class="ov-rank-row ${tone(t)}" ${go(to, attr)}><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}</span></span>${waveBarSvg(Math.max(4, Math.round((r.value / max) * 100)))}</button>`).join('')}</div>`;
+  return `<div class="ov-rank">${rows.map((r) => `<div class="ov-rank-row ${tone(t)}"><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}</span></span>${waveBarSvg(Math.max(4, Math.round((r.value / max) * 100)))}</div>`).join('')}</div>`;
 }
 
 function auditHtml(a) {
@@ -221,9 +246,9 @@ function checkCardHtml(model) {
 function owedSection(x) {
   if (!x || !x.owed.count) return '';
   const o = x.owed;
-  const tiles = `<div class="sx-grid sx-cols-2">${stat('Total owed', fmt(o.total), 'warn', 'sales', 'data-go', `${o.count} sale${o.count === 1 ? '' : 's'}, oldest ${o.oldest} days`)}${stat('Up to 30 days', fmt(o.d30), 'good', 'sales')}${stat('31 to 60 days', fmt(o.d60), 'warn', 'sales')}${stat('Over 60 days', fmt(o.d90), 'bad', 'sales')}</div>`;
+  const tiles = `<div class="sx-grid sx-cols-2">${stat('Total owed', fmt(o.total), 'warn', `${o.count} sale${o.count === 1 ? '' : 's'}, oldest ${o.oldest} days`)}${stat('Up to 30 days', fmt(o.d30), 'good')}${stat('31 to 60 days', fmt(o.d60), 'warn')}${stat('Over 60 days', fmt(o.d90), 'bad')}</div>`;
   const rows = o.customers.map((c) => ({ name: `${c.name} (${c.oldest}d)`, value: c.value }));
-  return section('Who owes you', 'sales', `${tiles}<div class="ov-sub">By customer, with age of the oldest sale</div>${ranked(rows, '', 'sales', 'warn')}`);
+  return section('Who owes you', `${tiles}<div class="ov-sub">By customer, with age of the oldest sale</div>${ranked(rows, '', 'warn')}`);
 }
 
 const PANELS = [['sales', 'Sales'], ['prod', 'Production'], ['money', 'Money'], ['stock', 'Stock'], ['checks', 'Checks'], ['activity', 'Activity']];
@@ -241,20 +266,20 @@ function delta(values) {
   return `<span class="ov-delta">${pct >= 0 ? '\u25b2' : '\u25bc'} ${Math.abs(pct)}%</span>`;
 }
 
-function kpi(label, value, series, t, to, sub = '', attr = 'data-go') {
-  return `<button type="button" class="ov-kpi ${tone(t)}" ${go(to, attr)}><span class="ov-kpi-l">${label}</span><span class="ov-kpi-v">${value}</span>${series ? `<span class="ov-kpi-s">${spark(series)}${delta(series)}</span>` : ''}${sub ? `<span class="ov-kpi-sub">${sub}</span>` : ''}</button>`;
+function kpi(label, value, series, t, sub = '') {
+  return `<div class="ov-kpi ${tone(t)}"><span class="ov-kpi-l">${label}</span><span class="ov-kpi-v">${value}</span>${series ? `<span class="ov-kpi-s">${spark(series)}${delta(series)}</span>` : ''}${sub ? `<span class="ov-kpi-sub">${sub}</span>` : ''}</div>`;
 }
 
-function pill(label, value, t, to) {
-  return `<button type="button" class="ov-pill ${tone(t)}" data-go="${to}"><span>${label}</span><b>${value}</b></button>`;
+function pill(label, value, t) {
+  return `<span class="ov-pill ${tone(t)}"><span>${label}</span><b>${value}</b></span>`;
 }
 
-function donut(rows, to) {
+function donut(rows) {
   const total = rows.reduce((sum, r) => sum + r.value, 0);
   if (!(total > 0)) return '<div class="ov-empty">Nothing recorded in this period.</div>';
   const pct = Math.round((rows[0].value / total) * 100);
   const legend = rows.map((r, i) => `<span class="ov-legend-row ${tone(i === 0 ? 'good' : 'warn')}"><i></i>${esc(r.name)}<b>${fmt(r.value)}</b><em>${Math.round((r.value / total) * 100)}%</em></span>`).join('');
-  return `<button type="button" class="ov-donut-wrap" data-go="${to}"><span class="ov-donut sx-tone-good" style="--p:${pct}"></span><span class="ov-legend">${legend}</span></button>`;
+  return `<div class="ov-donut-wrap"><span class="ov-donut sx-tone-good" style="--p:${pct}"></span><span class="ov-legend">${legend}</span></div>`;
 }
 
 export function overviewHtml(model, range = 6, opts = {}) {
@@ -268,45 +293,57 @@ export function overviewHtml(model, range = 6, opts = {}) {
   const badge = model.audit && (model.audit.errors || model.audit.warnings) ? ` <span class="ov-count sx-tone-${model.audit.errors ? 'bad' : 'warn'}">${model.audit.errors + model.audit.warnings}</span>` : '';
   const tabs = PANELS.map(([id, label]) => `<div class="toggle-opt${id === panel ? ' active' : ''}" role="button" tabindex="0" data-panel="${id}">${label}${id === 'checks' ? badge : ''}</div>`).join('');
   const kpis = [
-    kpi('Sales', fmt(t.salesValue), series('salesValue'), 'good', 'sales', `${t.salesCount} sale${t.salesCount === 1 ? '' : 's'}`),
-    kpi('Net profit', fmt(t.prodProfit), series('prodProfit'), t.prodProfit < 0 ? 'bad' : 'good', 'prod', t.prodValue > 0 ? `${t.margin.toFixed(1)}% margin on ${fmt(t.prodValue)}` : ''),
-    kpi('Produced', `${fmt(t.prodKg)} kg`, series('prodKg'), 'info', 'prod', t.returnsKg > 0 ? `+${fmt(t.returnsKg)} kg returns` : `cost ${fmt(t.prodCost)}`),
-    kpi('Remaining', `${fmt(t.remainingKg)} kg`, null, t.remainingKg < 0 ? 'bad' : 'warn', 'sales', `${fmt(t.inKg)} in \u00b7 ${fmt(t.soldKg)} sold`),
-    kpi('Net cash', fmt(t.net), netSeries, t.net < 0 ? 'bad' : 'good', 'payments', `in ${fmt(t.cashIn)} \u00b7 out ${fmt(t.cashOut)}`),
-    kpi('Expenses', fmt(t.expenses), series('expenses'), 'warn', 'payments'),
-    kpi('Owed to you', fmt(x && x.owed.count ? x.owed.total : r.openCreditValue), null, 'warn', 'sales', `${x && x.owed.count ? x.owed.count : r.openCreditCount} unreceived`),
-    kpi('Stock', fmt(r.stockValue), null, 'purple', 'raw-material-screen', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}${x && x.outOfStock.count ? ` \u00b7 ${x.outOfStock.count} out` : ''}`, 'data-screen'),
+    kpi('Sales', fmt(t.salesValue), series('salesValue'), 'good', `${t.salesCount} sale${t.salesCount === 1 ? '' : 's'}`),
+    kpi('Net profit', fmt(t.prodProfit), series('prodProfit'), t.prodProfit < 0 ? 'bad' : 'good', t.prodValue > 0 ? `${t.margin.toFixed(1)}% margin on ${fmt(t.prodValue)}` : ''),
+    kpi('Produced', `${fmt(t.prodKg)} kg`, series('prodKg'), 'info', t.returnsKg > 0 ? `+${fmt(t.returnsKg)} kg returns` : `cost ${fmt(t.prodCost)}`),
+    kpi('Remaining', `${fmt(t.remainingKg)} kg`, null, t.remainingKg < 0 ? 'bad' : 'warn', `${fmt(t.inKg)} in \u00b7 ${fmt(t.soldKg)} sold`),
+    kpi('Net cash', fmt(t.net), netSeries, t.net < 0 ? 'bad' : 'good', `in ${fmt(t.cashIn)} \u00b7 out ${fmt(t.cashOut)}`),
+    kpi('Expenses', fmt(t.expenses), series('expenses'), 'warn'),
+    kpi('Owed to you', fmt(x && x.owed.count ? x.owed.total : r.openCreditValue), null, 'warn', `${x && x.owed.count ? x.owed.count : r.openCreditCount} unreceived`),
+    kpi('Stock', fmt(r.stockValue), null, 'purple', `${r.stockItems} material${r.stockItems === 1 ? '' : 's'}${x && x.outOfStock.count ? ` \u00b7 ${x.outOfStock.count} out` : ''}`),
   ].join('');
-  const now = `<div class="ov-now-strip" data-money><span class="ov-now-label">Right now</span>${pill('Production', `${fmt(r.todayProdKg)} kg`, 'info', 'prod')}${pill('Sales', fmt(r.todaySalesValue), 'good', 'sales')}${pill('In', fmt(r.todayIn), 'good', 'payments')}${pill('Out', fmt(r.todayOut), 'bad', 'payments')}</div>`;
-  const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((e) => `<button type="button" class="ov-recent-row ${tone(e.tone)}" data-go="${e.go}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(e.title)}</span><span class="ov-recent-sub">${esc(e.kind)}${e.sub ? ` \u00b7 ${esc(e.sub)}` : ''}</span></span><span class="ov-recent-amt">${e.amount}</span></button>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
+  const now = `<div class="ov-now-strip" data-money><span class="ov-now-label">Right now</span>${pill('Production', `${fmt(r.todayProdKg)} kg`, 'info')}${pill('Sales', fmt(r.todaySalesValue), 'good')}${pill('In', fmt(r.todayIn), 'good')}${pill('Out', fmt(r.todayOut), 'bad')}</div>`;
+  const rec = model.recent.length ? `<div class="ov-recent">${model.recent.map((e) => `<div class="ov-recent-row ${tone(e.tone)}"><span class="ov-recent-main"><span class="ov-recent-title">${esc(e.title)}</span><span class="ov-recent-sub">${esc(e.kind)}${e.sub ? ` \u00b7 ${esc(e.sub)}` : ''}</span></span><span class="ov-recent-amt">${e.amount}</span></div>`).join('')}</div>` : '<div class="ov-empty">No activity yet.</div>';
   const table = `<div class="ov-table-wrap"><table class="table ov-table"><thead><tr><th>Month</th><th>Produced kg</th><th>Sales</th><th>Net profit</th><th>Sales profit</th><th>In</th><th>Out</th><th>Expenses</th></tr></thead><tbody>${model.months.slice().reverse().map((m) => `<tr><td>${m.label}</td><td>${fmt(m.prodKg)}</td><td>${fmt(m.salesValue)}</td><td>${fmt(m.prodProfit)}</td><td>${fmt(m.salesProfit)}</td><td>${fmt(m.cashIn)}</td><td>${fmt(m.cashOut)}</td><td>${fmt(m.expenses)}</td></tr>`).join('')}</tbody></table></div>`;
-  const factoryChart = x && x.factory.total > 0 ? section('Factory output (units)', 'factory', chart(model.months.map((m, i) => ({ label: m.label, units: x.factory.months[i].units })), [{ f: 'units', name: 'Units', t: 'purple' }], 'factory')) : '';
+  const factoryChart = x && x.factory.total > 0 ? section('Factory output (units)', chart(model.months.map((m, i) => ({ label: m.label, units: x.factory.months[i].units })), [{ f: 'units', name: 'Units', t: 'purple' }], 'units')) : '';
+  const trendCard = (title, list, unit) => (list && list.some((x2) => x2.values.some((v) => v !== 0)) ? section(title, trendChart(model.months, list, unit)) : '');
+  const moneyTrends = section('Money trends', chart(model.months, [
+    { f: 'salesValue', name: 'Sales', c: 0 },
+    { f: 'prodProfit', name: 'Net profit', c: 4 },
+    { f: 'salesProfit', name: 'Sales profit', c: 1 },
+    { f: 'cashIn', name: 'Cash in', c: 5 },
+    { f: 'cashOut', name: 'Cash out', c: 3 },
+    { f: 'expenses', name: 'Expenses', c: 2 },
+  ]));
   const panels = {
     sales: [
-      section('Sales value', 'sales', chart(model.months, [{ f: 'salesValue', name: 'Sales', t: 'good' }], 'sales')),
-      section('Net profit and sales profit', 'prod', chart(model.months, [{ f: 'prodProfit', name: 'Net profit', t: 'good' }, { f: 'salesProfit', name: 'Sales profit', t: 'info' }], 'prod')),
-      section('Stock movement (kg)', 'sales', ranked([{ name: 'Sold', value: t.soldKg }, { name: 'Remaining', value: Math.max(0, t.remainingKg) }, { name: 'Production + returns in', value: t.inKg }].filter((r) => r.value > 0), ' kg', 'sales', 'warn')),
-      section('Sold by customer (kg)', 'sales', ranked(model.customersKg, ' kg', 'sales', 'warn')),
+      moneyTrends,
+      trendCard('Sales by customer over time', model.trends && model.trends.customers, 'sales value'),
+      trendCard('Sales by store over time', model.trends && model.trends.salesStores, 'sales value'),
+      section('Stock movement (kg)', ranked([{ name: 'Sold', value: t.soldKg }, { name: 'Remaining', value: Math.max(0, t.remainingKg) }, { name: 'Production + returns in', value: t.inKg }].filter((r2) => r2.value > 0), ' kg', 'warn')),
+      section('Sold by customer (kg)', ranked(model.customersKg, ' kg', 'warn')),
       owedSection(x),
-      section('Top customers', 'sales', ranked(model.customers, '', 'sales', 'good')),
-      x && x.salesByStore.length ? section('Sales by store', 'sales', ranked(x.salesByStore, '', 'sales', 'good')) : '',
-      x && x.salesByPay.length ? section('Cash and credit sales', 'sales', donut(x.salesByPay, 'sales')) : '',
+      section('Top customers', ranked(model.customers, '', 'good')),
+      x && x.salesByStore.length ? section('Sales by store', ranked(x.salesByStore, '', 'good')) : '',
+      x && x.salesByPay.length ? section('Cash and credit sales', donut(x.salesByPay)) : '',
     ],
     prod: [
-      section('Production (kg)', 'prod', chart(model.months, [{ f: 'prodKg', name: 'Production', t: 'info' }], 'prod')),
+      section('Production (kg)', chart(model.months, [{ f: 'prodKg', name: 'Production', t: 'info' }], 'kg')),
+      trendCard('Production by formula over time', model.trends && model.trends.formulas, 'kg'),
+      trendCard('Production by store over time', model.trends && model.trends.stores, 'kg'),
       factoryChart,
-      section('Production by formula', 'prod', ranked(model.formulas.concat(model.formulaMoves || []), ' kg', 'prod', 'info')),
-      section('Production by store', 'prod', ranked(model.stores.concat(model.storeMoves || []), ' kg', 'prod', 'info')),
-      x && x.factory.formulas.length ? section('Factory output by formula', 'factory', ranked(x.factory.formulas, ' units', 'factory', 'purple')) : '',
-      x && x.formulaCosts.length ? section('Formula cost per kg', 'factory', ranked(x.formulaCosts.map((c) => ({ ...c, name: c.linked ? `${c.name} (linked)` : c.name })), '', 'factory', 'purple')) : '',
+      section('Production by formula', ranked(model.formulas.concat(model.formulaMoves || []), ' kg', 'info')),
+      section('Production by store', ranked(model.stores.concat(model.storeMoves || []), ' kg', 'info')),
+      x && x.factory.formulas.length ? section('Factory output by formula', ranked(x.factory.formulas, ' units', 'purple')) : '',
+      x && x.formulaCosts.length ? section('Formula cost per kg', ranked(x.formulaCosts.map((c) => ({ ...c, name: c.linked ? `${c.name} (linked)` : c.name })), '', 'purple')) : '',
     ],
     money: [
-      section('Cash in and out', 'payments', chart(model.months, [{ f: 'cashIn', name: 'In', t: 'good' }, { f: 'cashOut', name: 'Out', t: 'bad' }], 'payments')),
-      section('Expenses by category', 'payments', ranked(model.expenseCats, '', 'payments', 'warn')),
+      section('Cash in and out', chart(model.months, [{ f: 'cashIn', name: 'Cash in', t: 'good' }, { f: 'cashOut', name: 'Cash out', t: 'bad' }])),
+      section('Expenses by category', ranked(model.expenseCats, '', 'warn')),
     ],
     stock: [
-      section('Stock by value', 'raw-material-screen', ranked(model.stock, '', 'raw-material-screen', 'purple', 'data-screen'), 'purple', 'Open', 'data-screen'),
-      x && x.outOfStock.count ? section('Out of stock', 'raw-material-screen', `<div class="ov-chips">${x.outOfStock.names.map((n) => `<span class="badge badge-tint sx-chip sx-tone-bad">${esc(n)}</span>`).join('')}</div>`, 'bad', 'Open', 'data-screen') : '',
+      section('Stock by value', ranked(model.stock, '', 'purple')),
+      x && x.outOfStock.count ? section('Out of stock', `<div class="ov-chips">${x.outOfStock.names.map((n) => `<span class="badge badge-tint sx-chip sx-tone-bad">${esc(n)}</span>`).join('')}</div>`) : '',
     ],
     checks: [checkCardHtml(model)],
     activity: [

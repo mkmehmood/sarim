@@ -5726,16 +5726,11 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 
 #tab-overview { padding-bottom: 90px; }
 .ov-now { margin-bottom: 20px; }
-.ov-stat, .ov-chip, .ov-col, .ov-rank-row, .ov-recent-row { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ov-stat, .ov-rank-row, .ov-recent-row { font: inherit; color: inherit; text-align: left; cursor: default; }
+.ov-chip, button.ov-recent-row { font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .ov-stat { width: 100%; margin-bottom: 0; }
 .ov-chip { border: 0; min-height: 28px; }
-.ov-stat:active, .ov-col:active, .ov-rank-row:active, .ov-recent-row:active { transform: scale(0.985); }
-.ov-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0 0; border: 0; background: transparent; }
-.ov-val { font: 700 0.66rem var(--font-num); color: var(--text-main); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ov-lbl { font: 600 0.62rem var(--font-ui); color: var(--text-muted); white-space: nowrap; }
-.ov-key { display: flex; gap: 14px; margin-top: 8px; font: 600 0.7rem var(--font-ui); color: var(--text-muted); }
-.ov-key-i { display: inline-flex; align-items: center; gap: 6px; }
-.ov-key-i i { width: 10px; height: 10px; border-radius: 3px; background: var(--sx-c, var(--accent)); }
+button.ov-recent-row:active, .ov-check:active { transform: scale(0.985); }
 .ov-rank { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ov-rank-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 4px; border: 0; background: transparent; width: 100%; }
 .ov-rank-top { display: flex; justify-content: space-between; gap: 10px; }
@@ -5778,8 +5773,7 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-top h1 { margin: 0; }
 .ov-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 @media (min-width: 640px) { .ov-kpis { grid-template-columns: repeat(4, 1fr); } }
-.ov-kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--glass-border); border-left: 3px solid var(--sx-c, var(--accent)); background: var(--soft-bg); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
-.ov-kpi:active, .ov-pill:active, .ov-donut-wrap:active { transform: scale(0.985); }
+.ov-kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--glass-border); border-left: 3px solid var(--sx-c, var(--accent)); background: var(--soft-bg); color: var(--text-main); font: inherit; text-align: left; cursor: default; }
 .ov-kpi-l { font: 700 0.62rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .ov-kpi-v { font: 800 1.15rem var(--font-num); font-variant-numeric: tabular-nums; color: var(--sx-c, var(--accent)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-kpi-s { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--sx-c, var(--accent)); }
@@ -5788,7 +5782,7 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-kpi-sub { font: 500 0.66rem var(--font-ui); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-now-strip { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
 .ov-now-label { font: 800 0.62rem var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.ov-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--soft-bg); color: var(--text-main); font: 600 0.72rem var(--font-ui); cursor: pointer; }
+.ov-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--soft-bg); color: var(--text-main); font: 600 0.72rem var(--font-ui); cursor: default; }
 .ov-pill b { font-family: var(--font-num); color: var(--sx-c, var(--accent)); }
 .ov-tabs { display: flex; overflow-x: auto; margin: 4px 0 10px; scrollbar-width: none; }
 .ov-tabs::-webkit-scrollbar { display: none; }
@@ -5804,7 +5798,7 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-c .ov-recent-row { padding: 7px 2px 7px 10px; }
 .ov-c .sx-grid { gap: 6px; }
 .ov-c .sx-grid .card.stat { padding: 8px 10px; margin: 0; }
-.ov-donut-wrap { display: flex; align-items: center; gap: 14px; width: 100%; padding: 6px 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.ov-donut-wrap { display: flex; align-items: center; gap: 14px; width: 100%; padding: 6px 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: default; text-align: left; }
 .ov-donut { flex: none; width: 84px; height: 84px; border-radius: 50%; background: conic-gradient(var(--sx-c, var(--accent)) calc(var(--p) * 1%), var(--warning) 0); -webkit-mask: radial-gradient(circle 26px, transparent 98%, #000 100%); mask: radial-gradient(circle 26px, transparent 98%, #000 100%); }
 .ov-legend { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 .ov-legend-row { display: flex; align-items: center; gap: 6px; font: 600 0.8rem var(--font-ui); }
@@ -5827,15 +5821,46 @@ html.vk-open .cm-sheet { bottom: calc(var(--vk-h, 0px) + var(--vk-gap)); }
 .ov-fix-error { margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); font: 600 0.8rem/1.35 var(--font-ui); }
 .ov-fix-error[hidden] { display: none; }
 
-.ov-waves { margin-top: 8px; }
-.ov-wave { display: block; width: 100%; height: 132px; overflow: visible; }
-.ov-c .ov-wave { height: 112px; }
-.ov-wave-grid { fill: none; stroke: var(--glass-border); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 3 4; }
-.ov-wave-area { fill: var(--sx-c, var(--accent)); fill-opacity: 0.32; }
-.ov-wave-line { fill: none; stroke: var(--sx-c, var(--accent)); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.ov-axis { display: flex; margin-top: 2px; }
-.ov-wavebar { display: block; width: 100%; height: 20px; border-radius: 10px; background: var(--glass-border); overflow: hidden; }
+.ov-c .ov-wavebar { display: block; width: 100%; height: 20px; border-radius: 10px; background: var(--glass-border); overflow: hidden; }
 .ov-wavebar-back { fill: var(--sx-c, var(--accent)); fill-opacity: 0.4; }
 .ov-wavebar-front { fill: var(--sx-c, var(--accent)); }
 .ov-spark-fill { fill: currentColor; fill-opacity: 0.22; }
 .ov-spark-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+.ov-s0 { --lc: hsl(158 68% 52%); }
+.ov-s1 { --lc: hsl(188 86% 55%); }
+.ov-s2 { --lc: hsl(40 94% 56%); }
+.ov-s3 { --lc: hsl(352 82% 64%); }
+.ov-s4 { --lc: hsl(262 78% 70%); }
+.ov-s5 { --lc: hsl(214 84% 64%); }
+.ov-s6 { --lc: hsl(322 72% 66%); }
+.ov-s7 { --lc: hsl(78 66% 52%); }
+.ov-linechart { position: relative; margin-top: 4px; }
+.ov-linechart .is-off { display: none; }
+.ov-unit { display: block; font: 700 0.62rem var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+.ov-chips-s { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.ov-chip-s { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 2px 11px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--lc) 38%, var(--glass-border)); background: color-mix(in srgb, var(--lc) 10%, transparent); color: var(--text-main); font: 600 0.72rem var(--font-ui); cursor: pointer; }
+.ov-chip-s i { width: 10px; height: 10px; border-radius: 50%; background: var(--lc); box-shadow: 0 0 8px color-mix(in srgb, var(--lc) 70%, transparent); }
+.ov-chip-s.is-off { opacity: 0.5; background: transparent; }
+.ov-chip-s.is-off i { background: transparent; box-shadow: inset 0 0 0 2px var(--lc); }
+.ov-plot { position: relative; }
+.ov-lines { display: block; width: 100%; height: auto; touch-action: pan-y; user-select: none; -webkit-user-select: none; overflow: visible; }
+.ov-gl { stroke: var(--glass-border); stroke-width: 1; stroke-dasharray: 2 5; vector-effect: non-scaling-stroke; }
+.ov-gl.is-zero { stroke: color-mix(in srgb, var(--text-muted) 55%, transparent); stroke-dasharray: none; }
+.ov-ytick, .ov-xtick { font: 500 9px var(--font-num); fill: var(--text-muted); }
+.ov-ytick { text-anchor: end; }
+.ov-xtick { text-anchor: middle; }
+.ov-line { fill: none; stroke: var(--lc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 3px 6px color-mix(in srgb, var(--lc) 42%, transparent)); }
+.ov-line-area { fill: var(--lc); fill-opacity: 0.13; }
+.ov-last { fill: var(--bg); stroke: var(--lc); stroke-width: 2; }
+.ov-cross { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.ov-hdot { fill: var(--lc); stroke: var(--bg); stroke-width: 2; }
+.ov-hit { fill: transparent; cursor: crosshair; }
+.ov-tip { position: absolute; top: 2px; left: var(--tip-x, 50%); transform: translateX(10px); z-index: 3; min-width: 128px; max-width: 70%; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--glass-border); background: color-mix(in srgb, var(--bg) 84%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 8px 24px color-mix(in srgb, var(--text-main) 14%, transparent); pointer-events: none; }
+.ov-tip.is-right { transform: translateX(calc(-100% - 10px)); }
+.ov-tip[hidden] { display: none; }
+.ov-tip-title { font: 800 0.74rem var(--font-ui); margin-bottom: 4px; }
+.ov-tip-title small { font-weight: 600; color: var(--text-muted); }
+.ov-tip-row { display: flex; align-items: center; gap: 6px; font: 600 0.72rem var(--font-ui); line-height: 1.5; }
+.ov-tip-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--lc); flex: none; }
+.ov-tip-row b { margin-left: auto; padding-left: 10px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }

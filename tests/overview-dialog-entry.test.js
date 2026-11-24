@@ -31,7 +31,7 @@ describe('every row in the checks panel can open the dialog', () => {
     const worst = analyseProfit(sales, new Set(['2026-11']));
     assert.deepEqual(worst.worst.map((w) => [w.idx, w.profit]), [[1, -200]]);
     assert.match(html, /class="ov-recent-row sx-tone-bad" data-fix="sales:1"/);
-    assert.doesNotMatch(html, /ov-recent-row sx-tone-bad" data-go="sales"/);
+    assert.doesNotMatch(html, /data-go=/);
   });
 
   it('a losing sale that has no data problem still gets a form with its value and cost', () => {

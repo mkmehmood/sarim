@@ -91,10 +91,9 @@ describe('overview data', () => {
     assert.equal(dayKey({}), '');
   });
 
-  it('every tile, chart and the table link to the content they summarise', () => {
+  it('no card, tile, chart or row opens another tab, so examining a chart never navigates away', () => {
     const html = overviewHtml(buildOverview(data, now), 6);
-    for (const go of ['prod', 'sales', 'payments']) assert.match(html, new RegExp(`data-go="${go}"`));
-    assert.match(html, /data-screen="raw-material-screen"/);
+    assert.doesNotMatch(html, /data-go=|data-screen=/);
     assert.match(html, /Right now/);
     assert.match(html, /class="ov-kpis"/);
     assert.match(html, /data-range="3"/);
@@ -202,7 +201,7 @@ describe('net profit follows the Total combined card', () => {
     assert.match(html, /<span class="ov-kpi-l">Remaining<\/span><span class="ov-kpi-v">57 kg<\/span>[\s\S]*?127 in \u00b7 70 sold/);
     assert.match(html, /Sold by customer \(kg\)/);
     assert.match(html, /Stock movement \(kg\)/);
-    assert.match(html, /Net profit and sales profit/);
+    assert.match(html, /Money trends/);
     assert.match(html, /production value <b>3,600<\/b> minus production cost <b>2,200<\/b> is <b>1,400<\/b>[\s\S]*?not added on top/);
     assert.match(html, /<th>Net profit<\/th><th>Sales profit<\/th>/);
     assert.doesNotMatch(html, /Total profit/);

@@ -20,34 +20,6 @@ export function smoothPath(pts) {
   return d;
 }
 
-export function wavePoints(values, max, { w = 300, h = 120, pad = 6 } = {}) {
-  const n = values.length;
-  const base = h - pad;
-  const span = base - pad;
-  const ys = values.map((v) => base - Math.max(0.02, Math.min(1, Math.abs(v) / (max || 1))) * span);
-  const xs = values.map((_, i) => ((i + 0.5) / n) * w);
-  return [[0, ys[0]], ...xs.map((x, i) => [x, ys[i]]), [w, ys[n - 1]]];
-}
-
-export function waveShape(values, max, size) {
-  const { w = 300, h = 120, pad = 6 } = size || {};
-  const pts = wavePoints(values, max, { w, h, pad });
-  const line = smoothPath(pts);
-  const base = h - pad;
-  return { line, area: `${line} L${f1(w)},${f1(base)} L0,${f1(base)} Z`, points: pts };
-}
-
-export function waveChartSvg(seriesValues, max, label) {
-  const w = 300;
-  const h = 120;
-  const grid = [0.25, 0.5, 0.75].map((r) => `M0,${f1(6 + (h - 12) * r)}H${w}`).join(' ');
-  const layers = seriesValues.map((s) => {
-    const sh = waveShape(s.values, max, { w, h });
-    return `<path class="ov-wave-area sx-tone-${s.tone}" d="${sh.area}"/><path class="ov-wave-line sx-tone-${s.tone}" d="${sh.line}"/>`;
-  }).join('');
-  return `<svg class="ov-wave" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${label}"><path class="ov-wave-grid" d="${grid}"/>${layers}</svg>`;
-}
-
 export function waveBarSvg(pct) {
   const w = Math.max(4, Math.min(100, pct));
   const steps = Math.max(2, Math.ceil(w / 4));
