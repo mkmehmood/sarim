@@ -232,12 +232,11 @@ describe('compact layout', () => {
     assert.doesNotThrow(() => overviewHtml(buildOverview({}, now, 3), 3));
   });
 
-  it('draws cash against credit as a column chart with axes', () => {
+  it('draws cash against credit as a line chart with axes', () => {
     const sales = [{ date: '2026-11-10', totalValue: 300, paymentType: 'CASH' }, { date: '2026-11-11', totalValue: 100, paymentType: 'CREDIT' }];
     const h = overviewHtml(buildOverview({ sales }, now, 3), 3);
-    assert.match(h, /class="ov-bar ov-s0"/);
-    assert.match(h, /class="ov-bar ov-s1"/);
-    assert.match(h, /class="ov-bval is-mid"[^>]*>300</);
+    assert.match(h, /aria-label="Cash and credit sales"/);
+    assert.match(h, /&quot;v&quot;:\[300,100\]/);
     assert.doesNotMatch(h, /ov-donut/);
   });
 

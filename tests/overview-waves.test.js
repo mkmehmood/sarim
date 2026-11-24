@@ -47,9 +47,9 @@ describe('chart style in the overview', () => {
   const data = { sales: [{ date: '2026-11-03', totalValue: 500, profit: 50, customerName: 'Ali', quantity: 5 }, { date: '2026-10-03', totalValue: 300, profit: 30, customerName: 'Sara', quantity: 3 }], production: [{ date: '2026-11-02', net: 100, formulaName: 'Base', store: 'A', totalSale: 100, totalCost: 50, profit: 50 }] };
   const html = overviewHtml(buildOverview(data, now, 3), 3);
 
-  it('draws the ranked lists as bar charts with axes and a grid, never wave bars or the old progress bar', () => {
-    assert.match(html, /class="ov-linechart ov-barchart"/);
-    assert.match(html, /class="ov-bar ov-s\d"/);
+  it('draws the ranked lists as smooth line charts with axes and a grid, never wave bars or the old progress bar', () => {
+    assert.match(html, /aria-label="Ranking"/);
+    assert.match(html, /class="ov-last ov-s\d"/);
     assert.doesNotMatch(html, /class="ov-wavebar"/);
     assert.doesNotMatch(html, /class="bar ov-bar-track"|ov-bar-track/);
   });
@@ -61,7 +61,7 @@ describe('chart style in the overview', () => {
 
   it('is styled with theme colours only', () => {
     const css = read('../app.css');
-    assert.match(css, /\.ov-bar \{ fill: var\(--lc\);/);
+    assert.match(css, /\.ov-line \{ fill: none; stroke: var\(--lc\);/);
     assert.doesNotMatch(css, /\.ov-fill \{|\.ov-pair \{|\.ov-bar-track|\.ov-wave-area/);
   });
 });

@@ -1,7 +1,7 @@
 import { localDateStr } from './finance.js';
 import { auditData, isLedgerRow } from './overview-audit.js';
 import { buildExtras } from './overview-extra.js';
-import { barChart, columnChart, lineChart } from './overview-lines.js';
+import { lineChart } from './overview-lines.js';
 import { sparkWaveSvg } from './overview-waves.js';
 
 const _arr = (v) => (Array.isArray(v) ? v : []);
@@ -204,9 +204,11 @@ function trendChart(months, list, unit) {
   return lineChart({ labels: months.map((m) => m.label), series: list.map((x, i) => ({ name: x.name, c: i % 8, values: x.values })), unit, label: unit || 'Trend' });
 }
 
+const shortName = (n) => (String(n).length > 8 ? `${String(n).slice(0, 7)}\u2026` : String(n));
+
 function ranked(rows, unit, t) {
   if (!rows.length) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  return barChart({ rows: rows.map((r) => ({ name: r.name, value: r.value })), unit, c: PAL[t] === undefined ? 0 : PAL[t], label: 'Ranking' });
+  return lineChart({ labels: rows.map((r) => String(r.name)), tickLabels: rows.map((r) => shortName(r.name)), series: [{ name: '', c: PAL[t] === undefined ? 0 : PAL[t], values: rows.map((r) => r.value) }], unit: unit.trim(), area: true, label: 'Ranking' });
 }
 
 function auditHtml(a) {
@@ -276,7 +278,7 @@ function pill(label, value, t) {
 function donut(rows) {
   const total = rows.reduce((sum, r) => sum + r.value, 0);
   if (!(total > 0)) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  return columnChart({ rows: rows.map((r) => ({ name: r.name, value: r.value })), label: 'Cash and credit sales' });
+  return lineChart({ labels: rows.map((r) => r.name), series: [{ name: '', c: 0, values: rows.map((r) => r.value) }], area: true, label: 'Cash and credit sales' });
 }
 
 export function overviewHtml(model, range = 6, opts = {}) {

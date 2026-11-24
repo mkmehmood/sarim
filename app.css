@@ -5865,14 +5865,8 @@ button.ov-recent-row:active, .ov-check:active { transform: scale(0.985); }
 .ov-tip-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--lc); flex: none; }
 .ov-tip-row b { margin-left: auto; padding-left: 10px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
-/* Chart style shared with Money trends: axes, dashed grid, flat bars, glow lines */
-.ov-bar { fill: var(--lc); filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--lc) 40%, transparent)); }
-.ov-bname { font-weight: 600; font-size: 9.5px; fill: var(--text-main); }
-.ov-bval { font: 700 9px var(--font-num); fill: var(--text-main); text-anchor: start; }
-.ov-bval.is-mid { text-anchor: middle; }
-.ov-barchart .ov-lines { touch-action: auto; }
+/* KPI trends and progress bars share the Money trends glow */
 .ov-spark-line { filter: drop-shadow(0 2px 4px color-mix(in srgb, currentColor 40%, transparent)); }
 .ov-spark-fill { fill-opacity: 0.12; }
-/* Progress bars: flat track with the same line colours */
 #cy-progress-track, .cm-meter { border-radius: 999px; }
 #close-year-progress-bar { box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent); }
