@@ -6,6 +6,8 @@ import 'app_state.dart';
 import 'firebase_config.dart';
 import 'screens/customers_screen.dart';
 import 'screens/login_screen.dart';
+import 'ui/splash_screen.dart';
+import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,24 +17,31 @@ Future<void> main() async {
   runApp(SarimApp(app: app));
 }
 
-class SarimApp extends StatelessWidget {
-  const SarimApp({super.key, required this.app});
+class SarimApp extends StatefulWidget {
+  const SarimApp({super.key, required this.app, this.showSplash = true});
   final AppState app;
+  final bool showSplash;
+
+  @override
+  State<SarimApp> createState() => _SarimAppState();
+}
+
+class _SarimAppState extends State<SarimApp> {
+  late bool _splashDone = !widget.showSplash;
+  AppState get app => widget.app;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Gull & Zubair',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3B82F6), brightness: Brightness.dark),
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
-      ),
-      home: ListenableBuilder(
-        listenable: app,
-        builder: (context, _) => app.signedIn ? CustomersScreen(app: app) : LoginScreen(app: app),
-      ),
+      theme: sarimTheme(),
+      home: _splashDone
+          ? ListenableBuilder(
+              listenable: app,
+              builder: (context, _) => app.signedIn ? CustomersScreen(app: app) : LoginScreen(app: app),
+            )
+          : SplashScreen(ready: Future<void>.value(), onDone: () => setState(() => _splashDone = true)),
     );
   }
 }

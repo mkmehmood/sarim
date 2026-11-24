@@ -21,7 +21,7 @@ void main() {
   testWidgets('login screen shows when signed out', (tester) async {
     final app = AppState(MemoryStore(), cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     expect(find.text('Sign in'), findsOneWidget);
   });
 
@@ -36,7 +36,7 @@ void main() {
     ]);
     final app = AppState(store, cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
     expect(find.text('Ali'), findsOneWidget);
     expect(find.text('Rs 1,000'), findsWidgets);
@@ -62,7 +62,7 @@ void main() {
     ]);
     final app = AppState(store, cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ali'));
     await tester.pumpAndSettle();
@@ -88,7 +88,7 @@ void main() {
     ]);
     final app = AppState(store, cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ali'));
     await tester.pumpAndSettle();
