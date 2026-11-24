@@ -77,3 +77,42 @@ export function tipHtml(data, idx, off) {
   const rows = data.series.map((s, i) => (off.has(i) ? '' : `<span class="ov-tip-row ov-s${s.c}"><i></i>${esc(s.name)}<b>${Number(s.v[idx]).toLocaleString('en-US')}</b></span>`)).join('');
   return `<div class="ov-tip-title">${esc(data.labels[idx])}${data.unit ? ` <small>${esc(data.unit)}</small>` : ''}</div>${rows}`;
 }
+
+export function barChart({ rows, unit = '', c = 0, label = 'Chart' }) {
+  const list = rows.filter((r) => Number.isFinite(r.value));
+  if (!list.length) return '';
+  const rowH = 26;
+  const { W, L, R, T, B } = { W: 340, L: 96, R: 14, T: 8, B: 22 };
+  const H = T + B + list.length * rowH;
+  const t = niceTicks(Math.min(...list.map((r) => r.value), 0), Math.max(...list.map((r) => r.value), 0), 4);
+  const pw = W - L - R;
+  const xOf = (v) => L + ((v - t.min) / (t.max - t.min)) * pw;
+  const grid = t.ticks.map((v) => `<line class="ov-gl${v === 0 ? ' is-zero' : ''}" x1="${f1(xOf(v))}" x2="${f1(xOf(v))}" y1="${T}" y2="${H - B}"/><text class="ov-xtick" x="${f1(xOf(v))}" y="${H - 7}">${compact(v)}</text>`).join('');
+  const bars = list.map((r, i) => {
+    const y = T + i * rowH + 4;
+    const x0 = xOf(0);
+    const x1 = xOf(r.value);
+    const name = String(r.name).length > 15 ? `${String(r.name).slice(0, 14)}\u2026` : String(r.name);
+    const col = r.c === undefined ? c : r.c;
+    return `<text class="ov-ytick ov-bname" x="${L - 6}" y="${y + 11}">${esc(name)}</text><rect class="ov-bar ov-s${col}" x="${f1(Math.min(x0, x1))}" y="${y}" width="${f1(Math.max(2, Math.abs(x1 - x0)))}" height="14" rx="3"/><text class="ov-bval" x="${f1(Math.max(x0, x1) + 4)}" y="${y + 11}">${compact(r.value)}${esc(unit)}</text>`;
+  }).join('');
+  return `<div class="ov-linechart ov-barchart"><div class="ov-plot"><svg class="ov-lines" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${bars}</svg></div></div>`;
+}
+
+export function columnChart({ rows, unit = '', label = 'Chart' }) {
+  const list = rows.filter((r) => Number.isFinite(r.value));
+  if (!list.length) return '';
+  const { W, H, L, R, T, B } = PLOT;
+  const t = niceTicks(0, Math.max(...list.map((r) => r.value)), 4);
+  const pw = W - L - R;
+  const ph = H - T - B;
+  const yOf = (v) => T + (1 - (v - t.min) / (t.max - t.min)) * ph;
+  const slot = pw / list.length;
+  const bw = Math.min(46, slot * 0.55);
+  const grid = t.ticks.map((v) => `<line class="ov-gl${v === 0 ? ' is-zero' : ''}" x1="${L}" x2="${W - R}" y1="${f1(yOf(v))}" y2="${f1(yOf(v))}"/><text class="ov-ytick" x="${L - 6}" y="${f1(yOf(v) + 3)}">${compact(v)}</text>`).join('');
+  const bars = list.map((r, i) => {
+    const cx = L + slot * (i + 0.5);
+    return `<rect class="ov-bar ov-s${i}" x="${f1(cx - bw / 2)}" y="${f1(yOf(r.value))}" width="${f1(bw)}" height="${f1(Math.max(1, yOf(0) - yOf(r.value)))}" rx="3"/><text class="ov-bval is-mid" x="${f1(cx)}" y="${f1(yOf(r.value) - 5)}">${compact(r.value)}${esc(unit)}</text><text class="ov-xtick" x="${f1(cx)}" y="${H - 8}">${esc(r.name)}</text>`;
+  }).join('');
+  return `<div class="ov-linechart ov-barchart"><div class="ov-plot"><svg class="ov-lines" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${grid}${bars}</svg></div></div>`;
+}

@@ -1,8 +1,8 @@
 import { localDateStr } from './finance.js';
 import { auditData, isLedgerRow } from './overview-audit.js';
 import { buildExtras } from './overview-extra.js';
-import { lineChart } from './overview-lines.js';
-import { sparkWaveSvg, waveBarSvg } from './overview-waves.js';
+import { barChart, columnChart, lineChart } from './overview-lines.js';
+import { sparkWaveSvg } from './overview-waves.js';
 
 const _arr = (v) => (Array.isArray(v) ? v : []);
 const _n = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -206,8 +206,7 @@ function trendChart(months, list, unit) {
 
 function ranked(rows, unit, t) {
   if (!rows.length) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  const max = Math.max(1, ...rows.map((r) => r.value));
-  return `<div class="ov-rank">${rows.map((r) => `<div class="ov-rank-row ${tone(t)}"><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}</span></span>${waveBarSvg(Math.max(4, Math.round((r.value / max) * 100)))}</div>`).join('')}</div>`;
+  return barChart({ rows: rows.map((r) => ({ name: r.name, value: r.value })), unit, c: PAL[t] === undefined ? 0 : PAL[t], label: 'Ranking' });
 }
 
 function auditHtml(a) {
@@ -277,9 +276,7 @@ function pill(label, value, t) {
 function donut(rows) {
   const total = rows.reduce((sum, r) => sum + r.value, 0);
   if (!(total > 0)) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  const pct = Math.round((rows[0].value / total) * 100);
-  const legend = rows.map((r, i) => `<span class="ov-legend-row ${tone(i === 0 ? 'good' : 'warn')}"><i></i>${esc(r.name)}<b>${fmt(r.value)}</b><em>${Math.round((r.value / total) * 100)}%</em></span>`).join('');
-  return `<div class="ov-donut-wrap"><span class="ov-donut sx-tone-good" style="--p:${pct}"></span><span class="ov-legend">${legend}</span></div>`;
+  return columnChart({ rows: rows.map((r) => ({ name: r.name, value: r.value })), label: 'Cash and credit sales' });
 }
 
 export function overviewHtml(model, range = 6, opts = {}) {

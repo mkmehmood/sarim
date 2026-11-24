@@ -232,11 +232,13 @@ describe('compact layout', () => {
     assert.doesNotThrow(() => overviewHtml(buildOverview({}, now, 3), 3));
   });
 
-  it('draws cash against credit as a donut', () => {
+  it('draws cash against credit as a column chart with axes', () => {
     const sales = [{ date: '2026-11-10', totalValue: 300, paymentType: 'CASH' }, { date: '2026-11-11', totalValue: 100, paymentType: 'CREDIT' }];
     const h = overviewHtml(buildOverview({ sales }, now, 3), 3);
-    assert.match(h, /class="ov-donut sx-tone-good" style="--p:75"/);
-    assert.match(h, /Cash<b>300<\/b><em>75%/);
+    assert.match(h, /class="ov-bar ov-s0"/);
+    assert.match(h, /class="ov-bar ov-s1"/);
+    assert.match(h, /class="ov-bval is-mid"[^>]*>300</);
+    assert.doesNotMatch(h, /ov-donut/);
   });
 
   it('switches panels without re-rendering and remembers the choice', () => {
