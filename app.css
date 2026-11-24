@@ -5087,11 +5087,11 @@ border-left: 3px solid var(--stat-c, var(--glass-border-strong));
 .cx-bar.is-peak { opacity: 1; }
 .cx-hit  { fill: transparent; cursor: pointer; }
 .cx-hit:hover + .cx-bar, .cx-hit:focus + .cx-bar { opacity: 1; filter: brightness(1.12); outline: none; }
-.cx-dot  { stroke: var(--glass-bg, var(--text-strong)); stroke-width: 1.5; cursor: pointer; }
+.cx-dot  { fill: var(--bg); stroke: var(--lc); stroke-width: 2; cursor: pointer; }
 .cx-donut-row { display: flex; align-items: center; gap: 14px; }
 .cx-donut-wrap { position: relative; flex: 0 0 132px; width: 132px; height: 132px; }
 .cx-donut-wrap svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
-.cx-donut-slice { cursor: pointer; transition: opacity 0.15s; }
+.cx-donut-slice { cursor: pointer; transition: opacity 0.15s; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12)); }
 .cx-donut-slice:hover, .cx-donut-slice:focus { opacity: 0.8; }
 .cx-svg [tabindex], .cx-donut-wrap [tabindex] { -webkit-tap-highlight-color: transparent; }
 .cx-svg [tabindex]:focus, .cx-svg [tabindex]:focus-visible, .cx-donut-wrap [tabindex]:focus, .cx-donut-wrap [tabindex]:focus-visible { outline: none; }
@@ -5177,7 +5177,7 @@ border-left: 3px solid var(--stat-c, var(--glass-border-strong));
 .sc-host { gap: 8px; }
 .sc-dot { fill: transparent; stroke: none; cursor: pointer; }
 .sc-dot:hover { fill: currentColor; }
-.sc-dot-end { stroke: var(--glass-bg, var(--text-strong)); stroke-width: 2; }
+.sc-dot-end { fill: var(--bg); stroke: var(--lc); stroke-width: 2; }
 .hc-card { gap: 0; }
 .hc-card > .hc-head { cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 12px; }
 .hc-card > .hc-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -5825,7 +5825,7 @@ button.ov-recent-row:active, .ov-check:active { transform: scale(0.985); }
 .ov-c .ov-wavebar { display: block; width: 100%; height: 20px; border-radius: 10px; background: var(--glass-border); overflow: hidden; }
 .ov-wavebar-back { fill: var(--sx-c, var(--accent)); fill-opacity: 0.4; }
 .ov-wavebar-front { fill: var(--sx-c, var(--accent)); }
-.ov-spark-fill { fill: currentColor; fill-opacity: 0.22; }
+.ov-spark-fill { fill: currentColor; fill-opacity: 0.12; }
 .ov-spark-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
 .ov-s0 { --lc: hsl(158 68% 52%); }
@@ -5852,8 +5852,8 @@ button.ov-recent-row:active, .ov-check:active { transform: scale(0.985); }
 .ov-ytick { text-anchor: end; }
 .ov-xtick { text-anchor: middle; }
 .ov-line { fill: none; stroke: var(--lc); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 3px 6px color-mix(in srgb, var(--lc) 42%, transparent)); }
-.ov-line-area { fill: var(--lc); fill-opacity: 0.13; }
-.ov-last { fill: var(--bg); stroke: var(--lc); stroke-width: 2; }
+.ov-line-area { fill: var(--g, var(--lc)); fill-opacity: 1; }
+.ov-last { fill: var(--bg); stroke: var(--lc); stroke-width: 2; r: 4; }
 .ov-cross { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 .ov-hdot { fill: var(--lc); stroke: var(--bg); stroke-width: 2; }
 .ov-hit { fill: transparent; cursor: crosshair; }
@@ -5866,27 +5866,20 @@ button.ov-recent-row:active, .ov-check:active { transform: scale(0.985); }
 .ov-tip-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--lc); flex: none; }
 .ov-tip-row b { margin-left: auto; padding-left: 10px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
-/* KPI trends and progress bars share the Money trends glow */
 .ov-spark-line { filter: drop-shadow(0 2px 4px color-mix(in srgb, currentColor 40%, transparent)); }
-.ov-spark-fill { fill-opacity: 0.12; }
 #cy-progress-track, .cm-meter { border-radius: 999px; }
 #close-year-progress-bar { box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent); }
 
 .ov-vl { font: 700 8.5px var(--font-num); fill: var(--text-main); text-anchor: middle; }
-.ov-last { r: 4; }
 .ov-spark-wrap { position: relative; flex: 1; min-width: 0; display: block; padding-right: 5px; }
 .ov-spark-wrap .ov-spark { display: block; width: 100%; height: 18px; }
 .ov-spark-dot { position: absolute; right: 0; top: var(--y, 50%); width: 8px; height: 8px; box-sizing: border-box; transform: translateY(-50%); border-radius: 50%; background: var(--bg); border: 2px solid currentColor; }
 .cx-line { filter: drop-shadow(0 3px 6px color-mix(in srgb, var(--lc) 42%, transparent)); }
-.cx-donut-slice { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12)); }
-/* Progress bars: glowing fill with a hollow end dot, like the chart lines */
 .bar > i, .bar > #close-year-progress-bar { position: relative; box-shadow: 0 2px 8px color-mix(in srgb, var(--d-background, var(--accent)) 45%, transparent); }
 .bar > i::after, .bar > #close-year-progress-bar::after { content: ''; position: absolute; right: 0; top: 50%; width: calc(var(--bar-h, 6px) + 6px); height: calc(var(--bar-h, 6px) + 6px); box-sizing: border-box; transform: translate(50%, -50%); border-radius: 50%; background: var(--bg); border: 2px solid var(--d-background, var(--accent)); }
 .cm-meter > i { --d-background: var(--accent-emerald); }
 
-.ov-line-area { fill: var(--g, var(--lc)); fill-opacity: 1; }
 .ov-gs { stop-color: var(--lc); }
 .ov-gs-a { stop-opacity: 0.34; }
 .ov-gs-b { stop-opacity: 0; }
 .cx-line { stroke: var(--lc); }
-.cx-dot, .sc-dot-end { fill: var(--bg); stroke: var(--lc); stroke-width: 2; }
