@@ -67,12 +67,15 @@ export function repairCollection(records, colId, opts = {}) {
   const getGross = opts.getGross || defaultGross;
   const col = records.find((r) => r && r.id === colId && alive(r) && isCol(r));
   const out = { changed: new Set(), restored: 0, dropped: 0, applied: 0 };
-  if (!col || !Array.isArray(col.allocations) || !col.allocations.length) return out;
+  if (!col) return out;
+  const hasClaims = Array.isArray(col.allocations) && col.allocations.length > 0;
+  if (!hasClaims && !(collectionUnapplied(col, allocHonor(records.filter(alive))) > 0.01)) return out;
+  if (!hasClaims) splitCollection(col, []);
   const mine = customerSales(records, kind, col);
   const confirmedSum = (s) => (Array.isArray(s.collectionAllocs) ? s.collectionAllocs.reduce((n, e) => n + (e && records.some((c) => c && c.id === e.cid && alive(c)) ? num(e.amount) : 0), 0) : 0);
   const kept = [];
   let droppedAmount = 0;
-  for (const claim of col.allocations) {
+  for (const claim of (hasClaims ? col.allocations : [])) {
     const sale = mine.find((s) => s.id === claim.saleId);
     const has = sale && Array.isArray(sale.collectionAllocs) && sale.collectionAllocs.some((e) => e && e.cid === col.id);
     if (has) { kept.push(claim); continue; }
@@ -90,11 +93,11 @@ export function repairCollection(records, colId, opts = {}) {
     droppedAmount = round2(droppedAmount + num(claim.amount));
     out.dropped += 1;
   }
-  if (out.dropped) {
+  if (out.dropped || !hasClaims) {
     splitCollection(col, kept);
     const amount = col.collectedAmount != null ? num(col.collectedAmount) : num(col.totalValue);
     const held = round2(num(col.totalValue) + Math.max(0, num(col.expiredValue) - num(col.expiredAllocated)));
-    const budget = Math.min(droppedAmount, held);
+    const budget = hasClaims ? Math.min(droppedAmount, held) : held;
     if (budget > 0.004) {
       const open = sortForCollection(collectionEligible(mine.filter((s) =>
         (s.paymentType === 'CREDIT' || s.transactionType === 'OLD_DEBT') && !s.creditReceived && !s.usedInCalcId &&
