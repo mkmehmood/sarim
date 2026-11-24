@@ -6,8 +6,11 @@ import '../format.dart';
 import 'ledger_screen.dart';
 
 class CustomersScreen extends StatefulWidget {
-  const CustomersScreen({super.key, required this.app});
+  const CustomersScreen({super.key, required this.app, this.embedded = false});
   final AppState app;
+
+  /// When true the screen lives inside the app shell, which supplies the app bar.
+  final bool embedded;
 
   @override
   State<CustomersScreen> createState() => _CustomersScreenState();
@@ -87,7 +90,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   Widget build(BuildContext context) {
     final d = _data;
     return Scaffold(
-      appBar: AppBar(
+      appBar: widget.embedded ? null : AppBar(
         title: const Text('Customers'),
         actions: [
           if (app.syncing)

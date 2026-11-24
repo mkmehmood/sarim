@@ -4,8 +4,8 @@ import 'package:sarim_core/sarim_core.dart';
 
 import 'app_state.dart';
 import 'firebase_config.dart';
-import 'screens/customers_screen.dart';
 import 'screens/login_screen.dart';
+import 'ui/app_shell.dart';
 import 'ui/splash_screen.dart';
 import 'ui/theme.dart';
 
@@ -18,9 +18,10 @@ Future<void> main() async {
 }
 
 class SarimApp extends StatefulWidget {
-  const SarimApp({super.key, required this.app, this.showSplash = true});
+  const SarimApp({super.key, required this.app, this.showSplash = true, this.initialTab = ShellTab.prod});
   final AppState app;
   final bool showSplash;
+  final ShellTab initialTab;
 
   @override
   State<SarimApp> createState() => _SarimAppState();
@@ -39,7 +40,7 @@ class _SarimAppState extends State<SarimApp> {
       home: _splashDone
           ? ListenableBuilder(
               listenable: app,
-              builder: (context, _) => app.signedIn ? CustomersScreen(app: app) : LoginScreen(app: app),
+              builder: (context, _) => app.signedIn ? AppShell(app: app, initialTab: widget.initialTab) : LoginScreen(app: app),
             )
           : SplashScreen(ready: Future<void>.value(), onDone: () => setState(() => _splashDone = true)),
     );

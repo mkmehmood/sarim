@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sarim_core/sarim_core.dart';
 import 'package:sarim_native/app_state.dart';
 import 'package:sarim_native/main.dart';
+import 'package:sarim_native/ui/app_shell.dart';
 
 class _NoCloud implements RemoteApi {
   @override
@@ -21,7 +22,7 @@ void main() {
   testWidgets('login screen shows when signed out', (tester) async {
     final app = AppState(MemoryStore(), cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false, initialTab: ShellTab.sales));
     expect(find.text('Sign in'), findsOneWidget);
   });
 
@@ -36,7 +37,7 @@ void main() {
     ]);
     final app = AppState(store, cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false, initialTab: ShellTab.sales));
     await tester.pumpAndSettle();
     expect(find.text('Ali'), findsOneWidget);
     expect(find.text('Rs 1,000'), findsWidgets);
@@ -62,7 +63,7 @@ void main() {
     ]);
     final app = AppState(store, cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false, initialTab: ShellTab.sales));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ali'));
     await tester.pumpAndSettle();
@@ -88,7 +89,7 @@ void main() {
     ]);
     final app = AppState(store, cfg, remoteOverride: _NoCloud());
     await app.init();
-    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false, initialTab: ShellTab.sales));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ali'));
     await tester.pumpAndSettle();
@@ -100,5 +101,26 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Rs 2,000'), findsWidgets);
+  });
+
+  testWidgets('shell switches tabs and opens a standalone screen from the drawer', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    expect(find.text('Production'), findsWidgets); // default tab
+    await tester.tap(find.text('Sales').last);
+    await tester.pumpAndSettle();
+    expect(find.text('No customers yet. Tap Add to create one.'), findsOneWidget);
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Daily Ledger'));
+    await tester.pumpAndSettle();
+    expect(find.text('Being ported from the web app'), findsOneWidget);
   });
 }
