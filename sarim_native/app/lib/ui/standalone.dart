@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import '../screens/settings_screen.dart';
 import 'theme.dart';
 
 /// A full-screen page opened from the drawer or from a tab (the web app's
@@ -19,7 +20,7 @@ final Map<String, StandaloneDef> standaloneScreens = {
   for (final d in _defs) d.id: d,
 };
 
-final List<StandaloneDef> _defs = [
+final List<StandaloneDef> _defs = <StandaloneDef>[
   const StandaloneDef('approvals', 'Approvals', Icons.verified_outlined, 'work'),
   const StandaloneDef('daily-ledger', 'Daily Ledger', Icons.receipt_long_outlined, 'work'),
   const StandaloneDef('stock-transfer', 'Stock Transfer', Icons.swap_horiz, 'work'),
@@ -28,7 +29,7 @@ final List<StandaloneDef> _defs = [
   const StandaloneDef('stores', 'Store Manager', Icons.store_outlined, 'records'),
   const StandaloneDef('backup-restore', 'Backup & Restore', Icons.backup_outlined, 'records'),
   const StandaloneDef('db-structure', 'Database Structure', Icons.storage_outlined, 'records'),
-  const StandaloneDef('settings', 'Settings', Icons.settings_outlined, 'settings'),
+  StandaloneDef('settings', 'Settings', Icons.settings_outlined, 'settings', build: (app) => SettingsScreen(app: app)),
 ];
 
 void openStandalone(BuildContext context, AppState app, String id) {

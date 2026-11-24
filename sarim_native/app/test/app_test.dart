@@ -124,4 +124,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Being ported from the web app'), findsOneWidget);
   });
+
+  testWidgets('settings screen shows the account and sync state', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('a@b.c'), findsWidgets);
+    expect(find.text('Everything is synced'), findsOneWidget);
+    await tester.tap(find.text('Store Manager'));
+    await tester.pumpAndSettle();
+    expect(find.text('Being ported from the web app'), findsOneWidget);
+  });
 }

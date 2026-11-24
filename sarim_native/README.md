@@ -19,6 +19,15 @@ sarim_native/
 | 4 | Formula costing (done, tested); factory production entry, inventory, rep sales, stock, expenses | in progress |
 | 5 | Approvals / staff roles, reports, PDF statements, backup/restore | not started |
 
+### UI parity with the web app (branch `flutter-native`)
+| Step | Scope | Status |
+|---|---|---|
+| 1 | Theme tokens from `app.css`, animated splash (dial, greeting, clock, quote) | done |
+| 2 | App shell: top bar + sync, side drawer, six bottom tabs, standalone-screen routing | done |
+| 3 | Production tab: period filter, totals, per-store grid, history | done |
+| 4 | Settings screen (account, sync status, shortcuts, sign out) | done |
+| 5+ | Calculator, Factory, Payments, Rep Sales tabs; Store Manager, Daily Ledger, Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
+
 Until phase 5 is finished the WebView app on the `flutter-app` branch is the complete one.
 
 ## What is verified
