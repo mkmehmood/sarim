@@ -980,11 +980,11 @@ describe('virtual keyboard wiring', () => {
     assert.match(css, /html\.vk-open \.cm-sheet \{ bottom: calc\(var\(--vk-h, 0px\) \+ var\(--vk-gap\)\); \}/);
   });
 
-  it('sits above dialogs, sheets and suggestion lists', () => {
+  it('sits above dialogs, sheets, suggestion lists and the sign-in screen', () => {
     const z = [...css.matchAll(/z-index: (\d+)/g)].map((m) => Number(m[1]));
-    assert.match(css, /\.vk-dock\.overlay \{[^}]*position: fixed;[^}]*z-index: 10450;/);
-    assert.ok(Math.max(...z.filter((n) => n < 10450)) < 10450);
-    assert.ok(z.filter((n) => n > 10450).every((n) => n >= 99999));
+    assert.match(css, /\.vk-dock\.overlay \{[^}]*position: fixed;[^}]*z-index: 100000;/);
+    assert.ok(Math.max(...z.filter((n) => n < 100000)) < 100000);
+    assert.ok(z.filter((n) => n > 100000).every((n) => n >= 2147483000));
   });
 
   it('no screen is routed to the device keyboard any more', () => {
@@ -1082,5 +1082,19 @@ describe('the keyboard keeps working while a dialog is open', () => {
 
   it('opening the keyboard clears any inert flag left on it', () => {
     assert.match(src, /dock\.removeAttribute\('inert'\);/);
+  });
+});
+
+describe('keyboard above the sign-in screen', () => {
+  const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
+  const z = (re) => Number(re.exec(css)[1]);
+  it('the on-screen keyboard is stacked above the sign-in screen so it is visible there', () => {
+    const dock = z(/\.vk-dock\.overlay \{[^}]*z-index: (\d+)/);
+    const auth = z(/\.auth-screen \{[^}]*z-index: (\d+)/);
+    assert.ok(dock > auth);
+  });
+
+  it('the sign-in form leaves room for the keyboard so the focused field stays visible', () => {
+    assert.match(css, /\.auth-wrap \{[^}]*padding-bottom: var\(--vk-h, 0px\);/);
   });
 });
