@@ -1,7 +1,7 @@
 import { localDateStr } from './finance.js';
 import { auditData, isLedgerRow } from './overview-audit.js';
 import { buildExtras } from './overview-extra.js';
-import { lineChart } from './overview-lines.js';
+import { columnChart, lineChart } from './overview-lines.js';
 import { sparkWaveSvg } from './overview-waves.js';
 
 const _arr = (v) => (Array.isArray(v) ? v : []);
@@ -204,11 +204,12 @@ function trendChart(months, list, unit) {
   return lineChart({ labels: months.map((m) => m.label), series: list.map((x, i) => ({ name: x.name, c: i % 8, values: x.values })), unit, label: unit || 'Trend' });
 }
 
-const shortName = (n) => (String(n).length > 8 ? `${String(n).slice(0, 7)}\u2026` : String(n));
-
-function ranked(rows, unit, t) {
+function ranked(rows, unit, t, share = true) {
   if (!rows.length) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  return lineChart({ labels: rows.map((r) => String(r.name)), tickLabels: rows.map((r) => shortName(r.name)), series: [{ name: '', c: PAL[t] === undefined ? 0 : PAL[t], values: rows.map((r) => r.value) }], unit: unit.trim(), area: true, label: 'Ranking', valueLabels: true });
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  const total = rows.reduce((sum, r) => sum + Math.max(0, r.value), 0);
+  const sorted = rows.slice().sort((a, b) => b.value - a.value);
+  return `<div class="ov-rank">${sorted.map((r) => `<div class="ov-rank-row ${tone(t)}"><span class="ov-rank-top"><span class="ov-rank-name">${esc(r.name)}</span><span class="ov-rank-val">${fmt(r.value)}${unit}${share && total > 0 ? `<em>${Math.round((Math.max(0, r.value) / total) * 100)}%</em>` : ''}</span></span><span class="ov-rank-track"><span class="ov-rank-fill" style="--w:${Math.max(3, Math.round((Math.max(0, r.value) / max) * 100))}%"></span></span></div>`).join('')}</div>`;
 }
 
 function auditHtml(a) {
@@ -267,8 +268,8 @@ function delta(values) {
   return `<span class="ov-delta">${pct >= 0 ? '\u25b2' : '\u25bc'} ${Math.abs(pct)}%</span>`;
 }
 
-function kpi(label, value, series, t, sub = '') {
-  return `<div class="ov-kpi ${tone(t)}"><span class="ov-kpi-l">${label}</span><span class="ov-kpi-v">${value}</span>${series ? `<span class="ov-kpi-s">${spark(series)}${delta(series)}</span>` : ''}${sub ? `<span class="ov-kpi-sub">${sub}</span>` : ''}</div>`;
+function kpi(label, value, series, t, sub = '', hero = false) {
+  return `<div class="ov-kpi ${tone(t)}${hero ? ' is-hero' : ''}"><span class="ov-kpi-l">${label}</span><span class="ov-kpi-v">${value}</span>${series ? `<span class="ov-kpi-s">${spark(series)}${delta(series)}</span>` : ''}${sub ? `<span class="ov-kpi-sub">${sub}</span>` : ''}</div>`;
 }
 
 function pill(label, value, t) {
@@ -278,7 +279,9 @@ function pill(label, value, t) {
 function donut(rows) {
   const total = rows.reduce((sum, r) => sum + r.value, 0);
   if (!(total > 0)) return '<div class="ov-empty">Nothing recorded in this period.</div>';
-  return lineChart({ labels: rows.map((r) => r.name), series: [{ name: '', c: 0, values: rows.map((r) => r.value) }], area: true, label: 'Cash and credit sales', valueLabels: true });
+  const pct = Math.round((rows[0].value / total) * 100);
+  const legend = rows.map((r, i) => `<span class="ov-legend-row ${tone(i === 0 ? 'good' : 'warn')}"><i></i>${esc(r.name)}<b>${fmt(r.value)}</b><em>${Math.round((r.value / total) * 100)}%</em></span>`).join('');
+  return `<div class="ov-donut-wrap"><span class="ov-donut sx-tone-good" style="--p:${pct}"></span><span class="ov-legend">${legend}</span></div>`;
 }
 
 export function overviewHtml(model, range = 6, opts = {}) {
@@ -292,8 +295,8 @@ export function overviewHtml(model, range = 6, opts = {}) {
   const badge = model.audit && (model.audit.errors || model.audit.warnings) ? ` <span class="ov-count sx-tone-${model.audit.errors ? 'bad' : 'warn'}">${model.audit.errors + model.audit.warnings}</span>` : '';
   const tabs = PANELS.map(([id, label]) => `<div class="toggle-opt${id === panel ? ' active' : ''}" role="button" tabindex="0" data-panel="${id}">${label}${id === 'checks' ? badge : ''}</div>`).join('');
   const kpis = [
+    kpi('Net profit', fmt(t.prodProfit), series('prodProfit'), t.prodProfit < 0 ? 'bad' : 'good', t.prodValue > 0 ? `${t.margin.toFixed(1)}% margin on ${fmt(t.prodValue)}` : '', true),
     kpi('Sales', fmt(t.salesValue), series('salesValue'), 'good', `${t.salesCount} sale${t.salesCount === 1 ? '' : 's'}`),
-    kpi('Net profit', fmt(t.prodProfit), series('prodProfit'), t.prodProfit < 0 ? 'bad' : 'good', t.prodValue > 0 ? `${t.margin.toFixed(1)}% margin on ${fmt(t.prodValue)}` : ''),
     kpi('Produced', `${fmt(t.prodKg)} kg`, series('prodKg'), 'info', t.returnsKg > 0 ? `+${fmt(t.returnsKg)} kg returns` : `cost ${fmt(t.prodCost)}`),
     kpi('Remaining', `${fmt(t.remainingKg)} kg`, null, t.remainingKg < 0 ? 'bad' : 'warn', `${fmt(t.inKg)} in \u00b7 ${fmt(t.soldKg)} sold`),
     kpi('Net cash', fmt(t.net), netSeries, t.net < 0 ? 'bad' : 'good', `in ${fmt(t.cashIn)} \u00b7 out ${fmt(t.cashOut)}`),
@@ -317,9 +320,10 @@ export function overviewHtml(model, range = 6, opts = {}) {
   const panels = {
     sales: [
       moneyTrends,
+      model.months.some((m) => m.prodProfit !== 0) ? section('Net profit by month', columnChart({ labels: model.months.map((m) => m.label), values: model.months.map((m) => m.prodProfit), label: 'Net profit by month' })) : '',
       trendCard('Sales by customer over time', model.trends && model.trends.customers, 'sales value'),
       trendCard('Sales by store over time', model.trends && model.trends.salesStores, 'sales value'),
-      section('Stock movement (kg)', ranked([{ name: 'Sold', value: t.soldKg }, { name: 'Remaining', value: Math.max(0, t.remainingKg) }, { name: 'Production + returns in', value: t.inKg }].filter((r2) => r2.value > 0), ' kg', 'warn')),
+      section('Stock movement (kg)', ranked([{ name: 'Sold', value: t.soldKg }, { name: 'Remaining', value: Math.max(0, t.remainingKg) }, { name: 'Production + returns in', value: t.inKg }].filter((r2) => r2.value > 0), ' kg', 'warn', false)),
       section('Sold by customer (kg)', ranked(model.customersKg, ' kg', 'warn')),
       owedSection(x),
       section('Top customers', ranked(model.customers, '', 'good')),
@@ -351,7 +355,7 @@ export function overviewHtml(model, range = 6, opts = {}) {
     ],
   };
   const body = PANELS.map(([id]) => `<div class="ov-panel ov-grid${id === 'checks' || id === 'activity' ? ' is-wide' : ''}" data-panel-id="${id}"${id === panel ? '' : ' hidden'}>${panels[id].join('')}</div>`).join('');
-  return `<header class="ov-top"><h1 class="shimmer-text u-heading-bold">Overview</h1><div class="toggle-group" id="ov-range-toggle">${toggle}</div></header>`
+  return `<header class="ov-top"><div class="ov-head"><h1 class="shimmer-text u-heading-bold">Overview</h1>${opts.stamp ? `<span class="ov-stamp">Updated ${esc(opts.stamp)}</span>` : ''}</div><div class="toggle-group" id="ov-range-toggle">${toggle}</div></header>`
     + `<div class="ov-kpis" data-money>${kpis}</div>${now}`
     + `<div class="toggle-group ov-tabs" id="ov-panel-toggle">${tabs}</div>${body}`;
 }

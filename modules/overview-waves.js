@@ -20,20 +20,6 @@ export function smoothPath(pts) {
   return d;
 }
 
-export function waveBarSvg(pct) {
-  const w = Math.max(4, Math.min(100, pct));
-  const steps = Math.max(2, Math.ceil(w / 4));
-  const layer = (base, amp, phase) => {
-    const pts = [];
-    for (let i = 0; i <= steps; i += 1) {
-      const x = (i / steps) * w;
-      pts.push([x, base + amp * Math.sin((x / 22) * 2 * Math.PI + phase)]);
-    }
-    return `${smoothPath(pts)} L${f1(w)},14 L0,14 Z`;
-  };
-  return `<svg class="ov-wavebar" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true"><path class="ov-wavebar-back" d="${layer(5, 2.6, 0)}"/><path class="ov-wavebar-front" d="${layer(7, 2, Math.PI * 0.8)}"/></svg>`;
-}
-
 export function sparkWaveSvg(values) {
   const min = Math.min(...values);
   const span = Math.max(...values) - min || 1;
@@ -41,6 +27,5 @@ export function sparkWaveSvg(values) {
   const n = norm.length;
   const pts = norm.map((v, i) => [n > 1 ? (i / (n - 1)) * 100 : 50, 22 - v * 18]);
   const line = smoothPath(n > 1 ? pts : [[0, pts[0][1]], [100, pts[0][1]]]);
-  const endY = pts[n - 1][1];
-  return `<span class="ov-spark-wrap" style="--y:${f1((endY / 24) * 100)}%"><svg class="ov-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path class="ov-spark-fill" d="${line} L100,24 L0,24 Z"/><path class="ov-spark-line" d="${line}"/></svg><i class="ov-spark-dot"></i></span>`;
+  return `<svg class="ov-spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path class="ov-spark-fill" d="${line} L100,24 L0,24 Z"/><path class="ov-spark-line" d="${line}"/></svg>`;
 }

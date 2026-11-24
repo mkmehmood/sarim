@@ -20,7 +20,7 @@ export async function renderOverview() {
   const loaded = await Promise.all(keys.map((k) => sqliteStore.get(k).catch(() => [])));
   const data = Object.fromEntries(keys.map((k, i) => [k, loaded[i]]));
   data.formulas = await getFormulaStore().catch(() => []);
-  box.innerHTML = overviewHtml(buildOverview(data, new Date(), _range), _range, { panel: _panel });
+  box.innerHTML = overviewHtml(buildOverview(data, new Date(), _range), _range, { panel: _panel, stamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
 }
 
 const ESC = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -296,7 +296,7 @@ function toggleSeries(chart, chip) {
 function bindCharts(box) {
   box.addEventListener('pointerdown', (e) => {
     const hit = e.target.closest && e.target.closest('.ov-hit');
-    box.querySelectorAll('.ov-linechart').forEach((c) => { if (!hit || !c.contains(hit)) hideTip(c); });
+    box.querySelectorAll('.ov-linechart[data-lines]').forEach((c) => { if (!hit || !c.contains(hit)) hideTip(c); });
     if (hit) showTip(hit.closest('.ov-linechart'), e.clientX);
   });
   box.addEventListener('pointermove', (e) => {

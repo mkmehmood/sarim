@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { PLOT, compact, lineChart, nearestIndex, niceTicks, tipHtml } from '../modules/overview-lines.js';
+import { PLOT, columnChart, compact, lineChart, nearestIndex, niceTicks, tipHtml } from '../modules/overview-lines.js';
 import { buildOverview, overviewHtml } from '../modules/overview-data.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -103,7 +103,7 @@ describe('the overview uses line charts and opens nothing from its cards', () =>
     assert.match(html, /Production by store over time/);
     const money = /Money trends[\s\S]*?<\/svg>/.exec(html)[0];
     assert.equal((money.match(/class="ov-line ov-s\d"/g) || []).length, 6);
-    assert.ok((html.match(/class="ov-linechart"/g) || []).length >= 6);
+    assert.ok((html.match(/class="ov-linechart"/g) || []).length >= 5);
   });
 
   it('collects each customer, store and formula as its own line over the months', () => {
@@ -155,5 +155,16 @@ describe('the overview uses line charts and opens nothing from its cards', () =>
     assert.match(css, /\.ov-line \{[^}]*stroke: var\(--lc\)/);
     assert.match(css, /\.ov-tip \{[^}]*backdrop-filter: blur\(10px\)/);
     assert.match(css, /\.ov-lines \{[^}]*touch-action: pan-y/);
+  });
+});
+
+describe('monthly columns', () => {
+  it('draws one column per month, marks losses, and shows the average', () => {
+    const svg = columnChart({ labels: ['Sep', 'Oct', 'Nov'], values: [100, -40, 160], label: 'Net profit by month' });
+    assert.equal((svg.match(/class="ov-mcol(?: is-neg)?"/g) || []).length, 3);
+    assert.equal((svg.match(/class="ov-mcol is-neg"/g) || []).length, 1);
+    assert.match(svg, /class="ov-avg-l"[^>]*>avg 73.3</);
+    assert.match(svg, /<title>Oct: -40<\/title>/);
+    assert.doesNotMatch(svg, /data-lines/);
   });
 });
