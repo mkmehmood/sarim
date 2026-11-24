@@ -121,6 +121,19 @@ describe('payment link audit and repair', () => {
     assert.ok(r.changed.has('c20') && r.changed.has('s17'));
   });
 
+  it('repairs a collection whose cash was recorded but has no allocation list at all', () => {
+    const list = [sale('a', 5, 4800), sale('b', 9, 6400), col('c', 12, 7000, undefined)];
+    delete list[2].allocations;
+    assert.deepEqual(auditLinks(list, 'sales').map((i) => [i.code, i.rec.id, i.amount]), [['col_unapplied', 'c', 7000]]);
+    assert.equal(ledger(list), 11200);
+    const r = repairStore(list, 'sales');
+    assert.equal(r.applied, 2);
+    assert.equal(ledger(list), 4200);
+    assert.equal(owed(list), 4200);
+    assert.deepEqual(auditLinks(list, 'sales'), []);
+    assert.equal(repairStore(list, 'sales').changedIds.length, 0);
+  });
+
   it('describes what it did', () => {
     assert.match(repairSummary({ cleared: 1, restored: 2, applied: 3 }), /1 stale payment link removed, 2 lost links restored, cash applied to 3 sales/);
     assert.equal(repairSummary({}), 'Nothing needed changing');
