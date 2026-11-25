@@ -17,6 +17,12 @@ class AppState extends ChangeNotifier {
   late SarimRepository repo;
   AuthSession? session;
   SyncService? _sync;
+  RemoteApi? _remoteApi;
+
+  /// Role session for the signed-in account (admin until the account document says otherwise).
+  RoleSession roleSession = deriveSession(const ['admin']);
+  String? assignedName; // display name from users/{uid}
+  String? repProfile; // upper-cased name when the account has the rep role
   final LoginRateLimiter limiter = LoginRateLimiter();
   bool syncing = false;
   String? syncMessage;
@@ -29,6 +35,10 @@ class AppState extends ChangeNotifier {
     if (raw is Map) {
       session = AuthSession.fromJson(Map<String, dynamic>.from(raw));
       _wire();
+      await _loadCachedAccount();
+      notifyListeners();
+      _loadAccount(enforce: false).then((_) => notifyListeners());
+      return;
     }
     notifyListeners();
   }
@@ -36,7 +46,52 @@ class AppState extends ChangeNotifier {
   void _wire() {
     repo = SarimRepository(store, createdBy: session?.email);
     final remote = _remoteOverride ?? FirestoreRest(config, session!, auth);
+    _remoteApi = remote;
     _sync = SyncService(repo, remote);
+  }
+
+  void _applyAccount(Map<String, dynamic>? doc, String uid, String email) {
+    final legacy = isLegacyAccount(doc, uid);
+    final roles = legacy ? const ['admin'] : normalizeRoles(doc);
+    final name = '${doc?['displayName'] ?? ''}'.trim();
+    roleSession = deriveSession(roles);
+    assignedName = name.isEmpty ? email.split('@').first : name;
+    repProfile = roleSession.roles.contains('rep') ? assignedName!.toUpperCase() : null;
+  }
+
+  /// Web `_checkUserApproved`: returns a denial message, or null when the account may use the app.
+  /// Offline or unexpected errors do not deny (the cached roles are used instead).
+  Future<String?> _loadAccount({required bool enforce}) async {
+    final s = session, r = _remoteApi;
+    if (s == null || r == null) return null;
+    try {
+      final doc = await r.getDocument('users', s.uid);
+      if (doc == null) {
+        if (enforce) return 'Access denied. Your account (${s.email}) is not registered in this system. Contact the administrator.';
+        return null;
+      }
+      if (doc['approved'] == false) return 'Access denied. Your account has been suspended. Contact the administrator.';
+      _applyAccount(doc, s.uid, s.email);
+      await store.set('accountCache', {'doc': doc, 'uid': s.uid, 'email': s.email});
+      return null;
+    } on CloudError catch (e) {
+      if (e.status == 403) return 'Access denied. You do not have permission to use this app.';
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadCachedAccount() async {
+    final c = await store.get('accountCache');
+    final s = session;
+    if (c is Map && s != null && c['uid'] == s.uid) {
+      _applyAccount(c['doc'] is Map ? Map<String, dynamic>.from(c['doc'] as Map) : null, s.uid, s.email);
+    } else {
+      roleSession = deriveSession(const ['admin']);
+      assignedName = null;
+      repProfile = null;
+    }
   }
 
   /// Returns an error message, or null when signed in.
@@ -53,8 +108,15 @@ class AppState extends ChangeNotifier {
       }
       await store.set('dataOwner', s.uid);
       session = s;
-      await store.set('session', s.toJson());
       _wire();
+      final denied = await _loadAccount(enforce: true);
+      if (denied != null) {
+        session = null;
+        _sync = null;
+        _remoteApi = null;
+        return denied;
+      }
+      await store.set('session', s.toJson());
       notifyListeners();
       await sync();
       return null;
@@ -72,9 +134,19 @@ class AppState extends ChangeNotifier {
 
   Future<void> saveEmail(String email) => store.set('savedEmail', email);
 
+  /// Web sign-out: "the local data on this device will be erased". Pending changes are synced first and the
+  /// data is kept if they cannot be uploaded, so nothing unsynced is ever lost.
   Future<void> signOut() async {
+    await sync();
+    if ((await repo.outbox()).isEmpty) {
+      for (final k in ['sales', 'customers', 'deleted', 'outbox', 'calculator', 'production', 'returns', 'inventory', 'stores', 'formulas', 'accountCache', 'dataOwner']) {
+        await store.set(k, k == 'dataOwner' || k == 'accountCache' ? null : <dynamic>[]);
+      }
+    }
     session = null;
     _sync = null;
+    _remoteApi = null;
+    roleSession = deriveSession(const ['admin']);
     await store.set('session', null);
     notifyListeners();
   }

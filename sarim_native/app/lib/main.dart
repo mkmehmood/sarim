@@ -4,6 +4,7 @@ import 'package:sarim_core/sarim_core.dart';
 
 import 'app_state.dart';
 import 'firebase_config.dart';
+import 'ui/app_shell.dart';
 import 'ui/login_screen.dart';
 import 'ui/splash_screen.dart';
 import 'ui/theme.dart';
@@ -39,8 +40,7 @@ class _SarimAppState extends State<SarimApp> {
           ? SplashScreen(ready: Future<void>.value(), onDone: () => setState(() => _splashDone = true))
           : ListenableBuilder(
               listenable: app,
-              // The app shell (tabs) is the next step; until then a signed-in session shows an empty page.
-              builder: (context, _) => app.signedIn ? const Scaffold() : LoginScreen(app: app),
+              builder: (context, _) => app.signedIn ? AppShell(key: ValueKey(app.session?.uid), app: app) : LoginScreen(app: app),
             ),
     );
   }

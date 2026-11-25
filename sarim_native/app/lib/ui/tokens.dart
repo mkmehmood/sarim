@@ -37,6 +37,17 @@ class T {
   static const fontMono = 'JetBrainsMono';
 }
 
+/// Glass / shell tokens (`--glass-border`, `--shadow-*`, `--soft-card`).
+class G {
+  static final border = Colors.white.withOpacity(.14);
+  static final borderStrong = Colors.white.withOpacity(.26);
+  static final glowPct = .26; // --glow-pct (dark)
+}
+
+/// The web app sets `html { font-size: clamp(11px, 3.12vw, 14px) }` below 450px wide, so every `rem`
+/// size shrinks on phones. Multiply a CSS rem value by `rem(context)` to get logical pixels.
+double remFor(double width) => width <= 449 ? (width * .0312).clamp(11.0, 14.0).toDouble() : 16.0;
+
 /// `.auth-screen` custom properties (`--au-*`).
 class Au {
   static const ink = Color(0xFFEEF6F1);
@@ -61,4 +72,9 @@ class Au {
   static final bgGlow = const Color(0xFF4ADE80).withOpacity(.20);
   static const sheetTop = Color(0xFF121B16);
   static const sheetBot = Color(0xFF060907);
+}
+
+extension RemX on BuildContext {
+  /// Pixels per CSS `rem` at the current screen width.
+  double get rem => remFor(MediaQuery.of(this).size.width);
 }
