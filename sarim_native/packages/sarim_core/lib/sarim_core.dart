@@ -9,6 +9,7 @@ export 'src/link_graph.dart';
 export 'src/sales.dart';
 export 'src/production.dart';
 export 'src/login_limiter.dart';
+export 'src/roles.dart';
 export 'src/store.dart';
 export 'src/repository.dart';
 export 'src/firestore_codec.dart';
