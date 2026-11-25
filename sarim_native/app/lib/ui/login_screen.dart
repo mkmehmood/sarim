@@ -97,10 +97,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
+    final rem = context.rem;
     final w = mq.size.width;
     final short = mq.size.height <= 720;
     final logoW = short ? min(w * .70, 260.0) : min(w * .86, 400.0);
-    final brandSize = (w * .061).clamp(21.6, 36.8).toDouble();
+    final brandSize = (w * .061).clamp(1.35 * rem, 2.3 * rem).toDouble();
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Au.bgBot,
@@ -144,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Text('GULL AND ZUBAIR', maxLines: 1, style: TextStyle(fontFamily: T.fontBrand, fontFamilyFallback: T.fontBrandFallback, fontWeight: FontWeight.w700, fontSize: brandSize, letterSpacing: .05 * brandSize, height: 1, color: Colors.white)),
                           ),
                           const SizedBox(height: 8),
-                          Text('NASWAR DEALERS', style: TextStyle(fontFamily: T.fontUi, fontWeight: FontWeight.w500, fontSize: 11.2, letterSpacing: .4 * 11.2, color: T.textMain)),
+                          Text('NASWAR DEALERS', style: TextStyle(fontFamily: T.fontUi, fontWeight: FontWeight.w500, fontSize: .7 * rem, letterSpacing: .4 * .7 * rem, color: T.textMain)),
                         ]),
                       ),
                       // .auth-sheet
@@ -157,9 +158,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.85), blurRadius: 48, offset: const Offset(0, -16))],
                         ),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Welcome back', style: TextStyle(fontFamily: T.fontUi, fontSize: 24.8, fontWeight: FontWeight.w600, letterSpacing: -.01 * 24.8, color: T.textStrong)),
+                          Text('Welcome back', style: TextStyle(fontFamily: T.fontUi, fontSize: 1.55 * rem, fontWeight: FontWeight.w600, letterSpacing: -.01 * 1.55 * rem, color: T.textStrong)),
                           const SizedBox(height: 4),
-                          const Text('Sign in to unlock and sync your business data.', style: TextStyle(fontSize: 13.44, height: 1.45, color: T.textMain)),
+                          Text('Sign in to unlock and sync your business data.', style: TextStyle(fontSize: .84 * rem, height: 1.45, color: T.textMain)),
                           const SizedBox(height: 20),
                           _field(label: 'Email address', controller: _email, focus: _emailFocus, hint: 'name@example.com', icon: _mailIcon, keyboard: TextInputType.emailAddress, autofill: const [AutofillHints.username], action: TextInputAction.next, onSubmit: () => _passwordFocus.requestFocus()),
                           const SizedBox(height: 18),
@@ -169,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (_message.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 14),
-                              child: SizedBox(width: double.infinity, child: Text(_message, textAlign: TextAlign.center, style: TextStyle(fontSize: 13.12, height: 1.4, color: _msgColor))),
+                              child: SizedBox(width: double.infinity, child: Text(_message, textAlign: TextAlign.center, style: TextStyle(fontSize: .82 * rem, height: 1.4, color: _msgColor))),
                             ),
                           const SizedBox(height: 16),
                           Center(
@@ -180,14 +181,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 TextSpan(text: ' to have yours added.'),
                               ]),
                               textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 12.16, height: 1.5, color: T.textMain),
+                              style: TextStyle(fontSize: .76 * rem, height: 1.5, color: T.textMain),
                             ),
                           ),
                           const SizedBox(height: 16),
-                          const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.shield_outlined, size: 14, color: T.accent),
-                            SizedBox(width: 6),
-                            Text('End-to-end encrypted \u00b7 AES-256-GCM', style: TextStyle(fontSize: 10.56, color: T.textMain)),
+                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            const Icon(Icons.shield_outlined, size: 14, color: T.accent),
+                            const SizedBox(width: 6),
+                            Text('End-to-end encrypted \u00b7 AES-256-GCM', style: TextStyle(fontSize: .66 * rem, color: T.textMain)),
                           ]),
                         ]),
                       ),
@@ -220,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     final on = focus.hasFocus;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.only(left: 4, bottom: 8), child: Text(label, style: const TextStyle(fontSize: 12.8, fontWeight: FontWeight.w600, color: Au.ink))),
+      Padding(padding: const EdgeInsets.only(left: 4, bottom: 8), child: Text(label, style: TextStyle(fontSize: .8 * context.rem, fontWeight: FontWeight.w600, color: Au.ink))),
       AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 58,
@@ -258,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
             enableSuggestions: false,
             onSubmitted: (_) => onSubmit?.call(),
             cursorColor: Au.leaf,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Au.ink),
+            style: TextStyle(fontSize: context.rem, fontWeight: FontWeight.w500, color: Au.ink),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(color: Au.muted.withOpacity(.8), fontWeight: FontWeight.w400),
@@ -299,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: InkWell(
             borderRadius: BorderRadius.circular(999),
             onTap: _busy ? null : _submit,
-            child: const Center(child: Text('Sign in', style: TextStyle(fontSize: 16.32, fontWeight: FontWeight.w800, letterSpacing: .02 * 16.32, color: Au.btnInk))),
+            child: Center(child: Text('Sign in', style: TextStyle(fontSize: 1.02 * context.rem, fontWeight: FontWeight.w800, letterSpacing: .02 * 1.02 * context.rem, color: Au.btnInk))),
           ),
         ),
       ),

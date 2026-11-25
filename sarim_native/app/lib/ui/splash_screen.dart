@@ -93,6 +93,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Widget build(BuildContext context) {
     final look = SplashLook.of(_now);
     final mq = MediaQuery.of(context);
+    final rem = context.rem;
     final w = mq.size.width;
     final dialW = min(352.0, w * .92);
     final dialH = dialW * 160 / 300;
@@ -133,28 +134,28 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       right: 0,
                       bottom: 2,
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text(splashGreeting(_now).toUpperCase(), style: _ui(10.24, w: FontWeight.w700, ls: .26, color: T.success)),
+                        Text(splashGreeting(_now).toUpperCase(), style: _ui(.64 * rem, w: FontWeight.w700, ls: .26, color: T.success)),
                         const SizedBox(height: 4),
                         Text.rich(
                           TextSpan(children: [
                             TextSpan(text: timeParts),
                             WidgetSpan(alignment: PlaceholderAlignment.baseline, baseline: TextBaseline.alphabetic, child: Padding(
                               padding: const EdgeInsets.only(left: 6),
-                              child: Text(_now.hour < 12 ? 'AM' : 'PM', style: _ui(14.4, w: FontWeight.w600, ls: .14, color: T.textMain).copyWith(fontFamily: T.fontBrand)),
+                              child: Text(_now.hour < 12 ? 'AM' : 'PM', style: _ui(.9 * rem, w: FontWeight.w600, ls: .14, color: T.textMain).copyWith(fontFamily: T.fontBrand)),
                             )),
                           ]),
-                          style: _brand(49.6, ls: .02, height: 1.05),
+                          style: _brand(3.1 * rem, ls: .02, height: 1.05),
                         ),
                         const SizedBox(height: 6),
-                        Text(splashDateText(_now).toUpperCase(), style: _ui(11.2, w: FontWeight.w600, ls: .16)),
+                        Text(splashDateText(_now).toUpperCase(), style: _ui(.7 * rem, w: FontWeight.w600, ls: .16)),
                       ]),
                     ),
                   ]),
                 ),
                 const SizedBox(height: 46),
-                Text('GULL AND ZUBAIR', textAlign: TextAlign.center, style: _brand(24, ls: .1)),
+                Text('GULL AND ZUBAIR', textAlign: TextAlign.center, style: _brand(1.5 * rem, ls: .1)),
                 const SizedBox(height: 8),
-                Text('NASWAR DEALERS', textAlign: TextAlign.center, style: _ui(11.2, w: FontWeight.w700, ls: .34, color: T.success)),
+                Text('NASWAR DEALERS', textAlign: TextAlign.center, style: _ui(.7 * rem, w: FontWeight.w700, ls: .34, color: T.success)),
                 // .splash-rule
                 const SizedBox(height: 24),
                 SizedBox(
@@ -168,10 +169,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 const SizedBox(height: 22),
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: min(320, w * .86)),
-                  child: Text('"${_quote.$1}"', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'PlayfairDisplay', fontFamilyFallback: const ['Georgia'], fontStyle: FontStyle.italic, fontWeight: FontWeight.w500, fontSize: 18.24, height: 1.55, color: T.textMain)),
+                  child: Text('"${_quote.$1}"', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'PlayfairDisplay', fontFamilyFallback: const ['Georgia'], fontStyle: FontStyle.italic, fontWeight: FontWeight.w500, fontSize: 1.14 * rem, height: 1.55, color: T.textMain)),
                 ),
                 const SizedBox(height: 12),
-                Text('\u2014 ${_quote.$2}'.toUpperCase(), textAlign: TextAlign.center, style: _ui(10.88, w: FontWeight.w700, ls: .16)),
+                Text('\u2014 ${_quote.$2}'.toUpperCase(), textAlign: TextAlign.center, style: _ui(.68 * rem, w: FontWeight.w700, ls: .16)),
               ]),
             ),
           ),
@@ -182,7 +183,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               FadeTransition(opacity: Tween(begin: 1.0, end: .35).animate(_blink), child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: T.success, shape: BoxShape.circle))),
               const SizedBox(width: 10),
-              Text('PREPARING YOUR DAY', style: _ui(9.92, w: FontWeight.w700, ls: .24)),
+              Text('PREPARING YOUR DAY', style: _ui(.62 * rem, w: FontWeight.w700, ls: .24)),
             ]),
           ),
         ]),
