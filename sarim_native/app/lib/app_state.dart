@@ -17,6 +17,7 @@ class AppState extends ChangeNotifier {
   late SarimRepository repo;
   AuthSession? session;
   SyncService? _sync;
+  final LoginRateLimiter limiter = LoginRateLimiter();
   bool syncing = false;
   String? syncMessage;
   int revision = 0; // bumped whenever local data changes, so screens reload
@@ -65,6 +66,11 @@ class AppState extends ChangeNotifier {
       return 'Could not sign in: $e';
     }
   }
+
+  /// Last email used to sign in (web: OfflineAuth.getSavedEmail), to pre-fill the login form.
+  Future<String> savedEmail() async => '${await store.get('savedEmail') ?? ''}';
+
+  Future<void> saveEmail(String email) => store.set('savedEmail', email);
 
   Future<void> signOut() async {
     session = null;

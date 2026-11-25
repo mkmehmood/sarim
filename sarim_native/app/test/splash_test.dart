@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sarim_native/ui/splash_quotes.dart';
 import 'package:sarim_native/ui/splash_screen.dart';
@@ -26,9 +26,8 @@ void main() {
 
   testWidgets('splash holds, then calls onDone', (tester) async {
     var done = false;
-    await tester.pumpWidget(Directionality(
-      textDirection: TextDirection.ltr,
-      child: SplashScreen(ready: Future.value(), onDone: () => done = true, now: DateTime(2026, 11, 25, 9, 41)),
+    await tester.pumpWidget(MaterialApp(
+      home: SplashScreen(ready: Future.value(), onDone: () => done = true, now: DateTime(2026, 11, 25, 9, 41)),
     ));
     expect(find.text('GULL AND ZUBAIR'), findsOneWidget);
     expect(find.text('PREPARING YOUR DAY'), findsOneWidget);

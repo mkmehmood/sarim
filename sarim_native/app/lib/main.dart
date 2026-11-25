@@ -4,6 +4,8 @@ import 'package:sarim_core/sarim_core.dart';
 
 import 'app_state.dart';
 import 'firebase_config.dart';
+import 'ui/login_screen.dart';
+import 'ui/splash_screen.dart';
 import 'ui/theme.dart';
 
 Future<void> main() async {
@@ -14,9 +16,18 @@ Future<void> main() async {
   runApp(SarimApp(app: app));
 }
 
-class SarimApp extends StatelessWidget {
-  const SarimApp({super.key, required this.app});
+class SarimApp extends StatefulWidget {
+  const SarimApp({super.key, required this.app, this.showSplash = true});
   final AppState app;
+  final bool showSplash;
+
+  @override
+  State<SarimApp> createState() => _SarimAppState();
+}
+
+class _SarimAppState extends State<SarimApp> {
+  late bool _splashDone = !widget.showSplash;
+  AppState get app => widget.app;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +35,13 @@ class SarimApp extends StatelessWidget {
       title: 'Gull & Zubair',
       debugShowCheckedModeBanner: false,
       theme: sarimTheme(),
-      home: const Scaffold(),
+      home: !_splashDone
+          ? SplashScreen(ready: Future<void>.value(), onDone: () => setState(() => _splashDone = true))
+          : ListenableBuilder(
+              listenable: app,
+              // The app shell (tabs) is the next step; until then a signed-in session shows an empty page.
+              builder: (context, _) => app.signedIn ? const Scaffold() : LoginScreen(app: app),
+            ),
     );
   }
 }
