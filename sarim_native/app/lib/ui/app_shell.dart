@@ -7,7 +7,6 @@ import 'payments_tab.dart';
 import 'production_tab.dart';
 import 'rep_sales_tab.dart';
 import 'standalone.dart';
-import 'tabs.dart';
 import 'theme.dart';
 
 /// Main tabs, in web sidebar order (Production, Sales, Calculator, Factory, Payments, Rep Sales).
@@ -51,8 +50,6 @@ class _AppShellState extends State<AppShell> {
         return PaymentsTab(app: app);
       case ShellTab.rep:
         return RepSalesTab(app: app);
-      default:
-        return TabPlaceholder(title: _tabMeta[t]!.$1, icon: _tabMeta[t]!.$2);
     }
   }
 
