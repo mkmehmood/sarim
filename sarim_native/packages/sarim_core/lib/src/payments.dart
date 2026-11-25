@@ -20,6 +20,8 @@ class PaymentsSummary {
   final double paidOut; // Money Out
   final List<PaymentRow> rows; // newest first
   double get net => round2(received - paidOut);
+  int get countIn => rows.where((r) => !r.isOut).length;
+  int get countOut => rows.where((r) => r.isOut).length;
 }
 
 PayKind? _kindOf(Rec t) {

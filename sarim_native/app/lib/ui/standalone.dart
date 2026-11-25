@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
+import '../screens/daily_ledger_screen.dart';
 import '../screens/settings_screen.dart';
 import 'theme.dart';
 
@@ -22,7 +23,7 @@ final Map<String, StandaloneDef> standaloneScreens = {
 
 final List<StandaloneDef> _defs = <StandaloneDef>[
   const StandaloneDef('approvals', 'Approvals', Icons.verified_outlined, 'work'),
-  const StandaloneDef('daily-ledger', 'Daily Ledger', Icons.receipt_long_outlined, 'work'),
+  StandaloneDef('daily-ledger', 'Daily Ledger', Icons.receipt_long_outlined, 'work', build: (app) => DailyLedgerScreen(app: app)),
   const StandaloneDef('stock-transfer', 'Stock Transfer', Icons.swap_horiz, 'work'),
   const StandaloneDef('payment-transfer', 'Payment Transfer', Icons.account_balance_wallet_outlined, 'work'),
   const StandaloneDef('recycle-bin', 'Recycle Bin', Icons.delete_outline, 'records'),

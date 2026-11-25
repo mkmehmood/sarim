@@ -33,6 +33,15 @@ Future<void> main() async {
     final all = summarizePayments(sales, {}, ProdPeriod.all, today);
     eq(all.received, 2350, 'deleted ids come back only when not in the deleted set');
   });
+  await group('a single chosen day (Daily Ledger)', () async {
+    final y = summarizePayments(sales, {'gone'}, ProdPeriod.day, DateTime(2026, 11, 24));
+    eq(y.paidOut, 150, 'money out on the 24th');
+    eq(y.countOut, 1, 'one entry out');
+    eq(y.countIn, 0, 'nothing in on the 24th');
+    eq(y.net, -150, 'deficit');
+    final t = summarizePayments(sales, {'gone'}, ProdPeriod.day, today);
+    eq(t.countIn, 3, 'three entries in today');
+  });
   await group('partial payment keeps the arrival date', () async {
     final s = summarizePayments(sales, {}, ProdPeriod.day, today);
     eq(s.rows.firstWhere((e) => e.rec['id'] == 'pp1').date, '2026-11-25', 'dated by creditReceivedDate');
