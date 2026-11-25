@@ -251,6 +251,41 @@ void main() {
     expect(find.text('Customers'), findsOneWidget);
   });
 
+  testWidgets('calculator shows expected cash and whether the rep is short', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('stores', [{'key': 'zubair', 'name': 'Zubair Store', 'salePrice': 400}]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Calc').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Sale price Rs 400/kg'), findsOneWidget);
+    expect(find.text('PERFECT MATCH'), findsOneWidget); // blank form
+    Future<void> type(String k, String v) async {
+      await tester.enterText(find.byKey(ValueKey('f-$k')), v);
+      await tester.pump();
+    }
+    await type('sold', '100');
+    await type('returned', '10');
+    await type('expired', '5');
+    await type('credit', '20');
+    await type('prevCreditReceived', '3000');
+    await type('fieldExpenses', '500');
+    await type('commissionPaid', '1000');
+    await type('receivedCash', '27000');
+    expect(find.text('Rs 27,500'), findsOneWidget); // expected cash
+    expect(find.text('SHORT: Rs 500'), findsOneWidget);
+    await type('receivedCash', '27500');
+    expect(find.text('PERFECT MATCH'), findsOneWidget);
+    await type('receivedCash', '28000');
+    expect(find.text('OVER: Rs 500'), findsOneWidget);
+  });
+
   testWidgets('settings screen shows the account and sync state', (tester) async {
     final store = MemoryStore();
     await store.set('session', {

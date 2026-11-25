@@ -31,7 +31,8 @@ sarim_native/
 | 7 | Store Manager screen: stores with sale price, formula and production totals (read-only) | done |
 | 8 | Rep Sales tab: per-rep kg, sales, cash in, credit given and returns by period | done |
 | 9 | Database Structure screen: every local collection with its record count and the upload queue | done |
-| 10+ | Calculator, Factory tabs; Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
+| 10 | Calculator tab: store sale price, kg / credit / expenses / commission inputs, live expected cash, short/over (saving a calculation stays in the web app) | done |
+| 11+ | Factory tab; Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
 
 Until phase 5 is finished the WebView app on the `flutter-app` branch is the complete one.
 
@@ -54,6 +55,11 @@ Until phase 5 is finished the WebView app on the `flutter-app` branch is the com
   inventory prices, name matching, deleted items and adjustment factors) run through the web app's stock loops, price
   lookup, `profit-cost.js`, `resolveSelectedFormula` and the formula cost maths; the Dart port must return the same error in the same order and
   identical price, cost, profit and available stock. Regenerate with `node packages/sarim_core/tool/gen_sale_fixtures.mjs`.
+* `calculator_test`: 400 randomised reconciliations (returns/expired/shared kg, credit kg, earlier credit, expenses,
+  commission, cash handed over - including exact and sub-paisa matches) run through the arithmetic of the web
+  `calculateSales()`; the Dart port must give the same net kg, expected cash, MATCH/SHORT/OVER and commission.
+  Regenerate with `node packages/sarim_core/tool/gen_calc_fixtures.mjs`. That script copies the formula out of
+  `modules/calc-tab.js` (which reads the form), so it must be updated if the web formula changes.
 * `repository_test`: Money Out maths, validation, add customer, delete guards, offline queue, two-device sync,
   tombstones, Firestore codec, atomic file store, id format.
 

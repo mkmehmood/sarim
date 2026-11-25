@@ -2,7 +2,7 @@ name: Native Flutter
 on:
   push:
     branches: [flutter-native]
-    paths: ['sarim_native/**', 'modules/finance.js', 'modules/tx-date.js', 'modules/link-graph.js', 'modules/profit-cost.js', 'modules/formula-pools.js', 'modules/store-keys.js']
+    paths: ['sarim_native/**', 'modules/finance.js', 'modules/calc-tab.js', 'modules/tx-date.js', 'modules/link-graph.js', 'modules/profit-cost.js', 'modules/formula-pools.js', 'modules/store-keys.js']
   workflow_dispatch:
 jobs:
   build:
@@ -20,6 +20,7 @@ jobs:
           node sarim_native/packages/sarim_core/tool/gen_fixtures.mjs
           node sarim_native/packages/sarim_core/tool/gen_collection_fixtures.mjs
           node sarim_native/packages/sarim_core/tool/gen_sale_fixtures.mjs
+          node sarim_native/packages/sarim_core/tool/gen_calc_fixtures.mjs
           git diff --exit-code sarim_native/packages/sarim_core/test/fixtures
       - name: Core tests (pure Dart)
         working-directory: sarim_native/packages/sarim_core
@@ -35,6 +36,7 @@ jobs:
           dart run test/payments_test.dart
           dart run test/rep_sales_test.dart
           dart run test/storage_overview_test.dart
+          dart run test/calculator_test.dart
       - name: App
         working-directory: sarim_native/app
         run: |
