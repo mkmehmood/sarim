@@ -16,6 +16,19 @@ class _NoCloud implements RemoteApi {
   Future<void> deleteDocument(String c, String id) async {}
 }
 
+Future<void> _openFromDrawer(WidgetTester tester, String label) async {
+  await tester.tap(find.byTooltip('Open navigation menu'));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.text(label),
+    120,
+    scrollable: find.descendant(of: find.byType(Drawer), matching: find.byType(Scrollable)),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   const cfg = FirebaseConfig(apiKey: 'k', projectId: 'p');
 
@@ -118,10 +131,7 @@ void main() {
     await tester.tap(find.text('Sales').last);
     await tester.pumpAndSettle();
     expect(find.text('No customers yet. Tap Add to create one.'), findsOneWidget);
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Approvals'));
-    await tester.pumpAndSettle();
+    await _openFromDrawer(tester, 'Approvals');
     expect(find.text('Being ported from the web app'), findsOneWidget);
   });
 
@@ -165,10 +175,7 @@ void main() {
     await app.init();
     await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Daily Ledger'));
-    await tester.pumpAndSettle();
+    await _openFromDrawer(tester, 'Daily Ledger');
     expect(find.text('Total Cash In'), findsOneWidget);
     expect(find.text('Deficit'), findsOneWidget);
     expect(find.text('-Rs 300'), findsOneWidget);
@@ -195,10 +202,7 @@ void main() {
     await app.init();
     await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Store Manager'));
-    await tester.pumpAndSettle();
+    await _openFromDrawer(tester, 'Store Manager');
     expect(find.text('Zubair Store'), findsOneWidget);
     expect(find.text('Rs 450/kg'), findsOneWidget);
     expect(find.text('Formula: Standard'), findsOneWidget);
@@ -242,10 +246,7 @@ void main() {
     await app.init();
     await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Database Structure'));
-    await tester.pumpAndSettle();
+    await _openFromDrawer(tester, 'Database Structure');
     expect(find.text('3 records'), findsOneWidget); // stored on this device
     expect(find.text('2 records'), findsOneWidget); // sales
     expect(find.text('Customers'), findsOneWidget);
@@ -323,14 +324,12 @@ void main() {
     await app.init();
     await tester.pumpWidget(SarimApp(app: app, showSplash: false));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
+    await _openFromDrawer(tester, 'Settings');
     expect(find.text('a@b.c'), findsWidgets);
     expect(find.text('Everything is synced'), findsOneWidget);
-    await tester.tap(find.text('Store Manager'));
+    await tester.pageBack();
     await tester.pumpAndSettle();
+    await _openFromDrawer(tester, 'Approvals');
     expect(find.text('Being ported from the web app'), findsOneWidget);
   });
 }
