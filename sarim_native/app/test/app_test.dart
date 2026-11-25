@@ -230,6 +230,27 @@ void main() {
     expect(find.text('Rs 9,000'), findsNothing); // the admin sale is not a rep sale
   });
 
+  testWidgets('database structure counts local records', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('sales', [{'id': 'a'}, {'id': 'b'}]);
+    await store.set('customers', [{'id': 'x'}]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Database Structure'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 records'), findsOneWidget); // stored on this device
+    expect(find.text('2 records'), findsOneWidget); // sales
+    expect(find.text('Customers'), findsOneWidget);
+  });
+
   testWidgets('settings screen shows the account and sync state', (tester) async {
     final store = MemoryStore();
     await store.set('session', {

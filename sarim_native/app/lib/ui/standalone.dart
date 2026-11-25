@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../screens/daily_ledger_screen.dart';
+import '../screens/db_structure_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/stores_screen.dart';
 import 'theme.dart';
@@ -30,7 +31,7 @@ final List<StandaloneDef> _defs = <StandaloneDef>[
   const StandaloneDef('recycle-bin', 'Recycle Bin', Icons.delete_outline, 'records'),
   StandaloneDef('stores', 'Store Manager', Icons.store_outlined, 'records', build: (app) => StoresScreen(app: app)),
   const StandaloneDef('backup-restore', 'Backup & Restore', Icons.backup_outlined, 'records'),
-  const StandaloneDef('db-structure', 'Database Structure', Icons.storage_outlined, 'records'),
+  StandaloneDef('db-structure', 'Database Structure', Icons.storage_outlined, 'records', build: (app) => DbStructureScreen(app: app)),
   StandaloneDef('settings', 'Settings', Icons.settings_outlined, 'settings', build: (app) => SettingsScreen(app: app)),
 ];
 

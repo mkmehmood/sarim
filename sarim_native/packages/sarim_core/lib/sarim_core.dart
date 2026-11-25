@@ -10,6 +10,7 @@ export 'src/sales.dart';
 export 'src/production.dart';
 export 'src/payments.dart';
 export 'src/rep_sales.dart';
+export 'src/storage_overview.dart';
 export 'src/store.dart';
 export 'src/repository.dart';
 export 'src/firestore_codec.dart';

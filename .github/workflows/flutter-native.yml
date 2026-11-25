@@ -34,6 +34,7 @@ jobs:
           dart run test/production_test.dart
           dart run test/payments_test.dart
           dart run test/rep_sales_test.dart
+          dart run test/storage_overview_test.dart
       - name: App
         working-directory: sarim_native/app
         run: |
