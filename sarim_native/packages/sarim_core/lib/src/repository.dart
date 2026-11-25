@@ -5,6 +5,7 @@ import 'finance.dart';
 import 'ids.dart';
 import 'link_graph.dart';
 import 'payments.dart';
+import 'rep_sales.dart';
 import 'production.dart';
 import 'sales.dart';
 import 'js_num.dart';
@@ -163,6 +164,10 @@ class SarimRepository {
   /// Cash received and paid out in a period for the Payments tab.
   Future<PaymentsSummary> paymentsSummary(ProdPeriod period, {DateTime? today}) async =>
       summarizePayments(await _list('sales'), await deletedIds(), period, today ?? DateTime.now());
+
+  /// Per-rep sales for the Rep Sales tab.
+  Future<RepSummary> repSummary(ProdPeriod period, {DateTime? today}) async =>
+      summarizeRepSales(await _list('sales'), await deletedIds(), period, today ?? DateTime.now());
 
   Future<Rec> addCustomer({required String name, String phone = '', String address = ''}) async {
     final n = name.trim();

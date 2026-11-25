@@ -206,6 +206,30 @@ void main() {
     expect(find.text('No price set'), findsOneWidget);
   });
 
+  testWidgets('rep sales tab totals each rep', (tester) async {
+    final store = MemoryStore();
+    final today = localDateStr();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('sales', [
+      {'id': 'a', 'salesRep': 'Bilal', 'date': today, 'timestamp': 1, 'paymentType': 'CASH', 'quantity': 10, 'totalValue': 1000},
+      {'id': 'b', 'salesRep': 'Bilal', 'date': today, 'timestamp': 2, 'paymentType': 'CREDIT', 'quantity': 5, 'totalValue': 500},
+      {'id': 'c', 'salesRep': 'NONE', 'currentRepProfile': 'admin', 'date': today, 'timestamp': 3, 'paymentType': 'CASH', 'quantity': 9, 'totalValue': 9000},
+    ]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rep').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Bilal'), findsOneWidget);
+    expect(find.text('15 kg net · 2 entries'), findsOneWidget);
+    expect(find.text('Cash in Rs 1,000 · Credit Rs 500'), findsOneWidget);
+    expect(find.text('Rs 9,000'), findsNothing); // the admin sale is not a rep sale
+  });
+
   testWidgets('settings screen shows the account and sync state', (tester) async {
     final store = MemoryStore();
     await store.set('session', {
