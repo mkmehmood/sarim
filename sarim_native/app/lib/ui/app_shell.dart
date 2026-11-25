@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../screens/customers_screen.dart';
+import 'payments_tab.dart';
 import 'production_tab.dart';
 import 'standalone.dart';
 import 'tabs.dart';
@@ -39,6 +40,8 @@ class _AppShellState extends State<AppShell> {
         return ProductionTab(app: app);
       case ShellTab.sales:
         return CustomersScreen(app: app, embedded: true);
+      case ShellTab.payments:
+        return PaymentsTab(app: app);
       default:
         return TabPlaceholder(title: _tabMeta[t]!.$1, icon: _tabMeta[t]!.$2);
     }

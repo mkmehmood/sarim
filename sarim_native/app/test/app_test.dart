@@ -125,6 +125,31 @@ void main() {
     expect(find.text('Being ported from the web app'), findsOneWidget);
   });
 
+  testWidgets('payments tab totals cash in and out and opens the customer ledger', (tester) async {
+    final store = MemoryStore();
+    final today = localDateStr();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('sales', [
+      {'id': 'a', 'customerName': 'Ali', 'currentRepProfile': 'admin', 'date': today, 'timestamp': 1, 'paymentType': 'CASH', 'quantity': 5, 'totalValue': 900},
+      {'id': 'b', 'customerName': 'Ali', 'currentRepProfile': 'admin', 'date': today, 'timestamp': 2, 'paymentType': 'MONEY_OUT', 'isMoneyOut': true, 'totalValue': 200},
+    ]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Payments').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Rs 900'), findsWidgets);
+    expect(find.text('-Rs 200'), findsOneWidget);
+    expect(find.text('Rs 700'), findsOneWidget); // net cash
+    await tester.tap(find.text('Money out · $today'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ali'), findsWidgets);
+  });
+
   testWidgets('settings screen shows the account and sync state', (tester) async {
     final store = MemoryStore();
     await store.set('session', {

@@ -26,7 +26,8 @@ sarim_native/
 | 2 | App shell: top bar + sync, side drawer, six bottom tabs, standalone-screen routing | done |
 | 3 | Production tab: period filter, totals, per-store grid, history | done |
 | 4 | Settings screen (account, sync status, shortcuts, sign out) | done |
-| 5+ | Calculator, Factory, Payments, Rep Sales tabs; Store Manager, Daily Ledger, Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
+| 5 | Payments tab: cash received / paid out by period, tap a row to open the customer ledger | done |
+| 6+ | Calculator, Factory, Rep Sales tabs; Store Manager, Daily Ledger, Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
 
 Until phase 5 is finished the WebView app on the `flutter-app` branch is the complete one.
 
@@ -62,6 +63,7 @@ flutter pub get && bash tools/patch_plugins.sh && flutter test && flutter run
 ```
 
 ## Known limits (phase 1-2)
+* The Payments tab shows customer cash movements (cash sales, collections, partial payments, Money Out). The web tab's supplier/expense entry needs the `entities`, `transactions` and `expenses` collections, which the native sync does not pull yet.
 * Owner accounts only: staff accounts that read a workspace owner's data and approval-gated writes are phase 5.
 * Collections record cash only: expired-goods credit (which feeds CHORA stock) is phase 4.
 * Sales: no sales-rep sales yet. Cost per kg is the realized cost of costed production batches, else the store's formula

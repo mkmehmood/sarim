@@ -4,6 +4,7 @@ import 'customer_ledger.dart';
 import 'finance.dart';
 import 'ids.dart';
 import 'link_graph.dart';
+import 'payments.dart';
 import 'production.dart';
 import 'sales.dart';
 import 'js_num.dart';
@@ -158,6 +159,10 @@ class SarimRepository {
   /// Production totals for the Production tab (excludes deleted batches).
   Future<ProdSummary> productionSummary(ProdPeriod period, {DateTime? today}) async =>
       summarizeProduction(await _list('production'), await deletedIds(), period, today ?? DateTime.now());
+
+  /// Cash received and paid out in a period for the Payments tab.
+  Future<PaymentsSummary> paymentsSummary(ProdPeriod period, {DateTime? today}) async =>
+      summarizePayments(await _list('sales'), await deletedIds(), period, today ?? DateTime.now());
 
   Future<Rec> addCustomer({required String name, String phone = '', String address = ''}) async {
     final n = name.trim();
