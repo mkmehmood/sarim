@@ -12,6 +12,7 @@ export 'src/payments.dart';
 export 'src/rep_sales.dart';
 export 'src/storage_overview.dart';
 export 'src/calculator.dart';
+export 'src/factory.dart';
 export 'src/store.dart';
 export 'src/repository.dart';
 export 'src/firestore_codec.dart';

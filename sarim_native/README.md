@@ -32,7 +32,8 @@ sarim_native/
 | 8 | Rep Sales tab: per-rep kg, sales, cash in, credit given and returns by period | done |
 | 9 | Database Structure screen: every local collection with its record count and the upload queue | done |
 | 10 | Calculator tab: store sale price, kg / credit / expenses / commission inputs, live expected cash, short/over (saving a calculation stays in the web app) | done |
-| 11+ | Factory tab; Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
+| 11 | Factory tab: raw-material stock and value (purchase lots excluded), name/value sort, formula cost per kg at live prices (read-only; buying stock and producing batches stay in the web app) | done |
+| 12+ | Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
 
 Until phase 5 is finished the WebView app on the `flutter-app` branch is the complete one.
 
@@ -60,6 +61,10 @@ Until phase 5 is finished the WebView app on the `flutter-app` branch is the com
   `calculateSales()`; the Dart port must give the same net kg, expected cash, MATCH/SHORT/OVER and commission.
   Regenerate with `node packages/sarim_core/tool/gen_calc_fixtures.mjs`. That script copies the formula out of
   `modules/calc-tab.js` (which reads the form), so it must be updated if the web formula changes.
+* `factory_test`: 300 random inventories (purchase lots, deleted rows, converted units, missing / null / negative /
+  text `collectedKg`, name and value sorting both ways) run through the web app's `materialRecords`, `collectedKg`
+  and `sortInventoryItems` plus the row maths of `renderFactoryInventory`; the Dart port must give the same order,
+  stock, value, collected kg, stock wording and totals. Regenerate with `node packages/sarim_core/tool/gen_factory_fixtures.mjs`.
 * `repository_test`: Money Out maths, validation, add customer, delete guards, offline queue, two-device sync,
   tombstones, Firestore codec, atomic file store, id format.
 

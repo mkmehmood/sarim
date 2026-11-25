@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../screens/customers_screen.dart';
 import 'calculator_tab.dart';
+import 'factory_tab.dart';
 import 'payments_tab.dart';
 import 'production_tab.dart';
 import 'rep_sales_tab.dart';
@@ -44,6 +45,8 @@ class _AppShellState extends State<AppShell> {
         return CustomersScreen(app: app, embedded: true);
       case ShellTab.calc:
         return CalculatorTab(app: app);
+      case ShellTab.factory:
+        return FactoryTab(app: app);
       case ShellTab.payments:
         return PaymentsTab(app: app);
       case ShellTab.rep:

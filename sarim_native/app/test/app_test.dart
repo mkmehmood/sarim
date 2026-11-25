@@ -286,6 +286,33 @@ void main() {
     expect(find.text('OVER: Rs 500'), findsOneWidget);
   });
 
+  testWidgets('factory tab shows raw-material stock, value and formula cost', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('inventory', [
+      {'id': 'i1', 'name': 'Maize', 'quantity': 100, 'cost': 40},
+      {'id': 'i2', 'name': 'Soya', 'quantity': 0, 'cost': 90},
+      {'id': 'i3', 'name': 'Bran', 'quantity': 50, 'cost': 10, 'conversionFactor': 25, 'purchaseQuantity': 2, 'purchaseUnitName': 'bag'},
+      {'id': 'lot', 'name': 'Maize', 'isPurchaseLot': true, 'quantity': 9, 'cost': 9},
+    ]);
+    await store.set('formulas', [
+      {'id': 'f1', 'name': 'Standard', 'ingredients': [{'id': 'i1', 'name': 'Maize', 'quantity': 2, 'cost': 1}]},
+    ]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Factory').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Rs 4,500'), findsOneWidget); // 100x40 + 0x90 + 50x10; the purchase lot is not counted
+    expect(find.text('2 bag (50 kg)'), findsOneWidget);
+    expect(find.text('0 kg · Out of stock'), findsOneWidget);
+    expect(find.text('Rs 80/kg'), findsOneWidget); // formula: 2 kg of Maize at the live price of 40
+  });
+
   testWidgets('settings screen shows the account and sync state', (tester) async {
     final store = MemoryStore();
     await store.set('session', {

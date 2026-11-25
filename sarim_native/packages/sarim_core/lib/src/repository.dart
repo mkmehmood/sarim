@@ -4,6 +4,7 @@ import 'customer_ledger.dart';
 import 'finance.dart';
 import 'ids.dart';
 import 'link_graph.dart';
+import 'factory.dart';
 import 'payments.dart';
 import 'rep_sales.dart';
 import 'production.dart';
@@ -168,6 +169,13 @@ class SarimRepository {
   /// Per-rep sales for the Rep Sales tab.
   Future<RepSummary> repSummary(ProdPeriod period, {DateTime? today}) async =>
       summarizeRepSales(await _list('sales'), await deletedIds(), period, today ?? DateTime.now());
+
+  /// Raw-material stock for the Factory tab.
+  Future<FactorySummary> factorySummary({InvSortKey sort = InvSortKey.name, bool descending = false}) async =>
+      summarizeFactory(await _list('inventory'), sort: sort, descending: descending);
+
+  /// Each formula's cost per kg at current inventory prices.
+  Future<List<FormulaCost>> formulaCostList() async => formulaCosts(await _formulaList(), await _list('inventory'));
 
   Future<Rec> addCustomer({required String name, String phone = '', String address = ''}) async {
     final n = name.trim();
