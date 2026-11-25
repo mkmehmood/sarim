@@ -177,6 +177,35 @@ void main() {
     expect(find.text('No entries on this day.'), findsOneWidget);
   });
 
+  testWidgets('store manager lists stores with price, formula and production', (tester) async {
+    final store = MemoryStore();
+    await store.set('session', {
+      'uid': 'u', 'email': 'a@b.c', 'idToken': 't', 'refreshToken': 'r',
+      'expiresAt': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    });
+    await store.set('stores', [
+      {'key': 'zubair', 'name': 'Zubair Store', 'salePrice': 450, 'formulaId': 'f1'},
+      {'key': 'gull', 'name': 'Gull Store', 'salePrice': 0},
+    ]);
+    await store.set('formulas', [{'id': 'f1', 'name': 'Standard'}]);
+    await store.set('production', [
+      {'id': 'p1', 'date': '2026-01-05', 'store': 'zubair', 'net': 100, 'totalCost': 4000, 'timestamp': 1},
+    ]);
+    final app = AppState(store, cfg, remoteOverride: _NoCloud());
+    await app.init();
+    await tester.pumpWidget(SarimApp(app: app, showSplash: false));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Store Manager'));
+    await tester.pumpAndSettle();
+    expect(find.text('Zubair Store'), findsOneWidget);
+    expect(find.text('Rs 450/kg'), findsOneWidget);
+    expect(find.text('Formula: Standard'), findsOneWidget);
+    expect(find.text('Produced: 100 kg · Rs 40/kg cost'), findsOneWidget);
+    expect(find.text('No price set'), findsOneWidget);
+  });
+
   testWidgets('settings screen shows the account and sync state', (tester) async {
     final store = MemoryStore();
     await store.set('session', {

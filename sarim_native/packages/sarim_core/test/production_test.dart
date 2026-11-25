@@ -40,6 +40,17 @@ Future<void> main() async {
     final s = await repo.productionSummary(ProdPeriod.year, today: today);
     eq(s.all.net, 1349, 'year net (2025 entry excluded, no deletions recorded)');
   });
+  await group('formula names for the Store Manager', () async {
+    final store = MemoryStore();
+    await store.set('formulas', [
+      {'id': 'f1', 'name': 'Standard'},
+      {'id': 'f2'},
+      {'name': 'no id'},
+    ]);
+    final names = await SarimRepository(store).formulaNames();
+    eq(names, {'f1': 'Standard', 'f2': 'f2'}, 'named, falls back to id, skips records without an id');
+    eq(await SarimRepository(MemoryStore()).formulaNames(), <String, String>{}, 'none yet');
+  });
   final code = finish();
   if (code != 0) throw StateError('production tests failed');
 }

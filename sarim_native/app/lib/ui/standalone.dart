@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../screens/daily_ledger_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/stores_screen.dart';
 import 'theme.dart';
 
 /// A full-screen page opened from the drawer or from a tab (the web app's
@@ -27,7 +28,7 @@ final List<StandaloneDef> _defs = <StandaloneDef>[
   const StandaloneDef('stock-transfer', 'Stock Transfer', Icons.swap_horiz, 'work'),
   const StandaloneDef('payment-transfer', 'Payment Transfer', Icons.account_balance_wallet_outlined, 'work'),
   const StandaloneDef('recycle-bin', 'Recycle Bin', Icons.delete_outline, 'records'),
-  const StandaloneDef('stores', 'Store Manager', Icons.store_outlined, 'records'),
+  StandaloneDef('stores', 'Store Manager', Icons.store_outlined, 'records', build: (app) => StoresScreen(app: app)),
   const StandaloneDef('backup-restore', 'Backup & Restore', Icons.backup_outlined, 'records'),
   const StandaloneDef('db-structure', 'Database Structure', Icons.storage_outlined, 'records'),
   StandaloneDef('settings', 'Settings', Icons.settings_outlined, 'settings', build: (app) => SettingsScreen(app: app)),

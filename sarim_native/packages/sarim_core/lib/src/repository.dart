@@ -218,6 +218,12 @@ class SarimRepository {
   // ---- sales -------------------------------------------------------------
   static const creditWarningThreshold = 5000.0;
 
+  /// Formula id -> name, for showing which formula a store uses.
+  Future<Map<String, String>> formulaNames() async => {
+        for (final f in await _formulaList())
+          if (truthy(f['id'])) '${f['id']}': truthy(f['name']) ? '${f['name']}' : '${f['id']}',
+      };
+
   Future<List<StoreInfo>> stores() async => StoreInfo.fromJson(await store.get('stores'));
 
   Future<SaleQuote> quoteCustomerSale({required String name, required double quantity, required String date, required String storeKey}) async {

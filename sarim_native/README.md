@@ -28,7 +28,8 @@ sarim_native/
 | 4 | Settings screen (account, sync status, shortcuts, sign out) | done |
 | 5 | Payments tab: cash received / paid out by period, tap a row to open the customer ledger | done |
 | 6 | Daily Ledger screen: pick a day, cash in / out / net and every entry | done |
-| 7+ | Calculator, Factory, Rep Sales tabs; Store Manager, Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
+| 7 | Store Manager screen: stores with sale price, formula and production totals (read-only) | done |
+| 8+ | Calculator, Factory, Rep Sales tabs; Stock/Payment Transfer, Recycle Bin, Backup, Approvals screens | placeholders in place |
 
 Until phase 5 is finished the WebView app on the `flutter-app` branch is the complete one.
 
